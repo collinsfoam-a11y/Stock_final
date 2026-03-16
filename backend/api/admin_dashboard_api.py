@@ -15,7 +15,6 @@ from pydantic import BaseModel
 
 from backend.auth.dependencies import require_admin
 from backend.db.runtime import get_db
-
 logger = logging.getLogger(__name__)
 
 admin_dashboard_router = APIRouter(prefix="/admin/dashboard", tags=["Admin Dashboard"])
@@ -99,19 +98,13 @@ async def calculate_total_stock_value(db) -> float:
 async def calculate_verified_value(db) -> float:
     """Calculate value of verified stock."""
     try:
-        pipeline = [
-            {"$match": {"status": "verified"}},
-            {
-                "$group": {
-                    "_id": None,
-                    "total_value": {
-                        "$sum": {"$multiply": ["$verified_qty", {"$ifNull": ["$price", 0]}]}
-                    },
-                }
-            },
-        ]
-        result = await db.verification_records.aggregate(pipeline).to_list(1)
-        return result[0]["total_value"] if result else 0.0
+        total_value = 0.0
+        cursor = db.count_lines.find({"status": "locked"})
+        async for line in cursor:
+            qty = float(line.get("counted_qty") or 0.0)
+            unit_value = float(line.get("mrp_counted") or line.get("mrp_erp") or 0.0)
+            total_value += qty * unit_value
+        return total_value
     except Exception as e:
         logger.error(f"Error calculating verified value: {e}")
         return 0.0
@@ -124,7 +117,14 @@ async def calculate_completion_percentage(db) -> float:
         if total_items == 0:
             return 0.0
 
-        verified_items = await db.verification_records.count_documents({"status": "verified"})
+        verified_items_result = await db.count_lines.aggregate(
+            [
+                {"$match": {"status": "locked", "item_code": {"$exists": True, "$ne": ""}}},
+                {"$group": {"_id": "$item_code"}},
+                {"$count": "count"},
+            ]
+        ).to_list(1)
+        verified_items = verified_items_result[0]["count"] if verified_items_result else 0
         return round((verified_items / total_items) * 100, 2)
     except Exception as e:
         logger.error(f"Error calculating completion: {e}")
@@ -134,8 +134,19 @@ async def calculate_completion_percentage(db) -> float:
 async def count_active_sessions(db) -> int:
     """Count currently active verification sessions."""
     try:
-        return await db.verification_sessions.count_documents(
-            {"status": {"$in": ["active", "in_progress"]}}
+        return await db.sessions.count_documents(
+            {
+                "status": {"$in": ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]},
+                "$and": [
+                    {"$or": [{"closed_at": {"$exists": False}}, {"closed_at": {"$in": [None, ""]}}]},
+                    {
+                        "$or": [
+                            {"finalized_at": {"$exists": False}},
+                            {"finalized_at": {"$in": [None, ""]}},
+                        ]
+                    },
+                ],
+            }
         )
     except Exception as e:
         logger.error(f"Error counting sessions: {e}")
@@ -155,8 +166,14 @@ async def count_active_users(db) -> int:
 async def count_pending_variances(db) -> int:
     """Count variances pending supervisor review."""
     try:
-        return await db.verification_records.count_documents(
-            {"status": "pending_review", "variance": {"$ne": 0}}
+        return await db.count_lines.count_documents(
+            {
+                "variance": {"$exists": True, "$ne": 0},
+                "$or": [
+                    {"status": {"$in": ["pending_approval", "NEEDS_REVIEW"]}},
+                    {"approval_status": "NEEDS_REVIEW"},
+                ],
+            }
         )
     except Exception as e:
         logger.error(f"Error counting variances: {e}")
@@ -171,8 +188,11 @@ async def count_items_verified_today(db) -> int:
             .replace(tzinfo=None)
             .replace(hour=0, minute=0, second=0, microsecond=0)
         )
-        return await db.verification_records.count_documents(
-            {"created_at": {"$gte": today_start}, "status": "verified"}
+        return await db.count_lines.count_documents(
+            {
+                "finalized_at": {"$gte": today_start},
+                "status": "locked",
+            }
         )
     except Exception as e:
         logger.error(f"Error counting today's verifications: {e}")
@@ -352,7 +372,7 @@ async def get_active_users(current_user: dict = Depends(require_admin)):
                         username=user.get("username", "Unknown"),
                         role=user.get("role", "staff"),
                         last_activity=last_seen.isoformat(),
-                        current_session=session.get("session_id") if session else None,
+                        current_session=session.get("id") if session else None,
                         status=user_status,
                     )
                 )

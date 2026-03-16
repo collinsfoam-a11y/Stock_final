@@ -23,6 +23,7 @@ import {
   approveCountLine,
   rejectCountLine,
   getAssignableStaffUsers,
+  finalizeSession,
   updateSessionStatus,
   verifyStock,
   unverifyStock,
@@ -298,6 +299,29 @@ export default function SessionDetail() {
     }
   };
 
+  const handleFinalizeSession = async () => {
+    if (offlineMode) {
+      show("Session finalization requires a live connection", "warning");
+      return;
+    }
+
+    try {
+      if (Platform.OS !== "web")
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await finalizeSession(targetSessionId);
+      await loadData();
+      show("Session finalized", "success");
+    } catch (error: any) {
+      const detail =
+        error?.response?.data?.detail?.message ||
+        error?.response?.data?.detail ||
+        "Failed to finalize session";
+      show(String(detail), "error");
+      if (Platform.OS !== "web")
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+  };
+
   const switchTab = (tab: "toVerify" | "verified") => {
     if (activeTab === tab) return;
     if (Platform.OS !== "web") Haptics.selectionAsync();
@@ -335,6 +359,8 @@ export default function SessionDetail() {
 
   const currentLines = activeTab === "toVerify" ? toVerifyLines : verifiedLines;
   const totalVariance = Number(session?.total_variance ?? 0);
+  const sessionFinalized =
+    session?.status === "COMPLETED" || session?.finalization_status === "FINALIZED";
 
   // Header Component for FlashList
   const ListHeader = () => (
@@ -398,10 +424,33 @@ export default function SessionDetail() {
         >
           <AnimatedPressable
             style={styles.closeButton}
-            onPress={() => handleUpdateStatus("CLOSED")}
+            onPress={() => void handleFinalizeSession()}
           >
-            <Text style={styles.buttonText}>Close Session</Text>
+            <Text style={styles.buttonText}>Finalize Session</Text>
           </AnimatedPressable>
+        </Animated.View>
+      )}
+
+      {sessionFinalized && (
+        <Animated.View entering={FadeInDown.delay(220).springify()}>
+          <GlassCard variant="medium" style={styles.offlineNotice}>
+            <View style={styles.offlineNoticeRow}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={18}
+                color={auroraTheme.colors.success[500]}
+              />
+              <View style={styles.offlineNoticeCopy}>
+                <Text style={styles.offlineNoticeTitle}>
+                  Session finalized
+                </Text>
+                <Text style={styles.offlineNoticeBody}>
+                  Finalized sessions are locked for audit integrity. Count lines
+                  can be reviewed, but approvals and edits are disabled.
+                </Text>
+              </View>
+            </View>
+          </GlassCard>
         </Animated.View>
       )}
 
@@ -597,7 +646,7 @@ export default function SessionDetail() {
           </View>
         )}
 
-        {!offlineMode && (
+        {!offlineMode && !sessionFinalized && (
           <View style={styles.lineActions}>
             {normalizedStatus === "pending" && (
               <>

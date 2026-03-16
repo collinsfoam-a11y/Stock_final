@@ -50,8 +50,8 @@ class QueryBuilder:
 
     # Available collections for querying
     COLLECTIONS = {
-        "verification_records": "verification_records",
-        "sessions": "verification_sessions",
+        "verification_records": "count_lines",
+        "sessions": "sessions",
         "items": "erp_items",
         "count_lines": "count_lines",
     }
@@ -60,20 +60,20 @@ class QueryBuilder:
     FIELDS = {
         "verification_records": [
             "item_code",
-            "verified_qty",
+            "counted_qty",
             "damaged_qty",
-            "rack_id",
-            "floor",
+            "rack_no",
+            "floor_no",
             "session_id",
             "status",
             "created_at",
             "updated_at",
         ],
-        "verification_sessions": [
-            "session_id",
-            "user_id",
-            "rack_id",
-            "floor",
+        "sessions": [
+            "id",
+            "staff_user",
+            "rack_no",
+            "location_name",
             "status",
             "started_at",
             "completed_at",
@@ -297,22 +297,22 @@ class QueryBuilder:
 EXAMPLE_QUERIES = {
     "items_by_floor": {
         "collection": "verification_records",
-        "group_by": ["floor"],
-        "aggregations": {"verified_qty": "sum", "damaged_qty": "sum"},
-        "sort": {"verified_qty_sum": -1},
+        "group_by": ["floor_no"],
+        "aggregations": {"counted_qty": "sum", "damaged_qty": "sum"},
+        "sort": {"counted_qty_sum": -1},
     },
     "session_performance": {
-        "collection": "verification_sessions",
-        "filters": {"status": "completed"},
-        "group_by": ["user_id"],
-        "aggregations": {"session_id": "count"},
-        "sort": {"session_id_count": -1},
+        "collection": "sessions",
+        "filters": {"status": "COMPLETED"},
+        "group_by": ["staff_user"],
+        "aggregations": {"id": "count"},
+        "sort": {"id_count": -1},
     },
     "rack_summary": {
         "collection": "verification_records",
-        "group_by": ["rack_id", "floor"],
+        "group_by": ["rack_no", "floor_no"],
         "aggregations": {
-            "verified_qty": "sum",
+            "counted_qty": "sum",
             "damaged_qty": "sum",
             "item_code": "count",
         },
@@ -322,7 +322,7 @@ EXAMPLE_QUERIES = {
         "filters": {
             "created_at": {"gte": datetime.now().replace(hour=0, minute=0, second=0).timestamp()}
         },
-        "group_by": ["floor"],
-        "aggregations": {"verified_qty": "sum"},
+        "group_by": ["floor_no"],
+        "aggregations": {"counted_qty": "sum"},
     },
 }

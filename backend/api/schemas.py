@@ -226,6 +226,8 @@ class RelocationStatus(str, Enum):
 class CountLineCreate(BaseModel):
     session_id: str
     item_code: str
+    idempotency_key: Optional[str] = None
+    recount_of_id: Optional[str] = None
     barcode: Optional[str] = None
     batch_id: Optional[str] = None
     batches: Optional[list[dict[str, Any]]] = None
@@ -289,10 +291,18 @@ class Session(BaseModel):
     started_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
     )
+    last_heartbeat: Optional[datetime] = None
     closed_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
     reconciled_at: Optional[datetime] = None
+    finalized_at: Optional[datetime] = None
+    finalized_by: Optional[str] = None
+    finalization_status: Optional[str] = None
     total_items: int = 0
     total_variance: float = 0
+    verified_items: int = 0
+    pending_items: int = 0
+    damage_items: int = 0
     notes: Optional[str] = None
     barcode: Optional[str] = None
 

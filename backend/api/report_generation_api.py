@@ -27,12 +27,12 @@ REPORT_TYPES = {
     "stock_summary": {
         "name": "Stock Summary Report",
         "description": "Overview of stock levels, values, and verification status",
-        "collection": "erp_items",
+        "collection": "count_lines",
     },
     "variance_report": {
         "name": "Variance Report",
         "description": "Items with discrepancies between expected and counted quantities",
-        "collection": "verification_records",
+        "collection": "count_lines",
     },
     "user_activity": {
         "name": "User Activity Report",
@@ -42,7 +42,7 @@ REPORT_TYPES = {
     "session_history": {
         "name": "Session History Report",
         "description": "Verification session details and outcomes",
-        "collection": "verification_sessions",
+        "collection": "sessions",
     },
     "audit_trail": {
         "name": "Audit Trail Report",
@@ -135,108 +135,153 @@ def _write_xlsx_data(ws: Any, data: list[dict], headers: list[str]) -> None:
 
 async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
     """Generate stock summary report data."""
-    query: dict[str, Any] = {}
-
+    item_query: dict[str, Any] = {}
     if filters.warehouse:
-        query["warehouse"] = filters.warehouse
+        item_query["warehouse"] = filters.warehouse
     if filters.floor:
-        query["floor"] = filters.floor
+        item_query["floor"] = filters.floor
     if filters.category:
-        query["category"] = filters.category
+        item_query["category"] = filters.category
 
-    pipeline = [
-        {"$match": query},
-        {
-            "$lookup": {
-                "from": "verification_records",
-                "localField": "item_code",
-                "foreignField": "item_code",
-                "as": "verifications",
-            }
-        },
-        {
-            "$project": {
-                "_id": 0,
-                "item_code": 1,
-                "item_name": 1,
-                "category": 1,
-                "warehouse": 1,
-                "floor": 1,
-                "stock_qty": 1,
-                "price": {"$ifNull": ["$price", 0]},
-                "stock_value": {"$multiply": ["$stock_qty", {"$ifNull": ["$price", 0]}]},
-                "verification_count": {"$size": "$verifications"},
-                "last_verified": {"$max": "$verifications.created_at"},
-                "is_verified": {"$gt": [{"$size": "$verifications"}, 0]},
-            }
-        },
-        {"$sort": {"item_code": 1}},
-        {"$limit": 10000},
-    ]
+    items_cursor = db.erp_items.find(item_query)
+    items: list[dict[str, Any]] = [item async for item in items_cursor]
+    item_codes = [item.get("item_code") for item in items if item.get("item_code")]
 
-    return await db.erp_items.aggregate(pipeline).to_list(10000)
+    line_query: dict[str, Any] = {}
+    if item_codes:
+        line_query["item_code"] = {"$in": item_codes}
+    if filters.user_id:
+        line_query["counted_by"] = filters.user_id
+    if filters.status:
+        line_query["status"] = filters.status.lower()
+
+    date_filter = build_date_filter(filters.date_from, filters.date_to)
+    if date_filter:
+        line_query["counted_at"] = date_filter
+
+    line_summary: dict[str, dict[str, Any]] = {}
+    lines_cursor = db.count_lines.find(line_query)
+    async for line in lines_cursor:
+        item_code = line.get("item_code")
+        if not item_code:
+            continue
+        summary = line_summary.setdefault(
+            item_code,
+            {
+                "verification_count": 0,
+                "finalized_count": 0,
+                "finalized_qty": 0.0,
+                "last_verified": None,
+            },
+        )
+        summary["verification_count"] += 1
+        if str(line.get("status", "")).lower() == "locked":
+            summary["finalized_count"] += 1
+            summary["finalized_qty"] += float(line.get("counted_qty") or 0.0)
+            last_verified = line.get("finalized_at") or line.get("verified_at") or line.get("counted_at")
+            if last_verified and (
+                summary["last_verified"] is None or last_verified > summary["last_verified"]
+            ):
+                summary["last_verified"] = last_verified
+
+    results: list[dict[str, Any]] = []
+    for item in items:
+        item_code = item.get("item_code")
+        summary = line_summary.get(item_code, {})
+        price = float(item.get("price") or 0.0)
+        stock_qty = float(item.get("stock_qty") or 0.0)
+        results.append(
+            {
+                "item_code": item_code,
+                "item_name": item.get("item_name"),
+                "category": item.get("category"),
+                "warehouse": item.get("warehouse"),
+                "floor": item.get("floor"),
+                "stock_qty": stock_qty,
+                "price": price,
+                "stock_value": stock_qty * price,
+                "verification_count": int(summary.get("verification_count", 0) or 0),
+                "finalized_count": int(summary.get("finalized_count", 0) or 0),
+                "finalized_qty": float(summary.get("finalized_qty", 0.0) or 0.0),
+                "last_verified": summary.get("last_verified"),
+                "is_verified": bool(summary.get("finalized_count", 0) or summary.get("verification_count", 0)),
+            }
+        )
+
+    results.sort(key=lambda row: str(row.get("item_code") or ""))
+    return results[:10000]
 
 
 async def generate_variance_report(db, filters: ReportFilter) -> list[dict]:
     """Generate variance report data."""
-    query: dict[str, Any] = {"variance": {"$ne": 0}}
-
-    if filters.warehouse:
-        query["warehouse"] = filters.warehouse
+    line_query: dict[str, Any] = {"variance": {"$ne": 0}}
     if filters.status:
-        query["status"] = filters.status
+        line_query["status"] = filters.status.lower()
     if filters.user_id:
-        query["scanned_by"] = filters.user_id
+        line_query["counted_by"] = filters.user_id
 
     date_filter = build_date_filter(filters.date_from, filters.date_to)
     if date_filter:
-        query["created_at"] = date_filter
+        line_query["counted_at"] = date_filter
 
-    pipeline = [
-        {"$match": query},
-        {
-            "$lookup": {
-                "from": "erp_items",
-                "localField": "item_code",
-                "foreignField": "item_code",
-                "as": "item_info",
-            }
-        },
-        {"$unwind": {"path": "$item_info", "preserveNullAndEmptyArrays": True}},
-        {
-            "$project": {
-                "_id": 0,
-                "item_code": 1,
-                "item_name": {"$ifNull": ["$item_info.item_name", "Unknown"]},
-                "expected_qty": 1,
-                "counted_qty": 1,
-                "variance": 1,
-                "variance_percentage": {
-                    "$cond": {
-                        "if": {"$eq": ["$expected_qty", 0]},
-                        "then": 100,
-                        "else": {
-                            "$multiply": [
-                                {"$divide": ["$variance", {"$abs": "$expected_qty"}]},
-                                100,
-                            ]
-                        },
-                    }
-                },
-                "status": 1,
-                "scanned_by": 1,
-                "warehouse": 1,
-                "location": 1,
-                "created_at": 1,
-                "approved_by": 1,
-                "approved_at": 1,
-            }
-        },
-        {"$sort": {"variance_percentage": -1}},
-        {"$limit": 10000},
-    ]
+    item_query: dict[str, Any] = {}
+    if filters.warehouse:
+        item_query["warehouse"] = filters.warehouse
+    if filters.floor:
+        item_query["floor"] = filters.floor
+    if filters.category:
+        item_query["category"] = filters.category
 
-    return await db.verification_records.aggregate(pipeline).to_list(10000)
+    item_docs = {
+        item.get("item_code"): item
+        async for item in db.erp_items.find(item_query)
+        if item.get("item_code")
+    }
+
+    results: list[dict[str, Any]] = []
+    lines_cursor = db.count_lines.find(line_query)
+    async for line in lines_cursor:
+        item_info = item_docs.get(line.get("item_code")) or {}
+        if filters.warehouse and item_info.get("warehouse") != filters.warehouse:
+            continue
+        if filters.floor and item_info.get("floor") != filters.floor:
+            continue
+        if filters.category and item_info.get("category") != filters.category:
+            continue
+
+        expected_qty = float(line.get("erp_qty") or 0.0)
+        variance = float(line.get("variance") or 0.0)
+        variance_percentage = 100.0
+        if expected_qty != 0:
+            variance_percentage = (variance / abs(expected_qty)) * 100
+
+        results.append(
+            {
+                "item_code": line.get("item_code"),
+                "item_name": line.get("item_name") or item_info.get("item_name") or "Unknown",
+                "expected_qty": expected_qty,
+                "counted_qty": float(line.get("counted_qty") or 0.0),
+                "variance": variance,
+                "variance_percentage": variance_percentage,
+                "status": line.get("status"),
+                "approval_status": line.get("approval_status"),
+                "counted_by": line.get("counted_by"),
+                "warehouse": item_info.get("warehouse"),
+                "location": "/".join(
+                    part
+                    for part in [line.get("floor_no"), line.get("rack_no")]
+                    if isinstance(part, str) and part
+                ),
+                "counted_at": line.get("counted_at"),
+                "approved_by": line.get("approved_by"),
+                "approved_at": line.get("approved_at"),
+                "finalized_at": line.get("finalized_at"),
+                "finalized_by": line.get("finalized_by"),
+            }
+        )
+
+    results.sort(key=lambda row: abs(float(row.get("variance_percentage") or 0.0)), reverse=True)
+    return results[:10000]
 
 
 async def generate_user_activity_report(db, filters: ReportFilter) -> list[dict]:
@@ -298,72 +343,51 @@ async def generate_session_history_report(db, filters: ReportFilter) -> list[dic
     query: dict[str, Any] = {}
 
     if filters.status:
-        query["status"] = filters.status
+        query["status"] = filters.status.upper()
     if filters.user_id:
-        query["user_id"] = filters.user_id
+        query["staff_user"] = filters.user_id
 
     date_filter = build_date_filter(filters.date_from, filters.date_to)
     if date_filter:
         query["started_at"] = date_filter
 
-    pipeline = [
-        {"$match": query},
-        {
-            "$lookup": {
-                "from": "users",
-                "localField": "user_id",
-                "foreignField": "_id",
-                "as": "user_info",
-            }
-        },
-        {
-            "$lookup": {
-                "from": "count_lines",
-                "localField": "session_id",
-                "foreignField": "session_id",
-                "as": "lines",
-            }
-        },
-        {"$unwind": {"path": "$user_info", "preserveNullAndEmptyArrays": True}},
-        {
-            "$project": {
-                "_id": 0,
-                "session_id": 1,
-                "username": {"$ifNull": ["$user_info.username", "Unknown"]},
-                "rack_id": 1,
-                "floor": 1,
-                "status": 1,
-                "started_at": 1,
-                "completed_at": 1,
-                "duration_minutes": {
-                    "$cond": {
-                        "if": {"$and": ["$started_at", "$completed_at"]},
-                        "then": {
-                            "$divide": [
-                                {"$subtract": ["$completed_at", "$started_at"]},
-                                60000,
-                            ]
-                        },
-                        "else": None,
-                    }
-                },
-                "items_scanned": {"$size": "$lines"},
-                "items_verified": {
-                    "$size": {
-                        "$filter": {
-                            "input": "$lines",
-                            "as": "line",
-                            "cond": {"$eq": ["$$line.verified", True]},
-                        }
-                    }
-                },
-            }
-        },
-        {"$sort": {"started_at": -1}},
-        {"$limit": 5000},
-    ]
+    sessions = [session async for session in db.sessions.find(query).sort("started_at", -1).limit(5000)]
+    results: list[dict[str, Any]] = []
+    for session in sessions:
+        session_id = str(session.get("id") or session.get("session_id"))
+        lines = [line async for line in db.count_lines.find({"session_id": session_id})]
+        started_at = session.get("started_at")
+        completed_at = session.get("finalized_at") or session.get("completed_at") or session.get("closed_at")
+        duration_minutes = None
+        if isinstance(started_at, datetime) and isinstance(completed_at, datetime):
+            duration_minutes = (completed_at - started_at).total_seconds() / 60
 
-    return await db.verification_sessions.aggregate(pipeline).to_list(5000)
+        results.append(
+            {
+                "session_id": session_id,
+                "username": session.get("staff_user"),
+                "staff_name": session.get("staff_name"),
+                "warehouse": session.get("warehouse"),
+                "rack_id": session.get("rack_no"),
+                "floor": session.get("location_name"),
+                "status": session.get("status"),
+                "finalization_status": session.get("finalization_status"),
+                "started_at": started_at,
+                "completed_at": completed_at,
+                "duration_minutes": duration_minutes,
+                "items_scanned": len(lines),
+                "items_verified": sum(
+                    1
+                    for line in lines
+                    if bool(line.get("verified")) or str(line.get("status", "")).lower() == "locked"
+                ),
+                "total_variance": float(session.get("total_variance") or 0.0),
+                "finalized_by": session.get("finalized_by"),
+                "finalized_at": session.get("finalized_at"),
+            }
+        )
+
+    return results
 
 
 async def generate_audit_trail_report(db, filters: ReportFilter) -> list[dict]:
@@ -602,7 +626,9 @@ async def get_report_filter_options(
         warehouses = await db.erp_items.distinct("warehouse")
         floors = await db.erp_items.distinct("floor")
         categories = await db.erp_items.distinct("category")
-        statuses = await db.verification_records.distinct("status")
+        count_line_statuses = await db.count_lines.distinct("status")
+        session_statuses = await db.sessions.distinct("status")
+        statuses = sorted(set(count_line_statuses) | set(session_statuses))
 
         # Get user list for admin/supervisor
         users = []

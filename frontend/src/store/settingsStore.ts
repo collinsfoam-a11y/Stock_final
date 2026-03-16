@@ -587,6 +587,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
         if (storageKey !== activeStorageKey) {
           persistSettings(mergedSettings);
+          // If we had to fall back to the legacy unscoped key, delete it after
+          // migrating so a different user doesn't accidentally inherit settings.
+          mmkvStorage.removeItem(storageKey);
         }
         break;
       }

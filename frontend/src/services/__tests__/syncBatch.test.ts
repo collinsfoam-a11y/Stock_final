@@ -134,8 +134,39 @@ describe("syncOfflineQueue", () => {
     );
     // Should NOT remove failed items
     expect(offlineStorage.removeManyFromOfflineQueue).not.toHaveBeenCalled();
-    // Should update retries
-    expect(offlineStorage.updateQueueItemRetries).toHaveBeenCalledWith("op_1");
+    // Should preserve failed items with explicit retry metadata
+    expect(offlineStorage.updateQueueItemRetries).toHaveBeenCalledWith(
+      "op_1",
+      expect.objectContaining({
+        error: "Duplicate record",
+        status: "blocked_conflict",
+      }),
+    );
+  });
+
+  it("should preserve repeated failures for manual review instead of deleting them", async () => {
+    (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue([
+      {
+        ...mockOperations[0],
+        retries: 4,
+        status: "pending_retry",
+      },
+    ]);
+    (api.syncBatch as jest.Mock).mockResolvedValue({
+      results: [{ id: "op_1", success: false, message: "Server timeout" }],
+    });
+
+    const result = await syncOfflineQueue();
+
+    expect(result.failed).toBe(1);
+    expect(offlineStorage.updateQueueItemRetries).toHaveBeenCalledWith(
+      "op_1",
+      expect.objectContaining({
+        error: "Server timeout",
+        status: "failed_manual_review",
+      }),
+    );
+    expect(offlineStorage.removeManyFromOfflineQueue).not.toHaveBeenCalled();
   });
 
   it("should not sync when offline", async () => {

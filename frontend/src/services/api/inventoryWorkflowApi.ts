@@ -619,9 +619,6 @@ export const createCountLine = async (
         itemName,
       })) as any;
 
-      await cacheCountLine(offlineCountLine);
-      await addToOfflineQueue("count_line", offlineCountLine);
-
       log.debug("Created offline count line", { id: offlineCountLine._id });
       return {
         ...offlineCountLine,
@@ -661,9 +658,6 @@ export const createCountLine = async (
       username: user?.username,
       itemName,
     })) as any;
-
-    await cacheCountLine(offlineCountLine);
-    await addToOfflineQueue("count_line", offlineCountLine);
 
     log.debug("Created offline count line as fallback", {
       id: offlineCountLine._id,
@@ -850,8 +844,12 @@ export const rejectCountLine = async (
 
 export const updateSessionStatus = async (sessionId: string, status: string) => {
   const normalizedStatus = (status || "").toUpperCase();
-  if (normalizedStatus === "CLOSED") {
-    const response = await api.post(`/api/sessions/${sessionId}/complete`);
+  if (normalizedStatus === "CLOSED" || normalizedStatus === "COMPLETED") {
+    const endpoint =
+      normalizedStatus === "COMPLETED"
+        ? `/api/sessions/${sessionId}/finalize`
+        : `/api/sessions/${sessionId}/complete`;
+    const response = await api.post(endpoint);
     return response.data;
   }
 
@@ -859,6 +857,19 @@ export const updateSessionStatus = async (sessionId: string, status: string) => 
     `/api/sessions/${sessionId}/status?status=${encodeURIComponent(normalizedStatus)}`
   );
   return response.data;
+};
+
+export const finalizeSession = async (
+  sessionId: string,
+  payload?: { note?: string }
+) => {
+  try {
+    const response = await api.post(`/api/sessions/${sessionId}/finalize`, payload || {});
+    return response.data;
+  } catch (error: unknown) {
+    __DEV__ && console.error("Finalize session error:", error);
+    throw error;
+  }
 };
 
 export const createUnknownItem = async (itemData: Record<string, unknown>) => {

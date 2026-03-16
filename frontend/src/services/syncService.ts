@@ -2,9 +2,9 @@ import {
   getOfflineQueue,
   removeManyFromOfflineQueue,
   updateQueueItemRetries,
+  updateOfflineQueueItem,
   getCacheStats,
   OfflineQueueItem,
-  removeFromOfflineQueue,
   removeSessionFromCache,
 } from "./offline/offlineStorage";
 import { syncBatch, isOnline } from "./api/api";
@@ -15,7 +15,7 @@ import { createLogger } from "./logging";
 
 const log = createLogger("syncService");
 
-const CLEANUP_RETRIES_THRESHOLD = 5;
+const MANUAL_REVIEW_RETRIES_THRESHOLD = 5;
 
 export interface SyncResult {
   success: number;
@@ -31,6 +31,26 @@ export interface SyncOptions {
 
 // Simple in-memory lock to prevent concurrent syncs
 let isSyncing = false;
+
+const deriveFailureStatus = (
+  errorMessage: string,
+  nextRetryCount: number
+): OfflineQueueItem["status"] => {
+  const normalized = errorMessage.toLowerCase();
+  if (
+    normalized.includes("duplicate") ||
+    normalized.includes("conflict") ||
+    normalized.includes("already been counted")
+  ) {
+    return "blocked_conflict";
+  }
+
+  if (nextRetryCount >= MANUAL_REVIEW_RETRIES_THRESHOLD) {
+    return "failed_manual_review";
+  }
+
+  return "pending_retry";
+};
 
 export const initializeSyncService = () => {
   let networkReady = false;
@@ -163,8 +183,13 @@ export const syncOfflineQueue = async (
             const errorMessage = res.message || "Unknown error";
             errors.push({ id: res.id, error: errorMessage });
             log.warn(`Sync item failed: ${res.id} - ${errorMessage}`);
-            // Update retry count for failed items
-            await updateQueueItemRetries(res.id);
+            const queueItem = batch.find((item) => item.id === res.id);
+            const nextRetryCount = (queueItem?.retries || 0) + 1;
+            await updateQueueItemRetries(res.id, {
+              error: errorMessage,
+              status: deriveFailureStatus(errorMessage, nextRetryCount),
+              attemptedAt: new Date().toISOString(),
+            });
           }
         }
 
@@ -205,7 +230,13 @@ export const syncOfflineQueue = async (
           log.warn(
             "Auth error during sync - will retry after re-authentication",
           );
-          // Don't increment retries for auth errors - they may resolve after login
+          for (const item of batch) {
+            await updateOfflineQueueItem(item.id, {
+              status: "pending_retry",
+              last_error: errorMessage,
+              last_attempted_at: new Date().toISOString(),
+            });
+          }
         } else {
           log.error(
             `Batch sync failed: ${errorMessage}`,
@@ -215,7 +246,12 @@ export const syncOfflineQueue = async (
           // Mark all items in this batch as failed and increment retries
           failedCount += batch.length;
           for (const item of batch) {
-            await updateQueueItemRetries(item.id);
+            const nextRetryCount = item.retries + 1;
+            await updateQueueItemRetries(item.id, {
+              error: errorMessage,
+              status: deriveFailureStatus(errorMessage, nextRetryCount),
+              attemptedAt: new Date().toISOString(),
+            });
           }
         }
       }
@@ -233,8 +269,6 @@ export const syncOfflineQueue = async (
         errorCount: errors.length,
       },
     );
-
-    await cleanupOldFailedItems();
 
     return {
       success: successCount,
@@ -259,37 +293,4 @@ export const syncOfflineQueue = async (
 
 export const forceSync = async (options?: SyncOptions): Promise<SyncResult> => {
   return syncOfflineQueue(options);
-};
-
-const cleanupOldFailedItems = async (): Promise<number> => {
-  try {
-    const queue = await getOfflineQueue();
-    const itemsToRemove: string[] = [];
-
-    for (const item of queue) {
-      if (item.retries >= CLEANUP_RETRIES_THRESHOLD) {
-        log.warn(`Removing item with too many retries`, {
-          id: item.id,
-          type: item.type,
-          retries: item.retries,
-        });
-        itemsToRemove.push(item.id);
-      }
-    }
-
-    for (const id of itemsToRemove) {
-      await removeFromOfflineQueue(id);
-    }
-
-    if (itemsToRemove.length > 0) {
-      log.info(
-        `Cleaned up ${itemsToRemove.length} items that exceeded retry threshold`,
-      );
-    }
-
-    return itemsToRemove.length;
-  } catch (error) {
-    log.error("Error during cleanup", error as Record<string, unknown>);
-    return 0;
-  }
 };

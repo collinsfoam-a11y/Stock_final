@@ -20,6 +20,13 @@ from backend.api.schemas import Session
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
 from backend.middleware.security import batch_rate_limiter
+from backend.services.canonical_inventory import (
+    can_reuse_rejected_count_line,
+    extract_document_id,
+    find_duplicate_count_line,
+    find_session,
+    recompute_session_totals,
+)
 from backend.services.circuit_breaker import get_circuit_breaker
 from backend.services.lock_manager import LockManager, get_lock_manager
 from backend.services.redis_service import get_redis
@@ -216,25 +223,35 @@ async def sync_single_record(record: SyncRecord, db, user_id: str) -> tuple[bool
         (success: bool, error_message: Optional[str])
     """
     try:
+        status_normalized = (record.status or "").strip().lower()
+        is_finalized = status_normalized == "finalized"
         # Prepare document
         doc = {
+            "id": record.client_record_id,
             "client_record_id": record.client_record_id,
+            "idempotency_key": record.client_record_id,
             "session_id": record.session_id,
-            "rack_id": record.rack_id,
-            "floor": record.floor,
+            "rack_no": record.rack_id,
+            "floor_no": record.floor,
             "item_code": record.item_code,
-            "verified_qty": record.verified_qty,
+            "counted_qty": record.verified_qty,
             "damaged_qty": record.damaged_qty,
             "serial_numbers": record.serial_numbers,
-            "mfg_date": record.mfg_date,
+            "manufacturing_date": record.mfg_date,
             "mrp": record.mrp,
             "uom": record.uom,
             "category": record.category,
             "subcategory": record.subcategory,
             "item_condition": record.item_condition,
             "evidence_photos": record.evidence_photos,
-            "status": record.status,
-            "created_at": record.created_at,
+            "status": "locked" if is_finalized else "pending",
+            "approval_status": "APPROVED" if is_finalized else "PENDING",
+            "verified": is_finalized,
+            "verified_by": user_id if is_finalized else None,
+            "verified_at": record.updated_at if is_finalized else None,
+            "finalized_by": user_id if is_finalized else None,
+            "finalized_at": record.updated_at if is_finalized else None,
+            "counted_at": record.created_at,
             "updated_at": record.updated_at,
             "sync_status": "synced",
             "synced_by": user_id,
@@ -242,9 +259,10 @@ async def sync_single_record(record: SyncRecord, db, user_id: str) -> tuple[bool
         }
 
         # Upsert record
-        await db.verification_records.update_one(
-            {"client_record_id": record.client_record_id}, {"$set": doc}, upsert=True
+        await db.count_lines.update_one(
+            {"idempotency_key": record.client_record_id}, {"$set": doc}, upsert=True
         )
+        await recompute_session_totals(db, record.session_id)
 
         # Insert serial numbers
         if record.serial_numbers:
@@ -632,9 +650,43 @@ async def _process_count_line_op(
         if lookup_key in id_mapping:
             line_data["session_id"] = id_mapping[lookup_key]
 
+    session_id = str(line_data.get("session_id") or "")
+    if not session_id:
+        raise ValueError("Missing session_id for count line operation")
+
+    session = await find_session(db, session_id)
+    if not session:
+        raise ValueError("Session not found for count line operation")
+    if session.get("finalized_at") or str(session.get("status", "")).upper() in {"COMPLETED", "CLOSED"}:
+        raise ValueError("Session is finalized and cannot accept offline counts")
+    if str(session.get("status", "")).upper() not in {"OPEN", "ACTIVE"}:
+        raise ValueError("Session is not active")
+    if session.get("reconciled_at"):
+        raise ValueError("Session is in reconciliation mode")
+
     line_data.setdefault("counted_by", current_user.get("username"))
     line_data.setdefault("counted_at", datetime.now(timezone.utc).replace(tzinfo=None))
     line_data.setdefault("synced_at", datetime.now(timezone.utc).replace(tzinfo=None))
+    line_data.setdefault("created_by", line_data.get("counted_by"))
+    line_data.setdefault("verified", False)
+    line_data.setdefault(
+        "idempotency_key",
+        line_data.get("audit", {}).get("idempotency_key")
+        or line_data.get("idempotency_key")
+        or line_data.get("_id")
+        or line_data.get("id"),
+    )
+    line_data.setdefault("id", line_data.get("_id") or line_data.get("id") or str(uuid.uuid4()))
+
+    if line_data.get("idempotency_key"):
+        existing_idempotent = await db.count_lines.find_one(
+            {
+                "session_id": session_id,
+                "idempotency_key": line_data["idempotency_key"],
+            }
+        )
+        if existing_idempotent:
+            return "Count line already synced"
 
     # Calculate missing backend fields like variance and risk_flags for offline counts
     try:
@@ -744,26 +796,38 @@ async def _process_count_line_op(
         logger.error(f"Failed to calculate missing stats for offline count: {e}")
         line_data.setdefault("approval_status", "PENDING")
 
-    # Final status fallback
     line_data.setdefault("status", "pending")
-    line_data.setdefault("verified", False)
+
+    existing_duplicate = await find_duplicate_count_line(
+        db,
+        line_data,
+    )
+    if existing_duplicate and can_reuse_rejected_count_line(existing_duplicate, line_data):
+        line_data["id"] = extract_document_id(existing_duplicate) or line_data["id"]
+        line_data["status"] = "pending"
+        line_data["approval_status"] = line_data.get("approval_status") or "PENDING"
+        line_data["verified"] = False
+        line_data["verified_by"] = None
+        line_data["verified_at"] = None
+        line_data["rejected_by"] = None
+        line_data["rejected_at"] = None
+        line_data["assigned_to"] = None
+        line_data["recount_requested_at"] = None
+        line_data["recount_requested_by"] = None
+        line_data["recount_iteration"] = int(existing_duplicate.get("recount_iteration", 0) or 0) + 1
+        await db.count_lines.update_one({"_id": existing_duplicate["_id"]}, {"$set": line_data})
+        await recompute_session_totals(db, session_id)
+        return "Rejected count line updated through explicit recount sync"
+
+    if existing_duplicate:
+        raise ValueError(
+            "Duplicate Scan: This item has already been counted in this specific location (Floor/Rack)."
+        )
 
     await db.count_lines.insert_one(line_data)
+    await recompute_session_totals(db, session_id)
 
-    # Update session aggregate stats
-    try:
-        session_id = line_data.get("session_id")
-        if session_id:
-            db_session = await db.sessions.find_one({"id": session_id})
-            if db_session:
-                await db.sessions.update_one(
-                    {"id": session_id},
-                    {"$inc": {"total_items": 1, "total_variance": line_data.get("variance", 0)}},
-                )
-    except Exception as e:
-        logger.error(f"Failed to update session stats during offline sync: {e}")
-
-    return "Count line synced with missing details calculated"
+    return "Count line synced with canonical duplicate validation"
 
 
 async def _process_unknown_item_op(

@@ -265,5 +265,6 @@ describe("settingsStore user scope", () => {
     expect(migratedSettings.theme).toBe("dark");
     expect(migratedSettings.fontSizeValue).toBe(18);
     expect(migratedSettings.fontStyle).toBe("serif");
+    expect(storage.has("app_settings")).toBe(false);
   });
 });

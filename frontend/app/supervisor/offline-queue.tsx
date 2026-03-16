@@ -21,12 +21,11 @@ import { FlashList } from "@shopify/flash-list";
 
 import { flags } from "../../src/constants/flags";
 import {
-  flushOfflineQueue,
   getConflicts,
   resolveConflict,
-  listQueue,
 } from "../../src/services/offline/offlineQueue";
-import api from "../../src/services/httpClient";
+import { getOfflineQueue } from "../../src/services/offline/offlineStorage";
+import { forceSync } from "../../src/services/syncService";
 import {
   AuroraBackground,
   GlassCard,
@@ -47,7 +46,7 @@ export default function OfflineQueueScreen() {
     if (!flags.enableOfflineQueue) return;
     setLoading(true);
     try {
-      const [q, c] = await Promise.all([listQueue(), getConflicts()]);
+      const [q, c] = await Promise.all([getOfflineQueue(), getConflicts()]);
       setQueue(q);
       setConflicts(c);
     } finally {
@@ -71,7 +70,7 @@ export default function OfflineQueueScreen() {
     if (Platform.OS !== "web")
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      await flushOfflineQueue(api);
+      await forceSync();
       if (Platform.OS !== "web")
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Success", "Offline queue synced successfully");
@@ -106,9 +105,11 @@ export default function OfflineQueueScreen() {
               styles.methodBadge,
               {
                 backgroundColor:
-                  item.method === "post"
-                    ? "rgba(16, 185, 129, 0.2)"
-                    : "rgba(59, 130, 246, 0.2)",
+                  item.status === "blocked_conflict"
+                    ? "rgba(245, 158, 11, 0.2)"
+                    : item.status === "failed_manual_review"
+                      ? "rgba(239, 68, 68, 0.2)"
+                      : "rgba(59, 130, 246, 0.2)",
               },
             ]}
           >
@@ -117,21 +118,42 @@ export default function OfflineQueueScreen() {
                 styles.methodText,
                 {
                   color:
-                    item.method === "post"
-                      ? auroraTheme.colors.success[400]
-                      : auroraTheme.colors.primary[400],
+                    item.status === "blocked_conflict"
+                      ? auroraTheme.colors.warning[500]
+                      : item.status === "failed_manual_review"
+                        ? auroraTheme.colors.error[500]
+                        : auroraTheme.colors.primary[400],
                 },
               ]}
             >
-              {String(item.method).toUpperCase()}
+              {String(item.type).toUpperCase()}
             </Text>
           </View>
           <Text style={styles.timestamp}>
-            {new Date(item.createdAt).toLocaleString()}
+            {new Date(item.timestamp).toLocaleString()}
           </Text>
         </View>
 
-        <Text style={styles.cardUrl}>{item.url}</Text>
+        <Text style={styles.cardUrl}>
+          {String(item.status).replace(/_/g, " ").toUpperCase()}
+        </Text>
+
+        <Text style={styles.cardCode}>
+          Retries: {item.retries}
+          {item.idempotency_key ? ` | Idempotency: ${item.idempotency_key}` : ""}
+        </Text>
+
+        {item.last_error && (
+          <Text style={[styles.cardCode, { color: auroraTheme.colors.error[400] }]}>
+            Last error: {item.last_error}
+          </Text>
+        )}
+
+        {item.last_attempted_at && (
+          <Text style={styles.timestamp}>
+            Last attempted: {new Date(item.last_attempted_at).toLocaleString()}
+          </Text>
+        )}
 
         {item.data && (
           <GlassCard

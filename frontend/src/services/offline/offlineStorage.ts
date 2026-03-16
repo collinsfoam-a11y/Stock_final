@@ -74,6 +74,14 @@ export interface OfflineQueueItem {
   data: Record<string, unknown>;
   timestamp: string;
   retries: number;
+  status:
+    | "pending"
+    | "pending_retry"
+    | "blocked_conflict"
+    | "failed_manual_review";
+  idempotency_key?: string;
+  last_error?: string | null;
+  last_attempted_at?: string | null;
 }
 
 export interface CachedSession {
@@ -262,27 +270,136 @@ export const clearItemsCache = async () => {
 };
 
 // Offline Queue Operations
+const buildQueueItemId = (
+  type: OfflineQueueItem["type"],
+  idempotencyKey?: string
+) =>
+  idempotencyKey
+    ? `${type}:${idempotencyKey}`
+    : `${type}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+
+const resolveIdempotencyKey = (
+  type: OfflineQueueItem["type"],
+  data: Record<string, unknown>
+): string | undefined => {
+  const directKey = data.idempotency_key;
+  if (typeof directKey === "string" && directKey.trim()) {
+    return directKey.trim();
+  }
+
+  const audit = data.audit;
+  if (
+    audit &&
+    typeof audit === "object" &&
+    "idempotency_key" in audit &&
+    typeof (audit as { idempotency_key?: unknown }).idempotency_key === "string"
+  ) {
+    return (audit as { idempotency_key: string }).idempotency_key.trim();
+  }
+
+  if (type === "count_line") {
+    const countLineId = data._id || data.id;
+    if (typeof countLineId === "string" && countLineId.trim()) {
+      return countLineId.trim();
+    }
+  }
+
+  if (type === "session") {
+    const operation = typeof data.operation === "string" ? data.operation.trim() : "session";
+    const sessionId =
+      typeof data.sessionId === "string"
+        ? data.sessionId
+        : typeof data.session_id === "string"
+          ? data.session_id
+          : typeof data.id === "string"
+            ? data.id
+            : undefined;
+    if (sessionId?.trim()) {
+      return `${operation}:${sessionId.trim()}`;
+    }
+  }
+
+  if (type === "unknown_item") {
+    const barcode = data.barcode;
+    const sessionId = data.session_id;
+    if (typeof barcode === "string" && typeof sessionId === "string") {
+      return `${sessionId.trim()}:${barcode.trim()}`;
+    }
+  }
+
+  return undefined;
+};
+
+const normalizeQueueItem = (item: OfflineQueueItem): OfflineQueueItem => {
+  const allowedStatuses: OfflineQueueItem["status"][] = [
+    "pending",
+    "pending_retry",
+    "blocked_conflict",
+    "failed_manual_review",
+  ];
+  const normalizedStatus = allowedStatuses.includes(item.status)
+    ? item.status
+    : "pending";
+
+  return {
+    ...item,
+    status: normalizedStatus,
+    idempotency_key:
+      item.idempotency_key || resolveIdempotencyKey(item.type, item.data),
+    last_error: item.last_error ?? null,
+    last_attempted_at: item.last_attempted_at ?? null,
+  };
+};
+
 export const addToOfflineQueue = async (
   type: OfflineQueueItem["type"],
   data: Record<string, unknown>
 ) => {
   try {
     const queue = await getOfflineQueue();
-    const maxQueueSize = useSettingsStore.getState().settings.maxQueueSize;
+    const idempotencyKey = resolveIdempotencyKey(type, data);
+    const existingIndex =
+      idempotencyKey !== undefined
+        ? queue.findIndex(
+            (item) =>
+              item.type === type && item.idempotency_key === idempotencyKey
+          )
+        : -1;
     const queueItem: OfflineQueueItem = {
-      id: `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: buildQueueItemId(type, idempotencyKey),
       type,
       data,
       timestamp: new Date().toISOString(),
       retries: 0,
+      status: "pending",
+      idempotency_key: idempotencyKey,
+      last_error: null,
+      last_attempted_at: null,
     };
 
+    if (existingIndex >= 0) {
+      const existing = queue[existingIndex]!;
+      const updatedItem: OfflineQueueItem = {
+        ...existing,
+        data,
+        timestamp: queueItem.timestamp,
+        status: "pending",
+        last_error: null,
+      };
+      queue[existingIndex] = updatedItem;
+      await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, queue);
+      return updatedItem;
+    }
+
     queue.push(queueItem);
-    const boundedQueue =
-      queue.length > maxQueueSize
-        ? queue.slice(queue.length - maxQueueSize)
-        : queue;
-    await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, boundedQueue);
+    const maxQueueSize = useSettingsStore.getState().settings.maxQueueSize;
+    if (queue.length > maxQueueSize) {
+      log.warn("Offline queue exceeded advisory limit; preserving all entries", {
+        queueLength: queue.length,
+        maxQueueSize,
+      });
+    }
+    await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, queue);
     return queueItem;
   } catch (error) {
     __DEV__ && console.error("Error adding to offline queue:", error);
@@ -295,7 +412,7 @@ export const getOfflineQueue = async (): Promise<OfflineQueueItem[]> => {
     const queue = await storage.get<OfflineQueueItem[]>(STORAGE_KEYS.OFFLINE_QUEUE, {
       defaultValue: [],
     });
-    return queue ?? [];
+    return Array.isArray(queue) ? queue.map(normalizeQueueItem) : [];
   } catch (error) {
     __DEV__ && console.error("Error getting offline queue:", error);
     return [];
@@ -331,15 +448,46 @@ export const removeManyFromOfflineQueue = async (ids: string[]) => {
   }
 };
 
-export const updateQueueItemRetries = async (id: string) => {
+export const updateQueueItemRetries = async (
+  id: string,
+  options?: {
+    error?: string;
+    status?: OfflineQueueItem["status"];
+    attemptedAt?: string;
+  }
+) => {
   try {
     const queue = await getOfflineQueue();
     const updatedQueue = queue.map((item) =>
-      item.id === id ? { ...item, retries: item.retries + 1 } : item
+      item.id === id
+        ? {
+            ...item,
+            retries: item.retries + 1,
+            status: options?.status || "pending_retry",
+            last_error: options?.error ?? item.last_error ?? null,
+            last_attempted_at:
+              options?.attemptedAt || new Date().toISOString(),
+          }
+        : item
     );
     await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, updatedQueue);
   } catch (error) {
     __DEV__ && console.error("Error updating queue item retries:", error);
+  }
+};
+
+export const updateOfflineQueueItem = async (
+  id: string,
+  patch: Partial<OfflineQueueItem>
+) => {
+  try {
+    const queue = await getOfflineQueue();
+    const updatedQueue = queue.map((item) =>
+      item.id === id ? normalizeQueueItem({ ...item, ...patch }) : item
+    );
+    await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, updatedQueue);
+  } catch (error) {
+    __DEV__ && console.error("Error updating offline queue item:", error);
   }
 };
 

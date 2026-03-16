@@ -25,6 +25,16 @@ from backend.auth.dependencies import (
 from backend.core.websocket_manager import manager
 from backend.db.runtime import get_db
 from backend.services.lock_manager import get_lock_manager
+from backend.services.canonical_inventory import (
+    build_session_lookup,
+    find_session,
+    get_session_count_lines,
+    is_blocking_finalization,
+    is_count_line_effectively_reviewed,
+    is_session_finalized,
+    normalize_session_status as normalize_canonical_session_status,
+    recompute_session_totals,
+)
 from backend.services.session_state_machine import SessionStateMachine
 from backend.services.redis_service import get_redis
 from backend.services.runtime import get_refresh_token_service
@@ -32,6 +42,8 @@ from backend.services.runtime import get_refresh_token_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/sessions", tags=["Session Management"])
+
+ACTIVE_SESSION_STATUSES = ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]
 
 
 # Models
@@ -42,6 +54,10 @@ class SessionDetail(BaseModel):
 
     id: str
     user_id: str
+    warehouse: Optional[str] = None
+    staff_name: Optional[str] = None
+    location_type: Optional[str] = None
+    location_name: Optional[str] = None
     rack_id: Optional[str] = None
     floor: Optional[str] = None
     status: str  # active, paused, completed
@@ -50,6 +66,11 @@ class SessionDetail(BaseModel):
     completed_at: Optional[float] = None
     item_count: int = 0
     verified_count: int = 0
+    total_items: int = 0
+    total_variance: float = 0.0
+    finalization_status: Optional[str] = None
+    finalized_at: Optional[float] = None
+    finalized_by: Optional[str] = None
 
 
 class SessionStats(BaseModel):
@@ -84,6 +105,12 @@ class SessionIntegrityResponse(BaseModel):
     updates_detected: bool
     affected_items: int
     message: str
+
+
+class SessionFinalizeRequest(BaseModel):
+    """Optional metadata supplied when finalizing a session."""
+
+    note: Optional[str] = None
 
 
 class CanonicalSessionStatus(str, Enum):
@@ -414,6 +441,95 @@ def _normalize_session_status(value: Any) -> Optional[CanonicalSessionStatus]:
         return CanonicalSessionStatus(normalized)
     except ValueError:
         return CanonicalSessionStatus.UNKNOWN
+
+
+def _effective_session_status(session: dict[str, Any]) -> CanonicalSessionStatus:
+    normalized = normalize_canonical_session_status(
+        session.get("status"),
+        reconciled_at=session.get("reconciled_at"),
+    )
+    try:
+        return CanonicalSessionStatus(normalized)
+    except ValueError:
+        return CanonicalSessionStatus.UNKNOWN
+
+
+def _datetime_to_timestamp(value: Any) -> Optional[float]:
+    coerced = _coerce_datetime(value)
+    return coerced.timestamp() if coerced else None
+
+
+def _current_utc_naive() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _session_identifier(session: Optional[dict[str, Any]]) -> str:
+    return str((session or {}).get("id") or (session or {}).get("session_id") or "")
+
+
+def _session_owner(session: Optional[dict[str, Any]]) -> str:
+    return str((session or {}).get("staff_user") or (session or {}).get("user_id") or "")
+
+
+async def _get_session_line_summary(
+    db: AsyncIOMotorDatabase,
+    session_id: str,
+) -> dict[str, Any]:
+    lines = await get_session_count_lines(db, session_id)
+    item_count = len(lines)
+    verified_count = sum(1 for line in lines if is_count_line_effectively_reviewed(line))
+    total_variance = sum(float(line.get("variance") or 0.0) for line in lines)
+    damage_items = int(sum(float(line.get("damaged_qty") or 0.0) for line in lines))
+    return {
+        "lines": lines,
+        "item_count": item_count,
+        "verified_count": verified_count,
+        "pending_count": max(item_count - verified_count, 0),
+        "total_variance": total_variance,
+        "damage_items": damage_items,
+    }
+
+
+def _build_session_detail_from_doc(
+    session: dict[str, Any],
+    line_summary: dict[str, Any],
+) -> SessionDetail:
+    started_at = _datetime_to_timestamp(session.get("started_at")) or time.time()
+    last_heartbeat = (
+        _datetime_to_timestamp(session.get("last_heartbeat"))
+        or _datetime_to_timestamp(session.get("last_activity"))
+        or started_at
+    )
+    completed_at = (
+        _datetime_to_timestamp(session.get("finalized_at"))
+        or _datetime_to_timestamp(session.get("completed_at"))
+        or _datetime_to_timestamp(session.get("closed_at"))
+    )
+    finalized_at = _datetime_to_timestamp(session.get("finalized_at"))
+
+    return SessionDetail(
+        id=str(session.get("id") or session.get("session_id")),
+        user_id=str(session.get("staff_user") or session.get("user_id") or ""),
+        warehouse=session.get("warehouse"),
+        staff_name=session.get("staff_name"),
+        location_type=session.get("location_type"),
+        location_name=session.get("location_name"),
+        rack_id=session.get("rack_no"),
+        floor=session.get("location_name"),
+        status=_effective_session_status(session).value,
+        started_at=started_at,
+        last_heartbeat=last_heartbeat,
+        completed_at=completed_at,
+        item_count=int(line_summary.get("item_count", 0) or 0),
+        verified_count=int(line_summary.get("verified_count", 0) or 0),
+        total_items=int(line_summary.get("item_count", 0) or 0),
+        total_variance=float(
+            session.get("total_variance", line_summary.get("total_variance", 0.0)) or 0.0
+        ),
+        finalization_status=session.get("finalization_status"),
+        finalized_at=finalized_at,
+        finalized_by=session.get("finalized_by"),
+    )
 
 
 def _derive_presence_status(
@@ -780,6 +896,7 @@ async def create_session(
         type=session_data.type or "STANDARD",
         status="OPEN",
         started_at=datetime.now(timezone.utc),
+        last_heartbeat=datetime.now(timezone.utc),
     )
 
     # GOVERNANCE: Snapshot & Config Enforcement
@@ -824,7 +941,8 @@ async def create_session(
     session_doc["session_id"] = session.id
     await db.sessions.insert_one(session_doc)
 
-    # Also create entry in verification_sessions for compatibility with new features
+    # Deprecated compatibility mirror for older code paths that have not yet been removed.
+    # Active flows must read from `sessions`.
     verification_session = {
         "session_id": session.id,
         "user_id": current_user["username"],
@@ -853,48 +971,32 @@ async def get_active_sessions(
     - user_id: Filter by specific user
     - rack_id: Filter by specific rack
     """
-    # Build query
-    query: dict[str, Any] = {"status": {"$in": ["ACTIVE", "OPEN"]}}
+    # Build canonical session query
+    query: dict[str, Any] = {
+        "status": {"$in": ACTIVE_SESSION_STATUSES},
+        "$and": [
+            {"$or": [{"finalized_at": {"$exists": False}}, {"finalized_at": {"$in": [None, ""]}}]},
+            {"$or": [{"closed_at": {"$exists": False}}, {"closed_at": {"$in": [None, ""]}}]},
+        ],
+    }
 
     if user_id:
         # Only supervisors can view other users' sessions
         if current_user["role"] != "supervisor" and user_id != current_user["username"]:
             raise HTTPException(status_code=403, detail="Access denied")
-        query["user_id"] = user_id
+        query["staff_user"] = user_id
 
     if rack_id:
-        query["rack_id"] = rack_id
+        query["rack_no"] = rack_id
 
     # Get sessions
-    sessions_cursor = db.verification_sessions.find(query).sort("started_at", -1)
+    sessions_cursor = db.sessions.find(query).sort("started_at", -1)
     sessions = await sessions_cursor.to_list(length=100)
 
-    # Get item counts for each session
     result = []
     for session in sessions:
-        # Count items in session
-        item_count = await db.verification_records.count_documents(
-            {"session_id": session["session_id"]}
-        )
-
-        verified_count = await db.verification_records.count_documents(
-            {"session_id": session["session_id"], "status": "finalized"}
-        )
-
-        result.append(
-            SessionDetail(
-                id=session["session_id"],
-                user_id=session["user_id"],
-                rack_id=session.get("rack_id"),
-                floor=session.get("floor"),
-                status=session["status"],
-                started_at=session["started_at"],
-                last_heartbeat=session["last_heartbeat"],
-                completed_at=session.get("completed_at"),
-                item_count=item_count,
-                verified_count=verified_count,
-            )
-        )
+        line_summary = await _get_session_line_summary(db, _session_identifier(session))
+        result.append(_build_session_detail_from_doc(session, line_summary))
 
     return result
 
@@ -907,36 +1009,34 @@ async def get_user_workflows(
     """Return the currently running workflow grouped by user."""
     del current_user  # Authorization is enforced by the dependency above.
 
-    active_sessions_cursor = db.verification_sessions.find(
-        {"status": {"$in": sorted(ACTIVE_WORKFLOW_SESSION_STATES)}}
+    active_sessions_cursor = db.sessions.find(
+        {
+            "status": {"$in": ACTIVE_SESSION_STATUSES},
+            "$and": [
+                {"$or": [{"closed_at": {"$exists": False}}, {"closed_at": {"$in": [None, ""]}}]},
+                {
+                    "$or": [
+                        {"finalized_at": {"$exists": False}},
+                        {"finalized_at": {"$in": [None, ""]}},
+                    ]
+                },
+            ],
+        }
     ).sort("last_heartbeat", -1)
     active_sessions = await active_sessions_cursor.to_list(length=200)
 
     session_ids = [
-        session.get("session_id")
+        session.get("id") or session.get("session_id")
         for session in active_sessions
-        if isinstance(session.get("session_id"), str) and session.get("session_id")
+        if isinstance(session.get("id") or session.get("session_id"), str)
+        and (session.get("id") or session.get("session_id"))
     ]
 
     session_meta_by_id: dict[str, dict[str, Any]] = {}
-    if session_ids:
-        session_docs = await db.sessions.find(
-            {
-                "$or": [
-                    {"id": {"$in": session_ids}},
-                    {"session_id": {"$in": session_ids}},
-                ]
-            }
-        ).to_list(length=max(len(session_ids) * 2, 1))
-
-        for document in session_docs:
-            document_id = document.get("id")
-            if isinstance(document_id, str) and document_id:
-                session_meta_by_id[document_id] = document
-
-            legacy_id = document.get("session_id")
-            if isinstance(legacy_id, str) and legacy_id:
-                session_meta_by_id[legacy_id] = document
+    for document in active_sessions:
+        document_id = document.get("id") or document.get("session_id")
+        if isinstance(document_id, str) and document_id:
+            session_meta_by_id[document_id] = document
 
     session_counts_by_id: dict[str, dict[str, Any]] = {}
     if session_ids:
@@ -1013,7 +1113,7 @@ async def get_user_workflows(
     candidate_usernames = set(pending_by_user.keys()) | set(recount_by_user.keys())
 
     for session in active_sessions:
-        username = session.get("user_id")
+        username = session.get("staff_user") or session.get("user_id")
         if not isinstance(username, str) or not username:
             continue
         candidate_usernames.add(username)
@@ -1040,7 +1140,11 @@ async def get_user_workflows(
             reverse=True,
         )
         active_session = user_sessions[0] if user_sessions else None
-        active_session_id = active_session.get("session_id") if active_session else None
+        active_session_id = (
+            (active_session.get("id") or active_session.get("session_id"))
+            if active_session
+            else None
+        )
         session_meta = session_meta_by_id.get(active_session_id, {}) if active_session_id else {}
         session_counts = (
             session_counts_by_id.get(active_session_id, {}) if active_session_id else {}
@@ -1066,7 +1170,7 @@ async def get_user_workflows(
             recount_info.get("last_recount_at"),
         )
         session_status = _normalize_session_status(
-            active_session.get("status") if active_session else None
+            _effective_session_status(active_session).value if active_session else None
         )
         workflow_stage = _derive_workflow_stage(
             session_status,
@@ -1098,8 +1202,8 @@ async def get_user_workflows(
                 session_status=session_status,
                 session_type=session_meta.get("type"),
                 warehouse=session_meta.get("warehouse"),
-                rack_id=active_session.get("rack_id") if active_session else None,
-                floor=active_session.get("floor") if active_session else None,
+                rack_id=active_session.get("rack_no") if active_session else None,
+                floor=active_session.get("location_name") if active_session else None,
                 session_started_at=_max_datetime(
                     session_meta.get("started_at"),
                     active_session.get("started_at") if active_session else None,
@@ -1166,34 +1270,17 @@ async def get_session_detail(
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> SessionDetail:
     """Get detailed session information"""
-    session = await db.verification_sessions.find_one({"session_id": session_id})
+    session = await find_session(db, session_id)
 
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
     # Check access
-    if current_user["role"] != "supervisor" and session["user_id"] != current_user["username"]:
+    if current_user["role"] != "supervisor" and _session_owner(session) != current_user["username"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Get counts
-    item_count = await db.verification_records.count_documents({"session_id": session_id})
-
-    verified_count = await db.verification_records.count_documents(
-        {"session_id": session_id, "status": "finalized"}
-    )
-
-    return SessionDetail(
-        id=session["session_id"],
-        user_id=session["user_id"],
-        rack_id=session.get("rack_id"),
-        floor=session.get("floor"),
-        status=session["status"],
-        started_at=session["started_at"],
-        last_heartbeat=session["last_heartbeat"],
-        completed_at=session.get("completed_at"),
-        item_count=item_count,
-        verified_count=verified_count,
-    )
+    line_summary = await _get_session_line_summary(db, session_id)
+    return _build_session_detail_from_doc(session, line_summary)
 
 
 @router.get("/{session_id}/stats", response_model=SessionStats)
@@ -1214,42 +1301,24 @@ async def get_session_stats(
             items_per_minute=0,
         )
 
-    session = await db.verification_sessions.find_one({"session_id": session_id})
+    session = await find_session(db, session_id)
 
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
     # Check access
-    if current_user["role"] != "supervisor" and session["user_id"] != current_user["username"]:
+    if current_user["role"] != "supervisor" and _session_owner(session) != current_user["username"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Get item statistics
-    pipeline: list[dict[str, Any]] = [
-        {"$match": {"session_id": session_id}},
-        {
-            "$group": {
-                "_id": None,
-                "total": {"$sum": 1},
-                "verified": {"$sum": {"$cond": [{"$eq": ["$status", "finalized"]}, 1, 0]}},
-                "damage": {"$sum": "$damaged_qty"},
-            }
-        },
-    ]
-
-    stats_result = await db.verification_records.aggregate(pipeline).to_list(1)
-
-    if stats_result:
-        stats = stats_result[0]
-        total_items = stats.get("total", 0)
-        verified_items = stats.get("verified", 0)
-        damage_items = int(stats.get("damage", 0))
-    else:
-        total_items = verified_items = damage_items = 0
-
-    pending_items = total_items - verified_items
+    line_summary = await _get_session_line_summary(db, session_id)
+    total_items = int(line_summary.get("item_count", 0) or 0)
+    verified_items = int(line_summary.get("verified_count", 0) or 0)
+    damage_items = int(line_summary.get("damage_items", 0) or 0)
+    pending_items = int(line_summary.get("pending_count", 0) or 0)
 
     # Calculate duration and rate
-    duration = time.time() - session["started_at"]
+    started_at = _datetime_to_timestamp(session.get("started_at")) or time.time()
+    duration = max(time.time() - started_at, 0)
     items_per_minute = (verified_items / duration * 60) if duration > 0 else 0
 
     return SessionStats(
@@ -1284,13 +1353,13 @@ async def session_heartbeat(
     lock_manager = get_lock_manager(redis_service)
 
     # Get session
-    session = await db.verification_sessions.find_one({"session_id": session_id})
+    session = await find_session(db, session_id)
 
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
     # Verify ownership
-    if session["user_id"] != user_id:
+    if _session_owner(session) != user_id:
         raise HTTPException(status_code=403, detail="Not your session")
 
     # Update user heartbeat
@@ -1300,17 +1369,25 @@ async def session_heartbeat(
     rack_lock_renewed = False
     lock_ttl_remaining = 0
 
-    if session.get("rack_id"):
-        rack_id = session["rack_id"]
+    if session.get("rack_no"):
+        rack_id = session["rack_no"]
         rack_lock_renewed = await lock_manager.renew_rack_lock(rack_id, user_id, ttl=60)
 
         if rack_lock_renewed:
             lock_ttl_remaining = await lock_manager.get_rack_lock_ttl(rack_id)
 
     # Update session last_heartbeat
-    await db.verification_sessions.update_one(
-        {"session_id": session_id}, {"$set": {"last_heartbeat": time.time()}}
+    heartbeat_at = _current_utc_naive()
+    await db.sessions.update_one(
+        build_session_lookup(session_id), {"$set": {"last_heartbeat": heartbeat_at}}
     )
+    try:
+        await db.verification_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {"last_heartbeat": time.time()}},
+        )
+    except Exception:
+        logger.debug("Legacy verification_sessions heartbeat mirror skipped", exc_info=True)
 
     logger.debug(
         f"Heartbeat: session={session_id}, user={user_id}, rack_renewed={rack_lock_renewed}"
@@ -1338,56 +1415,51 @@ async def update_session_status(
     """
     user_id = current_user["username"]
 
-    # Get session
-    session = await db.verification_sessions.find_one({"session_id": session_id})
+    session = await find_session(db, session_id)
 
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
+    if is_session_finalized(session):
+        raise HTTPException(status_code=409, detail="Finalized sessions cannot be modified")
+
     # Verify ownership or supervisor
-    if current_user["role"] != "supervisor" and session["user_id"] != user_id:
+    if current_user["role"] not in {"supervisor", "admin"} and _session_owner(session) != user_id:
         raise HTTPException(status_code=403, detail="Not your session")
 
     normalized_status = status.upper()
+    current_status = _effective_session_status(session).value
 
-    if not SessionStateMachine.can_transition(session.get("status", ""), normalized_status):
+    if not SessionStateMachine.can_transition(current_status, normalized_status):
         raise HTTPException(
             status_code=409,
-            detail=f"Invalid session transition: {session.get('status')} -> {normalized_status}",
+            detail=f"Invalid session transition: {current_status} -> {normalized_status}",
         )
 
-    # Update status
-    await db.verification_sessions.update_one(
-        {"session_id": session_id}, {"$set": {"status": normalized_status}}
-    )
+    now_dt = _current_utc_naive()
+    session_update: dict[str, Any] = {"last_heartbeat": now_dt}
+    if normalized_status == "RECONCILE":
+        session_update.update({"status": "ACTIVE", "reconciled_at": now_dt})
+    elif normalized_status == "ACTIVE":
+        session_update.update({"status": "ACTIVE", "reconciled_at": None})
+    elif normalized_status == "PAUSED":
+        session_update["status"] = "PAUSED"
+    else:
+        session_update["status"] = normalized_status
 
-    # Keep canonical sessions collection in sync for business rules (counting gates, session lists, etc).
-    # We normalize DB state to ACTIVE and use `reconciled_at` as the reconciliation marker.
+    await db.sessions.update_one(build_session_lookup(session_id), {"$set": session_update})
     try:
-        now_dt = datetime.now(timezone.utc).replace(tzinfo=None)
-        if normalized_status == "CLOSED":
-            await db.sessions.update_one(
-                {"id": session_id},
-                {
-                    "$set": {
-                        "status": "CLOSED",
-                        "closed_at": now_dt,
-                        # Legacy/compat fields used elsewhere in the codebase.
-                        "completed_at": now_dt,
-                    }
-                },
-            )
-        elif normalized_status == "RECONCILE":
-            await db.sessions.update_one(
-                {"id": session_id},
-                {"$set": {"status": "ACTIVE", "reconciled_at": now_dt}},
-            )
-        else:
-            await db.sessions.update_one(
-                {"id": session_id}, {"$set": {"status": normalized_status}}
-            )
-    except Exception as exc:
-        logger.warning(f"Failed to sync sessions.status for {session_id}: {exc}")
+        await db.verification_sessions.update_one(
+            {"session_id": session_id},
+            {
+                "$set": {
+                    "status": normalized_status,
+                    "last_heartbeat": time.time(),
+                }
+            },
+        )
+    except Exception:
+        logger.debug("Legacy verification_sessions status mirror skipped", exc_info=True)
 
     # Broadcast update
     await manager.broadcast_to_session(
@@ -1405,7 +1477,8 @@ async def update_session_status(
 
     # Also notify the user personally in case they are not subscribed to the session channel yet
     # or to ensure they get the message on their user channel
-    if session["user_id"] != user_id:  # If supervisor updated it
+    session_owner = _session_owner(session)
+    if session_owner != user_id:  # If supervisor updated it
         await manager.send_personal_message(
             message={
                 "type": "session_update",
@@ -1415,97 +1488,234 @@ async def update_session_status(
                     "reason": "Supervisor update",
                 },
             },
-            user_id=session["user_id"],
+            user_id=session_owner,
         )
 
     return {"success": True, "id": session_id, "status": normalized_status}
 
 
-@router.post("/{session_id}/complete")
-async def complete_session(
+async def _finalize_session_canonical(
     session_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_db),
-    current_user: dict[str, Any] = Depends(get_current_user),
-    redis_service=Depends(get_redis),
+    db: AsyncIOMotorDatabase,
+    current_user: dict[str, Any],
+    lock_manager: Any,
+    *,
+    note: Optional[str] = None,
 ) -> dict[str, Any]:
-    """
-    Complete session and release rack
-    """
-    user_id = current_user["username"]
-    lock_manager = get_lock_manager(redis_service)
-
-    # Get session
-    session = await db.verification_sessions.find_one({"session_id": session_id})
-
+    session = await find_session(db, session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
-    # Verify ownership
-    if session["user_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Not your session")
+    if current_user.get("role") not in {"supervisor", "admin"}:
+        raise HTTPException(status_code=403, detail="Supervisor access required")
 
-    if not SessionStateMachine.can_transition(session.get("status", ""), "CLOSED"):
+    if is_session_finalized(session):
+        raise HTTPException(status_code=409, detail="Session is already finalized")
+
+    if _effective_session_status(session) != CanonicalSessionStatus.RECONCILE:
         raise HTTPException(
             status_code=409,
-            detail=f"Invalid session transition: {session.get('status')} -> CLOSED",
+            detail="Session must be in RECONCILE before finalization",
         )
 
-    # Release rack lock if exists
-    if session.get("rack_id"):
-        await lock_manager.release_rack_lock(session["rack_id"], user_id)
-
-        # Update rack status
-        await db.rack_registry.update_one(
-            {"rack_id": session["rack_id"]},
-            {
-                "$set": {
-                    "status": "completed",
-                    "updated_at": time.time(),
-                }
+    await recompute_session_totals(db, session_id)
+    lines = await get_session_count_lines(db, session_id)
+    blocking_lines = [line for line in lines if is_blocking_finalization(line)]
+    if blocking_lines:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Session has unresolved count lines and cannot be finalized",
+                "blocking_count": len(blocking_lines),
+                "blocking_line_ids": [
+                    str(line.get("id") or line.get("_id")) for line in blocking_lines[:25]
+                ],
             },
         )
 
-    # Update session
-    await db.verification_sessions.update_one(
-        {"session_id": session_id},
+    finalized_at = _current_utc_naive()
+    finalized_by = current_user["username"]
+    line_update: dict[str, Any] = {
+        "status": "locked",
+        "approval_status": "APPROVED",
+        "verified": True,
+        "verified_by": finalized_by,
+        "verified_at": finalized_at,
+        "approved_by": finalized_by,
+        "approved_at": finalized_at,
+        "finalized_by": finalized_by,
+        "finalized_at": finalized_at,
+        "updated_at": finalized_at,
+        "updated_by": finalized_by,
+    }
+    if note:
+        line_update["finalization_note"] = note
+
+    await db.count_lines.update_many(
         {
-            "$set": {
-                "status": "CLOSED",
-                "completed_at": time.time(),
-            }
+            "session_id": session_id,
+            "status": {"$ne": "locked"},
+            "approval_status": {"$nin": ["REJECTED", "NEEDS_REVIEW"]},
         },
+        {"$set": line_update},
+    )
+    totals = await recompute_session_totals(db, session_id)
+
+    session_update: dict[str, Any] = {
+        "status": "COMPLETED",
+        "finalization_status": "FINALIZED",
+        "finalized_at": finalized_at,
+        "finalized_by": finalized_by,
+        "completed_at": finalized_at,
+        "closed_at": finalized_at,
+        "last_heartbeat": finalized_at,
+        **totals,
+    }
+    if note:
+        session_update["finalization_note"] = note
+
+    await db.sessions.update_one(build_session_lookup(session_id), {"$set": session_update})
+    try:
+        await db.verification_sessions.update_one(
+            {"session_id": session_id},
+            {
+                "$set": {
+                    "status": "COMPLETED",
+                    "completed_at": finalized_at.timestamp(),
+                    "last_heartbeat": finalized_at.timestamp(),
+                }
+            },
+        )
+    except Exception:
+        logger.debug("Legacy verification_sessions finalize mirror skipped", exc_info=True)
+
+    if session.get("rack_no"):
+        await lock_manager.release_rack_lock(session["rack_no"], session.get("staff_user"))
+        try:
+            await db.rack_registry.update_one(
+                {"rack_id": session["rack_no"]},
+                {"$set": {"status": "completed", "updated_at": time.time()}},
+            )
+        except Exception:
+            logger.debug("Rack registry finalize mirror skipped", exc_info=True)
+
+    try:
+        await lock_manager.delete_session(session_id)
+    except Exception:
+        logger.debug("Session lock deletion skipped during completion", exc_info=True)
+
+    await manager.broadcast_to_session(
+        message={
+            "type": "session_completed",
+            "payload": {
+                "session_id": session_id,
+                "completed_by": finalized_by,
+                "completed_at": finalized_at.timestamp(),
+                "status": "COMPLETED",
+            },
+        },
+        session_id=session_id,
     )
 
-    # Mirror status to the canonical sessions collection so counting gates reflect completion.
+    return {
+        "success": True,
+        "id": session_id,
+        "status": "COMPLETED",
+        "finalized_at": finalized_at.isoformat(),
+        "finalized_by": finalized_by,
+        "message": "Session finalized successfully",
+    }
+
+
+async def _complete_session_legacy_compatible(
+    session_id: str,
+    db: AsyncIOMotorDatabase,
+    current_user: dict[str, Any],
+    lock_manager: Any,
+) -> dict[str, Any]:
+    user_id = current_user["username"]
+    canonical_session = await find_session(db, session_id)
+
+    legacy_session: Optional[dict[str, Any]] = None
     try:
-        now_dt = datetime.now(timezone.utc).replace(tzinfo=None)
+        legacy_session = await db.verification_sessions.find_one({"session_id": session_id})
+    except Exception:
+        logger.debug("Legacy verification session lookup skipped", exc_info=True)
+
+    if not canonical_session and not legacy_session:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+
+    session_owner = (
+        _session_owner(canonical_session)
+        or (legacy_session or {}).get("user_id")
+        or ""
+    )
+    if current_user.get("role") not in {"supervisor", "admin"} and session_owner != user_id:
+        raise HTTPException(status_code=403, detail="Not your session")
+
+    if canonical_session and is_session_finalized(canonical_session):
+        raise HTTPException(status_code=409, detail="Session is already finalized")
+
+    current_status = (
+        _effective_session_status(canonical_session).value
+        if canonical_session
+        else str((legacy_session or {}).get("status") or "").upper()
+    )
+    if not SessionStateMachine.can_transition(current_status, "CLOSED"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Invalid session transition: {current_status} -> CLOSED",
+        )
+
+    completed_at = _current_utc_naive()
+    rack_id = (
+        (canonical_session or {}).get("rack_no")
+        or (legacy_session or {}).get("rack_id")
+        or None
+    )
+
+    if rack_id:
+        await lock_manager.release_rack_lock(rack_id, session_owner or user_id)
+        try:
+            await db.rack_registry.update_one(
+                {"rack_id": rack_id},
+                {"$set": {"status": "completed", "updated_at": time.time()}},
+            )
+        except Exception:
+            logger.debug("Rack registry completion mirror skipped", exc_info=True)
+
+    if legacy_session:
+        await db.verification_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {"status": "CLOSED", "completed_at": completed_at.timestamp()}},
+        )
+
+    if canonical_session:
         await db.sessions.update_one(
-            {"id": session_id},
+            build_session_lookup(session_id),
             {
                 "$set": {
                     "status": "CLOSED",
-                    "closed_at": now_dt,
-                    # Legacy/compat field name used in other parts of the backend.
-                    "completed_at": now_dt,
+                    "closed_at": completed_at,
+                    "completed_at": completed_at,
+                    "last_heartbeat": completed_at,
                 }
             },
         )
-    except Exception as exc:
-        logger.warning(f"Failed to sync sessions completion for {session_id}: {exc}")
 
-    # Delete session lock from Redis
-    await lock_manager.delete_session(session_id)
+    try:
+        await lock_manager.delete_session(session_id)
+    except Exception:
+        logger.debug("Session lock deletion skipped during finalization", exc_info=True)
 
-    logger.info(f"Session {session_id} completed by {user_id}")
-
-    # Broadcast completion
     await manager.broadcast_to_session(
         message={
             "type": "session_completed",
             "payload": {
                 "session_id": session_id,
                 "completed_by": user_id,
-                "completed_at": time.time(),
+                "completed_at": completed_at.timestamp(),
+                "status": "CLOSED",
             },
         },
         session_id=session_id,
@@ -1519,6 +1729,40 @@ async def complete_session(
     }
 
 
+@router.post("/{session_id}/finalize")
+async def finalize_session(
+    session_id: str,
+    request: Optional[SessionFinalizeRequest] = None,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(get_current_user),
+    redis_service=Depends(get_redis),
+) -> dict[str, Any]:
+    lock_manager = get_lock_manager(redis_service)
+    return await _finalize_session_canonical(
+        session_id,
+        db,
+        current_user,
+        lock_manager,
+        note=request.note if request else None,
+    )
+
+
+@router.post("/{session_id}/complete")
+async def complete_session(
+    session_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(get_current_user),
+    redis_service=Depends(get_redis),
+) -> dict[str, Any]:
+    """
+    Complete session and release rack.
+
+    This legacy endpoint preserves the historical owner-compatible close flow.
+    """
+    lock_manager = get_lock_manager(redis_service)
+    return await _complete_session_legacy_compatible(session_id, db, current_user, lock_manager)
+
+
 @router.get("/user/history")
 async def get_user_session_history(
     limit: int = Query(10, ge=1, le=100),
@@ -1529,7 +1773,9 @@ async def get_user_session_history(
     user_id = current_user["username"]
 
     sessions_cursor = (
-        db.verification_sessions.find({"user_id": user_id, "status": "CLOSED"})
+        db.sessions.find(
+            {"staff_user": user_id, "status": {"$in": ["COMPLETED", "CLOSED"]}}
+        )
         .sort("completed_at", -1)
         .limit(limit)
     )
@@ -1538,28 +1784,9 @@ async def get_user_session_history(
 
     result = []
     for session in sessions:
-        item_count = await db.verification_records.count_documents(
-            {"session_id": session["session_id"]}
-        )
-
-        verified_count = await db.verification_records.count_documents(
-            {"session_id": session["session_id"], "status": "finalized"}
-        )
-
-        result.append(
-            SessionDetail(
-                id=session["session_id"],
-                user_id=session["user_id"],
-                rack_id=session.get("rack_id"),
-                floor=session.get("floor"),
-                status=session["status"],
-                started_at=session["started_at"],
-                last_heartbeat=session["last_heartbeat"],
-                completed_at=session.get("completed_at"),
-                item_count=item_count,
-                verified_count=verified_count,
-            )
-        )
+        session_identifier = str(session.get("id") or session.get("session_id"))
+        line_summary = await _get_session_line_summary(db, session_identifier)
+        result.append(_build_session_detail_from_doc(session, line_summary))
 
     return result
 
@@ -1571,7 +1798,7 @@ async def check_session_integrity(
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> SessionIntegrityResponse:
     """Check if master data has changed since session start (FR-M-34)"""
-    session = await db.verification_sessions.find_one({"session_id": session_id})
+    session = await find_session(db, session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
@@ -1581,7 +1808,7 @@ async def check_session_integrity(
         start_ts = start_time.timestamp()
         start_dt = start_time
     else:
-        start_ts = float(start_time)
+        start_ts = float(start_time or 0)
         start_dt = datetime.fromtimestamp(start_ts)
 
     # Check for items updated after session start
@@ -1630,7 +1857,7 @@ async def logout_all_sessions(
     # Update sessions collection
     sess_result = await db.sessions.update_many(
         {"staff_user": username, "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]}},
-        {"$set": {"status": "CLOSED", "completed_at": datetime.now(timezone.utc)}},
+        {"$set": {"status": "CLOSED", "completed_at": _current_utc_naive()}},
     )
 
     # Update verification_sessions collection

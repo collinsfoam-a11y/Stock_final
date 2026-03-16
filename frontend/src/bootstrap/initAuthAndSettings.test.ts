@@ -23,11 +23,29 @@ describe("initAuthAndSettings", () => {
     const never = () => new Promise<void>(() => {});
     const pending = initAuthAndSettings(never, never);
 
-    jest.advanceTimersByTime(3000);
+    const advance = async (ms: number) => {
+      const advanceAsync = (jest as any).advanceTimersByTimeAsync as
+        | ((time: number) => Promise<void>)
+        | undefined;
+
+      if (typeof advanceAsync === "function") {
+        await advanceAsync(ms);
+        return;
+      }
+
+      jest.advanceTimersByTime(ms);
+      // Flush microtasks/promises triggered by timer callbacks.
+      for (let i = 0; i < 5; i++) {
+        await Promise.resolve();
+      }
+    };
+
+    await advance(3000);
+    // Settings initialization starts after auth has settled.
+    await advance(3000);
     const result = await pending;
 
     expect(result.authResult.status).toBe("rejected");
     expect(result.settingsResult.status).toBe("rejected");
   });
 });
-
