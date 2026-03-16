@@ -321,7 +321,7 @@ async def get_active_users(current_user: dict = Depends(require_admin)):
         sessions_cursor = db.verification_sessions.find(
             {
                 "user_id": {"$in": string_user_ids},
-                "status": {"$in": ["active", "in_progress"]},
+                "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE", "active", "in_progress"]},
             }
         )
         sessions_list = await sessions_cursor.to_list(None)
