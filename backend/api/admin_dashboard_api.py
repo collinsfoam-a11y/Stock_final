@@ -308,18 +308,36 @@ async def get_active_users(current_user: dict = Depends(require_admin)):
 
         presence_records = await cursor.to_list(100)
 
+        user_ids = [record.get("user_id") for record in presence_records if record.get("user_id")]
+
+        # ⚡ Bolt: Bulk fetch users to avoid N+1 queries
+        users_cursor = db.users.find({"_id": {"$in": user_ids}})
+        users_list = await users_cursor.to_list(None)
+        users_dict = {user["_id"]: user for user in users_list}
+
+        # ⚡ Bolt: Bulk fetch sessions to avoid N+1 queries
+        # Cast _id to string for session lookup if needed, but keeping str(user_id) to match existing logic
+        string_user_ids = [str(uid) for uid in user_ids]
+        sessions_cursor = db.verification_sessions.find(
+            {
+                "user_id": {"$in": string_user_ids},
+                "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE", "active", "in_progress"]},
+            }
+        )
+        sessions_list = await sessions_cursor.to_list(None)
+        sessions_dict = {session["user_id"]: session for session in sessions_list}
+
         active_users = []
         for record in presence_records:
-            # Get user details
-            user = await db.users.find_one({"_id": record.get("user_id")})
+            user_id = record.get("user_id")
+            if not user_id:
+                continue
+
+            # Get user details from pre-fetched dictionary
+            user = users_dict.get(user_id)
             if user:
-                # Check if user has an active session
-                session = await db.verification_sessions.find_one(
-                    {
-                        "user_id": str(user["_id"]),
-                        "status": {"$in": ["active", "in_progress"]},
-                    }
-                )
+                # Check if user has an active session from pre-fetched dictionary
+                session = sessions_dict.get(str(user["_id"]))
 
                 # Determine online status
                 last_seen = record.get("last_seen", datetime.now(timezone.utc).replace(tzinfo=None))
