@@ -280,8 +280,13 @@ async def check_photo_requirements(
     try:
         results: List[Dict[str, Any]] = []
 
+        # ⚡ Bolt: Fixed N+1 query. Fetched all count lines in a single query and mapped them for O(1) lookup.
+        count_lines_cursor = db.count_lines.find({"id": {"$in": count_line_ids}})
+        count_lines = await count_lines_cursor.to_list(length=None)
+        count_lines_map = {cl.get("id"): cl for cl in count_lines}
+
         for count_line_id in count_line_ids:
-            count_line = await db.count_lines.find_one({"id": count_line_id})
+            count_line = count_lines_map.get(count_line_id)
 
             if not count_line:
                 results.append({"count_line_id": count_line_id, "error": "Not found"})
