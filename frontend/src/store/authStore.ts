@@ -507,7 +507,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    get().stopHeartbeat();
+    try {
+      get().stopHeartbeat();
+    } catch (_) {}
+
     try {
       if (
         Platform.OS === "web" ||
@@ -517,23 +520,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     } catch (_) {}
 
-    await unregisterNotificationsInBackground();
-
-    await secureStorage.removeItem(AUTH_STORAGE_KEY);
-    await secureStorage.removeItem(TOKEN_STORAGE_KEY);
-    await secureStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
-    await secureStorage.removeItem(BIOMETRIC_PIN_KEY);
-    delete apiClient.defaults.headers.common["Authorization"];
-
+    try {
+      await unregisterNotificationsInBackground();
+    } catch (error) {
+      console.warn("Notifications unregister failed during logout", error);
+    }
+    
+    // Clear state early to ensure synchronous UI unmounts and Auth Guards redirect properly
     set({
       user: null,
       isAuthenticated: false,
       isLoading: false,
     });
 
-    setUserPreferenceScope(null);
-    await resetFilterStoreForLoggedOutUser();
-    await useSettingsStore.getState().loadSettings();
+    try {
+      await secureStorage.removeItem(AUTH_STORAGE_KEY);
+      await secureStorage.removeItem(TOKEN_STORAGE_KEY);
+      await secureStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+      await secureStorage.removeItem(BIOMETRIC_PIN_KEY);
+      delete apiClient.defaults.headers.common["Authorization"];
+    } catch (err) {
+      console.warn("Storage cleanup failed during logout", err);
+    }
+
+    try {
+      setUserPreferenceScope(null);
+      await resetFilterStoreForLoggedOutUser();
+      await useSettingsStore.getState().loadSettings();
+    } catch (_) {}
 
     try {
       const { clearNotificationStore } = await import("./notificationStore");

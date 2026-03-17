@@ -1,4 +1,4 @@
-# Start Backend Server - Ensures only one instance runs
+﻿# Start Backend Server - Ensures only one instance runs
 # PowerShell script for Windows
 
 $ErrorActionPreference = "Stop"
@@ -7,7 +7,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
 $BackendDir = Join-Path $ProjectRoot "backend"
 
-Write-Host "Checking for existing backend instances..." -ForegroundColor Yellow
+Write-Host " Checking for existing backend instances..." -ForegroundColor Yellow
 
 # Kill existing backend processes
 Get-Process | Where-Object {
@@ -30,10 +30,11 @@ foreach ($port in $ports) {
 
 Start-Sleep -Seconds 2
 
-Write-Host "Starting backend server..." -ForegroundColor Green
+Write-Host " Starting backend server..." -ForegroundColor Green
 
 Set-Location $BackendDir
 $env:PYTHONPATH = "$ProjectRoot;$env:PYTHONPATH"
 $env:PYTHONUTF8 = 1
 
 python server.py
+

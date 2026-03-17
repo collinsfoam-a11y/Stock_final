@@ -1,3 +1,5 @@
+import { Appearance } from "react-native";
+
 /**
  * Modern Design System for Lavanya Mart Stock Verify App
  * Production-ready design tokens following modern UI/UX principles
@@ -15,7 +17,7 @@ export const modernBranding = {
 } as const;
 
 // Modern Color Palette - Accessible and Vibrant
-export const colors = {
+const lightColors = {
   // Primary Brand Colors
   primary: {
     50: "#EFF6FF",
@@ -75,7 +77,7 @@ export const colors = {
 
 // Dark Theme Colors
 export const darkColors = {
-  ...colors,
+  ...lightColors,
   gray: {
     50: "#1F2937",
     100: "#374151",
@@ -88,7 +90,13 @@ export const darkColors = {
     800: "#F9FAFB",
     900: "#FFFFFF",
   },
+  white: "#000000",
+  black: "#FFFFFF",
 } as const;
+
+// Determine static colors based on OS preference at boot time
+const isDark = Appearance.getColorScheme() === 'dark';
+export const colors = isDark ? darkColors : lightColors;
 
 // Spacing System - 8px base grid
 export const spacing = {

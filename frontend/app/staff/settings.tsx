@@ -27,6 +27,7 @@ import {
   SettingsSyncStatus,
   UserSettingsSections,
 } from "../../src/components/settings";
+import { AppearanceSettings } from "../../src/components/ui/AppearanceSettings";
 import {
   colors,
   spacing,
@@ -239,15 +240,27 @@ export default function StaffSettingsScreen() {
           </ModernCard>
         </Animated.View>
 
-        {/* User Preferences */}
-        <SectionHeader title="Preferences" delay={300} />
+        {/* Appearance Settings */}
+        <SectionHeader title="Appearance" delay={300} />
         <Animated.View entering={FadeInDown.delay(350).springify()}>
+          <View style={styles.settingsCard}>
+            <AppearanceSettings
+              showTitle={false}
+              scrollable={false}
+              compact={true}
+            />
+          </View>
+        </Animated.View>
+
+        {/* User Preferences */}
+        <SectionHeader title="Preferences" delay={400} />
+        <Animated.View entering={FadeInDown.delay(450).springify()}>
           <UserSettingsSections />
         </Animated.View>
 
         {/* Support */}
-        <SectionHeader title="Support" delay={400} />
-        <Animated.View entering={FadeInDown.delay(450).springify()}>
+        <SectionHeader title="Support" delay={500} />
+        <Animated.View entering={FadeInDown.delay(550).springify()}>
           <ModernCard style={styles.settingsCard}>
             <SettingRow
               icon="notifications-outline"
@@ -268,8 +281,8 @@ export default function StaffSettingsScreen() {
         </Animated.View>
 
         {/* Account Actions */}
-        <SectionHeader title="Account" delay={500} />
-        <Animated.View entering={FadeInDown.delay(550).springify()}>
+        <SectionHeader title="Account" delay={600} />
+        <Animated.View entering={FadeInDown.delay(650).springify()}>
           <ModernCard style={styles.settingsCard}>
             <SettingRow
               icon="log-out-outline"
@@ -284,7 +297,7 @@ export default function StaffSettingsScreen() {
 
         {/* Version Info */}
         <Animated.View
-          entering={FadeInDown.delay(600).springify()}
+          entering={FadeInDown.delay(700).springify()}
           style={styles.versionContainer}
         >
           <Text style={styles.versionText}>Stock Verify v1.0.0</Text>
