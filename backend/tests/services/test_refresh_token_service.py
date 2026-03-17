@@ -24,4 +24,3 @@ def test_create_refresh_token_uses_unique_jti_for_same_payload():
     assert first_payload["sub"] == "admin1"
     assert second_payload["sub"] == "admin1"
     assert first_payload["jti"] != second_payload["jti"]
-

@@ -8,6 +8,7 @@ import {
 } from "../db/localDb";
 import { syncBatch, isOnline } from "./api/api";
 import api from "./httpClient";
+import * as Crypto from "expo-crypto";
 
 /**
  * SyncQueue service handles background synchronization of offline data.
@@ -25,7 +26,7 @@ export const syncQueue = {
     console.log(`Pushing ${pending.length} pending verifications...`);
 
     const operations = pending.map((p) => ({
-      id: p.id?.toString() || Date.now().toString(),
+      id: p.id?.toString() || Crypto.randomUUID(),
       type: "item_verification",
       data: {
         barcode: p.barcode,

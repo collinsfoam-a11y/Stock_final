@@ -266,6 +266,10 @@ class CountLineCreate(BaseModel):
     found_location: Optional[str] = None
     relocation_status: Optional[RelocationStatus] = None
 
+    # Lineage / Conflict Governance Fields
+    version: int = 1
+    previous_version_id: Optional[str] = None
+
 
 class BulkCountLineUpdate(BaseModel):
     count_line_ids: list[str]

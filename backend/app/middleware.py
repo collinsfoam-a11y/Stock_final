@@ -40,7 +40,9 @@ def register_middleware(
             "exp://localhost:8081",
         ]
         if getattr(settings, "CORS_DEV_ORIGINS", None):
-            dev_origins = [o.strip() for o in (settings.CORS_DEV_ORIGINS or "").split(",") if o.strip()]
+            dev_origins = [
+                o.strip() for o in (settings.CORS_DEV_ORIGINS or "").split(",") if o.strip()
+            ]
             allowed_origins.extend(dev_origins)
             logger.info(f"Added {len(dev_origins)} additional CORS origins from CORS_DEV_ORIGINS")
     else:

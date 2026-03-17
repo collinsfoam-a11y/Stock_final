@@ -183,4 +183,3 @@ async def test_put_update_count_line_recalculates_variance(async_client, test_db
     assert updated_session is not None
     # delta variance = (9 - 1) = 8
     assert updated_session["total_variance"] == 8.0
-

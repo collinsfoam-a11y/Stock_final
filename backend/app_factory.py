@@ -229,6 +229,7 @@ register_middleware(
 # Create API router
 api_router = APIRouter()
 
+
 # Add root endpoint
 @app.get("/", status_code=200)
 async def root():

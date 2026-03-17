@@ -10,9 +10,13 @@ def test_non_closing_stream_handler_keeps_stream_after_close():
     handler = NonClosingStreamHandler(stream)
     handler.setFormatter(logging.Formatter("%(message)s"))
 
-    handler.emit(logging.makeLogRecord({"msg": "first", "levelno": logging.INFO, "levelname": "INFO"}))
+    handler.emit(
+        logging.makeLogRecord({"msg": "first", "levelno": logging.INFO, "levelname": "INFO"})
+    )
     handler.close()
-    handler.emit(logging.makeLogRecord({"msg": "second", "levelno": logging.INFO, "levelname": "INFO"}))
+    handler.emit(
+        logging.makeLogRecord({"msg": "second", "levelno": logging.INFO, "levelname": "INFO"})
+    )
 
     assert handler.stream is stream
     assert stream.getvalue().splitlines() == ["first", "second"]

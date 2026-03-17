@@ -21,14 +21,20 @@ def mock_db():
     db.count_lines.insert_one = AsyncMock()
     db.count_lines.aggregate = MagicMock()
 
+    # Mock find to return a synchronous cursor
+    mock_find_cursor = MagicMock()
+    mock_find_cursor.sort.return_value = mock_find_cursor
+    mock_find_cursor.skip.return_value = mock_find_cursor
+    mock_find_cursor.limit.return_value = mock_find_cursor
+    mock_find_cursor.to_list = AsyncMock(return_value=[])
+    db.count_lines.find = MagicMock(return_value=mock_find_cursor)
+
     # Mock aggregate to return an object with to_list
     mock_cursor = AsyncMock()
     mock_cursor.to_list = AsyncMock(return_value=[{"total_items": 1, "total_variance": 0}])
     db.count_lines.aggregate.return_value = mock_cursor
 
     return db
-
-
 
 
 @pytest.fixture

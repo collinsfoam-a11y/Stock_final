@@ -47,9 +47,7 @@ def notifications_app(monkeypatch: pytest.MonkeyPatch) -> FastAPI:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("path", ["/api/notifications", "/api/notifications/"])
-async def test_get_notifications_accepts_both_route_forms(
-    notifications_app: FastAPI, path: str
-):
+async def test_get_notifications_accepts_both_route_forms(notifications_app: FastAPI, path: str):
     async with AsyncClient(
         transport=ASGITransport(app=notifications_app),
         base_url="http://test",

@@ -138,21 +138,23 @@ async def test_sync_items_for_offline_cache_with_since(setup_mocks):
     cursor.limit.return_value = cursor
     cursor.to_list = AsyncMock(
         return_value=[
-        {
-            "barcode": "510001",
-            "item_code": "CODE123",
-            "item_name": "Test Item",
-            "category": "Cat",
-            "verified": True,
-            "verified_at": since,
-            "last_scanned_at": since,
-        }
+            {
+                "barcode": "510001",
+                "item_code": "CODE123",
+                "item_name": "Test Item",
+                "category": "Cat",
+                "verified": True,
+                "verified_at": since,
+                "last_scanned_at": since,
+            }
         ]
     )
     # Motor's collection.find() is sync (returns a cursor), so use a normal Mock.
     mock_db.erp_items.find = Mock(return_value=cursor)
 
-    response = await sync_items_for_offline_cache(since=since, limit=10, current_user={"username": "u"})
+    response = await sync_items_for_offline_cache(
+        since=since, limit=10, current_user={"username": "u"}
+    )
 
     assert response["success"] is True
     assert response["count"] == 1
@@ -177,7 +179,9 @@ async def test_sync_items_for_offline_cache_without_since(setup_mocks):
     cursor.to_list = AsyncMock(return_value=[])
     mock_db.erp_items.find = Mock(return_value=cursor)
 
-    response = await sync_items_for_offline_cache(since=None, limit=5, current_user={"username": "u"})
+    response = await sync_items_for_offline_cache(
+        since=None, limit=5, current_user={"username": "u"}
+    )
 
     assert response["success"] is True
     assert response["count"] == 0

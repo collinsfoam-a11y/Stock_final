@@ -1383,7 +1383,9 @@ async def update_session_status(
                 {"$set": {"status": "ACTIVE", "reconciled_at": now_dt}},
             )
         else:
-            await db.sessions.update_one({"id": session_id}, {"$set": {"status": normalized_status}})
+            await db.sessions.update_one(
+                {"id": session_id}, {"$set": {"status": normalized_status}}
+            )
     except Exception as exc:
         logger.warning(f"Failed to sync sessions.status for {session_id}: {exc}")
 

@@ -77,4 +77,3 @@ def set_client(client_instance: AsyncIOMotorClient) -> None:
 # Backwards-compatible module attributes used across legacy code.
 db = _RuntimeProxy(get_db)
 client = _RuntimeProxy(get_client)
-

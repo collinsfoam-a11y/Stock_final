@@ -86,4 +86,3 @@ def test_write_path_restrictions_on_sql_calls():
         "Governance Violation: SQL mutation query usage detected outside connector:\n"
         + "\n".join(sorted(violations))
     )
-

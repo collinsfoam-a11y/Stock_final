@@ -153,9 +153,11 @@ async def get_staff_performance():
     items_stats = await db.items.aggregate(pipeline).to_list(length=100)
 
     # Aggregate variances found per user
-    variance_pipeline = [{"$group": {"_id": "$reported_by", "variances_found": {"$sum": 1}}}]
-
-    variance_stats = await db.variances.aggregate(variance_pipeline).to_list(length=100)
+    variance_pipeline = [
+        {"$match": {"variance": {"$ne": 0}, "variance": {"$ne": None}}},
+        {"$group": {"_id": "$counted_by", "variances_found": {"$sum": 1}}}
+    ]
+    variance_stats = await db.count_lines.aggregate(variance_pipeline).to_list(length=100)
     variance_map = {v["_id"]: v["variances_found"] for v in variance_stats}
 
     # Combine data

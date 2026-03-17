@@ -99,7 +99,9 @@ class MockCollection:
     async def update_many(self, query, update):
         """Mock update_many"""
         count = 0
-        token_in = query.get("token", {}).get("$in") if isinstance(query.get("token"), dict) else None
+        token_in = (
+            query.get("token", {}).get("$in") if isinstance(query.get("token"), dict) else None
+        )
         for notif in self.data:
             match = True
             for key, value in query.items():

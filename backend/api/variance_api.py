@@ -6,7 +6,7 @@ from backend.auth.dependencies import get_current_user
 router = APIRouter()
 
 
-@router.get("/variance-reasons")
+@router.get("/variance-reasons", deprecated=True)
 async def get_variance_reasons(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, list[dict[str, str]]]:
@@ -25,7 +25,7 @@ async def get_variance_reasons(
     }
 
 
-@router.get("/variance/trend")
+@router.get("/variance/trend", deprecated=True)
 async def get_variance_trend(
     days: int = 7,
     current_user: dict = Depends(get_current_user),

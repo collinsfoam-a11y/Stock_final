@@ -615,11 +615,7 @@ async def sync_items_for_offline_cache(
             "last_scanned_at": 1,
         }
 
-        cursor = (
-            db.erp_items.find(query, projection)
-            .sort("last_scanned_at", -1)
-            .limit(limit)
-        )
+        cursor = db.erp_items.find(query, projection).sort("last_scanned_at", -1).limit(limit)
         items = await cursor.to_list(length=limit)
         items = [serialize_item_document(item) for item in items]
 
@@ -784,21 +780,26 @@ async def get_variances(
 
         # Only get variances (non-zero)
         filter_query["variance"] = {"$ne": 0}
+        # Optionally, filter for only approved/active count lines if required by logic
+        # filter_query["status"] = {"$in": ["approved", "pending"]}
 
         # Get total count
-        total_count = await db.item_variances.count_documents(filter_query)
+        total_count = await db.count_lines.count_documents(filter_query)
 
         # Get variances
-        cursor = (
-            db.item_variances.find(filter_query).sort("verified_at", -1).skip(skip).limit(limit)
-        )
+        cursor = db.count_lines.find(filter_query).sort("counted_at", -1).skip(skip).limit(limit)
         variances = await cursor.to_list(length=limit)
 
         # Convert ObjectId to string
         for variance in variances:
             variance["_id"] = str(variance["_id"])
-            if isinstance(variance.get("verified_at"), datetime):
+            if "counted_at" in variance and isinstance(variance.get("counted_at"), datetime):
+                variance["counted_at"] = variance["counted_at"].isoformat()
+            # Compatibility map: frontend expects verified_at
+            if "verified_at" in variance and isinstance(variance.get("verified_at"), datetime):
                 variance["verified_at"] = variance["verified_at"].isoformat()
+            elif "counted_at" in variance:
+                variance["verified_at"] = variance["counted_at"]
 
         return {
             "success": True,

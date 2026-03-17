@@ -342,7 +342,7 @@ async def release_rack(
         ):
             raise HTTPException(
                 status_code=409,
-                detail=("Invalid session transition: " f"{session.get('status')} -> completed"),
+                detail=(f"Invalid session transition: {session.get('status')} -> completed"),
             )
         await db.verification_sessions.update_one(
             {"session_id": rack["session_id"]},

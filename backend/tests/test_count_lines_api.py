@@ -260,7 +260,12 @@ class TestCreateCountLine:
             return_value=AsyncMock(to_list=AsyncMock(return_value=[]))
         )
         db.count_lines.update_one = AsyncMock()
-        db.count_lines.find = AsyncMock(return_value=AsyncMock(to_list=AsyncMock(return_value=[])))
+        mock_find_cursor = Mock()
+        mock_find_cursor.sort.return_value = mock_find_cursor
+        mock_find_cursor.skip.return_value = mock_find_cursor
+        mock_find_cursor.limit.return_value = mock_find_cursor
+        mock_find_cursor.to_list = AsyncMock(return_value=[])
+        db.count_lines.find = Mock(return_value=mock_find_cursor)
         db.count_lines.delete_one = AsyncMock()
         db.count_line_drafts.find_one = AsyncMock(return_value=None)
         db.count_line_drafts.insert_one = AsyncMock(return_value=Mock(inserted_id="draft123"))
@@ -370,18 +375,26 @@ class TestCreateCountLine:
         mock_db.sessions.find_one.return_value = {"id": "session123", "status": "OPEN"}
         mock_db.erp_items.find_one.return_value = erp_item
         mock_db.count_lines.count_documents = AsyncMock(return_value=1)  # Duplicate exists
-        mock_db.count_lines.find_one = AsyncMock(return_value={"id": "existing"})  # Existing count
+        mock_db.count_lines.find_one = AsyncMock(return_value={"id": "existing", "status": "approved"})  # Existing count
+
+        mock_find_cursor = Mock()
+        mock_find_cursor.sort.return_value = mock_find_cursor
+        mock_find_cursor.skip.return_value = mock_find_cursor
+        mock_find_cursor.limit.return_value = mock_find_cursor
+        mock_find_cursor.to_list = AsyncMock(
+            return_value=[{"id": "existing", "status": "approved", "counted_qty": 50, "version": 1}]
+        )
+        mock_db.count_lines.find = Mock(return_value=mock_find_cursor)
 
         with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
-            with pytest.raises(HTTPException) as exc_info:
-                await create_count_line(
-                    request=AsyncMock(),
-                    line_data=line_data,
-                    current_user={"username": "testuser"},
-                )
+            result = await create_count_line(
+                request=AsyncMock(),
+                line_data=line_data,
+                current_user={"username": "testuser"},
+            )
 
-        assert exc_info.value.status_code == 409
-        assert "Duplicate Scan" in str(exc_info.value.detail)
+        assert result["session_id"] == "session123"
+        assert result.get("is_conflict") is True
 
     @pytest.mark.asyncio
     async def test_create_count_line_high_risk(self, mock_db, line_data, erp_item):
@@ -630,12 +643,17 @@ class TestGetCountLines:
         """Test basic count lines retrieval"""
         mock_db = Mock()
         mock_db.count_lines.count_documents = AsyncMock(return_value=100)
-        mock_db.count_lines.find.return_value.sort.return_value.skip.return_value.limit.return_value.to_list = AsyncMock(
+        mock_find_cursor = Mock()
+        mock_find_cursor.sort.return_value = mock_find_cursor
+        mock_find_cursor.skip.return_value = mock_find_cursor
+        mock_find_cursor.limit.return_value = mock_find_cursor
+        mock_find_cursor.to_list = AsyncMock(
             return_value=[
                 {"id": "1", "session_id": "session123", "counted_qty": 50},
                 {"id": "2", "session_id": "session123", "counted_qty": 30},
             ]
         )
+        mock_db.count_lines.find.return_value = mock_find_cursor
 
         with patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db):
             result = await get_count_lines(
@@ -655,7 +673,11 @@ class TestGetCountLines:
         """Test count lines retrieval with verified filter"""
         mock_db = Mock()
         mock_db.count_lines.count_documents = AsyncMock(return_value=50)
-        mock_db.count_lines.find.return_value.sort.return_value.skip.return_value.limit.return_value.to_list = AsyncMock(
+        mock_find_cursor = Mock()
+        mock_find_cursor.sort.return_value = mock_find_cursor
+        mock_find_cursor.skip.return_value = mock_find_cursor
+        mock_find_cursor.limit.return_value = mock_find_cursor
+        mock_find_cursor.to_list = AsyncMock(
             return_value=[
                 {
                     "id": "3",
@@ -665,6 +687,7 @@ class TestGetCountLines:
                 }
             ]
         )
+        mock_db.count_lines.find.return_value = mock_find_cursor
 
         with patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db):
             result = await get_count_lines(
@@ -723,6 +746,12 @@ class TestCountLinesAPIEdgeCases:
         mock_db.count_lines.count_documents = AsyncMock(return_value=0)
         mock_db.count_lines.find_one = AsyncMock(return_value=None)
         mock_db.count_lines.insert_one = AsyncMock()
+        mock_find_cursor = Mock()
+        mock_find_cursor.sort.return_value = mock_find_cursor
+        mock_find_cursor.skip.return_value = mock_find_cursor
+        mock_find_cursor.limit.return_value = mock_find_cursor
+        mock_find_cursor.to_list = AsyncMock(return_value=[])
+        mock_db.count_lines.find = Mock(return_value=mock_find_cursor)
         # Simulate error in session stats update
         mock_db.count_lines.aggregate = AsyncMock(side_effect=Exception("Database error"))
         mock_db.sessions.update_one = AsyncMock()

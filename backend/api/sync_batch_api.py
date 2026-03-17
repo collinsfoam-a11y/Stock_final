@@ -363,6 +363,14 @@ async def sync_batch(
     try:
         # Validate all records first
         for record in request.records:
+            # Check idempotency first using client_record_id as operation_id
+            existing_op = await db.idempotency_operations.find_one(
+                {"operation_id": record.client_record_id}
+            )
+            if existing_op:
+                ok_records.append(record.client_record_id)
+                continue
+
             conflict = await validate_record(record, db, lock_manager, sync_service, user_id)
             if conflict:
                 conflicts.append(conflict)
@@ -371,6 +379,13 @@ async def sync_batch(
                 success, error_msg = await sync_single_record(record, db, user_id)
 
                 if success:
+                    # Record idempotency
+                    await db.idempotency_operations.insert_one(
+                        {
+                            "operation_id": record.client_record_id,
+                            "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                        }
+                    )
                     ok_records.append(record.client_record_id)
                 else:
                     errors.append(
@@ -800,13 +815,26 @@ async def _process_legacy_operations(
         message: Optional[str] = None
 
         try:
-            handler = _LEGACY_OP_HANDLERS.get(op.type)
-            if handler:
-                data = deepcopy(op.data)
-                message = await handler(data, current_user, id_mapping, db)
+            # Check idempotency
+            existing_op = await db.idempotency_operations.find_one({"operation_id": op.id})
+            if existing_op:
                 success = True
+                message = "Already processed (idempotency)"
             else:
-                message = f"Unknown operation type: {op.type}"
+                handler = _LEGACY_OP_HANDLERS.get(op.type)
+                if handler:
+                    data = deepcopy(op.data)
+                    message = await handler(data, current_user, id_mapping, db)
+                    success = True
+                    # Record idempotency
+                    await db.idempotency_operations.insert_one(
+                        {
+                            "operation_id": op.id,
+                            "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                        }
+                    )
+                else:
+                    message = f"Unknown operation type: {op.type}"
         except Exception as exc:
             logger.error(f"Legacy sync operation failed ({op.id}): {exc}")
             message = str(exc)

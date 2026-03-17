@@ -330,7 +330,9 @@ async def check_photo_requirements(
                             else (
                                 "High value item"
                                 if mrp > 10000
-                                else "Damage reported" if has_damage else None
+                                else "Damage reported"
+                                if has_damage
+                                else None
                             )
                         )
                     ),

@@ -375,15 +375,23 @@ async def create_count_line(
         # If barcode is present, strict check against barcode too?
         # No, duplicate items in same rack is the issue.
 
-        # Check if already exists
-        existing_count = await db.count_lines.find_one(unique_filter)
-        if existing_count:
-            raise HTTPException(
-                status_code=409,
-                detail="Duplicate Scan: This item has already been counted in this specific location (Floor/Rack). Ask supervisor to REVERIFY if needed.",
-            )
+        # Check if already exists to handle forks/conflicts
+        existing_counts = await db.count_lines.find(unique_filter).sort("counted_at", -1).to_list(1)
+        existing_count = existing_counts[0] if existing_counts else None
 
-        # Existing Warning-only Duplicate Check (Legacy, mostly redundant now but keeps 'DUPLICATE_CORRECTION' flag logic if we wanted to allow it)
+        is_conflict = False
+        previous_version_id = None
+        version = 1
+
+        if existing_count:
+            previous_version_id = existing_count.get("id")
+            version = existing_count.get("version", 1) + 1
+
+            # If the existing count is pending or approved, this new scan creates a governance conflict
+            if existing_count.get("status") in ["pending", "approved"]:
+                is_conflict = True
+                risk_flags.append("CONFLICTING_COUNT")
+            # If it's rejected, it's a standard recount fork, no special conflict flag needed
         # We can keep it for checking duplicates across *different* locations? No, that's allowed.
         # So the below logic is mostly covered by Strict Gate above.
         # But let's check if the user wanted to flag something else.
@@ -452,6 +460,10 @@ async def create_count_line(
             "created_by": current_user["username"],  # Legacy field
             "counted_by": current_user["username"],
             "counted_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            # Lineage fields
+            "version": version,
+            "previous_version_id": previous_version_id,
+            "is_conflict": is_conflict,
             # MRP tracking
             "mrp_erp": erp_item["mrp"],
             "mrp_counted": line_data.mrp_counted,
@@ -1124,7 +1136,9 @@ async def add_quantity_to_count_line(
     if payload.batches is not None:
         update_data["batches"] = payload.batches
 
-    update_result = await db.count_lines.update_one({"_id": count_line["_id"]}, {"$set": update_data})
+    update_result = await db.count_lines.update_one(
+        {"_id": count_line["_id"]}, {"$set": update_data}
+    )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
 
@@ -1194,18 +1208,24 @@ async def update_count_line(
     if payload.batches is not None:
         update_data["batches"] = payload.batches
 
-    update_result = await db.count_lines.update_one({"_id": count_line["_id"]}, {"$set": update_data})
+    update_result = await db.count_lines.update_one(
+        {"_id": count_line["_id"]}, {"$set": update_data}
+    )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
 
     # Best-effort: keep session totals consistent if qty was updated.
     try:
         if payload.counted_qty is not None:
-            new_variance = float(update_data["variance"]) if "variance" in update_data else old_variance
+            new_variance = (
+                float(update_data["variance"]) if "variance" in update_data else old_variance
+            )
             delta = new_variance - old_variance
             session_id = count_line.get("session_id")
             if session_id and delta != 0:
-                await db.sessions.update_one({"id": session_id}, {"$inc": {"total_variance": delta}})
+                await db.sessions.update_one(
+                    {"id": session_id}, {"$inc": {"total_variance": delta}}
+                )
     except Exception as exc:
         logger.warning(f"Failed to update session variance totals after count-line update: {exc}")
 
@@ -1407,6 +1427,96 @@ async def bulk_reject_count_lines(
         }
     except Exception as e:
         logger.error(f"Error bulk rejecting: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ConflictResolutionRequest(BaseModel):
+    winning_line_id: str
+    losing_line_ids: list[str]
+    resolution_notes: Optional[str] = None
+
+
+@router.post("/count-lines/resolve-conflict")
+async def resolve_conflict(
+    request: ConflictResolutionRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Supervisor conflict resolution API.
+    Resolves a conflict by marking one count line as the winner (pending approval)
+    and the others as superseded (rejected/obsoleted).
+    """
+    if current_user["role"] not in ["supervisor", "admin"]:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+    db = _get_db_client()
+
+    try:
+        winner = await _find_count_line(db, request.winning_line_id)
+        if not winner:
+            raise HTTPException(
+                status_code=404, detail=f"Winning line {request.winning_line_id} not found"
+            )
+
+        # Mark losers as superseded
+        losers_query = {"id": {"$in": request.losing_line_ids}}
+        await db.count_lines.update_many(
+            losers_query,
+            {
+                "$set": {
+                    "status": "superseded",
+                    "is_conflict": False,
+                    "resolution_notes": request.resolution_notes,
+                    "resolved_by": current_user["username"],
+                    "resolved_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                }
+            },
+        )
+
+        # Remove conflict flag from winner and set it to pending (or approved)
+        await db.count_lines.update_one(
+            {"_id": winner["_id"]},
+            {
+                "$set": {
+                    "status": "pending",
+                    "is_conflict": False,
+                    "resolution_notes": request.resolution_notes,
+                    "resolved_by": current_user["username"],
+                    "resolved_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                }
+            },
+        )
+
+        # Remove CONFLICTING_COUNT flag from risk_flags if present
+        if "CONFLICTING_COUNT" in (winner.get("risk_flags") or []):
+            await db.count_lines.update_one(
+                {"_id": winner["_id"]}, {"$pull": {"risk_flags": "CONFLICTING_COUNT"}}
+            )
+
+        # Log resolution
+        if _activity_log_service:
+            await _activity_log_service.log_activity(
+                user=current_user["username"],
+                role=current_user.get("role", ""),
+                action="resolve_conflict",
+                entity_type="count_line",
+                entity_id=winner["id"],
+                details={
+                    "winning_line_id": winner["id"],
+                    "losing_line_ids": request.losing_line_ids,
+                    "resolution_notes": request.resolution_notes,
+                },
+            )
+
+        return {
+            "success": True,
+            "message": "Conflict resolved successfully",
+            "winning_line_id": winner["id"],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error resolving conflict: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -24,5 +24,7 @@ class SessionSnapshot(BaseModel):
     snapshot_hash: str = Field(..., description="SHA256 hash of the items payload")
     items: List[SnapshotItem]
     item_count: int
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
     config_version_id: str = Field(..., description="The system config active at this time")

@@ -1,2 +1,1 @@
 """Backend application composition package."""
-

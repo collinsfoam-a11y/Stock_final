@@ -302,6 +302,11 @@ async def list_export_results(
     # Remove file_content from list (too large)
     for result in results:
         result["id"] = str(result.pop("_id"))
+        # NOTE: Mongo stores schedule_id as an ObjectId (see ScheduledExportService.execute_export).
+        # FastAPI's jsonable_encoder can't serialize ObjectId, so always stringify here.
+        schedule_value = result.get("schedule_id")
+        if isinstance(schedule_value, ObjectId):
+            result["schedule_id"] = str(schedule_value)
         result["has_content"] = bool(result.get("file_content"))
         result.pop("file_content", None)
 

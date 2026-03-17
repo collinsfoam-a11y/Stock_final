@@ -126,7 +126,9 @@ async def test_stock_verification_workflow(mock_db, mock_supervisor):
         assert update_doc["$set"]["verified"] is True
 
         # 2. Get verified items
-        result = await get_count_lines("session-1", mock_supervisor, verified=True, db_override=mock_db)
+        result = await get_count_lines(
+            "session-1", mock_supervisor, verified=True, db_override=mock_db
+        )
         assert "items" in result
         assert "pagination" in result
 

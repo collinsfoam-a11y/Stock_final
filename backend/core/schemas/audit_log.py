@@ -87,7 +87,8 @@ class AuditLog(AuditLogCreate):
 
     id: str = Field(description="Audit log entry ID")
     timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None), description="Timestamp of the action"
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        description="Timestamp of the action",
     )
 
     model_config = ConfigDict(

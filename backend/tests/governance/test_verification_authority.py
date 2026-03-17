@@ -58,4 +58,3 @@ async def test_verify_stock_allows_supervisor_and_updates(monkeypatch):
 
     assert result["verified"] is True
     mock_db.count_lines.update_one.assert_awaited_once()
-

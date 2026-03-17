@@ -43,4 +43,3 @@ def register_static_serving(app: FastAPI, frontend_dist: Path, logger: Any) -> N
             return FileResponse(file_path)
 
         return FileResponse(frontend_dist / "index.html")
-

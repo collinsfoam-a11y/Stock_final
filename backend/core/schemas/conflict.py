@@ -20,5 +20,7 @@ class ConflictFork(BaseModel):
     conflicting_payload: Dict[str, Any] = Field(..., description="The payload that was attempted")
 
     reason: str = Field(default="Sync conflict on APPROVED record")
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
     status: str = "CONFLICT_DERIVED"

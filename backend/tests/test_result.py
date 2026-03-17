@@ -139,7 +139,7 @@ class TestResult:
         import logging
 
         logger = logging.getLogger("test_logger")
-        
+
         with caplog.at_level(logging.ERROR):
             error = ValueError("test error")
             result = Fail(error).log_error(logger, "Operation failed")

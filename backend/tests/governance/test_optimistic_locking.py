@@ -19,9 +19,7 @@ async def test_sql_verification_conflict_forks_on_stale_write(monkeypatch):
 
     from backend.services.sql_verification_service import sql_verification_service
 
-    monkeypatch.setattr(
-        sql_verification_service, "_get_sql_quantity", AsyncMock(return_value=15.0)
-    )
+    monkeypatch.setattr(sql_verification_service, "_get_sql_quantity", AsyncMock(return_value=15.0))
 
     original_find_one = db.erp_items.find_one
     mutated = {"done": False}

@@ -398,6 +398,7 @@ class InMemoryDatabase:
         self.variances = InMemoryCollection()
         self.sync_conflicts = InMemoryCollection()
         self.verification_conflicts = InMemoryCollection()
+        self.idempotency_operations = InMemoryCollection()
         self.user_settings = InMemoryCollection()
         self.audit_logs = InMemoryCollection()
         self.system_events = InMemoryCollection()

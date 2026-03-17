@@ -38,10 +38,14 @@ async def test_should_check_new_items_respects_interval() -> None:
     service = _make_service()
     service._new_item_check_interval = 1800
 
-    service._last_new_item_check = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=60)
+    service._last_new_item_check = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
+        seconds=60
+    )
     assert service.should_check_new_items() is False
 
-    service._last_new_item_check = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=1800)
+    service._last_new_item_check = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
+        seconds=1800
+    )
     assert service.should_check_new_items() is True
 
 

@@ -379,10 +379,7 @@ class TestGenerateReportEndpoint:
                 )
                 assert response.status_code == 200
                 payload = response.json()
-                assert (
-                    payload["report"]["download_url"]
-                    == "/api/dynamic-reports/rpt_123/download"
-                )
+                assert payload["report"]["download_url"] == "/api/dynamic-reports/rpt_123/download"
         finally:
             app.dependency_overrides.clear()
 

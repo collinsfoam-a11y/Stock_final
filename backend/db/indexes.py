@@ -10,6 +10,13 @@ Optimized indexes for 20 concurrent users and fast queries
 from typing import Union
 
 INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
+    # Idempotency Operations Collection
+    "idempotency_operations": [
+        # Unique operation ID
+        ([("operation_id", 1)], {"unique": True, "name": "idx_operation_id"}),
+        # TTL index for automatic cleanup (30 days)
+        ([("created_at", 1)], {"expireAfterSeconds": 2592000, "name": "idx_operation_ttl"}),
+    ],
     # Verification Records Collection
     "verification_records": [
         # Unique client record ID
