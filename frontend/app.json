@@ -34,7 +34,11 @@
     },
     "android": {
       "package": "com.lavanyamart.stockverify",
-      "userInterfaceStyle": "automatic"
+      "userInterfaceStyle": "automatic",
+      "permissions": [
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
+      ]
     },
     "plugins": [
       [
@@ -52,6 +56,12 @@
     ],
     "web": {
       "bundler": "metro"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5de080fe-7f2b-441d-a678-12a01debea9f"
+      }
     }
   }
 }
