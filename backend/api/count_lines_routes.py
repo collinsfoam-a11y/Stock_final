@@ -261,7 +261,8 @@ async def create_count_line(
         )
 
     # Use snapshot qty if available, fallback to live (emergency only)
-    erp_qty = erp_snapshot.get("erp_qty") if erp_snapshot else erp_item.get("stock_qty", 0)
+    erp_qty_raw = erp_snapshot.get("erp_qty") if erp_snapshot else erp_item.get("stock_qty", 0)
+    erp_qty = float(erp_qty_raw or 0)
     baseline_hash = erp_snapshot.get("baseline_hash") if erp_snapshot else "UNHASHED_FALLBACK"
 
     # Calculate variance using snapshot quantity (Rule 2 + Rule 4)
@@ -633,7 +634,7 @@ async def verify_stock(
     line_id: str,
     current_user: dict,
     *,
-    request: Request = None,
+    request: Optional[Request] = None,
     db_override=None,
 ):
     """Mark a count line as verified. Exposed for direct test usage."""
@@ -671,7 +672,7 @@ async def unverify_stock(
     line_id: str,
     current_user: dict,
     *,
-    request: Request = None,
+    request: Optional[Request] = None,
     db_override=None,
 ):
     """Remove verification metadata from a count line."""

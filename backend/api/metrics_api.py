@@ -154,7 +154,7 @@ async def get_staff_performance():
 
     # Aggregate variances found per user
     variance_pipeline = [
-        {"$match": {"variance": {"$ne": 0}, "variance": {"$ne": None}}},
+        {"$match": {"variance": {"$nin": [0, None]}}},
         {"$group": {"_id": "$counted_by", "variances_found": {"$sum": 1}}}
     ]
     variance_stats = await db.count_lines.aggregate(variance_pipeline).to_list(length=100)
