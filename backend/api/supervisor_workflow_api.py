@@ -92,10 +92,15 @@ async def batch_approve_count_lines(
         succeeded = 0
         failed = 0
 
+        # ⚡ Bolt: Fixed N+1 query. Fetched all count lines in a single query and mapped them for O(1) lookup.
+        count_lines_cursor = db.count_lines.find({"id": {"$in": request.count_line_ids}})
+        count_lines_list = await count_lines_cursor.to_list(length=None)
+        count_lines_map = {cl.get("id"): cl for cl in count_lines_list}
+
         for count_line_id in request.count_line_ids:
             try:
                 # Get count line
-                count_line = await db.count_lines.find_one({"id": count_line_id})
+                count_line = count_lines_map.get(count_line_id)
                 if not count_line:
                     results.append(
                         {
@@ -194,10 +199,15 @@ async def batch_reject_count_lines(
         succeeded = 0
         failed = 0
 
+        # ⚡ Bolt: Fixed N+1 query. Fetched all count lines in a single query and mapped them for O(1) lookup.
+        count_lines_cursor = db.count_lines.find({"id": {"$in": request.count_line_ids}})
+        count_lines_list = await count_lines_cursor.to_list(length=None)
+        count_lines_map = {cl.get("id"): cl for cl in count_lines_list}
+
         for count_line_id in request.count_line_ids:
             try:
                 # Get count line
-                count_line = await db.count_lines.find_one({"id": count_line_id})
+                count_line = count_lines_map.get(count_line_id)
                 if not count_line:
                     results.append(
                         {
