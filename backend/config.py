@@ -407,8 +407,7 @@ class Settings(PydanticBaseSettings):
             "Defaults include localhost variants."
         ),
     )
-    # nosec: B104 - Binding to all interfaces is required for Docker and LAN access (React Native)
-    HOST: str = "0.0.0.0"
+    HOST: str = "0.0.0.0"  # nosec B104 - Binding to all interfaces is required for Docker and LAN access (React Native)
     PORT: int = Field(8001, ge=1, le=65535)
     WORKERS: int = Field(1, ge=1)
     PI_SERVER_URL: str = Field(
