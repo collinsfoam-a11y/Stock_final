@@ -66,7 +66,7 @@ def run_server_main(
     logger.info(f"Starting server on port {port}...")
     uvicorn.run(
         app_import_path,
-        host=os.getenv("HOST", "0.0.0.0"),
+        host=os.getenv("HOST", "0.0.0.0"),  # nosec B104 - Binding to all interfaces is required for Docker and LAN access
         port=port,
         reload=False,
         log_level="info",
