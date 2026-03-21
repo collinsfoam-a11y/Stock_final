@@ -718,8 +718,50 @@ class SQLVerificationService:
                 * 1000,
             }
 
+        if any(quantities.get(code) is None for code in item_codes):
+            error_code = "ERP_AMBIGUOUS_BATCH_RESULT"
+            message = "ERP batch returned invalid quantity results."
+            errors = [
+                self._error_response(
+                    error_code=error_code,
+                    message=message,
+                    status_code=500,
+                    item_code=code,
+                )
+                for code in item_codes
+            ]
+            await asyncio.gather(
+                *[
+                    self._record_governance_event(
+                        item_code=err["item_code"],
+                        sql_qty=None,
+                        mongo_qty=None,
+                        variance=None,
+                        latency_ms=batch_latency_ms,
+                        seq=None,
+                        status="FAILED",
+                        error_info=err,
+                    )
+                    for err in errors
+                ]
+            )
+            return {
+                "success": False,
+                "error_code": error_code,
+                "message": message,
+                "status_code": 500,
+                "verified_count": 0,
+                "error_count": len(errors),
+                "results": [],
+                "errors": errors,
+                "batch_duration_ms": (
+                    datetime.now(timezone.utc).replace(tzinfo=None) - start
+                ).total_seconds()
+                * 1000,
+            }
+
         tasks = [
-            self._verify_item_with_sql_qty(code, quantities[code], batch_latency_ms)
+            self._verify_item_with_sql_qty(code, quantities[code], batch_latency_ms or 0.0)
             for code in item_codes
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)

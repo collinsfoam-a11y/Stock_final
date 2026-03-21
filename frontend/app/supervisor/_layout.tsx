@@ -8,7 +8,7 @@
  */
 
 import React, { useMemo, useState } from "react";
-import { Stack, Slot, useRouter, useSegments } from "expo-router";
+import { Redirect, Stack, Slot, useRouter, useSegments } from "expo-router";
 import {
   View,
   Text,
@@ -22,35 +22,22 @@ import { RoleLayoutGuard } from "@/components/auth/RoleLayoutGuard";
 import { SupervisorSidebar } from "@/components/navigation";
 import { AnimatedPressable, GlassCard, ScreenContainer } from "@/components/ui";
 import { useSettingsStore } from "@/store/settingsStore";
+import { isSupervisorRouteEnabled } from "@/constants/roleFeatureFlags";
 
 const OFFLINE_BLOCKED_ROUTES = new Set([
   "activity-logs",
   "dashboard",
-  "db-mapping",
-  "error-logs",
-  "export",
-  "export-results",
-  "export-schedules",
-  "notes",
   "sync-conflicts",
   "user-workflows",
-  "watchtower",
 ]);
 
 const OFFLINE_ROUTE_LABELS: Record<string, string> = {
   "activity-logs": "Activity Logs",
   dashboard: "Dashboard",
-  "db-mapping": "DB Mapping",
-  "error-logs": "Error Logs",
-  export: "Exports",
-  "export-results": "Export Results",
-  "export-schedules": "Export Schedules",
-  notes: "Notes",
   session: "Session Details",
   sessions: "Sessions",
   "sync-conflicts": "Sync Conflicts",
   "user-workflows": "User Workflows",
-  watchtower: "Watchtower",
 };
 
 const OFFLINE_SAFE_LINKS = [
@@ -77,6 +64,9 @@ export default function SupervisorLayout() {
   const isLargeScreen = width >= 1024 && Platform.OS === "web";
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const currentRoute = segmentList[1];
+  const isFeatureDisabledRoute = Boolean(
+    currentRoute && !isSupervisorRouteEnabled(currentRoute),
+  );
   const isOfflineBlockedRoute = Boolean(
     offlineMode && currentRoute && OFFLINE_BLOCKED_ROUTES.has(currentRoute),
   );
@@ -85,6 +75,17 @@ export default function SupervisorLayout() {
       OFFLINE_ROUTE_LABELS[currentRoute || ""] || "Supervisor View",
     [currentRoute],
   );
+
+  if (isFeatureDisabledRoute) {
+    return (
+      <RoleLayoutGuard
+        allowedRoles={["supervisor", "admin"]}
+        layoutName="SupervisorLayout"
+      >
+        <Redirect href="/supervisor/dashboard" />
+      </RoleLayoutGuard>
+    );
+  }
 
   return (
     <RoleLayoutGuard

@@ -553,11 +553,11 @@ async def _process_session_op(
                 or session_data.get("session_id")
                 or session_data.get("id")
             )
-            session_id = _resolve_session_id(raw_session_id)
-            if not session_id:
+            resolved_session_id = _resolve_session_id(raw_session_id)
+            if not resolved_session_id:
                 raise ValueError("Missing sessionId for session operation")
 
-            session = await db.sessions.find_one({"id": session_id})
+            session = await db.sessions.find_one({"id": resolved_session_id})
             if not session:
                 raise ValueError("Session not found")
 
@@ -569,12 +569,12 @@ async def _process_session_op(
 
             if operation == "close":
                 await db.sessions.update_one(
-                    {"id": session_id},
+                    {"id": resolved_session_id},
                     {"$set": {"status": "CLOSED", "closed_at": now, "ended_at": now}},
                 )
             else:
                 await db.sessions.update_one(
-                    {"id": session_id},
+                    {"id": resolved_session_id},
                     {"$set": {"status": "ACTIVE", "reconciled_at": now}},
                 )
 

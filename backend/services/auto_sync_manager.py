@@ -42,15 +42,15 @@ class AutoSyncManager:
 
         # State tracking
         self._running = False
-        self._monitoring_task: asyncio.Task = None
-        self._sync_service: SQLSyncService = None
+        self._monitoring_task: Optional[asyncio.Task[None]] = None
+        self._sync_service: Optional[SQLSyncService] = None
         self._last_connection_check: Optional[datetime] = None
         self._last_sync_attempt: Optional[datetime] = None
         self._sql_available = False
         self._sync_in_progress = False
 
         # Statistics
-        self._stats = {
+        self._stats: dict[str, Any] = {
             "connection_checks": 0,
             "connection_restored": 0,
             "connection_lost": 0,
@@ -262,7 +262,7 @@ class AutoSyncManager:
             ),
             "stats": self._stats.copy(),
             "sync_service_status": (
-                self._sync_service.get_status() if self._sync_service else None
+                self._sync_service.get_stats() if self._sync_service else None
             ),
         }
 

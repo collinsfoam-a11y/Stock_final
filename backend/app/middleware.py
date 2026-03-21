@@ -27,6 +27,11 @@ def register_middleware(
     elif allowed_hosts_value:
         allowed_hosts = [str(host).strip() for host in allowed_hosts_value if str(host).strip()]
 
+    if env in {"development", "test"}:
+        for host in ("localhost", "127.0.0.1", "testserver"):
+            if host not in allowed_hosts:
+                allowed_hosts.append(host)
+
     if getattr(settings, "CORS_ALLOW_ORIGINS", None):
         allowed_origins = [
             o.strip() for o in (settings.CORS_ALLOW_ORIGINS or "").split(",") if o.strip()
@@ -80,7 +85,7 @@ def register_middleware(
 
     if allowed_hosts and "*" not in allowed_hosts:
         app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
-        logger.info(f"✓ Trusted host middleware enabled (hosts: {allowed_hosts})")
+        logger.info(f"Trusted host middleware enabled (hosts: {allowed_hosts})")
     elif env not in {"development", "test"}:
         logger.warning(
             "ALLOWED_HOSTS not configured for non-development environment; "
@@ -97,7 +102,7 @@ def register_middleware(
                 STRICT_CSP=strict_csp,
                 force_https=force_https,
             )
-            logger.info("✓ Security headers middleware enabled")
+            logger.info("Security headers middleware enabled")
         except Exception as exc:
             logger.warning(f"Security headers middleware registration failed: {exc}")
     else:
@@ -108,7 +113,7 @@ def register_middleware(
             from backend.middleware.lan_enforcement import LANEnforcementMiddleware
 
             app.add_middleware(LANEnforcementMiddleware)
-            logger.info("✓ LAN enforcement middleware enabled")
+            logger.info("LAN enforcement middleware enabled")
         except Exception as exc:
             logger.warning(f"LAN enforcement middleware registration failed: {exc}")
 

@@ -7,9 +7,10 @@ import asyncio
 import json
 import logging
 import time
+from collections.abc import Awaitable
 from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from bson import ObjectId
 
@@ -28,14 +29,9 @@ class CustomJSONEncoder(json.JSONEncoder):
 # Try to import Redis with async support, fallback to in-memory if not available
 try:
     import redis.asyncio as redis
-    from redis.exceptions import RedisError
 
     REDIS_AVAILABLE = True
 except ImportError:
-    try:
-        from redis.exceptions import RedisError
-    except ImportError:
-        RedisError = Exception
     REDIS_AVAILABLE = False
 
 
@@ -86,7 +82,7 @@ class CacheService:
             except asyncio.TimeoutError:
                 logger.warning("Redis connection timed out, using in-memory cache")
                 self.use_redis = False
-            except RedisError as e:
+            except Exception as e:
                 logger.warning(f"Redis connection failed: {str(e)}")
                 self.use_redis = False
 
@@ -103,7 +99,7 @@ class CacheService:
                 value = await self.redis_client.get(cache_key)
                 if value:
                     return json.loads(value)
-            except RedisError as e:
+            except Exception as e:
                 logger.error(f"Redis get error: {str(e)}")
                 return None
         else:
@@ -135,7 +131,7 @@ class CacheService:
             try:
                 await self.redis_client.setex(cache_key, ttl, serialized)
                 return True
-            except RedisError as e:
+            except Exception as e:
                 logger.error(f"Redis set error: {str(e)}")
                 return False
         else:
@@ -164,7 +160,7 @@ class CacheService:
             try:
                 count = await self.redis_client.delete(cache_key)
                 return count > 0
-            except RedisError as e:
+            except Exception as e:
                 logger.error(f"Redis delete error: {str(e)}")
                 return False
         else:
@@ -186,7 +182,7 @@ class CacheService:
                 if keys:
                     count = await self.redis_client.delete(*keys)
                     return int(count)
-            except RedisError as e:
+            except Exception as e:
                 logger.error(f"Redis clear error: {str(e)}")
         else:
             # In-memory clear
@@ -198,7 +194,7 @@ class CacheService:
 
     async def get_status(self) -> dict[str, Any]:
         """Get cache status for health check"""
-        status = {
+        status: dict[str, Any] = {
             "type": "redis" if self.use_redis else "memory",
             "status": "healthy",
             "details": {},
@@ -208,7 +204,9 @@ class CacheService:
             try:
                 # Basic ping check
                 start_time = time.time()
-                await asyncio.wait_for(self.redis_client.ping(), timeout=2.0)
+                await asyncio.wait_for(
+                    cast(Awaitable[bool], self.redis_client.ping()), timeout=2.0
+                )
                 latency = (time.time() - start_time) * 1000
 
                 info = await self.redis_client.info()
@@ -240,7 +238,7 @@ class CacheService:
                 if keys:
                     count = await self.redis_client.delete(*keys)
                     return int(count)
-            except RedisError as e:
+            except Exception as e:
                 logger.error(f"Redis clear_pattern error: {str(e)}")
                 return 0
 

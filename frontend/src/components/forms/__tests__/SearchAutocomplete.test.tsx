@@ -81,7 +81,7 @@ describe("SearchAutocomplete", () => {
     ]);
 
     const onSelectItem = jest.fn();
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, findByText } = render(
       <SearchAutocomplete
         onSelectItem={onSelectItem}
         placeholder="Search inventory"
@@ -95,7 +95,7 @@ describe("SearchAutocomplete", () => {
     });
 
     expect(mockRemoteSearchItems).not.toHaveBeenCalled();
-    expect(getByText("Cached Item")).toBeTruthy();
+    expect(await findByText("Cached Item")).toBeTruthy();
   });
 
   it("uses remote search when offline mode is disabled", async () => {
@@ -110,7 +110,7 @@ describe("SearchAutocomplete", () => {
       ],
     });
 
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, findByText } = render(
       <SearchAutocomplete
         onSelectItem={jest.fn()}
         placeholder="Search inventory"
@@ -124,6 +124,6 @@ describe("SearchAutocomplete", () => {
     });
 
     expect(mockLocalSearchItems).not.toHaveBeenCalled();
-    expect(getByText("Remote Item")).toBeTruthy();
+    expect(await findByText("Remote Item")).toBeTruthy();
   });
 });

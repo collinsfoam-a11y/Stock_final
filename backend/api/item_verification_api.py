@@ -6,10 +6,10 @@ import asyncio
 import csv
 import io
 import logging
+import traceback
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
-import traceback
+from typing import Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -21,12 +21,14 @@ from backend.auth.dependencies import get_current_user_async as get_current_user
 logger = logging.getLogger(__name__)
 
 # These will be initialized at runtime
-db: AsyncIOMotorDatabase = None
-cache_service = None
-sql_sync_service = None
+db: AsyncIOMotorDatabase = cast(AsyncIOMotorDatabase, None)
+cache_service: Any = None
+sql_sync_service: Any = None
 
 
-def init_verification_api(database, cache_svc=None, sql_svc=None):
+def init_verification_api(
+    database: AsyncIOMotorDatabase, cache_svc: Any = None, sql_svc: Any = None
+) -> None:
     """Initialize verification API with dependencies"""
     global db, cache_service, sql_sync_service
     db = database
@@ -37,7 +39,7 @@ def init_verification_api(database, cache_svc=None, sql_svc=None):
 verification_router = APIRouter(prefix="/api/v2/erp/items", tags=["Item Verification"])
 
 
-def _regex_filter(value: Optional[str]) -> dict[str, Optional[str]]:
+def _regex_filter(value: Optional[str]) -> Optional[dict[str, str]]:
     if not value:
         return None
     return {"$regex": value, "$options": "i"}
@@ -764,7 +766,7 @@ async def get_variances(
     Get list of items with variances (verified qty != system qty)
     """
     try:
-        filter_query = {}
+        filter_query: dict[str, Any] = {}
 
         if category:
             filter_query["category"] = {"$regex": category, "$options": "i"}
@@ -826,7 +828,7 @@ async def get_live_users(current_user: dict = Depends(get_current_user)):
         one_hour_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
 
         # Get distinct users who verified items in last hour
-        pipeline = [
+        pipeline: list[dict[str, Any]] = [
             {
                 "$match": {
                     "verified_at": {"$gte": one_hour_ago},

@@ -188,7 +188,7 @@ async def recompute_session_totals(db: Any, session_id: str) -> dict[str, Any]:
             if last_activity is None or candidate_activity > last_activity:
                 last_activity = candidate_activity
 
-    session_update = {
+    session_update: dict[str, Any] = {
         "total_items": total_items,
         "total_variance": total_variance,
         "verified_items": verified_items,

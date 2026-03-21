@@ -36,10 +36,10 @@ run_step() {
     LOG_FILES+=("$log_file")
 
     if (cd "$ROOT_DIR" && "$@") >"$log_file" 2>&1; then
-        printf '✓ %s\n' "$name"
+        printf '[ok] %s\n' "$name"
         rm -f "$log_file"
     else
-        printf '✗ %s\n' "$name" >&2
+        printf '[fail] %s\n' "$name" >&2
         printf -- '--- %s log ---\n' "$name" >&2
         cat "$log_file" >&2
         print_common_failure_hint "$log_file"
@@ -65,7 +65,7 @@ case "$MODE" in
         run_step node-lint make --no-print-directory node-lint
         run_step node-typecheck make --no-print-directory node-typecheck
         run_step node-test make --no-print-directory node-test
-        printf '✓ agent-ci complete\n'
+        printf '[ok] agent-ci complete\n'
         ;;
     *)
         printf 'Usage: %s [ci|python|node]\n' "$(basename "$0")" >&2

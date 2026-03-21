@@ -215,7 +215,7 @@ async def check_for_active_session(username: str) -> Result[bool, Exception]:
     """Check if the user already has an active session."""
     result = await get_active_session_record(username)
     if result.is_err:
-        return result
+        return cast(Result[bool, Exception], result)
     return Ok(bool(result.unwrap()))
 
 
@@ -266,7 +266,7 @@ async def _ensure_single_session_for_login(
 ) -> Result[dict[str, Any], Exception]:
     active_session_result = await get_active_session_record(username)
     if active_session_result.is_err:
-        return active_session_result
+        return cast(Result[dict[str, Any], Exception], active_session_result)
 
     active_session = active_session_result.unwrap()
     if not active_session:
@@ -275,7 +275,7 @@ async def _ensure_single_session_for_login(
     same_client = _session_belongs_to_current_client(active_session, request, client_ip)
     revoke_result = await _resolve_session_conflict(username)
     if revoke_result.is_err:
-        return revoke_result
+        return cast(Result[dict[str, Any], Exception], revoke_result)
 
     revoked_count = revoke_result.unwrap()
     log_method = logger.info if same_client else logger.warning

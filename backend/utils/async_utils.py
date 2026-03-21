@@ -37,7 +37,7 @@ class AsyncExecutor:
         self.retry_attempts = retry_attempts
         self.backoff_factor = backoff_factor
         self.semaphore = asyncio.Semaphore(max_concurrent)
-        self._circuit_breaker_state = {}
+        self._circuit_breaker_state: dict[str, dict[str, Any]] = {}
         self._circuit_breaker_threshold = 5
         self._circuit_breaker_timeout = 60  # seconds
 
@@ -52,7 +52,7 @@ class AsyncExecutor:
                   Must be re-executable for retries.
             operation_name: Name for logging and circuit breaker
         """
-        last_error = None
+        last_error: Optional[Exception] = None
 
         for attempt in range(self.retry_attempts):
             try:
@@ -223,7 +223,7 @@ async def async_connection_pool(pool_size: int = 10):
     """
     Modern connection pool context manager
     """
-    pool = []
+    pool: list[Any] = []
 
     try:
         # Initialize pool
@@ -252,9 +252,9 @@ class AsyncCache:
     def __init__(self, max_size: int = 1000, default_ttl: int = 3600):
         self.max_size = max_size
         self.default_ttl = default_ttl
-        self._cache = {}
-        self._access_times = {}
-        self._expiry_times = {}
+        self._cache: dict[str, Any] = {}
+        self._access_times: dict[str, float] = {}
+        self._expiry_times: dict[str, float] = {}
         self._lock = asyncio.Lock()
 
     async def get(self, key: str) -> Optional[Any]:
@@ -332,13 +332,15 @@ def cached_async(key_func: Callable[..., Optional[str]] = None, ttl: int = 1800)
                 cache_key = f"{func.__module__}.{func.__name__}:{args}:{kwargs}"
 
             # Try cache first
-            cached = await _async_cache.get(cache_key)
-            if cached is not None:
-                return cached
+            if cache_key is not None:
+                cached = await _async_cache.get(cache_key)
+                if cached is not None:
+                    return cached
 
             # Execute and cache
             result = await func(*args, **kwargs)
-            await _async_cache.set(cache_key, result, ttl)
+            if cache_key is not None:
+                await _async_cache.set(cache_key, result, ttl)
             return result
 
         return wrapper

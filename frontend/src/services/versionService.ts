@@ -28,7 +28,7 @@ export const checkVersion = async (
   clientVersion: string,
 ): Promise<VersionCheckResult> => {
   try {
-    const response = await api.get<VersionCheckResult>("/version/check", {
+    const response = await api.get<VersionCheckResult>("/api/version/check", {
       params: { client_version: clientVersion },
     });
     return response.data;
@@ -61,7 +61,7 @@ export const getBackendVersion = async (): Promise<{
   build_time: string;
 }> => {
   try {
-    const response = await api.get("/version");
+    const response = await api.get("/api/version");
     return response.data;
   } catch (error: any) {
     __DEV__ && console.error("Get backend version error:", error);

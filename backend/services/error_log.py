@@ -71,9 +71,9 @@ class ErrorLog(BaseModel):
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
     stack_trace: Optional[str] = None
-    request_data: dict[str, Optional[Any]] = None
+    request_data: Optional[dict[str, Optional[Any]]] = None
     response_status: Optional[int] = None
-    context: dict[str, Optional[Any]] = None
+    context: Optional[dict[str, Optional[Any]]] = None
     resolved: bool = False
     resolved_at: Optional[datetime] = None
     resolved_by: Optional[str] = None
@@ -99,9 +99,9 @@ class ErrorLogService:
         role: Optional[str] = None,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
-        request_data: dict[str, Optional[Any]] = None,
+        request_data: Optional[dict[str, Optional[Any]]] = None,
         response_status: Optional[int] = None,
-        context: dict[str, Optional[Any]] = None,
+        context: Optional[dict[str, Optional[Any]]] = None,
         include_stack_trace: bool = True,
     ) -> str:
         """
@@ -203,7 +203,7 @@ class ErrorLogService:
         role: Optional[str] = None,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
-        request_data: dict[str, Optional[Any]] = None,
+        request_data: Optional[dict[str, Optional[Any]]] = None,
     ) -> str:
         """Log an HTTP error"""
         # Determine severity based on status code
@@ -225,7 +225,7 @@ class ErrorLogService:
 
         # Create error object
         error = Exception(error_message)
-        error.error_code = error_code
+        setattr(error, "error_code", error_code)
 
         return await self.log_error(
             error=error,
@@ -302,7 +302,7 @@ class ErrorLogService:
             logger.error(f"Failed to retrieve errors: {str(e)}")
             raise
 
-    async def get_error_by_id(self, error_id: str) -> dict[str, Optional[Any]]:
+    async def get_error_by_id(self, error_id: str) -> Optional[dict[str, Any]]:
         """Get a specific error by ID"""
         try:
             from bson import ObjectId
@@ -344,7 +344,7 @@ class ErrorLogService:
     ) -> dict[str, Any]:
         """Get error statistics"""
         try:
-            filter_query = {}
+            filter_query: dict[str, Any] = {}
             if start_date or end_date:
                 filter_query["timestamp"] = {}
                 if start_date:
@@ -373,16 +373,16 @@ class ErrorLogService:
             )
 
             # By error type (top 10)
-            pipeline = [
+            top_error_types_pipeline: list[dict[str, Any]] = [
                 {"$match": filter_query} if filter_query else {"$match": {}},
                 {"$group": {"_id": "$error_type", "count": {"$sum": 1}}},
                 {"$sort": {"count": -1}},
                 {"$limit": 10},
             ]
-            top_error_types = await self.collection.aggregate(pipeline).to_list(10)
+            top_error_types = await self.collection.aggregate(top_error_types_pipeline).to_list(10)
 
             # By endpoint (top 10)
-            pipeline = [
+            top_endpoints_pipeline: list[dict[str, Any]] = [
                 (
                     {
                         "$match": {
@@ -397,7 +397,7 @@ class ErrorLogService:
                 {"$sort": {"count": -1}},
                 {"$limit": 10},
             ]
-            top_endpoints = await self.collection.aggregate(pipeline).to_list(10)
+            top_endpoints = await self.collection.aggregate(top_endpoints_pipeline).to_list(10)
 
             # Recent errors (last 24 hours)
             last_24h = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=24)

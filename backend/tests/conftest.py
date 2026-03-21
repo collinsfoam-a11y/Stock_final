@@ -83,7 +83,7 @@ async def async_client(test_db, monkeypatch) -> AsyncGenerator[AsyncClient, None
     """Provide an async client for API testing."""
     from backend.server import app
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://localhost") as client:
         yield client
 
 

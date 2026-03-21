@@ -23,7 +23,7 @@ import {
   typography,
   breakpoints,
 } from "../../styles/globalStyles";
-import { flags } from "../../constants/flags";
+import { supervisorFeatureFlags } from "../../constants/roleFeatureFlags";
 
 interface SidebarItem {
   key: string;
@@ -44,72 +44,63 @@ const SUPERVISOR_GROUPS: SidebarGroup[] = [
     items: [
       {
         key: "dashboard",
-        label: "Dashboard",
+        label: "Today",
         icon: "grid",
         route: "/supervisor/dashboard",
       },
       {
         key: "sessions",
-        label: "Sessions",
+        label: "Count Sessions",
         icon: "cube",
         route: "/supervisor/sessions",
       },
+      {
+        key: "variances",
+        label: "Count Differences",
+        icon: "alert-circle",
+        route: "/supervisor/variances",
+      },
     ],
   },
   {
-    title: "Monitoring",
+    title: "Operations",
     items: [
       {
         key: "user-workflows",
-        label: "User Workflows",
+        label: "Team Activity",
         icon: "git-network",
         route: "/supervisor/user-workflows",
       },
-      {
-        key: "activity-logs",
-        label: "Activity Logs",
-        icon: "list",
-        route: "/supervisor/activity-logs",
-      },
-      ...(flags.enableNotes
+      ...(supervisorFeatureFlags.activityLogs
         ? [
             {
-              key: "notes",
-              label: "Notes",
-              icon: "document-text",
-              route: "/supervisor/notes",
+              key: "activity-logs",
+              label: "Activity History",
+              icon: "list",
+              route: "/supervisor/activity-logs",
             } satisfies SidebarItem,
           ]
         : []),
-      {
-        key: "error-logs",
-        label: "Error Logs",
-        icon: "warning",
-        route: "/supervisor/error-logs",
-      },
-      {
-        key: "sync-conflicts",
-        label: "Sync Conflicts",
-        icon: "sync",
-        route: "/supervisor/sync-conflicts",
-      },
-    ],
-  },
-  {
-    title: "Exports",
-    items: [
-      {
-        key: "export-schedules",
-        label: "Export Schedules",
-        icon: "calendar",
-        route: "/supervisor/export-schedules",
-      },
-      {
-        key: "export-results",
-        label: "Export Results",
-        icon: "document",
-        route: "/supervisor/export-results",
-      },
+      ...(supervisorFeatureFlags.offlineQueue
+        ? [
+            {
+              key: "offline-queue",
+              label: "Pending Uploads",
+              icon: "cloud-offline",
+              route: "/supervisor/offline-queue",
+            } satisfies SidebarItem,
+          ]
+        : []),
+      ...(supervisorFeatureFlags.syncConflicts
+        ? [
+            {
+              key: "sync-conflicts",
+              label: "Sync Issues",
+              icon: "sync",
+              route: "/supervisor/sync-conflicts",
+            } satisfies SidebarItem,
+          ]
+        : []),
     ],
   },
   {
@@ -117,15 +108,9 @@ const SUPERVISOR_GROUPS: SidebarGroup[] = [
     items: [
       {
         key: "settings",
-        label: "Settings",
+        label: "Preferences",
         icon: "settings",
         route: "/supervisor/settings",
-      },
-      {
-        key: "db-mapping",
-        label: "DB Mapping",
-        icon: "server",
-        route: "/supervisor/db-mapping",
       },
     ],
   },
@@ -244,7 +229,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
                   { color: theme.colors.textSecondary },
                 ]}
               >
-                Monitor sessions and resolve issues
+                Daily operations made simple
               </Text>
             </View>
           )}

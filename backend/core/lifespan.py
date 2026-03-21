@@ -392,7 +392,9 @@ async def lifespan(app: FastAPI):  # noqa: C901
             "changeme",
             "your-actual-sql-password",
         }
-        sql_credentials_ready = (not sql_user) or (sql_password and not sql_password_placeholder)
+        sql_credentials_ready = (not sql_user) or bool(
+            sql_password and not sql_password_placeholder
+        )
 
         # Always attach SQL connector to count_lines_router so it can handle its own fallbacks
         try:

@@ -14,6 +14,18 @@ def _make_auth_headers(username: str, role: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+async def _create_user(test_db, username: str, role: str, *, full_name: str) -> None:
+    await test_db.users.delete_many({"username": username})
+    await test_db.users.insert_one(
+        {
+            "username": username,
+            "role": role,
+            "full_name": full_name,
+            "is_active": True,
+        }
+    )
+
+
 @pytest.mark.asyncio
 async def test_get_session_detail_uses_canonical_sessions_and_count_lines(async_client, test_db):
     session_id = "sess-canonical-detail"
@@ -68,6 +80,9 @@ async def test_get_session_detail_uses_canonical_sessions_and_count_lines(async_
 async def test_finalize_session_locks_canonical_count_lines(async_client, test_db):
     session_id = "sess-finalize-ok"
     now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    await _create_user(test_db, "staff1", "staff", full_name="Staff Member")
+    await _create_user(test_db, "supervisor1", "supervisor", full_name="Supervisor User")
 
     await test_db.sessions.insert_one(
         {
@@ -130,6 +145,9 @@ async def test_finalize_session_rejects_unresolved_lines(async_client, test_db):
     session_id = "sess-finalize-blocked"
     now = datetime.now(timezone.utc).replace(tzinfo=None)
 
+    await _create_user(test_db, "staff1", "staff", full_name="Staff Member")
+    await _create_user(test_db, "supervisor1", "supervisor", full_name="Supervisor User")
+
     await test_db.sessions.insert_one(
         {
             "id": session_id,
@@ -173,6 +191,9 @@ async def test_finalize_session_rejects_unresolved_lines(async_client, test_db):
 async def test_finalized_count_lines_are_immutable(async_client, test_db):
     session_id = "sess-immutable"
     now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    await _create_user(test_db, "staff1", "staff", full_name="Staff Member")
+    await _create_user(test_db, "supervisor1", "supervisor", full_name="Supervisor User")
 
     await test_db.sessions.insert_one(
         {

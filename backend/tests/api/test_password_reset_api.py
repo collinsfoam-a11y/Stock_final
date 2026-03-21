@@ -95,7 +95,7 @@ async def test_password_reset_request_fails_when_delivery_unavailable(
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
-        base_url="http://test",
+        base_url="http://localhost",
     ) as client:
         response = await client.post(
             "/api/auth/password-reset/request",
@@ -118,7 +118,7 @@ async def test_password_reset_verify_accepts_phone_number(
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
-        base_url="http://test",
+        base_url="http://localhost",
     ) as client:
         response = await client.post(
             "/api/auth/password-reset/verify",

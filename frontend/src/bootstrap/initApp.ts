@@ -3,12 +3,14 @@ import { withTimeout } from "./withTimeout";
 import { initMonitoringAndDevTools } from "./initDevTools";
 import { initAuthAndSettings } from "./initAuthAndSettings";
 import { initMobileRuntime } from "./initMobileRuntime";
+import { useAuthStore } from "../store/authStore";
 
 export interface InitializeAppOptions {
   fontsLoaded: boolean;
   isDev: boolean;
   loadStoredAuth: () => Promise<void>;
   loadSettings: () => Promise<void>;
+  isAuthenticated?: () => boolean;
 }
 
 export interface InitializeAppResult {
@@ -18,7 +20,13 @@ export interface InitializeAppResult {
 export async function initializeApp(
   options: InitializeAppOptions,
 ): Promise<InitializeAppResult> {
-  const { fontsLoaded, isDev, loadStoredAuth, loadSettings } = options;
+  const {
+    fontsLoaded,
+    isDev,
+    loadStoredAuth,
+    loadSettings,
+    isAuthenticated: isAuthenticatedOverride,
+  } = options;
 
   initMonitoringAndDevTools(isDev);
 
@@ -36,15 +44,8 @@ export async function initializeApp(
     console.warn("MMKV initialization failed or timed out:", e);
   }
 
-  const [authAndSettingsResult, syncResult, themeResult] = await Promise.allSettled([
+  const [authAndSettingsResult, themeResult] = await Promise.allSettled([
     initAuthAndSettings(loadStoredAuth, loadSettings),
-    withTimeout(
-      import("../services/backgroundSync").then(({ registerBackgroundSync }) =>
-        registerBackgroundSync(),
-      ),
-      1000,
-      "Background sync timeout",
-    ),
     withTimeout(
       import("../services/themeService").then(({ ThemeService }) =>
         ThemeService.initialize(),
@@ -53,6 +54,22 @@ export async function initializeApp(
       "Theme initialization timeout",
     ),
   ]);
+
+  let syncResult: PromiseSettledResult<void> | null = null;
+
+  const isAuthenticated =
+    isAuthenticatedOverride?.() ?? useAuthStore.getState().isAuthenticated;
+  if (isAuthenticated) {
+    syncResult = (await Promise.allSettled([
+      withTimeout(
+        import("../services/backgroundSync").then(
+          ({ registerBackgroundSync }) => registerBackgroundSync(),
+        ),
+        1000,
+        "Background sync timeout",
+      ),
+    ]))[0] as PromiseSettledResult<void>;
+  }
 
   if (authAndSettingsResult.status === "rejected") {
     if (isDev) {
@@ -68,7 +85,7 @@ export async function initializeApp(
     }
   }
 
-  if (syncResult.status === "rejected" && isDev) {
+  if (syncResult?.status === "rejected" && isDev) {
     console.warn("Background sync failed:", syncResult.reason);
   }
   if (themeResult.status === "rejected" && isDev) {

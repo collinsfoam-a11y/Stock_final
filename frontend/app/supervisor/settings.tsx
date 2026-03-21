@@ -174,17 +174,17 @@ export default function SettingsScreen() {
           <GlassCard intensity={15} padding={0} style={styles.card}>
             <AnimatedPressable
               style={styles.settingRow}
-              onPress={() => router.push("/supervisor/db-mapping")}
+              onPress={() => router.push("/supervisor/sync-conflicts" as any)}
             >
               <View style={styles.settingLeft}>
                 <View style={styles.iconContainer}>
                   <Ionicons
-                    name="options-outline"
+                    name="sync-outline"
                     size={18}
                     color={theme.colors.text.primary}
                   />
                 </View>
-                <Text style={styles.settingLabel}>Database Mapping</Text>
+                <Text style={styles.settingLabel}>Sync Conflict Review</Text>
               </View>
               <Ionicons
                 name="chevron-forward"

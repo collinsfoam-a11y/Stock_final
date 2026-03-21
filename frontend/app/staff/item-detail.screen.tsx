@@ -32,6 +32,7 @@ import { ItemMrpSection } from "@/components/scan/ItemMrpSection";
 import { ItemSubmitBar } from "@/components/scan/ItemSubmitBar";
 import { ItemSummarySection } from "@/components/scan/ItemSummarySection";
 import { SerializedItemSection } from "@/components/scan/SerializedItemSection";
+import { PhotoCaptureModal } from "@/components/modals/PhotoCaptureModal";
 import { useDeferredItemSubmission } from "@/domains/inventory/hooks/scan/useDeferredItemSubmission";
 import { useItemDraftAutosave } from "@/domains/inventory/hooks/scan/useItemDraftAutosave";
 import { useItemDetailData } from "@/domains/inventory/hooks/scan/useItemDetailData";
@@ -124,13 +125,17 @@ export default function ItemDetailScreen() {
     setQuantity,
   });
   const {
+    closePhotoCapture,
     damagePhoto,
     damageQty,
     damageType,
     handleAddItemPhoto,
+    handlePhotoCaptured,
     handleTakeDamagePhoto,
     isDamageEnabled,
     itemPhotos,
+    photoCaptureTitle,
+    photoCaptureVisible,
     remark,
     removeDamagePhoto,
     removeItemPhoto,
@@ -448,6 +453,13 @@ export default function ItemDetailScreen() {
         onCloseSerialScanner={() => setShowSerialScanner(false)}
         onSerialScanned={handleSerialScanned}
         serialScannerVisible={showSerialScanner}
+      />
+
+      <PhotoCaptureModal
+        visible={photoCaptureVisible}
+        title={photoCaptureTitle}
+        onClose={closePhotoCapture}
+        onCapture={handlePhotoCaptured}
       />
     </ThemedScreen>
   );

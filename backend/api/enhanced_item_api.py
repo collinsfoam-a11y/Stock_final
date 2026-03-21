@@ -8,7 +8,7 @@ import logging
 import re
 import time
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -28,13 +28,18 @@ from backend.services.sql_sync_service import SQLSyncService
 logger = logging.getLogger(__name__)
 
 # These will be initialized at runtime
-db: AsyncIOMotorDatabase = None
-cache_service = None
-monitoring_service: MonitoringService = None
-sql_sync_service: SQLSyncService = None
+db: AsyncIOMotorDatabase = cast(AsyncIOMotorDatabase, None)
+cache_service: Any = None
+monitoring_service: Optional[MonitoringService] = None
+sql_sync_service: Optional[SQLSyncService] = None
 
 
-def init_enhanced_api(database, cache_svc, monitoring_svc, sql_connector_instance=None):
+def init_enhanced_api(
+    database: AsyncIOMotorDatabase,
+    cache_svc: Any,
+    monitoring_svc: MonitoringService,
+    sql_connector_instance: Any = None,
+) -> None:
     """Initialize enhanced API with dependencies"""
     global db, cache_service, monitoring_service, sql_sync_service
     db = database
@@ -467,7 +472,7 @@ def _build_match_conditions(
     return match_conditions
 
 
-def _get_stock_level_filter(stock_level: str) -> dict[str, Optional[Any]]:
+def _get_stock_level_filter(stock_level: str) -> Optional[dict[str, Any]]:
     """Get stock quantity filter based on level"""
     level_map = {
         "zero": {"$eq": 0},
@@ -491,7 +496,7 @@ def _build_search_pipeline(
     rack: Optional[str],
 ) -> list[dict[str, Any]]:
     """Build MongoDB aggregation pipeline for advanced search"""
-    pipeline = []
+    pipeline: list[dict[str, Any]] = []
 
     # Match stage - search criteria
     match_conditions = _build_match_conditions(
@@ -503,7 +508,7 @@ def _build_search_pipeline(
     pipeline.append(_build_relevance_stage(query))
 
     # Sorting
-    sort_stage = {}
+    sort_stage: dict[str, int] = {}
     if sort_by == "relevance":
         sort_stage = {"relevance_score": -1, "item_name": 1}
     elif sort_by == "name":
@@ -687,13 +692,15 @@ async def get_item_api_performance(current_user: dict = Depends(get_current_user
         )
 
         # Comprehensive performance analysis
+        api_metrics = (
+            (await monitoring_service.get_metrics()).get("endpoints", {}) if monitoring_service else {}
+        )
+
         performance_data = {
             "database_health": await db_manager.check_database_health(),
             "data_flow_verification": await db_manager.verify_data_flow(),
             "database_insights": await db_manager.get_database_insights(),
-            "api_metrics": (
-                monitoring_service.get_endpoint_metrics("/erp/items") if monitoring_service else {}
-            ),
+            "api_metrics": api_metrics,
             "cache_stats": await cache_service.get_stats() if cache_service else {},
         }
 
@@ -706,7 +713,7 @@ async def get_item_api_performance(current_user: dict = Depends(get_current_user
 
 @enhanced_item_router.post("/sync/realtime")
 async def trigger_realtime_sync(
-    item_codes: list[str] = None, current_user: dict = Depends(get_current_user)
+    item_codes: Optional[list[str]] = None, current_user: dict = Depends(get_current_user)
 ):
     """
     Trigger real-time sync for specific items or all items (Now disabled as ERP is disconnected)
@@ -754,8 +761,13 @@ async def optimize_database_performance(current_user: dict = Depends(get_current
 
     try:
         from backend.services.database_manager import DatabaseManager
+        from backend.sql_server_connector import SQLServerConnector
 
-        db_manager = DatabaseManager(mongo_client=db.client, mongo_db=db)
+        db_manager = DatabaseManager(
+            mongo_client=db.client,
+            mongo_db=db,
+            sql_connector=SQLServerConnector(),
+        )
 
         optimization_results = await db_manager.optimize_database_performance()
 

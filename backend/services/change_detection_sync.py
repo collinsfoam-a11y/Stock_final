@@ -9,8 +9,9 @@ explicit and handle them in a functional way.
 
 import asyncio
 import logging
+from collections.abc import Awaitable
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import UpdateMany
@@ -26,6 +27,8 @@ logger = logging.getLogger(__name__)
 SyncResult = Result[dict[str, Any], SyncError]
 ProductData = dict[str, Any]
 SyncStats = dict[str, Any]
+ProductFetchResult = Result[list[ProductData], SyncError]
+UpdateOperation = UpdateMany
 
 
 class ChangeDetectionSyncService:
@@ -48,7 +51,7 @@ class ChangeDetectionSyncService:
         self.enabled = enabled
         self.batch_size = batch_size
         self._running = False
-        self._task: asyncio.Task = None
+        self._task: Optional[asyncio.Task[None]] = None
         self._last_sync: Optional[datetime] = None
 
         # Initialize statistics with proper typing
@@ -112,7 +115,7 @@ class ChangeDetectionSyncService:
 
     def _build_update_operations(
         self, changes: list[ProductData]
-    ) -> Result[list[dict[str, Any]], SyncError]:
+    ) -> Result[list[UpdateOperation], SyncError]:
         """
         Build MongoDB update operations for changed products.
 
@@ -126,7 +129,7 @@ class ChangeDetectionSyncService:
             return Ok([])
 
         try:
-            operations = []
+            operations: list[UpdateOperation] = []
             for change in changes:
                 if not change.get("barcode"):
                     logger.warning("Skipping product without barcode: %s", change)
@@ -160,11 +163,11 @@ class ChangeDetectionSyncService:
                 )
             )
 
-    async def _fetch_changed_products(self) -> Result[list[ProductData], SyncError]:
+    async def _fetch_changed_products(self) -> ProductFetchResult:
         """Fetch changed products from the database."""
         query_result = self._get_products_with_changes_query(self._last_sync)
         if query_result.is_err:
-            return query_result  # type: ignore
+            return cast(ProductFetchResult, query_result)
 
         query = query_result.unwrap()
 
@@ -177,8 +180,10 @@ class ChangeDetectionSyncService:
             results = self.sql_connector.execute_query(query, params)
             # Handle if execute_query returns a coroutine
             if asyncio.iscoroutine(results):
-                results = await results
-            return Ok(results or [])
+                results_list = await cast(Awaitable[list[ProductData]], results)
+            else:
+                results_list = cast(Optional[list[ProductData]], results)
+            return Ok(results_list or [])
         except Exception as e:
             return Fail(
                 DatabaseError(
@@ -196,7 +201,7 @@ class ChangeDetectionSyncService:
 
         operations_result = self._build_update_operations(changes)
         if operations_result.is_err:
-            return operations_result  # type: ignore
+            return cast(Result[dict[str, int], SyncError], operations_result)
 
         operations = operations_result.unwrap()
         if not operations:
@@ -241,7 +246,7 @@ class ChangeDetectionSyncService:
             # Step 1: Fetch changed products
             fetch_result = await self._fetch_changed_products()
             if fetch_result.is_err:
-                return fetch_result
+                return cast(SyncResult, fetch_result)
 
             changed_products = fetch_result.unwrap()
 
@@ -252,7 +257,7 @@ class ChangeDetectionSyncService:
             # Step 2: Apply changes to MongoDB
             update_result = await self._apply_changes_to_mongodb(changed_products)
             if update_result.is_err:
-                return update_result
+                return cast(SyncResult, update_result)
 
             stats = update_result.unwrap()
 

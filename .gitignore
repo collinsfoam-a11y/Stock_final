@@ -54,6 +54,8 @@ Thumbs.db
 *.log
 *.log.*
 app.log
+backend_startup.log*
+frontend/pr_*_diff.txt
 
 # Build artifacts
 *.exe

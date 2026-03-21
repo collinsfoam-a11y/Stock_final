@@ -42,6 +42,12 @@ def _numeric_or_none(value: Any) -> Optional[float]:
         return None
 
 
+def _coerce_qty(value: Any, default: float = 0.0) -> float:
+    """Convert a SQL quantity to float, falling back for missing/invalid values."""
+    numeric_value = _numeric_or_none(value)
+    return numeric_value if numeric_value is not None else default
+
+
 def _safe_optional_str(value: Any) -> Optional[str]:
     """Convert value to str, or None if empty/None."""
     if value in (None, ""):
@@ -228,13 +234,13 @@ class SQLSyncService:
         self.enabled = enabled
         self.nightly_sync_hour = nightly_sync_hour
         self._running = False
-        self._task: asyncio.Task = None
+        self._task: Optional[asyncio.Task[Any]] = None
         self._last_sync: Optional[datetime] = None
         self._last_new_item_check: Optional[datetime] = None
         self._last_nightly_sync: Optional[datetime] = None
         self._new_item_check_interval: int = 1800  # Check for new items every 30 minutes
         self._sync_lock = asyncio.Lock()  # Prevent concurrent sync operations
-        self._sync_stats = {
+        self._sync_stats: dict[str, Any] = {
             "total_syncs": 0,
             "successful_syncs": 0,
             "failed_syncs": 0,
@@ -306,7 +312,7 @@ class SQLSyncService:
             raise SQLServerConnectionError("SQL Server connection not available")
 
         start_time = datetime.now(timezone.utc).replace(tzinfo=None)
-        stats = {
+        stats: dict[str, Any] = {
             "items_checked": 0,
             "qty_updated": 0,
             "variances_found": 0,
@@ -424,7 +430,7 @@ class SQLSyncService:
             return {"items_discovered": 0, "error": "SQL Server not connected"}
 
         start_time = datetime.now(timezone.utc).replace(tzinfo=None)
-        stats = {
+        stats: dict[str, Any] = {
             "items_discovered": 0,
             "items_checked": 0,
             "errors": 0,
@@ -471,7 +477,7 @@ class SQLSyncService:
             now = datetime.now(timezone.utc).replace(tzinfo=None)
             for sql_item in new_items:
                 try:
-                    sql_qty = float(sql_item.get("stock_qty", 0.0))
+                    sql_qty = _coerce_qty(sql_item.get("stock_qty"))
                     new_item = _build_new_item_dict(sql_item, sql_qty, now)
                     await self.mongo_db.erp_items.insert_one(new_item)
                     stats["items_discovered"] += 1
@@ -540,7 +546,7 @@ class SQLSyncService:
             return {"error": "SQL Server not connected", "items_synced": 0}
 
         start_time = datetime.now(timezone.utc).replace(tzinfo=None)
-        stats = {
+        stats: dict[str, Any] = {
             "items_checked": 0,
             "qty_updated": 0,
             "items_created": 0,
@@ -613,7 +619,7 @@ class SQLSyncService:
             raise SQLServerConnectionError("SQL Server connection not available")
 
         start_time = datetime.now(timezone.utc).replace(tzinfo=None)
-        stats = {
+        stats: dict[str, Any] = {
             "items_checked": 0,
             "qty_updated": 0,
             "items_created": 0,
@@ -662,7 +668,7 @@ class SQLSyncService:
 
     async def _sync_single_item(self, sql_item: dict[str, Any], stats: dict[str, Any]) -> None:
         """Process a single item from SQL Server for sync."""
-        sql_qty = float(sql_item.get("stock_qty", 0.0))
+        sql_qty = _coerce_qty(sql_item.get("stock_qty"))
         now = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # Get current MongoDB record
@@ -789,7 +795,7 @@ class SQLSyncService:
             if is_connected:
                 sql_item = await asyncio.to_thread(self.sql_connector.get_item_by_code, item_code)
                 if sql_item:
-                    sql_qty = float(sql_item.get("stock_qty", 0.0))
+                    sql_qty = _coerce_qty(sql_item.get("stock_qty"))
 
                     # Get current MongoDB record
                     mongo_item = await self.mongo_db.erp_items.find_one({"item_code": item_code})

@@ -187,12 +187,13 @@ async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
     results: list[dict[str, Any]] = []
     for item in items:
         item_code = item.get("item_code")
-        summary = line_summary.get(item_code, {})
+        item_code_key = str(item_code) if item_code is not None else ""
+        summary = line_summary.get(item_code_key, {})
         price = float(item.get("price") or 0.0)
         stock_qty = float(item.get("stock_qty") or 0.0)
         results.append(
             {
-                "item_code": item_code,
+                "item_code": item_code_key,
                 "item_name": item.get("item_name"),
                 "category": item.get("category"),
                 "warehouse": item.get("warehouse"),

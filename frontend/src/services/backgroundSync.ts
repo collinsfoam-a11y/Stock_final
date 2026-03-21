@@ -6,15 +6,21 @@ import { syncQueue } from "./syncQueue";
 
 const BACKGROUND_SYNC_TASK = "BACKGROUND_SYNC_TASK";
 
+const logInfo = (...args: unknown[]) => {
+  if (__DEV__) {
+    console.log(...args);
+  }
+};
+
 /**
  * Define the background task.
  */
 if (Platform.OS !== "web" && TaskManager?.defineTask) {
   TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
     try {
-      console.log("Background sync task started");
+      logInfo("Background sync task started");
       const result = await syncQueue.performFullSync();
-      console.log("Background sync task completed:", result);
+      logInfo("Background sync task completed:", result);
 
       return result.pushed > 0 || result.pulled > 0
         ? BackgroundFetch.BackgroundFetchResult.NewData
@@ -31,14 +37,14 @@ if (Platform.OS !== "web" && TaskManager?.defineTask) {
  */
 export const registerBackgroundSync = async () => {
   if (Platform.OS === "web" || !TaskManager?.isTaskRegisteredAsync) {
-    console.log("Background sync is not supported on web");
+    logInfo("Background sync is not supported on web");
     return;
   }
 
   // Expo Go does not support Background Fetch / TaskManager execution.
   // Avoid surfacing this as a fatal runtime error on physical devices.
   if (Constants.appOwnership === "expo") {
-    console.log("Background sync registration skipped in Expo Go");
+    logInfo("Background sync registration skipped in Expo Go");
     return;
   }
 
@@ -48,7 +54,7 @@ export const registerBackgroundSync = async () => {
     try {
       const fetchStatus = await BackgroundFetch.getStatusAsync();
       if (fetchStatus !== BackgroundFetch.BackgroundFetchStatus.Available) {
-        console.log(
+        logInfo(
           "Background fetch not available; skipping background sync registration",
           {
             status: fetchStatus,
@@ -63,7 +69,7 @@ export const registerBackgroundSync = async () => {
     const isRegistered =
       await TaskManager.isTaskRegisteredAsync(BACKGROUND_SYNC_TASK);
     if (isRegistered) {
-      console.log("Background sync task already registered");
+      logInfo("Background sync task already registered");
       return;
     }
 
@@ -73,7 +79,7 @@ export const registerBackgroundSync = async () => {
       startOnBoot: true,
     });
 
-    console.log("Background sync task registered");
+    logInfo("Background sync task registered");
   } catch (error) {
     console.error("Failed to register background sync task:", error);
   }
@@ -87,7 +93,7 @@ export const unregisterBackgroundSync = async () => {
 
   try {
     await BackgroundFetch.unregisterTaskAsync(BACKGROUND_SYNC_TASK);
-    console.log("Background sync task unregistered");
+    logInfo("Background sync task unregistered");
   } catch (error) {
     console.error("Failed to unregister background sync task:", error);
   }

@@ -26,11 +26,14 @@ aiohttp>=3.9.0
 memory-profiler>=0.61.0
 
 # Optional local feature packages
+# NOTE: copilotkit is intentionally excluded from the default dev env because
+# current releases require FastAPI < 0.116, which conflicts with the repo's
+# pinned FastAPI runtime. Install it separately only when actively developing
+# the experimental copilot endpoint.
 numpy>=2.0.2
 Pillow>=11.0.0
 sentence-transformers>=2.2.2
 redis[hiredis]>=7.3.0
-copilotkit>=0.1.39
 
 # Optional observability extras
 opentelemetry-api>=1.25.0

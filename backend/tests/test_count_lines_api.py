@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from fastapi import HTTPException
+from pymongo.errors import DuplicateKeyError
 
 from backend.api.count_lines_routes import (
     CountLineApprovalRequest,
@@ -24,6 +25,19 @@ from backend.api.count_lines_routes import (
     verify_stock,
 )
 from backend.api.schemas import CountLineCreate
+
+
+class AsyncIter:
+    """Helper to mock async iterators (like MongoDB cursors)"""
+    def __init__(self, items):
+        self.items = items
+
+    def __aiter__(self):
+        async def gen():
+            for item in self.items:
+                yield item
+        return gen()
+
 
 
 @pytest.fixture(autouse=True)
@@ -251,25 +265,19 @@ class TestCreateCountLine:
         """Create mock database"""
         db = AsyncMock()
         db.sessions.find_one = AsyncMock()
-        db.erp_items.find_one = AsyncMock()
+        db.erp_items.find_one = AsyncMock(return_value=None)
         db.count_lines.count_documents = AsyncMock(return_value=0)
         db.count_lines.find_one = AsyncMock(return_value=None)
         db.count_lines.insert_one = AsyncMock()
         db.sessions.update_one = AsyncMock()
-        db.count_lines.aggregate = AsyncMock(
-            return_value=AsyncMock(to_list=AsyncMock(return_value=[]))
-        )
+        # find() is NOT awaited; its result is used in 'async for', so use Mock + AsyncIter
+        db.count_lines.find = Mock(return_value=AsyncIter([]))
         db.count_lines.update_one = AsyncMock()
-        mock_find_cursor = Mock()
-        mock_find_cursor.sort.return_value = mock_find_cursor
-        mock_find_cursor.skip.return_value = mock_find_cursor
-        mock_find_cursor.limit.return_value = mock_find_cursor
-        mock_find_cursor.to_list = AsyncMock(return_value=[])
-        db.count_lines.find = Mock(return_value=mock_find_cursor)
         db.count_lines.delete_one = AsyncMock()
         db.count_line_drafts.find_one = AsyncMock(return_value=None)
         db.count_line_drafts.insert_one = AsyncMock(return_value=Mock(inserted_id="draft123"))
         db.count_line_drafts.update_one = AsyncMock()
+        db.count_line_drafts.update_many = AsyncMock()
         return db
 
     @pytest.fixture
@@ -316,8 +324,36 @@ class TestCreateCountLine:
         assert result["counted_qty"] == 50
         assert result["variance"] == 10
         assert result["counted_by"] == "testuser"
-        assert result["approval_status"] == "PENDING"
-        mock_db.count_line_drafts.update_one.assert_awaited_once()
+        assert result["approval_status"] == "NEEDS_REVIEW"
+        mock_db.count_line_drafts.update_many.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_create_count_line_broadcasts_dashboard_refresh(
+        self, mock_db, line_data, erp_item
+    ):
+        mock_db.sessions.find_one.return_value = {"id": "session123", "status": "OPEN"}
+        mock_db.erp_items.find_one.return_value = erp_item
+        mock_db.count_lines.count_documents = AsyncMock(return_value=0)
+        mock_db.count_lines.find_one = AsyncMock(return_value=None)
+        mock_db.count_lines.insert_one = AsyncMock()
+        mock_db.sessions.update_one = AsyncMock()
+
+        with (
+            patch("backend.api.count_lines_routes.get_db", return_value=mock_db),
+            patch("backend.api.count_lines_routes.manager") as mock_manager,
+        ):
+            mock_manager.broadcast_to_roles = AsyncMock()
+            await create_count_line(
+                request=AsyncMock(),
+                line_data=line_data,
+                current_user={"username": "testuser"},
+            )
+
+        mock_manager.broadcast_to_roles.assert_awaited_once()
+        message = mock_manager.broadcast_to_roles.await_args.kwargs["message"]
+        assert message["type"] == "dashboard_refresh_requested"
+        assert message["payload"]["event"] == "count_line_created"
+        assert message["payload"]["session_id"] == "session123"
 
     @pytest.mark.asyncio
     async def test_create_count_line_session_not_found(self, mock_db, line_data):
@@ -375,26 +411,28 @@ class TestCreateCountLine:
         mock_db.sessions.find_one.return_value = {"id": "session123", "status": "OPEN"}
         mock_db.erp_items.find_one.return_value = erp_item
         mock_db.count_lines.count_documents = AsyncMock(return_value=1)  # Duplicate exists
-        mock_db.count_lines.find_one = AsyncMock(return_value={"id": "existing", "status": "approved"})  # Existing count
+        mock_db.count_lines.find_one = AsyncMock(return_value=None)  # idempotency check
+        # find_duplicate_count_line uses find() with async for
+        existing_line = {
+            "id": "existing",
+            "session_id": "session123",
+            "item_code": "ITEM001",
+            "floor_no": "F1",
+            "rack_no": "R1",
+            "status": "pending",
+        }
+        mock_db.count_lines.find = Mock(return_value=AsyncIter([existing_line]))
 
-        mock_find_cursor = Mock()
-        mock_find_cursor.sort.return_value = mock_find_cursor
-        mock_find_cursor.skip.return_value = mock_find_cursor
-        mock_find_cursor.limit.return_value = mock_find_cursor
-        mock_find_cursor.to_list = AsyncMock(
-            return_value=[{"id": "existing", "status": "approved", "counted_qty": 50, "version": 1}]
-        )
-        mock_db.count_lines.find = Mock(return_value=mock_find_cursor)
+        with patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db):
+            with pytest.raises(HTTPException) as exc_info:
+                await create_count_line(
+                    request=AsyncMock(),
+                    line_data=line_data,
+                    current_user={"username": "testuser"},
+                )
 
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
-            result = await create_count_line(
-                request=AsyncMock(),
-                line_data=line_data,
-                current_user={"username": "testuser"},
-            )
-
-        assert result["session_id"] == "session123"
-        assert result.get("is_conflict") is True
+        assert exc_info.value.status_code == 409
+        assert "Duplicate Scan" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
     async def test_create_count_line_high_risk(self, mock_db, line_data, erp_item):
@@ -419,6 +457,36 @@ class TestCreateCountLine:
         assert len(result["risk_flags"]) > 0
 
     @pytest.mark.asyncio
+    async def test_create_count_line_treats_none_snapshot_qty_as_zero(
+        self, mock_db, line_data, erp_item
+    ):
+        """A snapshot without erp_qty should not crash count-line creation."""
+        mock_db.sessions.find_one.return_value = {"id": "session123", "status": "OPEN"}
+        mock_db.erp_items.find_one.return_value = erp_item
+        mock_db.count_lines.count_documents = AsyncMock(return_value=0)
+        mock_db.count_lines.find_one = AsyncMock(return_value=None)
+
+        snapshot_service = AsyncMock()
+        snapshot_service.get_or_create_snapshot.return_value = {
+            "erp_qty": None,
+            "baseline_hash": "snapshot-hash",
+        }
+
+        with (
+            patch("backend.api.count_lines_routes.get_db", return_value=mock_db),
+            patch("backend.api.count_lines_routes._snapshot_service", snapshot_service),
+        ):
+            result = await create_count_line(
+                request=AsyncMock(),
+                line_data=line_data,
+                current_user={"username": "testuser"},
+            )
+
+        assert result["erp_qty"] == 0.0
+        assert result["variance"] == line_data.counted_qty
+        assert result["baseline_hash"] == "snapshot-hash"
+
+    @pytest.mark.asyncio
     async def test_save_count_line_draft_persists(self, mock_db, line_data):
         with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
             result = await save_count_line_draft(
@@ -431,6 +499,85 @@ class TestCreateCountLine:
         assert result["data"]["status"] == "draft"
         mock_db.count_line_drafts.insert_one.assert_awaited_once()
 
+    @pytest.mark.asyncio
+    async def test_save_count_line_draft_preserves_item_name(self, mock_db):
+        line_data = CountLineCreate(
+            session_id="session123",
+            item_code="ITEM001",
+            item_name="Draft Item Name",
+            counted_qty=50,
+            floor_no="F1",
+            rack_no="R1",
+        )
+
+        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+            result = await save_count_line_draft(
+                request=AsyncMock(),
+                line_data=line_data,
+                current_user={"username": "testuser"},
+            )
+
+        inserted_payload = mock_db.count_line_drafts.insert_one.call_args.args[0]
+        assert inserted_payload["item_name"] == "Draft Item Name"
+        assert result["data"]["item_name"] == "Draft Item Name"
+
+    @pytest.mark.asyncio
+    async def test_save_count_line_draft_fills_missing_item_name_from_erp(self, mock_db):
+        line_data = CountLineCreate(
+            session_id="session123",
+            item_code="ITEM001",
+            counted_qty=50,
+            floor_no="F1",
+            rack_no="R1",
+        )
+        mock_db.erp_items.find_one = AsyncMock(
+            return_value={"item_code": "ITEM001", "item_name": "ERP Draft Name"}
+        )
+
+        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+            result = await save_count_line_draft(
+                request=AsyncMock(),
+                line_data=line_data,
+                current_user={"username": "testuser"},
+            )
+
+        inserted_payload = mock_db.count_line_drafts.insert_one.call_args.args[0]
+        assert inserted_payload["item_name"] == "ERP Draft Name"
+        assert result["data"]["item_name"] == "ERP Draft Name"
+
+    @pytest.mark.asyncio
+    async def test_save_count_line_draft_sets_index_identity_fields(self, mock_db, line_data):
+        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+            await save_count_line_draft(
+                request=AsyncMock(),
+                line_data=line_data,
+                current_user={"username": "testuser"},
+            )
+
+        inserted_payload = mock_db.count_line_drafts.insert_one.call_args.args[0]
+        assert inserted_payload["user_id"] == "testuser"
+        assert inserted_payload["line_id"] == "ITEM001|F1|R1|"
+
+    @pytest.mark.asyncio
+    async def test_save_count_line_draft_recovers_from_duplicate_key(self, mock_db, line_data):
+        mock_db.count_line_drafts.find_one = AsyncMock(
+            side_effect=[None, None, {"_id": "existing_draft"}]
+        )
+        mock_db.count_line_drafts.insert_one = AsyncMock(
+            side_effect=DuplicateKeyError("duplicate key")
+        )
+
+        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+            result = await save_count_line_draft(
+                request=AsyncMock(),
+                line_data=line_data,
+                current_user={"username": "testuser"},
+            )
+
+        assert result["success"] is True
+        assert result["data"]["id"] == "existing_draft"
+        mock_db.count_line_drafts.update_one.assert_awaited_once()
+
 
 class TestVerifyStock:
     """Test verify_stock function"""
@@ -439,9 +586,21 @@ class TestVerifyStock:
     async def test_verify_stock_success(self):
         """Test successful stock verification"""
         mock_db = AsyncMock()
+        mock_db.count_lines.find_one = AsyncMock(
+            return_value={
+                "_id": "mongo-id-1",
+                "id": "line123",
+                "session_id": "session123",
+                "status": "pending",
+                "variance": -1,
+            }
+        )
+        mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
         mock_db.count_lines.update_one = AsyncMock(return_value=Mock(modified_count=1))
+        mock_db.count_lines.find = Mock(return_value=AsyncIter([]))
+        mock_db.sessions.update_one = AsyncMock()
 
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db):
             result = await verify_stock(
                 line_id="line123",
                 current_user={"username": "supervisor", "role": "supervisor"},
@@ -452,12 +611,48 @@ class TestVerifyStock:
         assert mock_db.count_lines.update_one.called
 
     @pytest.mark.asyncio
+    async def test_verify_stock_broadcasts_dashboard_refresh(self):
+        mock_db = AsyncMock()
+        mock_db.count_lines.find_one = AsyncMock(
+            return_value={
+                "_id": "mongo-id-1",
+                "id": "line123",
+                "session_id": "session123",
+                "status": "pending",
+                "variance": -1,
+                "item_code": "ITEM001",
+                "item_name": "Test Item",
+            }
+        )
+        mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
+        mock_db.count_lines.update_one = AsyncMock(return_value=Mock(modified_count=1))
+        mock_db.count_lines.find = Mock(return_value=AsyncIter([]))
+        mock_db.sessions.update_one = AsyncMock()
+
+        with (
+            patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db),
+            patch("backend.api.count_lines_routes.manager") as mock_manager,
+        ):
+            mock_manager.broadcast_to_roles = AsyncMock()
+            await verify_stock(
+                line_id="line123",
+                current_user={"username": "supervisor", "role": "supervisor"},
+                request=AsyncMock(),
+            )
+
+        mock_manager.broadcast_to_roles.assert_awaited_once()
+        message = mock_manager.broadcast_to_roles.await_args.kwargs["message"]
+        assert message["type"] == "dashboard_refresh_requested"
+        assert message["payload"]["event"] == "count_line_verified"
+        assert message["payload"]["session_id"] == "session123"
+
+    @pytest.mark.asyncio
     async def test_verify_stock_not_found(self):
         """Test stock verification with non-existent line"""
         mock_db = AsyncMock()
-        mock_db.count_lines.update_one = AsyncMock(return_value=Mock(modified_count=0))
+        mock_db.count_lines.find_one = AsyncMock(return_value=None)
 
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db):
             with pytest.raises(HTTPException) as exc_info:
                 await verify_stock(
                     line_id="nonexistent",
@@ -470,12 +665,14 @@ class TestVerifyStock:
     @pytest.mark.asyncio
     async def test_verify_stock_insufficient_permissions(self):
         """Test stock verification with insufficient permissions"""
-        with pytest.raises(HTTPException) as exc_info:
-            await verify_stock(
-                line_id="line123",
-                current_user={"username": "staff", "role": "staff"},
-                request=AsyncMock(),
-            )
+        mock_db = AsyncMock()
+        with patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db):
+            with pytest.raises(HTTPException) as exc_info:
+                await verify_stock(
+                    line_id="line123",
+                    current_user={"username": "staff", "role": "staff"},
+                    request=AsyncMock(),
+                )
 
         assert exc_info.value.status_code == 403
 
@@ -487,9 +684,20 @@ class TestUnverifyStock:
     async def test_unverify_stock_success(self):
         """Test successful stock unverification"""
         mock_db = AsyncMock()
+        mock_db.count_lines.find_one = AsyncMock(
+            return_value={
+                "_id": "mongo-id-1",
+                "id": "line123",
+                "session_id": "session123",
+                "status": "pending",
+            }
+        )
+        mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
         mock_db.count_lines.update_one = AsyncMock(return_value=Mock(modified_count=1))
+        mock_db.count_lines.find = Mock(return_value=AsyncIter([]))
+        mock_db.sessions.update_one = AsyncMock()
 
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db):
             result = await unverify_stock(
                 line_id="line123",
                 current_user={"username": "supervisor", "role": "supervisor"},
@@ -500,12 +708,47 @@ class TestUnverifyStock:
         assert mock_db.count_lines.update_one.called
 
     @pytest.mark.asyncio
+    async def test_unverify_stock_broadcasts_dashboard_refresh(self):
+        mock_db = AsyncMock()
+        mock_db.count_lines.find_one = AsyncMock(
+            return_value={
+                "_id": "mongo-id-1",
+                "id": "line123",
+                "session_id": "session123",
+                "status": "pending",
+                "item_code": "ITEM001",
+                "item_name": "Test Item",
+            }
+        )
+        mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
+        mock_db.count_lines.update_one = AsyncMock(return_value=Mock(modified_count=1))
+        mock_db.count_lines.find = Mock(return_value=AsyncIter([]))
+        mock_db.sessions.update_one = AsyncMock()
+
+        with (
+            patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db),
+            patch("backend.api.count_lines_routes.manager") as mock_manager,
+        ):
+            mock_manager.broadcast_to_roles = AsyncMock()
+            await unverify_stock(
+                line_id="line123",
+                current_user={"username": "supervisor", "role": "supervisor"},
+                request=AsyncMock(),
+            )
+
+        mock_manager.broadcast_to_roles.assert_awaited_once()
+        message = mock_manager.broadcast_to_roles.await_args.kwargs["message"]
+        assert message["type"] == "dashboard_refresh_requested"
+        assert message["payload"]["event"] == "count_line_unverified"
+        assert message["payload"]["session_id"] == "session123"
+
+    @pytest.mark.asyncio
     async def test_unverify_stock_not_found(self):
         """Test stock unverification with non-existent line"""
         mock_db = AsyncMock()
-        mock_db.count_lines.update_one = AsyncMock(return_value=Mock(modified_count=0))
+        mock_db.count_lines.find_one = AsyncMock(return_value=None)
 
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db):
             with pytest.raises(HTTPException) as exc_info:
                 await unverify_stock(
                     line_id="nonexistent",
@@ -522,6 +765,7 @@ class TestApprovalWorkflow:
     @pytest.mark.asyncio
     async def test_approve_count_line_notifies_owner(self):
         mock_db = AsyncMock()
+        mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
         mock_db.count_lines.find_one = AsyncMock(
             return_value={
                 "_id": "mongo-id-1",
@@ -534,6 +778,9 @@ class TestApprovalWorkflow:
             }
         )
         mock_db.count_lines.update_one = AsyncMock(return_value=Mock(matched_count=1))
+        # Support async for in recompute_session_totals
+        # find() is NOT awaited, but its result is used in 'async for', so use a regular Mock
+        mock_db.count_lines.find = Mock(return_value=AsyncIter([]))
 
         notification_service = AsyncMock()
         notification_service.notify_count_approved = AsyncMock()
@@ -573,6 +820,7 @@ class TestApprovalWorkflow:
     @pytest.mark.asyncio
     async def test_reject_count_line_assigns_recount_and_notifies_both_users(self):
         mock_db = AsyncMock()
+        mock_db.sessions.find_one = AsyncMock(return_value={"id": "session456", "status": "OPEN"})
         mock_db.count_lines.find_one = AsyncMock(
             return_value={
                 "_id": "mongo-id-2",
@@ -585,6 +833,9 @@ class TestApprovalWorkflow:
             }
         )
         mock_db.count_lines.update_one = AsyncMock(return_value=Mock(matched_count=1))
+        # Support async for in recompute_session_totals
+        # find() is NOT awaited, but its result is used in 'async for', so use a regular Mock
+        mock_db.count_lines.find = Mock(return_value=AsyncIter([]))
 
         notification_service = AsyncMock()
         notification_service.notify_count_rejected = AsyncMock()
@@ -642,18 +893,18 @@ class TestGetCountLines:
     async def test_get_count_lines_basic(self):
         """Test basic count lines retrieval"""
         mock_db = Mock()
-        mock_db.count_lines.count_documents = AsyncMock(return_value=100)
-        mock_find_cursor = Mock()
-        mock_find_cursor.sort.return_value = mock_find_cursor
-        mock_find_cursor.skip.return_value = mock_find_cursor
-        mock_find_cursor.limit.return_value = mock_find_cursor
-        mock_find_cursor.to_list = AsyncMock(
+        mock_db.count_lines.count_documents = AsyncMock(return_value=2)
+        cursor = Mock()
+        cursor.sort.return_value = cursor
+        cursor.skip.return_value = cursor
+        cursor.limit.return_value = cursor
+        cursor.to_list = AsyncMock(
             return_value=[
                 {"id": "1", "session_id": "session123", "counted_qty": 50},
                 {"id": "2", "session_id": "session123", "counted_qty": 30},
             ]
         )
-        mock_db.count_lines.find.return_value = mock_find_cursor
+        mock_db.count_lines.find.return_value = cursor
 
         with patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db):
             result = await get_count_lines(
@@ -664,7 +915,7 @@ class TestGetCountLines:
             )
 
         assert len(result["items"]) == 2
-        assert result["pagination"]["total"] == 100
+        assert result["pagination"]["total"] == 2
         assert result["pagination"]["page"] == 1
         assert result["pagination"]["page_size"] == 50
 
@@ -672,12 +923,7 @@ class TestGetCountLines:
     async def test_get_count_lines_with_verified_filter(self):
         """Test count lines retrieval with verified filter"""
         mock_db = Mock()
-        mock_db.count_lines.count_documents = AsyncMock(return_value=50)
-        mock_find_cursor = Mock()
-        mock_find_cursor.sort.return_value = mock_find_cursor
-        mock_find_cursor.skip.return_value = mock_find_cursor
-        mock_find_cursor.limit.return_value = mock_find_cursor
-        mock_find_cursor.to_list = AsyncMock(
+        mock_db.count_lines.find.return_value.sort.return_value.to_list = AsyncMock(
             return_value=[
                 {
                     "id": "3",
@@ -687,7 +933,6 @@ class TestGetCountLines:
                 }
             ]
         )
-        mock_db.count_lines.find.return_value = mock_find_cursor
 
         with patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db):
             result = await get_count_lines(
@@ -700,7 +945,7 @@ class TestGetCountLines:
 
         assert len(result["items"]) == 1
         assert result["items"][0]["verified"] is True
-        assert result["pagination"]["total"] == 50
+        assert result["pagination"]["total"] == 1
 
 
 class TestCountLinesAPIEdgeCases:
@@ -735,28 +980,30 @@ class TestCountLinesAPIEdgeCases:
     @pytest.mark.asyncio
     async def test_create_count_line_session_stats_error(self):
         """Test count line creation when session stats update fails"""
-        mock_db = Mock()
-        mock_db.sessions.find_one.return_value = {"id": "session123", "status": "OPEN"}
-        mock_db.erp_items.find_one.return_value = {
+        mock_db = AsyncMock()
+        mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
+        mock_db.erp_items.find_one = AsyncMock(return_value={
             "item_name": "Test Item",
             "barcode": "123456789",
             "stock_qty": 40,
             "mrp": 100,
-        }
+        })
         mock_db.count_lines.count_documents = AsyncMock(return_value=0)
         mock_db.count_lines.find_one = AsyncMock(return_value=None)
         mock_db.count_lines.insert_one = AsyncMock()
-        mock_find_cursor = Mock()
-        mock_find_cursor.sort.return_value = mock_find_cursor
-        mock_find_cursor.skip.return_value = mock_find_cursor
-        mock_find_cursor.limit.return_value = mock_find_cursor
-        mock_find_cursor.to_list = AsyncMock(return_value=[])
-        mock_db.count_lines.find = Mock(return_value=mock_find_cursor)
-        # Simulate error in session stats update
-        mock_db.count_lines.aggregate = AsyncMock(side_effect=Exception("Database error"))
+        # Support async for in recompute_session_totals
+        # find() is NOT awaited, but its result is used in 'async for', so use a regular Mock
+        mock_db.count_lines.find = Mock(return_value=AsyncIter([]))
         mock_db.sessions.update_one = AsyncMock()
+        mock_db.count_line_drafts.update_many = AsyncMock()
 
-        with patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db):
+        with (
+            patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db),
+            patch(
+                "backend.api.count_lines_routes.recompute_session_totals",
+                AsyncMock(side_effect=Exception("Database error")),
+            ),
+        ):
             # Should still succeed despite stats update error
             result = await create_count_line(
                 request=AsyncMock(),
@@ -770,3 +1017,82 @@ class TestCountLinesAPIEdgeCases:
             )
 
         assert result["session_id"] == "session123"
+
+    @pytest.mark.asyncio
+    async def test_create_count_line_updates_session_barcode_by_dual_key(self):
+        mock_db = AsyncMock()
+        mock_db.sessions.find_one = AsyncMock(
+            return_value={"session_id": "session123", "status": "OPEN"}
+        )
+        mock_db.erp_items.find_one = AsyncMock(
+            return_value={
+                "item_name": "Test Item",
+                "barcode": "123456789",
+                "stock_qty": 40,
+                "mrp": 100,
+            }
+        )
+        mock_db.count_lines.count_documents = AsyncMock(return_value=0)
+        mock_db.count_lines.find_one = AsyncMock(return_value=None)
+        mock_db.count_lines.insert_one = AsyncMock()
+        mock_db.count_lines.find = Mock(return_value=AsyncIter([]))
+        mock_db.sessions.update_one = AsyncMock()
+        mock_db.count_line_drafts.update_many = AsyncMock()
+
+        with patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db):
+            result = await create_count_line(
+                request=AsyncMock(),
+                line_data=CountLineCreate(
+                    session_id="session123",
+                    item_code="ITEM001",
+                    counted_qty=50,
+                    barcode="123456789",
+                    variance_reason="test_reason",
+                ),
+                current_user={"username": "testuser"},
+            )
+
+        assert result["session_id"] == "session123"
+        filter_query = mock_db.sessions.update_one.await_args_list[-1].args[0]
+        assert filter_query == {
+            "$or": [
+                {"id": "session123"},
+                {"session_id": "session123"},
+            ]
+        }
+
+    @pytest.mark.asyncio
+    async def test_create_count_line_auto_approves_zero_variance(self):
+        """Zero-variance lines should not require supervisor verification."""
+        mock_db = AsyncMock()
+        mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
+        mock_db.erp_items.find_one = AsyncMock(
+            return_value={
+                "item_name": "Test Item",
+                "barcode": "123456789",
+                "stock_qty": 50,
+                "mrp": 100,
+            }
+        )
+        mock_db.count_lines.find_one = AsyncMock(return_value=None)
+        mock_db.count_lines.insert_one = AsyncMock()
+        mock_db.count_lines.find = Mock(return_value=AsyncIter([]))
+        mock_db.sessions.update_one = AsyncMock()
+        mock_db.count_line_drafts.update_many = AsyncMock()
+
+        with patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db):
+            result = await create_count_line(
+                request=AsyncMock(),
+                line_data=CountLineCreate(
+                    session_id="session123",
+                    item_code="ITEM001",
+                    counted_qty=50,
+                ),
+                current_user={"username": "testuser"},
+            )
+
+        assert result["variance"] == 0
+        assert result["status"] == "approved"
+        assert result["approval_status"] == "APPROVED"
+        assert result["approved_by"] == "system"
+        assert result["approved_at"] is not None

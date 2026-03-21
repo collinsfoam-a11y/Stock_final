@@ -27,7 +27,7 @@ class HeatmapService:
         if session_id:
             match_stage["session_id"] = session_id
 
-        pipeline = [
+        pipeline: list[dict[str, Any]] = [
             {"$match": match_stage},
             {
                 "$group": {

@@ -121,4 +121,6 @@ class ConnectionPoolStatusResponse(BaseModel):
     checked_out: int = Field(..., description="Number of connections in use")
     utilization: float = Field(..., description="Pool utilization percentage")
     metrics: dict[str, Any] = Field(..., description="Detailed metrics")
-    health_check: dict[str, Optional[Any]] = Field(None, description="Last health check results")
+    health_check: Optional[dict[str, Optional[Any]]] = Field(
+        default=None, description="Last health check results"
+    )

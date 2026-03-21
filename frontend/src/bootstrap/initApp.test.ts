@@ -2,6 +2,7 @@ import { initializeApp } from "./initApp";
 import { initAuthAndSettings } from "./initAuthAndSettings";
 import { initMobileRuntime } from "./initMobileRuntime";
 import { initMonitoringAndDevTools } from "./initDevTools";
+import { registerBackgroundSync } from "../services/backgroundSync";
 
 jest.mock("../services/mmkvStorage", () => ({
   mmkvStorage: {
@@ -11,6 +12,12 @@ jest.mock("../services/mmkvStorage", () => ({
 
 jest.mock("../services/backgroundSync", () => ({
   registerBackgroundSync: jest.fn(async () => undefined),
+}));
+
+jest.mock("../store/authStore", () => ({
+  useAuthStore: {
+    getState: jest.fn(() => ({ isAuthenticated: false })),
+  },
 }));
 
 jest.mock("../services/themeService", () => ({
@@ -60,6 +67,7 @@ describe("initializeApp", () => {
       isDev: true,
       loadStoredAuth: async () => undefined,
       loadSettings: async () => undefined,
+      isAuthenticated: () => false,
     });
 
     expect(initMonitoringAndDevTools).toHaveBeenCalled();
@@ -75,7 +83,21 @@ describe("initializeApp", () => {
         isDev: true,
         loadStoredAuth: async () => undefined,
         loadSettings: async () => undefined,
+        isAuthenticated: () => false,
       }),
     ).rejects.toThrow("mobile runtime failed");
   });
+
+  it("skips background sync registration when user is not authenticated", async () => {
+    await initializeApp({
+      fontsLoaded: true,
+      isDev: true,
+      loadStoredAuth: async () => undefined,
+      loadSettings: async () => undefined,
+      isAuthenticated: () => false,
+    });
+
+    expect(registerBackgroundSync).not.toHaveBeenCalled();
+  });
+
 });

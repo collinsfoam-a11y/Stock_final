@@ -1,6 +1,7 @@
 """Compatibility wrapper for legacy middleware setup imports."""
 
 import logging
+from typing import Any
 
 from fastapi import FastAPI
 
@@ -10,9 +11,11 @@ from backend.config import settings
 logger = logging.getLogger(__name__)
 
 try:
-    from backend.middleware.security_headers import SecurityHeadersMiddleware
+    from backend.middleware.security_headers import SecurityHeadersMiddleware as _SecurityHeaders
+
+    security_headers_middleware: Any = _SecurityHeaders
 except ImportError:  # pragma: no cover - optional middleware
-    SecurityHeadersMiddleware = None
+    security_headers_middleware = None
 
 
 def setup_middleware(app: FastAPI) -> None:
@@ -21,5 +24,5 @@ def setup_middleware(app: FastAPI) -> None:
         app,
         settings=settings,
         logger=logger,
-        security_headers_middleware=SecurityHeadersMiddleware,
+        security_headers_middleware=security_headers_middleware,
     )

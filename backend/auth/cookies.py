@@ -2,11 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Literal, Optional, TypedDict, cast
 
 from fastapi import Request, Response
 
 from backend.config import settings
+
+
+class _CookieKwargs(TypedDict, total=False):
+    httponly: bool
+    max_age: int
+    expires: int
+    path: str
+    secure: bool
+    samesite: Literal["lax", "strict", "none"]
+    domain: str
 
 
 def _cookie_domain() -> Optional[str]:
@@ -19,16 +29,18 @@ def _cookie_secure() -> bool:
     return bool(getattr(settings, "FORCE_HTTPS", False) or env in {"production", "staging"})
 
 
-def _cookie_samesite() -> str:
+def _cookie_samesite() -> Literal["lax", "strict", "none"]:
     configured = str(getattr(settings, "AUTH_COOKIE_SAMESITE", "lax")).lower()
     if configured == "none" and not _cookie_secure():
         # Browsers reject SameSite=None cookies without Secure.
         return "lax"
-    return configured
+    if configured in {"lax", "strict", "none"}:
+        return cast(Literal["lax", "strict", "none"], configured)
+    return "lax"
 
 
-def _cookie_kwargs(max_age_seconds: int) -> dict[str, object]:
-    cookie_kwargs: dict[str, object] = {
+def _cookie_kwargs(max_age_seconds: int) -> _CookieKwargs:
+    cookie_kwargs: _CookieKwargs = {
         "httponly": True,
         "max_age": max_age_seconds,
         "expires": max_age_seconds,
@@ -59,16 +71,15 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str) 
 
 def clear_auth_cookies(response: Response) -> None:
     domain = _cookie_domain()
-    delete_kwargs: dict[str, object] = {"path": "/"}
-    if domain:
-        delete_kwargs["domain"] = domain
     response.delete_cookie(
         getattr(settings, "AUTH_ACCESS_COOKIE_NAME", "sv_access_token"),
-        **delete_kwargs,
+        path="/",
+        domain=domain,
     )
     response.delete_cookie(
         getattr(settings, "AUTH_REFRESH_COOKIE_NAME", "sv_refresh_token"),
-        **delete_kwargs,
+        path="/",
+        domain=domain,
     )
 
 

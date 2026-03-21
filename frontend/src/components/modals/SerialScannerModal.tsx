@@ -3,7 +3,7 @@
  * Validates scanned codes as serial numbers (not barcodes)
  * Collects detected candidates and lets user tap the correct serial to add
  */
-import React, { useRef, useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -17,11 +17,21 @@ import {
 import { CameraView } from "expo-camera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
-import { ScanThrottleManager } from "../../config/scannerConfig";
 import {
   validateScannedSerial,
   normalizeSerialValue,
 } from "../../utils/scanUtils";
+import {
+  clearRecentScanTimes,
+  DEFAULT_SERIAL_RESCAN_WINDOW_MS,
+  createDetectedCodeList,
+  DetectedCode,
+  DetectedCodeStatus,
+  isScanWithinRescanWindow,
+  isScanLocked,
+  nextAfterResume,
+  nextAfterSerialAdded,
+} from "./serialScannerState";
 import {
   colors,
   spacing,
@@ -29,16 +39,6 @@ import {
   fontWeight,
   radius as borderRadius,
 } from "../../theme/unified";
-
-type DetectedCodeStatus = "ready" | "invalid" | "duplicate";
-
-type DetectedCode = {
-  code: string;
-  status: DetectedCodeStatus;
-  message: string;
-};
-
-const MAX_DETECTED_CODES = 20;
 
 interface SerialScannerModalProps {
   visible: boolean;
@@ -61,9 +61,26 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
   onSerialScanned,
   onClose,
 }) => {
-  const throttleManagerRef = useRef<ScanThrottleManager>(
-    new ScanThrottleManager(),
+  const getInvalidCandidateMessage = useCallback(
+    (code: string, fallback?: string) => {
+      const numericOnly = /^\d+$/.test(code);
+      const eanOrUpcLike = numericOnly && code.length >= 8 && code.length <= 14;
+      const likelyManufacturerCode = numericOnly && code.length > 14;
+
+      if (fallback?.includes("product barcode") || eanOrUpcLike) {
+        return "EAN/UPC barcode detected. Select the serial code from the list.";
+      }
+
+      if (likelyManufacturerCode) {
+        return "Manufacturer code detected. Select the correct serial code.";
+      }
+
+      return fallback || "Invalid serial number";
+    },
+    [],
   );
+
+  const recentScanTimesRef = useRef<Map<string, number>>(new Map());
 
   const [lastScanned, setLastScanned] = useState<string | null>(null);
   const [scanFeedback, setScanFeedback] = useState<{
@@ -71,6 +88,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
     message: string;
   } | null>(null);
   const [detectedCodes, setDetectedCodes] = useState<DetectedCode[]>([]);
+  const [scanPaused, setScanPaused] = useState(false);
 
   // Manual Input State
   const [showManualInput, setShowManualInput] = useState(false);
@@ -112,10 +130,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
   }, [manualText, existingSerials, defaultMrp, onSerialScanned]);
 
   const upsertDetectedCode = useCallback((entry: DetectedCode) => {
-    setDetectedCodes((prev) => {
-      const deduped = prev.filter((candidate) => candidate.code !== entry.code);
-      return [entry, ...deduped].slice(0, MAX_DETECTED_CODES);
-    });
+    setDetectedCodes((prev) => createDetectedCodeList(prev, entry));
   }, []);
 
   const handleDetectedCodePress = useCallback(
@@ -149,12 +164,32 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setScanFeedback({
         type: "success",
-        message: `Serial added: ${candidate.code}`,
+        message: `Serial added: ${candidate.code}. Tap Scan Next to continue.`,
       });
-      setDetectedCodes((prev) => prev.filter((entry) => entry.code !== candidate.code));
+      setDetectedCodes([]);
+      setScanPaused(nextAfterSerialAdded({ scanPaused }).scanPaused);
     },
-    [defaultMrp, onSerialScanned],
+    [defaultMrp, onSerialScanned, scanPaused],
   );
+
+  const handleResumeScan = useCallback(() => {
+    setScanPaused(nextAfterResume({ scanPaused }).scanPaused);
+    setDetectedCodes([]);
+    setScanFeedback({
+      type: "success",
+      message: "Ready to scan the next serial.",
+    });
+  }, [scanPaused]);
+
+  const handleResetDetected = useCallback(() => {
+    setDetectedCodes([]);
+    setLastScanned(null);
+    clearRecentScanTimes(recentScanTimesRef.current);
+    setScanFeedback({
+      type: "success",
+      message: "Detected list reset. Continue scanning.",
+    });
+  }, []);
 
   // Reset state when modal opens
   React.useEffect(() => {
@@ -162,6 +197,8 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
       setLastScanned(null);
       setScanFeedback(null);
       setDetectedCodes([]);
+      setScanPaused(false);
+      clearRecentScanTimes(recentScanTimesRef.current);
     }
   }, [visible]);
 
@@ -176,15 +213,27 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
 
   const handleBarcodeScanned = useCallback(
     (data: { data: string }) => {
+      if (isScanLocked({ scanPaused })) {
+        return;
+      }
+
       const scannedValue = normalizeSerialValue(data.data);
       if (!scannedValue) {
         return;
       }
 
-      // Check throttle
-      if (!throttleManagerRef.current.shouldProcessScan(scannedValue)) {
+      const now = Date.now();
+      const lastSeenAt = recentScanTimesRef.current.get(scannedValue) ?? 0;
+      if (
+        isScanWithinRescanWindow({
+          lastSeenAt,
+          now,
+          windowMs: DEFAULT_SERIAL_RESCAN_WINDOW_MS,
+        })
+      ) {
         return;
       }
+      recentScanTimesRef.current.set(scannedValue, now);
 
       // Validate as serial number (not barcode)
       const validation = validateScannedSerial(scannedValue, existingSerials);
@@ -195,7 +244,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
           : "invalid";
       const message = validation.valid
         ? "Tap to add"
-        : validation.error || "Invalid serial number";
+        : getInvalidCandidateMessage(scannedValue, validation.error);
       upsertDetectedCode({
         code: scannedValue,
         status,
@@ -222,7 +271,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
         message: "Code detected. Tap it below to add.",
       });
     },
-    [existingSerials, upsertDetectedCode],
+    [existingSerials, getInvalidCandidateMessage, scanPaused, upsertDetectedCode],
   );
 
   const getFeedbackStyle = () => {
@@ -323,15 +372,34 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
               />
               <Text style={styles.infoText}>
                 Scan product labels and select the correct serial code.{"\n"}
-                Stickers with multiple barcodes are supported.
+                Stickers with multiple barcodes are supported. Serials are added
+                one-by-one.
               </Text>
             </View>
 
+            {scanPaused && (
+              <TouchableOpacity
+                style={[
+                  styles.doneButton,
+                  { marginBottom: spacing.md, backgroundColor: colors.success[600] },
+                ]}
+                onPress={handleResumeScan}
+              >
+                <Ionicons name="scan-outline" size={22} color={colors.white} />
+                <Text style={styles.doneButtonText}>Scan Next Serial</Text>
+              </TouchableOpacity>
+            )}
+
             {detectedCodes.length > 0 && (
               <View style={styles.detectedList}>
-                <Text style={styles.detectedLabel}>
-                  Detected Codes ({detectedCodes.length})
-                </Text>
+                <View style={styles.detectedHeader}>
+                  <Text style={styles.detectedLabel}>
+                    Detected Codes ({detectedCodes.length})
+                  </Text>
+                  <TouchableOpacity onPress={handleResetDetected}>
+                    <Text style={styles.detectedResetText}>Reset</Text>
+                  </TouchableOpacity>
+                </View>
                 {detectedCodes.map((candidate) => (
                   <TouchableOpacity
                     key={candidate.code}
@@ -600,11 +668,22 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     gap: spacing.xs,
   },
+  detectedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.xs,
+  },
   detectedLabel: {
     fontSize: fontSize.xs,
     fontWeight: fontWeight.medium,
     color: colors.neutral[300],
-    marginBottom: spacing.xs,
+    textTransform: "uppercase",
+  },
+  detectedResetText: {
+    color: colors.primary[300],
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semiBold,
     textTransform: "uppercase",
   },
   detectedRow: {

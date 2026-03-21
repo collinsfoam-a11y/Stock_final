@@ -220,3 +220,26 @@ async def test_check_item_qty_realtime_updates_when_qty_changed() -> None:
     _filter, update_doc = erp_items.update_one.await_args.args
     assert _filter == {"item_code": "ABC"}
     assert update_doc["$set"]["stock_qty"] == 9.0
+
+
+@pytest.mark.asyncio
+async def test_check_item_qty_realtime_treats_missing_sql_qty_as_zero() -> None:
+    sql_connector = Mock()
+    sql_connector.test_connection.return_value = True
+    sql_connector.get_item_by_code.return_value = {"item_code": "ABC", "stock_qty": None}
+
+    erp_items = SimpleNamespace(
+        find_one=AsyncMock(return_value={"item_code": "ABC", "stock_qty": 2}),
+        insert_one=AsyncMock(),
+        update_one=AsyncMock(),
+    )
+    mongo_db = SimpleNamespace(erp_items=erp_items)
+
+    service = _make_service(sql_connector=sql_connector, mongo_db=mongo_db)
+
+    result = await service.check_item_qty_realtime("ABC")
+
+    assert result["updated"] is True
+    assert result["sql_qty"] == 0.0
+    assert result["previous_qty"] == 2.0
+    assert result["delta"] == -2.0

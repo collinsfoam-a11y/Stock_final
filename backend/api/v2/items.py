@@ -8,6 +8,7 @@ import re
 import sys
 from pathlib import Path
 from typing import Any, Optional
+from typing import cast
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from pydantic import BaseModel
@@ -460,7 +461,9 @@ async def get_item_details(
                 verification_result = await sql_verification_service.verify_item_quantity(item_code)
                 if verification_result["success"]:
                     # Refresh item data after verification
-                    item = await db.erp_items.find_one({"item_code": item_code})
+                    refreshed_item = await db.erp_items.find_one({"item_code": item_code})
+                    if refreshed_item:
+                        item = refreshed_item
             except Exception as e:
                 # Log error but don't fail the request
                 import logging
@@ -468,28 +471,27 @@ async def get_item_details(
                 logger = logging.getLogger(__name__)
                 logger.warning(f"SQL verification failed for {item_code}: {str(e)}")
 
+        item_doc = cast(dict[str, Any], item)
+        last_sql_verified_at = item_doc.get("last_sql_verified_at")
+
         # Convert to response
         item_response = ItemResponse(
-            id=str(item["_id"]),
-            name=item.get("item_name", ""),
-            item_code=item.get("item_code"),
-            barcode=item.get("barcode"),
-            stock_qty=item.get("stock_qty", 0.0),
-            mrp=item.get("mrp"),
-            category=item.get("category"),
-            subcategory=item.get("subcategory"),
-            warehouse=item.get("warehouse"),
-            uom_name=item.get("uom_name"),
-            sql_verified_qty=item.get("sql_verified_qty"),
-            last_sql_verified_at=(
-                item.get("last_sql_verified_at").isoformat()
-                if item.get("last_sql_verified_at")
-                else None
-            ),
-            variance=item.get("variance"),
-            mongo_cached_qty_previous=item.get("mongo_cached_qty_previous"),
-            sql_qty_mismatch_flag=item.get("sql_qty_mismatch_flag"),
-            sql_verification_status=item.get("sql_verification_status"),
+            id=str(item_doc["_id"]),
+            name=item_doc.get("item_name", ""),
+            item_code=item_doc.get("item_code"),
+            barcode=item_doc.get("barcode"),
+            stock_qty=item_doc.get("stock_qty", 0.0),
+            mrp=item_doc.get("mrp"),
+            category=item_doc.get("category"),
+            subcategory=item_doc.get("subcategory"),
+            warehouse=item_doc.get("warehouse"),
+            uom_name=item_doc.get("uom_name"),
+            sql_verified_qty=item_doc.get("sql_verified_qty"),
+            last_sql_verified_at=last_sql_verified_at.isoformat() if last_sql_verified_at else None,
+            variance=item_doc.get("variance"),
+            mongo_cached_qty_previous=item_doc.get("mongo_cached_qty_previous"),
+            sql_qty_mismatch_flag=item_doc.get("sql_qty_mismatch_flag"),
+            sql_verification_status=item_doc.get("sql_verification_status"),
         )
 
         return ApiResponse.success_response(

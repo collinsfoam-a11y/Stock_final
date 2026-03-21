@@ -44,7 +44,7 @@ class DatabaseManager:
         self.mongo_client = mongo_client
         self.mongo_db = mongo_db
         self.sql_connector = sql_connector
-        self._health_stats = {
+        self._health_stats: dict[str, Any] = {
             "last_health_check": None,
             "mongo_health": "unknown",
             "sql_health": "unknown",
@@ -72,7 +72,7 @@ class DatabaseManager:
         if mongo_health["status"] == "error" or sql_health["status"] == "error":
             overall_status = "critical"
 
-        health_report = {
+        health_report: dict[str, Any] = {
             "overall_status": overall_status,
             "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
             "check_duration": (time.time() - health_start) * 1000,
@@ -245,9 +245,9 @@ class DatabaseManager:
             logger.error(f"Performance metrics failed: {str(e)}")
             return {"error": str(e)}
 
-    async def _get_index_info(self) -> dict[str, list[str]]:
+    async def _get_index_info(self) -> dict[str, Any]:
         """Get index information for all collections"""
-        index_info = {}
+        index_info: dict[str, list[str]] = {}
 
         try:
             collections = await self.mongo_db.list_collection_names()
@@ -267,7 +267,7 @@ class DatabaseManager:
 
     async def optimize_database_performance(self) -> dict[str, Any]:
         """Optimize database performance"""
-        optimizations = {
+        optimizations: dict[str, Any] = {
             "indexes_created": 0,
             "indexes_rebuilt": 0,
             "maintenance_tasks": [],
@@ -459,7 +459,7 @@ class DatabaseManager:
 
     async def verify_data_flow(self) -> dict[str, Any]:
         """Verify complete data flow from SQL Server to Frontend"""
-        flow_test = {
+        flow_test: dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
             "steps": {},
             "overall_status": "unknown",

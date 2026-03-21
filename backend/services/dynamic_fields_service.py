@@ -298,7 +298,7 @@ class DynamicFieldsService:
         """
         try:
             # Build aggregation pipeline
-            pipeline = []
+            pipeline: list[dict[str, Any]] = []
 
             # Match field filters if provided
             if field_filters:

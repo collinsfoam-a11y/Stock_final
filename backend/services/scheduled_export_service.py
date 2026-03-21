@@ -39,7 +39,7 @@ class ScheduledExportService:
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
         self._running = False
-        self._task: asyncio.Task = None
+        self._task: Optional[asyncio.Task[None]] = None
 
     async def create_export_schedule(
         self,
@@ -262,7 +262,7 @@ class ScheduledExportService:
     async def _export_variance_report(self, filters: dict[str, Any]) -> list[dict]:
         """Export variance summary report"""
         # Aggregate variance data
-        pipeline = [
+        pipeline: list[dict[str, Any]] = [
             {"$match": {"variance": {"$ne": 0}}},
             {
                 "$group": {

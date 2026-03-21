@@ -4,6 +4,8 @@ Reconciliation API - Handles session-wide aggregation of counts to calculate tru
 
 import logging
 from datetime import datetime
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -38,7 +40,7 @@ async def get_session_reconciliation_summary(
             raise HTTPException(status_code=404, detail="Session not found")
 
         # 2. Aggregation Pipeline
-        pipeline = [
+        pipeline: list[dict[str, Any]] = [
             # Match counts for this session
             {"$match": {"session_id": session_id}},
             # Group by item_code to aggregate total counted qty

@@ -10,7 +10,7 @@
  */
 
 import React from "react";
-import { Stack, Slot } from "expo-router";
+import { Redirect, Stack, Slot, useSegments } from "expo-router";
 import { View, StyleSheet, Platform, useWindowDimensions } from "react-native";
 import { auroraTheme } from "@/theme/auroraTheme";
 import { AdminSidebar } from "@/components/navigation";
@@ -19,14 +19,28 @@ import { ErrorBoundary } from "@/components/feedback/ErrorBoundary";
 import { AdminCrashScreen } from "@/components/feedback/AdminCrashScreen";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { breakpoints } from "@/styles/globalStyles";
+import { isAdminRouteEnabled } from "@/constants/roleFeatureFlags";
 
 export default function AdminLayout() {
   const { width } = useWindowDimensions();
+  const segments = useSegments();
+  const currentRoute = (segments as string[])[1];
   const isLargeScreen = width >= breakpoints.desktop && Platform.OS === "web";
+  const isFeatureDisabledRoute = Boolean(
+    currentRoute && !isAdminRouteEnabled(currentRoute),
+  );
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistentState(
     "admin_sidebar_collapsed",
     false,
   );
+
+  if (isFeatureDisabledRoute) {
+    return (
+      <RoleLayoutGuard allowedRoles={["admin"]} layoutName="AdminLayout">
+        <Redirect href="/admin/dashboard-web" />
+      </RoleLayoutGuard>
+    );
+  }
 
   return (
     <RoleLayoutGuard allowedRoles={["admin"]} layoutName="AdminLayout">

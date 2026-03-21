@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 import {
   attemptAutoFixDiagnosis,
@@ -241,6 +242,56 @@ export default function DashboardWeb() {
     [],
   );
 
+  const recommendedTools = useMemo(() => {
+    const suggestions: {
+      icon: keyof typeof Ionicons.glyphMap;
+      key: string;
+      onPress: () => void;
+      subtitle: string;
+      title: string;
+    }[] = [];
+
+    if (issues.length > 0) {
+      suggestions.push({
+        key: "recommended-diagnosis",
+        title: "Fix important issues",
+        subtitle: `${issues.length} issue(s) need action from admin`,
+        icon: "build",
+        onPress: () => handleTabChange("diagnosis"),
+      });
+    }
+
+    const backendRunning = Boolean(servicesStatus?.backend?.running);
+    const frontendRunning = Boolean(servicesStatus?.frontend?.running);
+    if (!backendRunning || !frontendRunning || (healthScore ?? 100) < 80) {
+      suggestions.push({
+        key: "recommended-monitoring",
+        title: "Stabilize system health",
+        subtitle: "Check service status and recovery metrics",
+        icon: "pulse",
+        onPress: () => handleTabChange("monitoring"),
+      });
+    }
+
+    suggestions.push({
+      key: "recommended-variances",
+      title: "Review count differences",
+      subtitle: "Prioritize blocked staff work and recount assignments",
+      icon: "alert-circle",
+      onPress: () => router.push("/supervisor/variances" as any),
+    });
+
+    suggestions.push({
+      key: "recommended-help",
+      title: "Open help guide",
+      subtitle: "Use quick instructions before client handoff",
+      icon: "help-circle-outline",
+      onPress: () => router.push("/help" as any),
+    });
+
+    return suggestions;
+  }, [healthScore, issues.length, router, servicesStatus, handleTabChange]);
+
   const handleGenerateReport = async (reportType: string) => {
     if (offlineMode) {
       Alert.alert("Offline Mode", "Report generation requires a live connection.");
@@ -371,29 +422,42 @@ export default function DashboardWeb() {
 
   const adminTools = useMemo(
     () => [
-      {
-        key: "monitoring",
-        title: "Monitoring",
-        subtitle: "Service controls and system metrics",
-        icon: "pulse" as const,
-        onPress: () => handleTabChange("monitoring"),
-      },
-      {
-        key: "reports",
-        title: "Reports",
-        subtitle: "Generate exports and audit output",
-        icon: "document-text" as const,
-        onPress: () => handleTabChange("reports"),
-      },
-      ...adminRouteTools.map((item) => ({
-        key: item.key,
-        title: item.label,
-        subtitle: item.subtitle,
-        icon: item.icon,
-        onPress: () => router.push(item.route as any),
-      })),
+      ...[
+        ...recommendedTools,
+        {
+          key: "monitoring",
+          title: "System Monitoring",
+          subtitle: "Service controls and performance status",
+          icon: "pulse" as const,
+          onPress: () => handleTabChange("monitoring"),
+        },
+        {
+          key: "reports",
+          title: "Reports",
+          subtitle: "Generate files for audit and sharing",
+          icon: "document-text" as const,
+          onPress: () => handleTabChange("reports"),
+        },
+        {
+          key: "help",
+          title: "Help & Support",
+          subtitle: "Open quick usage guidance",
+          icon: "help-circle-outline" as const,
+          onPress: () => router.push("/help" as any),
+        },
+        ...adminRouteTools.map((item) => ({
+          key: item.key,
+          title: item.label,
+          subtitle: item.subtitle,
+          icon: item.icon,
+          onPress: () => router.push(item.route as any),
+        })),
+      ].filter(
+        (tool, index, all) =>
+          all.findIndex((candidate) => candidate.key === tool.key) === index,
+      ),
     ],
-    [adminRouteTools, handleTabChange, router],
+    [adminRouteTools, handleTabChange, recommendedTools, router],
   );
 
   const sessionChartData = prepareSessionChartData(sessionsAnalytics);
@@ -406,7 +470,7 @@ export default function DashboardWeb() {
       auroraIntensity="medium"
       header={{
         title: "Admin Dashboard",
-        subtitle: "System Overview & Controls",
+        subtitle: "Simple control center for daily operations",
         showLogoutButton: true,
         showBackButton: false,
         rightAction: {

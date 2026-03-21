@@ -24,7 +24,7 @@ class WatchdogService:
                 seconds=time_window_seconds
             )
 
-            pipeline = [
+            pipeline: list[dict[str, Any]] = [
                 {
                     "$match": {
                         "timestamp": {"$gte": window_start},

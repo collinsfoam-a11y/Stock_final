@@ -38,6 +38,8 @@ import {
 } from "../../src/components/supervisor/dashboard/supervisorDashboardShared";
 import {
   ActivityType,
+  AnimatedPressable,
+  GlassCard,
   ScreenContainer,
   SpeedDialAction,
   SpeedDialMenu,
@@ -48,7 +50,6 @@ import {
   getWarehouses,
   getZones,
 } from "../../src/services/api/api";
-import { flags } from "../../src/constants/flags";
 import { theme } from "../../src/styles/modernDesignSystem";
 import { Session } from "../../src/types";
 
@@ -275,47 +276,38 @@ export default function SupervisorDashboard() {
     },
     {
       icon: "albums-outline",
-      label: "Sessions",
+      label: "Count Sessions",
       onPress: () => router.push("/supervisor/sessions" as any),
     },
     {
       icon: "alert-circle-outline",
-      label: "Variances",
+      label: "Count Differences",
       onPress: () => router.push("/supervisor/variances" as any),
     },
     {
-      icon: "eye-outline",
-      label: "Watchtower",
-      onPress: () => router.push("/supervisor/watchtower" as any),
-    },
-    {
       icon: "git-network-outline",
-      label: "User Workflows",
+      label: "Team Activity",
       onPress: () => router.push("/supervisor/user-workflows" as any),
     },
-    ...(flags.enableNotes
-      ? [
-          {
-            icon: "document-text-outline",
-            label: "Notes",
-            onPress: () => router.push("/supervisor/notes" as any),
-          } satisfies SpeedDialAction,
-        ]
-      : []),
     {
       icon: "cloud-offline-outline",
-      label: "Offline Queue",
+      label: "Pending Uploads",
       onPress: () => router.push("/supervisor/offline-queue" as any),
     },
     {
-      icon: "download-outline",
-      label: "Exports",
-      onPress: () => router.push("/supervisor/export" as any),
+      icon: "sync-outline",
+      label: "Sync Issues",
+      onPress: () => router.push("/supervisor/sync-conflicts" as any),
     },
     {
       icon: "settings-outline",
-      label: "Settings",
+      label: "Preferences",
       onPress: () => router.push("/supervisor/settings" as any),
+    },
+    {
+      icon: "help-circle-outline",
+      label: "Help",
+      onPress: () => router.push("/help" as any),
     },
   ];
 
@@ -330,8 +322,15 @@ export default function SupervisorDashboard() {
     {
       key: "review-variances",
       icon: "alert-circle-outline",
-      label: "Review variances",
+      label: "Review differences",
       onPress: () => router.push("/supervisor/variances" as any),
+      primary: false,
+    },
+    {
+      key: "sync-conflicts",
+      icon: "sync-outline",
+      label: "Resolve sync issues",
+      onPress: () => router.push("/supervisor/sync-conflicts" as any),
       primary: false,
     },
   ];
@@ -342,12 +341,24 @@ export default function SupervisorDashboard() {
           stats.totalSessions) *
         100
       : 0;
+  const recommendedActions = buildRecommendedActions({
+    completionPercentage,
+    highRiskSessions: stats.highRiskSessions,
+    openSessions: stats.openSessions,
+    totalSessions: stats.totalSessions,
+    onCreateSession: () => setShowCreateSessionModal(true),
+    onOpenHelp: () => router.push("/help" as any),
+    onOpenSessions: () => router.push("/supervisor/sessions" as any),
+    onOpenSyncConflicts: () => router.push("/supervisor/sync-conflicts" as any),
+    onOpenVariances: () => router.push("/supervisor/variances" as any),
+    onOpenWorkflows: () => router.push("/supervisor/user-workflows" as any),
+  });
 
   return (
     <ScreenContainer
       header={{
         title: "Supervisor Dashboard",
-        subtitle: "Operations overview",
+        subtitle: "Clear daily actions for your team",
         showUsername: true,
         showLogoutButton: true,
         rightAction: {
@@ -400,6 +411,45 @@ export default function SupervisorDashboard() {
             stats={stats}
           />
 
+          <GlassCard style={styles.recommendationsCard} variant="strong">
+            <View style={styles.recommendationsHeader}>
+              <Ionicons
+                name="bulb-outline"
+                size={18}
+                color={theme.colors.primary[400]}
+              />
+              <Text style={styles.recommendationsTitle}>Suggested next steps</Text>
+            </View>
+            <View style={styles.recommendationsList}>
+              {recommendedActions.map((action) => (
+                <AnimatedPressable
+                  key={action.key}
+                  style={styles.recommendationAction}
+                  onPress={action.onPress}
+                >
+                  <View style={styles.recommendationIcon}>
+                    <Ionicons
+                      name={action.icon}
+                      size={16}
+                      color={theme.colors.primary[400]}
+                    />
+                  </View>
+                  <View style={styles.recommendationCopy}>
+                    <Text style={styles.recommendationTitle}>{action.title}</Text>
+                    <Text style={styles.recommendationDescription}>
+                      {action.description}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={theme.colors.text.tertiary}
+                  />
+                </AnimatedPressable>
+              ))}
+            </View>
+          </GlassCard>
+
           <SupervisorActivitySection
             activities={activities}
             onOpenActivity={(activityId) =>
@@ -444,6 +494,101 @@ export default function SupervisorDashboard() {
   );
 }
 
+interface RecommendedActionItem {
+  description: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  key: string;
+  onPress: () => void;
+  title: string;
+}
+
+function buildRecommendedActions({
+  completionPercentage,
+  highRiskSessions,
+  onCreateSession,
+  onOpenHelp,
+  onOpenSessions,
+  onOpenSyncConflicts,
+  onOpenVariances,
+  onOpenWorkflows,
+  openSessions,
+  totalSessions,
+}: {
+  completionPercentage: number;
+  highRiskSessions: number;
+  onCreateSession: () => void;
+  onOpenHelp: () => void;
+  onOpenSessions: () => void;
+  onOpenSyncConflicts: () => void;
+  onOpenVariances: () => void;
+  onOpenWorkflows: () => void;
+  openSessions: number;
+  totalSessions: number;
+}): RecommendedActionItem[] {
+  const actions: RecommendedActionItem[] = [];
+
+  if (highRiskSessions > 0) {
+    actions.push({
+      key: "review-variances",
+      title: "Review high-risk differences",
+      description: `${highRiskSessions} session(s) need supervisor review for large count differences.`,
+      icon: "alert-circle-outline",
+      onPress: onOpenVariances,
+    });
+  }
+
+  if (openSessions > 0) {
+    actions.push({
+      key: "monitor-workflows",
+      title: "Check active team work",
+      description: `${openSessions} active session(s) are in progress and may need unblock support.`,
+      icon: "git-network-outline",
+      onPress: onOpenWorkflows,
+    });
+  }
+
+  if (completionPercentage < 70 && totalSessions > 0) {
+    actions.push({
+      key: "advance-open-sessions",
+      title: "Move sessions to completion",
+      description:
+        "Completion is below 70%. Review open sessions and clear pending items.",
+      icon: "albums-outline",
+      onPress: onOpenSessions,
+    });
+  }
+
+  actions.push({
+    key: "sync-health",
+    title: "Resolve sync issues",
+    description: "Fix sync issues so data stays up to date across devices.",
+    icon: "sync-outline",
+    onPress: onOpenSyncConflicts,
+  });
+
+  if (totalSessions === 0) {
+    actions.unshift({
+      key: "create-session",
+      title: "Create first session",
+      description: "No session exists yet. Start a session so staff can begin counting.",
+      icon: "add-circle-outline",
+      onPress: onCreateSession,
+    });
+  }
+
+  if (actions.length < 3) {
+    actions.push({
+      key: "open-help",
+      title: "Open help guide",
+      description: "Need support? Use the help page for quick instructions.",
+      icon: "help-circle-outline",
+      onPress: onOpenHelp,
+    });
+  }
+
+  return actions.slice(0, 3);
+}
+
 const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
@@ -461,6 +606,57 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: theme.colors.text.secondary,
+  },
+  recommendationsCard: {
+    marginBottom: theme.spacing.xl,
+    padding: theme.spacing.lg,
+  },
+  recommendationsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  recommendationsTitle: {
+    color: theme.colors.text.primary,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  recommendationsList: {
+    gap: theme.spacing.sm,
+  },
+  recommendationAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border.light,
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+  },
+  recommendationIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: theme.borderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(59, 130, 246, 0.14)",
+  },
+  recommendationCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  recommendationTitle: {
+    color: theme.colors.text.primary,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  recommendationDescription: {
+    color: theme.colors.text.secondary,
+    fontSize: 12,
+    lineHeight: 18,
   },
   bottomSpacer: {
     height: 100,

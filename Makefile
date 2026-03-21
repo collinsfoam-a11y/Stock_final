@@ -171,13 +171,7 @@ install:
 
 clean:
 	@echo "Cleaning build artifacts..."
-	find . -type d -name "__pycache__" -exec rm -r {} + 2>/dev/null || true
-	find . -type f -name "*.pyc" -delete
-	find . -type f -name "*.pyo" -delete
-	find . -type d -name ".pytest_cache" -exec rm -r {} + 2>/dev/null || true
-	find . -type d -name ".mypy_cache" -exec rm -r {} + 2>/dev/null || true
-	find . -type d -name "node_modules" -prune -o -type d -name ".next" -exec rm -r {} + 2>/dev/null || true
-	@echo "✅ Cleanup complete!"
+	bash ./scripts/clean.sh
 
 # =============================================================================
 # 🔒 SECURITY

@@ -9,7 +9,7 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.auth.permissions import Permission, require_permission
 from backend.db.runtime import get_db
@@ -34,15 +34,15 @@ class ExportScheduleCreate(BaseModel):
     export_type: str  # "sessions", "count_lines", "variance_report", "activity_logs"
     frequency: str  # "daily", "weekly", "monthly"
     format: str = "csv"  # "csv", "json"
-    filters: dict[str, Optional[Any]] = {}
-    email_recipients: Optional[list[str]] = []
+    filters: dict[str, Optional[Any]] = Field(default_factory=dict)
+    email_recipients: list[str] = Field(default_factory=list)
 
 
 class ExportScheduleUpdate(BaseModel):
     name: Optional[str] = None
     frequency: Optional[str] = None
     format: Optional[str] = None
-    filters: dict[str, Optional[Any]] = None
+    filters: Optional[dict[str, Optional[Any]]] = None
     email_recipients: Optional[list[str]] = None
     enabled: Optional[bool] = None
 
@@ -147,7 +147,7 @@ async def update_export_schedule(
 ):
     """Update an export schedule"""
     # Prepare updates
-    updates = {}
+    updates: dict[str, Any] = {}
     if schedule_update.name is not None:
         updates["name"] = schedule_update.name
     if schedule_update.frequency is not None:

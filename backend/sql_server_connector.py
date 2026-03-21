@@ -1,11 +1,11 @@
 # ruff: noqa: E402
+import asyncio
 import logging
 import re
 import sys
 import threading
 from pathlib import Path
-from typing import Any, Optional
-import asyncio
+from typing import Any, Optional, Sequence
 
 import pyodbc
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -306,7 +306,7 @@ class SQLServerConnector:
             if re.search(rf"\b{re.escape(keyword)}\b", normalized):
                 raise ERPReadOnlyViolation("ERP read-only violation: SELECT INTO blocked")
 
-    def _validate_params(self, query: str, params: Optional[list[Any]] = None) -> None:
+    def _validate_params(self, query: str, params: Optional[Sequence[Any]] = None) -> None:
         """Ensure parameterized queries use positional placeholders safely."""
         if params is None:
             if "?" in query:
@@ -327,7 +327,9 @@ class SQLServerConnector:
         if placeholder_count != param_count:
             raise ERPQueryParameterError("SQL parameter count mismatch for parameterized query")
 
-    def _execute_readonly(self, cursor, query: str, params: Optional[list[Any]] = None) -> None:
+    def _execute_readonly(
+        self, cursor, query: str, params: Optional[Sequence[Any]] = None
+    ) -> None:
         """Execute a read-only SQL query with strict guards."""
         self._assert_read_only_query(query)
         self._validate_params(query, params)

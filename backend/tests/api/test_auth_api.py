@@ -79,7 +79,6 @@ async def test_change_pin_success(async_client: AsyncClient, auth_headers, test_
     payload = {"current_pin": TEST_PIN, "new_pin": NEW_PIN}
 
     response = await async_client.post("/api/auth/change-pin", json=payload, headers=auth_headers)
-
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True

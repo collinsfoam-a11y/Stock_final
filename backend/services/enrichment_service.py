@@ -159,7 +159,7 @@ class EnrichmentService:
                 }
 
             # Build update document
-            update_fields = {}
+            update_fields: dict[str, Any] = {}
 
             # Process each enrichment field
             corrections = _process_enrichment_fields(enrichment_data, existing_item, update_fields)
@@ -424,7 +424,7 @@ class EnrichmentService:
         Returns:
             Dictionary with import results
         """
-        results = {"success": 0, "failed": 0, "errors": []}
+        results: dict[str, Any] = {"success": 0, "failed": 0, "errors": []}
 
         for enrichment in enrichments:
             try:
@@ -492,7 +492,7 @@ class EnrichmentService:
             if end_date:
                 match_query["enriched_at"]["$lte"] = end_date
 
-        pipeline = [
+        pipeline: list[dict[str, Any]] = [
             {"$match": match_query},
             {
                 "$group": {
@@ -534,7 +534,7 @@ class EnrichmentService:
         Returns:
             List of items with missing fields highlighted
         """
-        query = {
+        query: dict[str, Any] = {
             "$or": [
                 {"data_complete": {"$ne": True}},
                 {"data_complete": {"$exists": False}},

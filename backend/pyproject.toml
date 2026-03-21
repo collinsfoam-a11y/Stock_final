@@ -31,6 +31,12 @@ ignore = ["E402"]
 [tool.mypy]
 explicit_package_bases = true
 mypy_path = "."
+implicit_optional = true
+plugins = ["pydantic.mypy"]
+exclude = [
+    "^backend/scripts/",
+    "^backend/tests/",
+]
 
 [[tool.mypy.overrides]]
 module = [

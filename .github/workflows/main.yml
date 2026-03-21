@@ -185,6 +185,53 @@ jobs:
           EXPO_PUBLIC_BACKEND_URL: https://api.example.com
 
   # ==========================================
+  # Windows Developer Entrypoints
+  # ==========================================
+  windows-dev-entrypoints:
+    name: Windows Dev Entrypoints
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Verify bash cleanup entrypoint
+        shell: bash
+        run: |
+          chmod +x scripts/clean.sh
+          ./scripts/clean.sh
+
+      - name: Verify PowerShell cleanup entrypoint
+        shell: pwsh
+        run: ./scripts/clean.ps1
+
+      - name: Frontend lint
+        working-directory: frontend
+        shell: pwsh
+        run: npm run lint
+
+      - name: Frontend typecheck
+        working-directory: frontend
+        shell: pwsh
+        run: npm run typecheck
+
+      - name: Frontend tests
+        working-directory: frontend
+        shell: pwsh
+        run: npm test -- --runInBand --watchAll=false
+
+  # ==========================================
   # Recount Assignment Smoke
   # ==========================================
   frontend-recount-smoke:

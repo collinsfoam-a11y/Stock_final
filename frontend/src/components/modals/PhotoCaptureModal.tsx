@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -85,8 +86,21 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     onClose();
   };
 
+  const handleOpenSettings = async () => {
+    try {
+      await Linking.openSettings();
+    } catch {
+      Alert.alert(
+        "Settings Unavailable",
+        "Unable to open app settings. Please enable camera permission manually in system settings.",
+      );
+    }
+  };
+
   // Render permission request
   if (!permission?.granted) {
+    const canAskPermission = permission?.canAskAgain !== false;
+
     return (
       <Modal
         visible={visible}
@@ -115,12 +129,27 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             <Text style={styles.permissionText}>
               Camera permission is required to capture photos
             </Text>
-            <TouchableOpacity
-              style={styles.permissionButton}
-              onPress={requestPermission}
-            >
-              <Text style={styles.permissionButtonText}>Grant Permission</Text>
-            </TouchableOpacity>
+            {canAskPermission ? (
+              <TouchableOpacity
+                style={styles.permissionButton}
+                onPress={requestPermission}
+              >
+                <Text style={styles.permissionButtonText}>Grant Permission</Text>
+              </TouchableOpacity>
+            ) : (
+              <>
+                <Text style={styles.permissionHelpText}>
+                  Camera permission was denied. Open app settings and enable
+                  camera access to continue.
+                </Text>
+                <TouchableOpacity
+                  style={styles.permissionButton}
+                  onPress={handleOpenSettings}
+                >
+                  <Text style={styles.permissionButtonText}>Open Settings</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </SafeAreaView>
       </Modal>
@@ -243,6 +272,12 @@ const styles = StyleSheet.create({
   permissionButtonText: {
     ...modernTypography.button.medium,
     color: "#fff",
+  },
+  permissionHelpText: {
+    ...modernTypography.body.small,
+    color: modernColors.text.secondary,
+    textAlign: "center",
+    marginBottom: modernSpacing.md,
   },
   cameraContainer: {
     flex: 1,

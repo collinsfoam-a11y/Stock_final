@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-
-import { flags } from "../../constants/flags";
+import {
+  supervisorFeatureFlags,
+} from "../../constants/roleFeatureFlags";
 
 export interface AdminNavItem {
   key: string;
@@ -22,94 +23,84 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     items: [
       {
         key: "dashboard",
-        label: "Dashboard",
-        subtitle: "Admin overview, monitoring, and report tabs",
+        label: "Admin Home",
+        subtitle: "Daily system status and top priorities",
         icon: "grid",
         route: "/admin/dashboard-web",
-      },
-      {
-        key: "sessions",
-        label: "Sessions",
-        subtitle: "Review active and completed count sessions",
-        icon: "cube",
-        route: "/supervisor/sessions",
       },
     ],
   },
   {
-    title: "Administration",
+    title: "Operations",
+    items: [
+      {
+        key: "sessions",
+        label: "Count Sessions",
+        subtitle: "Track active and completed stock counts",
+        icon: "cube",
+        route: "/supervisor/sessions",
+      },
+      {
+        key: "variances",
+        label: "Count Differences",
+        subtitle: "Approve differences or assign recounts",
+        icon: "alert-circle",
+        route: "/supervisor/variances",
+      },
+      {
+        key: "user-workflows",
+        label: "Team Activity",
+        subtitle: "See who is working and where delays happen",
+        icon: "git-network",
+        route: "/supervisor/user-workflows",
+      },
+      ...(supervisorFeatureFlags.offlineQueue
+        ? [
+            {
+              key: "offline-queue",
+              label: "Pending Uploads",
+              subtitle: "Review updates waiting for upload",
+              icon: "cloud-offline",
+              route: "/supervisor/offline-queue",
+            } satisfies AdminNavItem,
+          ]
+        : []),
+      ...(supervisorFeatureFlags.syncConflicts
+        ? [
+            {
+              key: "sync-conflicts",
+              label: "Sync Issues",
+              subtitle: "Resolve data mismatches before they spread",
+              icon: "sync",
+              route: "/supervisor/sync-conflicts",
+            } satisfies AdminNavItem,
+          ]
+        : []),
+    ],
+  },
+  {
+    title: "Access Control",
     items: [
       {
         key: "users",
-        label: "Users",
-        subtitle: "Manage access, roles, and account status",
+        label: "User Accounts",
+        subtitle: "Manage access and account status",
         icon: "people",
         route: "/admin/users",
       },
       {
         key: "permissions",
-        label: "Permissions",
-        subtitle: "Control grants and role capabilities",
+        label: "Access Rules",
+        subtitle: "Control what each role can do",
         icon: "shield",
         route: "/admin/permissions",
       },
       {
         key: "security",
-        label: "Security",
-        subtitle: "Review admin activity and risk signals",
+        label: "Security Review",
+        subtitle: "Check login risks and security signals",
         icon: "lock-closed",
         route: "/admin/security",
-      },
-    ],
-  },
-  {
-    title: "Monitoring",
-    items: [
-      {
-        key: "user-workflows",
-        label: "User Workflows",
-        subtitle: "Track workflow state across operators",
-        icon: "git-network",
-        route: "/supervisor/user-workflows",
-      },
-      {
-        key: "realtime-dashboard",
-        label: "Real-Time Dashboard",
-        subtitle: "Inspect live verifications and table data",
-        icon: "pulse",
-        route: "/admin/realtime-dashboard",
-      },
-      {
-        key: "activity-logs",
-        label: "Activity Logs",
-        subtitle: "Audit operator and session activity",
-        icon: "list",
-        route: "/supervisor/activity-logs",
-      },
-      ...(flags.enableNotes
-        ? [
-            {
-              key: "notes",
-              label: "Notes",
-              subtitle: "Capture supervisor/admin handoff context",
-              icon: "document-text",
-              route: "/supervisor/notes",
-            } satisfies AdminNavItem,
-          ]
-        : []),
-      {
-        key: "error-logs",
-        label: "Error Logs",
-        subtitle: "Investigate failures and crash events",
-        icon: "warning",
-        route: "/supervisor/error-logs",
-      },
-      {
-        key: "sync-conflicts",
-        label: "Sync Conflicts",
-        subtitle: "Resolve offline and server data conflicts",
-        icon: "sync",
-        route: "/supervisor/sync-conflicts",
       },
     ],
   },
@@ -117,70 +108,39 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     title: "System",
     items: [
       {
+        key: "realtime-dashboard",
+        label: "Live Operations",
+        subtitle: "Watch live counting activity",
+        icon: "pulse",
+        route: "/admin/realtime-dashboard",
+      },
+      {
         key: "unknown-items",
-        label: "Unknown Items",
-        subtitle: "Resolve unmatched or unmapped inventory",
+        label: "Unmapped Items",
+        subtitle: "Fix items that could not be matched",
         icon: "help-circle-outline",
         route: "/admin/unknown-items",
       },
       {
         key: "sql-config",
-        label: "SQL Config",
-        subtitle: "Configure SQL connections and diagnostics",
+        label: "ERP Connection",
+        subtitle: "Configure and test ERP connection settings",
         icon: "server",
         route: "/admin/sql-config",
       },
       {
         key: "logs",
-        label: "System Logs",
-        subtitle: "Inspect backend and service output",
+        label: "System History",
+        subtitle: "Review backend activity and events",
         icon: "journal",
         route: "/admin/logs",
       },
       {
-        key: "ai-assistant",
-        label: "AI Assistant",
-        subtitle: "Use admin-side AI tools and prompts",
-        icon: "chatbubble-ellipses",
-        route: "/admin/ai-assistant",
-      },
-    ],
-  },
-  {
-    title: "Exports",
-    items: [
-      {
-        key: "export-schedules",
-        label: "Export Schedules",
-        subtitle: "Schedule recurring export jobs",
-        icon: "calendar",
-        route: "/supervisor/export-schedules",
-      },
-      {
-        key: "export-results",
-        label: "Export Results",
-        subtitle: "Review generated files and delivery status",
-        icon: "document",
-        route: "/supervisor/export-results",
-      },
-    ],
-  },
-  {
-    title: "Settings",
-    items: [
-      {
         key: "settings",
-        label: "Settings",
-        subtitle: "Adjust platform defaults and personal controls",
+        label: "Preferences",
+        subtitle: "Adjust platform and personal settings",
         icon: "settings",
         route: "/admin/settings",
-      },
-      {
-        key: "db-mapping",
-        label: "DB Mapping",
-        subtitle: "Maintain mapping between app and database fields",
-        icon: "server",
-        route: "/supervisor/db-mapping",
       },
     ],
   },

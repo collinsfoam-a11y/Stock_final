@@ -35,13 +35,14 @@ class MonitoringService:
 
         # Error tracking
         self._recent_errors: deque = deque(maxlen=100)
+        self._start_time = datetime.now(timezone.utc)
 
         # System health
         self._health_status = {
             "status": "healthy",
             "last_check": datetime.now(timezone.utc).isoformat(),
             "uptime": 0,
-            "start_time": datetime.now(timezone.utc),
+            "start_time": self._start_time.isoformat(),
         }
 
         # Metrics
@@ -112,9 +113,7 @@ class MonitoringService:
     async def get_metrics(self) -> dict[str, Any]:
         """Get current metrics"""
         async with self._lock:
-            uptime = (
-                datetime.now(timezone.utc) - self._health_status["start_time"]
-            ).total_seconds()
+            uptime = (datetime.now(timezone.utc) - self._start_time).total_seconds()
             avg_response_time = (
                 self._total_response_time / self._request_count if self._request_count > 0 else 0.0
             )
@@ -160,9 +159,7 @@ class MonitoringService:
     async def get_health(self) -> dict[str, Any]:
         """Get health status"""
         async with self._lock:
-            uptime = (
-                datetime.now(timezone.utc) - self._health_status["start_time"]
-            ).total_seconds()
+            uptime = (datetime.now(timezone.utc) - self._start_time).total_seconds()
 
             # Determine health status
             error_rate = (
@@ -179,7 +176,7 @@ class MonitoringService:
             return {
                 "status": status,
                 "uptime": uptime,
-                "start_time": self._health_status["start_time"].isoformat(),
+                "start_time": self._start_time.isoformat(),
                 "last_check": datetime.now(timezone.utc).isoformat(),
                 "metrics": {
                     "total_requests": self._request_count,
@@ -250,9 +247,7 @@ class MonitoringService:
             lines.append("")
 
             # Uptime
-            uptime = (
-                datetime.now(timezone.utc) - self._health_status["start_time"]
-            ).total_seconds()
+            uptime = (datetime.now(timezone.utc) - self._start_time).total_seconds()
             lines.append("# HELP app_uptime_seconds Application uptime in seconds")
             lines.append("# TYPE app_uptime_seconds counter")
             lines.append(f"app_uptime_seconds {uptime:.0f}")

@@ -8,8 +8,9 @@
     "description": "Modern stock verification system for Lavanya Mart inventory management",
     "primaryColor": "#3B82F6",
     "backgroundColor": "#FFFFFF",
+    "icon": "./assets/images/brand-icon.png",
     "splash": {
-      "image": "./assets/images/logo.png",
+      "image": "./assets/images/brand-wordmark-tagline.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -35,24 +36,29 @@
     "android": {
       "package": "com.lavanyamart.stockverify",
       "userInterfaceStyle": "automatic",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/brand-adaptive-foreground.png",
+        "backgroundColor": "#ffffff"
+      },
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.WAKE_LOCK"
       ]
     },
     "plugins": [
-      [
-        "expo-background-fetch",
-        {
-          "isHeadless": true
-        }
-      ],
       "./plugins/withQuotedReactNativeBundlePhase",
       "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Lavanya Mart Stock Verify to access your camera for serial scanning and damage photo capture."
+        }
+      ],
       "@react-native-community/datetimepicker",
       "expo-font",
       "expo-secure-store",
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-background-task"
     ],
     "web": {
       "bundler": "metro"
@@ -62,6 +68,7 @@
       "eas": {
         "projectId": "5de080fe-7f2b-441d-a678-12a01debea9f"
       }
-    }
+    },
+    "owner": "mknoufi"
   }
 }

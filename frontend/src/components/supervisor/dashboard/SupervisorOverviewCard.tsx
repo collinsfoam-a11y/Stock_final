@@ -45,10 +45,10 @@ export function SupervisorOverviewCard({
           <View style={styles.copy}>
             <Text style={styles.eyebrow}>Supervisor overview</Text>
             <Text style={styles.title}>
-              Keep sessions moving and catch issues early.
+              Keep counting on track and fix issues early.
             </Text>
             <Text style={styles.subtitle}>
-              Monitor progress, jump into live workflows, and resolve variances
+              Track progress, check team activity, and resolve count differences
               from one place.
             </Text>
           </View>

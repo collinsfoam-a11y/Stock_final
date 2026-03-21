@@ -21,6 +21,7 @@ import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { useAuthStore } from "../../src/store/authStore";
+import { useAppVersion } from "../../src/hooks/useAppVersion";
 import ModernCard from "../../src/components/ui/ModernCard";
 import ModernHeader from "../../src/components/ui/ModernHeader";
 import {
@@ -149,6 +150,7 @@ const SectionHeader: React.FC<{ title: string; delay?: number }> = ({
 export default function StaffSettingsScreen() {
   const router = useRouter();
   const { logout, user } = useAuthStore();
+  const { version, buildVersion } = useAppVersion();
 
   const handleLogout = useCallback(() => {
     if (Platform.OS !== "web") {
@@ -300,7 +302,8 @@ export default function StaffSettingsScreen() {
           entering={FadeInDown.delay(700).springify()}
           style={styles.versionContainer}
         >
-          <Text style={styles.versionText}>Stock Verify v1.0.0</Text>
+          <Text style={styles.versionText}>Stock Verify v{version}</Text>
+          <Text style={styles.versionSubtext}>Build {buildVersion}</Text>
           <Text style={styles.versionSubtext}>© 2026 Lavanya Mart</Text>
         </Animated.View>
       </ScrollView>

@@ -114,7 +114,7 @@ def register_routers(app: FastAPI, registry: RouterRegistry, logger: Any) -> Non
 
     if registry.enterprise_available and registry.enterprise_router is not None:
         app.include_router(registry.enterprise_router, prefix="/api")
-        logger.info("✓ Enterprise API router registered at /api/enterprise/*")
+        logger.info("Enterprise API router registered at /api/enterprise/*")
 
     if registry.notes_router or registry.sync_conflicts_router:
         try:
@@ -128,14 +128,14 @@ def register_routers(app: FastAPI, registry: RouterRegistry, logger: Any) -> Non
     if registry.enrichment_router:
         try:
             app.include_router(registry.enrichment_router)
-            logger.info("✓ Enrichment API router registered")
+            logger.info("Enrichment API router registered")
         except Exception as exc:
             logger.warning(f"Enrichment API router not available: {exc}")
 
     if registry.v2_router:
         try:
             app.include_router(registry.v2_router)
-            logger.info("✓ API v2 router registered")
+            logger.info("API v2 router registered")
         except Exception as exc:
             logger.warning(f"API v2 router registration failed: {exc}")
 
@@ -157,5 +157,5 @@ def register_routers(app: FastAPI, registry: RouterRegistry, logger: Any) -> Non
 
     app.include_router(registry.notifications_router)
 
-    logger.info("✓ Phase 1-3 upgrade routers registered")
-    logger.info("✓ Admin Dashboard, Report Generation, and Dynamic Reports APIs registered")
+    logger.info("Phase 1-3 upgrade routers registered")
+    logger.info("Admin Dashboard, Report Generation, and Dynamic Reports APIs registered")

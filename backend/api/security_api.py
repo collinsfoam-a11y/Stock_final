@@ -5,7 +5,7 @@ Provides endpoints for security monitoring, failed login tracking, and audit log
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
@@ -37,7 +37,7 @@ async def get_failed_logins(
         db = get_db()
 
         # Build query
-        query = {
+        query: dict[str, Any] = {
             "success": False,
             "timestamp": {
                 "$gte": datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)
@@ -64,7 +64,7 @@ async def get_failed_logins(
         total_failed = await db.login_attempts.count_documents(query)
 
         # Group by IP
-        ip_pipeline = [
+        ip_pipeline: list[dict[str, Any]] = [
             {"$match": query},
             {"$group": {"_id": "$ip_address", "count": {"$sum": 1}}},
             {"$sort": {"count": -1}},
@@ -73,7 +73,7 @@ async def get_failed_logins(
         top_ips = await db.login_attempts.aggregate(ip_pipeline).to_list(10)
 
         # Group by username
-        user_pipeline = [
+        user_pipeline: list[dict[str, Any]] = [
             {"$match": query},
             {"$group": {"_id": "$username", "count": {"$sum": 1}}},
             {"$sort": {"count": -1}},
@@ -115,7 +115,7 @@ async def get_suspicious_activity(
         cutoff_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)
 
         # Multiple failed logins from same IP
-        ip_pipeline = [
+        ip_pipeline: list[dict[str, Any]] = [
             {"$match": {"success": False, "timestamp": {"$gte": cutoff_time}}},
             {
                 "$group": {
@@ -131,7 +131,7 @@ async def get_suspicious_activity(
         suspicious_ips = await db.login_attempts.aggregate(ip_pipeline).to_list(50)
 
         # Multiple failed logins for same username
-        user_pipeline = [
+        user_pipeline: list[dict[str, Any]] = [
             {"$match": {"success": False, "timestamp": {"$gte": cutoff_time}}},
             {
                 "$group": {
@@ -186,7 +186,7 @@ async def get_security_sessions(
         db = get_db()
 
         # Get refresh tokens (active sessions)
-        query = {"revoked": False}
+        query: dict[str, Any] = {"revoked": False}
         if active_only:
             query["expires_at"] = {"$gt": datetime.now(timezone.utc).replace(tzinfo=None)}
 
@@ -194,7 +194,7 @@ async def get_security_sessions(
         tokens = await cursor.to_list(limit)
 
         # Get user info for each token
-        sessions = []
+        sessions: list[dict[str, Any]] = []
         for token in tokens:
             username = token.get("username")
             if username:
@@ -272,7 +272,7 @@ async def get_audit_log(
         db = get_db()
 
         # Build query
-        query = {
+        query: dict[str, Any] = {
             "timestamp": {
                 "$gte": datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)
             }
@@ -343,7 +343,7 @@ async def get_ip_tracking(
         cutoff_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)
 
         # Aggregate IP data from login attempts
-        ip_pipeline = [
+        ip_pipeline: list[dict[str, Any]] = [
             {"$match": {"timestamp": {"$gte": cutoff_time}}},
             {
                 "$group": {
@@ -426,13 +426,14 @@ async def get_security_summary(
         )
 
         # Suspicious IPs (5+ failed attempts)
-        suspicious_ips_count = await db.login_attempts.aggregate(
-            [
+        suspicious_summary_pipeline: list[dict[str, Any]] = [
                 {"$match": {"success": False, "timestamp": {"$gte": cutoff_time}}},
                 {"$group": {"_id": "$ip_address", "count": {"$sum": 1}}},
                 {"$match": {"count": {"$gte": 5}}},
                 {"$count": "total"},
             ]
+        suspicious_ips_count = await db.login_attempts.aggregate(
+            suspicious_summary_pipeline
         ).to_list(1)
 
         suspicious_ips = suspicious_ips_count[0]["total"] if suspicious_ips_count else 0

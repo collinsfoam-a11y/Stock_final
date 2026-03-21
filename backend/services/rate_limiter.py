@@ -7,6 +7,7 @@ import asyncio
 import logging
 import time
 from collections import defaultdict
+from threading import Lock
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ class RateLimiter:
 
         # Token buckets: key -> (tokens, last_refill)
         self._buckets: dict[str, tuple] = {}
-        self._lock = asyncio.Lock()  # Use asyncio.Lock for async safety
+        self._lock = Lock()
 
         # Request tracking for analytics
         self._request_counts: dict[str, int] = defaultdict(int)

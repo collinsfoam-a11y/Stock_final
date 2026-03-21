@@ -15,8 +15,11 @@ resolve_python() {
 
     candidates+=(
         "$PROJECT_ROOT/.venv/bin/python"
+        "$PROJECT_ROOT/.venv/Scripts/python.exe"
         "$PROJECT_ROOT/backend/.venv/bin/python"
+        "$PROJECT_ROOT/backend/.venv/Scripts/python.exe"
         "$PROJECT_ROOT/backend/venv/bin/python"
+        "$PROJECT_ROOT/backend/venv/Scripts/python.exe"
     )
 
     for candidate_name in python3.11 python3.10 python3; do
