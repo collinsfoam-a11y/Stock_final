@@ -589,10 +589,69 @@ export const saveDraft = async (lineData: CreateCountLinePayload) => {
   }
 };
 
+const hasMeaningfulCountLineName = (line: {
+  item_name?: string;
+  item_code?: string;
+  barcode?: string;
+}) => {
+  const name = typeof line.item_name === "string" ? line.item_name.trim() : "";
+  if (!name) return false;
+
+  const lowered = name.toLowerCase();
+  if (lowered === "unknown item" || lowered === "n/a") {
+    return false;
+  }
+
+  if (line.item_code && name === line.item_code) {
+    return false;
+  }
+
+  if (line.barcode && name === line.barcode) {
+    return false;
+  }
+
+  return true;
+};
+
+const hydrateCountLineNames = async <
+  T extends {
+    item_code?: string;
+    item_name?: string;
+    barcode?: string;
+  },
+>(
+  lines: T[]
+): Promise<T[]> =>
+  Promise.all(
+    lines.map(async (line) => {
+      if (hasMeaningfulCountLineName(line) || !line.item_code) {
+        return line;
+      }
+
+      try {
+        const cachedItem = await getItemFromCache(line.item_code);
+        if (cachedItem?.item_name?.trim()) {
+          return {
+            ...line,
+            item_name: cachedItem.item_name.trim(),
+          };
+        }
+      } catch {
+        // Ignore cache lookup error and keep original line
+      }
+
+      return line;
+    })
+  );
+
 export const createCountLine = async (
   countData: CreateCountLinePayload
 ): Promise<any & { _source?: DataSource; _offline?: boolean }> => {
   const resolveItemName = async (): Promise<string> => {
+    if (countData.item_name?.trim()) {
+      return countData.item_name.trim();
+    }
+
     try {
       const cachedItem = await getItemFromCache(countData.item_code);
       if (cachedItem) return cachedItem.item_name;
@@ -720,8 +779,9 @@ export const getCountLines = async (
         verified !== undefined
           ? cachedLines.filter((line) => line.verified === verified)
           : cachedLines;
+      const hydratedLines = await hydrateCountLineNames(filteredLines);
 
-      return paginateItems(filteredLines, page, pageSize, "cache", true);
+      return paginateItems(hydratedLines, page, pageSize, "cache", true);
     }
 
     let url = `/api/count-lines/session/${sessionId}?page=${page}&page_size=${pageSize}`;
@@ -738,12 +798,14 @@ export const getCountLines = async (
         : Array.isArray(response.data)
           ? response.data
           : [];
-    if (countLinesToCache.length > 0) {
-      await cacheCountLines(countLinesToCache);
+    const hydratedLines = await hydrateCountLineNames(countLinesToCache);
+    if (hydratedLines.length > 0) {
+      await cacheCountLines(hydratedLines);
     }
 
     return {
       ...response.data,
+      items: hydratedLines,
       _source: "api" as DataSource,
     };
   } catch (error: any) {
@@ -756,9 +818,10 @@ export const getCountLines = async (
       verified !== undefined
         ? cachedLines.filter((line) => line.verified === verified)
         : cachedLines;
+    const hydratedLines = await hydrateCountLineNames(filteredLines);
 
     return {
-      ...paginateItems(filteredLines, page, pageSize, "cache", true),
+      ...paginateItems(hydratedLines, page, pageSize, "cache", true),
       _degraded: true,
     };
   }

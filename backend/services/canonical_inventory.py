@@ -55,6 +55,62 @@ def normalize_approval_status(value: Any) -> str:
     return value.strip().upper()
 
 
+def requires_supervisor_review_for_variance(variance: Any) -> bool:
+    try:
+        return abs(float(variance or 0.0)) > 0.0
+    except (TypeError, ValueError):
+        return False
+
+
+def count_line_requires_supervisor_review(count_line: Optional[dict[str, Any]]) -> bool:
+    if not count_line:
+        return False
+    return requires_supervisor_review_for_variance(count_line.get("variance"))
+
+
+def is_count_line_effectively_reviewed(count_line: Optional[dict[str, Any]]) -> bool:
+    if not count_line:
+        return False
+
+    line_status = normalize_count_line_status(count_line.get("status"))
+    if bool(count_line.get("verified")) or line_status in APPROVED_COUNT_LINE_STATUSES:
+        return True
+
+    return not count_line_requires_supervisor_review(count_line) and line_status != "rejected"
+
+
+def get_effective_count_line_status(count_line: Optional[dict[str, Any]]) -> str:
+    if not count_line:
+        return "pending"
+
+    line_status = normalize_count_line_status(count_line.get("status"))
+    if line_status in {"rejected", "locked", "approved"}:
+        return line_status
+    if is_count_line_effectively_reviewed(count_line):
+        return "approved"
+    return line_status
+
+
+def get_effective_approval_status(count_line: Optional[dict[str, Any]]) -> str:
+    if not count_line:
+        return "PENDING"
+
+    approval_status = normalize_approval_status(count_line.get("approval_status"))
+    if approval_status in {"REJECTED", "APPROVED"}:
+        return approval_status
+    if is_count_line_effectively_reviewed(count_line):
+        return "APPROVED"
+    return approval_status
+
+
+def materialize_count_line_review_state(count_line: dict[str, Any]) -> dict[str, Any]:
+    """Project a count line with the effective review state used by live reads."""
+    line = dict(count_line)
+    line["status"] = get_effective_count_line_status(count_line)
+    line["approval_status"] = get_effective_approval_status(count_line)
+    return line
+
+
 def build_session_lookup(session_id: str) -> dict[str, Any]:
     return {"$or": [{"id": session_id}, {"session_id": session_id}]}
 
@@ -145,7 +201,10 @@ def is_blocking_finalization(count_line: dict[str, Any]) -> bool:
     if normalize_count_line_status(count_line.get("status")) in BLOCKING_COUNT_LINE_STATUSES:
         return True
 
-    if normalize_approval_status(count_line.get("approval_status")) in BLOCKING_APPROVAL_STATUSES:
+    if not count_line_requires_supervisor_review(count_line):
+        return False
+
+    if get_effective_approval_status(count_line) in BLOCKING_APPROVAL_STATUSES:
         return True
 
     if count_line.get("assigned_to") and count_line.get("recount_requested_at"):
@@ -175,8 +234,7 @@ async def recompute_session_totals(db: Any, session_id: str) -> dict[str, Any]:
         total_variance += float(line.get("variance") or 0.0)
         damage_items += int(float(line.get("damaged_qty") or 0.0))
 
-        line_status = normalize_count_line_status(line.get("status"))
-        if bool(line.get("verified")) or line_status in APPROVED_COUNT_LINE_STATUSES:
+        if is_count_line_effectively_reviewed(line):
             verified_items += 1
 
         candidate_activity = line.get("updated_at") or line.get("approved_at") or line.get("counted_at")

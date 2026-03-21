@@ -66,6 +66,7 @@ export interface ScanFormData {
 export interface CreateCountLinePayload {
   session_id: string;
   item_code: string;
+  item_name?: string;
   batch_id?: string;
   counted_qty: number;
   damaged_qty?: number;
@@ -95,7 +96,7 @@ export interface CreateCountLinePayload {
   expiry_date?: string | null;
   expiry_date_format?: DateFormatType;
   photo_base64?: string;
-  photo_proofs?: PhotoProofDraft[];
+  photo_proofs?: BackendPhotoProofPayload[] | PhotoProofDraft[];
   mrp_counted?: number;
   mrp_source?: string;
   variant_id?: string;
@@ -138,6 +139,12 @@ export interface PhotoProofDraft {
   previewUri?: string;
   base64: string;
   capturedAt: string;
+}
+
+export interface BackendPhotoProofPayload {
+  id: string;
+  url: string;
+  timestamp: string;
 }
 
 export interface SerialInput {

@@ -1,7 +1,7 @@
 # Makefile for STOCK_VERIFY CI and Development Tasks
 # Usage: make <target>
 
-.PHONY: help ci test lint format typecheck pre-commit install clean eval security secrets agent-ci agent-python agent-node
+.PHONY: help ci test lint format typecheck pre-commit install clean eval security secrets agent-ci agent-python agent-node audit-count-line-names
 
 PYTHON := ./scripts/python.sh
 
@@ -21,6 +21,7 @@ help:
 	@echo "  make test        - Run all tests"
 	@echo "  make lint        - Run all linters"
 	@echo "  make format      - Format all code"
+	@echo "  make audit-count-line-names - Read-only audit for missing or bad item_name records"
 	@echo "  make node-e2e-recount-smoke - Run recount assignment smoke (requires backend on 8001)"
 	@echo ""
 	@echo "🛠️  Development:"
@@ -143,6 +144,10 @@ agent-python:
 
 agent-node:
 	@./scripts/agent_ci.sh node
+
+audit-count-line-names:
+	@echo "Running read-only count line item-name audit..."
+	$(PYTHON) backend/scripts/repair_count_line_item_names.py --limit 20
 
 test: python-test node-test
 

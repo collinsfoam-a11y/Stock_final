@@ -7,10 +7,12 @@ import {
   IS_WEB,
   Summary,
 } from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
+import { DashboardConnectionState } from "@/components/admin/realtime-dashboard/realtimeDashboardLive";
 
 interface RealtimeDashboardToolbarProps {
   actionsDisabled?: boolean;
   autoRefresh: boolean;
+  connectionState: DashboardConnectionState;
   onExportCSV: () => void;
   onOpenColumnSettings: () => void;
   onToggleAutoRefresh: () => void;
@@ -22,6 +24,7 @@ interface RealtimeDashboardToolbarProps {
 export function RealtimeDashboardToolbar({
   actionsDisabled = false,
   autoRefresh,
+  connectionState,
   onExportCSV,
   onOpenColumnSettings,
   onToggleAutoRefresh,
@@ -102,12 +105,24 @@ export function RealtimeDashboardToolbar({
             Generated in {summary.generation_time_ms.toFixed(0)}ms •{" "}
             {summary.filtered_records} of {summary.total_records} records
           </Text>
-          {autoRefresh && (
-            <View style={styles.liveIndicator}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>Live</Text>
-            </View>
-          )}
+          <View style={styles.liveIndicator}>
+            <View
+              style={[
+                styles.liveDot,
+                connectionState.tone === "warning" && styles.liveDotWarning,
+                connectionState.tone === "muted" && styles.liveDotMuted,
+              ]}
+            />
+            <Text
+              style={[
+                styles.liveText,
+                connectionState.tone === "warning" && styles.liveTextWarning,
+                connectionState.tone === "muted" && styles.liveTextMuted,
+              ]}
+            >
+              {connectionState.label}
+            </Text>
+          </View>
         </View>
       )}
     </>
@@ -200,9 +215,21 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "#4CAF50",
   },
+  liveDotWarning: {
+    backgroundColor: "#FF9800",
+  },
+  liveDotMuted: {
+    backgroundColor: auroraTheme.colors.text.secondary,
+  },
   liveText: {
     fontSize: 12,
     color: "#4CAF50",
     fontWeight: "600",
+  },
+  liveTextWarning: {
+    color: "#FF9800",
+  },
+  liveTextMuted: {
+    color: auroraTheme.colors.text.secondary,
   },
 });

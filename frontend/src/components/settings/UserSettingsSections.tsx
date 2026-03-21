@@ -80,8 +80,6 @@ const BACKUP_FREQUENCY_OPTIONS: Option<Settings["backupFrequency"]>[] = [
 
 const MODE_OPTIONS: Option<Settings["operationalMode"]>[] = [
   { label: "Routine", value: "routine" },
-  { label: "Live Audit", value: "live_audit" },
-  { label: "Training", value: "training" },
 ];
 
 const DEBOUNCE_DELAY_OPTIONS: Option<number>[] = [
@@ -272,9 +270,10 @@ export function UserSettingsSections() {
   const { settings, setSetting } = useSettingsStore();
   const spacing = useTheme().spacing;
   const { version, buildVersion } = useAppVersion();
-  const { versionInfo, isChecking, checkForUpdates } = useVersionCheck({
-    checkOnMount: false,
-  });
+  const { versionInfo, isChecking, checkForUpdates, dismissUpdate, isDismissed } =
+    useVersionCheck({
+      checkOnMount: false,
+    });
 
   const latestVersionLabel = versionInfo?.current_version
     ? `v${versionInfo.current_version}`
@@ -329,17 +328,21 @@ export function UserSettingsSections() {
         Alert.alert(title, message, [{ text: "Update Now", onPress: updateAction }], {
           cancelable: false,
         });
-      } else {
-        Alert.alert(title, message, [
-          { text: "Later", style: "cancel" },
-          { text: "Update Now", onPress: updateAction },
-        ]);
-      }
+        } else {
+          Alert.alert(title, message, [
+            {
+              text: "Later",
+              style: "cancel",
+              onPress: dismissUpdate,
+            },
+            { text: "Update Now", onPress: updateAction },
+          ]);
+        }
       return;
     }
 
     Alert.alert("App is Up to Date", `You are using the latest version (v${version}).`);
-  }, [checkForUpdates, handleUpdateNow, version]);
+  }, [checkForUpdates, dismissUpdate, handleUpdateNow, version]);
 
   const labels = useMemo(
     () => ({
@@ -673,7 +676,20 @@ export function UserSettingsSections() {
             void handleCheckForUpdates();
           }}
         />
-        {versionInfo?.update_available && (
+        {versionInfo?.update_available && isDismissed && (
+          <>
+            <SectionDivider />
+            <SettingRow
+              icon="notifications-off-outline"
+              label="Update Reminder"
+              description="Optional update reminders are paused until a newer version is reported"
+              type="select"
+              disabled
+              valueLabel="Dismissed"
+            />
+          </>
+        )}
+        {versionInfo?.update_available && !isDismissed && (
           <>
             <SectionDivider />
             <SettingRow
@@ -732,15 +748,10 @@ export function UserSettingsSections() {
         <SettingRow
           icon="construct-outline"
           label="Operational Mode"
-          description="Switch the app behavior profile for your work"
+          description="Routine mode is the only supported workflow profile in this build"
           type="select"
+          disabled
           valueLabel={labels.operationalMode}
-          onPress={() =>
-            setSetting(
-              "operationalMode",
-              cycleOption(MODE_OPTIONS, settings.operationalMode),
-            )
-          }
         />
       </Section>
 

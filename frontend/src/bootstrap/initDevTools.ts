@@ -1,5 +1,3 @@
-import { Platform } from "react-native";
-
 export function initMonitoringAndDevTools(isDev: boolean): void {
   import("../services/sentry")
     .then(({ initSentry }) => {
@@ -23,14 +21,5 @@ export function initMonitoringAndDevTools(isDev: boolean): void {
       console.warn("Reactotron init failed", e);
     });
 
-  if (Platform.OS === "web") {
-    import("react-scan")
-      .then(({ scan }) => {
-        scan({ enabled: true, log: true });
-      })
-      .catch((e) => {
-        console.warn("React Scan init failed", e);
-      });
-  }
 }
 

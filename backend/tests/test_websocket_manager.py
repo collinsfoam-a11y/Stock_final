@@ -72,3 +72,20 @@ async def test_broadcast_to_session(manager):
 
     ws1.send_json.assert_called_with(message)
     ws2.send_json.assert_called_with(message)
+
+
+@pytest.mark.asyncio
+async def test_broadcast_to_roles_only_targets_matching_users(manager):
+    ws1 = AsyncMock(spec=WebSocket)
+    ws2 = AsyncMock(spec=WebSocket)
+
+    await manager.connect(ws1, "supervisor1")
+    await manager.connect(ws2, "staff1")
+    manager.user_roles["supervisor1"] = "supervisor"
+    manager.user_roles["staff1"] = "staff"
+
+    message = {"type": "dashboard_refresh_requested", "payload": {"event": "count_line_created"}}
+    await manager.broadcast_to_roles(message, {"supervisor", "admin"})
+
+    ws1.send_json.assert_called_with(message)
+    ws2.send_json.assert_not_called()

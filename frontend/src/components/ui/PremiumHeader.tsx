@@ -29,6 +29,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useThemeContext } from "../../context/ThemeContext";
 import { AppTheme } from "../../theme/themes";
+import { BrandLogo } from "../branding/BrandLogo";
 
 interface PremiumHeaderProps {
   title?: string;
@@ -48,7 +49,7 @@ interface PremiumHeaderProps {
 }
 
 export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
-  title = "Stock Verify",
+  title = "Lavanya Mart",
   subtitle,
   userName,
   userRole,
@@ -98,7 +99,7 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
       entering={FadeIn.delay(100)}
     >
       <View style={styles.iconGlow}>
-        <Ionicons name="cube" size={32} color={theme.colors.primary[400]} />
+        <BrandLogo variant="symbol" width={32} height={32} />
       </View>
       <View style={styles.titleContainer}>
         <Text style={styles.title}>{title}</Text>

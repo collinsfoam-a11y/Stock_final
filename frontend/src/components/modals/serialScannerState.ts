@@ -37,8 +37,11 @@ export const createDetectedCodeList = (
     .map(({ candidate }) => candidate);
 };
 
-export const nextAfterSerialAdded = (_state: { scanPaused: boolean }) => ({
-  scanPaused: true,
+export const nextAfterSerialAdded = (state: {
+  scanPaused: boolean;
+  fastAutoAdd?: boolean;
+}) => ({
+  scanPaused: state.fastAutoAdd ? false : true,
 });
 
 export const nextAfterResume = (_state: { scanPaused: boolean }) => ({

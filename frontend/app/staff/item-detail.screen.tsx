@@ -14,6 +14,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
@@ -49,6 +50,7 @@ import {
 } from "@/theme/unified";
 
 export default function ItemDetailScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ barcode: string; sessionId: string }>();
   const { barcode, sessionId } = params;
@@ -433,7 +435,11 @@ export default function ItemDetailScreen() {
             </>
           )}
 
-          <View style={styles.footerSpacer} />
+          <View
+            style={{
+              height: Math.max(96, insets.bottom + 88),
+            }}
+          />
         </ScrollView>
 
         <ItemSubmitBar
@@ -493,8 +499,5 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: spacing.xl,
-  },
-  footerSpacer: {
-    height: 80,
   },
 });

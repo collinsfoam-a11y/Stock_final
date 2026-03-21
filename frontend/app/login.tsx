@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
+  useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -28,6 +29,7 @@ import ModernButton from "../src/components/ui/ModernButton";
 import ModernCard from "../src/components/ui/ModernCard";
 import ModernInput from "../src/components/ui/ModernInput";
 import ModernHeader from "../src/components/ui/ModernHeader";
+import { BrandLogo } from "../src/components/branding/BrandLogo";
 import {
   colors,
   spacing,
@@ -116,6 +118,7 @@ const getLoginErrorAlert = (
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const {
     login,
     loginWithPin,
@@ -135,6 +138,7 @@ export default function LoginScreen() {
     username?: string;
     password?: string;
   }>({});
+  const logoMaxWidth = Math.min(width - spacing.xl * 2, 280);
 
   const pinInputRef = React.useRef<TextInput>(null);
 
@@ -341,10 +345,10 @@ export default function LoginScreen() {
                 </View>
               ) : (
                 <View style={styles.logoContainer}>
-                  <Ionicons
-                    name="shield-checkmark"
-                    size={64}
-                    color={colors.primary[500]}
+                  <BrandLogo
+                    variant="wordmark"
+                    maxWidth={logoMaxWidth}
+                    maxHeight={96}
                   />
                 </View>
               )}
@@ -356,7 +360,7 @@ export default function LoginScreen() {
               <Text style={styles.welcomeSubtitle}>
                 {lastLoggedUser && loginMode === "pin"
                   ? "Scan your fingerprint or enter PIN"
-                  : "Secure Inventory Verification System"}
+                  : "Secure stock verification for your store team"}
               </Text>
             </SafeAnimatedView>
 
@@ -768,10 +772,8 @@ const styles = StyleSheet.create({
     color: colors.gray[800],
   },
   logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: colors.primary[50],
+    width: "100%",
+    minHeight: 112,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: spacing.lg,

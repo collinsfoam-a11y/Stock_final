@@ -14,26 +14,32 @@ AUTH_USERNAME="${AUTH_USERNAME:-}"
 AUTH_PASSWORD="${AUTH_PASSWORD:-}"
 VALIDATION_LOG="${VALIDATION_LOG:-/tmp/system_validation.log}"
 
+if command -v curl.exe >/dev/null 2>&1; then
+    CURL_BIN="curl.exe"
+else
+    CURL_BIN="curl"
+fi
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${BLUE}🚀 Stock Verify Final System Validation${NC}"
+echo -e "${BLUE}Stock Verify Final System Validation${NC}"
 echo -e "${BLUE}======================================${NC}"
 echo "Backend: ${BACKEND_URL}"
 echo "Frontend: ${FRONTEND_URL}"
 echo "Log file: ${VALIDATION_LOG}"
 echo ""
 
-cat > "$VALIDATION_LOG" <<EOF
+cat > "$VALIDATION_LOG" <<EOF_LOG
 Stock Verify Final System Validation
 Date: $(date)
 Backend: ${BACKEND_URL}
 Frontend: ${FRONTEND_URL}
 ====================================
-EOF
+EOF_LOG
 
 log_message() {
     local level="$1"
@@ -43,10 +49,10 @@ log_message() {
     echo "[$timestamp] [$level] $message" >> "$VALIDATION_LOG"
 
     case "$level" in
-        "INFO") echo -e "${BLUE}ℹ ${message}${NC}" ;;
-        "SUCCESS") echo -e "${GREEN}✓ ${message}${NC}" ;;
-        "WARNING") echo -e "${YELLOW}⚠ ${message}${NC}" ;;
-        "ERROR") echo -e "${RED}✗ ${message}${NC}" ;;
+        "INFO") echo -e "${BLUE}[INFO] ${message}${NC}" ;;
+        "SUCCESS") echo -e "${GREEN}[OK] ${message}${NC}" ;;
+        "WARNING") echo -e "${YELLOW}[WARN] ${message}${NC}" ;;
+        "ERROR") echo -e "${RED}[ERR] ${message}${NC}" ;;
     esac
 }
 
@@ -55,7 +61,11 @@ assert_http_ok() {
     local url="$2"
     local allowed="${3:-200}"
     local code
-    code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "$url" || echo "000")
+    code=$("$CURL_BIN" -sS -o /dev/null -w "%{http_code}" --connect-timeout 5 "$url" 2>/dev/null || true)
+    code="${code:0:3}"
+    if [ -z "$code" ]; then
+        code="000"
+    fi
 
     if echo " ${allowed} " | grep -q " ${code} "; then
         log_message "SUCCESS" "${name} responded with HTTP ${code}"
@@ -69,7 +79,7 @@ assert_http_ok() {
 check_port() {
     local name="$1"
     local port="$2"
-    if lsof -i :"$port" 2>/dev/null | grep -q LISTEN; then
+    if command -v lsof >/dev/null 2>&1 && lsof -i :"$port" 2>/dev/null | grep -q LISTEN; then
         log_message "SUCCESS" "${name} is listening on port ${port}"
         return 0
     fi
@@ -115,7 +125,7 @@ check_auth_flow() {
     local token
     local protected_code
 
-    login_response=$(curl -fsS -X POST "${BACKEND_URL}/api/auth/login" \
+    login_response=$("$CURL_BIN" -fsS -X POST "${BACKEND_URL}/api/auth/login" \
         -H "Content-Type: application/json" \
         -d "{\"username\":\"${AUTH_USERNAME}\",\"password\":\"${AUTH_PASSWORD}\"}") || {
         log_message "ERROR" "Login request failed"
@@ -129,9 +139,10 @@ check_auth_flow() {
     fi
     log_message "SUCCESS" "Login returned an access token"
 
-    protected_code=$(curl -s -o /dev/null -w "%{http_code}" \
+    protected_code=$("$CURL_BIN" -sS -o /dev/null -w "%{http_code}" \
         -H "Authorization: Bearer ${token}" \
         "${BACKEND_URL}/api/sessions")
+    protected_code="${protected_code:0:3}"
     if [ "$protected_code" = "200" ]; then
         log_message "SUCCESS" "Protected session route responded with HTTP 200"
         return 0

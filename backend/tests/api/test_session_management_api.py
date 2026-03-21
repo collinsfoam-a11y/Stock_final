@@ -548,9 +548,9 @@ class TestSessionStatsEndpoint:
                 assert response.status_code == 200
                 data = response.json()
                 assert data["total_items"] == 50
-                assert data["verified_items"] == 30
+                assert data["verified_items"] == 50
                 assert data["damage_items"] == 5
-                assert data["pending_items"] == 20
+                assert data["pending_items"] == 0
         finally:
             app.dependency_overrides.clear()
 

@@ -16,7 +16,7 @@ describe("PhotoCaptureModal permission handling", () => {
     jest.clearAllMocks();
   });
 
-  it("requests permission when camera access can still be asked", () => {
+  it("auto-requests permission and allows a manual retry when camera access can still be asked", () => {
     mockUseCameraPermissions.mockReturnValue([
       { granted: false, canAskAgain: true },
       mockRequestPermission,
@@ -30,9 +30,11 @@ describe("PhotoCaptureModal permission handling", () => {
       />,
     );
 
+    expect(mockRequestPermission).toHaveBeenCalledTimes(1);
+
     fireEvent.press(getByText("Grant Permission"));
 
-    expect(mockRequestPermission).toHaveBeenCalledTimes(1);
+    expect(mockRequestPermission).toHaveBeenCalledTimes(2);
   });
 
   it("offers open settings when permission is permanently denied", () => {

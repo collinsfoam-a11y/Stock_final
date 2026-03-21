@@ -11,6 +11,10 @@ import {
   SerialEntryData,
 } from "@/types/scan";
 import { normalizeSerialValue } from "@/utils/scanUtils";
+import {
+  formatBackendValidationDetail,
+  toBackendPhotoProofs,
+} from "./submissionPayload";
 
 type DamageType = "returnable" | "nonreturnable";
 
@@ -44,6 +48,8 @@ interface UseDeferredItemSubmissionParams {
   onSuccess: () => void;
   countdownSeconds?: number;
 }
+
+export { toBackendPhotoProofs } from "./submissionPayload";
 
 export const useDeferredItemSubmission = ({
   barcode,
@@ -164,9 +170,19 @@ export const useDeferredItemSubmission = ({
             }))
         : [];
 
+      const nowIso = new Date().toISOString();
+      const backendPhotoProofs = toBackendPhotoProofs(
+        [
+          ...(damagePhoto ? [damagePhoto] : []),
+          ...itemPhotos,
+        ],
+        nowIso,
+      );
+
       const payload: CreateCountLinePayload = {
         session_id: sessionId,
         item_code: item.item_code || barcode || "",
+        item_name: item.item_name || item.name || item.item_code || barcode || "",
         counted_qty: qty,
         floor_no: currentFloor || "Unknown",
         rack_no: currentRack || "Unknown",
@@ -193,24 +209,7 @@ export const useDeferredItemSubmission = ({
         expiry_date:
           hasExpiryDate && itemExpiryDate ? itemExpiryDate : item.expiry_date,
         expiry_date_format: hasExpiryDate ? itemExpiryDateFormat : undefined,
-        photo_proofs: [
-          ...(damagePhoto
-            ? [
-                {
-                  type: "DAMAGE" as const,
-                  uri: damagePhoto,
-                  capturedAt: new Date().toISOString(),
-                  base64: "",
-                },
-              ]
-            : []),
-          ...itemPhotos.map((uri) => ({
-            type: "ITEM" as const,
-            uri,
-            capturedAt: new Date().toISOString(),
-            base64: "",
-          })),
-        ],
+        photo_proofs: backendPhotoProofs.length > 0 ? backendPhotoProofs : undefined,
       };
 
       const result = await createCountLine(payload);
@@ -237,6 +236,14 @@ export const useDeferredItemSubmission = ({
         toastService.show(
           "Item is being processed by another user. Please try again.",
           { type: "warning" },
+        );
+      } else if (error.response?.status === 422) {
+        const detailMessage = formatBackendValidationDetail(
+          error.response?.data?.detail,
+        );
+        Alert.alert(
+          "Validation Error",
+          detailMessage || "Submitted data format was rejected by server.",
         );
       } else {
         Alert.alert("Error", error.message || "Failed to save count");

@@ -32,6 +32,12 @@ export interface PhotoProofDraft {
   timestamp: number;
 }
 
+export interface BackendPhotoProofPayload {
+  id: string;
+  url: string;
+  timestamp: string;
+}
+
 export interface CountLineBatch {
   batch_id: string;
   qty: number;
@@ -43,6 +49,7 @@ export interface CountLineBatch {
 export interface CreateCountLinePayload {
   session_id: string;
   item_code: string;
+  item_name?: string;
   batch_id?: string;
   counted_qty: number;
   damaged_qty?: number;
@@ -61,7 +68,7 @@ export interface CreateCountLinePayload {
   manufacturing_date?: string | null;
   expiry_date?: string | null;
   photo_base64?: string;
-  photo_proofs?: PhotoProofDraft[];
+  photo_proofs?: BackendPhotoProofPayload[] | PhotoProofDraft[];
   mrp_counted?: number;
   mrp_source?: string;
   variant_id?: string;

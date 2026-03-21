@@ -22,6 +22,10 @@ import { RealtimeDashboardTable } from "../../src/components/admin/realtime-dash
 import { RealtimeDashboardToolbar } from "../../src/components/admin/realtime-dashboard/RealtimeDashboardToolbar";
 import { RealtimeStatsStrip } from "../../src/components/admin/realtime-dashboard/RealtimeStatsStrip";
 import {
+  getRealtimeDashboardConnectionState,
+  shouldRefreshRealtimeDashboard,
+} from "../../src/components/admin/realtime-dashboard/realtimeDashboardLive";
+import {
   Column,
   DashboardItem,
   DashboardStats,
@@ -29,6 +33,7 @@ import {
   Pagination,
   Summary,
 } from "../../src/components/admin/realtime-dashboard/realtimeDashboardShared";
+import { useWebSocket } from "../../src/hooks/useWebSocket";
 import api from "../../src/services/api/api";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { auroraTheme } from "../../src/theme/auroraTheme";
@@ -45,7 +50,11 @@ export default function RealtimeDashboard() {
   const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
+  const realtimeRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
+  const { isConnected, lastMessage } = useWebSocket();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -64,6 +73,15 @@ export default function RealtimeDashboard() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [verifiedFilter, setVerifiedFilter] = useState<boolean | null>(null);
   const effectiveAutoRefresh = autoRefresh && !offlineMode;
+  const connectionState = useMemo(
+    () =>
+      getRealtimeDashboardConnectionState({
+        autoRefresh: effectiveAutoRefresh,
+        isConnected,
+        offlineMode,
+      }),
+    [effectiveAutoRefresh, isConnected, offlineMode],
+  );
 
   const visibleColumns = useMemo(
     () => columns.filter((column) => column.visible),
@@ -143,6 +161,27 @@ export default function RealtimeDashboard() {
     }
   }, [offlineMode]);
 
+  const refreshDashboardSnapshot = useCallback(
+    async (page = pagination.page) => {
+      await Promise.all([fetchData(page), fetchStats()]);
+    },
+    [fetchData, fetchStats, pagination.page],
+  );
+
+  const requestRealtimeRefresh = useCallback(() => {
+    if (!effectiveAutoRefresh || offlineMode) {
+      return;
+    }
+
+    if (realtimeRefreshTimeoutRef.current) {
+      clearTimeout(realtimeRefreshTimeoutRef.current);
+    }
+
+    realtimeRefreshTimeoutRef.current = setTimeout(() => {
+      void refreshDashboardSnapshot(pagination.page);
+    }, 300);
+  }, [effectiveAutoRefresh, offlineMode, pagination.page, refreshDashboardSnapshot]);
+
   const fetchColumns = useCallback(async () => {
     if (offlineMode) {
       setColumns([]);
@@ -165,27 +204,44 @@ export default function RealtimeDashboard() {
     const initialize = async () => {
       setLoading(true);
       await fetchColumns();
-      await Promise.all([fetchData(), fetchStats()]);
+      await refreshDashboardSnapshot();
       setLoading(false);
     };
 
     void initialize();
-  }, [fetchColumns, fetchData, fetchStats]);
+  }, [fetchColumns, refreshDashboardSnapshot]);
 
   useEffect(() => {
-    if (effectiveAutoRefresh) {
+    if (effectiveAutoRefresh && !isConnected) {
       refreshIntervalRef.current = setInterval(() => {
-        fetchData(pagination.page);
-        fetchStats();
+        void refreshDashboardSnapshot(pagination.page);
       }, 10000);
     }
 
     return () => {
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
       }
     };
-  }, [effectiveAutoRefresh, fetchData, fetchStats, pagination.page]);
+  }, [effectiveAutoRefresh, isConnected, pagination.page, refreshDashboardSnapshot]);
+
+  useEffect(() => {
+    if (!shouldRefreshRealtimeDashboard(lastMessage)) {
+      return;
+    }
+
+    requestRealtimeRefresh();
+  }, [lastMessage, requestRealtimeRefresh]);
+
+  useEffect(() => {
+    return () => {
+      if (realtimeRefreshTimeoutRef.current) {
+        clearTimeout(realtimeRefreshTimeoutRef.current);
+        realtimeRefreshTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!loading) {
@@ -196,7 +252,7 @@ export default function RealtimeDashboard() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchData(pagination.page), fetchStats()]);
+    await refreshDashboardSnapshot(pagination.page);
     setRefreshing(false);
   };
 
@@ -336,6 +392,7 @@ export default function RealtimeDashboard() {
         <RealtimeDashboardToolbar
           actionsDisabled={offlineMode}
           autoRefresh={effectiveAutoRefresh}
+          connectionState={connectionState}
           onExportCSV={handleExportCSV}
           onOpenColumnSettings={() => setShowColumnSettings(true)}
           onToggleAutoRefresh={() => {

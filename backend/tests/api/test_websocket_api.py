@@ -29,9 +29,11 @@ def clear_manager():
     """Reset WebSocket manager state before and after each test."""
     manager.active_connections = {}
     manager.session_connections = {}
+    manager.user_roles = {}
     yield
     manager.active_connections = {}
     manager.session_connections = {}
+    manager.user_roles = {}
 
 
 def test_websocket_connect_success(client):

@@ -113,6 +113,7 @@ async def websocket_endpoint(
             websocket,
             user_id,
             session_id,
+            role=role,
             subprotocol=accept_subprotocol,
         )
 

@@ -133,6 +133,7 @@ export const useItemSubmission = ({
       const payload: CreateCountLinePayload = {
         session_id: sessionId as string,
         item_code: item.item_code,
+        item_name: item.item_name || item.name || item.item_code,
         batch_id: item.batch_id || undefined,
         counted_qty: finalQty,
         batches: form.isBatchMode ? form.batches : undefined,

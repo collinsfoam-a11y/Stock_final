@@ -1,7 +1,11 @@
 // app/staff/serial-scanner.tsx
 import React, { useCallback, useMemo, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import { CameraView, type BarcodeScanningResult } from "expo-camera";
+import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  CameraView,
+  type BarcodeScanningResult,
+  useCameraPermissions,
+} from "expo-camera";
 import { useRouter } from "expo-router";
 
 // Fix 1: Use correct alias imports
@@ -22,6 +26,7 @@ function toast(msg: string) {
 
 export default function SerialScannerScreen() {
   const router = useRouter();
+  const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<ScanMode>("SERIAL");
   const [serials, setSerials] = useState<string[]>([]);
 
@@ -104,6 +109,17 @@ export default function SerialScannerScreen() {
     ];
   }, [mode]);
 
+  const handleOpenSettings = useCallback(async () => {
+    try {
+      await Linking.openSettings();
+    } catch {
+      Alert.alert(
+        "Settings Unavailable",
+        "Please enable camera permission manually from app settings.",
+      );
+    }
+  }, []);
+
   return (
     <View style={styles.container}>
       <ModernHeader
@@ -140,17 +156,40 @@ export default function SerialScannerScreen() {
         </Text>
       </View>
 
-      <View style={styles.cameraWrap}>
-        <CameraView
-          style={StyleSheet.absoluteFill}
-          onBarcodeScanned={onBarcodeScanned}
-          barcodeScannerSettings={{
-            // @ts-ignore: simplified types for expo-camera
-            barcodeTypes: barcodeTypes,
-          }}
-        />
-        <View style={styles.frame} />
-      </View>
+      {!permission?.granted ? (
+        <View style={styles.permissionContainer}>
+          <Text style={styles.permissionText}>
+            Camera permission is required for serial scanning.
+          </Text>
+          {permission?.canAskAgain !== false ? (
+            <ModernButton
+              title="Grant Permission"
+              variant="primary"
+              style={{ minHeight: 44, width: "100%" }}
+              onPress={requestPermission}
+            />
+          ) : (
+            <ModernButton
+              title="Open Settings"
+              variant="primary"
+              style={{ minHeight: 44, width: "100%" }}
+              onPress={handleOpenSettings}
+            />
+          )}
+        </View>
+      ) : (
+        <View style={styles.cameraWrap}>
+          <CameraView
+            style={StyleSheet.absoluteFill}
+            onBarcodeScanned={onBarcodeScanned}
+            barcodeScannerSettings={{
+              // @ts-ignore: simplified types for expo-camera
+              barcodeTypes: barcodeTypes,
+            }}
+          />
+          <View style={styles.frame} />
+        </View>
+      )}
 
       <View style={styles.bottomPanel}>
         <View style={styles.statsRow}>
@@ -199,6 +238,18 @@ const styles = StyleSheet.create({
   topBar: { paddingHorizontal: 16, paddingBottom: 12, backgroundColor: "#000" },
   modeRow: { flexDirection: "row", gap: 8, marginTop: 10 },
   hint: { color: "rgba(255,255,255,0.7)", marginTop: 8, fontSize: 12 },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  permissionText: {
+    color: "#fff",
+    fontSize: 14,
+    textAlign: "center",
+  },
 
   cameraWrap: { flex: 1, position: "relative" },
   frame: {

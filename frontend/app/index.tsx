@@ -13,6 +13,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useAuthStore } from "../src/store/authStore";
 import { AuroraBackground } from "../src/components/ui/AuroraBackground";
 import { GlassCard } from "../src/components/ui/GlassCard";
+import { BrandLogo } from "../src/components/branding/BrandLogo";
 import { useThemeContext } from "../src/context/ThemeContext";
 import type { AppTheme } from "../src/theme/themes";
 import { getRouteForRole, UserRole } from "../src/utils/roleNavigation";
@@ -62,11 +63,9 @@ export default function Index() {
       >
         <GlassCard variant="strong" elevation="lg" style={styles.card}>
           <View style={styles.logoContainer}>
-            <View style={styles.iconPlaceholder}>
-              <Text style={styles.iconText}>SV</Text>
-            </View>
-            <Text style={styles.title}>Stock Verify</Text>
-            <Text style={styles.subtitle}>Enterprise Audit System</Text>
+            <BrandLogo variant="wordmarkTagline" maxWidth={250} maxHeight={110} />
+            <Text style={styles.title}>Lavanya Mart</Text>
+            <Text style={styles.subtitle}>Stock Verification System</Text>
           </View>
 
           <View style={styles.loadingContainer}>
@@ -133,25 +132,7 @@ const createStyles = (theme: AppTheme) =>
     logoContainer: {
       alignItems: "center",
       marginBottom: theme.spacing.xl,
-    },
-    iconPlaceholder: {
-      width: 80,
-      height: 80,
-      borderRadius: 24,
-      backgroundColor: theme.colors.accent,
-      justifyContent: "center",
-      alignItems: "center",
-      marginBottom: theme.spacing.md,
-      shadowColor: theme.colors.accent,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.4,
-      shadowRadius: 12,
-      elevation: 10,
-    },
-    iconText: {
-      fontSize: 32,
-      fontWeight: "bold",
-      color: "#ffffff",
+      gap: theme.spacing.md,
     },
     title: {
       fontSize: 28,

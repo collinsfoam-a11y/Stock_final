@@ -267,4 +267,75 @@ describe("settingsStore user scope", () => {
     expect(migratedSettings.fontStyle).toBe("serif");
     expect(storage.has("app_settings")).toBe(false);
   });
+
+  it("normalizes unsupported operational modes to routine on load", async () => {
+    jest.doMock("../../services/mmkvStorage", () => ({
+      __esModule: true,
+      mmkvStorage: {
+        getItem: jest.fn(() => null),
+        getItemAsync: jest.fn(async () => null),
+        setItem: jest.fn(),
+        removeItem: jest.fn(),
+        clearAll: jest.fn(),
+        flush: jest.fn(async () => undefined),
+        initialize: jest.fn(async () => undefined),
+      },
+    }));
+
+    jest.doMock("../../services/api/authApi", () => ({
+      __esModule: true,
+      authApi: {
+        getUserSettings: jest.fn(async () =>
+          buildBackendSettings({ operational_mode: "live_audit" }),
+        ),
+        updateUserSettings: jest.fn(async () => buildBackendSettings()),
+      },
+      default: {
+        getUserSettings: jest.fn(async () =>
+          buildBackendSettings({ operational_mode: "live_audit" }),
+        ),
+        updateUserSettings: jest.fn(async () => buildBackendSettings()),
+      },
+    }));
+
+    jest.doMock("../../services/themeService", () => ({
+      __esModule: true,
+      ThemeService: {
+        initialize: jest.fn(async () => undefined),
+        getTheme: jest.fn(),
+        setTheme: jest.fn(),
+        subscribe: jest.fn(() => jest.fn()),
+      },
+    }));
+
+    jest.doMock("../../services/backupReminderService", () => ({
+      __esModule: true,
+      syncBackupReminderPreference: jest.fn(async () => undefined),
+    }));
+
+    jest.doMock("../../services/logging", () => ({
+      __esModule: true,
+      createLogger: () => ({
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+      }),
+    }));
+
+    let useSettingsStore!: typeof import("../settingsStore").useSettingsStore;
+    let setUserPreferenceScope!: typeof import("../../services/userPreferenceScope").setUserPreferenceScope;
+
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ({ useSettingsStore } = require("../settingsStore"));
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ({ setUserPreferenceScope } = require("../../services/userPreferenceScope"));
+    });
+
+    setUserPreferenceScope("ops-user");
+    await useSettingsStore.getState().loadSettings();
+
+    expect(useSettingsStore.getState().settings.operationalMode).toBe("routine");
+  });
 });

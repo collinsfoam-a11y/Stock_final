@@ -3,7 +3,7 @@
  * Modal for capturing photos using the device camera
  */
 
-import React, { useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -44,6 +44,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const cameraRef = useRef<CameraView>(null);
+  const hasAutoRequestedPermissionRef = useRef(false);
 
   // Handle photo capture
   const handleCapture = async () => {
@@ -96,6 +97,22 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       );
     }
   };
+
+  useEffect(() => {
+    if (!visible) {
+      hasAutoRequestedPermissionRef.current = false;
+      return;
+    }
+
+    if (permission?.granted || hasAutoRequestedPermissionRef.current) {
+      return;
+    }
+
+    if (permission?.canAskAgain !== false) {
+      hasAutoRequestedPermissionRef.current = true;
+      void requestPermission();
+    }
+  }, [permission, requestPermission, visible]);
 
   // Render permission request
   if (!permission?.granted) {

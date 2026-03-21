@@ -536,6 +536,7 @@ export default function SessionDetail() {
 
   const renderItem = ({ item, index }: { item: any; index: number }) => {
     const normalizedStatus = String(item.status || "").toLowerCase();
+    const requiresSupervisorReview = Number(item.variance ?? 0) !== 0;
     const varianceColor =
       item.variance === 0
         ? auroraTheme.colors.success[500]
@@ -648,7 +649,7 @@ export default function SessionDetail() {
 
         {!offlineMode && !sessionFinalized && (
           <View style={styles.lineActions}>
-            {normalizedStatus === "pending" && (
+            {requiresSupervisorReview && normalizedStatus === "pending" && (
               <>
                 <AnimatedPressable
                   style={styles.approveButton}
@@ -675,7 +676,7 @@ export default function SessionDetail() {
               </>
             )}
 
-            {activeTab === "toVerify" && !item.verified && (
+            {requiresSupervisorReview && activeTab === "toVerify" && !item.verified && (
               <AnimatedPressable
                 style={[
                   styles.verifyButton,

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Platform,
   useWindowDimensions,
-  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -19,6 +18,7 @@ import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { colors, spacing, radius, gradients } from "@/theme/unified";
 import { useAuthStore } from "@/store/authStore";
 import { getRouteForRole, type UserRole } from "@/utils/roleNavigation";
+import { BrandLogo } from "@/components/branding/BrandLogo";
 
 // Safe Animated View for Web
 const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
@@ -99,6 +99,8 @@ export default function WelcomeScreen() {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isDesktop = width >= 1024; // Simple desktop check
+  const logoCardWidth = Math.min(width - spacing.lg * 2, isDesktop ? 420 : 332);
+  const logoCardHeight = Math.max(128, Math.round(logoCardWidth * 0.42));
 
   // Redirect if user is already logged in
   React.useEffect(() => {
@@ -149,7 +151,14 @@ export default function WelcomeScreen() {
           <View style={styles.logoContainer}>
             <LinearGradient
               colors={gradients.primary}
-              style={[styles.logoBackground, { padding: 3, borderRadius: 999 }]}
+              style={[
+                styles.logoBackground,
+                {
+                  width: logoCardWidth,
+                  height: logoCardHeight,
+                  borderRadius: 32,
+                },
+              ]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
@@ -157,25 +166,34 @@ export default function WelcomeScreen() {
                 style={{
                   flex: 1,
                   backgroundColor: "#fff",
-                  borderRadius: 999,
+                  borderRadius: 29,
                   justifyContent: "center",
                   alignItems: "center",
                   width: "100%",
                   height: "100%",
                 }}
               >
-                <Image
-                  source={require("../assets/images/logo.png")}
-                  style={{ width: 70, height: 70 }}
-                  resizeMode="contain"
+                <BrandLogo
+                  variant="wordmarkTagline"
+                  maxWidth={logoCardWidth * 0.88}
+                  maxHeight={logoCardHeight * 0.7}
                 />
               </View>
             </LinearGradient>
-            <View style={[styles.logoGlow, { borderRadius: 999 }]} />
+            <View
+              style={[
+                styles.logoGlow,
+                {
+                  width: logoCardWidth,
+                  height: logoCardHeight,
+                  borderRadius: 32,
+                },
+              ]}
+            />
           </View>
 
-          <Text style={styles.title}>Lavanya Mart</Text>
-          <Text style={styles.subtitle}>Stock Verification System</Text>
+          <Text style={styles.title}>Stock Verification</Text>
+          <Text style={styles.subtitle}>Lavanya Mart field operations</Text>
           <View style={styles.versionBadge}>
             <Text style={styles.versionText}>v2.5 Enterprise</Text>
           </View>
@@ -237,8 +255,10 @@ export default function WelcomeScreen() {
           entering={FadeInDown.delay(1200)}
           style={styles.footer}
         >
-          <Text style={styles.footerText}>© 2024 Lavanya E-Mart</Text>
-          <Text style={styles.footerSubtext}>Powered by Stock Verify</Text>
+          <Text style={styles.footerText}>Lavanya Mart 2026</Text>
+          <Text style={styles.footerSubtext}>
+            Stock verification for modern retail
+          </Text>
         </SafeAnimatedView>
       </View>
     </View>
@@ -435,3 +455,4 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
 });
+

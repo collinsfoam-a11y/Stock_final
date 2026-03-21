@@ -77,6 +77,53 @@ async def test_get_session_detail_uses_canonical_sessions_and_count_lines(async_
 
 
 @pytest.mark.asyncio
+async def test_get_session_detail_counts_legacy_zero_variance_pending_as_verified(
+    async_client, test_db
+):
+    session_id = "sess-canonical-legacy-zero"
+    started_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    await test_db.sessions.insert_one(
+        {
+            "id": session_id,
+            "session_id": session_id,
+            "warehouse": "Main Warehouse",
+            "staff_user": "staff1",
+            "staff_name": "Staff Member",
+            "status": "OPEN",
+            "type": "STANDARD",
+            "started_at": started_at,
+            "last_heartbeat": started_at,
+            "total_variance": 0.0,
+        }
+    )
+    await test_db.count_lines.insert_one(
+        {
+            "id": "line-legacy-zero",
+            "session_id": session_id,
+            "item_code": "ITEM-1",
+            "item_name": "Item 1",
+            "counted_qty": 5.0,
+            "variance": 0.0,
+            "status": "pending",
+            "approval_status": "PENDING",
+            "verified": False,
+            "counted_by": "staff1",
+            "counted_at": started_at,
+        }
+    )
+
+    response = await async_client.get(
+        f"/api/sessions/{session_id}",
+        headers=_make_auth_headers("staff1", "staff"),
+    )
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["verified_count"] == 1
+
+
+@pytest.mark.asyncio
 async def test_finalize_session_locks_canonical_count_lines(async_client, test_db):
     session_id = "sess-finalize-ok"
     now = datetime.now(timezone.utc).replace(tzinfo=None)

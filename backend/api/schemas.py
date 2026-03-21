@@ -226,6 +226,7 @@ class RelocationStatus(str, Enum):
 class CountLineCreate(BaseModel):
     session_id: str
     item_code: str
+    item_name: Optional[str] = None
     idempotency_key: Optional[str] = None
     recount_of_id: Optional[str] = None
     barcode: Optional[str] = None

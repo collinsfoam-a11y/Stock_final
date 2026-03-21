@@ -43,6 +43,7 @@ export const useItemDraftAutosave = ({
       const payload: CreateCountLinePayload = {
         session_id: sessionId,
         item_code: item.item_code,
+        item_name: item.item_name || item.name || item.item_code,
         counted_qty: parseFloat(quantity) || 0,
         mrp_counted: parseFloat(mrp) || item.mrp,
         remark,

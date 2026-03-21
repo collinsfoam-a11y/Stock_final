@@ -119,6 +119,8 @@ const DEFAULT_COLUMN_VISIBILITY: Settings["columnVisibility"] = {
   mrp: true,
 };
 
+const SUPPORTED_OPERATIONAL_MODES = ["routine"] as const;
+
 const DEFAULT_SETTINGS: Settings = {
   darkMode: false,
   theme: "light",
@@ -330,7 +332,7 @@ const normalizeSettings = (settings: Settings): Settings => {
     ),
     operationalMode: normalizeChoice(
       settings.operationalMode,
-      ["live_audit", "routine", "training"] as const,
+      SUPPORTED_OPERATIONAL_MODES,
       defaults.operationalMode,
     ),
     imageCache: normalizeBoolean(settings.imageCache, defaults.imageCache),
@@ -462,7 +464,7 @@ const mapBackendSettings = (backend: UserSettings): Partial<Settings> => ({
   ),
   operationalMode: normalizeChoice(
     backend.operational_mode,
-    ["live_audit", "routine", "training"] as const,
+    SUPPORTED_OPERATIONAL_MODES,
     DEFAULT_SETTINGS.operationalMode,
   ),
   imageCache: normalizeBoolean(backend.image_cache, DEFAULT_SETTINGS.imageCache),

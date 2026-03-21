@@ -190,4 +190,44 @@ describe("SessionDetail offline mode", () => {
       "warning",
     );
   });
+
+  it("does not offer supervisor verification for zero-variance items", async () => {
+    mockOfflineMode = false;
+    mockGetSession.mockResolvedValue({
+      id: "session-1",
+      warehouse: "Main Warehouse",
+      staff_name: "Nina",
+      status: "OPEN",
+      total_items: 1,
+      total_variance: 0,
+    });
+    mockGetCountLines.mockImplementation(
+      async (_sessionId: string, _page: number, _pageSize: number, verified: boolean) => ({
+        items: verified
+          ? []
+          : [
+              {
+                id: "line-1",
+                item_name: "Widget A",
+                item_code: "WGT-A",
+                erp_qty: 10,
+                counted_qty: 10,
+                variance: 0,
+                status: "approved",
+                verified: false,
+              },
+            ],
+      }),
+    );
+
+    const { getByText, queryByText } = render(<SessionDetail />);
+
+    await waitFor(() => {
+      expect(getByText("Widget A")).toBeTruthy();
+    });
+
+    expect(queryByText("Verify Stock")).toBeNull();
+    expect(queryByText("Approve")).toBeNull();
+    expect(queryByText("Reject")).toBeNull();
+  });
 });

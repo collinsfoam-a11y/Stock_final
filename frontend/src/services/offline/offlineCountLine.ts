@@ -85,18 +85,21 @@ export async function createOfflineCountLine(
   const context = { ...globalDeviceContext, ...deviceContext };
   const user = useAuthStore.getState().user;
 
-  // Try to get item name from cache
-  let itemName = "Unknown Item";
-  try {
-    const cachedItem = await getItemFromCache(countData.item_code);
-    if (cachedItem) {
-      itemName = cachedItem.item_name;
+  let itemName =
+    countData.item_name?.trim() || context.itemName?.trim() || "Unknown Item";
+
+  if (itemName === "Unknown Item") {
+    try {
+      const cachedItem = await getItemFromCache(countData.item_code);
+      if (cachedItem) {
+        itemName = cachedItem.item_name;
+      }
+    } catch (error) {
+      log.warn("Failed to get item from cache for offline count line", {
+        itemCode: countData.item_code,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
-  } catch (error) {
-    log.warn("Failed to get item from cache for offline count line", {
-      itemCode: countData.item_code,
-      error: error instanceof Error ? error.message : String(error),
-    });
   }
 
   // Create audit metadata

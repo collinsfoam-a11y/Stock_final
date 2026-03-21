@@ -16,6 +16,12 @@ describe("serialScannerState", () => {
     expect(isScanLocked({ scanPaused: true })).toBe(true);
   });
 
+  it("keeps scanning active after a serial add in fast auto-add mode", () => {
+    expect(
+      nextAfterSerialAdded({ scanPaused: false, fastAutoAdd: true }).scanPaused,
+    ).toBe(false);
+  });
+
   it("resumes scan only when user chooses scan next", () => {
     expect(nextAfterResume({ scanPaused: true }).scanPaused).toBe(false);
   });

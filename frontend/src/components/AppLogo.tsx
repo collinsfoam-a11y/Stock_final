@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import Ionicons from "@expo/vector-icons/Ionicons";
+import { BrandLogo } from "./branding/BrandLogo";
 
 interface AppLogoProps {
   size?: "small" | "medium" | "large";
@@ -14,18 +14,12 @@ export function AppLogo({
   variant = "default",
 }: AppLogoProps) {
   const sizes = {
-    small: { icon: 24, text: 14, container: 32 },
-    medium: { icon: 32, text: 16, container: 40 },
-    large: { icon: 48, text: 20, container: 56 },
+    small: { text: 14, container: 32, logo: 28 },
+    medium: { text: 16, container: 40, logo: 34 },
+    large: { text: 20, container: 56, logo: 46 },
   };
 
   const currentSize = sizes[size];
-
-  const iconColors = {
-    default: "#4CAF50",
-    white: "#fff",
-    gradient: "#4CAF50",
-  };
 
   const textColors = {
     default: "#fff",
@@ -43,14 +37,14 @@ export function AppLogo({
             width: currentSize.container,
             height: currentSize.container,
             backgroundColor:
-              variant === "gradient" ? "transparent" : "rgba(76, 175, 80, 0.1)",
+              variant === "gradient" ? "transparent" : "rgba(255, 255, 255, 0.1)",
           },
         ]}
       >
-        <Ionicons
-          name="cube-outline"
-          size={currentSize.icon}
-          color={iconColors[variant]}
+        <BrandLogo
+          variant="symbol"
+          maxWidth={currentSize.logo}
+          maxHeight={currentSize.logo}
         />
       </View>
 
@@ -66,7 +60,7 @@ export function AppLogo({
               },
             ]}
           >
-            Lavanya E-Mart
+            Lavanya Mart
           </Text>
           <Text
             style={[
@@ -97,7 +91,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "rgba(76, 175, 80, 0.3)",
+    borderColor: "rgba(255, 255, 255, 0.24)",
   },
   textContainer: {
     justifyContent: "center",

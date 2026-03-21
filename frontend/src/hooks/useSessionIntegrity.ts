@@ -9,6 +9,7 @@ interface ItemVersion {
   item_code: string;
   version: number;
   last_modified: string;
+  item_name?: string;
 }
 
 interface SessionIntegrityState {
@@ -125,7 +126,7 @@ export const useSessionIntegrity = (
           if (snapshotItem && snapshotItem.version !== current.version) {
             warnings.push({
               item_code: current.item_code,
-              item_name: current.item_code, // Would need to fetch item name
+              item_name: current.item_name || current.item_code,
               field_changed: "master_data",
               old_value: snapshotItem.version,
               new_value: current.version,

@@ -1,5 +1,6 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ModernButton from "@/components/ui/ModernButton";
 import { colors, semanticColors, spacing } from "@/theme/unified";
@@ -17,12 +18,16 @@ export function ItemSubmitBar({
   onCancelSubmit,
   onSubmit,
 }: ItemSubmitBarProps) {
+  const insets = useSafeAreaInsets();
   const isUndoState = submitCountdown !== null;
 
   return (
     <View
       style={[
         styles.container,
+        {
+          paddingBottom: Math.max(spacing.md, insets.bottom + spacing.sm),
+        },
         {
           backgroundColor: semanticColors.background.paper,
           borderTopColor: semanticColors.border.default,

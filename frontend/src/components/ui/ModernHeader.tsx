@@ -11,7 +11,6 @@ import {
   StyleSheet,
   StatusBar,
   ViewStyle,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -26,6 +25,7 @@ import {
   shadows,
   gradients,
 } from "../../theme/modernDesign";
+import { BrandLogo } from "../branding/BrandLogo";
 
 interface ModernHeaderProps {
   title?: string;
@@ -66,11 +66,7 @@ const LogoWithBorder = ({ size = 40 }: { size?: number }) => (
         alignItems: "center",
       }}
     >
-      <Image
-        source={require("../../../assets/images/logo.png")}
-        style={{ width: size * 0.6, height: size * 0.6 }}
-        resizeMode="contain"
-      />
+      <BrandLogo variant="symbol" width={size * 0.6} height={size * 0.6} />
     </View>
   </LinearGradient>
 );

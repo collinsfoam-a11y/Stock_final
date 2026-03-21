@@ -4,6 +4,7 @@ import {
   modernColors,
   modernTypography,
 } from "../styles/modernDesignSystem";
+import { BrandLogo } from "../components/branding/BrandLogo";
 
 interface BootLoadingViewProps {
   initError: string | null;
@@ -24,15 +25,17 @@ export function BootLoadingView({ initError }: BootLoadingViewProps) {
         style={{ marginBottom: 24 }}
         size="large"
       />
+      <BrandLogo variant="wordmark" maxWidth={220} maxHeight={90} />
       <Text
         style={{
           color: modernColors.text.primary,
           fontSize: modernTypography.h3.fontSize,
           fontWeight: "700",
           letterSpacing: 0.5,
+          marginTop: 20,
         }}
       >
-        {Platform.OS === "web" ? "StockVerify Admin" : "StockVerify"}
+        {Platform.OS === "web" ? "Lavanya Mart Admin" : "Lavanya Mart"}
       </Text>
       <Text
         style={{
@@ -86,6 +89,12 @@ export function BootErrorView({ initError }: BootErrorViewProps) {
         padding: 20,
       }}
     >
+      <BrandLogo
+        variant="symbol"
+        width={72}
+        height={72}
+        containerStyle={{ marginBottom: 20 }}
+      />
       <View
         style={{
           width: 80,
