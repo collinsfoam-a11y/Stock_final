@@ -2,6 +2,7 @@ import { createCountLine } from "../inventoryWorkflowApi";
 import * as sessionManagementApi from "../sessionManagementApi";
 import * as offlineCountLineService from "../../offline/offlineCountLine";
 import * as offlineStorage from "../../offline/offlineStorage";
+import httpClient from "../../httpClient";
 
 jest.mock("../../logging", () => ({
   createLogger: () => ({
@@ -16,6 +17,7 @@ jest.mock("../../httpClient", () => ({
   __esModule: true,
   default: {
     post: jest.fn(),
+    get: jest.fn(),
   },
 }));
 
@@ -68,5 +70,61 @@ describe("createCountLine offline queueing", () => {
     expect(offlineCountLineService.createOfflineCountLine).toHaveBeenCalledTimes(1);
     expect(offlineStorage.addToOfflineQueue).not.toHaveBeenCalled();
     expect(offlineStorage.cacheCountLine).not.toHaveBeenCalled();
+  });
+
+  it("replaces placeholder item names with cached ERP names for offline creation", async () => {
+    jest.spyOn(offlineStorage, "getItemFromCache").mockResolvedValue({
+      item_code: "ITEM001",
+      item_name: "Soap Bar",
+      cached_at: new Date().toISOString(),
+    } as any);
+
+    await createCountLine({
+      session_id: "offline_session_1",
+      item_code: "ITEM001",
+      item_name: "ITEM001",
+      counted_qty: 3,
+      rack_no: "A1",
+    });
+
+    expect(offlineCountLineService.createOfflineCountLine).toHaveBeenCalledWith(
+      expect.objectContaining({
+        item_name: "ITEM001",
+      }),
+      expect.objectContaining({
+        itemName: "Soap Bar",
+      }),
+    );
+  });
+
+  it("does not merge paginated API count lines into the offline cache", async () => {
+    jest.spyOn(sessionManagementApi, "isOnline").mockReturnValue(true);
+    jest.spyOn(offlineStorage, "cacheCountLines").mockResolvedValue(undefined as any);
+    (httpClient.get as jest.Mock).mockResolvedValue({
+      data: {
+        items: [
+          {
+            id: "line-1",
+            session_id: "session-1",
+            item_code: "ITEM001",
+            item_name: "Soap Bar",
+            verified: true,
+          },
+        ],
+        pagination: {
+          page: 1,
+          page_size: 50,
+          total: 1,
+          total_pages: 1,
+          has_next: false,
+          has_prev: false,
+        },
+      },
+    });
+
+    const { getCountLines } = await import("../inventoryWorkflowApi");
+    await getCountLines("session-1");
+
+    expect(offlineStorage.cacheCountLines).not.toHaveBeenCalled();
   });
 });

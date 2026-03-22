@@ -3,7 +3,7 @@
  * Modal for capturing photos using the device camera
  */
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -14,9 +14,13 @@ import {
   Image,
   Alert,
   Linking,
+  AppState,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import {
+  CameraView,
+  useCameraPermissions,
+} from "expo-camera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   modernColors,
@@ -40,11 +44,31 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   title = "Capture Photo",
   testID,
 }) => {
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission, getPermission] = useCameraPermissions();
+  const [permissionState, setPermissionState] = useState(permission);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const cameraRef = useRef<CameraView>(null);
   const hasAutoRequestedPermissionRef = useRef(false);
+
+  useEffect(() => {
+    setPermissionState(permission);
+  }, [permission]);
+
+  const refreshPermissionState = useCallback(async () => {
+    try {
+      const latestPermission = await getPermission();
+      setPermissionState(latestPermission);
+    } catch {
+      // Ignore refresh failures and keep the last known state.
+    }
+  }, [getPermission]);
+
+  const requestCameraPermission = useCallback(async () => {
+    const latestPermission = await requestPermission();
+    setPermissionState(latestPermission);
+    return latestPermission;
+  }, [requestPermission]);
 
   // Handle photo capture
   const handleCapture = async () => {
@@ -104,19 +128,37 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       return;
     }
 
-    if (permission?.granted || hasAutoRequestedPermissionRef.current) {
+    if (permissionState?.granted || hasAutoRequestedPermissionRef.current) {
       return;
     }
 
-    if (permission?.canAskAgain !== false) {
+    if (permissionState?.canAskAgain !== false) {
       hasAutoRequestedPermissionRef.current = true;
-      void requestPermission();
+      void requestCameraPermission();
     }
-  }, [permission, requestPermission, visible]);
+  }, [permissionState, requestCameraPermission, visible]);
+
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        void refreshPermissionState();
+      }
+    });
+
+    return () => {
+      if (typeof subscription?.remove === "function") {
+        subscription.remove();
+      }
+    };
+  }, [refreshPermissionState, visible]);
 
   // Render permission request
-  if (!permission?.granted) {
-    const canAskPermission = permission?.canAskAgain !== false;
+  if (!permissionState?.granted) {
+    const canAskPermission = permissionState?.canAskAgain !== false;
 
     return (
       <Modal
@@ -149,7 +191,9 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             {canAskPermission ? (
               <TouchableOpacity
                 style={styles.permissionButton}
-                onPress={requestPermission}
+                onPress={() => {
+                  void requestCameraPermission();
+                }}
               >
                 <Text style={styles.permissionButtonText}>Grant Permission</Text>
               </TouchableOpacity>

@@ -22,7 +22,7 @@ async def test_batch_verification_rejects_incomplete_quantity_results(monkeypatc
     monkeypatch.setattr(
         sql_verification_service.sql_connector,
         "get_item_quantities_only",
-        Mock(return_value={"ITEM-BATCH-1": 12.0, "ITEM-BATCH-2": None}),
+        Mock(return_value={"ITEM-BATCH-1": 12.0}),
     )
 
     response = await sql_verification_service.batch_verify_items(

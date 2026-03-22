@@ -152,7 +152,7 @@ describe("UserSettingsSections", () => {
     fireEvent.press(getByText("Check for Updates"));
 
     await waitFor(() => {
-      expect(mockCheckForUpdates).toHaveBeenCalled();
+      expect(alertSpy).toHaveBeenCalled();
     });
 
     const buttons = alertSpy.mock.calls.at(-1)?.[2];
@@ -162,6 +162,28 @@ describe("UserSettingsSections", () => {
     laterButton?.onPress?.();
 
     expect(mockDismissUpdate).toHaveBeenCalled();
+  });
+
+  it("shows a failure alert when version check returns an error payload", async () => {
+    const versionResult = {
+      current_version: "1.0.0",
+      update_available: false,
+      force_update: false,
+      error: "Network unavailable",
+    };
+    mockCheckForUpdates.mockResolvedValue(versionResult);
+
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+
+    const { getByText } = render(<UserSettingsSections />);
+    fireEvent.press(getByText("Check for Updates"));
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith(
+        "Update Check Failed",
+        "Unable to check for updates right now. Please try again shortly.",
+      );
+    });
   });
 
   it("shows dismissed optional updates as paused instead of prompting for update now", () => {

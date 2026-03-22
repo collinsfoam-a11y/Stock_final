@@ -116,10 +116,8 @@ async def repair_item_names(
         "examples": [],
     }
 
-    remaining = limit
-
     for collection_name in collections:
-        collection = getattr(db, collection_name)
+        collection = db[collection_name]
         query = _bad_name_query()
         if session_id:
             query["session_id"] = session_id
@@ -129,7 +127,7 @@ async def repair_item_names(
         )
 
         async for doc in cursor:
-            if remaining is not None and remaining <= 0:
+            if limit is not None and stats["scanned"] >= limit:
                 return stats
 
             stats["scanned"] += 1
@@ -179,8 +177,6 @@ async def repair_item_names(
                     if result.modified_count:
                         stats["repaired"] += 1
                         stats["per_collection"][collection_name]["repaired"] += 1
-
-                remaining = None if remaining is None else remaining - 1
             except Exception:
                 stats["errors"] += 1
                 logger.exception(

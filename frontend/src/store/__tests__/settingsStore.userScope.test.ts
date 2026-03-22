@@ -334,7 +334,7 @@ describe("settingsStore user scope", () => {
     });
 
     setUserPreferenceScope("ops-user");
-    await useSettingsStore.getState().loadSettings();
+    await useSettingsStore.getState().syncFromBackend();
 
     expect(useSettingsStore.getState().settings.operationalMode).toBe("routine");
   });

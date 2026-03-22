@@ -26,6 +26,7 @@ import {
 } from "../../src/services/offline/offlineQueue";
 import { getOfflineQueue } from "../../src/services/offline/offlineStorage";
 import { forceSync } from "../../src/services/syncService";
+import { summarizeForceSyncResult } from "./offlineQueueFeedback";
 import {
   AuroraBackground,
   GlassCard,
@@ -70,11 +71,18 @@ export default function OfflineQueueScreen() {
     if (Platform.OS !== "web")
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      await forceSync();
+      const result = await forceSync();
+      const feedback = summarizeForceSyncResult(result);
       if (Platform.OS !== "web")
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Success", "Offline queue synced successfully");
-      load();
+        Haptics.notificationAsync(
+          result.failed > 0
+            ? Haptics.NotificationFeedbackType.Warning
+            : Haptics.NotificationFeedbackType.Success,
+        );
+      Alert.alert(feedback.title, feedback.message);
+      if (feedback.loadAfterAlert) {
+        load();
+      }
     } catch (error: any) {
       if (Platform.OS !== "web")
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

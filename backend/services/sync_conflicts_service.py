@@ -17,6 +17,19 @@ UTC = timezone.utc
 logger = logging.getLogger(__name__)
 
 
+def _object_id_or_none(value: Optional[str]) -> Optional[ObjectId]:
+    if not isinstance(value, str) or not ObjectId.is_valid(value):
+        return None
+    return ObjectId(value)
+
+
+def _entity_lookup(entity_id: str) -> dict[str, Any]:
+    object_id = _object_id_or_none(entity_id)
+    if object_id is not None:
+        return {"_id": object_id}
+    return {"id": entity_id}
+
+
 class ConflictStatus(str, Enum):
     PENDING = "pending"
     RESOLVED = "resolved"
@@ -189,9 +202,7 @@ class SyncConflictsService:
             # --- Rule 7 & G-04: Conflict Forking ---
             # If the entity is already APPROVED, we must FORK instead of OVERWRITING.
             if entity_type == "count_line":
-                target_doc = await self.db.count_lines.find_one(
-                    {"_id": ObjectId(entity_id)}
-                )
+                target_doc = await self.db.count_lines.find_one(_entity_lookup(str(entity_id)))
                 if target_doc and str(target_doc.get("status", "")).lower() in {"approved", "locked"}:
                     logger.info(f"Rule 7: Forking approved record {entity_id}")
                     await self._fork_approved_record(
@@ -256,7 +267,7 @@ class SyncConflictsService:
         data["conflict_resolved"] = True
 
         try:
-            await collection.update_one({"_id": ObjectId(entity_id)}, {"$set": data})
+            await collection.update_one(_entity_lookup(entity_id), {"$set": data})
             logger.info(f"Applied resolved data to {entity_type} {entity_id}")
         except PyMongoError as e:
             logger.error(f"Failed to apply resolved data: {str(e)}")

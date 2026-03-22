@@ -39,6 +39,9 @@ def _utc_now_naive() -> datetime:
 
 
 def _is_legacy_zero_variance_candidate(doc: dict[str, Any]) -> bool:
+    if doc.get("finalized_at"):
+        return False
+
     if count_line_requires_supervisor_review(doc):
         return False
 

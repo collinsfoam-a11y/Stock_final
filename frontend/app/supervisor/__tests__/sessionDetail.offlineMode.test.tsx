@@ -213,7 +213,7 @@ describe("SessionDetail offline mode", () => {
                 erp_qty: 10,
                 counted_qty: 10,
                 variance: 0,
-                status: "approved",
+                status: "pending",
                 verified: false,
               },
             ],

@@ -76,6 +76,12 @@ def is_count_line_effectively_reviewed(count_line: Optional[dict[str, Any]]) -> 
     if bool(count_line.get("verified")) or line_status in APPROVED_COUNT_LINE_STATUSES:
         return True
 
+    if normalize_approval_status(count_line.get("approval_status")) in BLOCKING_APPROVAL_STATUSES:
+        return False
+
+    if count_line.get("assigned_to") and count_line.get("recount_requested_at"):
+        return False
+
     return not count_line_requires_supervisor_review(count_line) and line_status != "rejected"
 
 
@@ -201,14 +207,14 @@ def is_blocking_finalization(count_line: dict[str, Any]) -> bool:
     if normalize_count_line_status(count_line.get("status")) in BLOCKING_COUNT_LINE_STATUSES:
         return True
 
-    if not count_line_requires_supervisor_review(count_line):
-        return False
-
-    if get_effective_approval_status(count_line) in BLOCKING_APPROVAL_STATUSES:
-        return True
-
     if count_line.get("assigned_to") and count_line.get("recount_requested_at"):
         return True
+
+    if normalize_approval_status(count_line.get("approval_status")) in BLOCKING_APPROVAL_STATUSES:
+        return True
+
+    if not count_line_requires_supervisor_review(count_line):
+        return False
 
     return False
 

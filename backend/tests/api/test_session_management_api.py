@@ -21,13 +21,17 @@ class _AsyncCursor:
         self._items = list(items)
         self._index = 0
 
-    def sort(self, *args, **kwargs):
+    def sort(self, key, direction):
+        reverse = direction < 0
+        self._items.sort(key=lambda item: item.get(key), reverse=reverse)
         return self
 
-    def skip(self, *args, **kwargs):
+    def skip(self, count):
+        self._items = self._items[count:]
         return self
 
-    def limit(self, *args, **kwargs):
+    def limit(self, count):
+        self._items = self._items[:count]
         return self
 
     async def to_list(self, length=None):
@@ -121,6 +125,21 @@ class TestSessionModels:
         """Test that warehouse is required"""
         with pytest.raises(Exception):
             SessionCreate()
+
+
+class TestAsyncCursor:
+    def test_async_cursor_applies_sort_skip_and_limit(self):
+        cursor = _AsyncCursor(
+            [
+                {"id": "sess-1", "started_at": 1},
+                {"id": "sess-2", "started_at": 3},
+                {"id": "sess-3", "started_at": 2},
+            ]
+        )
+
+        limited = cursor.sort("started_at", -1).skip(1).limit(1)
+
+        assert limited._items == [{"id": "sess-3", "started_at": 2}]
 
 
 class TestSnapshotLocationMatching:
@@ -854,6 +873,215 @@ class TestActiveSessionsEndpoint:
                 assert len(data) >= 0  # May be filtered
         finally:
             app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_get_active_sessions_includes_reconcile_and_uses_session_id_for_counts(
+        self, mock_user_staff
+    ):
+        active_sessions = [
+            {
+                "session_id": "sess_reconcile_only",
+                "warehouse": "WH001",
+                "staff_user": "staff1",
+                "staff_name": "Staff User",
+                "status": "RECONCILE",
+                "type": "STANDARD",
+                "started_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                "last_heartbeat": datetime.now(timezone.utc).replace(tzinfo=None),
+                "rack_no": "R1",
+                "location_name": "F1",
+            }
+        ]
+
+        mock_db = MagicMock()
+        mock_db.sessions = MagicMock()
+
+        def _find_sessions(query):
+            assert query["status"]["$in"] == ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]
+            return _AsyncCursor(active_sessions)
+
+        mock_db.sessions.find = MagicMock(side_effect=_find_sessions)
+        mock_db.count_lines = MagicMock()
+
+        def _find_count_lines(query):
+            assert query == {"session_id": "sess_reconcile_only"}
+            return _AsyncCursor(
+                [
+                    {
+                        "session_id": "sess_reconcile_only",
+                        "status": "pending",
+                        "verified": False,
+                        "variance": 0.0,
+                    }
+                ]
+            )
+
+        mock_db.count_lines.find = MagicMock(side_effect=_find_count_lines)
+
+        async def override_get_db():
+            return mock_db
+
+        async def override_get_current_user():
+            return mock_user_staff
+
+        from backend.auth.dependencies import get_current_user_async
+        from backend.db.runtime import get_db
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user_async] = override_get_current_user
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://localhost",
+            ) as client:
+                response = await client.get("/api/sessions/active")
+                assert response.status_code == 200
+                data = response.json()
+                assert len(data) == 1
+                assert data[0]["id"] == "sess_reconcile_only"
+                assert data[0]["item_count"] == 1
+        finally:
+            app.dependency_overrides.clear()
+
+
+class TestSessionIdentifierFallbacks:
+    @pytest.mark.asyncio
+    async def test_session_heartbeat_updates_canonical_session_by_session_id(self, mock_user_staff):
+        session = {
+            "session_id": "sess_heartbeat_only",
+            "warehouse": "WH001",
+            "staff_user": "staff1",
+            "staff_name": "Staff User",
+            "status": "ACTIVE",
+            "type": "STANDARD",
+            "started_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            "last_heartbeat": datetime.now(timezone.utc).replace(tzinfo=None),
+            "rack_no": None,
+        }
+
+        mock_db = MagicMock()
+        mock_db.sessions = MagicMock()
+        mock_db.sessions.find_one = AsyncMock(return_value=session)
+        mock_db.sessions.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+        mock_db.verification_sessions = MagicMock()
+        mock_db.verification_sessions.update_one = AsyncMock(
+            return_value=MagicMock(modified_count=1)
+        )
+
+        mock_redis = MagicMock()
+        mock_lock_manager = MagicMock()
+        mock_lock_manager.update_user_heartbeat = AsyncMock(return_value=None)
+
+        async def override_get_db():
+            return mock_db
+
+        async def override_get_current_user():
+            return mock_user_staff
+
+        async def override_get_redis():
+            return mock_redis
+
+        from backend.auth.dependencies import get_current_user_async
+        from backend.db.runtime import get_db
+        from backend.services.redis_service import get_redis
+        from unittest.mock import patch
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user_async] = override_get_current_user
+        app.dependency_overrides[get_redis] = override_get_redis
+
+        try:
+            with patch(
+                "backend.api.session_management_api.get_lock_manager",
+                return_value=mock_lock_manager,
+            ):
+                async with AsyncClient(
+                    transport=ASGITransport(app=app),
+                    base_url="http://localhost",
+                ) as client:
+                    response = await client.post("/api/sessions/sess_heartbeat_only/heartbeat")
+                    assert response.status_code == 200
+        finally:
+            app.dependency_overrides.clear()
+
+        mock_db.sessions.update_one.assert_awaited_once()
+        filter_query = mock_db.sessions.update_one.await_args.args[0]
+        assert filter_query == {
+            "$or": [
+                {"id": "sess_heartbeat_only"},
+                {"session_id": "sess_heartbeat_only"},
+            ]
+        }
+
+    @pytest.mark.asyncio
+    async def test_complete_session_allows_owner_from_canonical_user_id_and_updates_by_session_id(
+        self, mock_user_staff
+    ):
+        session = {
+            "session_id": "sess_owner_user_id_only",
+            "warehouse": "WH001",
+            "user_id": "staff1",
+            "staff_name": "Staff User",
+            "status": "ACTIVE",
+            "type": "STANDARD",
+            "started_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            "last_heartbeat": datetime.now(timezone.utc).replace(tzinfo=None),
+            "rack_no": None,
+        }
+
+        mock_db = MagicMock()
+        mock_db.sessions = MagicMock()
+        mock_db.sessions.find_one = AsyncMock(return_value=session)
+        mock_db.sessions.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+        mock_db.verification_sessions = MagicMock()
+        mock_db.verification_sessions.find_one = AsyncMock(return_value=None)
+        mock_db.rack_registry = MagicMock()
+
+        mock_redis = MagicMock()
+        mock_lock_manager = MagicMock()
+        mock_lock_manager.delete_session = AsyncMock(return_value=True)
+
+        async def override_get_db():
+            return mock_db
+
+        async def override_get_current_user():
+            return mock_user_staff
+
+        async def override_get_redis():
+            return mock_redis
+
+        from backend.auth.dependencies import get_current_user_async
+        from backend.db.runtime import get_db
+        from backend.services.redis_service import get_redis
+        from unittest.mock import patch
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user_async] = override_get_current_user
+        app.dependency_overrides[get_redis] = override_get_redis
+
+        try:
+            with patch(
+                "backend.api.session_management_api.get_lock_manager",
+                return_value=mock_lock_manager,
+            ):
+                async with AsyncClient(
+                    transport=ASGITransport(app=app),
+                    base_url="http://localhost",
+                ) as client:
+                    response = await client.post("/api/sessions/sess_owner_user_id_only/complete")
+                    assert response.status_code == 200
+                    assert response.json()["status"] == "CLOSED"
+        finally:
+            app.dependency_overrides.clear()
+
+        filter_query = mock_db.sessions.update_one.await_args.args[0]
+        assert filter_query == {
+            "$or": [
+                {"id": "sess_owner_user_id_only"},
+                {"session_id": "sess_owner_user_id_only"},
+            ]
+        }
 
 
 class TestUserWorkflowEndpoint:

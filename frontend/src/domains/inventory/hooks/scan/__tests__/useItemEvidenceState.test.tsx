@@ -1,4 +1,5 @@
 import { act, renderHook } from "@testing-library/react-native";
+import { Alert } from "react-native";
 
 import { useItemEvidenceState } from "../useItemEvidenceState";
 
@@ -22,18 +23,36 @@ describe("useItemEvidenceState", () => {
   });
 
   it("captures up to three item photos", () => {
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
     const { result } = renderHook(() => useItemEvidenceState());
 
     act(() => {
       result.current.handleAddItemPhoto();
-      result.current.handlePhotoCaptured("file:///tmp/item-1.jpg");
-      result.current.handleAddItemPhoto();
-      result.current.handlePhotoCaptured("file:///tmp/item-2.jpg");
-      result.current.handleAddItemPhoto();
-      result.current.handlePhotoCaptured("file:///tmp/item-3.jpg");
-      result.current.handleAddItemPhoto();
-      result.current.handlePhotoCaptured("file:///tmp/item-4.jpg");
     });
+    act(() => {
+      result.current.handlePhotoCaptured("file:///tmp/item-1.jpg");
+    });
+    act(() => {
+      result.current.handleAddItemPhoto();
+    });
+    act(() => {
+      result.current.handlePhotoCaptured("file:///tmp/item-2.jpg");
+    });
+    act(() => {
+      result.current.handleAddItemPhoto();
+    });
+    act(() => {
+      result.current.handlePhotoCaptured("file:///tmp/item-3.jpg");
+    });
+    act(() => {
+      result.current.handleAddItemPhoto();
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      "Photo Limit",
+      "Maximum 3 item photos can be attached.",
+    );
+    expect(result.current.photoCaptureVisible).toBe(false);
 
     expect(result.current.itemPhotos).toEqual([
       "file:///tmp/item-1.jpg",

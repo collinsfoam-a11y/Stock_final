@@ -6,6 +6,7 @@ import pytest
 from backend.api.report_generation_api import (
     ReportFilter,
     generate_session_history_report,
+    generate_stock_summary,
     generate_variance_report,
 )
 
@@ -29,6 +30,24 @@ class _AsyncCursor:
             return next(self._iter)
         except StopIteration as exc:
             raise StopAsyncIteration from exc
+
+
+@pytest.mark.asyncio
+async def test_generate_stock_summary_short_circuits_when_item_filters_match_nothing():
+    db = MagicMock()
+    db.erp_items.find.return_value = _AsyncCursor([])
+
+    def _unexpected_count_line_scan(_query):
+        raise AssertionError("count_lines.find should not be called when filtered ERP item lookup is empty")
+
+    db.count_lines.find.side_effect = _unexpected_count_line_scan
+
+    result = await generate_stock_summary(
+        db,
+        ReportFilter(warehouse="Main Warehouse"),
+    )
+
+    assert result == []
 
 
 @pytest.mark.asyncio
@@ -76,8 +95,9 @@ async def test_generate_session_history_report_fetches_count_lines_in_one_query(
         ]
     )
 
-    def _find_count_lines(query):
+    def _find_count_lines(query, projection=None):
         assert query == {"session_id": {"$in": ["sess-1", "sess-2"]}}
+        assert projection == {"_id": 0, "session_id": 1, "verified": 1, "status": 1}
         return _AsyncCursor(
             [
                 {"session_id": "sess-1", "verified": True},

@@ -146,6 +146,8 @@ async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
     items_cursor = db.erp_items.find(item_query)
     items: list[dict[str, Any]] = [item async for item in items_cursor]
     item_codes = [item.get("item_code") for item in items if item.get("item_code")]
+    if (filters.warehouse or filters.floor or filters.category) and not item_codes:
+        return []
 
     line_query: dict[str, Any] = {}
     if item_codes:
@@ -362,7 +364,10 @@ async def generate_session_history_report(db, filters: ReportFilter) -> list[dic
     ]
     lines_by_session: dict[str, list[dict[str, Any]]] = {session_id: [] for session_id in session_ids}
     if session_ids:
-        async for line in db.count_lines.find({"session_id": {"$in": session_ids}}):
+        async for line in db.count_lines.find(
+            {"session_id": {"$in": session_ids}},
+            {"_id": 0, "session_id": 1, "verified": 1, "status": 1},
+        ):
             session_id = str(line.get("session_id") or "")
             if session_id in lines_by_session:
                 lines_by_session[session_id].append(line)

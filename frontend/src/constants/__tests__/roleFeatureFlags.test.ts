@@ -6,7 +6,7 @@ import {
 describe("roleFeatureFlags", () => {
   describe("isSupervisorRouteEnabled", () => {
     it("allows core supervisor routes", () => {
-      expect(isSupervisorRouteEnabled("dashboard")).toBe(true);
+      expect(isSupervisorRouteEnabled("activity-logs")).toBe(true);
       expect(isSupervisorRouteEnabled("sessions")).toBe(true);
       expect(isSupervisorRouteEnabled("variances")).toBe(true);
       expect(isSupervisorRouteEnabled("user-workflows")).toBe(true);

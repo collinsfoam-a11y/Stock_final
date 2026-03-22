@@ -304,7 +304,7 @@ export function UserSettingsSections() {
 
   const handleCheckForUpdates = useCallback(async () => {
     const result = await checkForUpdates();
-    if (!result) {
+    if (!result || result.error) {
       Alert.alert(
         "Update Check Failed",
         "Unable to check for updates right now. Please try again shortly.",

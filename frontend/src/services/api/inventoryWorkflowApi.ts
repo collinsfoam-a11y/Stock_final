@@ -9,7 +9,6 @@ import { createOfflineCountLine } from "../offline/offlineCountLine";
 import {
   addToOfflineQueue,
   cacheCountLine,
-  cacheCountLines,
   cacheItem,
   getCountLinesBySessionFromCache,
   getItemFromCache,
@@ -648,8 +647,8 @@ export const createCountLine = async (
   countData: CreateCountLinePayload
 ): Promise<any & { _source?: DataSource; _offline?: boolean }> => {
   const resolveItemName = async (): Promise<string> => {
-    if (countData.item_name?.trim()) {
-      return countData.item_name.trim();
+    if (hasMeaningfulCountLineName(countData)) {
+      return countData.item_name!.trim();
     }
 
     try {
@@ -799,9 +798,6 @@ export const getCountLines = async (
           ? response.data
           : [];
     const hydratedLines = await hydrateCountLineNames(countLinesToCache);
-    if (hydratedLines.length > 0) {
-      await cacheCountLines(hydratedLines);
-    }
 
     return {
       ...response.data,

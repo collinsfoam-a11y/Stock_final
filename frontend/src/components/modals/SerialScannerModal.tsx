@@ -58,6 +58,26 @@ interface SerialScannerModalProps {
   onClose: () => void;
 }
 
+export const describeInvalidCandidateMessage = (code: string, fallback?: string) => {
+  if (fallback?.includes("already been added")) {
+    return fallback;
+  }
+
+  const numericOnly = /^\d+$/.test(code);
+  const eanOrUpcLike = numericOnly && code.length >= 8 && code.length <= 14;
+  const likelyManufacturerCode = numericOnly && code.length > 14;
+
+  if (fallback?.includes("product barcode") || eanOrUpcLike) {
+    return "EAN/UPC barcode detected. Select the serial code from the list.";
+  }
+
+  if (likelyManufacturerCode) {
+    return "Manufacturer code detected. Select the correct serial code.";
+  }
+
+  return fallback || "Invalid serial number";
+};
+
 export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
   visible,
   existingSerials,
@@ -68,24 +88,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
 }) => {
   const CANDIDATE_BURST_PAUSE_MS = 650;
   const insets = useSafeAreaInsets();
-  const getInvalidCandidateMessage = useCallback(
-    (code: string, fallback?: string) => {
-      const numericOnly = /^\d+$/.test(code);
-      const eanOrUpcLike = numericOnly && code.length >= 8 && code.length <= 14;
-      const likelyManufacturerCode = numericOnly && code.length > 14;
-
-      if (fallback?.includes("product barcode") || eanOrUpcLike) {
-        return "EAN/UPC barcode detected. Select the serial code from the list.";
-      }
-
-      if (likelyManufacturerCode) {
-        return "Manufacturer code detected. Select the correct serial code.";
-      }
-
-      return fallback || "Invalid serial number";
-    },
-    [],
-  );
+  const getInvalidCandidateMessage = useCallback(describeInvalidCandidateMessage, []);
 
   const recentScanTimesRef = useRef<Map<string, number>>(new Map());
   const burstPauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

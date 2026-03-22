@@ -260,7 +260,12 @@ async def sync_single_record(record: SyncRecord, db, user_id: str) -> tuple[bool
 
         # Upsert record
         await db.count_lines.update_one(
-            {"idempotency_key": record.client_record_id}, {"$set": doc}, upsert=True
+            {
+                "session_id": record.session_id,
+                "idempotency_key": record.client_record_id,
+            },
+            {"$set": doc},
+            upsert=True,
         )
         await recompute_session_totals(db, record.session_id)
 
@@ -669,9 +674,13 @@ async def _process_count_line_op(
     line_data.setdefault("synced_at", datetime.now(timezone.utc).replace(tzinfo=None))
     line_data.setdefault("created_by", line_data.get("counted_by"))
     line_data.setdefault("verified", False)
+    audit_metadata = line_data.get("audit")
+    audit_idempotency_key = (
+        audit_metadata.get("idempotency_key") if isinstance(audit_metadata, dict) else None
+    )
     line_data.setdefault(
         "idempotency_key",
-        line_data.get("audit", {}).get("idempotency_key")
+        audit_idempotency_key
         or line_data.get("idempotency_key")
         or line_data.get("_id")
         or line_data.get("id"),
@@ -815,7 +824,11 @@ async def _process_count_line_op(
         line_data["recount_requested_at"] = None
         line_data["recount_requested_by"] = None
         line_data["recount_iteration"] = int(existing_duplicate.get("recount_iteration", 0) or 0) + 1
-        await db.count_lines.update_one({"_id": existing_duplicate["_id"]}, {"$set": line_data})
+        update_payload = dict(line_data)
+        update_payload.pop("_id", None)
+        await db.count_lines.update_one(
+            {"_id": existing_duplicate["_id"]}, {"$set": update_payload}
+        )
         await recompute_session_totals(db, session_id)
         return "Rejected count line updated through explicit recount sync"
 

@@ -53,6 +53,12 @@ export default function RealtimeDashboard() {
   const realtimeRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const refreshDashboardSnapshotRef = useRef<((page?: number) => Promise<void>) | null>(
+    null,
+  );
+  const paginationPageRef = useRef(1);
+  const effectiveAutoRefreshRef = useRef(true);
+  const offlineModeRef = useRef(false);
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const { isConnected, lastMessage } = useWebSocket();
 
@@ -168,19 +174,42 @@ export default function RealtimeDashboard() {
     [fetchData, fetchStats, pagination.page],
   );
 
+  useEffect(() => {
+    refreshDashboardSnapshotRef.current = refreshDashboardSnapshot;
+  }, [refreshDashboardSnapshot]);
+
+  useEffect(() => {
+    paginationPageRef.current = pagination.page;
+  }, [pagination.page]);
+
+  useEffect(() => {
+    effectiveAutoRefreshRef.current = effectiveAutoRefresh;
+    offlineModeRef.current = offlineMode;
+  }, [effectiveAutoRefresh, offlineMode]);
+
+  const clearRealtimeRefreshTimeout = useCallback(() => {
+    if (realtimeRefreshTimeoutRef.current) {
+      clearTimeout(realtimeRefreshTimeoutRef.current);
+      realtimeRefreshTimeoutRef.current = null;
+    }
+  }, []);
+
   const requestRealtimeRefresh = useCallback(() => {
     if (!effectiveAutoRefresh || offlineMode) {
+      clearRealtimeRefreshTimeout();
       return;
     }
 
-    if (realtimeRefreshTimeoutRef.current) {
-      clearTimeout(realtimeRefreshTimeoutRef.current);
-    }
+    clearRealtimeRefreshTimeout();
 
     realtimeRefreshTimeoutRef.current = setTimeout(() => {
-      void refreshDashboardSnapshot(pagination.page);
+      realtimeRefreshTimeoutRef.current = null;
+      if (!effectiveAutoRefreshRef.current || offlineModeRef.current) {
+        return;
+      }
+      void refreshDashboardSnapshotRef.current?.(paginationPageRef.current);
     }, 300);
-  }, [effectiveAutoRefresh, offlineMode, pagination.page, refreshDashboardSnapshot]);
+  }, [clearRealtimeRefreshTimeout, effectiveAutoRefresh, offlineMode]);
 
   const fetchColumns = useCallback(async () => {
     if (offlineMode) {
@@ -204,17 +233,17 @@ export default function RealtimeDashboard() {
     const initialize = async () => {
       setLoading(true);
       await fetchColumns();
-      await refreshDashboardSnapshot();
+      await refreshDashboardSnapshotRef.current?.(1);
       setLoading(false);
     };
 
     void initialize();
-  }, [fetchColumns, refreshDashboardSnapshot]);
+  }, [fetchColumns, offlineMode]);
 
   useEffect(() => {
     if (effectiveAutoRefresh && !isConnected) {
       refreshIntervalRef.current = setInterval(() => {
-        void refreshDashboardSnapshot(pagination.page);
+        void refreshDashboardSnapshotRef.current?.(paginationPageRef.current);
       }, 10000);
     }
 
@@ -224,7 +253,13 @@ export default function RealtimeDashboard() {
         refreshIntervalRef.current = null;
       }
     };
-  }, [effectiveAutoRefresh, isConnected, pagination.page, refreshDashboardSnapshot]);
+  }, [effectiveAutoRefresh, isConnected]);
+
+  useEffect(() => {
+    if (!effectiveAutoRefresh || offlineMode) {
+      clearRealtimeRefreshTimeout();
+    }
+  }, [clearRealtimeRefreshTimeout, effectiveAutoRefresh, offlineMode]);
 
   useEffect(() => {
     if (!shouldRefreshRealtimeDashboard(lastMessage)) {
@@ -236,12 +271,9 @@ export default function RealtimeDashboard() {
 
   useEffect(() => {
     return () => {
-      if (realtimeRefreshTimeoutRef.current) {
-        clearTimeout(realtimeRefreshTimeoutRef.current);
-        realtimeRefreshTimeoutRef.current = null;
-      }
+      clearRealtimeRefreshTimeout();
     };
-  }, []);
+  }, [clearRealtimeRefreshTimeout]);
 
   useEffect(() => {
     if (!loading) {

@@ -34,7 +34,7 @@ async def test_count_pending_variances_matches_status_and_approval_status():
 
     async def _count_documents(query):
         assert query == {
-            "variance": {"$ne": 0},
+            "variance": {"$exists": True, "$ne": 0},
             "$or": [
                 {"status": {"$in": ["pending_approval", "NEEDS_REVIEW"]}},
                 {"approval_status": "NEEDS_REVIEW"},

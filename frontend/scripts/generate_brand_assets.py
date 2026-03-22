@@ -10,7 +10,28 @@ from PIL import Image, ImageChops
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS_DIR = ROOT / "assets" / "images"
 ANDROID_RES_DIR = ROOT / "android" / "app" / "src" / "main" / "res"
-DEFAULT_BRAND_BOOK = Path(r"C:\Users\mknou\OneDrive\Desktop\LAVANYA E MART LOGO BOOK.pdf")
+REPO_BRAND_BOOK = ROOT / "assets" / "brand-book.pdf"
+LEGACY_BRAND_BOOK = Path(
+    r"C:\Users\mknou\OneDrive\Desktop\LAVANYA E MART LOGO BOOK.pdf",
+)
+
+
+def resolve_brand_book_path() -> Path:
+    env_path = os.environ.get("BRAND_BOOK_PDF")
+    candidates = [
+        Path(env_path).expanduser() if env_path else None,
+        REPO_BRAND_BOOK,
+        LEGACY_BRAND_BOOK,
+    ]
+
+    for candidate in candidates:
+        if candidate and candidate.exists():
+            return candidate
+
+    raise FileNotFoundError(
+        "Brand book PDF not found. Set BRAND_BOOK_PDF or add the source PDF to "
+        f"{REPO_BRAND_BOOK}.",
+    )
 
 
 def trim_white(image: Image.Image, padding: int = 0) -> Image.Image:
@@ -82,10 +103,7 @@ def save_android_icons(icon: Image.Image) -> None:
 
 
 def main() -> None:
-    pdf_path = Path(os.environ.get("BRAND_BOOK_PDF", str(DEFAULT_BRAND_BOOK)))
-    if not pdf_path.exists():
-        raise FileNotFoundError(f"Brand book PDF not found: {pdf_path}")
-
+    pdf_path = resolve_brand_book_path()
     ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
     document = fitz.open(pdf_path)
