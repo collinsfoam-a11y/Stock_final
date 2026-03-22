@@ -235,6 +235,109 @@ async def test_finalize_session_rejects_unresolved_lines(async_client, test_db):
 
 
 @pytest.mark.asyncio
+async def test_legacy_complete_route_allows_staff_owner_close(async_client, test_db):
+    session_id = "sess-legacy-complete"
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    await _create_user(test_db, "staff1", "staff", full_name="Staff Member")
+
+    await test_db.sessions.insert_one(
+        {
+            "id": session_id,
+            "session_id": session_id,
+            "warehouse": "Main Warehouse",
+            "staff_user": "staff1",
+            "staff_name": "Staff Member",
+            "status": "ACTIVE",
+            "type": "STANDARD",
+            "started_at": now,
+            "last_heartbeat": now,
+            "rack_no": "R-101",
+        }
+    )
+    await test_db.verification_sessions.insert_one(
+        {
+            "session_id": session_id,
+            "user_id": "staff1",
+            "status": "ACTIVE",
+            "rack_id": "R-101",
+        }
+    )
+
+    response = await async_client.post(
+        f"/api/sessions/{session_id}/complete",
+        headers=_make_auth_headers("staff1", "staff"),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "CLOSED"
+
+    session = await test_db.sessions.find_one({"id": session_id})
+    assert session is not None
+    assert session["status"] == "CLOSED"
+    assert session["closed_at"] is not None
+    assert session["completed_at"] is not None
+    assert session.get("finalized_at") in (None, "")
+
+    verification_session = await test_db.verification_sessions.find_one({"session_id": session_id})
+    assert verification_session is not None
+    assert verification_session["status"] == "CLOSED"
+    assert verification_session["completed_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_get_count_line_detail_allows_reading_finalized_lines(async_client, test_db):
+    session_id = "sess-finalized-detail"
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    await _create_user(test_db, "staff1", "staff", full_name="Staff Member")
+    await test_db.sessions.insert_one(
+        {
+            "id": session_id,
+            "session_id": session_id,
+            "warehouse": "Main Warehouse",
+            "staff_user": "staff1",
+            "staff_name": "Staff Member",
+            "status": "COMPLETED",
+            "type": "STANDARD",
+            "started_at": now,
+            "last_heartbeat": now,
+            "completed_at": now,
+            "closed_at": now,
+            "finalized_at": now,
+            "finalized_by": "supervisor1",
+            "finalization_status": "FINALIZED",
+        }
+    )
+    await test_db.count_lines.insert_one(
+        {
+            "id": "line-finalized-detail",
+            "session_id": session_id,
+            "item_code": "ITEM-DETAIL",
+            "item_name": "Historical Item",
+            "counted_qty": 4.0,
+            "variance": 0.0,
+            "status": "locked",
+            "approval_status": "APPROVED",
+            "verified": True,
+            "counted_by": "staff1",
+            "counted_at": now,
+            "finalized_at": now,
+        }
+    )
+
+    response = await async_client.get(
+        "/api/count-lines/line-finalized-detail",
+        headers=_make_auth_headers("staff1", "staff"),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == "line-finalized-detail"
+    assert body["status"] == "locked"
+    assert body["verified"] is True
+
+
+@pytest.mark.asyncio
 async def test_finalized_count_lines_are_immutable(async_client, test_db):
     session_id = "sess-immutable"
     now = datetime.now(timezone.utc).replace(tzinfo=None)

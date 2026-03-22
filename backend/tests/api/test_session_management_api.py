@@ -608,6 +608,7 @@ class TestCompleteSessionEndpoint:
         mock_db.count_lines.find = MagicMock(return_value=_AsyncCursor([]))
         mock_db.count_lines.update_many = AsyncMock(return_value=MagicMock(modified_count=0))
         mock_db.verification_sessions = MagicMock()
+        mock_db.verification_sessions.find_one = AsyncMock(return_value=None)
         mock_db.verification_sessions.update_one = AsyncMock(
             return_value=MagicMock(modified_count=1)
         )
@@ -651,7 +652,7 @@ class TestCompleteSessionEndpoint:
                     assert response.status_code == 200
                     data = response.json()
                     assert data["success"] is True
-                    assert data["status"] == "COMPLETED"
+                    assert data["status"] == "CLOSED"
         finally:
             app.dependency_overrides.clear()
 
@@ -674,6 +675,8 @@ class TestCompleteSessionEndpoint:
         mock_db = MagicMock()
         mock_db.sessions = MagicMock()
         mock_db.sessions.find_one = AsyncMock(return_value=other_session)
+        mock_db.verification_sessions = MagicMock()
+        mock_db.verification_sessions.find_one = AsyncMock(return_value=None)
 
         mock_redis = MagicMock()
 
@@ -701,7 +704,7 @@ class TestCompleteSessionEndpoint:
             ) as client:
                 response = await client.post("/api/sessions/sess_other/complete")
                 assert response.status_code == 403
-                assert "Supervisor access required" in response.json()["detail"]
+                assert "Not your session" in response.json()["detail"]
         finally:
             app.dependency_overrides.clear()
 

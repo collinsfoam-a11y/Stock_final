@@ -238,6 +238,8 @@ async def generate_variance_report(db, filters: ReportFilter) -> list[dict]:
         async for item in db.erp_items.find(item_query)
         if item.get("item_code")
     }
+    if (filters.warehouse or filters.floor or filters.category) and not item_docs:
+        return []
 
     results: list[dict[str, Any]] = []
     lines_cursor = db.count_lines.find(line_query)
@@ -353,10 +355,22 @@ async def generate_session_history_report(db, filters: ReportFilter) -> list[dic
         query["started_at"] = date_filter
 
     sessions = [session async for session in db.sessions.find(query).sort("started_at", -1).limit(5000)]
+    session_ids = [
+        str(session.get("id") or session.get("session_id"))
+        for session in sessions
+        if session.get("id") or session.get("session_id")
+    ]
+    lines_by_session: dict[str, list[dict[str, Any]]] = {session_id: [] for session_id in session_ids}
+    if session_ids:
+        async for line in db.count_lines.find({"session_id": {"$in": session_ids}}):
+            session_id = str(line.get("session_id") or "")
+            if session_id in lines_by_session:
+                lines_by_session[session_id].append(line)
+
     results: list[dict[str, Any]] = []
     for session in sessions:
         session_id = str(session.get("id") or session.get("session_id"))
-        lines = [line async for line in db.count_lines.find({"session_id": session_id})]
+        lines = lines_by_session.get(session_id, [])
         started_at = session.get("started_at")
         completed_at = session.get("finalized_at") or session.get("completed_at") or session.get("closed_at")
         duration_minutes = None

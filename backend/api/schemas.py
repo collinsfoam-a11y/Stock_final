@@ -313,6 +313,18 @@ class Session(BaseModel):
     # Reference to external storage if too large
     snapshot_items_ref: Optional[str] = None
 
+    @field_validator(
+        "last_heartbeat",
+        "closed_at",
+        "completed_at",
+        "reconciled_at",
+        "finalized_at",
+        mode="before",
+    )
+    @classmethod
+    def normalize_empty_datetime_fields(cls, v: Any) -> Any:
+        return None if v == "" else v
+
     @field_validator("status", mode="before")
     @classmethod
     def normalize_status(cls, v: Any) -> str:
