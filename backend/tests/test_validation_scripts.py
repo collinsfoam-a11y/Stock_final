@@ -22,6 +22,7 @@ def test_health_check_summary_runs_under_cp1252_console():
     )
 
     combined_output = f"{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, combined_output
     assert "UnicodeEncodeError" not in combined_output
 
 
