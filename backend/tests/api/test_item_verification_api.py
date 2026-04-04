@@ -1,12 +1,16 @@
 from unittest.mock import AsyncMock, Mock
 
+from io import BytesIO
 import pytest
 from fastapi import HTTPException
 from datetime import datetime, timezone
+import openpyxl
 
 from backend.api.item_verification_api import (
     ItemUpdateRequest,
     VerificationRequest,
+    _build_erpnext_item_export_row,
+    _build_erpnext_variance_export_row,
     build_item_filter_query,
     init_verification_api,
     sync_items_for_offline_cache,
@@ -127,6 +131,45 @@ def test_build_item_filter_query():
     assert query == {}
 
 
+def test_build_erpnext_item_export_row_includes_blank_id():
+    row = _build_erpnext_item_export_row(
+        {
+            "item_code": "ITM-1",
+            "item_name": "Mixer",
+            "barcode": "123456",
+            "stock_qty": 8,
+            "verified": True,
+        }
+    )
+
+    assert row["ID"] == ""
+    assert row["item_code"] == "ITM-1"
+    assert row["item_name"] == "Mixer"
+    assert row["barcode"] == "123456"
+    assert row["stock_qty"] == 8
+    assert row["verified"] == "Yes"
+
+
+def test_build_erpnext_variance_export_row_includes_blank_id():
+    row = _build_erpnext_variance_export_row(
+        {
+            "item_code": "ITM-9",
+            "item_name": "Kettle",
+            "system_qty": 5,
+            "verified_qty": 3,
+            "variance": -2,
+            "count_line_id": "line-22",
+        }
+    )
+
+    assert row["ID"] == ""
+    assert row["item_code"] == "ITM-9"
+    assert row["system_qty"] == 5
+    assert row["verified_qty"] == 3
+    assert row["variance"] == -2
+    assert row["count_line_id"] == "line-22"
+
+
 @pytest.mark.asyncio
 async def test_sync_items_for_offline_cache_with_since(setup_mocks):
     mock_db, _ = setup_mocks
@@ -189,3 +232,118 @@ async def test_sync_items_for_offline_cache_without_since(setup_mocks):
 
     find_args, _find_kwargs = mock_db.erp_items.find.call_args
     assert find_args[0] == {"barcode": {"$exists": True, "$ne": ""}}
+
+
+@pytest.mark.asyncio
+async def test_export_items_csv_route_returns_erpnext_headers(
+    async_client,
+    authenticated_headers,
+    test_db,
+):
+    await test_db.erp_items.insert_one(
+        {
+            "item_code": "ITM-1",
+            "item_name": "Mixer",
+            "barcode": "123456",
+            "stock_qty": 8,
+            "verified": True,
+        }
+    )
+
+    response = await async_client.get(
+        "/api/v2/erp/items/export/csv",
+        headers=authenticated_headers,
+    )
+
+    assert response.status_code == 200
+    assert "items_erpnext_import_" in response.headers["content-disposition"]
+    first_line = response.text.splitlines()[0]
+    assert first_line.startswith("ID,item_code,item_name,barcode")
+
+
+@pytest.mark.asyncio
+async def test_export_items_xlsx_route_returns_erpnext_headers(
+    async_client,
+    authenticated_headers,
+    test_db,
+):
+    await test_db.erp_items.insert_one(
+        {
+            "item_code": "ITM-2",
+            "item_name": "Kettle",
+            "barcode": "654321",
+            "stock_qty": 5,
+            "verified": False,
+        }
+    )
+
+    response = await async_client.get(
+        "/api/v2/erp/items/export/xlsx",
+        headers=authenticated_headers,
+    )
+
+    assert response.status_code == 200
+    workbook = openpyxl.load_workbook(filename=BytesIO(response.content))
+    sheet = workbook.active
+    assert sheet.cell(row=1, column=1).value == "ID"
+    assert sheet.cell(row=1, column=2).value == "item_code"
+    assert sheet.cell(row=2, column=2).value == "ITM-2"
+
+
+@pytest.mark.asyncio
+async def test_export_variances_csv_route_returns_erpnext_headers(
+    async_client,
+    authenticated_headers,
+    test_db,
+):
+    await test_db.item_variances.insert_one(
+        {
+            "item_code": "ITM-3",
+            "item_name": "Toaster",
+            "system_qty": 9,
+            "verified_qty": 7,
+            "variance": -2,
+            "verified_by": "staff1",
+            "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
+        }
+    )
+
+    response = await async_client.get(
+        "/api/v2/erp/items/variances/export/csv",
+        headers=authenticated_headers,
+    )
+
+    assert response.status_code == 200
+    assert "variances_erpnext_import_" in response.headers["content-disposition"]
+    assert response.text.splitlines()[0].startswith("ID,item_code,item_name,system_qty")
+
+
+@pytest.mark.asyncio
+async def test_export_variances_xlsx_route_returns_erpnext_headers(
+    async_client,
+    authenticated_headers,
+    test_db,
+):
+    await test_db.item_variances.insert_one(
+        {
+            "item_code": "ITM-4",
+            "item_name": "Grinder",
+            "system_qty": 4,
+            "verified_qty": 6,
+            "variance": 2,
+            "verified_by": "staff1",
+            "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
+        }
+    )
+
+    response = await async_client.get(
+        "/api/v2/erp/items/variances/export/xlsx",
+        headers=authenticated_headers,
+    )
+
+    assert response.status_code == 200
+    workbook = openpyxl.load_workbook(filename=BytesIO(response.content))
+    sheet = workbook.active
+    assert sheet.cell(row=1, column=1).value == "ID"
+    assert sheet.cell(row=1, column=2).value == "item_code"
+    assert sheet.cell(row=2, column=2).value == "ITM-4"

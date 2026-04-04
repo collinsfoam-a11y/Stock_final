@@ -3,10 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { auroraTheme } from "@/theme/auroraTheme";
-import {
-  IS_WEB,
-  Summary,
-} from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
+import { Summary } from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
 import { DashboardConnectionState } from "@/components/admin/realtime-dashboard/realtimeDashboardLive";
 
 interface RealtimeDashboardToolbarProps {
@@ -14,6 +11,7 @@ interface RealtimeDashboardToolbarProps {
   autoRefresh: boolean;
   connectionState: DashboardConnectionState;
   onExportCSV: () => void;
+  onExportXLSX: () => void;
   onOpenColumnSettings: () => void;
   onToggleAutoRefresh: () => void;
   onToggleVerifiedFilter: (value: boolean | null) => void;
@@ -26,6 +24,7 @@ export function RealtimeDashboardToolbar({
   autoRefresh,
   connectionState,
   onExportCSV,
+  onExportXLSX,
   onOpenColumnSettings,
   onToggleAutoRefresh,
   onToggleVerifiedFilter,
@@ -83,21 +82,22 @@ export function RealtimeDashboardToolbar({
               color={auroraTheme.colors.text.primary}
             />
           </TouchableOpacity>
-          {IS_WEB && (
-            <TouchableOpacity
-              style={[styles.iconButton, actionsDisabled && styles.disabledButton]}
-              onPress={onExportCSV}
-              disabled={actionsDisabled}
-            >
-              <Ionicons
-                name="download"
-                size={20}
-                color={auroraTheme.colors.text.primary}
-              />
-            </TouchableOpacity>
-          )}
+          <ExportButton
+            disabled={actionsDisabled}
+            label="ERPNext CSV"
+            onPress={onExportCSV}
+          />
+          <ExportButton
+            disabled={actionsDisabled}
+            label="ERPNext XLSX"
+            onPress={onExportXLSX}
+          />
         </View>
       </View>
+
+      <Text style={styles.exportHelpText}>
+        Blank ID inserts new rows. Keep ID to update existing ERPNext records.
+      </Text>
 
       {summary && (
         <View style={styles.generationInfo}>
@@ -126,6 +126,26 @@ export function RealtimeDashboardToolbar({
         </View>
       )}
     </>
+  );
+}
+
+function ExportButton({
+  disabled = false,
+  label,
+  onPress,
+}: {
+  disabled?: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.exportButton, disabled && styles.disabledButton]}
+      onPress={onPress}
+      disabled={disabled}
+    >
+      <Text style={styles.exportButtonText}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -200,6 +220,12 @@ const styles = StyleSheet.create({
     marginBottom: auroraTheme.spacing.md,
     paddingHorizontal: auroraTheme.spacing.sm,
   },
+  exportHelpText: {
+    fontSize: 12,
+    color: auroraTheme.colors.text.secondary,
+    marginBottom: auroraTheme.spacing.sm,
+    paddingHorizontal: auroraTheme.spacing.xs,
+  },
   generationText: {
     fontSize: 12,
     color: auroraTheme.colors.text.secondary,
@@ -214,6 +240,20 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: "#4CAF50",
+  },
+  exportButton: {
+    minWidth: 52,
+    height: 36,
+    borderRadius: auroraTheme.borderRadius.sm,
+    backgroundColor: auroraTheme.colors.surface.base,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: auroraTheme.spacing.sm,
+  },
+  exportButtonText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: auroraTheme.colors.text.primary,
   },
   liveDotWarning: {
     backgroundColor: "#FF9800",

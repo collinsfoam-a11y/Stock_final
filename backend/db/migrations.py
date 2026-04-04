@@ -119,6 +119,13 @@ class MigrationManager:
     async def _ensure_count_lines_indexes(self) -> None:
         """Create indexes for count_lines collection."""
         await self._create_index_safe(self.db.count_lines, "id", unique=True, name="count_lines.id")
+        await self._create_index_safe(
+            self.db.count_lines,
+            "idempotency_key",
+            unique=True,
+            sparse=True,
+            name="count_lines.idempotency_key",
+        )
         simple_indexes = ["session_id", "item_code", "counted_by", "status", "verified"]
         for field in simple_indexes:
             await self._create_index_safe(self.db.count_lines, field, name=f"count_lines.{field}")

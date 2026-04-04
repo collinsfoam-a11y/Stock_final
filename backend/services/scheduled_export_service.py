@@ -236,19 +236,19 @@ class ScheduledExportService:
         if "has_variance" in filters and filters["has_variance"]:
             query["variance"] = {"$ne": 0}
 
-        cursor = self.db.count_lines.find(query).sort("created_at", -1)
+        cursor = self.db.count_lines.find(query).sort("counted_at", -1)
         lines = await cursor.to_list(length=10000)
 
         export_data = []
         for line in lines:
             export_data.append(
                 {
-                    "line_id": str(line["_id"]),
+                    "line_id": str(line.get("id") or line["_id"]),
                     "session_id": line.get("session_id"),
                     "item_code": line.get("item_code"),
                     "item_name": line.get("item_name"),
                     "barcode": line.get("barcode"),
-                    "system_stock": line.get("system_stock", 0),
+                    "erp_qty": line.get("erp_qty", line.get("system_stock", 0)),
                     "counted_qty": line.get("counted_qty", 0),
                     "variance": line.get("variance", 0),
                     "variance_reason": line.get("variance_reason"),

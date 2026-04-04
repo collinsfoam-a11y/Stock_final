@@ -99,6 +99,138 @@ def serialize_mongo_datetime(value: Optional[datetime]) -> str:
     return value.isoformat() if isinstance(value, datetime) else ""
 
 
+def _serialize_export_value(value: Any) -> Any:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return value
+
+
+def _render_xlsx_bytes(fieldnames: list[str], rows: list[dict[str, Any]]) -> bytes:
+    try:
+        import openpyxl
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Excel export not available. Install openpyxl package.",
+        ) from exc
+
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    if sheet is None:
+        sheet = workbook.create_sheet("Export")
+
+    for column_index, field in enumerate(fieldnames, 1):
+        sheet.cell(row=1, column=column_index, value=field)
+
+    for row_index, row in enumerate(rows, 2):
+        for column_index, field in enumerate(fieldnames, 1):
+            sheet.cell(row=row_index, column=column_index, value=_serialize_export_value(row.get(field, "")))
+
+    output = io.BytesIO()
+    workbook.save(output)
+    return output.getvalue()
+
+
+ITEM_EXPORT_FIELDNAMES = [
+    "ID",
+    "item_code",
+    "item_name",
+    "barcode",
+    "stock_qty",
+    "mrp",
+    "category",
+    "subcategory",
+    "uom_code",
+    "uom_name",
+    "floor",
+    "rack",
+    "warehouse",
+    "verified",
+    "verified_by",
+    "verified_at",
+    "last_scanned_at",
+    "verified_qty",
+    "damaged_qty",
+    "non_returnable_damaged_qty",
+    "variance",
+    "item_condition",
+    "serial_number",
+    "is_serialized",
+    "session_id",
+    "verification_notes",
+]
+
+
+VARIANCE_EXPORT_FIELDNAMES = [
+    "ID",
+    "item_code",
+    "item_name",
+    "system_qty",
+    "verified_qty",
+    "variance",
+    "verified_by",
+    "verified_at",
+    "category",
+    "subcategory",
+    "floor",
+    "rack",
+    "warehouse",
+    "session_id",
+    "count_line_id",
+]
+
+
+def _build_erpnext_item_export_row(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "ID": "",
+        "item_code": item.get("item_code", ""),
+        "item_name": item.get("item_name", ""),
+        "barcode": item.get("barcode", ""),
+        "stock_qty": item.get("stock_qty", 0.0),
+        "mrp": item.get("mrp", 0.0),
+        "category": item.get("category", ""),
+        "subcategory": item.get("subcategory", ""),
+        "uom_code": item.get("uom_code", ""),
+        "uom_name": item.get("uom_name", ""),
+        "floor": item.get("floor", ""),
+        "rack": item.get("rack", ""),
+        "warehouse": item.get("warehouse", ""),
+        "verified": "Yes" if item.get("verified", False) else "No",
+        "verified_by": item.get("verified_by", ""),
+        "verified_at": serialize_mongo_datetime(item.get("verified_at")),
+        "last_scanned_at": serialize_mongo_datetime(item.get("last_scanned_at")),
+        "verified_qty": item.get("verified_qty", 0.0),
+        "damaged_qty": item.get("damaged_qty", 0.0),
+        "non_returnable_damaged_qty": item.get("non_returnable_damaged_qty", 0.0),
+        "variance": item.get("variance", 0.0),
+        "item_condition": item.get("item_condition", ""),
+        "serial_number": item.get("serial_number", ""),
+        "is_serialized": "Yes" if item.get("is_serialized", False) else "No",
+        "session_id": item.get("session_id", ""),
+        "verification_notes": item.get("verification_notes", ""),
+    }
+
+
+def _build_erpnext_variance_export_row(variance: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "ID": "",
+        "item_code": variance.get("item_code", ""),
+        "item_name": variance.get("item_name", ""),
+        "system_qty": variance.get("system_qty", 0.0),
+        "verified_qty": variance.get("verified_qty", 0.0),
+        "variance": variance.get("variance", 0.0),
+        "verified_by": variance.get("verified_by", ""),
+        "verified_at": serialize_mongo_datetime(variance.get("verified_at")),
+        "category": variance.get("category", ""),
+        "subcategory": variance.get("subcategory", ""),
+        "floor": variance.get("floor", ""),
+        "rack": variance.get("rack", ""),
+        "warehouse": variance.get("warehouse", ""),
+        "session_id": variance.get("session_id", ""),
+        "count_line_id": variance.get("count_line_id", ""),
+    }
+
+
 def serialize_item_document(item: dict[str, Any]) -> dict[str, Any]:
     """Return a JSON-serializable copy of an ERP item document."""
     serialized = dict(item)
@@ -648,7 +780,7 @@ async def export_items_csv(
     current_user: dict = Depends(get_current_user),
 ):
     """
-    Export filtered items to CSV
+    Export filtered items to ERPNext-compatible CSV
     """
     try:
         filter_query = build_item_filter_query(
@@ -661,85 +793,31 @@ async def export_items_csv(
             search=search,
         )
 
-        # Define CSV fieldnames
-        fieldnames = [
-            "item_code",
-            "item_name",
-            "barcode",
-            "stock_qty",
-            "mrp",
-            "category",
-            "subcategory",
-            "uom_code",
-            "uom_name",
-            "floor",
-            "rack",
-            "warehouse",
-            "verified",
-            "verified_by",
-            "verified_at",
-            "last_scanned_at",
-            "verified_qty",
-            "damaged_qty",
-            "non_returnable_damaged_qty",
-            "variance",
-            "item_condition",
-            "serial_number",
-            "is_serialized",
-            "session_id",
-            "verification_notes",
-        ]
-
         async def generate_csv_rows():
-            # Create a StringIO object to write CSV data to
             output = io.StringIO()
-            writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
+            writer = csv.DictWriter(output, fieldnames=ITEM_EXPORT_FIELDNAMES, extrasaction="ignore")
             writer.writeheader()
-            yield output.getvalue()  # Yield header row
+            yield output.getvalue()
             output.seek(0)
             output.truncate(0)
 
-            # Get all matching items with a limit
             cursor = db.erp_items.find(filter_query).limit(max_rows)
 
             count = 0
             async for item in cursor:
                 if count >= max_rows:
                     break
-                row = {
-                    "item_code": item.get("item_code", ""),
-                    "item_name": item.get("item_name", ""),
-                    "barcode": item.get("barcode", ""),
-                    "stock_qty": item.get("stock_qty", 0.0),
-                    "mrp": item.get("mrp", 0.0),
-                    "category": item.get("category", ""),
-                    "subcategory": item.get("subcategory", ""),
-                    "uom_code": item.get("uom_code", ""),
-                    "uom_name": item.get("uom_name", ""),
-                    "floor": item.get("floor", ""),
-                    "rack": item.get("rack", ""),
-                    "warehouse": item.get("warehouse", ""),
-                    "verified": "Yes" if item.get("verified", False) else "No",
-                    "verified_by": item.get("verified_by", ""),
-                    "verified_at": serialize_mongo_datetime(item.get("verified_at")),
-                    "last_scanned_at": serialize_mongo_datetime(item.get("last_scanned_at")),
-                    "verified_qty": item.get("verified_qty", 0.0),
-                    "damaged_qty": item.get("damaged_qty", 0.0),
-                    "non_returnable_damaged_qty": item.get("non_returnable_damaged_qty", 0.0),
-                    "variance": item.get("variance", 0.0),
-                    "item_condition": item.get("item_condition", ""),
-                    "serial_number": item.get("serial_number", ""),
-                    "is_serialized": ("Yes" if item.get("is_serialized", False) else "No"),
-                    "session_id": item.get("session_id", ""),
-                    "verification_notes": item.get("verification_notes", ""),
-                }
+                row = _build_erpnext_item_export_row(item)
                 writer.writerow(row)
-                yield output.getvalue()  # Yield the current row
+                yield output.getvalue()
                 output.seek(0)
-                output.truncate(0)  # Clear the buffer for the next row
+                output.truncate(0)
                 count += 1
 
-        filename = f"items_export_{datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S')}.csv"
+        filename = (
+            f"items_erpnext_import_"
+            f"{datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S')}.csv"
+        )
 
         return StreamingResponse(
             generate_csv_rows(),
@@ -750,6 +828,50 @@ async def export_items_csv(
     except Exception as e:
         logger.error(f"Error exporting items to CSV: {str(e)}")
         raise HTTPException(status_code=500, detail=f"CSV export failed: {str(e)}")
+
+
+@verification_router.get("/export/xlsx")
+async def export_items_xlsx(
+    category: Optional[str] = Query(None),
+    subcategory: Optional[str] = Query(None),
+    floor: Optional[str] = Query(None),
+    rack: Optional[str] = Query(None),
+    warehouse: Optional[str] = Query(None),
+    verified: Optional[bool] = Query(None),
+    search: Optional[str] = Query(None),
+    max_rows: int = Query(10000, ge=1, le=100000, description="Maximum rows to export"),
+    current_user: dict = Depends(get_current_user),
+):
+    """Export filtered items to ERPNext-compatible Excel."""
+    try:
+        filter_query = build_item_filter_query(
+            category=category,
+            subcategory=subcategory,
+            floor=floor,
+            rack=rack,
+            warehouse=warehouse,
+            verified=verified,
+            search=search,
+        )
+
+        items = await db.erp_items.find(filter_query).limit(max_rows).to_list(length=max_rows)
+        rows = [_build_erpnext_item_export_row(item) for item in items]
+        content = _render_xlsx_bytes(ITEM_EXPORT_FIELDNAMES, rows)
+        filename = (
+            f"items_erpnext_import_"
+            f"{datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S')}.xlsx"
+        )
+
+        return StreamingResponse(
+            iter([content]),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error exporting items to XLSX: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Excel export failed: {str(e)}")
 
 
 @verification_router.get("/variances")
@@ -817,6 +939,104 @@ async def get_variances(
     except Exception as e:
         logger.error(f"Error getting variances: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get variances: {str(e)}")
+
+
+async def _fetch_variance_export_rows(
+    *,
+    category: Optional[str],
+    floor: Optional[str],
+    rack: Optional[str],
+    warehouse: Optional[str],
+    max_rows: int,
+) -> list[dict[str, Any]]:
+    filter_query: dict[str, Any] = {"variance": {"$ne": 0}}
+
+    if category:
+        filter_query["category"] = {"$regex": category, "$options": "i"}
+    if floor:
+        filter_query["floor"] = {"$regex": floor, "$options": "i"}
+    if rack:
+        filter_query["rack"] = {"$regex": rack, "$options": "i"}
+    if warehouse:
+        filter_query["warehouse"] = {"$regex": warehouse, "$options": "i"}
+
+    variances = await (
+        db.item_variances.find(filter_query).sort("verified_at", -1).limit(max_rows).to_list(length=max_rows)
+    )
+    return [_build_erpnext_variance_export_row(variance) for variance in variances]
+
+
+@verification_router.get("/variances/export/csv")
+async def export_variances_csv(
+    category: Optional[str] = Query(None),
+    floor: Optional[str] = Query(None),
+    rack: Optional[str] = Query(None),
+    warehouse: Optional[str] = Query(None),
+    max_rows: int = Query(10000, ge=1, le=100000, description="Maximum rows to export"),
+    current_user: dict = Depends(get_current_user),
+):
+    """Export variances to ERPNext-compatible CSV."""
+    try:
+        rows = await _fetch_variance_export_rows(
+            category=category,
+            floor=floor,
+            rack=rack,
+            warehouse=warehouse,
+            max_rows=max_rows,
+        )
+
+        output = io.StringIO()
+        writer = csv.DictWriter(output, fieldnames=VARIANCE_EXPORT_FIELDNAMES, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(rows)
+
+        filename = (
+            f"variances_erpnext_import_"
+            f"{datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S')}.csv"
+        )
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except Exception as e:
+        logger.error(f"Error exporting variances to CSV: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Variance CSV export failed: {str(e)}")
+
+
+@verification_router.get("/variances/export/xlsx")
+async def export_variances_xlsx(
+    category: Optional[str] = Query(None),
+    floor: Optional[str] = Query(None),
+    rack: Optional[str] = Query(None),
+    warehouse: Optional[str] = Query(None),
+    max_rows: int = Query(10000, ge=1, le=100000, description="Maximum rows to export"),
+    current_user: dict = Depends(get_current_user),
+):
+    """Export variances to ERPNext-compatible Excel."""
+    try:
+        rows = await _fetch_variance_export_rows(
+            category=category,
+            floor=floor,
+            rack=rack,
+            warehouse=warehouse,
+            max_rows=max_rows,
+        )
+        content = _render_xlsx_bytes(VARIANCE_EXPORT_FIELDNAMES, rows)
+        filename = (
+            f"variances_erpnext_import_"
+            f"{datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S')}.xlsx"
+        )
+        return StreamingResponse(
+            iter([content]),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error exporting variances to XLSX: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Variance Excel export failed: {str(e)}")
 
 
 @verification_router.get("/live/users")

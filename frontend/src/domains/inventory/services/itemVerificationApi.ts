@@ -81,6 +81,8 @@ export interface FilteredItemsResponse {
   };
 }
 
+export type ERPNextExportFormat = "csv" | "xlsx";
+
 export interface VarianceItem {
   item_code: string;
   item_name: string;
@@ -233,6 +235,42 @@ export class ItemVerificationAPI {
     }
   }
 
+  static async exportItemsToERPNext(
+    params: FilteredItemsParams,
+    format: ERPNextExportFormat,
+  ): Promise<ArrayBuffer> {
+    try {
+      const queryParams = new URLSearchParams();
+
+      if (params.category) queryParams.append("category", params.category);
+      if (params.subcategory)
+        queryParams.append("subcategory", params.subcategory);
+      if (params.floor) queryParams.append("floor", params.floor);
+      if (params.rack) queryParams.append("rack", params.rack);
+      if (params.warehouse) queryParams.append("warehouse", params.warehouse);
+      if (params.verified !== undefined)
+        queryParams.append("verified", params.verified.toString());
+      if (params.search) queryParams.append("search", params.search);
+
+      const response = await api.get(
+        `/api/v2/erp/items/export/${format}?${queryParams.toString()}`,
+        {
+          responseType: "arraybuffer",
+        },
+      );
+      return response.data as ArrayBuffer;
+    } catch (error: unknown) {
+      __DEV__ && console.error("ERPNext item export failed:", error);
+      const err = error as ApiError;
+      const detail = err.response?.data?.detail;
+      const message =
+        typeof detail === "object" && detail !== null
+          ? detail.message
+          : (detail as string) || err.message || "ERPNext item export failed";
+      throw new Error(message);
+    }
+  }
+
   /**
    * Get variances
    */
@@ -277,6 +315,42 @@ export class ItemVerificationAPI {
         typeof detail === "object" && detail !== null
           ? detail.message
           : (detail as string) || err.message || "Failed to get variances";
+      throw new Error(message);
+    }
+  }
+
+  static async exportVariancesToERPNext(
+    params: {
+      category?: string;
+      floor?: string;
+      rack?: string;
+      warehouse?: string;
+    },
+    format: ERPNextExportFormat,
+  ): Promise<ArrayBuffer> {
+    try {
+      const queryParams = new URLSearchParams();
+
+      if (params.category) queryParams.append("category", params.category);
+      if (params.floor) queryParams.append("floor", params.floor);
+      if (params.rack) queryParams.append("rack", params.rack);
+      if (params.warehouse) queryParams.append("warehouse", params.warehouse);
+
+      const response = await api.get(
+        `/api/v2/erp/items/variances/export/${format}?${queryParams.toString()}`,
+        {
+          responseType: "arraybuffer",
+        },
+      );
+      return response.data as ArrayBuffer;
+    } catch (error: unknown) {
+      __DEV__ && console.error("ERPNext variance export failed:", error);
+      const err = error as ApiError;
+      const detail = err.response?.data?.detail;
+      const message =
+        typeof detail === "object" && detail !== null
+          ? detail.message
+          : (detail as string) || err.message || "ERPNext variance export failed";
       throw new Error(message);
     }
   }

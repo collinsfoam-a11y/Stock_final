@@ -19,8 +19,6 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
-import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
 
 import {
   ItemVerificationAPI,
@@ -30,7 +28,6 @@ import {
   ItemFilters,
   FilterValues,
 } from "../../src/domains/inventory/components/ItemFilters";
-import { exportVariancesToCSV, downloadCSV } from "../../src/utils/csvExport";
 import {
   ScreenContainer,
   GlassCard,
@@ -39,12 +36,7 @@ import {
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { theme } from "../../src/styles/modernDesignSystem";
 import { toastService } from "../../src/services/utils/toastService";
-
-const getLocalFileUri = (filename: string) => {
-  const baseDir =
-    FileSystem.Paths?.document?.uri ?? FileSystem.Paths?.cache?.uri ?? "";
-  return `${baseDir}${filename}`;
-};
+import { saveArrayBufferExport } from "../../src/utils/fileExport";
 
 export default function VariancesScreen() {
   const router = useRouter();
@@ -202,7 +194,7 @@ export default function VariancesScreen() {
     }
   };
 
-  const handleExportCSV = async () => {
+  const handleExport = async (format: "csv" | "xlsx") => {
     try {
       if (offlineMode) {
         Alert.alert(
@@ -219,41 +211,26 @@ export default function VariancesScreen() {
 
       if (Platform.OS !== "web")
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      let allVariances = variances;
-      if (pagination.total > variances.length) {
-        // Fetch all variances with current filters
-        const response = await ItemVerificationAPI.getVariances({
+      const fileData = await ItemVerificationAPI.exportVariancesToERPNext(
+        {
           category: filters.category,
           floor: filters.floor,
           rack: filters.rack,
           warehouse: filters.warehouse,
-          limit: pagination.total,
-          skip: 0,
-        });
-        allVariances = response.variances;
-      }
+        },
+        format,
+      );
+      const filename = `variances_erpnext_import_${new Date().toISOString().split("T")[0]}.${format}`;
 
-      const csvContent = exportVariancesToCSV(allVariances);
-      const filename = `variances_${new Date().toISOString().split("T")[0]}.csv`;
-
-      if (Platform.OS === "web") {
-        downloadCSV(csvContent, filename);
-        Alert.alert("Success", "CSV file downloaded");
-      } else {
-        const fileUri = getLocalFileUri(filename);
-        await FileSystem.writeAsStringAsync(fileUri, csvContent, {
-          encoding: "utf8",
-        });
-
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(fileUri);
-        } else {
-          Alert.alert("Success", `File saved to: ${fileUri}`);
-        }
-      }
+      await saveArrayBufferExport(
+        fileData,
+        filename,
+        format === "csv"
+          ? "text/csv"
+          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to export CSV");
+      Alert.alert("Error", error.message || `Failed to export ${format.toUpperCase()}`);
     }
   };
 
@@ -482,26 +459,40 @@ export default function VariancesScreen() {
               </AnimatedPressable>
             )}
 
-            <AnimatedPressable
-              style={[
-                styles.exportButton,
-                variances.length === 0 && { opacity: 0.5 },
-              ]}
-              onPress={handleExportCSV}
-              disabled={variances.length === 0}
-            >
-              <GlassCard
-                intensity={20}
-                padding={8}
-                borderRadius={theme.borderRadius.full}
+            <View style={styles.exportActions}>
+              <AnimatedPressable
+                style={[
+                  styles.exportFormatButton,
+                  variances.length === 0 && { opacity: 0.5 },
+                ]}
+                onPress={() => void handleExport("csv")}
+                disabled={variances.length === 0}
               >
-                <Ionicons
-                  name="download-outline"
-                  size={20}
-                  color={theme.colors.text.primary}
-                />
-              </GlassCard>
-            </AnimatedPressable>
+                <GlassCard
+                  intensity={20}
+                  padding={8}
+                  borderRadius={theme.borderRadius.full}
+                >
+                  <Text style={styles.exportFormatLabel}>CSV</Text>
+                </GlassCard>
+              </AnimatedPressable>
+              <AnimatedPressable
+                style={[
+                  styles.exportFormatButton,
+                  variances.length === 0 && { opacity: 0.5 },
+                ]}
+                onPress={() => void handleExport("xlsx")}
+                disabled={variances.length === 0}
+              >
+                <GlassCard
+                  intensity={20}
+                  padding={8}
+                  borderRadius={theme.borderRadius.full}
+                >
+                  <Text style={styles.exportFormatLabel}>XLSX</Text>
+                </GlassCard>
+              </AnimatedPressable>
+            </View>
           </View>
         </Animated.View>
 
@@ -530,6 +521,20 @@ export default function VariancesScreen() {
             <Text style={styles.offlineNoticeBody}>
               Variance review, bulk approve/reject, and exports require a live
               connection because discrepancy data is not cached locally.
+            </Text>
+          </GlassCard>
+        )}
+
+        {!offlineMode && (
+          <GlassCard
+            intensity={8}
+            padding={theme.spacing.sm}
+            style={{ marginBottom: theme.spacing.md }}
+          >
+            <Text style={styles.exportHintTitle}>ERPNext import format</Text>
+            <Text style={styles.exportHintBody}>
+              Blank ID inserts new rows. Keep ID to update existing ERPNext
+              records.
             </Text>
           </GlassCard>
         )}
@@ -680,7 +685,25 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
   },
   exportButton: {
-    //
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  exportActions: {
+    flexDirection: "row",
+    gap: theme.spacing.xs,
+  },
+  exportFormatButton: {
+    minWidth: 52,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  exportFormatLabel: {
+    color: theme.colors.text.primary,
+    fontSize: 12,
+    fontWeight: "700",
   },
   listContent: {
     paddingBottom: theme.spacing.xl,
@@ -827,6 +850,17 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   offlineNoticeBody: {
+    color: theme.colors.text.secondary,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  exportHintTitle: {
+    color: theme.colors.text.primary,
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  exportHintBody: {
     color: theme.colors.text.secondary,
     fontSize: 12,
     lineHeight: 18,

@@ -29,7 +29,6 @@ import {
   Column,
   DashboardItem,
   DashboardStats,
-  IS_WEB,
   Pagination,
   Summary,
 } from "../../src/components/admin/realtime-dashboard/realtimeDashboardShared";
@@ -37,6 +36,7 @@ import { useWebSocket } from "../../src/hooks/useWebSocket";
 import api from "../../src/services/api/api";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { auroraTheme } from "../../src/theme/auroraTheme";
+import { saveArrayBufferExport } from "../../src/utils/fileExport";
 
 const DEFAULT_PAGINATION: Pagination = {
   page: 1,
@@ -325,7 +325,7 @@ export default function RealtimeDashboard() {
     setShowItemDetails(true);
   };
 
-  const handleExportCSV = async () => {
+  const handleExport = async (format: "csv" | "xlsx") => {
     if (offlineMode) {
       Alert.alert(
         "Offline Mode",
@@ -346,19 +346,17 @@ export default function RealtimeDashboard() {
         sort_order: sortOrder,
       };
 
-      const response = await api.post("/api/dashboard/export/csv", config, {
-        responseType: "blob",
+      const response = await api.post(`/api/dashboard/export/${format}`, config, {
+        responseType: "arraybuffer",
       });
 
-      if (IS_WEB) {
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement("a");
-        link.href = url;
-        link.setAttribute("download", `dashboard_export_${Date.now()}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-      }
+      await saveArrayBufferExport(
+        response.data as ArrayBuffer,
+        `dashboard_erpnext_import_${Date.now()}.${format}`,
+        format === "csv"
+          ? "text/csv"
+          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
     } catch (error) {
       console.error("Export error:", error);
     }
@@ -425,7 +423,8 @@ export default function RealtimeDashboard() {
           actionsDisabled={offlineMode}
           autoRefresh={effectiveAutoRefresh}
           connectionState={connectionState}
-          onExportCSV={handleExportCSV}
+          onExportCSV={() => void handleExport("csv")}
+          onExportXLSX={() => void handleExport("xlsx")}
           onOpenColumnSettings={() => setShowColumnSettings(true)}
           onToggleAutoRefresh={() => {
             if (!offlineMode) {

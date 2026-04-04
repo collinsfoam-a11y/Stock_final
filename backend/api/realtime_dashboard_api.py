@@ -613,13 +613,16 @@ async def export_dashboard_csv(
             if col.field in visibility_map:
                 col.visible = visibility_map[col.field]
 
-    csv_content = await service.export_to_csv(result["data"], columns)
+    csv_content = await service.export_to_csv(result["data"], columns, erpnext_import=True)
 
     return StreamingResponse(
         iter([csv_content]),
         media_type="text/csv",
         headers={
-            "Content-Disposition": f"attachment; filename=dashboard_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            "Content-Disposition": (
+                f"attachment; filename=dashboard_erpnext_import_"
+                f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            )
         },
     )
 
@@ -651,12 +654,17 @@ async def export_dashboard_xlsx(
             if col.field in visibility_map:
                 col.visible = visibility_map[col.field]
 
-    xlsx_content = await service.export_to_xlsx(result["data"], columns)
+    xlsx_content = await service.export_to_xlsx(
+        result["data"], columns, erpnext_import=True
+    )
 
     return StreamingResponse(
         iter([xlsx_content]),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
-            "Content-Disposition": f"attachment; filename=dashboard_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            "Content-Disposition": (
+                f"attachment; filename=dashboard_erpnext_import_"
+                f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            )
         },
     )

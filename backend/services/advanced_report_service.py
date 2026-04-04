@@ -171,6 +171,28 @@ class AdvancedReportService:
     def __init__(self, db):
         self.db = db
 
+    @staticmethod
+    def _append_alias_match(
+        query: dict[str, Any],
+        fields: tuple[str, ...],
+        value: Any,
+    ) -> None:
+        """Match a value across one or more legacy/current field aliases."""
+        if value is None:
+            return
+        if len(fields) == 1:
+            query[fields[0]] = value
+            return
+        query.setdefault("$and", []).append({"$or": [{field: value} for field in fields]})
+
+    @staticmethod
+    def _coalesce_projection(*fields: str) -> Any:
+        """Build a Mongo $ifNull chain for aliased fields."""
+        expression: Any = f"${fields[-1]}"
+        for field in reversed(fields[:-1]):
+            expression = {"$ifNull": [f"${field}", expression]}
+        return expression
+
     def get_column_config(self, report_type: str) -> list[ColumnConfig]:
         """Get default column configuration for a report type."""
         return self.REPORT_COLUMNS.get(report_type, [])
@@ -183,13 +205,20 @@ class AdvancedReportService:
             query["verified"] = filters.verified
 
         if filters.warehouse:
-            query["warehouse"] = filters.warehouse
+            self._append_alias_match(query, ("warehouse",), filters.warehouse)
 
         if filters.floor:
-            query["floor"] = filters.floor
+            self._append_alias_match(query, ("floor", "floor_no"), filters.floor)
 
         if filters.rack_id:
-            query["rack_id"] = filters.rack_id
+            self._append_alias_match(query, ("rack_id", "rack_no"), filters.rack_id)
+
+        if filters.category:
+            self._append_alias_match(
+                query,
+                ("category", "category_correction", "category_erp"),
+                filters.category,
+            )
 
         if filters.session_id:
             query["session_id"] = filters.session_id
@@ -243,26 +272,27 @@ class AdvancedReportService:
 
     def _get_items_projection(self) -> dict[str, Any]:
         """Get projection for verified items query."""
+        stock_qty_expr = self._coalesce_projection("stock_qty", "erp_qty")
         return {
             "_id": 0,
             "id": 1,
             "item_code": 1,
             "item_name": 1,
             "barcode": 1,
-            "category": 1,
+            "category": self._coalesce_projection("category_correction", "category_erp", "category"),
             "warehouse": 1,
-            "floor": 1,
-            "rack_id": 1,
-            "stock_qty": 1,
+            "floor": self._coalesce_projection("floor", "floor_no"),
+            "rack_id": self._coalesce_projection("rack_id", "rack_no"),
+            "stock_qty": stock_qty_expr,
             "counted_qty": 1,
             "variance": 1,
             "variance_percentage": {
                 "$cond": {
-                    "if": {"$eq": ["$stock_qty", 0]},
+                    "if": {"$eq": [stock_qty_expr, 0]},
                     "then": 0,
                     "else": {
                         "$multiply": [
-                            {"$divide": ["$variance", {"$abs": "$stock_qty"}]},
+                            {"$divide": ["$variance", {"$abs": stock_qty_expr}]},
                             100,
                         ]
                     },
@@ -275,7 +305,7 @@ class AdvancedReportService:
             "counted_by": 1,
             "counted_at": 1,
             "session_id": 1,
-            "notes": 1,
+            "notes": self._coalesce_projection("notes", "remark", "variance_note"),
             "status": 1,
             "approval_status": 1,
         }
@@ -702,19 +732,30 @@ class AdvancedReportService:
             },
         }
 
-    async def export_to_csv(self, data: list[dict], columns: list[ColumnConfig]) -> str:
+    async def export_to_csv(
+        self,
+        data: list[dict],
+        columns: list[ColumnConfig],
+        *,
+        erpnext_import: bool = False,
+    ) -> str:
         """Export data to CSV format."""
         output = io.StringIO()
         visible_columns = [col for col in columns if col.visible]
-        fieldnames = [col.field for col in visible_columns]
-        headers = {col.field: col.label for col in visible_columns}
+        data_fields = [col.field for col in visible_columns]
+        fieldnames = (["ID"] + data_fields) if erpnext_import else data_fields
+        headers = (
+            {field: field for field in fieldnames}
+            if erpnext_import
+            else {col.field: col.label for col in visible_columns}
+        )
 
         writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
         writer.writerow(headers)
 
         for row in data:
-            sanitized_row = {}
-            for field in fieldnames:
+            sanitized_row = {"ID": ""} if erpnext_import else {}
+            for field in data_fields:
                 value = row.get(field, "")
                 if isinstance(value, (dict, list)):
                     value = json.dumps(value)
@@ -725,7 +766,13 @@ class AdvancedReportService:
 
         return output.getvalue()
 
-    async def export_to_xlsx(self, data: list[dict], columns: list[ColumnConfig]) -> bytes:
+    async def export_to_xlsx(
+        self,
+        data: list[dict],
+        columns: list[ColumnConfig],
+        *,
+        erpnext_import: bool = False,
+    ) -> bytes:
         """Export data to XLSX format."""
         try:
             import openpyxl
@@ -738,20 +785,28 @@ class AdvancedReportService:
             ws = wb.create_sheet("Report")
 
         visible_columns = [col for col in columns if col.visible]
+        data_fields = [col.field for col in visible_columns]
+        header_values = (
+            ["ID"] + data_fields
+            if erpnext_import
+            else [col.label for col in visible_columns]
+        )
 
         # Write headers
-        for col_idx, col in enumerate(visible_columns, 1):
-            ws.cell(row=1, column=col_idx, value=col.label)
+        for col_idx, header in enumerate(header_values, 1):
+            ws.cell(row=1, column=col_idx, value=header)
 
         # Write data
         for row_idx, row in enumerate(data, 2):
-            for col_idx, col in enumerate(visible_columns, 1):
-                value = row.get(col.field, "")
+            for col_idx, field in enumerate(data_fields, 1 + int(erpnext_import)):
+                value = row.get(field, "")
                 if isinstance(value, (dict, list)):
                     value = json.dumps(value)
                 elif isinstance(value, datetime):
                     value = value.isoformat()
                 ws.cell(row=row_idx, column=col_idx, value=value)
+            if erpnext_import:
+                ws.cell(row=row_idx, column=1, value="")
 
         output = io.BytesIO()
         wb.save(output)
