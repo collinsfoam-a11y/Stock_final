@@ -96,6 +96,16 @@ Notes:
 - Kubernetes manifests under `k8s/` are reference material and are not the canonical release path.
 - `scripts/legacy/` is archived reference material and is not part of the supported runtime or deployment path.
 
+## Jenkins Deployment
+
+If you do not want to use GitHub Actions, this repo can be orchestrated by Jenkins through the root `Jenkinsfile`.
+
+- Jenkins still uses the canonical runtime path: GHCR images plus `docker-compose.production.yml`
+- Deploys are executed through `scripts/deploy_remote_compose.sh`
+- Live validation runs through `scripts/post_deploy_smoke.sh`
+
+Setup details: `docs/jenkins-deployment.md`
+
 ## GitHub Actions Deploy Configuration
 
 The workflow in `.github/workflows/main.yml` now deploys through SSH to a remote Docker host.

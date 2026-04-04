@@ -62,6 +62,9 @@ frontend/pr_*_diff.txt
 *.dll
 *.so
 
+# Generated export artifacts
+exports/
+
 # Temporary files
 *.tmp
 *.bak
