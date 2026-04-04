@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
 
-import {
-  checkItemScanStatus,
-  getItemByBarcode,
-  searchItems,
-} from "@/services/api/api";
+import { checkItemScanStatus, getItemByBarcode, searchItems } from "@/services/api/api";
 import { localDb } from "@/db/localDb";
 import apiClient from "@/services/httpClient";
 import { RecentItemsService } from "@/services/enhancedFeatures";
@@ -13,6 +9,7 @@ import { useSettingsStore } from "@/store/settingsStore";
 import { toastService } from "@/services/utils/toastService";
 import { Item } from "@/types/scan";
 import { getStockQty, sortItemsByStockDesc } from "@/utils/itemBatchUtils";
+import { getReadableInventoryErrorMessage } from "./errorMessages";
 
 type MrpVariant = Record<string, any> & {
   id?: string | number;
@@ -48,8 +45,7 @@ export const useItemDetailData = ({
   const [item, setItem] = useState<ItemDetailItem | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [mrpVariants, setMrpVariants] = useState<MrpVariant[]>([]);
-  const [selectedMrpVariant, setSelectedMrpVariant] =
-    useState<MrpVariant | null>(null);
+  const [selectedMrpVariant, setSelectedMrpVariant] = useState<MrpVariant | null>(null);
   const [rawVariants, setRawVariants] = useState<ItemDetailItem[]>([]);
   const [showZeroStock, setShowZeroStock] = useState(false);
   const [batchLoading, setBatchLoading] = useState(false);
@@ -70,18 +66,16 @@ export const useItemDetailData = ({
       }
 
       const matchedVariant =
-        variants.find((variant) => variant.value === nextItem.mrp) ||
-        variants[0] ||
-        null;
+        variants.find((variant) => variant.value === nextItem.mrp) || variants[0] || null;
 
       setSelectedMrpVariant(matchedVariant);
       onMrpChange(
         matchedVariant?.value !== undefined
           ? String(matchedVariant.value)
-          : String(nextItem.mrp || ""),
+          : String(nextItem.mrp || "")
       );
     },
-    [onMrpChange],
+    [onMrpChange]
   );
 
   const sameNameVariants = useMemo(() => {
@@ -102,7 +96,7 @@ export const useItemDetailData = ({
       setSelectedMrpVariant(variant);
       onMrpChange(String(variant.value ?? ""));
     },
-    [onMrpChange],
+    [onMrpChange]
   );
 
   const loadItem = useCallback(async () => {
@@ -111,22 +105,20 @@ export const useItemDetailData = ({
     setLoading(true);
     try {
       const itemData = offlineMode
-        ? ((await localDb.getItemByBarcode(
-            barcode,
-          )) as ItemDetailItem | null)
+        ? ((await localDb.getItemByBarcode(barcode)) as ItemDetailItem | null)
         : ((await getItemByBarcode(
-          barcode,
-          3,
-          sessionId || undefined,
-          currentRack || undefined,
-        )) as ItemDetailItem | null);
+            barcode,
+            3,
+            sessionId || undefined,
+            currentRack || undefined
+          )) as ItemDetailItem | null);
 
       if (!itemData) {
         Alert.alert(
-          "Error",
+          "Item Not Found",
           offlineMode
-            ? "Offline mode is enabled, and this item is not available in local cache."
-            : "Item not found",
+            ? "This item is not available offline yet. Connect to the network and scan it again."
+            : "We couldn't find an item for this barcode. Check the barcode and try again."
         );
         onBackPress();
         return;
@@ -137,16 +129,12 @@ export const useItemDetailData = ({
 
       if (sessionId && !offlineMode) {
         try {
-          const scanStatus = await checkItemScanStatus(
-            sessionId,
-            itemData.item_code || barcode,
-          );
+          const scanStatus = await checkItemScanStatus(sessionId, itemData.item_code || barcode);
 
           if (scanStatus.scanned) {
             const existing = scanStatus.locations.find(
               (location: any) =>
-                location.floor_no === currentFloor &&
-                location.rack_no === currentRack,
+                location.floor_no === currentFloor && location.rack_no === currentRack
             );
 
             if (existing) {
@@ -159,10 +147,7 @@ export const useItemDetailData = ({
         }
       }
 
-      await RecentItemsService.addRecent(
-        itemData.item_code || barcode,
-        itemData,
-      );
+      await RecentItemsService.addRecent(itemData.item_code || barcode, itemData);
 
       if (offlineMode) {
         toastService.show("Offline mode enabled: showing cached item data", {
@@ -170,7 +155,7 @@ export const useItemDetailData = ({
         });
       }
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to load item");
+      Alert.alert("Unable to Load Item", getReadableInventoryErrorMessage(error, "load-item"));
       onBackPress();
     } finally {
       setLoading(false);
@@ -196,9 +181,7 @@ export const useItemDetailData = ({
     setIsRefreshing(true);
     try {
       const targetBarcode = item?.barcode || barcode;
-      const response = await apiClient.get(
-        `/api/v2/items/${targetBarcode}?verify_sql=true`,
-      );
+      const response = await apiClient.get(`/api/v2/items/${targetBarcode}?verify_sql=true`);
 
       if (response.data.success && response.data.data) {
         setItem((previous) => ({
@@ -210,9 +193,14 @@ export const useItemDetailData = ({
       }
     } catch (error: any) {
       if (error.response?.status === 503) {
-        toastService.show("SQL Server unavailable", { type: "warning" });
+        toastService.show(
+          "Live stock is unavailable right now. Showing the last known item details.",
+          { type: "warning" }
+        );
       } else {
-        toastService.show("Failed to refresh stock", { type: "error" });
+        toastService.show(getReadableInventoryErrorMessage(error, "refresh-stock"), {
+          type: "error",
+        });
       }
     } finally {
       setIsRefreshing(false);
@@ -236,8 +224,7 @@ export const useItemDetailData = ({
 
       try {
         if (offlineMode) {
-          const fallbackQuery =
-            item.item_code || item.item_name || item.name || item.barcode || "";
+          const fallbackQuery = item.item_code || item.item_name || item.name || item.barcode || "";
           const localVariants = await localDb.searchItems(fallbackQuery);
           setRawVariants(localVariants as ItemDetailItem[]);
           setBatchError("Batch data unavailable while offline mode is enabled.");
@@ -245,7 +232,7 @@ export const useItemDetailData = ({
         }
 
         const response = await apiClient.get(
-          `/api/item-batches/${encodeURIComponent(item.item_code)}`,
+          `/api/item-batches/${encodeURIComponent(item.item_code)}`
         );
         const data = response.data || {};
         const batches = Array.isArray(data.batches) ? data.batches : [];
@@ -259,8 +246,7 @@ export const useItemDetailData = ({
             stock_qty: stockQty,
             current_stock: stockQty,
             mrp: batch.mrp ?? null,
-            manufacturing_date:
-              batch.manufacturing_date ?? batch.mfg_date ?? null,
+            manufacturing_date: batch.manufacturing_date ?? batch.mfg_date ?? null,
           };
         });
 
@@ -279,7 +265,7 @@ export const useItemDetailData = ({
         setBatchError(
           offlineMode
             ? "Batch data unavailable while offline mode is enabled."
-            : "Batch data unavailable while ERP is offline.",
+            : "Batch data unavailable while ERP is offline."
         );
       } finally {
         setBatchLoading(false);

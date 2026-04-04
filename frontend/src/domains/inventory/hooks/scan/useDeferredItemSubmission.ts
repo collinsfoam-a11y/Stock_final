@@ -4,17 +4,10 @@ import * as Haptics from "expo-haptics";
 
 import { createCountLine } from "@/services/api/api";
 import { toastService } from "@/services/utils/toastService";
-import {
-  CreateCountLinePayload,
-  DateFormatType,
-  Item,
-  SerialEntryData,
-} from "@/types/scan";
+import { CreateCountLinePayload, DateFormatType, Item, SerialEntryData } from "@/types/scan";
 import { normalizeSerialValue } from "@/utils/scanUtils";
-import {
-  formatBackendValidationDetail,
-  toBackendPhotoProofs,
-} from "./submissionPayload";
+import { toBackendPhotoProofs } from "./submissionPayload";
+import { getReadableInventoryErrorMessage } from "./errorMessages";
 
 type DamageType = "returnable" | "nonreturnable";
 
@@ -94,35 +87,25 @@ export const useDeferredItemSubmission = ({
       return false;
     }
 
-    const hasSerials = serialEntries.some(
-      (entry) => entry.serial_number.trim().length > 0,
-    );
+    const hasSerials = serialEntries.some((entry) => entry.serial_number.trim().length > 0);
     if (isSerializedItem && hasSerials && !validateSerials()) {
       const errorDetails =
-        serialValidationErrors.length > 0
-          ? ` ${serialValidationErrors.join(", ")}`
-          : "";
-      Alert.alert(
-        "Serial Number Error",
-        `Please enter valid serial numbers.${errorDetails}`,
-      );
+        serialValidationErrors.length > 0 ? ` ${serialValidationErrors.join(", ")}` : "";
+      Alert.alert("Serial Number Error", `Please enter valid serial numbers.${errorDetails}`);
       return false;
     }
 
     if (isDamageEnabled) {
       const parsedDamageQty = parseFloat(damageQty);
       if (Number.isNaN(parsedDamageQty) || parsedDamageQty <= 0) {
-        Alert.alert(
-          "Invalid Damage Quantity",
-          "Please enter a valid damage quantity",
-        );
+        Alert.alert("Invalid Damage Quantity", "Please enter a valid damage quantity");
         return false;
       }
 
       if (!damagePhoto) {
         Alert.alert(
           "Photo Required",
-          "Mandatory photo proof is required for all damage reports. Please capture a photo of the damaged item.",
+          "Mandatory photo proof is required for all damage reports. Please capture a photo of the damaged item."
         );
         return false;
       }
@@ -152,9 +135,7 @@ export const useDeferredItemSubmission = ({
 
     try {
       const validSerials = isSerializedItem
-        ? serialNumbers
-            .filter((serial) => serial.trim().length > 0)
-            .map(normalizeSerialValue)
+        ? serialNumbers.filter((serial) => serial.trim().length > 0).map(normalizeSerialValue)
         : [];
 
       const serialEntriesData = isSerializedItem
@@ -172,11 +153,8 @@ export const useDeferredItemSubmission = ({
 
       const nowIso = new Date().toISOString();
       const backendPhotoProofs = toBackendPhotoProofs(
-        [
-          ...(damagePhoto ? [damagePhoto] : []),
-          ...itemPhotos,
-        ],
-        nowIso,
+        [...(damagePhoto ? [damagePhoto] : []), ...itemPhotos],
+        nowIso
       );
 
       const payload: CreateCountLinePayload = {
@@ -189,25 +167,17 @@ export const useDeferredItemSubmission = ({
         item_condition: condition,
         remark,
         damage_included: isDamageEnabled,
-        damaged_qty:
-          isDamageEnabled && damageType === "returnable"
-            ? parseFloat(damageQty)
-            : 0,
+        damaged_qty: isDamageEnabled && damageType === "returnable" ? parseFloat(damageQty) : 0,
         non_returnable_damaged_qty:
-          isDamageEnabled && damageType === "nonreturnable"
-            ? parseFloat(damageQty)
-            : 0,
+          isDamageEnabled && damageType === "nonreturnable" ? parseFloat(damageQty) : 0,
         serial_numbers: validSerials,
-        serial_entries:
-          serialEntriesData.length > 0 ? serialEntriesData : undefined,
+        serial_entries: serialEntriesData.length > 0 ? serialEntriesData : undefined,
         variance_note: varianceRemark,
         variance_reason: varianceRemark,
         mrp_counted: parseFloat(mrp) || item.mrp || 0,
-        manufacturing_date:
-          hasMfgDate && itemMfgDate ? itemMfgDate : item.manufacturing_date,
+        manufacturing_date: hasMfgDate && itemMfgDate ? itemMfgDate : item.manufacturing_date,
         mfg_date_format: hasMfgDate ? itemMfgDateFormat : undefined,
-        expiry_date:
-          hasExpiryDate && itemExpiryDate ? itemExpiryDate : item.expiry_date,
+        expiry_date: hasExpiryDate && itemExpiryDate ? itemExpiryDate : item.expiry_date,
         expiry_date_format: hasExpiryDate ? itemExpiryDateFormat : undefined,
         photo_proofs: backendPhotoProofs.length > 0 ? backendPhotoProofs : undefined,
       };
@@ -219,7 +189,7 @@ export const useDeferredItemSubmission = ({
         Alert.alert(
           "Misplaced Item",
           "This item is not expected at this location. It has been flagged for review.",
-          [{ text: "OK", onPress: onSuccess }],
+          [{ text: "OK", onPress: onSuccess }]
         );
         return;
       }
@@ -228,25 +198,15 @@ export const useDeferredItemSubmission = ({
       onSuccess();
     } catch (error: any) {
       if (error.response?.status === 409) {
-        Alert.alert(
-          "Duplicate Scan",
-          "This item has already been scanned at this location in this session.",
-        );
+        Alert.alert("Duplicate Scan", getReadableInventoryErrorMessage(error, "save-count"));
       } else if (error.response?.status === 423) {
-        toastService.show(
-          "Item is being processed by another user. Please try again.",
-          { type: "warning" },
-        );
+        toastService.show(getReadableInventoryErrorMessage(error, "save-count"), {
+          type: "warning",
+        });
       } else if (error.response?.status === 422) {
-        const detailMessage = formatBackendValidationDetail(
-          error.response?.data?.detail,
-        );
-        Alert.alert(
-          "Validation Error",
-          detailMessage || "Submitted data format was rejected by server.",
-        );
+        Alert.alert("Check the Details", getReadableInventoryErrorMessage(error, "save-count"));
       } else {
-        Alert.alert("Error", error.message || "Failed to save count");
+        Alert.alert("Unable to Save Count", getReadableInventoryErrorMessage(error, "save-count"));
       }
     } finally {
       setSubmitting(false);
@@ -284,9 +244,7 @@ export const useDeferredItemSubmission = ({
 
     if (submitCountdown > 0) {
       submitTimerRef.current = setTimeout(() => {
-        setSubmitCountdown((previous) =>
-          previous !== null ? previous - 1 : null,
-        );
+        setSubmitCountdown((previous) => (previous !== null ? previous - 1 : null));
       }, 1000);
       return () => {
         if (submitTimerRef.current) clearTimeout(submitTimerRef.current);
