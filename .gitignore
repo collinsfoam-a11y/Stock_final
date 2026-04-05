@@ -99,7 +99,12 @@ frontend/test-results/
 .expo/
 
 # Local/repair database snapshots (never commit)
+backend/data/db/
 backend/data/db_backup_*/
 backend/data/db_failed_repair_*/
 backend/data/db_seeded_archive_*/
 *.bson
+
+# Generated frontend debug exports (never commit)
+frontend/dist-debug/
+frontend/dist-debug2/

@@ -115,7 +115,10 @@ class PortDetector:
                     socketTimeoutMS=800,
                     directConnection=True,
                 )
-                client.admin.command("ping")
+                try:
+                    client.admin.command("ping")
+                finally:
+                    client.close()
                 return True
             except Exception:
                 # Port is open but ping failed (could be a different service)

@@ -88,10 +88,12 @@ jobs:
           cd backend
           python -m pytest tests/ \
             --cov=. \
+            --cov-fail-under=60 \
             --cov-report=xml \
             --cov-report=term-missing \
             -v \
             --tb=short \
+            -W error::RuntimeWarning \
             -x \
             --ignore=tests/evaluation \
             --ignore=tests/performance \
@@ -216,20 +218,9 @@ jobs:
         shell: pwsh
         run: ./scripts/clean.ps1
 
-      - name: Frontend lint
-        working-directory: frontend
+      - name: Verify Windows compact CI entrypoint
         shell: pwsh
-        run: npm run lint
-
-      - name: Frontend typecheck
-        working-directory: frontend
-        shell: pwsh
-        run: npm run typecheck
-
-      - name: Frontend tests
-        working-directory: frontend
-        shell: pwsh
-        run: npm test -- --runInBand --watchAll=false
+        run: ./scripts/agent_ci.ps1 node
 
   # ==========================================
   # Recount Assignment Smoke

@@ -23,14 +23,14 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Check Python dependencies
         run: |
           pip install safety pip-audit
           echo "## Security Audit" > audit-report.md
-          safety check -r requirements.production.txt --full-report >> audit-report.md || true
-          pip-audit -r requirements.production.txt >> audit-report.md || true
+          safety check -r backend/requirements.production.txt --full-report >> audit-report.md || true
+          pip-audit -r backend/requirements.production.txt >> audit-report.md || true
 
       - name: Upload audit report
         uses: actions/upload-artifact@v4

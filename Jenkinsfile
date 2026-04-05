@@ -11,6 +11,7 @@ pipeline {
     choice(name: 'DEPLOY_TARGET', choices: ['none', 'staging', 'production'], description: 'Choose "none" for build-only runs.')
     booleanParam(name: 'BUILD_AND_PUSH_IMAGES', defaultValue: true, description: 'Build and push backend/nginx images before any deploy step.')
     booleanParam(name: 'PUSH_LATEST_TAG', defaultValue: true, description: 'Also publish the :latest tags when building images.')
+    booleanParam(name: 'RUN_IMAGE_SCAN', defaultValue: false, description: 'Run Trivy CRITICAL vulnerability scan on built images before deploy.')
     booleanParam(name: 'RUN_SMOKE', defaultValue: true, description: 'Run post-deploy smoke checks after deployment.')
     string(name: 'IMAGE_REPO', defaultValue: 'ghcr.io/mknoufi/stock_verify_ui', description: 'Registry repository prefix without the -backend/-nginx suffix.')
     string(name: 'IMAGE_TAG', defaultValue: '', description: 'Optional explicit image tag. Leave blank to use the current commit SHA.')
@@ -94,6 +95,23 @@ pipeline {
             }
           }
         }
+      }
+    }
+
+    stage('Container Vulnerability Scan') {
+      when {
+        allOf {
+          expression { return params.BUILD_AND_PUSH_IMAGES }
+          expression { return params.RUN_IMAGE_SCAN }
+        }
+      }
+      steps {
+        sh '''
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.65.0 \
+            image --severity CRITICAL --ignore-unfixed --exit-code 1 "$BACKEND_IMAGE"
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.65.0 \
+            image --severity CRITICAL --ignore-unfixed --exit-code 1 "$NGINX_IMAGE"
+        '''
       }
     }
 

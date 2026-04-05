@@ -109,7 +109,7 @@ jest.mock("react-native-mmkv", () => ({
     getAllKeys: jest.fn(() => []),
     contains: jest.fn(() => false),
   })),
-}));
+}), { virtual: true });
 
 // Mock SecureStore to avoid native module dependencies in unit tests
 jest.mock("expo-secure-store", () => ({

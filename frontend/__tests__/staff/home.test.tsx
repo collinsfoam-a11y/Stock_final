@@ -19,7 +19,7 @@ jest.mock("react-native-modal", () => {
       : null;
   MockModal.displayName = "MockModal";
   return MockModal;
-});
+}, { virtual: true });
 
 jest.mock("@tanstack/react-query", () => ({
   useQueryClient: jest.fn(() => ({

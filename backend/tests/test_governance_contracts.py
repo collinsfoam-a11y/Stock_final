@@ -57,10 +57,8 @@ def check_for_forbidden_writes(file_path):
 
     for node in ast.walk(tree):
         # Check for dict keys in updates: e.g. {"$set": {"verified_qty": ...}}
-        if isinstance(node, ast.Str) and node.s == "verified_qty":
-            # This is a bit loose, catching any string "verified_qty", but safe for governance
-            violations.append(f"Found 'verified_qty' usage at line {node.lineno}")
-        elif isinstance(node, ast.Constant) and node.value == "verified_qty":
+        if isinstance(node, ast.Constant) and node.value == "verified_qty":
+            # This is a bit loose, catching any string "verified_qty", but safe for governance.
             violations.append(f"Found 'verified_qty' usage at line {node.lineno}")
 
     return violations

@@ -1,5 +1,9 @@
+import { createRequire } from "module";
+
+const requireFromHere = createRequire(__filename);
+
 const loadChecker = () =>
-  require("../../../scripts/check-node-version.cjs") as {
+  requireFromHere("../../../scripts/check-node-version.cjs") as {
     isSupportedNodeVersion: (version: string) => boolean;
   };
 

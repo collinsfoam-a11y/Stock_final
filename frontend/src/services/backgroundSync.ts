@@ -1,4 +1,4 @@
-import * as BackgroundFetch from "expo-background-fetch";
+import * as BackgroundTask from "expo-background-task";
 import * as TaskManager from "expo-task-manager";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
@@ -22,12 +22,10 @@ if (Platform.OS !== "web" && TaskManager?.defineTask) {
       const result = await syncQueue.performFullSync();
       logInfo("Background sync task completed:", result);
 
-      return result.pushed > 0 || result.pulled > 0
-        ? BackgroundFetch.BackgroundFetchResult.NewData
-        : BackgroundFetch.BackgroundFetchResult.NoData;
+      return BackgroundTask.BackgroundTaskResult.Success;
     } catch (error) {
       console.error("Background sync task failed:", error);
-      return BackgroundFetch.BackgroundFetchResult.Failed;
+      return BackgroundTask.BackgroundTaskResult.Failed;
     }
   });
 }
@@ -49,15 +47,15 @@ export const registerBackgroundSync = async () => {
   }
 
   try {
-    // On some iOS configurations (especially on physical devices), background fetch may not be enabled
-    // even if the module is installed. Avoid surfacing this as a fatal runtime error.
+    // On some iOS configurations, background tasks may be restricted.
+    // Avoid surfacing this as a fatal runtime error.
     try {
-      const fetchStatus = await BackgroundFetch.getStatusAsync();
-      if (fetchStatus !== BackgroundFetch.BackgroundFetchStatus.Available) {
+      const taskStatus = await BackgroundTask.getStatusAsync();
+      if (taskStatus !== BackgroundTask.BackgroundTaskStatus.Available) {
         logInfo(
-          "Background fetch not available; skipping background sync registration",
+          "Background tasks not available; skipping background sync registration",
           {
-            status: fetchStatus,
+            status: taskStatus,
           },
         );
         return;
@@ -73,10 +71,8 @@ export const registerBackgroundSync = async () => {
       return;
     }
 
-    await BackgroundFetch.registerTaskAsync(BACKGROUND_SYNC_TASK, {
-      minimumInterval: 15 * 60, // 15 minutes
-      stopOnTerminate: false,
-      startOnBoot: true,
+    await BackgroundTask.registerTaskAsync(BACKGROUND_SYNC_TASK, {
+      minimumInterval: 15, // minutes
     });
 
     logInfo("Background sync task registered");
@@ -89,10 +85,10 @@ export const registerBackgroundSync = async () => {
  * Unregister the background sync task.
  */
 export const unregisterBackgroundSync = async () => {
-  if (Platform.OS === "web" || !BackgroundFetch?.unregisterTaskAsync) return;
+  if (Platform.OS === "web" || !BackgroundTask?.unregisterTaskAsync) return;
 
   try {
-    await BackgroundFetch.unregisterTaskAsync(BACKGROUND_SYNC_TASK);
+    await BackgroundTask.unregisterTaskAsync(BACKGROUND_SYNC_TASK);
     logInfo("Background sync task unregistered");
   } catch (error) {
     console.error("Failed to unregister background sync task:", error);
