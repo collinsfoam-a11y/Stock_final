@@ -292,7 +292,7 @@ jobs:
           PORT: "8001"
           HOST: "127.0.0.1"
         run: |
-          python -u backend/server.py > /tmp/recount-smoke-backend.log 2>&1 &
+          PYTHONPATH=. python -u backend/server.py > /tmp/recount-smoke-backend.log 2>&1 &
           echo $! > /tmp/recount-smoke-backend.pid
 
       - name: Wait for backend readiness

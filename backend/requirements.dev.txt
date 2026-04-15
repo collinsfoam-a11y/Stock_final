@@ -31,7 +31,7 @@ memory-profiler>=0.61.0
 # pinned FastAPI runtime. Install it separately only when actively developing
 # the experimental copilot endpoint.
 numpy>=2.0.2
-Pillow>=11.0.0
+Pillow>=12.1.1
 sentence-transformers>=2.2.2
 redis[hiredis]>=7.3.0
 
