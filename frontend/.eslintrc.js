@@ -2,6 +2,7 @@ module.exports = {
   extends: "expo",
   plugins: ["import"],
   settings: {
+    "import/core-modules": ["expo-background-task"],
     "import/resolver": {
       typescript: {
         project: [
