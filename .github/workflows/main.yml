@@ -15,6 +15,7 @@ env:
   NODE_VERSION: "22"
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME_LOWER: collinsfoam-a11y/stock_final
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
@@ -306,7 +307,7 @@ jobs:
 
       - name: Wait for backend readiness
         run: |
-          for attempt in $(seq 1 60); do
+          for _ in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:8001/health >/tmp/recount-smoke-health.json 2>/dev/null \
               && curl -fsS \
                 -H 'Content-Type: application/json' \
@@ -372,10 +373,6 @@ jobs:
       contents: read
       packages: write
     
-    env:
-      IMAGE_NAME_LOWER: collinsfoam-a11y/stock_final
-      packages: write
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -443,12 +440,48 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check staging deploy configuration
+        id: staging-config
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_ENV_FILE: ${{ secrets.DEPLOY_ENV_FILE }}
+          DEPLOY_REGISTRY_USERNAME: ${{ secrets.DEPLOY_REGISTRY_USERNAME }}
+          DEPLOY_REGISTRY_TOKEN: ${{ secrets.DEPLOY_REGISTRY_TOKEN }}
+          SMOKE_HEALTH_URL: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+          SMOKE_BASE_URL: ${{ vars.DEPLOY_APP_BASE_URL }}
+        run: |
+          missing=0
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_PATH DEPLOY_SSH_KEY DEPLOY_ENV_FILE DEPLOY_REGISTRY_USERNAME DEPLOY_REGISTRY_TOKEN; do
+            if [ -z "${!name}" ]; then
+              echo "::notice::Skipping staging deploy because $name is not configured"
+              missing=1
+            fi
+          done
+
+          if [ "${missing}" -eq 0 ]; then
+            echo "deploy_ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy_ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "${SMOKE_HEALTH_URL}" ] || [ -n "${SMOKE_BASE_URL}" ]; then
+            echo "smoke_ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Skipping staging post-deploy smoke because DEPLOY_HEALTHCHECK_URL and DEPLOY_APP_BASE_URL are not configured"
+            echo "smoke_ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Load SSH key
+        if: steps.staging-config.outputs.deploy_ready == 'true'
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
 
       - name: Deploy to staging
+        if: steps.staging-config.outputs.deploy_ready == 'true'
         env:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
@@ -459,13 +492,14 @@ jobs:
           DEPLOY_ENV_FILE: ${{ secrets.DEPLOY_ENV_FILE }}
           DEPLOY_REGISTRY_USERNAME: ${{ secrets.DEPLOY_REGISTRY_USERNAME }}
           DEPLOY_REGISTRY_TOKEN: ${{ secrets.DEPLOY_REGISTRY_TOKEN }}
-          BACKEND_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
-          NGINX_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-nginx:${{ github.sha }}
+          BACKEND_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-backend:${{ github.sha }}
+          NGINX_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-nginx:${{ github.sha }}
         run: |
           chmod +x scripts/deploy_remote_compose.sh
           ./scripts/deploy_remote_compose.sh
 
       - name: Run staging post-deploy smoke
+        if: steps.staging-config.outputs.deploy_ready == 'true' && steps.staging-config.outputs.smoke_ready == 'true'
         env:
           SMOKE_HEALTH_URL: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
           SMOKE_BASE_URL: ${{ vars.DEPLOY_APP_BASE_URL }}
@@ -495,12 +529,48 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check production deploy configuration
+        id: production-config
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_ENV_FILE: ${{ secrets.DEPLOY_ENV_FILE }}
+          DEPLOY_REGISTRY_USERNAME: ${{ secrets.DEPLOY_REGISTRY_USERNAME }}
+          DEPLOY_REGISTRY_TOKEN: ${{ secrets.DEPLOY_REGISTRY_TOKEN }}
+          SMOKE_HEALTH_URL: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+          SMOKE_BASE_URL: ${{ vars.DEPLOY_APP_BASE_URL }}
+        run: |
+          missing=0
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_PATH DEPLOY_SSH_KEY DEPLOY_ENV_FILE DEPLOY_REGISTRY_USERNAME DEPLOY_REGISTRY_TOKEN; do
+            if [ -z "${!name}" ]; then
+              echo "::notice::Skipping production deploy because $name is not configured"
+              missing=1
+            fi
+          done
+
+          if [ "${missing}" -eq 0 ]; then
+            echo "deploy_ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy_ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "${SMOKE_HEALTH_URL}" ] || [ -n "${SMOKE_BASE_URL}" ]; then
+            echo "smoke_ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Skipping production post-deploy smoke because DEPLOY_HEALTHCHECK_URL and DEPLOY_APP_BASE_URL are not configured"
+            echo "smoke_ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Load SSH key
+        if: steps.production-config.outputs.deploy_ready == 'true'
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
 
       - name: Deploy to production
+        if: steps.production-config.outputs.deploy_ready == 'true'
         env:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
@@ -511,13 +581,14 @@ jobs:
           DEPLOY_ENV_FILE: ${{ secrets.DEPLOY_ENV_FILE }}
           DEPLOY_REGISTRY_USERNAME: ${{ secrets.DEPLOY_REGISTRY_USERNAME }}
           DEPLOY_REGISTRY_TOKEN: ${{ secrets.DEPLOY_REGISTRY_TOKEN }}
-          BACKEND_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
-          NGINX_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-nginx:${{ github.sha }}
+          BACKEND_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-backend:${{ github.sha }}
+          NGINX_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-nginx:${{ github.sha }}
         run: |
           chmod +x scripts/deploy_remote_compose.sh
           ./scripts/deploy_remote_compose.sh
 
       - name: Run production post-deploy smoke
+        if: steps.production-config.outputs.deploy_ready == 'true' && steps.production-config.outputs.smoke_ready == 'true'
         env:
           SMOKE_HEALTH_URL: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
           SMOKE_BASE_URL: ${{ vars.DEPLOY_APP_BASE_URL }}
@@ -533,5 +604,5 @@ jobs:
         run: |
           echo "✅ Production deployment successful!"
           echo "Images:"
-          echo "  backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}"
-          echo "  nginx=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-nginx:${{ github.sha }}"
+          echo "  backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-backend:${{ github.sha }}"
+          echo "  nginx=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-nginx:${{ github.sha }}"
