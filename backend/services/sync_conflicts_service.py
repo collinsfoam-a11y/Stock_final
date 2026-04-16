@@ -203,7 +203,10 @@ class SyncConflictsService:
             # If the entity is already APPROVED, we must FORK instead of OVERWRITING.
             if entity_type == "count_line":
                 target_doc = await self.db.count_lines.find_one(_entity_lookup(str(entity_id)))
-                if target_doc and str(target_doc.get("status", "")).lower() in {"approved", "locked"}:
+                if target_doc and str(target_doc.get("status", "")).lower() in {
+                    "approved",
+                    "locked",
+                }:
                     logger.info(f"Rule 7: Forking approved record {entity_id}")
                     await self._fork_approved_record(
                         str(entity_type), str(entity_id), target_doc, resolved_data

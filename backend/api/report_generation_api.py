@@ -180,7 +180,9 @@ async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
         if str(line.get("status", "")).lower() == "locked":
             summary["finalized_count"] += 1
             summary["finalized_qty"] += float(line.get("counted_qty") or 0.0)
-            last_verified = line.get("finalized_at") or line.get("verified_at") or line.get("counted_at")
+            last_verified = (
+                line.get("finalized_at") or line.get("verified_at") or line.get("counted_at")
+            )
             if last_verified and (
                 summary["last_verified"] is None or last_verified > summary["last_verified"]
             ):
@@ -207,7 +209,9 @@ async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
                 "finalized_count": int(summary.get("finalized_count", 0) or 0),
                 "finalized_qty": float(summary.get("finalized_qty", 0.0) or 0.0),
                 "last_verified": summary.get("last_verified"),
-                "is_verified": bool(summary.get("finalized_count", 0) or summary.get("verification_count", 0)),
+                "is_verified": bool(
+                    summary.get("finalized_count", 0) or summary.get("verification_count", 0)
+                ),
             }
         )
 
@@ -356,13 +360,17 @@ async def generate_session_history_report(db, filters: ReportFilter) -> list[dic
     if date_filter:
         query["started_at"] = date_filter
 
-    sessions = [session async for session in db.sessions.find(query).sort("started_at", -1).limit(5000)]
+    sessions = [
+        session async for session in db.sessions.find(query).sort("started_at", -1).limit(5000)
+    ]
     session_ids = [
         str(session.get("id") or session.get("session_id"))
         for session in sessions
         if session.get("id") or session.get("session_id")
     ]
-    lines_by_session: dict[str, list[dict[str, Any]]] = {session_id: [] for session_id in session_ids}
+    lines_by_session: dict[str, list[dict[str, Any]]] = {
+        session_id: [] for session_id in session_ids
+    }
     if session_ids:
         async for line in db.count_lines.find(
             {"session_id": {"$in": session_ids}},
@@ -377,7 +385,9 @@ async def generate_session_history_report(db, filters: ReportFilter) -> list[dic
         session_id = str(session.get("id") or session.get("session_id"))
         lines = lines_by_session.get(session_id, [])
         started_at = session.get("started_at")
-        completed_at = session.get("finalized_at") or session.get("completed_at") or session.get("closed_at")
+        completed_at = (
+            session.get("finalized_at") or session.get("completed_at") or session.get("closed_at")
+        )
         duration_minutes = None
         if isinstance(started_at, datetime) and isinstance(completed_at, datetime):
             duration_minutes = (completed_at - started_at).total_seconds() / 60

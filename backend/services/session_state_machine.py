@@ -25,7 +25,12 @@ class SessionStateMachine:
     """
 
     TRANSITIONS: dict[SessionState, set[SessionState]] = {
-        SessionState.OPEN: {SessionState.ACTIVE, SessionState.RECONCILE, SessionState.CANCELLED},
+        SessionState.OPEN: {
+            SessionState.ACTIVE,
+            SessionState.RECONCILE,
+            SessionState.CANCELLED,
+            SessionState.CLOSED,
+        },
         SessionState.ACTIVE: {
             SessionState.PAUSED,
             SessionState.RECONCILE,

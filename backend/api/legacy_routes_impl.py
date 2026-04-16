@@ -1039,10 +1039,12 @@ def detect_risk_flags(erp_item: dict, line_data: CountLineCreate, variance: floa
     return risk_flags
 
 
-# Helper function to calculate financial impact
-def calculate_financial_impact(erp_mrp: float, counted_mrp: float, counted_qty: float) -> float:
-    """Calculate revenue impact of MRP change"""
-    old_value = erp_mrp * counted_qty
+# MM3 fix: Align with updated signature in count_lines_routes.py
+def calculate_financial_impact(
+    erp_mrp: float, counted_mrp: float, counted_qty: float, erp_qty: float = 0.0
+) -> float:
+    """Calculate financial impact of quantity and MRP changes."""
+    old_value = erp_mrp * erp_qty
     new_value = counted_mrp * counted_qty
     return new_value - old_value
 

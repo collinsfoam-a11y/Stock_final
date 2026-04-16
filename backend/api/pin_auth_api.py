@@ -22,7 +22,8 @@ router = APIRouter()
 
 class PinChangeRequest(BaseModel):
     current_password: str
-    new_pin: str = Field(..., min_length=4, max_length=6, pattern=r"^\d+$")
+    # M13 fix: Enforce exactly 4 digits to match login validation
+    new_pin: str = Field(..., min_length=4, max_length=4, pattern=r"^\d{4}$")
 
 
 class PinLoginRequest(BaseModel):

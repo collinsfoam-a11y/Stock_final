@@ -46,7 +46,13 @@ async def test_verified_items_report_uses_alias_aware_match_and_projection():
     )
 
     match_stage = pipelines[0][0]["$match"]
-    assert {"$or": [{"category": "Electronics"}, {"category_correction": "Electronics"}, {"category_erp": "Electronics"}]} in match_stage["$and"]
+    assert {
+        "$or": [
+            {"category": "Electronics"},
+            {"category_correction": "Electronics"},
+            {"category_erp": "Electronics"},
+        ]
+    } in match_stage["$and"]
     assert {"$or": [{"floor": "F1"}, {"floor_no": "F1"}]} in match_stage["$and"]
     assert {"$or": [{"rack_id": "R-7"}, {"rack_no": "R-7"}]} in match_stage["$and"]
 
@@ -125,7 +131,9 @@ async def test_migration_manager_adds_sparse_unique_idempotency_index():
 
 
 def test_optimized_count_line_indexes_match_runtime_fields():
-    count_line_indexes = {options["name"]: (fields, options) for fields, options in INDEXES["count_lines"]}
+    count_line_indexes = {
+        options["name"]: (fields, options) for fields, options in INDEXES["count_lines"]
+    }
 
     assert count_line_indexes["idx_session_counts"][0] == [("session_id", 1), ("counted_at", -1)]
     assert count_line_indexes["idx_rack_counts"][0] == [("rack_no", 1), ("session_id", 1)]

@@ -29,6 +29,7 @@ from backend.api.schemas import CountLineCreate
 
 class AsyncIter:
     """Helper to mock async iterators (like MongoDB cursors)"""
+
     def __init__(self, items):
         self.items = items
 
@@ -36,8 +37,8 @@ class AsyncIter:
         async def gen():
             for item in self.items:
                 yield item
-        return gen()
 
+        return gen()
 
 
 @pytest.fixture(autouse=True)
@@ -226,15 +227,16 @@ class TestCountLinesAPIHelpers:
         assert len(risk_flags) == 0
 
     def test_calculate_financial_impact(self):
-        """Test financial impact calculation"""
-        impact = calculate_financial_impact(100, 120, 10)
-        expected = (120 - 100) * 10  # 200
+        """Test financial impact calculation with qty and MRP variance"""
+        # MM3 fix: Updated to pass erp_qty (4th param)
+        impact = calculate_financial_impact(100, 120, 10, 10)
+        expected = (120 * 10) - (100 * 10)  # 200
         assert impact == expected
 
     def test_calculate_financial_impact_negative(self):
         """Test financial impact calculation for negative impact"""
-        impact = calculate_financial_impact(100, 80, 10)
-        expected = (80 - 100) * 10  # -200
+        impact = calculate_financial_impact(100, 80, 10, 10)
+        expected = (80 * 10) - (100 * 10)  # -200
         assert impact == expected
 
     def test_require_supervisor_valid_role(self):
@@ -969,12 +971,13 @@ class TestCountLinesAPIEdgeCases:
 
     def test_calculate_financial_impact_edge_cases(self):
         """Test financial impact calculation with edge cases"""
-        # Test with zero quantity
-        impact = calculate_financial_impact(100, 120, 0)
+        # MM3 fix: Updated to pass erp_qty (4th param)
+        # Test with zero quantity on both sides
+        impact = calculate_financial_impact(100, 120, 0, 0)
         assert impact == 0
 
         # Test with zero MRP
-        impact = calculate_financial_impact(0, 0, 10)
+        impact = calculate_financial_impact(0, 0, 10, 10)
         assert impact == 0
 
     @pytest.mark.asyncio
@@ -982,12 +985,14 @@ class TestCountLinesAPIEdgeCases:
         """Test count line creation when session stats update fails"""
         mock_db = AsyncMock()
         mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
-        mock_db.erp_items.find_one = AsyncMock(return_value={
-            "item_name": "Test Item",
-            "barcode": "123456789",
-            "stock_qty": 40,
-            "mrp": 100,
-        })
+        mock_db.erp_items.find_one = AsyncMock(
+            return_value={
+                "item_name": "Test Item",
+                "barcode": "123456789",
+                "stock_qty": 40,
+                "mrp": 100,
+            }
+        )
         mock_db.count_lines.count_documents = AsyncMock(return_value=0)
         mock_db.count_lines.find_one = AsyncMock(return_value=None)
         mock_db.count_lines.insert_one = AsyncMock()

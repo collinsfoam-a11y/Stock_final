@@ -23,34 +23,11 @@ import api from "../httpClient";
 import { createLogger } from "../logging";
 import { isOnline } from "../../utils/network";
 import { addToOfflineQueue } from "../offline/offlineStorage";
+import type { SessionStatus, Session } from "../../types/session";
+
+export type { SessionStatus, Session };
 
 const log = createLogger("SessionApi");
-
-// ============================================================================
-// Types
-// ============================================================================
-
-export type SessionStatus =
-  | "OPEN"
-  | "CLOSED"
-  | "RECONCILE"
-  | "EXPORTED"
-  | "ARCHIVED";
-
-export interface Session {
-  id: string;
-  warehouse: string;
-  status: SessionStatus;
-  type: string;
-  staff_user: string;
-  staff_name: string;
-  started_at: string;
-  closed_at?: string;
-  reconciled_at?: string;
-  total_items: number;
-  total_variance: number;
-  notes?: string;
-}
 
 export interface BulkOperationResult {
   success: boolean;
@@ -86,6 +63,8 @@ export interface SessionListResponse {
   total_pages: number;
   has_next: boolean;
   has_previous: boolean;
+  /** Backend returns `has_prev` — accept both for compatibility */
+  has_prev?: boolean;
 }
 
 // ============================================================================
@@ -389,8 +368,9 @@ export const sessionApi = {
     }
 
     try {
+      // Use the /complete endpoint which is the backend's close flow
       const response = await api.post<Session>(
-        `/api/sessions/${sessionId}/close`,
+        `/api/sessions/${sessionId}/complete`,
       );
       return response.data;
     } catch (error) {
@@ -428,8 +408,9 @@ export const sessionApi = {
     }
 
     try {
-      const response = await api.post<Session>(
-        `/api/sessions/${sessionId}/reconcile`,
+      // Use PUT /status?status=RECONCILE which is the backend's status update flow
+      const response = await api.put<Session>(
+        `/api/sessions/${sessionId}/status?status=RECONCILE`,
       );
       return response.data;
     } catch (error) {

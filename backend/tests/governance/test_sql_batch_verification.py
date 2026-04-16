@@ -25,9 +25,7 @@ async def test_batch_verification_rejects_incomplete_quantity_results(monkeypatc
         Mock(return_value={"ITEM-BATCH-1": 12.0}),
     )
 
-    response = await sql_verification_service.batch_verify_items(
-        ["ITEM-BATCH-1", "ITEM-BATCH-2"]
-    )
+    response = await sql_verification_service.batch_verify_items(["ITEM-BATCH-1", "ITEM-BATCH-2"])
 
     assert response["success"] is False
     assert response["error_code"] == "ERP_AMBIGUOUS_BATCH_RESULT"

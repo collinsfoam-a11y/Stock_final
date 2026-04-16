@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from backend.auth.dependencies import require_admin
 from backend.db.runtime import get_db
+
 logger = logging.getLogger(__name__)
 
 admin_dashboard_router = APIRouter(prefix="/admin/dashboard", tags=["Admin Dashboard"])
@@ -138,7 +139,12 @@ async def count_active_sessions(db) -> int:
             {
                 "status": {"$in": ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]},
                 "$and": [
-                    {"$or": [{"closed_at": {"$exists": False}}, {"closed_at": {"$in": [None, ""]}}]},
+                    {
+                        "$or": [
+                            {"closed_at": {"$exists": False}},
+                            {"closed_at": {"$in": [None, ""]}},
+                        ]
+                    },
                     {
                         "$or": [
                             {"finalized_at": {"$exists": False}},

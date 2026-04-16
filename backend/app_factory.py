@@ -644,7 +644,10 @@ async def logout(
         if refresh_token_value:
             token_service = get_refresh_token_service()
             payload = await token_service.verify_refresh_token(refresh_token_value)
-            if payload and payload.get("sub") == current_user.get("username"):
+            # M11 fix: Always revoke the token if it's valid, regardless of sub match.
+            # The user is already authenticated via get_current_user, so the logout
+            # intent is clear. Skipping revocation on sub mismatch leaves tokens active.
+            if payload:
                 await token_service.revoke_token(refresh_token_value)
 
         clear_auth_cookies(response)
@@ -670,7 +673,7 @@ async def bulk_close_sessions(
         for session_id in session_ids:
             try:
                 result = await db.sessions.update_one(
-                    {"id": session_id},
+                    {"$or": [{"id": session_id}, {"session_id": session_id}]},
                     {
                         "$set": {
                             # Keep canonical session fields to match Session schema + UI expectations.
@@ -723,7 +726,7 @@ async def bulk_reconcile_sessions(
         for session_id in session_ids:
             try:
                 result = await db.sessions.update_one(
-                    {"id": session_id},
+                    {"$or": [{"id": session_id}, {"session_id": session_id}]},
                     {
                         "$set": {
                             # Store as ACTIVE + reconciled_at so the Session schema can present it
@@ -773,7 +776,9 @@ async def bulk_export_sessions(
     try:
         sessions = []
         for session_id in session_ids:
-            session = await db.sessions.find_one({"session_id": session_id})
+            session = await db.sessions.find_one(
+                {"$or": [{"id": session_id}, {"session_id": session_id}]}
+            )
             if session:
                 sessions.append(session)
 
@@ -985,10 +990,12 @@ def detect_risk_flags(erp_item: dict, line_data: CountLineCreate, variance: floa
     return risk_flags
 
 
-# Helper function to calculate financial impact
-def calculate_financial_impact(erp_mrp: float, counted_mrp: float, counted_qty: float) -> float:
-    """Calculate revenue impact of MRP change"""
-    old_value = erp_mrp * counted_qty
+# MM3 fix: Align with updated signature in count_lines_routes.py
+def calculate_financial_impact(
+    erp_mrp: float, counted_mrp: float, counted_qty: float, erp_qty: float = 0.0
+) -> float:
+    """Calculate financial impact of quantity and MRP changes."""
+    old_value = erp_mrp * erp_qty
     new_value = counted_mrp * counted_qty
     return new_value - old_value
 
@@ -1011,8 +1018,8 @@ async def create_count_line(
     if not erp_item:
         raise HTTPException(status_code=404, detail="Item not found in ERP")
 
-    # Calculate variance
-    variance = line_data.counted_qty - erp_item["stock_qty"]
+    # Calculate variance (F6 fix: use .get() for safe access)
+    variance = line_data.counted_qty - erp_item.get("stock_qty", 0)
 
     # Validate mandatory correction reason for variance
     if abs(variance) > 0 and not line_data.correction_reason and not line_data.variance_reason:
@@ -1025,9 +1032,11 @@ async def create_count_line(
     risk_flags = detect_risk_flags(erp_item, line_data, variance)
 
     # Calculate financial impact
-    counted_mrp = line_data.mrp_counted or erp_item["mrp"]
+    # MM3 fix: Use .get() and pass erp_qty
+    erp_qty = erp_item.get("stock_qty", 0)
+    counted_mrp = line_data.mrp_counted or erp_item.get("mrp", 0)
     financial_impact = calculate_financial_impact(
-        erp_item["mrp"], counted_mrp, line_data.counted_qty
+        erp_item.get("mrp", 0), counted_mrp, line_data.counted_qty, erp_qty
     )
 
     # Determine approval status based on risk
@@ -1051,9 +1060,9 @@ async def create_count_line(
         "id": str(uuid.uuid4()),
         "session_id": line_data.session_id,
         "item_code": line_data.item_code,
-        "item_name": erp_item["item_name"],
-        "barcode": erp_item["barcode"],
-        "erp_qty": erp_item["stock_qty"],
+        "item_name": erp_item.get("item_name", "Unknown"),
+        "barcode": erp_item.get("barcode", ""),
+        "erp_qty": erp_item.get("stock_qty", 0),
         "counted_qty": line_data.counted_qty,
         "variance": variance,
         # Legacy fields

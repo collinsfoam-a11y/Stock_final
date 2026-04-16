@@ -20,7 +20,7 @@ redis==7.3.0  # Redis client
 # NOTE: python-jose removed due to CVE-2024-33663/33664 and ecdsa vulnerabilities
 # Using PyJWT + cryptography instead (see backend/auth/jwt_provider.py)
 passlib[argon2]==1.7.4
-bcrypt==5.0.0
+bcrypt==4.0.1  # Pinned <4.1: passlib 1.7.x requires bcrypt.__about__.__version__ (removed in 4.1+)
 python-multipart==0.0.22
 authlib==1.6.9  # JWT provider (authlib.jose)
 PyJWT==2.12.1  # Secure JWT implementation
@@ -38,6 +38,9 @@ orjson==3.11.7
 
 # Utilities
 httpx==0.28.1
+requests>=2.32.3  # Explicit pin; also a dev dep but needed transitively at runtime
+urllib3>=2.0,<2.3  # Keep compatible with requests 2.32.x
+chardet>=5.0,<6  # Keep compatible with requests 2.32.x
 python-dateutil==2.9.0.post0
 email-validator==2.3.0
 rapidfuzz==3.14.3
@@ -51,7 +54,7 @@ wheel==0.46.3
 
 # Additional packages for system monitoring and report generation
 psutil==7.2.2
-pandas==3.0.1
+pandas>=2.2.0
 openpyxl==3.1.5
 xlsxwriter==3.2.9
 reportlab==4.4.10

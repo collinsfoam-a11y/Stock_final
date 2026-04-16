@@ -612,7 +612,9 @@ class TestCompleteSessionEndpoint:
     """Test POST /api/sessions/{session_id}/complete"""
 
     @pytest.mark.asyncio
-    async def test_complete_session_success(self, mock_user_supervisor, sample_verification_session):
+    async def test_complete_session_success(
+        self, mock_user_supervisor, sample_verification_session
+    ):
         """Test successful session completion"""
         reconciled_session = {
             **sample_verification_session,
@@ -844,9 +846,7 @@ class TestActiveSessionsEndpoint:
         mock_db.count_lines = MagicMock()
         mock_db.count_lines.find = MagicMock(
             return_value=_AsyncCursor(
-                [
-                    {"session_id": "sess_1", "status": "pending", "verified": False, "variance": 0.0}
-                ]
+                [{"session_id": "sess_1", "status": "pending", "verified": False, "variance": 0.0}]
             )
         )
 
@@ -1315,7 +1315,12 @@ class TestUserSessionHistoryEndpoint:
         mock_db.count_lines.find = MagicMock(
             return_value=_AsyncCursor(
                 [
-                    {"session_id": "sess_old", "status": "approved", "verified": True, "variance": 0.0}
+                    {
+                        "session_id": "sess_old",
+                        "status": "approved",
+                        "verified": True,
+                        "variance": 0.0,
+                    }
                 ]
             )
         )

@@ -249,13 +249,20 @@ batch_rate_limiter = BatchRateLimiter()
 
 def get_client_ip(request) -> str:
     """
-    Extract client IP from request, handling proxies.
-    """
-    # Check for forwarded header (behind proxy/load balancer)
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        # Take the first IP in the chain
-        return forwarded.split(",")[0].strip()
+    Extract client IP from request.
 
-    # Fall back to direct client IP
-    return request.client.host if request.client else "unknown"
+    H8 fix: Only trust X-Forwarded-For when behind a known reverse proxy.
+    The direct connection IP (request.client.host) is used as the primary source.
+    X-Forwarded-For is only used when the direct connection is from a trusted
+    proxy (localhost/docker network).
+    """
+    direct_ip = request.client.host if request.client else "unknown"
+
+    # Only trust X-Forwarded-For from known reverse proxy addresses
+    trusted_proxies = {"127.0.0.1", "::1", "172.17.0.1", "10.0.0.1"}
+    if direct_ip in trusted_proxies:
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+
+    return direct_ip

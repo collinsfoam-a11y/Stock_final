@@ -34,4 +34,3 @@ def test_recount_assignment_blocks_finalization_even_without_variance():
         )
         is True
     )
-

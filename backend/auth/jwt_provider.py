@@ -45,7 +45,8 @@ def decode(token: str, key: str, algorithms: Optional[list[str]] = None) -> dict
         if invalid_algs:
             raise InvalidTokenError(f"Unsupported algorithm(s): {invalid_algs}")
     try:
-        claims = _jwt.decode(token, key)
+        # H9 fix: Pass algorithms to underlying library to enforce algorithm restriction
+        claims = _jwt.decode(token, key, algorithms=algorithms or SUPPORTED_ALGORITHMS)
         exp_ts = _ensure_timestamp(claims.get("exp"))
         if exp_ts is not None:
             now = datetime.now(UTC).timestamp()

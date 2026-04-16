@@ -427,11 +427,11 @@ async def get_security_summary(
 
         # Suspicious IPs (5+ failed attempts)
         suspicious_summary_pipeline: list[dict[str, Any]] = [
-                {"$match": {"success": False, "timestamp": {"$gte": cutoff_time}}},
-                {"$group": {"_id": "$ip_address", "count": {"$sum": 1}}},
-                {"$match": {"count": {"$gte": 5}}},
-                {"$count": "total"},
-            ]
+            {"$match": {"success": False, "timestamp": {"$gte": cutoff_time}}},
+            {"$group": {"_id": "$ip_address", "count": {"$sum": 1}}},
+            {"$match": {"count": {"$gte": 5}}},
+            {"$count": "total"},
+        ]
         suspicious_ips_count = await db.login_attempts.aggregate(
             suspicious_summary_pipeline
         ).to_list(1)

@@ -59,9 +59,7 @@ class ReportTemplate(BaseModel):
 class ReportGeneration(BaseModel):
     template_id: Optional[str] = Field(None, description="Template ID")
     template_data: Optional[ReportTemplate] = Field(None, description="Custom template")
-    runtime_filters: Optional[dict[str, Optional[Any]]] = Field(
-        None, description="Runtime filters"
-    )
+    runtime_filters: Optional[dict[str, Optional[Any]]] = Field(None, description="Runtime filters")
 
 
 @dynamic_reports_router.post("/templates")

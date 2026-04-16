@@ -756,11 +756,14 @@ async def get_sessions(
         query["status"] = status
 
     if user_id:
-        # Only supervisors can view other users' sessions
-        if current_user["role"] != "supervisor" and user_id != current_user["username"]:
+        # M6 fix: Allow both supervisors AND admins to view other users' sessions
+        if (
+            current_user["role"] not in ("supervisor", "admin")
+            and user_id != current_user["username"]
+        ):
             raise HTTPException(status_code=403, detail="Access denied")
         query["staff_user"] = user_id
-    elif current_user["role"] != "supervisor":
+    elif current_user["role"] not in ("supervisor", "admin"):
         # Regular users only see their own sessions
         query["staff_user"] = current_user["username"]
 
@@ -1645,11 +1648,7 @@ async def _complete_session_legacy_compatible(
     if not canonical_session and not legacy_session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
-    session_owner = (
-        _session_owner(canonical_session)
-        or (legacy_session or {}).get("user_id")
-        or ""
-    )
+    session_owner = _session_owner(canonical_session) or (legacy_session or {}).get("user_id") or ""
     if current_user.get("role") not in {"supervisor", "admin"} and session_owner != user_id:
         raise HTTPException(status_code=403, detail="Not your session")
 
@@ -1669,9 +1668,7 @@ async def _complete_session_legacy_compatible(
 
     completed_at = _current_utc_naive()
     rack_id = (
-        (canonical_session or {}).get("rack_no")
-        or (legacy_session or {}).get("rack_id")
-        or None
+        (canonical_session or {}).get("rack_no") or (legacy_session or {}).get("rack_id") or None
     )
 
     if rack_id:
@@ -1773,9 +1770,7 @@ async def get_user_session_history(
     user_id = current_user["username"]
 
     sessions_cursor = (
-        db.sessions.find(
-            {"staff_user": user_id, "status": {"$in": ["COMPLETED", "CLOSED"]}}
-        )
+        db.sessions.find({"staff_user": user_id, "status": {"$in": ["COMPLETED", "CLOSED"]}})
         .sort("completed_at", -1)
         .limit(limit)
     )
@@ -1809,7 +1804,8 @@ async def check_session_integrity(
         start_dt = start_time
     else:
         start_ts = float(start_time or 0)
-        start_dt = datetime.fromtimestamp(start_ts)
+        # M8 fix: Use UTC timezone to match stored timestamps
+        start_dt = datetime.fromtimestamp(start_ts, tz=timezone.utc).replace(tzinfo=None)
 
     # Check for items updated after session start
     affected_count = await db.erp_items.count_documents({"updated_at": {"$gt": start_dt}})

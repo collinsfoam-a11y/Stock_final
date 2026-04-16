@@ -672,17 +672,25 @@ export const createCountLine = async (
       });
 
       const itemName = await resolveItemName();
-      const offlineCountLine = (await createOfflineCountLine(countData, {
-        username: user?.username,
-        itemName,
-      })) as any;
+      // MM4 fix: Wrap in try/catch to handle persistence failures gracefully
+      try {
+        const offlineCountLine = (await createOfflineCountLine(countData, {
+          username: user?.username,
+          itemName,
+        })) as any;
 
-      log.debug("Created offline count line", { id: offlineCountLine._id });
-      return {
-        ...offlineCountLine,
-        _source: "local" as DataSource,
-        _offline: true,
-      };
+        log.debug("Created offline count line", { id: offlineCountLine._id });
+        return {
+          ...offlineCountLine,
+          _source: "local" as DataSource,
+          _offline: true,
+        };
+      } catch (persistError) {
+        log.error("Failed to persist offline count line", {
+          error: persistError instanceof Error ? persistError.message : String(persistError),
+        });
+        throw new Error("Failed to save count line offline. Please try again.");
+      }
     }
 
     log.debug("Online mode - creating count line via API");
@@ -711,21 +719,29 @@ export const createCountLine = async (
       error: error instanceof Error ? error.message : String(error),
     });
 
-    const itemName = await resolveItemName();
-    const offlineCountLine = (await createOfflineCountLine(countData, {
-      username: user?.username,
-      itemName,
-    })) as any;
+    // MM4 fix: Wrap fallback in try/catch to prevent unhandled throw
+    try {
+      const itemName = await resolveItemName();
+      const offlineCountLine = (await createOfflineCountLine(countData, {
+        username: user?.username,
+        itemName,
+      })) as any;
 
-    log.debug("Created offline count line as fallback", {
-      id: offlineCountLine._id,
-    });
-    return {
-      ...offlineCountLine,
-      _source: "local" as DataSource,
-      _offline: true,
-      _degraded: true,
-    } as any;
+      log.debug("Created offline count line as fallback", {
+        id: offlineCountLine._id,
+      });
+      return {
+        ...offlineCountLine,
+        _source: "local" as DataSource,
+        _offline: true,
+        _degraded: true,
+      } as any;
+    } catch (fallbackError) {
+      log.error("Offline fallback also failed", {
+        error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+      });
+      throw new Error("Failed to save count line. Both online and offline storage failed.");
+    }
   }
 };
 
@@ -904,6 +920,8 @@ export const rejectCountLine = async (
 export const updateSessionStatus = async (sessionId: string, status: string) => {
   const normalizedStatus = (status || "").toUpperCase();
   if (normalizedStatus === "CLOSED" || normalizedStatus === "COMPLETED") {
+    // /finalize = supervisor-only, requires RECONCILE state, locks all count lines
+    // /complete = legacy close flow, any authorized user, sets status to CLOSED
     const endpoint =
       normalizedStatus === "COMPLETED"
         ? `/api/sessions/${sessionId}/finalize`
@@ -912,6 +930,8 @@ export const updateSessionStatus = async (sessionId: string, status: string) => 
     return response.data;
   }
 
+  // All other status transitions go through the generic PUT /status endpoint
+  // which validates against the SessionStateMachine
   const response = await api.put(
     `/api/sessions/${sessionId}/status?status=${encodeURIComponent(normalizedStatus)}`
   );

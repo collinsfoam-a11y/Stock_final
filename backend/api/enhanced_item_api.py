@@ -693,7 +693,9 @@ async def get_item_api_performance(current_user: dict = Depends(get_current_user
 
         # Comprehensive performance analysis
         api_metrics = (
-            (await monitoring_service.get_metrics()).get("endpoints", {}) if monitoring_service else {}
+            (await monitoring_service.get_metrics()).get("endpoints", {})
+            if monitoring_service
+            else {}
         )
 
         performance_data = {

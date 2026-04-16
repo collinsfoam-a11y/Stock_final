@@ -60,10 +60,7 @@ def _is_legacy_zero_variance_candidate(doc: dict[str, Any]) -> bool:
 
 def _build_repair_update(doc: dict[str, Any]) -> dict[str, Any]:
     approved_at = (
-        doc.get("approved_at")
-        or doc.get("updated_at")
-        or doc.get("counted_at")
-        or _utc_now_naive()
+        doc.get("approved_at") or doc.get("updated_at") or doc.get("counted_at") or _utc_now_naive()
     )
 
     return {

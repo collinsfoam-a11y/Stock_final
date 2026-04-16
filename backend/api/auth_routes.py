@@ -365,11 +365,32 @@ async def log_successful_login(user: dict[str, Any], ip_address: str, request: R
 
 
 @router.post("/auth/register", response_model=TokenResponse, status_code=201)
-async def register(user: UserRegister, response: Response):
+async def register(
+    user: UserRegister,
+    response: Response,
+    current_user: Optional[dict] = None,
+):
     """
     Register a new user.
+    Requires admin authentication, UNLESS no users exist yet (bootstrap).
     """
     db = get_db()
+
+    # F1 fix: Allow first-user bootstrap when no users exist at all.
+    # After the first user is created, all subsequent registrations require admin auth.
+    user_count = await db.users.count_documents({})
+    is_bootstrap = user_count == 0
+
+    if not is_bootstrap:
+        # C1 fix: Require admin role to register new users
+        if not current_user or current_user.get("role") != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "message": "Only administrators can register new users",
+                    "code": "ADMIN_REQUIRED",
+                },
+            )
     refresh_token_service = get_refresh_token_service()
     try:
         # Check if user already exists
@@ -1054,7 +1075,8 @@ async def change_pin(
             "$set": {
                 "pin_hash": new_pin_hash,
                 "pin_lookup_hash": pin_lookup_hash,
-                "updated_at": datetime.now(),
+                # M12 fix: Use UTC timezone for consistency
+                "updated_at": datetime.now(timezone.utc),
             }
         },
     )
@@ -1140,7 +1162,8 @@ async def change_password(
     new_password_hash = get_password_hash(new_password)
     await db.users.update_one(
         {"username": current_user["username"]},
-        {"$set": {"hashed_password": new_password_hash, "updated_at": datetime.now()}},
+        # M12 fix: Use UTC timezone for consistency
+        {"$set": {"hashed_password": new_password_hash, "updated_at": datetime.now(timezone.utc)}},
     )
 
     logger.info(f"Password changed for user: {current_user['username']}")
@@ -1306,6 +1329,18 @@ async def password_reset_confirm(data: PasswordResetConfirm):
                 }
             },
         )
+
+        # H5 fix: Revoke all existing refresh tokens for this user after password reset
+        try:
+            user_for_revoke = await db.users.find_one({"_id": ObjectId(user_id)})
+            if user_for_revoke:
+                await db.refresh_tokens.delete_many({"username": user_for_revoke.get("username")})
+                logger.info(
+                    f"Revoked all refresh tokens for user {user_for_revoke.get('username')} "
+                    "after password reset"
+                )
+        except Exception as revoke_err:
+            logger.error(f"Failed to revoke tokens after password reset: {revoke_err}")
 
         # Optional: confirmation should not block a successful password reset
         user = await db.users.find_one({"_id": ObjectId(user_id)})

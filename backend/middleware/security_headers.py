@@ -67,7 +67,8 @@ class SecurityHeadersMiddleware:
             # Remove server information
             "X-Powered-By": None,  # Remove default X-Powered-By
             # Additional security headers
-            "X-Permitted-Cross-Domain-Policies": "all",  # Allow cross-domain for dev
+            # L-fix: Restrict cross-domain policies per OWASP recommendation
+            "X-Permitted-Cross-Domain-Policies": "none",
             "Cross-Origin-Embedder-Policy": options.get("COEP", "unsafe-none"),  # Relaxed for dev
             "Cross-Origin-Opener-Policy": options.get(
                 "COOP", "same-origin-allow-popups"

@@ -71,20 +71,28 @@ export async function enqueueMutation(config: AxiosRequestConfig): Promise<Queue
   return item;
 }
 
-let flushing = false;
+// M15 fix: Use a promise-based lock to avoid async gap race in the boolean guard.
+let flushPromise: Promise<{ processed: number; remaining: number }> | null = null;
 
 export async function flushOfflineQueue(
   client: AxiosInstance
 ): Promise<{ processed: number; remaining: number }> {
   if (!flags.enableOfflineQueue) return { processed: 0, remaining: 0 };
-  if (flushing) return { processed: 0, remaining: (await loadQueue()).length };
+  // If already flushing, wait for the existing flush to complete
+  if (flushPromise) return flushPromise;
 
   const { isOnline, isInternetReachable, isRestrictedMode } = useNetworkStore.getState();
   const online = !isRestrictedMode && isOnline && (isInternetReachable ?? true);
   onlineManager.setOnline(online);
   if (!online) return { processed: 0, remaining: (await loadQueue()).length };
 
-  flushing = true;
+  flushPromise = _doFlush(client);
+  return flushPromise;
+}
+
+async function _doFlush(
+  client: AxiosInstance
+): Promise<{ processed: number; remaining: number }> {
   try {
     let queue = await loadQueue();
     let processed = 0;
@@ -128,8 +136,22 @@ export async function flushOfflineQueue(
           await addConflict(item, error.response?.data);
           processed += 1; // we consider it handled (moved to conflicts)
         } else {
-          // Other server error: leave item in queue for later retry
-          break;
+          // C6 fix: On 5xx server errors, increment retry counter instead of silently dropping.
+          // If max retries exceeded, move to conflicts; otherwise leave in queue for later.
+          item.retries = (item.retries || 0) + 1;
+          if (item.retries >= 5) {
+            await addConflict(item, {
+              error: "Max retries exceeded",
+              lastStatus: status,
+              lastResponse: error.response?.data,
+            });
+            processed += 1;
+          } else {
+            // Update item in queue with incremented retry count and stop processing
+            queue[0] = item;
+            await saveQueue(queue);
+            break;
+          }
         }
       }
       // Remove the head item we just processed
@@ -139,7 +161,7 @@ export async function flushOfflineQueue(
 
     return { processed, remaining: queue.length };
   } finally {
-    flushing = false;
+    flushPromise = null;
   }
 }
 
@@ -159,7 +181,7 @@ export function startOfflineQueue(client: AxiosInstance): void {
       const online =
         !state.isRestrictedMode && state.isOnline && (state.isInternetReachable ?? true);
       onlineManager.setOnline(online);
-      if (online && !flushing) {
+      if (online && !flushPromise) {
         flushOfflineQueue(client)
           .then((res) => {
             if (__DEV__ && (res.processed > 0 || res.remaining >= 0)) {

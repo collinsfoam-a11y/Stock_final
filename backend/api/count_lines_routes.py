@@ -114,7 +114,9 @@ async def _ensure_count_line_mutable(
     session: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     if is_count_line_locked(count_line):
-        raise HTTPException(status_code=409, detail="Count line is finalized and cannot be modified")
+        raise HTTPException(
+            status_code=409, detail="Count line is finalized and cannot be modified"
+        )
 
     active_session = session or await find_session(db, str(count_line.get("session_id") or ""))
     if is_session_finalized(active_session):
@@ -134,7 +136,13 @@ def detect_risk_flags(erp_item: dict, line_data: CountLineCreate, variance: floa
     counted_mrp = line_data.mrp_counted or erp_mrp
 
     # Calculate percentages safely
-    variance_percent = (abs(variance) / erp_qty * 100) if erp_qty > 0 else 100
+    # M1 fix: Don't default to 100% for zero-stock items; use 0 if both are 0
+    if erp_qty > 0:
+        variance_percent = abs(variance) / erp_qty * 100
+    elif line_data.counted_qty == 0:
+        variance_percent = 0
+    else:
+        variance_percent = 100
     mrp_change_percent = ((counted_mrp - erp_mrp) / erp_mrp * 100) if erp_mrp > 0 else 0
 
     # Rule 1: Large variance
@@ -183,9 +191,14 @@ def detect_risk_flags(erp_item: dict, line_data: CountLineCreate, variance: floa
 
 
 # Helper function to calculate financial impact
-def calculate_financial_impact(erp_mrp: float, counted_mrp: float, counted_qty: float) -> float:
-    """Calculate revenue impact of MRP change"""
-    old_value = erp_mrp * counted_qty
+def calculate_financial_impact(
+    erp_mrp: float, counted_mrp: float, counted_qty: float, erp_qty: float = 0.0
+) -> float:
+    """Calculate financial impact of quantity and MRP changes.
+
+    H1 fix: Uses erp_qty on the ERP side so quantity variance is reflected.
+    """
+    old_value = erp_mrp * erp_qty
     new_value = counted_mrp * counted_qty
     return new_value - old_value
 
@@ -215,7 +228,9 @@ def _build_count_line_draft_filter(line_data: CountLineCreate, username: str) ->
     }
 
 
-def _build_legacy_count_line_draft_filter(line_data: CountLineCreate, username: str) -> dict[str, Any]:
+def _build_legacy_count_line_draft_filter(
+    line_data: CountLineCreate, username: str
+) -> dict[str, Any]:
     return {
         "session_id": line_data.session_id,
         "item_code": line_data.item_code,
@@ -442,7 +457,9 @@ async def create_count_line(
         )
 
     # Use snapshot qty if available, fallback to live (emergency only)
-    erp_qty_source: Any = erp_snapshot.get("erp_qty") if erp_snapshot else erp_item.get("stock_qty", 0)
+    erp_qty_source: Any = (
+        erp_snapshot.get("erp_qty") if erp_snapshot else erp_item.get("stock_qty", 0)
+    )
     erp_qty = 0.0 if erp_qty_source is None else float(erp_qty_source or 0)
     baseline_hash = erp_snapshot.get("baseline_hash") if erp_snapshot else "UNHASHED_FALLBACK"
 
@@ -499,9 +516,10 @@ async def create_count_line(
         risk_flags.append("STRICT_MODE_VARIANCE")
 
     # Calculate financial impact
-    counted_mrp = line_data.mrp_counted or erp_item["mrp"]
+    # H4 fix: Use .get() to avoid KeyError on missing fields
+    counted_mrp = line_data.mrp_counted or erp_item.get("mrp", 0)
     financial_impact = calculate_financial_impact(
-        erp_item["mrp"], counted_mrp, line_data.counted_qty
+        erp_item.get("mrp", 0), counted_mrp, line_data.counted_qty, erp_qty
     )
 
     # --- Strict Governance: Atomic Locking & Uniqueness Gate ---
@@ -576,7 +594,9 @@ async def create_count_line(
 
         # Create count line with enhanced fields
         count_line_id = (
-            extract_document_id(recount_update_target) if recount_update_target else str(uuid.uuid4())
+            extract_document_id(recount_update_target)
+            if recount_update_target
+            else str(uuid.uuid4())
         )
         counted_at = datetime.now(timezone.utc).replace(tzinfo=None)
         review_required = requires_supervisor_verification(variance)
@@ -588,7 +608,7 @@ async def create_count_line(
             "recount_of_id": line_data.recount_of_id,
             "item_code": line_data.item_code,
             "barcode": line_data.barcode or erp_item.get("barcode"),
-            "item_name": erp_item["item_name"],
+            "item_name": erp_item.get("item_name", "Unknown"),
             "erp_qty": erp_qty,  # Rule 2: Frozen quantity
             "baseline_hash": baseline_hash,  # Rule 2: Snapshot Hash
             "counted_qty": line_data.counted_qty,
@@ -643,7 +663,7 @@ async def create_count_line(
             "updated_at": counted_at,
             "updated_by": current_user["username"],
             # MRP tracking
-            "mrp_erp": erp_item["mrp"],
+            "mrp_erp": erp_item.get("mrp", 0),
             "mrp_counted": line_data.mrp_counted,
             # Additional fields
             "split_section": line_data.split_section,
@@ -1385,7 +1405,9 @@ async def add_quantity_to_count_line(
     if payload.batches is not None:
         update_data["batches"] = payload.batches
 
-    update_result = await db.count_lines.update_one({"_id": count_line["_id"]}, {"$set": update_data})
+    update_result = await db.count_lines.update_one(
+        {"_id": count_line["_id"]}, {"$set": update_data}
+    )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
 
@@ -1443,7 +1465,8 @@ async def update_count_line(
 
         mrp_erp = float(count_line.get("mrp_erp") or 0)
         mrp_counted = float(count_line.get("mrp_counted") or mrp_erp)
-        financial_impact = (mrp_counted * new_counted_qty) - (mrp_erp * new_counted_qty)
+        # MM3 fix: Use erp_qty on the ERP side for correct financial impact
+        financial_impact = (mrp_counted * new_counted_qty) - (mrp_erp * erp_qty)
 
         update_data.update(
             {
@@ -1456,7 +1479,9 @@ async def update_count_line(
     if payload.batches is not None:
         update_data["batches"] = payload.batches
 
-    update_result = await db.count_lines.update_one({"_id": count_line["_id"]}, {"$set": update_data})
+    update_result = await db.count_lines.update_one(
+        {"_id": count_line["_id"]}, {"$set": update_data}
+    )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
 

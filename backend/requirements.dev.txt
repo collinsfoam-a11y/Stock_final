@@ -16,6 +16,8 @@ requests>=2.32.3
 respx>=0.22.0
 
 # Developer tooling
+pymssql>=2.2.0  # Used by scripts/discover_tables.py (dev-only SQL Server explorer)
+PyYAML>=6.0  # Used by scripts/generate_api_docs.py (transitive dep but should be explicit)
 black>=24.10.0
 isort>=5.13.2
 flake8>=7.1.1
@@ -26,10 +28,10 @@ aiohttp>=3.9.0
 memory-profiler>=0.61.0
 
 # Optional local feature packages
-# NOTE: copilotkit is intentionally excluded from the default dev env because
-# current releases require FastAPI < 0.116, which conflicts with the repo's
-# pinned FastAPI runtime. Install it separately only when actively developing
-# the experimental copilot endpoint.
+# NOTE: copilotkit requires fastapi>=0.115.0,<1.0.0 which is compatible with
+# the repo's pinned FastAPI 0.135.1. Install separately if the copilot endpoint
+# pulls unwanted heavy transitive deps (torch, langchain, etc.).
+copilotkit>=0.1.79  # Used by backend/api/copilot_api.py
 numpy>=2.0.2
 Pillow>=12.1.1
 sentence-transformers>=2.2.2

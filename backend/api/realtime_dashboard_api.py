@@ -654,9 +654,7 @@ async def export_dashboard_xlsx(
             if col.field in visibility_map:
                 col.visible = visibility_map[col.field]
 
-    xlsx_content = await service.export_to_xlsx(
-        result["data"], columns, erpnext_import=True
-    )
+    xlsx_content = await service.export_to_xlsx(result["data"], columns, erpnext_import=True)
 
     return StreamingResponse(
         iter([xlsx_content]),

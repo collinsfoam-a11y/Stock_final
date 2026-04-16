@@ -116,15 +116,20 @@ class CircuitBreaker:
         """Record a failed call"""
         async with self._lock:
             self._failure_count += 1
-            self._last_failure_time = time.time()
 
             if self._state == CircuitState.HALF_OPEN:
                 # Single failure in half-open returns to open
+                self._last_failure_time = time.time()
                 self._transition_to(CircuitState.OPEN)
                 self._reset_counts()
             elif self._state == CircuitState.CLOSED:
+                self._last_failure_time = time.time()
                 if self._failure_count >= self.config.failure_threshold:
                     self._transition_to(CircuitState.OPEN)
+            # M10 fix: Do NOT update _last_failure_time when already OPEN.
+            # This prevents the recovery timer from being continuously
+            # pushed forward, which would block the circuit from ever
+            # transitioning to HALF_OPEN under sustained load.
 
     async def acquire(self) -> bool:
         """

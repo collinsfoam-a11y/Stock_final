@@ -22,8 +22,8 @@ if (!process.env.EXPO_OS) {
   process.env.EXPO_OS = "ios";
 }
 
-// Testing Library matchers for React Native
-require("@testing-library/jest-native/extend-expect");
+// Testing Library matchers for React Native (built-in since RNTL 12.4+)
+require("@testing-library/react-native/build/matchers/extend-expect");
 
 // React 19 compatibility fixes
 global.React = require("react");

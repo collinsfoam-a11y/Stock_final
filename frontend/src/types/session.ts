@@ -4,12 +4,21 @@
 
 export type SessionType = "STANDARD" | "BLIND" | "STRICT";
 
+/**
+ * Canonical session statuses — single source of truth.
+ * Must align with backend SessionState enum in session_state_machine.py
+ * and CanonicalSessionStatus in session_management_api.py.
+ */
 export type SessionStatus =
   | "OPEN"
   | "ACTIVE"
-  | "CLOSED"
+  | "PAUSED"
+  | "RECONCILE"
   | "COMPLETED"
-  | "RECONCILE";
+  | "CLOSED"
+  | "CANCELLED"
+  | "EXPORTED"
+  | "ARCHIVED";
 
 export interface Session {
   id: string;
@@ -21,17 +30,33 @@ export interface Session {
   started_at: string; // ISO Date string
   closed_at?: string; // ISO Date string
   reconciled_at?: string; // ISO Date string
+  completed_at?: string; // ISO Date string
+  finalized_at?: string; // ISO Date string
+  finalized_by?: string;
+  finalization_status?: string;
   total_items: number;
   total_variance: number;
-  counted_items?: number;
+  verified_items?: number;
   pending_items?: number;
+  damage_items?: number;
+  counted_items?: number; // legacy alias for verified_items
   notes?: string;
   barcode?: string;
+  // Location metadata
+  location_type?: string;
+  location_name?: string;
+  rack_no?: string;
+  last_heartbeat?: string;
+  snapshot_hash?: string;
+  config_version_id?: string;
 }
 
 export interface SessionCreate {
   warehouse: string;
   type?: SessionType;
+  location_type?: string;
+  location_name?: string;
+  rack_no?: string;
 }
 
 export interface SessionStats {

@@ -11,7 +11,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-
 ACTIVE_SESSION_STATUSES = {"OPEN", "ACTIVE", "PAUSED", "RECONCILE"}
 FINALIZED_SESSION_STATUSES = {"COMPLETED", "CLOSED", "CANCELLED"}
 LOCKED_COUNT_LINE_STATUSES = {"locked"}
@@ -189,7 +188,9 @@ async def find_duplicate_count_line(
     return None
 
 
-def can_reuse_rejected_count_line(existing: Optional[dict[str, Any]], line_data: dict[str, Any]) -> bool:
+def can_reuse_rejected_count_line(
+    existing: Optional[dict[str, Any]], line_data: dict[str, Any]
+) -> bool:
     if not existing or not is_explicit_recount(line_data):
         return False
 
@@ -216,7 +217,13 @@ def is_blocking_finalization(count_line: dict[str, Any]) -> bool:
     if not count_line_requires_supervisor_review(count_line):
         return False
 
-    return False
+    # C3+MM10 fix: If supervisor review IS required AND the line is not yet approved, block.
+    # An APPROVED line should NOT block finalization (supervisor already signed off).
+    approval = normalize_approval_status(count_line.get("approval_status"))
+    if approval == "APPROVED":
+        return False
+
+    return True
 
 
 async def get_session_count_lines(db: Any, session_id: str) -> list[dict[str, Any]]:
@@ -243,12 +250,34 @@ async def recompute_session_totals(db: Any, session_id: str) -> dict[str, Any]:
         if is_count_line_effectively_reviewed(line):
             verified_items += 1
 
-        candidate_activity = line.get("updated_at") or line.get("approved_at") or line.get("counted_at")
+        # M5 fix: Handle non-datetime values (strings, floats) from sync paths
+        candidate_activity = (
+            line.get("updated_at") or line.get("approved_at") or line.get("counted_at")
+        )
+        if candidate_activity is not None:
+            if isinstance(candidate_activity, (int, float)):
+                try:
+                    candidate_activity = datetime.fromtimestamp(
+                        candidate_activity, tz=timezone.utc
+                    ).replace(tzinfo=None)
+                except (ValueError, OSError):
+                    candidate_activity = None
+            elif isinstance(candidate_activity, str):
+                try:
+                    candidate_activity = datetime.fromisoformat(
+                        candidate_activity.replace("Z", "+00:00")
+                    ).replace(tzinfo=None)
+                except (ValueError, TypeError):
+                    candidate_activity = None
+            elif isinstance(candidate_activity, datetime):
+                if candidate_activity.tzinfo is not None:
+                    candidate_activity = candidate_activity.astimezone(timezone.utc).replace(
+                        tzinfo=None
+                    )
+            else:
+                candidate_activity = None
+
         if isinstance(candidate_activity, datetime):
-            if candidate_activity.tzinfo is not None:
-                candidate_activity = candidate_activity.astimezone(timezone.utc).replace(
-                    tzinfo=None
-                )
             if last_activity is None or candidate_activity > last_activity:
                 last_activity = candidate_activity
 

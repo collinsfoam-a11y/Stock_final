@@ -128,13 +128,24 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
             [("idempotency_key", 1)],
             {"name": "idx_count_line_idempotency", "unique": True, "sparse": True},
         ),
+        # H12 fix: Compound index for duplicate detection matching build_count_line_duplicate_filter
+        (
+            [("session_id", 1), ("item_code", 1), ("floor_no", 1), ("rack_no", 1)],
+            {"name": "idx_duplicate_detection"},
+        ),
+        # Session + id lookup (used by find_session and $or queries)
+        ([("id", 1)], {"name": "idx_count_line_id", "sparse": True}),
     ],
     # Sessions Collection (existing)
     "sessions": [
         # Session ID
         ([("session_id", 1)], {"unique": True, "name": "idx_session"}),
+        # M15-index fix: Add index on 'id' field used by build_session_lookup $or queries
+        ([("id", 1)], {"name": "idx_session_id_field", "unique": True, "sparse": True}),
         # User sessions
         ([("created_by", 1), ("created_at", -1)], {"name": "idx_user_time"}),
+        # Staff user + status for active session lookup
+        ([("staff_user", 1), ("status", 1), ("warehouse", 1)], {"name": "idx_staff_active"}),
         # Status
         ([("status", 1), ("created_at", -1)], {"name": "idx_status"}),
         # Warehouse
@@ -196,6 +207,11 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("actor_username", 1), ("timestamp", -1)], {"name": "idx_audit_username_time"}),
         # Resource tracking
         ([("resource_id", 1), ("timestamp", -1)], {"name": "idx_audit_resource_time"}),
+    ],
+    # Rate Limits Collection (MM7 fix: TTL cleanup for PIN rate limiting)
+    "rate_limits": [
+        # TTL index: auto-delete rate limit records after 10 minutes
+        ([("window_start", 1)], {"expireAfterSeconds": 600, "name": "idx_rate_limit_ttl"}),
     ],
     # Users Collection
     "users": [

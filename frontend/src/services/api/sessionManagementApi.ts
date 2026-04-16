@@ -45,7 +45,9 @@ export const isOnline = () => {
     connectionType,
   });
 
-  return status !== "OFFLINE";
+  // M14 fix: Treat UNKNOWN as offline for write safety.
+  // This prevents failed mutations on captive portals or flaky WiFi.
+  return status === "ONLINE";
 };
 
 export const createSession = async (params: string | CreateSessionParams) => {

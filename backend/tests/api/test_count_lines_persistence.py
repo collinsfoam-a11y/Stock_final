@@ -286,4 +286,3 @@ async def test_put_update_count_line_recalculates_variance(async_client, test_db
     assert updated_session is not None
     # canonical totals are recomputed from the current count_lines state
     assert updated_session["total_variance"] == 9.0
-

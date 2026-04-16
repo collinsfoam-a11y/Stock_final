@@ -74,6 +74,8 @@ export interface CreateCountLinePayload {
   non_returnable_damaged_qty?: number;
   variance_reason?: string | null;
   variance_note?: string | null;
+  /** Required by backend when variance > 0. Alias for variance_reason. */
+  correction_reason?: string | null;
   remark?: string | null;
   item_condition?: string;
   condition_details?: string;
@@ -104,6 +106,8 @@ export interface CreateCountLinePayload {
   category_correction?: string;
   subcategory_correction?: string;
   batches?: CountLineBatch[];
+  /** Idempotency key for deduplication during offline sync */
+  idempotency_key?: string;
 }
 
 export interface ApiErrorResponse {

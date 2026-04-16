@@ -69,9 +69,11 @@ connectionManager.addListener((connection: ConnectionInfo) => {
     return;
   }
 
+  // L3 fix: Log old URL before updating to avoid logging stale value
+  const previousUrl = apiClient.defaults.baseURL;
   updateBaseURL(connection.backendUrl);
   log.info("API base URL updated via ConnectionManager", {
-    old: apiClient.defaults.baseURL,
+    old: previousUrl,
     new: connection.backendUrl,
     isHealthy: connection.isHealthy,
   });
@@ -242,11 +244,11 @@ apiClient.interceptors.request.use(
 
     // Guard: Prevent authenticated calls if no token is available (except for login/health)
     const isPublic =
-      fullUrl.includes("/auth/login") ||
-      fullUrl.includes("/auth/login-pin") ||
-      fullUrl.includes("/auth/refresh") ||
-      fullUrl.includes("/auth/register") ||
-      fullUrl.includes("/auth/logout") ||
+    fullUrl.includes("/auth/login") ||
+    fullUrl.includes("/auth/login-pin") ||
+    fullUrl.includes("/auth/refresh") ||
+    // /auth/register removed from public routes; bootstrap handled server-side
+    fullUrl.includes("/auth/logout") ||
       isHealthRequest;
     if (!isPublic && !hasAuth && !CAN_USE_COOKIE_AUTH) {
       log.warn("Blocking authenticated call: No token available", {
@@ -351,29 +353,12 @@ apiClient.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      // Retry strategy: If this is the first 401 for this request AND we have a token in storage,
-      // try to re-attach and retry ONCE.
+      // L4 fix: Skip the stale token retry — go directly to refresh flow.
+      // The stored token is the same one that caused the 401, so retrying
+      // with it just wastes a round-trip.
       const originalRequest = error.config;
-      if (!originalRequest._retry) {
-        originalRequest._retry = true;
-        log.debug("401 encountered; attempting single retry with fresh token", {
-          url: fullUrl,
-        });
 
-        try {
-          const token = await secureStorage.getItem("auth_token");
-          if (token) {
-            originalRequest.headers = originalRequest.headers || {};
-            originalRequest.headers["Authorization"] = `Bearer ${token}`;
-            apiClient.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-            return apiClient(originalRequest);
-          }
-        } catch (_storageError) {
-          // Fall through to cookie or refresh-token recovery below.
-        }
-      }
-
-      // If we already retried with the stored access token, attempt a refresh-token flow once.
+      // Attempt a refresh-token flow once.
       if (!originalRequest._retryRefresh) {
         originalRequest._retryRefresh = true;
         log.debug("401 after retry; attempting refresh token flow", {

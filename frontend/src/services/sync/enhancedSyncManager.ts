@@ -3,7 +3,7 @@
  * Handles offline queue sync with conflict detection
  */
 
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../storage/asyncStorageService";
 import api from "../httpClient";
 
 export interface SyncRecord {
@@ -66,8 +66,11 @@ const DEFAULT_CONFIG: SyncManagerConfig = {
   maxRetryDelayMs: 300000, // 5 minutes
 };
 
-const QUEUE_KEY = "@offline_queue";
-const CONFLICTS_KEY = "@sync_conflicts";
+// H15 fix: Use the same storage key as offlineStorage to avoid invisible dual queues.
+// offlineStorage uses "offline_queue" via the storage wrapper.
+// We now use the same key prefix so both systems see the same data.
+const QUEUE_KEY = "offline_queue";
+const CONFLICTS_KEY = "sync_conflicts";
 
 export class EnhancedSyncManager {
   private config: SyncManagerConfig;
@@ -97,7 +100,8 @@ export class EnhancedSyncManager {
         queue.push({ ...record, retry_count: 0 });
       }
 
-      await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+      // MM5 fix: Use the same storage wrapper as offlineStorage to avoid format mismatch
+      await storage.set(QUEUE_KEY, queue, { silent: true });
 
       __DEV__ && console.log(`📝 Added to queue: ${record.client_record_id}`);
     } catch (error) {
@@ -111,8 +115,9 @@ export class EnhancedSyncManager {
    */
   async getQueue(): Promise<SyncRecord[]> {
     try {
-      const data = await AsyncStorage.getItem(QUEUE_KEY);
-      return data ? JSON.parse(data) : [];
+      // MM5 fix: Use the same storage wrapper as offlineStorage
+      const data = await storage.get<SyncRecord[]>(QUEUE_KEY, { defaultValue: [] });
+      return Array.isArray(data) ? data : [];
     } catch (error) {
       console.error("Error getting queue:", error);
       return [];
@@ -131,7 +136,7 @@ export class EnhancedSyncManager {
    * Clear entire queue (use with caution!)
    */
   async clearQueue(): Promise<void> {
-    await AsyncStorage.removeItem(QUEUE_KEY);
+    await storage.remove(QUEUE_KEY);
   }
 
   /**
@@ -139,8 +144,8 @@ export class EnhancedSyncManager {
    */
   async getConflicts(): Promise<SyncConflict[]> {
     try {
-      const data = await AsyncStorage.getItem(CONFLICTS_KEY);
-      return data ? JSON.parse(data) : [];
+      const data = await storage.get<SyncConflict[]>(CONFLICTS_KEY, { defaultValue: [] });
+      return Array.isArray(data) ? data : [];
     } catch (error) {
       console.error("Error getting conflicts:", error);
       return [];
@@ -154,7 +159,7 @@ export class EnhancedSyncManager {
     try {
       const existing = await this.getConflicts();
       const merged = [...existing, ...conflicts];
-      await AsyncStorage.setItem(CONFLICTS_KEY, JSON.stringify(merged));
+      await storage.set(CONFLICTS_KEY, merged, { silent: true });
     } catch (error) {
       console.error("Error storing conflicts:", error);
     }
@@ -164,7 +169,7 @@ export class EnhancedSyncManager {
    * Clear conflicts
    */
   async clearConflicts(): Promise<void> {
-    await AsyncStorage.removeItem(CONFLICTS_KEY);
+    await storage.remove(CONFLICTS_KEY);
   }
 
   /**
@@ -183,15 +188,19 @@ export class EnhancedSyncManager {
     }
 
     this.isSyncing = true;
-    this.syncPromise = this._syncQueueInternal(onProgress);
+    let syncedCount = 0;
+    const internalPromise = this._syncQueueInternal(onProgress).then((count) => {
+      syncedCount = count;
+    });
+    this.syncPromise = internalPromise;
 
     try {
-      await this.syncPromise;
+      await internalPromise;
       const queue = await this.getQueue();
       const conflicts = await this.getConflicts();
 
       return {
-        synced: 0, // Will be updated during sync
+        synced: syncedCount,
         conflicts: conflicts.length,
         errors: queue.filter((r) => (r.retry_count || 0) >= this.config.maxRetries).length,
       };
@@ -203,81 +212,91 @@ export class EnhancedSyncManager {
 
   private async _syncQueueInternal(
     onProgress?: (progress: number, total: number) => void
-  ): Promise<void> {
-    const queue = await this.getQueue();
+  ): Promise<number> {
+    // C7 fix: Always re-read queue from storage for current state
+    let currentQueue = await this.getQueue();
 
-    if (queue.length === 0) {
-      __DEV__ && console.log("📭 Queue is empty, nothing to sync");
-      return;
+    if (currentQueue.length === 0) {
+      __DEV__ && console.log("Queue is empty, nothing to sync");
+      return 0;
     }
 
-    __DEV__ && console.log(`🔄 Starting sync: ${queue.length} records`);
-
+    __DEV__ && console.log(`Starting sync: ${currentQueue.length} records`);
+    const totalAtStart = currentQueue.length;
     let synced = 0;
-    const failedRecords: SyncRecord[] = [];
 
     // Process in batches
-    for (let i = 0; i < queue.length; i += this.config.batchSize) {
-      const batch = queue.slice(i, i + this.config.batchSize);
+    while (currentQueue.length > 0) {
+      const batch = currentQueue.slice(0, this.config.batchSize);
 
       try {
         const response = await this.syncBatch(batch);
-
-        // Remove successfully synced records
-        const syncedIds = new Set(response.ok);
-        const remainingQueue = queue.filter((r) => !syncedIds.has(r.client_record_id));
 
         // Store conflicts
         if (response.conflicts.length > 0) {
           await this.storeConflicts(response.conflicts);
         }
 
+        // Collect IDs to remove (ok + conflict IDs are handled)
+        const handledIds = new Set([
+          ...response.ok,
+          ...response.conflicts.map((c) => c.client_record_id),
+        ]);
+
         // Handle errors - increment retry count
+        const failedRetryable: SyncRecord[] = [];
         for (const error of response.errors) {
-          const record = queue.find((r) => r.client_record_id === error.client_record_id);
+          const record = batch.find((r) => r.client_record_id === error.client_record_id);
           if (record) {
             record.retry_count = (record.retry_count || 0) + 1;
+            handledIds.add(record.client_record_id);
 
             if (record.retry_count < this.config.maxRetries) {
-              failedRecords.push(record);
+              failedRetryable.push(record);
             } else {
-              __DEV__ && console.error(`❌ Max retries reached for ${record.client_record_id}`);
+              __DEV__ && console.error(`Max retries reached for ${record.client_record_id}`);
             }
           }
         }
 
-        // Update queue
-        await AsyncStorage.setItem(
-          QUEUE_KEY,
-          JSON.stringify([...remainingQueue, ...failedRecords])
-        );
+        // C7 fix: Remove handled items from current queue, append retryable failures
+        currentQueue = [
+          ...currentQueue.filter((r) => !handledIds.has(r.client_record_id)),
+          ...failedRetryable,
+        ];
+
+        // Persist updated queue immediately after each batch
+        await storage.set(QUEUE_KEY, currentQueue, { silent: true });
 
         synced += response.ok.length;
 
         // Report progress
         if (onProgress) {
-          onProgress(i + batch.length, queue.length);
+          onProgress(totalAtStart - currentQueue.length, totalAtStart);
         }
 
         __DEV__ &&
           console.log(
-            `✅ Batch synced: ${response.ok.length} ok, ` +
+            `Batch synced: ${response.ok.length} ok, ` +
               `${response.conflicts.length} conflicts, ` +
               `${response.errors.length} errors`
           );
       } catch (error: any) {
         console.error("Batch sync error:", error);
 
-        // On network error, add delay before next batch
+        // On network error, add delay before next batch then stop
         if (error.code === "ECONNABORTED" || error.message?.includes("Network")) {
           const delay = this.calculateBackoff(1);
-          __DEV__ && console.log(`⏱️ Network error, waiting ${delay}ms...`);
+          __DEV__ && console.log(`Network error, waiting ${delay}ms...`);
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
+        // Stop processing on unrecoverable batch error
+        break;
       }
     }
 
-    __DEV__ && console.log(`✅ Sync complete: ${synced} records synced`);
+    __DEV__ && console.log(`Sync complete: ${synced} records synced`);
+    return synced;
   }
 
   /**

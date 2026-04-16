@@ -204,9 +204,7 @@ class CacheService:
             try:
                 # Basic ping check
                 start_time = time.time()
-                await asyncio.wait_for(
-                    cast(Awaitable[bool], self.redis_client.ping()), timeout=2.0
-                )
+                await asyncio.wait_for(cast(Awaitable[bool], self.redis_client.ping()), timeout=2.0)
                 latency = (time.time() - start_time) * 1000
 
                 info = await self.redis_client.info()

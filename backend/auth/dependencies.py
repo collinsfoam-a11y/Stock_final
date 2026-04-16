@@ -200,6 +200,19 @@ async def get_current_user(
                 detail=error,
             )
 
+        # H6 fix: Check if user account is active
+        if not user.get("is_active", True):
+            logger.warning(f"[get_current_user] Deactivated user attempted access: {username}")
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "message": "Account deactivated",
+                    "detail": "Your account has been deactivated. Contact an administrator.",
+                    "code": "ACCOUNT_DEACTIVATED",
+                    "category": "authorization",
+                },
+            )
+
         logger.debug(f"[get_current_user] Authentication successful for user: {username}")
         return user
 
@@ -220,6 +233,21 @@ async def get_current_user(
 
 # Alias for backward compatibility - both names point to same function
 get_current_user_async = get_current_user
+
+
+async def optional_get_current_user(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(auth_deps.security),
+) -> Optional[dict[str, Any]]:
+    """
+    Like get_current_user, but returns None instead of raising 401
+    when no credentials are provided. Used for endpoints that are
+    conditionally authenticated (e.g. bootstrap registration).
+    """
+    try:
+        return await get_current_user(request, credentials)
+    except HTTPException:
+        return None
 
 
 async def require_admin(

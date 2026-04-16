@@ -327,9 +327,7 @@ class SQLServerConnector:
         if placeholder_count != param_count:
             raise ERPQueryParameterError("SQL parameter count mismatch for parameterized query")
 
-    def _execute_readonly(
-        self, cursor, query: str, params: Optional[Sequence[Any]] = None
-    ) -> None:
+    def _execute_readonly(self, cursor, query: str, params: Optional[Sequence[Any]] = None) -> None:
         """Execute a read-only SQL query with strict guards."""
         self._assert_read_only_query(query)
         self._validate_params(query, params)

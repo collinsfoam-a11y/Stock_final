@@ -279,7 +279,9 @@ class AdvancedReportService:
             "item_code": 1,
             "item_name": 1,
             "barcode": 1,
-            "category": self._coalesce_projection("category_correction", "category_erp", "category"),
+            "category": self._coalesce_projection(
+                "category_correction", "category_erp", "category"
+            ),
             "warehouse": 1,
             "floor": self._coalesce_projection("floor", "floor_no"),
             "rack_id": self._coalesce_projection("rack_id", "rack_no"),
@@ -787,9 +789,7 @@ class AdvancedReportService:
         visible_columns = [col for col in columns if col.visible]
         data_fields = [col.field for col in visible_columns]
         header_values = (
-            ["ID"] + data_fields
-            if erpnext_import
-            else [col.label for col in visible_columns]
+            ["ID"] + data_fields if erpnext_import else [col.label for col in visible_columns]
         )
 
         # Write headers

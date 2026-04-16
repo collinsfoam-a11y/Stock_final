@@ -223,6 +223,29 @@ async def sync_single_record(record: SyncRecord, db, user_id: str) -> tuple[bool
         (success: bool, error_message: Optional[str])
     """
     try:
+        # C2+MM2 fix: Check session status before writing (allowlist approach matching legacy path)
+        session = await db.sessions.find_one(
+            {"$or": [{"id": record.session_id}, {"session_id": record.session_id}]}
+        )
+        if session:
+            session_status = str(session.get("status", "")).upper()
+            if session.get("finalized_at"):
+                return (
+                    False,
+                    f"Session {record.session_id} is finalized and cannot accept new records",
+                )
+            allowed = {"OPEN", "ACTIVE"}
+            # Allow RECONCILE sessions if reconciled_at is set
+            if session_status == "RECONCILE" or (
+                session_status == "ACTIVE" and session.get("reconciled_at")
+            ):
+                pass  # allowed
+            elif session_status not in allowed:
+                return (
+                    False,
+                    f"Session {record.session_id} is {session_status} and cannot accept new records",
+                )
+
         status_normalized = (record.status or "").strip().lower()
         is_finalized = status_normalized == "finalized"
         # Prepare document
@@ -543,9 +566,10 @@ async def _process_session_op(
                         {"$set": {"status": "CLOSED", "closed_at": now, "ended_at": now}},
                     )
                 else:
+                    # M2 fix: Set status to RECONCILE (not ACTIVE) for consistency
                     result = await db.sessions.update_one(
                         {"id": session_id},
-                        {"$set": {"status": "ACTIVE", "reconciled_at": now}},
+                        {"$set": {"status": "RECONCILE", "reconciled_at": now}},
                     )
                 if getattr(result, "modified_count", 0) > 0:
                     updated += 1
@@ -578,9 +602,10 @@ async def _process_session_op(
                     {"$set": {"status": "CLOSED", "closed_at": now, "ended_at": now}},
                 )
             else:
+                # M2 fix: Set status to RECONCILE for consistency
                 await db.sessions.update_one(
                     {"id": resolved_session_id},
-                    {"$set": {"status": "ACTIVE", "reconciled_at": now}},
+                    {"$set": {"status": "RECONCILE", "reconciled_at": now}},
                 )
 
             return f"Session operation '{operation}' applied"
@@ -662,12 +687,16 @@ async def _process_count_line_op(
     session = await find_session(db, session_id)
     if not session:
         raise ValueError("Session not found for count line operation")
-    if session.get("finalized_at") or str(session.get("status", "")).upper() in {"COMPLETED", "CLOSED"}:
+    if session.get("finalized_at") or str(session.get("status", "")).upper() in {
+        "COMPLETED",
+        "CLOSED",
+    }:
         raise ValueError("Session is finalized and cannot accept offline counts")
     if str(session.get("status", "")).upper() not in {"OPEN", "ACTIVE"}:
-        raise ValueError("Session is not active")
-    if session.get("reconciled_at"):
-        raise ValueError("Session is in reconciliation mode")
+        # Allow RECONCILE sessions if they have reconciled_at set
+        # (the schema normalizer stores RECONCILE as ACTIVE + reconciled_at)
+        if not session.get("reconciled_at"):
+            raise ValueError("Session is not active")
 
     line_data.setdefault("counted_by", current_user.get("username"))
     line_data.setdefault("counted_at", datetime.now(timezone.utc).replace(tzinfo=None))
@@ -685,7 +714,10 @@ async def _process_count_line_op(
         or line_data.get("_id")
         or line_data.get("id"),
     )
-    line_data.setdefault("id", line_data.get("_id") or line_data.get("id") or str(uuid.uuid4()))
+    # L1 fix: Overwrite None/falsy id values instead of using setdefault
+    # (setdefault won't overwrite explicit None)
+    if not line_data.get("id"):
+        line_data["id"] = line_data.get("_id") or str(uuid.uuid4())
 
     if line_data.get("idempotency_key"):
         existing_idempotent = await db.count_lines.find_one(
@@ -703,17 +735,12 @@ async def _process_count_line_op(
         barcode = line_data.get("barcode")
         item_code = line_data.get("item_code")
 
+        # M3 fix: Always await async Motor calls directly
         if barcode:
-            erp_item_res = db.erp_items.find_one({"barcode": barcode})
-            if hasattr(erp_item_res, "__await__"):
-                erp_item_res = await erp_item_res
-            erp_item = erp_item_res
+            erp_item = await db.erp_items.find_one({"barcode": barcode})
 
         if not erp_item and item_code:
-            erp_item_res = db.erp_items.find_one({"item_code": item_code})
-            if hasattr(erp_item_res, "__await__"):
-                erp_item_res = await erp_item_res
-            erp_item = erp_item_res
+            erp_item = await db.erp_items.find_one({"item_code": item_code})
 
         # Calculate variance
         erp_qty = erp_item.get("stock_qty", 0) if erp_item else 0
@@ -725,12 +752,19 @@ async def _process_count_line_op(
         counted_mrp = float(mrp_c)
 
         variance = counted_qty - erp_qty
-        financial_impact = (counted_mrp * counted_qty) - (erp_mrp * counted_qty)
+        # H1 fix: Use erp_qty on the ERP side so quantity variance is reflected
+        financial_impact = (counted_mrp * counted_qty) - (erp_mrp * erp_qty)
 
         # Manually invoke risk flags because line_data is a dict
         # (CountLineCreate expects strict types)
         risk_flags = []
-        variance_percent = (abs(variance) / erp_qty * 100) if erp_qty > 0 else 100
+        # M1 fix: Don't default to 100% for zero-stock items; use 0 if both are 0
+        if erp_qty > 0:
+            variance_percent = abs(variance) / erp_qty * 100
+        elif counted_qty == 0:
+            variance_percent = 0
+        else:
+            variance_percent = 100
         mrp_change_percent = ((counted_mrp - erp_mrp) / erp_mrp * 100) if erp_mrp > 0 else 0
 
         if abs(variance) > 100 or variance_percent > 50:
@@ -823,7 +857,9 @@ async def _process_count_line_op(
         line_data["assigned_to"] = None
         line_data["recount_requested_at"] = None
         line_data["recount_requested_by"] = None
-        line_data["recount_iteration"] = int(existing_duplicate.get("recount_iteration", 0) or 0) + 1
+        line_data["recount_iteration"] = (
+            int(existing_duplicate.get("recount_iteration", 0) or 0) + 1
+        )
         update_payload = dict(line_data)
         update_payload.pop("_id", None)
         await db.count_lines.update_one(

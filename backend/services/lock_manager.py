@@ -54,9 +54,28 @@ class LockManager:
             logger.error(f"Error acquiring rack lock {rack_id}: {str(e)}")
             return False
 
+    # Lua script for atomic compare-and-delete (C4 fix)
+    _RELEASE_SCRIPT = """
+    if redis.call("get", KEYS[1]) == ARGV[1] then
+        return redis.call("del", KEYS[1])
+    else
+        return 0
+    end
+    """
+
+    # Lua script for atomic compare-and-expire (C5 fix)
+    _RENEW_SCRIPT = """
+    if redis.call("get", KEYS[1]) == ARGV[1] then
+        return redis.call("expire", KEYS[1], tonumber(ARGV[2]))
+    else
+        return 0
+    end
+    """
+
     async def release_rack_lock(self, rack_id: str, user_id: str) -> bool:
         """
-        Release rack lock (only if owned by user)
+        Release rack lock atomically (only if owned by user).
+        Uses Lua script to prevent TOCTOU race condition.
 
         Args:
             rack_id: Rack identifier
@@ -68,16 +87,16 @@ class LockManager:
         lock_key = f"rack:lock:{rack_id}"
 
         try:
-            # Check ownership before releasing
-            current_owner = await self.redis.get(lock_key)
+            # C4 fix: Atomic compare-and-delete via Lua script
+            result = await self.redis.eval(self._RELEASE_SCRIPT, 1, lock_key, user_id)
 
-            if current_owner == user_id:
-                await self.redis.delete(lock_key)
-                logger.info(f"✓ Rack lock released: {rack_id} by {user_id}")
+            if result:
+                logger.info(f"Rack lock released: {rack_id} by {user_id}")
                 return True
             else:
+                current_owner = await self.redis.get(lock_key)
                 logger.warning(
-                    f"✗ Cannot release rack {rack_id}: owned by {current_owner}, not {user_id}"
+                    f"Cannot release rack {rack_id}: owned by {current_owner}, not {user_id}"
                 )
                 return False
 
@@ -87,7 +106,8 @@ class LockManager:
 
     async def renew_rack_lock(self, rack_id: str, user_id: str, ttl: int = 60) -> bool:
         """
-        Renew/extend rack lock (heartbeat)
+        Renew/extend rack lock atomically (heartbeat).
+        Uses Lua script to prevent TOCTOU race condition.
 
         Args:
             rack_id: Rack identifier
@@ -100,16 +120,16 @@ class LockManager:
         lock_key = f"rack:lock:{rack_id}"
 
         try:
-            # Check ownership
-            current_owner = await self.redis.get(lock_key)
+            # C5 fix: Atomic compare-and-expire via Lua script
+            result = await self.redis.eval(self._RENEW_SCRIPT, 1, lock_key, user_id, str(ttl))
 
-            if current_owner == user_id:
-                await self.redis.expire(lock_key, ttl)
-                logger.debug(f"✓ Rack lock renewed: {rack_id} by {user_id} (TTL: {ttl}s)")
+            if result:
+                logger.debug(f"Rack lock renewed: {rack_id} by {user_id} (TTL: {ttl}s)")
                 return True
             else:
+                current_owner = await self.redis.get(lock_key)
                 logger.warning(
-                    f"✗ Cannot renew rack {rack_id}: owned by {current_owner}, not {user_id}"
+                    f"Cannot renew rack {rack_id}: owned by {current_owner}, not {user_id}"
                 )
                 return False
 
@@ -199,15 +219,28 @@ class LockManager:
         }
 
         try:
-            # Store session metadata
-            pipeline = await self.redis.pipeline()
+            # H10+MM8 fix: Use Lua script for atomic HSET + EXPIRE with NX guard.
+            # TTL is passed via KEYS[2] (a dedicated slot) to avoid mixing with field args.
+            lua_script = """
+            if redis.call("exists", KEYS[1]) == 1 then
+                return 0
+            end
+            for i = 1, #ARGV, 2 do
+                redis.call("hset", KEYS[1], ARGV[i], ARGV[i+1])
+            end
+            redis.call("expire", KEYS[1], tonumber(KEYS[2]))
+            return 1
+            """
+            args = []
             for field, value in session_data.items():
-                await pipeline.hset(session_key, field, str(value))
-            await pipeline.expire(session_key, ttl)
-            await pipeline.execute()
+                args.extend([field, str(value)])
+            result = await self.redis.eval(lua_script, 2, session_key, str(ttl), *args)
 
-            logger.info(f"✓ Session created: {session_id} for {user_id} on {rack_id}")
-            return True
+            if result:
+                logger.info(f"Session lock created: {session_id} for {user_id} on {rack_id}")
+            else:
+                logger.warning(f"Session lock already exists for {session_id}")
+            return bool(result)
 
         except Exception as e:
             logger.error(f"Error creating session {session_id}: {str(e)}")

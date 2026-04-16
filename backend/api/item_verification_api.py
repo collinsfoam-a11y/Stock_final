@@ -124,7 +124,11 @@ def _render_xlsx_bytes(fieldnames: list[str], rows: list[dict[str, Any]]) -> byt
 
     for row_index, row in enumerate(rows, 2):
         for column_index, field in enumerate(fieldnames, 1):
-            sheet.cell(row=row_index, column=column_index, value=_serialize_export_value(row.get(field, "")))
+            sheet.cell(
+                row=row_index,
+                column=column_index,
+                value=_serialize_export_value(row.get(field, "")),
+            )
 
     output = io.BytesIO()
     workbook.save(output)
@@ -795,7 +799,9 @@ async def export_items_csv(
 
         async def generate_csv_rows():
             output = io.StringIO()
-            writer = csv.DictWriter(output, fieldnames=ITEM_EXPORT_FIELDNAMES, extrasaction="ignore")
+            writer = csv.DictWriter(
+                output, fieldnames=ITEM_EXPORT_FIELDNAMES, extrasaction="ignore"
+            )
             writer.writeheader()
             yield output.getvalue()
             output.seek(0)
@@ -961,7 +967,10 @@ async def _fetch_variance_export_rows(
         filter_query["warehouse"] = {"$regex": warehouse, "$options": "i"}
 
     variances = await (
-        db.item_variances.find(filter_query).sort("verified_at", -1).limit(max_rows).to_list(length=max_rows)
+        db.item_variances.find(filter_query)
+        .sort("verified_at", -1)
+        .limit(max_rows)
+        .to_list(length=max_rows)
     )
     return [_build_erpnext_variance_export_row(variance) for variance in variances]
 
@@ -986,7 +995,9 @@ async def export_variances_csv(
         )
 
         output = io.StringIO()
-        writer = csv.DictWriter(output, fieldnames=VARIANCE_EXPORT_FIELDNAMES, extrasaction="ignore")
+        writer = csv.DictWriter(
+            output, fieldnames=VARIANCE_EXPORT_FIELDNAMES, extrasaction="ignore"
+        )
         writer.writeheader()
         writer.writerows(rows)
 

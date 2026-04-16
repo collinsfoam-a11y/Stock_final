@@ -122,9 +122,7 @@ async def repair_item_names(
         if session_id:
             query["session_id"] = session_id
 
-        cursor = collection.find(query).sort(
-            [("counted_at", 1), ("updated_at", 1), ("_id", 1)]
-        )
+        cursor = collection.find(query).sort([("counted_at", 1), ("updated_at", 1), ("_id", 1)])
 
         async for doc in cursor:
             if limit is not None and stats["scanned"] >= limit:
@@ -199,7 +197,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
 
         target_collections = tuple(
             collection.strip()
-            for collection in (args.collections.split(",") if args.collections else TARGET_COLLECTIONS)
+            for collection in (
+                args.collections.split(",") if args.collections else TARGET_COLLECTIONS
+            )
             if collection.strip()
         )
 

@@ -155,8 +155,13 @@ export async function createOfflineCountLine(
       error: error instanceof Error ? error.message : String(error),
       countLine: finalCountLine._id,
     });
-    // Still return the count line even if persistence failed
-    // The UI can show it, and we can retry persistence later
+    // H14 fix: Propagate the error so callers know persistence failed.
+    // Returning success when data wasn't saved causes silent data loss.
+    throw new Error(
+      `Failed to persist offline count line: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
   }
 
   return finalCountLine as OfflineCountLine;

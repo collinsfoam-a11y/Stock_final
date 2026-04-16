@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 try:
     import zeroconf as _zeroconf_module
+
     _ZEROCONF_MODULE: Optional[ModuleType] = _zeroconf_module
 except ImportError:  # pragma: no cover - depends on optional dependency
     _ZEROCONF_MODULE = None
@@ -72,7 +73,9 @@ class MDNSService:
             loop = asyncio.get_running_loop()
             try:
                 await asyncio.wait_for(
-                    loop.run_in_executor(None, partial(self.zeroconf.unregister_service, self.info)),
+                    loop.run_in_executor(
+                        None, partial(self.zeroconf.unregister_service, self.info)
+                    ),
                     timeout=3.0,
                 )
             except TimeoutError:

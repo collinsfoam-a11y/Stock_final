@@ -362,7 +362,8 @@ class SQLSyncService:
                     for item_code, sql_qty in sql_quantities.items():
                         mongo_qty = mongo_items.get(item_code, 0.0)
 
-                        if sql_qty != mongo_qty:
+                        # M9 fix: Use tolerance-based comparison for floats
+                        if abs(sql_qty - mongo_qty) > 0.001:
                             # Variance found - update MongoDB
                             stats["variances_found"] += 1
                             stats["qty_changes_detected"] += 1  # Backwards-compatible
@@ -629,9 +630,9 @@ class SQLSyncService:
         }
 
         try:
-            # Fetch all items from SQL Server
+            # H13 fix: Run synchronous SQL call in thread pool to avoid blocking the event loop
             logger.info("Starting SQL Server quantity sync...")
-            sql_items = self.sql_connector.get_all_items()
+            sql_items = await asyncio.to_thread(self.sql_connector.get_all_items)
 
             # Batch process items
             batch_size = 100
@@ -711,7 +712,8 @@ class SQLSyncService:
             # "last_verified_at": now, # Removed to distinguish Sync from Verification
         }
 
-        if sql_qty != mongo_qty:
+        # M9 fix: Use tolerance-based comparison for floats
+        if abs(sql_qty - mongo_qty) > 0.001:
             update_fields.update(
                 {
                     "stock_qty": sql_qty,
@@ -753,8 +755,11 @@ class SQLSyncService:
 
         self._last_sync = datetime.now(timezone.utc).replace(tzinfo=None)
         self._sync_stats["successful_syncs"] += 1
-        self._sync_stats["items_synced"] = stats["items_checked"]
-        self._sync_stats["qty_changes_detected"] = stats["qty_changes_detected"]
+        # L5+MM11 fix: Track both cumulative totals and last-run values
+        self._sync_stats["items_synced"] += stats["items_checked"]
+        self._sync_stats["qty_changes_detected"] += stats["qty_changes_detected"]
+        self._sync_stats["last_run_items_synced"] = stats["items_checked"]
+        self._sync_stats["last_run_qty_changes"] = stats["qty_changes_detected"]
         self._sync_stats["last_sync"] = self._last_sync.isoformat()
 
     async def _update_sync_metadata(self, stats: dict[str, Any]) -> None:

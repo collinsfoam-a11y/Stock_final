@@ -30,6 +30,8 @@ export interface PaginatedResponse<T> {
   total_pages: number;
   has_next: boolean;
   has_previous: boolean;
+  /** Backend returns `has_prev` — accept both for compatibility */
+  has_prev?: boolean;
 }
 
 /**

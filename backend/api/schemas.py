@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Generic, Optional, TypeVar, Union
+from typing import Any, Generic, Literal, Optional, TypeVar, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -133,7 +133,7 @@ class UserRegister(BaseModel):
     username: str
     password: str
     full_name: str
-    role: str = "staff"
+    role: Literal["staff", "supervisor", "admin"] = "staff"
     employee_id: Optional[str] = None
     phone: Optional[str] = None
 

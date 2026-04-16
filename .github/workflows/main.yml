@@ -182,7 +182,7 @@ jobs:
 
       - name: Build web
         working-directory: frontend
-        run: npx expo export:web --output-dir dist
+        run: npm run build:web
         env:
           EXPO_PUBLIC_BACKEND_URL: https://api.example.com
 

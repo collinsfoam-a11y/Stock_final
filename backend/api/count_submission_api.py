@@ -48,8 +48,25 @@ async def submit_count_line(
         raise HTTPException(status_code=404, detail="Count line not found")
 
     # Check if already submitted
-    if count_line.get("status") in ["submitted", "approved"]:
+    if count_line.get("status") in ["submitted", "approved", "locked"]:
         raise HTTPException(status_code=400, detail="Count line already submitted")
+
+    # H2 fix: Check parent session status — block submissions on finalized sessions
+    session = await db.sessions.find_one(
+        {
+            "$or": [
+                {"id": count_line.get("session_id")},
+                {"session_id": count_line.get("session_id")},
+            ]
+        }
+    )
+    if session:
+        session_status = str(session.get("status", "")).upper()
+        if session_status in {"COMPLETED", "CLOSED", "CANCELLED"} or session.get("finalized_at"):
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot submit count lines for a finalized session",
+            )
 
     # Get item details for variance calculation - prefer barcode for exact batch identification
     barcode = count_line.get("barcode")
@@ -117,6 +134,14 @@ async def submit_count_line(
 
     # Update count line
     await db.count_lines.update_one({"id": count_id}, {"$set": update_data})
+
+    # H3 fix: Recompute session totals after status change
+    from backend.services.canonical_inventory import recompute_session_totals
+
+    try:
+        await recompute_session_totals(db, count_line.get("session_id", ""))
+    except Exception as e:
+        logger.error(f"Failed to recompute session totals after submission: {e}")
 
     # Log activity
     await db.activity_logs.insert_one(

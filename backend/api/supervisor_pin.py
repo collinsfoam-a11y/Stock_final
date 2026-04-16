@@ -32,6 +32,34 @@ async def verify_supervisor_pin(
     """
     db = get_db()
 
+    # H7 fix: Rate limit PIN attempts per supervisor (max 5 attempts per 5 minutes)
+    from datetime import datetime as dt, timezone as tz
+
+    rate_key = f"pin_attempts:{request.supervisor_username}"
+    attempts_doc = await db.rate_limits.find_one({"_id": rate_key})
+    now = dt.now(tz.utc)
+    window_seconds = 300  # 5 minutes
+    max_attempts = 5
+
+    if attempts_doc:
+        window_start = attempts_doc.get("window_start")
+        attempt_count = attempts_doc.get("count", 0)
+        # MM7 fix: Use datetime for window_start (compatible with MongoDB TTL index)
+        if isinstance(window_start, dt):
+            elapsed = (now - window_start).total_seconds()
+        else:
+            elapsed = window_seconds + 1  # Treat invalid as expired
+        if elapsed < window_seconds and attempt_count >= max_attempts:
+            retry_after = int(window_seconds - elapsed)
+            raise HTTPException(
+                status_code=429,
+                detail=f"Too many PIN attempts. Try again in {retry_after} seconds.",
+                headers={"Retry-After": str(retry_after)},
+            )
+        if elapsed >= window_seconds:
+            # Reset window
+            attempts_doc = None
+
     # 1. Fetch the supervisor user
     supervisor = await db.users.find_one({"username": request.supervisor_username})
     if not supervisor:
@@ -52,7 +80,25 @@ async def verify_supervisor_pin(
 
     if not verify_password(request.pin, stored_pin_hash):
         logger.warning(f"Failed PIN attempt for supervisor {request.supervisor_username}")
+        # Record failed attempt (MM7 fix: use datetime for TTL compatibility)
+        await db.rate_limits.update_one(
+            {"_id": rate_key},
+            {
+                "$inc": {"count": 1},
+                "$setOnInsert": {"window_start": now},
+            },
+            upsert=True,
+        )
+        # Ensure window_start is reset if the doc was just created fresh
+        if not attempts_doc:
+            await db.rate_limits.update_one(
+                {"_id": rate_key},
+                {"$set": {"window_start": now}},
+            )
         raise HTTPException(status_code=401, detail="Invalid PIN")
+
+    # Reset rate limit on success
+    await db.rate_limits.delete_one({"_id": rate_key})
 
     # 4. Log the Activity
     log_service = ActivityLogService(db)

@@ -38,7 +38,9 @@ async def test_generate_stock_summary_short_circuits_when_item_filters_match_not
     db.erp_items.find.return_value = _AsyncCursor([])
 
     def _unexpected_count_line_scan(_query):
-        raise AssertionError("count_lines.find should not be called when filtered ERP item lookup is empty")
+        raise AssertionError(
+            "count_lines.find should not be called when filtered ERP item lookup is empty"
+        )
 
     db.count_lines.find.side_effect = _unexpected_count_line_scan
 
@@ -56,7 +58,9 @@ async def test_generate_variance_report_short_circuits_when_item_filters_match_n
     db.erp_items.find.return_value = _AsyncCursor([])
 
     def _unexpected_count_line_scan(_query):
-        raise AssertionError("count_lines.find should not be called when filtered ERP item lookup is empty")
+        raise AssertionError(
+            "count_lines.find should not be called when filtered ERP item lookup is empty"
+        )
 
     db.count_lines.find.side_effect = _unexpected_count_line_scan
 

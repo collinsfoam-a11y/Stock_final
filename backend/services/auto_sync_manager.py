@@ -261,9 +261,7 @@ class AutoSyncManager:
                 self._last_sync_attempt.isoformat() if self._last_sync_attempt else None
             ),
             "stats": self._stats.copy(),
-            "sync_service_status": (
-                self._sync_service.get_stats() if self._sync_service else None
-            ),
+            "sync_service_status": (self._sync_service.get_stats() if self._sync_service else None),
         }
 
     def get_stats(self) -> dict[str, Any]:

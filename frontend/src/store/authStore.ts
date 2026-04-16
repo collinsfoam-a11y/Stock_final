@@ -583,13 +583,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logoutAll: async (
-    username?: string,
+    _username?: string,
   ): Promise<AuthResult> => {
     set({ isLoading: true });
     try {
-      const response = await apiClient.post("/api/sessions/logout-all", {
-        username,
-      });
+      // Backend uses JWT current_user, no body needed
+      const response = await apiClient.post("/api/sessions/logout-all");
       set({ isLoading: false });
       return { success: response.data.success, message: response.data.message };
     } catch (_error) {
@@ -785,7 +784,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           await get().logout();
         }
       }
-    }, 300000); // 5 minutes instead of 60 seconds
+    }, 45000); // 45 seconds — must be shorter than backend rack lock TTL (60s)
   },
 
   stopHeartbeat: () => {
