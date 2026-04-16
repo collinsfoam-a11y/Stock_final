@@ -1,0 +1,180 @@
+{
+  "tech_stack": [
+    "TypeScript",
+    "React Native + Expo (expo-router, expo start web)",
+    "TanStack React Query",
+    "Zustand",
+    "Axios",
+    "Jest (jest-expo) + Testing Library",
+    "Playwright (available)"
+  ],
+  "features": [
+    {
+      "name": "Routing & Navigation (expo-router)",
+      "description": "File-based routing for staff/supervisor/admin flows and shared screens like login/register/notifications.",
+      "files": [
+        "app/_layout.tsx",
+        "app/index.tsx",
+        "app/login.tsx",
+        "app/register.tsx",
+        "app/notifications.tsx",
+        "app/staff/_layout.tsx",
+        "app/staff/home.tsx",
+        "app/staff/scan.tsx",
+        "app/supervisor/_layout.tsx",
+        "app/supervisor/dashboard.tsx",
+        "app/supervisor/session/[id].tsx",
+        "app/admin/_layout.tsx",
+        "app/admin/dashboard-web.tsx"
+      ]
+    },
+    {
+      "name": "Authentication API Client",
+      "description": "HTTP calls for login/register/token and related auth API helpers.",
+      "files": [
+        "src/services/api/authApi.ts",
+        "src/services/api/index.ts",
+        "src/services/httpClient.ts",
+        "src/services/authUnauthorizedHandler.ts"
+      ]
+    },
+    {
+      "name": "Session Management API Client",
+      "description": "Session CRUD and related endpoints for supervisor/staff workflows.",
+      "files": ["src/services/api/sessionApi.ts", "src/services/api/models.ts"]
+    },
+    {
+      "name": "Item Verification API Client",
+      "description": "Endpoints for verifying items and managing count lines / verification workflow.",
+      "files": [
+        "src/services/api/itemVerificationApi.ts",
+        "src/services/api/models.ts"
+      ]
+    },
+    {
+      "name": "Admin APIs",
+      "description": "Admin endpoints: users, control panel, exports, analytics, and operational dashboards.",
+      "files": [
+        "src/services/api/adminApi.ts",
+        "src/services/api/analyticsApi.ts",
+        "app/admin/control-panel.tsx",
+        "app/admin/dashboard-web.tsx",
+        "app/admin/users.tsx"
+      ]
+    },
+    {
+      "name": "Supervisor Dashboard & Realtime",
+      "description": "Supervisor dashboard UI and realtime updates via WebSocket events and query invalidation.",
+      "files": [
+        "app/supervisor/dashboard.tsx",
+        "app/supervisor/watchtower.tsx",
+        "src/services/websocket.ts",
+        "src/services/queryClient.ts",
+        "src/services/logging.ts"
+      ]
+    },
+    {
+      "name": "Offline Queue & Unified Sync Storage",
+      "description": "Queue offline operations and flush when online, with retry/backoff and conflict handling.",
+      "files": [
+        "src/services/offline/offlineQueue.ts",
+        "src/services/offline/unifiedSyncStorage.ts",
+        "src/services/offline/offlineStorage.ts",
+        "src/services/syncService.ts",
+        "src/services/syncQueue.ts",
+        "src/services/sync/conflictResolution.ts"
+      ]
+    },
+    {
+      "name": "Background Sync",
+      "description": "Background/periodic sync integration for queued operations.",
+      "files": [
+        "src/services/backgroundSync.ts",
+        "src/services/offline/index.ts"
+      ]
+    },
+    {
+      "name": "Network Awareness",
+      "description": "Connectivity detection and network state integration for sync behavior.",
+      "files": ["src/services/networkService.ts", "src/store/networkStore.ts"]
+    },
+    {
+      "name": "Persistent Storage Abstractions",
+      "description": "AsyncStorage and SecureStore wrappers for tokens/settings and other persisted state.",
+      "files": [
+        "src/services/storage/asyncStorageService.ts",
+        "src/services/storage/secureStorage.ts",
+        "src/services/storage/tokenStore.ts",
+        "src/services/storage/index.ts"
+      ]
+    },
+    {
+      "name": "State Management (Zustand Stores)",
+      "description": "Client-side state stores for auth, settings, notifications, scanning, filters and offline mode.",
+      "files": [
+        "src/store/authStore.ts",
+        "src/store/settingsStore.ts",
+        "src/store/notificationStore.ts",
+        "src/store/scanSessionStore.ts",
+        "src/store/filterStore.ts",
+        "src/store/offlineStore.ts",
+        "src/store/index.ts"
+      ]
+    },
+    {
+      "name": "Theming",
+      "description": "Theme context/provider and theme utilities used by UI components.",
+      "files": [
+        "src/context/ThemeContext.tsx",
+        "src/context/ThemeProvider.tsx",
+        "src/services/utils/themeService.ts",
+        "src/services/themeService.ts"
+      ]
+    },
+    {
+      "name": "UI Component Library",
+      "description": "Reusable UI components used throughout the app (buttons, cards, headers, modals, etc.).",
+      "files": [
+        "src/components/ui/index.ts",
+        "src/components/ui/ModernHeader.tsx",
+        "src/components/ui/ModernCard.tsx",
+        "src/components/ui/ModernButton.tsx",
+        "src/components/ui/Modal.tsx",
+        "src/components/ui/SpeedDialMenu.tsx"
+      ]
+    },
+    {
+      "name": "Scanning Workflow",
+      "description": "Staff scanning screens and utilities for deduplication and scan feedback.",
+      "files": [
+        "app/staff/scan.tsx",
+        "app/staff/serial-scanner.tsx",
+        "src/services/scanDeduplicationService.ts",
+        "src/components/scan/LocationVerificationSection.tsx"
+      ]
+    },
+    {
+      "name": "Monitoring & Diagnostics",
+      "description": "Performance monitoring and self-test utilities for diagnosing runtime issues.",
+      "files": [
+        "src/services/monitoring/performanceService.ts",
+        "src/services/monitoring/databaseStatusService.ts",
+        "src/services/selfTestService.tsx",
+        "app/debug.tsx"
+      ]
+    },
+    {
+      "name": "Testing Setup (Unit/Component)",
+      "description": "Jest + Testing Library configuration and representative tests for services and screens.",
+      "files": [
+        "jest.config.js",
+        "jest.setup.js",
+        "jest.polyfills.js",
+        "src/services/__tests__/api.test.ts",
+        "src/services/__tests__/storage.test.ts",
+        "__tests__/login.test.tsx",
+        "__tests__/home.test.tsx"
+      ]
+    }
+  ]
+}

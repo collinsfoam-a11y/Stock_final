@@ -1,0 +1,980 @@
+"""
+Batch Sync API - High-performance batch synchronization
+Handles offline queue sync with conflict detection and retry logic
+and preserves backward compatibility with legacy offline payloads.
+"""
+
+import logging
+import re
+import time
+import uuid
+from copy import deepcopy
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+from bson import ObjectId
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, ConfigDict, Field
+
+from backend.api.schemas import Session
+from backend.auth.dependencies import get_current_user_async as get_current_user
+from backend.db.runtime import get_db
+from backend.middleware.security import batch_rate_limiter
+from backend.services.canonical_inventory import (
+    can_reuse_rejected_count_line,
+    extract_document_id,
+    find_duplicate_count_line,
+    find_session,
+    recompute_session_totals,
+)
+from backend.services.circuit_breaker import get_circuit_breaker
+from backend.services.lock_manager import LockManager, get_lock_manager
+from backend.services.redis_service import get_redis
+from backend.services.sync_conflicts_service import SyncConflictsService
+
+logger = logging.getLogger(__name__)
+
+
+class LegacySyncOperation(BaseModel):
+    """Legacy offline queue operation structure"""
+
+    id: str
+    type: str
+    data: dict[str, Any]
+    timestamp: Optional[str] = None
+
+    model_config = ConfigDict(extra="allow")
+
+
+router = APIRouter(prefix="/api/sync", tags=["Sync"])
+
+
+# Request/Response Models
+
+
+class SyncRecord(BaseModel):
+    """Single record to sync"""
+
+    client_record_id: str = Field(..., description="Unique client-side record ID")
+    session_id: str = Field(..., description="Session ID")
+    rack_id: Optional[str] = Field(None, description="Rack ID")
+    floor: Optional[str] = Field(None, description="Floor")
+    item_code: str = Field(..., description="Item code")
+    verified_qty: float = Field(..., description="Verified quantity")
+    damaged_qty: float = Field(0, description="Damage quantity")
+    serial_numbers: list[str] = Field(default_factory=list, description="Serial numbers")
+    mfg_date: Optional[str] = Field(None, description="Manufacturing date")
+    mrp: Optional[float] = Field(None, description="MRP")
+    uom: Optional[str] = Field(None, description="Unit of measure")
+    category: Optional[str] = Field(None, description="Category")
+    subcategory: Optional[str] = Field(None, description="Subcategory")
+    item_condition: Optional[str] = Field(None, description="Item condition")
+    evidence_photos: list[str] = Field(default_factory=list, description="Photo URLs")
+    status: str = Field("finalized", description="Record status (partial/finalized)")
+    created_at: str = Field(..., description="Client creation timestamp")
+    updated_at: str = Field(..., description="Client update timestamp")
+
+
+class BatchSyncRequest(BaseModel):
+    """Batch sync request supporting modern records and legacy operations"""
+
+    records: list[SyncRecord] = Field(
+        default_factory=list, description="Structured records to sync"
+    )
+    operations: list[LegacySyncOperation] = Field(
+        default_factory=list,
+        description="Legacy operations array used by earlier clients",
+    )
+    batch_id: Optional[str] = Field(None, description="Client batch ID for tracking")
+
+    model_config = ConfigDict(extra="ignore")
+
+
+class SyncConflict(BaseModel):
+    """Sync conflict details"""
+
+    client_record_id: str
+    conflict_type: str  # duplicate_serial, invalid_data, lock_conflict, etc.
+    message: str
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class SyncError(BaseModel):
+    """Sync error details"""
+
+    client_record_id: str
+    error_type: str
+    message: str
+
+
+class SyncResult(BaseModel):
+    """Per-record sync result for backward compatibility"""
+
+    id: str = Field(..., description="Client record identifier")
+    success: bool = Field(..., description="Whether the record synced successfully")
+    message: Optional[str] = Field(
+        None, description="Optional error or conflict message for the record"
+    )
+
+
+class BatchSyncResponse(BaseModel):
+    """Batch sync response"""
+
+    ok: list[str] = Field(default_factory=list, description="Successfully synced record IDs")
+    conflicts: list[SyncConflict] = Field(
+        default_factory=list, description="Records with conflicts"
+    )
+    errors: list[SyncError] = Field(default_factory=list, description="Failed records")
+    batch_id: Optional[str] = Field(None, description="Batch ID from request")
+    processing_time_ms: float = Field(..., description="Server processing time")
+    total_records: int = Field(..., description="Total records in batch")
+    results: list[SyncResult] = Field(
+        default_factory=list,
+        description="Backward compatible per-record results (id/success/message)",
+    )
+    processed_count: Optional[int] = Field(
+        None, description="Legacy summary: total operations processed"
+    )
+    success_count: Optional[int] = Field(None, description="Legacy summary: successful operations")
+    failed_count: Optional[int] = Field(None, description="Legacy summary: failed operations")
+
+
+# Sync Logic
+
+
+async def validate_record(
+    record: SyncRecord,
+    db,
+    lock_manager: LockManager,
+    sync_service: Optional[SyncConflictsService] = None,
+    user_id: Optional[str] = None,
+) -> Optional[SyncConflict]:
+    """
+    Validate a single record before syncing
+
+    Returns:
+        SyncConflict if validation fails, None if valid
+    """
+    # Check for duplicate serial numbers
+    if record.serial_numbers:
+        for serial in record.serial_numbers:
+            existing = await db.item_serials.find_one({"serial_number": serial})
+            if existing and existing.get("client_record_id") != record.client_record_id:
+                conflict_id = None
+                if sync_service and user_id:
+                    # Convert ObjectIds in existing to strings for comparison
+                    server_data = {
+                        k: str(v) if isinstance(v, (ObjectId, uuid.UUID)) else v
+                        for k, v in existing.items()
+                        if k != "_id"
+                    }
+
+                    conflict_id = await sync_service.detect_conflict(
+                        entity_type="item_serial",
+                        entity_id=str(existing.get("_id")),
+                        local_data=record.model_dump(),
+                        server_data=server_data,
+                        user=user_id,
+                        session_id=record.session_id,
+                    )
+
+                return SyncConflict(
+                    client_record_id=record.client_record_id,
+                    conflict_type="duplicate_serial",
+                    message=f"Serial number '{serial}' already exists",
+                    details={
+                        "serial": serial,
+                        "existing_record": str(existing.get("_id")),
+                        "conflict_id": conflict_id,
+                    },
+                )
+
+    # Validate damage qty <= verified qty
+    if record.damaged_qty > record.verified_qty:
+        return SyncConflict(
+            client_record_id=record.client_record_id,
+            conflict_type="invalid_quantity",
+            message="Damage quantity cannot exceed verified quantity",
+            details={
+                "verified_qty": record.verified_qty,
+                "damaged_qty": record.damaged_qty,
+            },
+        )
+
+    # Check rack lock (if rack_id provided)
+    if record.rack_id:
+        owner = await lock_manager.get_rack_lock_owner(record.rack_id)
+        if owner and owner != record.session_id:
+            return SyncConflict(
+                client_record_id=record.client_record_id,
+                conflict_type="rack_locked",
+                message=f"Rack {record.rack_id} is locked by another session",
+                details={"rack_id": record.rack_id, "owner": owner},
+            )
+
+    return None
+
+
+async def sync_single_record(record: SyncRecord, db, user_id: str) -> tuple[bool, Optional[str]]:
+    """
+    Sync a single record to database
+
+    Returns:
+        (success: bool, error_message: Optional[str])
+    """
+    try:
+        # C2+MM2 fix: Check session status before writing (allowlist approach matching legacy path)
+        session = await db.sessions.find_one(
+            {"$or": [{"id": record.session_id}, {"session_id": record.session_id}]}
+        )
+        if session:
+            session_status = str(session.get("status", "")).upper()
+            if session.get("finalized_at"):
+                return (
+                    False,
+                    f"Session {record.session_id} is finalized and cannot accept new records",
+                )
+            allowed = {"OPEN", "ACTIVE"}
+            # Allow RECONCILE sessions if reconciled_at is set
+            if session_status == "RECONCILE" or (
+                session_status == "ACTIVE" and session.get("reconciled_at")
+            ):
+                pass  # allowed
+            elif session_status not in allowed:
+                return (
+                    False,
+                    f"Session {record.session_id} is {session_status} and cannot accept new records",
+                )
+
+        status_normalized = (record.status or "").strip().lower()
+        is_finalized = status_normalized == "finalized"
+        # Prepare document
+        doc = {
+            "id": record.client_record_id,
+            "client_record_id": record.client_record_id,
+            "idempotency_key": record.client_record_id,
+            "session_id": record.session_id,
+            "rack_no": record.rack_id,
+            "floor_no": record.floor,
+            "item_code": record.item_code,
+            "counted_qty": record.verified_qty,
+            "damaged_qty": record.damaged_qty,
+            "serial_numbers": record.serial_numbers,
+            "manufacturing_date": record.mfg_date,
+            "mrp": record.mrp,
+            "uom": record.uom,
+            "category": record.category,
+            "subcategory": record.subcategory,
+            "item_condition": record.item_condition,
+            "evidence_photos": record.evidence_photos,
+            "status": "locked" if is_finalized else "pending",
+            "approval_status": "APPROVED" if is_finalized else "PENDING",
+            "verified": is_finalized,
+            "verified_by": user_id if is_finalized else None,
+            "verified_at": record.updated_at if is_finalized else None,
+            "finalized_by": user_id if is_finalized else None,
+            "finalized_at": record.updated_at if is_finalized else None,
+            "counted_at": record.created_at,
+            "updated_at": record.updated_at,
+            "sync_status": "synced",
+            "synced_by": user_id,
+            "synced_at": time.time(),
+        }
+
+        # Upsert record
+        await db.count_lines.update_one(
+            {
+                "session_id": record.session_id,
+                "idempotency_key": record.client_record_id,
+            },
+            {"$set": doc},
+            upsert=True,
+        )
+        await recompute_session_totals(db, record.session_id)
+
+        # Insert serial numbers
+        if record.serial_numbers:
+            serial_docs = [
+                {
+                    "serial_number": serial,
+                    "item_code": record.item_code,
+                    "session_id": record.session_id,
+                    "rack_id": record.rack_id,
+                    "client_record_id": record.client_record_id,
+                    "created_at": time.time(),
+                }
+                for serial in record.serial_numbers
+            ]
+
+            # Insert with ignore duplicates
+            try:
+                await db.item_serials.insert_many(serial_docs, ordered=False)
+            except Exception as e:
+                # Ignore duplicate key errors
+                if "duplicate key" not in str(e).lower():
+                    raise
+
+        return True, None
+
+    except Exception as e:
+        logger.error(f"Error syncing record {record.client_record_id}: {str(e)}")
+        return False, str(e)
+
+
+@router.post("/batch", response_model=BatchSyncResponse)
+async def sync_batch(
+    request: BatchSyncRequest,
+    current_user: dict[str, Any] = Depends(get_current_user),
+    redis_service=Depends(get_redis),
+) -> BatchSyncResponse:
+    """
+    Batch sync endpoint - sync multiple records in one request
+
+    Features:
+    - Rate limiting: 10 requests per minute per user
+    - Validates all records before syncing
+    - Detects conflicts (duplicate serials, invalid data, etc.)
+    - Uses circuit breaker for resilience
+    - Returns detailed success/conflict/error breakdown
+    """
+    start_time = time.time()
+
+    # Rate limiting check
+    user_id = (
+        current_user.get("username")
+        or current_user.get("user_id")
+        or current_user.get("id")
+        or str(current_user.get("_id", "unknown"))
+    )
+    is_allowed, rate_info = batch_rate_limiter.is_allowed(user_id)
+    if not is_allowed:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "message": "Rate limit exceeded for batch sync",
+                "retry_after": rate_info.get("retry_after", 60),
+                "limit": rate_info.get("limit", 10),
+            },
+            headers={"Retry-After": str(rate_info.get("retry_after", 60))},
+        )
+
+    # Legacy payloads only provided an operations array
+    if not request.records and request.operations:
+        return await _process_legacy_operations(
+            operations=request.operations,
+            batch_id=request.batch_id,
+            current_user=current_user,
+            start_time=start_time,
+        )
+
+    if not request.records:
+        raise HTTPException(
+            status_code=400,
+            detail="No records provided for batch sync",
+        )
+
+    # Get database
+    db = get_db()
+
+    # Get lock manager
+    lock_manager = get_lock_manager(redis_service)
+
+    # Get circuit breaker
+    from backend.services.circuit_breaker import CircuitBreakerConfig
+
+    circuit_breaker = await get_circuit_breaker(
+        "batch_sync",
+        config=CircuitBreakerConfig(
+            failure_threshold=5,
+            success_threshold=3,
+            timeout_seconds=30,
+            half_open_max_calls=2,
+        ),
+    )
+
+    # Initialize Sync Service
+    sync_service = SyncConflictsService(db) if db else None
+
+    # Check circuit breaker
+    if not await circuit_breaker.acquire():
+        raise HTTPException(
+            status_code=503,
+            detail="Sync service temporarily unavailable. Please try again later.",
+        )
+
+    ok_records = []
+    conflicts = []
+    errors = []
+
+    try:
+        # Validate all records first
+        for record in request.records:
+            # Check idempotency first using client_record_id as operation_id
+            existing_op = await db.idempotency_operations.find_one(
+                {"operation_id": record.client_record_id}
+            )
+            if existing_op:
+                ok_records.append(record.client_record_id)
+                continue
+
+            conflict = await validate_record(record, db, lock_manager, sync_service, user_id)
+            if conflict:
+                conflicts.append(conflict)
+            else:
+                # Sync valid record
+                success, error_msg = await sync_single_record(record, db, user_id)
+
+                if success:
+                    # Record idempotency
+                    await db.idempotency_operations.insert_one(
+                        {
+                            "operation_id": record.client_record_id,
+                            "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                        }
+                    )
+                    ok_records.append(record.client_record_id)
+                else:
+                    errors.append(
+                        SyncError(
+                            client_record_id=record.client_record_id,
+                            error_type="sync_error",
+                            message=error_msg or "Unknown error",
+                        )
+                    )
+
+        # Record success in circuit breaker
+        await circuit_breaker.record_success()
+
+    except Exception as e:
+        # Record failure in circuit breaker
+        await circuit_breaker.record_failure()
+        logger.error(f"Batch sync failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Batch sync failed: {str(e)}")
+
+    processing_time = (time.time() - start_time) * 1000
+
+    logger.info(
+        f"Batch sync completed: {len(ok_records)} ok, "
+        f"{len(conflicts)} conflicts, {len(errors)} errors "
+        f"({processing_time:.2f}ms)"
+    )
+
+    # Build per-record results for legacy clients that expect flat success flags
+    results = [SyncResult(id=record_id, success=True, message=None) for record_id in ok_records]
+
+    results.extend(
+        SyncResult(id=conflict.client_record_id, success=False, message=conflict.message)
+        for conflict in conflicts
+    )
+
+    results.extend(
+        SyncResult(id=error.client_record_id, success=False, message=error.message)
+        for error in errors
+    )
+
+    return BatchSyncResponse(
+        ok=ok_records,
+        conflicts=conflicts,
+        errors=errors,
+        batch_id=request.batch_id,
+        processing_time_ms=processing_time,
+        total_records=len(request.records),
+        results=results,
+        processed_count=len(request.records),
+        success_count=len(ok_records),
+        failed_count=len(request.records) - len(ok_records),
+    )
+
+
+@router.post("/heartbeat")
+async def session_heartbeat(
+    session_id: str,
+    current_user: dict[str, Any] = Depends(get_current_user),
+    redis_service=Depends(get_redis),
+    rack_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """
+    Session heartbeat - maintain rack lock and user presence
+
+    Should be called every 20-30 seconds by active clients
+    """
+    lock_manager = get_lock_manager(redis_service)
+    user_id = current_user["username"]
+
+    # Update user heartbeat
+    await lock_manager.update_user_heartbeat(user_id, ttl=90)
+
+    # Renew rack lock if provided
+    rack_renewed = False
+    if rack_id:
+        rack_renewed = await lock_manager.renew_rack_lock(rack_id, session_id, ttl=60)
+
+    return {
+        "success": True,
+        "session_id": session_id,
+        "user_id": user_id,
+        "rack_renewed": rack_renewed,
+        "timestamp": time.time(),
+    }
+
+
+async def _process_session_op(
+    session_data: dict[str, Any],
+    current_user: dict[str, Any],
+    id_mapping: dict[str, str],
+    db: Any,
+) -> str:
+    """Process a session sync operation."""
+    operation_raw = session_data.get("operation")
+    operation = operation_raw.strip().lower() if isinstance(operation_raw, str) else None
+
+    def _resolve_session_id(value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        key = str(value)
+        return id_mapping.get(key, key)
+
+    # Offline queue can contain session mutations (close/reconcile) besides session creation.
+    # Those payloads will not include warehouse and should be handled explicitly here.
+    if operation:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+        if operation in {"bulk_close", "bulk_reconcile"}:
+            if current_user.get("role") not in {"supervisor", "admin"}:
+                raise ValueError("Insufficient permissions for bulk session operation")
+
+            raw_ids = (
+                session_data.get("sessionIds")
+                or session_data.get("session_ids")
+                or session_data.get("session_ids".upper())  # defensive
+            )
+            if not isinstance(raw_ids, list) or not raw_ids:
+                raise ValueError("Missing sessionIds for bulk session operation")
+
+            resolved_ids = [
+                resolved
+                for value in raw_ids
+                for resolved in [_resolve_session_id(value)]
+                if resolved
+            ]
+
+            updated = 0
+            for session_id in resolved_ids:
+                if operation == "bulk_close":
+                    result = await db.sessions.update_one(
+                        {"id": session_id},
+                        {"$set": {"status": "CLOSED", "closed_at": now, "ended_at": now}},
+                    )
+                else:
+                    # M2 fix: Set status to RECONCILE (not ACTIVE) for consistency
+                    result = await db.sessions.update_one(
+                        {"id": session_id},
+                        {"$set": {"status": "RECONCILE", "reconciled_at": now}},
+                    )
+                if getattr(result, "modified_count", 0) > 0:
+                    updated += 1
+
+            return f"Bulk session operation '{operation}' applied (updated={updated})"
+
+        if operation in {"close", "reconcile"}:
+            raw_session_id = (
+                session_data.get("sessionId")
+                or session_data.get("session_id")
+                or session_data.get("id")
+            )
+            resolved_session_id = _resolve_session_id(raw_session_id)
+            if not resolved_session_id:
+                raise ValueError("Missing sessionId for session operation")
+
+            session = await db.sessions.find_one({"id": resolved_session_id})
+            if not session:
+                raise ValueError("Session not found")
+
+            # Staff can only mutate their own session; supervisors/admin can mutate any.
+            if current_user.get("role") not in {"supervisor", "admin"} and session.get(
+                "staff_user"
+            ) != current_user.get("username"):
+                raise ValueError("Not authorized to modify this session")
+
+            if operation == "close":
+                await db.sessions.update_one(
+                    {"id": resolved_session_id},
+                    {"$set": {"status": "CLOSED", "closed_at": now, "ended_at": now}},
+                )
+            else:
+                # M2 fix: Set status to RECONCILE for consistency
+                await db.sessions.update_one(
+                    {"id": resolved_session_id},
+                    {"$set": {"status": "RECONCILE", "reconciled_at": now}},
+                )
+
+            return f"Session operation '{operation}' applied"
+
+    warehouse = (session_data.get("warehouse") or "").strip()
+    if not warehouse:
+        raise ValueError("Missing warehouse for session operation")
+
+    staff_user = current_user.get("username", "unknown_user")
+    staff_name = current_user.get("full_name") or staff_user
+
+    offline_id = session_data.get("session_id") or session_data.get("id")
+    if offline_id:
+        existing_by_offline = await db.sessions.find_one({"offline_id": str(offline_id)})
+        if existing_by_offline:
+            session_id = existing_by_offline.get("id") or str(existing_by_offline.get("_id"))
+            id_mapping[str(offline_id)] = session_id
+            return "Session already synced"
+
+    existing_session = await db.sessions.find_one(
+        {
+            "staff_user": staff_user,
+            "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]},
+            "warehouse": {"$regex": f"^{re.escape(warehouse)}$", "$options": "i"},
+        }
+    )
+    if existing_session:
+        session_id = existing_session.get("id") or str(existing_session.get("_id"))
+        if offline_id:
+            id_mapping[str(offline_id)] = session_id
+            await db.sessions.update_one(
+                {"id": session_id},
+                {"$set": {"offline_id": str(offline_id), "created_offline": True}},
+            )
+        return "Session already exists"
+
+    raw_type = session_data.get("type")
+    normalized_type = raw_type.strip().upper() if isinstance(raw_type, str) else "STANDARD"
+    if normalized_type not in {"STANDARD", "BLIND", "STRICT"}:
+        normalized_type = "STANDARD"
+
+    session = Session(
+        warehouse=warehouse,
+        staff_user=staff_user,
+        staff_name=staff_name,
+        status=session_data.get("status", "OPEN"),
+        type=normalized_type,
+    )
+
+    session_doc = session.model_dump()
+    if offline_id:
+        session_doc["offline_id"] = offline_id
+        id_mapping[str(offline_id)] = session.id
+
+    session_doc.update(
+        {"created_offline": True, "synced_at": datetime.now(timezone.utc).replace(tzinfo=None)}
+    )
+    await db.sessions.insert_one(session_doc)
+    return "Session synced"
+
+
+async def _process_count_line_op(
+    line_data: dict[str, Any],
+    current_user: dict[str, Any],
+    id_mapping: dict[str, str],
+    db: Any,
+) -> str:
+    """Process a count_line sync operation."""
+    temp_session_id = line_data.get("session_id")
+    if temp_session_id is not None:
+        lookup_key = str(temp_session_id)
+        if lookup_key in id_mapping:
+            line_data["session_id"] = id_mapping[lookup_key]
+
+    session_id = str(line_data.get("session_id") or "")
+    if not session_id:
+        raise ValueError("Missing session_id for count line operation")
+
+    session = await find_session(db, session_id)
+    if not session:
+        raise ValueError("Session not found for count line operation")
+    if session.get("finalized_at") or str(session.get("status", "")).upper() in {
+        "COMPLETED",
+        "CLOSED",
+    }:
+        raise ValueError("Session is finalized and cannot accept offline counts")
+    if str(session.get("status", "")).upper() not in {"OPEN", "ACTIVE"}:
+        # Allow RECONCILE sessions if they have reconciled_at set
+        # (the schema normalizer stores RECONCILE as ACTIVE + reconciled_at)
+        if not session.get("reconciled_at"):
+            raise ValueError("Session is not active")
+
+    line_data.setdefault("counted_by", current_user.get("username"))
+    line_data.setdefault("counted_at", datetime.now(timezone.utc).replace(tzinfo=None))
+    line_data.setdefault("synced_at", datetime.now(timezone.utc).replace(tzinfo=None))
+    line_data.setdefault("created_by", line_data.get("counted_by"))
+    line_data.setdefault("verified", False)
+    audit_metadata = line_data.get("audit")
+    audit_idempotency_key = (
+        audit_metadata.get("idempotency_key") if isinstance(audit_metadata, dict) else None
+    )
+    line_data.setdefault(
+        "idempotency_key",
+        audit_idempotency_key
+        or line_data.get("idempotency_key")
+        or line_data.get("_id")
+        or line_data.get("id"),
+    )
+    # L1 fix: Overwrite None/falsy id values instead of using setdefault
+    # (setdefault won't overwrite explicit None)
+    if not line_data.get("id"):
+        line_data["id"] = line_data.get("_id") or str(uuid.uuid4())
+
+    if line_data.get("idempotency_key"):
+        existing_idempotent = await db.count_lines.find_one(
+            {
+                "session_id": session_id,
+                "idempotency_key": line_data["idempotency_key"],
+            }
+        )
+        if existing_idempotent:
+            return "Count line already synced"
+
+    # Calculate missing backend fields like variance and risk_flags for offline counts
+    try:
+        erp_item = None
+        barcode = line_data.get("barcode")
+        item_code = line_data.get("item_code")
+
+        # M3 fix: Always await async Motor calls directly
+        if barcode:
+            erp_item = await db.erp_items.find_one({"barcode": barcode})
+
+        if not erp_item and item_code:
+            erp_item = await db.erp_items.find_one({"item_code": item_code})
+
+        # Calculate variance
+        erp_qty = erp_item.get("stock_qty", 0) if erp_item else 0
+        erp_mrp = erp_item.get("mrp", 0.0) if erp_item else 0.0
+
+        counted_qty = float(line_data.get("counted_qty", 0.0))
+        # Frontend might send mrp_counted or counted_mrp
+        mrp_c = line_data.get("mrp_counted") or line_data.get("counted_mrp") or erp_mrp
+        counted_mrp = float(mrp_c)
+
+        variance = counted_qty - erp_qty
+        # H1 fix: Use erp_qty on the ERP side so quantity variance is reflected
+        financial_impact = (counted_mrp * counted_qty) - (erp_mrp * erp_qty)
+
+        # Manually invoke risk flags because line_data is a dict
+        # (CountLineCreate expects strict types)
+        risk_flags = []
+        # M1 fix: Don't default to 100% for zero-stock items; use 0 if both are 0
+        if erp_qty > 0:
+            variance_percent = abs(variance) / erp_qty * 100
+        elif counted_qty == 0:
+            variance_percent = 0
+        else:
+            variance_percent = 100
+        mrp_change_percent = ((counted_mrp - erp_mrp) / erp_mrp * 100) if erp_mrp > 0 else 0
+
+        if abs(variance) > 100 or variance_percent > 50:
+            risk_flags.append("LARGE_VARIANCE")
+        if mrp_change_percent < -20:
+            risk_flags.append("MRP_REDUCED_SIGNIFICANTLY")
+        if erp_mrp > 10000 and variance_percent > 5:
+            risk_flags.append("HIGH_VALUE_VARIANCE")
+
+        has_serials = bool(line_data.get("serial_numbers"))
+        has_serials = has_serials or bool(line_data.get("serial_entries"))
+        if erp_mrp > 5000 and not has_serials:
+            risk_flags.append("SERIAL_MISSING_HIGH_VALUE")
+
+        has_reason = bool(line_data.get("correction_reason")) or bool(
+            line_data.get("variance_reason")
+        )
+        if abs(variance) > 0 and not has_reason:
+            risk_flags.append("MISSING_CORRECTION_REASON")
+
+        if abs(mrp_change_percent) > 5 and not has_reason:
+            risk_flags.append("MRP_CHANGE_WITHOUT_REASON")
+
+        photo_required = (
+            abs(variance) > 100
+            or variance_percent > 50
+            or abs(mrp_change_percent) > 20
+            or erp_mrp > 10000
+        )
+        has_photo = bool(line_data.get("photo_base64")) or bool(line_data.get("photo_proofs"))
+        if photo_required and not has_photo:
+            risk_flags.append("PHOTO_PROOF_REQUIRED")
+
+        # Check for misplacements
+        is_misplaced = False
+        if erp_item:
+            found_floor = (line_data.get("floor_no") or "").strip().upper()
+            found_rack = (line_data.get("rack_no") or "").strip().upper()
+            expected_floor = (erp_item.get("floor") or "").strip().upper()
+            expected_rack = (erp_item.get("rack") or "").strip().upper()
+            if expected_floor or expected_rack:
+                if (found_floor and expected_floor and found_floor != expected_floor) or (
+                    found_rack and expected_rack and found_rack != expected_rack
+                ):
+                    is_misplaced = True
+                    risk_flags.append("MISPLACED_ITEM")
+                    line_data["expected_location"] = f"{expected_floor}/{expected_rack}"
+                    line_data["found_location"] = f"{found_floor}/{found_rack}"
+                    line_data["relocation_status"] = "PENDING"
+
+        line_data["variance"] = variance
+        line_data["erp_qty"] = erp_qty
+        line_data["mrp_erp"] = erp_mrp
+        line_data["mrp_counted"] = counted_mrp
+        line_data["financial_impact"] = financial_impact
+        # To avoid duplicating risk flags if sent by client
+        existing_flags = set(line_data.get("risk_flags", []))
+        existing_flags.update(risk_flags)
+        line_data["risk_flags"] = list(existing_flags)
+        line_data["is_misplaced"] = line_data.get("is_misplaced", False) or is_misplaced
+
+        # Approval logic
+        if line_data["risk_flags"] and line_data.get("approval_status") not in [
+            "APPROVED",
+            "REJECTED",
+        ]:
+            line_data["approval_status"] = "NEEDS_REVIEW"
+        elif not line_data.get("approval_status"):
+            line_data["approval_status"] = "PENDING"
+
+    except Exception as e:
+        logger.error(f"Failed to calculate missing stats for offline count: {e}")
+        line_data.setdefault("approval_status", "PENDING")
+
+    line_data.setdefault("status", "pending")
+
+    existing_duplicate = await find_duplicate_count_line(
+        db,
+        line_data,
+    )
+    if existing_duplicate and can_reuse_rejected_count_line(existing_duplicate, line_data):
+        line_data["id"] = extract_document_id(existing_duplicate) or line_data["id"]
+        line_data["status"] = "pending"
+        line_data["approval_status"] = line_data.get("approval_status") or "PENDING"
+        line_data["verified"] = False
+        line_data["verified_by"] = None
+        line_data["verified_at"] = None
+        line_data["rejected_by"] = None
+        line_data["rejected_at"] = None
+        line_data["assigned_to"] = None
+        line_data["recount_requested_at"] = None
+        line_data["recount_requested_by"] = None
+        line_data["recount_iteration"] = (
+            int(existing_duplicate.get("recount_iteration", 0) or 0) + 1
+        )
+        update_payload = dict(line_data)
+        update_payload.pop("_id", None)
+        await db.count_lines.update_one(
+            {"_id": existing_duplicate["_id"]}, {"$set": update_payload}
+        )
+        await recompute_session_totals(db, session_id)
+        return "Rejected count line updated through explicit recount sync"
+
+    if existing_duplicate:
+        raise ValueError(
+            "Duplicate Scan: This item has already been counted in this specific location (Floor/Rack)."
+        )
+
+    await db.count_lines.insert_one(line_data)
+    await recompute_session_totals(db, session_id)
+
+    return "Count line synced with canonical duplicate validation"
+
+
+async def _process_unknown_item_op(
+    item_data: dict[str, Any],
+    current_user: dict[str, Any],
+    id_mapping: dict[str, str],
+    db: Any,
+) -> str:
+    """Process an unknown_item sync operation."""
+    temp_session_id = item_data.get("session_id")
+    if temp_session_id is not None:
+        lookup_key = str(temp_session_id)
+        if lookup_key in id_mapping:
+            item_data["session_id"] = id_mapping[lookup_key]
+
+    item_data.setdefault("reported_by", current_user.get("username"))
+    item_data.setdefault("reported_at", datetime.now(timezone.utc).replace(tzinfo=None))
+    item_data.setdefault("synced_at", datetime.now(timezone.utc).replace(tzinfo=None))
+    await db.unknown_items.insert_one(item_data)
+    return "Unknown item synced"
+
+
+# Operation type → handler mapping
+_LEGACY_OP_HANDLERS: dict[str, Any] = {
+    "session": _process_session_op,
+    "count_line": _process_count_line_op,
+    "unknown_item": _process_unknown_item_op,
+}
+
+
+async def _process_legacy_operations(
+    operations: list[LegacySyncOperation],
+    batch_id: Optional[str],
+    current_user: dict[str, Any],
+    start_time: float,
+) -> BatchSyncResponse:
+    """Handle legacy offline queue operations payloads."""
+    db = get_db()
+
+    id_mapping: dict[str, str] = {}
+    results: list[SyncResult] = []
+    ok_ids: list[str] = []
+    error_entries: list[SyncError] = []
+
+    ordered_ops = sorted(operations, key=lambda op: op.timestamp or "")
+
+    for op in ordered_ops:
+        success = False
+        message: Optional[str] = None
+
+        try:
+            # Check idempotency
+            existing_op = await db.idempotency_operations.find_one({"operation_id": op.id})
+            if existing_op:
+                success = True
+                message = "Already processed (idempotency)"
+            else:
+                handler = _LEGACY_OP_HANDLERS.get(op.type)
+                if handler:
+                    data = deepcopy(op.data)
+                    message = await handler(data, current_user, id_mapping, db)
+                    success = True
+                    # Record idempotency
+                    await db.idempotency_operations.insert_one(
+                        {
+                            "operation_id": op.id,
+                            "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                        }
+                    )
+                else:
+                    message = f"Unknown operation type: {op.type}"
+        except Exception as exc:
+            logger.error(f"Legacy sync operation failed ({op.id}): {exc}")
+            message = str(exc)
+
+        results.append(SyncResult(id=op.id, success=success, message=message))
+        if success:
+            ok_ids.append(op.id)
+        else:
+            error_entries.append(
+                SyncError(
+                    client_record_id=op.id,
+                    error_type="legacy_sync_error",
+                    message=message or "Unknown legacy sync error",
+                )
+            )
+
+    processing_time = (time.time() - start_time) * 1000
+
+    return BatchSyncResponse(
+        ok=ok_ids,
+        conflicts=[],
+        errors=error_entries,
+        batch_id=batch_id,
+        processing_time_ms=processing_time,
+        total_records=len(operations),
+        results=results,
+        processed_count=len(operations),
+        success_count=len(ok_ids),
+        failed_count=len(operations) - len(ok_ids),
+    )

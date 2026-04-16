@@ -1,0 +1,517 @@
+# Stock Verify System - Main CI/CD Pipeline
+# Runs on push to main/develop and on PRs
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "22"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ==========================================
+  # Backend Tests & Quality
+  # ==========================================
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      mongodb:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping:1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Repository hygiene gate
+        run: |
+          bash scripts/check_repo_hygiene.sh
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.dev.txt
+
+      - name: Duplicate route registration guard
+        run: |
+          python scripts/check_duplicate_routes.py
+
+      - name: Runtime import guard
+        env:
+          JWT_SECRET: ci-import-guard-jwt-secret-32-chars
+          JWT_REFRESH_SECRET: ci-import-guard-refresh-secret-32
+          ENVIRONMENT: test
+        run: |
+          python -c "import backend.server"
+
+      - name: Run tests
+        env:
+          MONGODB_URL: mongodb://localhost:27017/test_db
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-secret-key-for-ci-only
+          PIN_SALT: ci-test-pin-salt-not-for-production
+          APP_ENV: test
+          ENVIRONMENT: test
+        run: |
+          cd backend
+          python -m pytest tests/ \
+            --cov=. \
+            --cov-fail-under=60 \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            -v \
+            --tb=short \
+            -W error::RuntimeWarning \
+            -x \
+            --ignore=tests/evaluation \
+            --ignore=tests/performance \
+            2>&1 | tee ../test-results.txt
+
+      - name: Check critical tests passed
+        run: |
+          if grep -q "FAILED" test-results.txt; then
+            echo "::error::Some tests failed"
+            exit 1
+          fi
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: backend/coverage.xml
+          fail_ci_if_error: false
+
+  # ==========================================
+  # Backend Linting & Security
+  # ==========================================
+  backend-quality:
+    name: Backend Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Repository hygiene gate
+        run: |
+          bash scripts/check_repo_hygiene.sh
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install linters
+        run: |
+          pip install ruff bandit safety
+
+      - name: Ruff lint
+        run: ruff check backend/ --output-format=github
+
+      - name: Security scan (Bandit)
+        run: bandit -r backend/ -ll -ii --exclude "*/tests/*"
+
+      - name: Dependency vulnerability check
+        run: safety check -r backend/requirements.production.txt --full-report
+
+  # ==========================================
+  # Frontend Tests & Build
+  # ==========================================
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Repository hygiene gate
+        run: |
+          bash scripts/check_repo_hygiene.sh
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: TypeScript check
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        working-directory: frontend
+        run: npm test -- --coverage --watchAll=false
+
+      - name: Build web
+        working-directory: frontend
+        run: npm run build:web
+        env:
+          EXPO_PUBLIC_BACKEND_URL: https://api.example.com
+
+  # ==========================================
+  # Windows Developer Entrypoints
+  # ==========================================
+  windows-dev-entrypoints:
+    name: Windows Dev Entrypoints
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Verify bash cleanup entrypoint
+        shell: bash
+        run: |
+          chmod +x scripts/clean.sh
+          ./scripts/clean.sh
+
+      - name: Verify PowerShell cleanup entrypoint
+        shell: pwsh
+        run: ./scripts/clean.ps1
+
+      - name: Verify Windows compact CI entrypoint
+        shell: pwsh
+        run: ./scripts/agent_ci.ps1 node
+
+  # ==========================================
+  # Recount Assignment Smoke
+  # ==========================================
+  frontend-recount-smoke:
+    name: Frontend Recount Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mongodb:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping:1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Repository hygiene gate
+        run: |
+          bash scripts/check_repo_hygiene.sh
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.production.txt
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Start backend
+        env:
+          MONGO_URL: mongodb://127.0.0.1:27017
+          DB_NAME: stock_verification
+          JWT_SECRET: ci-recount-smoke-jwt-secret-abcdefghijklmnopqrstuvwxyz
+          JWT_REFRESH_SECRET: ci-recount-smoke-refresh-secret-zyxwvutsrqponmlk
+          PIN_SALT: ci-recount-smoke-pin-salt-abcdefghijklmnopqr
+          ENVIRONMENT: test
+          APP_ENV: test
+          AUTO_SEED_DEFAULT_USERS: "true"
+          AUTO_SEED_MOCK_ERP_DATA: "true"
+          DISABLE_SSL: "true"
+          SSL_KEYFILE: ""
+          SSL_CERTFILE: ""
+          PORT: "8001"
+          HOST: "127.0.0.1"
+        run: |
+          PYTHONPATH=. python -u backend/server.py > /tmp/recount-smoke-backend.log 2>&1 &
+          echo $! > /tmp/recount-smoke-backend.pid
+
+      - name: Wait for backend readiness
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8001/health >/tmp/recount-smoke-health.json 2>/dev/null \
+              && curl -fsS \
+                -H 'Content-Type: application/json' \
+                -d '{"username":"admin","password":"admin123"}' \
+                http://127.0.0.1:8001/api/auth/login >/tmp/recount-smoke-login.json 2>/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Backend failed to become ready"
+          cat /tmp/recount-smoke-backend.log
+          exit 1
+
+      - name: Run recount assignment smoke
+        working-directory: frontend
+        env:
+          E2E_BACKEND_URL: http://127.0.0.1:8001
+        run: npm run e2e:recount-smoke
+
+      - name: Collect backend log
+        if: always()
+        run: |
+          mkdir -p frontend/test-results
+          if [ -f /tmp/recount-smoke-backend.log ]; then
+            cp /tmp/recount-smoke-backend.log frontend/test-results/backend.log
+          fi
+
+      - name: Upload recount smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recount-smoke-artifacts
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          if-no-files-found: ignore
+
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f /tmp/recount-smoke-backend.pid ]; then
+            kill "$(cat /tmp/recount-smoke-backend.pid)" 2>/dev/null || true
+          fi
+
+  # ==========================================
+  # Build Docker Images
+  # ==========================================
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test, frontend-recount-smoke]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Backend image import smoke test
+        run: |
+          docker build --no-cache -f backend/Dockerfile -t backend-import-smoke ./backend
+          docker run --rm \
+            -e JWT_SECRET=ci-import-guard-jwt-secret-32-chars \
+            -e JWT_REFRESH_SECRET=ci-import-guard-refresh-secret-32 \
+            -e ENVIRONMENT=production \
+            backend-import-smoke \
+            python -c "import backend.server"
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Nginx
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./nginx/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-nginx:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-nginx:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ==========================================
+  # Deploy to Staging
+  # ==========================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-images]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    concurrency: deploy-staging
+    permissions:
+      contents: read
+    environment:
+      name: staging
+      url: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Deploy to staging
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          DEPLOY_HEALTHCHECK_URL: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_ENV_FILE: ${{ secrets.DEPLOY_ENV_FILE }}
+          DEPLOY_REGISTRY_USERNAME: ${{ secrets.DEPLOY_REGISTRY_USERNAME }}
+          DEPLOY_REGISTRY_TOKEN: ${{ secrets.DEPLOY_REGISTRY_TOKEN }}
+          BACKEND_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
+          NGINX_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-nginx:${{ github.sha }}
+        run: |
+          chmod +x scripts/deploy_remote_compose.sh
+          ./scripts/deploy_remote_compose.sh
+
+      - name: Run staging post-deploy smoke
+        env:
+          SMOKE_HEALTH_URL: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+          SMOKE_BASE_URL: ${{ vars.DEPLOY_APP_BASE_URL }}
+          SMOKE_FRONTEND_URL: ${{ vars.DEPLOY_FRONTEND_URL }}
+          SMOKE_USERNAME: ${{ secrets.SMOKE_USERNAME }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+        run: |
+          chmod +x scripts/post_deploy_smoke.sh
+          ./scripts/post_deploy_smoke.sh
+
+  # ==========================================
+  # Deploy to Production (Manual Trigger)
+  # ==========================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-images]
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    concurrency: deploy-production
+    permissions:
+      contents: read
+    environment:
+      name: production
+      url: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Deploy to production
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          DEPLOY_HEALTHCHECK_URL: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_ENV_FILE: ${{ secrets.DEPLOY_ENV_FILE }}
+          DEPLOY_REGISTRY_USERNAME: ${{ secrets.DEPLOY_REGISTRY_USERNAME }}
+          DEPLOY_REGISTRY_TOKEN: ${{ secrets.DEPLOY_REGISTRY_TOKEN }}
+          BACKEND_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
+          NGINX_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-nginx:${{ github.sha }}
+        run: |
+          chmod +x scripts/deploy_remote_compose.sh
+          ./scripts/deploy_remote_compose.sh
+
+      - name: Run production post-deploy smoke
+        env:
+          SMOKE_HEALTH_URL: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+          SMOKE_BASE_URL: ${{ vars.DEPLOY_APP_BASE_URL }}
+          SMOKE_FRONTEND_URL: ${{ vars.DEPLOY_FRONTEND_URL }}
+          SMOKE_USERNAME: ${{ secrets.SMOKE_USERNAME }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+        run: |
+          chmod +x scripts/post_deploy_smoke.sh
+          ./scripts/post_deploy_smoke.sh
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "✅ Production deployment successful!"
+          echo "Images:"
+          echo "  backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}"
+          echo "  nginx=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-nginx:${{ github.sha }}"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Snapshot Maintenance"
+  short_description: "Approval-safe workflow for session snapshot repair and cleanup"
+  default_prompt: "Inspect session snapshot maintenance work, run a narrow dry-run, summarize expected MongoDB impact, and prepare an approval-safe execute plan."

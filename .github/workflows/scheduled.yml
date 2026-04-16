@@ -1,0 +1,56 @@
+# Scheduled Maintenance Tasks
+# Runs daily for dependency updates and health checks
+
+name: Scheduled Tasks
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 6 AM UTC
+  workflow_dispatch:
+
+jobs:
+  # ==========================================
+  # Dependency Updates Check
+  # ==========================================
+  dependency-check:
+    name: Dependency Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check Python dependencies
+        run: |
+          pip install safety pip-audit
+          echo "## Security Audit" > audit-report.md
+          safety check -r backend/requirements.production.txt --full-report >> audit-report.md || true
+          pip-audit -r backend/requirements.production.txt >> audit-report.md || true
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-audit
+          path: audit-report.md
+
+  # ==========================================
+  # Stale Issues/PRs
+  # ==========================================
+  stale:
+    name: Mark Stale
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/stale@v9
+        with:
+          stale-issue-message: 'This issue has been automatically marked as stale due to inactivity.'
+          stale-pr-message: 'This PR has been automatically marked as stale due to inactivity.'
+          stale-issue-label: 'stale'
+          stale-pr-label: 'stale'
+          days-before-stale: 30
+          days-before-close: 7
