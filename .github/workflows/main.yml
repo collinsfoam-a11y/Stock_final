@@ -207,7 +207,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci
+        run: npm install
 
       - name: Verify bash cleanup entrypoint
         shell: bash
@@ -270,7 +270,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci
+        run: npm install
 
       - name: Install Playwright browsers
         working-directory: frontend
