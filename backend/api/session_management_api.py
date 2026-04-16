@@ -449,7 +449,11 @@ def _effective_session_status(session: dict[str, Any]) -> CanonicalSessionStatus
         reconciled_at=session.get("reconciled_at"),
     )
     try:
-        return CanonicalSessionStatus(normalized)
+        status = CanonicalSessionStatus(normalized)
+        print(
+            f"\n_effective_session_status for {session.get('id')}: {status} (from {session.get('status')}, {session.get('reconciled_at')})"
+        )
+        return status
     except ValueError:
         return CanonicalSessionStatus.UNKNOWN
 

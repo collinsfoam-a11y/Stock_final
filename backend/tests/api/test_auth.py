@@ -173,6 +173,7 @@ def test_session_belongs_to_current_client_uses_same_ip_when_metadata_is_missing
 @pytest.mark.asyncio
 async def test_register_success(mock_db, mock_refresh_token_service, mock_settings, mock_auth_deps):
     mock_db.users.find_one.return_value = None
+    mock_db.users.count_documents.return_value = 0
     # mock_db.users.insert_one is not used, auth_deps.db.users.insert_one is used
     mock_auth_deps.db.users.insert_one.return_value.inserted_id = "new_id"
 

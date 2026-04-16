@@ -52,8 +52,13 @@ def test_user():
 @pytest.fixture
 def auth_token(client, test_user):
     """Register and login to get auth token"""
+    # Login as admin to register
+    admin_login = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    admin_token = admin_login.json()["data"]["access_token"]
+    headers = {"Authorization": f"Bearer {admin_token}"}
+
     # Register
-    client.post("/api/auth/register", json=test_user)
+    client.post("/api/auth/register", json=test_user, headers=headers)
 
     # Login
     response = client.post(

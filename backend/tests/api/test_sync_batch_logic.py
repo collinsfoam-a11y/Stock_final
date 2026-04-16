@@ -11,7 +11,10 @@ from backend.api.sync_batch_api import SyncRecord, _process_count_line_op, sync_
 async def test_sync_single_record_scopes_upsert_by_session_id(monkeypatch):
     db = MagicMock()
     db.count_lines.update_one = AsyncMock(return_value=SimpleNamespace())
+    db.count_lines.find_one = AsyncMock(return_value=None)
     db.item_serials.insert_many = AsyncMock(return_value=None)
+    db.erp_items.find_one = AsyncMock(return_value={"item_name": "Test Item"})
+    db.sessions.find_one = AsyncMock(return_value={"status": "OPEN"})
     recompute = AsyncMock(return_value=None)
     monkeypatch.setattr("backend.api.sync_batch_api.recompute_session_totals", recompute)
 

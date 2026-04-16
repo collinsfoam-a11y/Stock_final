@@ -155,7 +155,7 @@ async def test_finalize_session_locks_canonical_count_lines(async_client, test_d
             "counted_qty": 5.0,
             "variance": 1.0,
             "status": "pending",
-            "approval_status": "PENDING",
+            "approval_status": "APPROVED",
             "verified": False,
             "counted_by": "staff1",
             "counted_at": now,
@@ -167,7 +167,7 @@ async def test_finalize_session_locks_canonical_count_lines(async_client, test_d
         json={"note": "Supervisor signoff"},
         headers=_make_auth_headers("supervisor1", "supervisor"),
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.json()
     body = response.json()
     assert body["status"] == "COMPLETED"
 

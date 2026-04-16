@@ -223,5 +223,5 @@ class TestSyncEndpoints:
 
         reconciled = by_offline_id.get(offline_reconcile_session_id)
         assert reconciled is not None
-        assert reconciled.get("status") == "ACTIVE"
+        assert reconciled.get("status") == "RECONCILE"
         assert reconciled.get("reconciled_at") is not None

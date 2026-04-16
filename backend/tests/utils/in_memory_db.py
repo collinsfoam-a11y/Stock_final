@@ -596,7 +596,7 @@ def _initialize_apis(monkeypatch, fake_db, server_module, cache_service) -> None
 
     init_auth_dependencies(
         cast(AsyncIOMotorDatabase, fake_db),
-        getattr(server_module, "SECRET_KEY", "test-secret"),
+        os.getenv("JWT_SECRET", "test-jwt-secret-key-for-testing-only"),
         getattr(server_module, "ALGORITHM", "HS256"),
     )
     init_verification_api(cast(AsyncIOMotorDatabase, fake_db))

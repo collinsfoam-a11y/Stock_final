@@ -42,8 +42,15 @@ class TestLogin:
 
     def test_login_success(self, client, test_user):
         """Test successful login"""
+        # Login as admin to get token
+        admin_login = client.post(
+            "/api/auth/login", json={"username": "admin", "password": "admin123"}
+        )
+        admin_token = admin_login.json()["data"]["access_token"]
+        headers = {"Authorization": f"Bearer {admin_token}"}
+
         # Register user first
-        client.post("/api/auth/register", json=test_user)
+        client.post("/api/auth/register", json=test_user, headers=headers)
 
         # Login
         response = client.post(
@@ -82,9 +89,17 @@ class TestRegister:
 
     def test_register_success(self, client, test_user):
         """Test successful registration"""
-        response = client.post("/api/auth/register", json=test_user)
+        # Login as admin to get token
+        admin_login = client.post(
+            "/api/auth/login", json={"username": "admin", "password": "admin123"}
+        )
+        assert admin_login.status_code == 200
+        admin_token = admin_login.json()["data"]["access_token"]
+        headers = {"Authorization": f"Bearer {admin_token}"}
 
-        assert response.status_code == 201
+        response = client.post("/api/auth/register", json=test_user, headers=headers)
+
+        assert response.status_code == 201, f"Response: {response.json()}"
         data = response.json()
         assert "access_token" in data
         assert "user" in data
@@ -92,17 +107,31 @@ class TestRegister:
 
     def test_register_duplicate_username(self, client, test_user):
         """Test registration with duplicate username"""
+        # Login as admin to get token
+        admin_login = client.post(
+            "/api/auth/login", json={"username": "admin", "password": "admin123"}
+        )
+        admin_token = admin_login.json()["data"]["access_token"]
+        headers = {"Authorization": f"Bearer {admin_token}"}
+
         # Register first time
-        client.post("/api/auth/register", json=test_user)
+        client.post("/api/auth/register", json=test_user, headers=headers)
 
         # Try to register again
-        response = client.post("/api/auth/register", json=test_user)
+        response = client.post("/api/auth/register", json=test_user, headers=headers)
 
         # AUTH_USERNAME_EXISTS uses 400 in error_messages.py
         assert response.status_code == 400
 
     def test_register_missing_fields(self, client):
         """Test registration with missing fields"""
-        response = client.post("/api/auth/register", json={"username": "test"})
+        # Login as admin to get token
+        admin_login = client.post(
+            "/api/auth/login", json={"username": "admin", "password": "admin123"}
+        )
+        admin_token = admin_login.json()["data"]["access_token"]
+        headers = {"Authorization": f"Bearer {admin_token}"}
+
+        response = client.post("/api/auth/register", json={"username": "test"}, headers=headers)
 
         assert response.status_code == 422

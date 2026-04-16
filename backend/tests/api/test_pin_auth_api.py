@@ -33,7 +33,7 @@ class ErrResult:
 async def test_change_pin_success():
     mock_db = AsyncMock()
     mock_user = {"_id": "user123", "username": "testuser", "hashed_password": "hash"}
-    request = PinChangeRequest(current_password="password", new_pin="123456")
+    request = PinChangeRequest(current_password="password", new_pin="1234")
 
     with (
         patch("backend.api.pin_auth_api.PINAuthService") as MockService,
@@ -45,7 +45,7 @@ async def test_change_pin_success():
         response = await change_pin(request, mock_user, mock_db)
 
         assert response == {"message": "PIN changed successfully"}
-        mock_instance.set_pin.assert_called_once_with("user123", "123456")
+        mock_instance.set_pin.assert_called_once_with("user123", "1234")
 
 
 @pytest.mark.asyncio
@@ -58,7 +58,7 @@ async def test_login_with_pin_success():
         "full_name": "Test User",
         "is_active": True,
     }
-    request = PinLoginRequest(username="testuser", pin="123456")
+    request = PinLoginRequest(username="testuser", pin="1234")
     mock_http_request = MagicMock()
     mock_http_request.client.host = "127.0.0.1"
 
@@ -89,13 +89,13 @@ async def test_login_with_pin_success():
         assert response["token_type"] == "bearer"
         assert response["user"]["username"] == "testuser"
         assert response["user"]["role"] == "staff"
-        mock_instance.verify_pin.assert_called_once_with("user123", "123456")
+        mock_instance.verify_pin.assert_called_once_with("user123", "1234")
 
 
 @pytest.mark.asyncio
 async def test_login_with_pin_invalid_user():
     mock_db = AsyncMock()
-    request = PinLoginRequest(username="unknown", pin="123456")
+    request = PinLoginRequest(username="unknown", pin="1234")
     mock_http_request = MagicMock()
     mock_http_request.client.host = "127.0.0.1"
 
@@ -147,7 +147,7 @@ async def test_login_with_pin_invalid_pin():
 async def test_change_pin_service_failure():
     mock_db = AsyncMock()
     mock_user = {"_id": "user123", "username": "testuser", "hashed_password": "hash"}
-    request = PinChangeRequest(current_password="password", new_pin="123456")
+    request = PinChangeRequest(current_password="password", new_pin="1234")
 
     with (
         patch("backend.api.pin_auth_api.PINAuthService") as MockService,

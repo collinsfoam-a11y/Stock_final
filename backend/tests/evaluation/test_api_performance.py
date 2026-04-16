@@ -85,7 +85,14 @@ class TestAPILatency:
             "full_name": "Latency Test User",
             "role": "staff",
         }
-        await async_client.post("/api/auth/register", json=user_data)
+        admin_login = await async_client.post(
+            "/api/auth/login", json={"username": "admin", "password": "admin123"}
+        )
+        admin_token = admin_login.json().get("data", {}).get(
+            "access_token"
+        ) or admin_login.json().get("access_token")
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        await async_client.post("/api/auth/register", json=user_data, headers=headers)
 
         for _ in range(10):
             start = time.time()
@@ -317,7 +324,14 @@ class TestFullAPIEvaluation:
             "role": "admin",
         }
 
-        await async_client.post("/api/auth/register", json=user_data)
+        admin_login = await async_client.post(
+            "/api/auth/login", json={"username": "admin", "password": "admin123"}
+        )
+        admin_token = admin_login.json().get("data", {}).get(
+            "access_token"
+        ) or admin_login.json().get("access_token")
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        await async_client.post("/api/auth/register", json=user_data, headers=headers)
         login_response = await async_client.post(
             "/api/auth/login",
             json={"username": user_data["username"], "password": user_data["password"]},
@@ -362,7 +376,15 @@ async def authenticated_headers(async_client: AsyncClient) -> dict[str, str]:
         "role": "admin",
     }
 
-    await async_client.post("/api/auth/register", json=user_data)
+    admin_login = await async_client.post(
+        "/api/auth/login", json={"username": "admin", "password": "admin123"}
+    )
+    admin_token = admin_login.json().get("data", {}).get("access_token") or admin_login.json().get(
+        "access_token"
+    )
+    headers = {"Authorization": f"Bearer {admin_token}"}
+
+    await async_client.post("/api/auth/register", json=user_data, headers=headers)
 
     login_response = await async_client.post(
         "/api/auth/login",

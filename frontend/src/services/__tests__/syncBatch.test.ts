@@ -1,10 +1,19 @@
-import { syncOfflineQueue } from "../syncService";
-import * as api from "../api/api";
-import * as offlineStorage from "../offline/offlineStorage";
+jest.mock("../httpClient", () => ({
+  __esModule: true,
+  default: {
+    defaults: {
+      headers: {
+        common: {},
+        post: { "Content-Type": "application/json" },
+        put: { "Content-Type": "application/json" },
+        patch: { "Content-Type": "application/json" },
+      },
+    },
+  },
+  API_BASE_URL: "http://localhost:8001",
+  updateBaseURL: jest.fn(),
+}));
 
-// Mock dependencies
-jest.mock("../api/api");
-jest.mock("../offline/offlineStorage");
 jest.mock("../connectionManager", () => ({
   __esModule: true,
   default: {
@@ -48,6 +57,28 @@ jest.mock(
     require("@react-native-async-storage/async-storage/jest/async-storage-mock")
       .default,
 );
+
+// Mock API functions before importing syncService
+jest.mock("../api/api", () => ({
+  isOnline: jest.fn(),
+  syncBatch: jest.fn(),
+}));
+
+// Mock offline storage before importing syncService
+jest.mock("../offline/offlineStorage", () => ({
+  getOfflineQueue: jest.fn(),
+  getCacheStats: jest.fn(),
+  removeManyFromOfflineQueue: jest.fn(),
+  updateQueueItemRetries: jest.fn(),
+}));
+
+// Now import the function under test
+// eslint-disable-next-line import/first
+import { syncOfflineQueue } from "../syncService";
+// eslint-disable-next-line import/first
+import * as api from "../api/api";
+// eslint-disable-next-line import/first
+import * as offlineStorage from "../offline/offlineStorage";
 
 describe("syncOfflineQueue", () => {
   const mockOperations = [

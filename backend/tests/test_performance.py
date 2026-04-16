@@ -64,6 +64,14 @@ class TestAPIPerformance:
     @pytest_asyncio.fixture
     async def auth_headers(self, async_client: AsyncClient, test_db) -> dict[str, str]:
         """Create authenticated user and return auth headers"""
+        # Login as admin to get token
+        admin_login = await async_client.post(
+            "/api/auth/login", json={"username": "admin", "password": "admin123"}
+        )
+        assert admin_login.status_code == status.HTTP_200_OK
+        admin_token = admin_login.json()["data"]["access_token"]
+        headers = {"Authorization": f"Bearer {admin_token}"}
+
         user_data = {
             "username": f"perf_test_{random.randint(1000, 9999)}",
             "password": "TestPassword123!",
@@ -71,7 +79,7 @@ class TestAPIPerformance:
             "role": "admin",
         }
 
-        await async_client.post("/api/auth/register", json=user_data)
+        await async_client.post("/api/auth/register", json=user_data, headers=headers)
         login_response = await async_client.post(
             "/api/auth/login",
             json={"username": user_data["username"], "password": user_data["password"]},

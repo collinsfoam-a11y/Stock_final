@@ -1,9 +1,18 @@
-import apiClient from "../httpClient";
-import {
-  isPublicHealthRequestUrl,
-  isValidBackendHealthResponse,
-  stripHealthRequestHeaders,
-} from "../healthRequest";
+jest.mock("../httpClient", () => ({
+  __esModule: true,
+  default: {
+    defaults: {
+      headers: {
+        common: {},
+        post: { "Content-Type": "application/json" },
+        put: { "Content-Type": "application/json" },
+        patch: { "Content-Type": "application/json" },
+      },
+    },
+  },
+  API_BASE_URL: "http://localhost:8001",
+  updateBaseURL: jest.fn(),
+}));
 
 jest.mock("../connectionManager", () => ({
   __esModule: true,
@@ -15,6 +24,15 @@ jest.mock("../connectionManager", () => ({
     })),
   },
 }));
+
+// eslint-disable-next-line import/first
+import apiClient from "../httpClient";
+// eslint-disable-next-line import/first
+import {
+  isPublicHealthRequestUrl,
+  isValidBackendHealthResponse,
+  stripHealthRequestHeaders,
+} from "../healthRequest";
 
 describe("health request helpers", () => {
   const createProbeResponse = ({

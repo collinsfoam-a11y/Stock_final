@@ -16,7 +16,7 @@ from backend.api.schemas import (
     UserLogin,
     UserRegister,
 )
-from backend.auth.dependencies import auth_deps, get_current_user
+from backend.auth.dependencies import auth_deps, get_current_user, optional_get_current_user
 from backend.auth.permissions import get_user_permissions
 from backend.auth.cookies import set_auth_cookies
 from backend.config import settings
@@ -368,7 +368,7 @@ async def log_successful_login(user: dict[str, Any], ip_address: str, request: R
 async def register(
     user: UserRegister,
     response: Response,
-    current_user: Optional[dict] = None,
+    current_user: Optional[dict] = Depends(optional_get_current_user),
 ):
     """
     Register a new user.

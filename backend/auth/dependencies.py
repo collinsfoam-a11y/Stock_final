@@ -137,7 +137,8 @@ class JWTValidator:
                     detail=error,
                 )
             return payload
-        except jwt.ExpiredSignatureError:
+        except jwt.ExpiredSignatureError as e:
+            logger.error(f"[decode_token] ExpiredSignatureError: {e}")
             from backend.error_messages import get_error_message
 
             error = get_error_message("AUTH_TOKEN_EXPIRED")
@@ -145,7 +146,8 @@ class JWTValidator:
                 status_code=error["status_code"],
                 detail=error,
             )
-        except jwt.InvalidTokenError:
+        except jwt.InvalidTokenError as e:
+            logger.error(f"[decode_token] InvalidTokenError: {e} with key {auth_deps.secret_key}")
             from backend.error_messages import get_error_message
 
             error = get_error_message("AUTH_TOKEN_INVALID")

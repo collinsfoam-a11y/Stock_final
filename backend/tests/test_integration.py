@@ -22,6 +22,12 @@ class TestAuthenticationWorkflow:
         """Test complete user registration and login flow"""
         logger.info("Testing user registration and login workflow")
 
+        admin_login = await async_client.post(
+            "/api/auth/login", json={"username": "admin", "password": "admin123"}
+        )
+        admin_token = admin_login.json()["data"]["access_token"]
+        headers = {"Authorization": f"Bearer {admin_token}"}
+
         # Register new user
         user_data = {
             "username": f"test_user_{random.randint(1000, 9999)}",
@@ -30,7 +36,9 @@ class TestAuthenticationWorkflow:
             "role": "staff",
         }
 
-        register_response = await async_client.post("/api/auth/register", json=user_data)
+        register_response = await async_client.post(
+            "/api/auth/register", json=user_data, headers=headers
+        )
         assert register_response.status_code == status.HTTP_201_CREATED
 
         # Login with credentials
@@ -59,6 +67,14 @@ class TestSessionWorkflow:
     @pytest_asyncio.fixture
     async def auth_headers(self, async_client: AsyncClient) -> dict[str, str]:
         """Create authenticated user and return auth headers"""
+        # Login as admin to get token
+        admin_login = await async_client.post(
+            "/api/auth/login", json={"username": "admin", "password": "admin123"}
+        )
+        assert admin_login.status_code == status.HTTP_200_OK
+        admin_token = admin_login.json()["data"]["access_token"]
+        headers = {"Authorization": f"Bearer {admin_token}"}
+
         user_data = {
             "username": f"session_user_{random.randint(1000, 9999)}",
             "password": "TestPassword123!",
@@ -66,7 +82,7 @@ class TestSessionWorkflow:
             "role": "staff",
         }
 
-        await async_client.post("/api/auth/register", json=user_data)
+        await async_client.post("/api/auth/register", json=user_data, headers=headers)
         login_response = await async_client.post(
             "/api/auth/login",
             json={"username": user_data["username"], "password": user_data["password"]},
@@ -108,6 +124,14 @@ class TestCountLineWorkflow:
     @pytest_asyncio.fixture
     async def auth_headers(self, async_client: AsyncClient) -> dict[str, str]:
         """Create authenticated user and return auth headers"""
+        # Login as admin to get token
+        admin_login = await async_client.post(
+            "/api/auth/login", json={"username": "admin", "password": "admin123"}
+        )
+        assert admin_login.status_code == status.HTTP_200_OK
+        admin_token = admin_login.json()["data"]["access_token"]
+        headers = {"Authorization": f"Bearer {admin_token}"}
+
         user_data = {
             "username": f"count_user_{random.randint(1000, 9999)}",
             "password": "TestPassword123!",
@@ -115,7 +139,7 @@ class TestCountLineWorkflow:
             "role": "staff",
         }
 
-        await async_client.post("/api/auth/register", json=user_data)
+        await async_client.post("/api/auth/register", json=user_data, headers=headers)
         login_response = await async_client.post(
             "/api/auth/login",
             json={"username": user_data["username"], "password": user_data["password"]},
@@ -160,6 +184,14 @@ class TestERPItemsWorkflow:
     @pytest_asyncio.fixture
     async def auth_headers(self, async_client: AsyncClient) -> dict[str, str]:
         """Create authenticated user and return auth headers"""
+        # Login as admin to get token
+        admin_login = await async_client.post(
+            "/api/auth/login", json={"username": "admin", "password": "admin123"}
+        )
+        assert admin_login.status_code == status.HTTP_200_OK
+        admin_token = admin_login.json()["data"]["access_token"]
+        headers = {"Authorization": f"Bearer {admin_token}"}
+
         user_data = {
             "username": f"erp_user_{random.randint(1000, 9999)}",
             "password": "TestPassword123!",
@@ -167,7 +199,7 @@ class TestERPItemsWorkflow:
             "role": "staff",
         }
 
-        await async_client.post("/api/auth/register", json=user_data)
+        await async_client.post("/api/auth/register", json=user_data, headers=headers)
         login_response = await async_client.post(
             "/api/auth/login",
             json={"username": user_data["username"], "password": user_data["password"]},

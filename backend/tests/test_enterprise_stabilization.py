@@ -41,9 +41,18 @@ def clear_sessions(db, username):
     ]
 
 
+def admin_register(client, user):
+    admin_login = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    admin_token = admin_login.json().get("data", {}).get("access_token") or admin_login.json().get(
+        "access_token"
+    )
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    client.post("/api/auth/register", json=user, headers=headers)
+
+
 def test_single_session_enforcement(client, fake_environment):
     user = {"username": "user1", "password": "Password123!", "full_name": "User 1", "role": "staff"}
-    client.post("/api/auth/register", json=user)
+    admin_register(client, user)
 
     # Register created a refresh token. Clear it to allow first login.
     clear_sessions(fake_environment, "user1")
@@ -62,7 +71,7 @@ def test_sql_verification_logic_enforcement(client, fake_environment, monkeypatc
         "full_name": "User Verify",
         "role": "staff",
     }
-    client.post("/api/auth/register", json=user)
+    admin_register(client, user)
     clear_sessions(fake_environment, "user_verify")
 
     login_resp = client.post(
@@ -103,7 +112,7 @@ def test_sql_down_behavior_blocked(client, fake_environment, monkeypatch):
         "full_name": "User Down",
         "role": "staff",
     }
-    client.post("/api/auth/register", json=user)
+    admin_register(client, user)
     clear_sessions(fake_environment, "user_down")
 
     login_resp = client.post(
