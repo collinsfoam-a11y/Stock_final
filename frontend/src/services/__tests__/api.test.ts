@@ -75,24 +75,24 @@ describe("API Service - Network Detection", () => {
     expect(isOnline()).toBe(false);
   });
 
-  it("should assume online when network state is unknown", () => {
+  it("should return false when network state is unknown (M14 fix: safe for writes)", () => {
     (useNetworkStore.getState as jest.Mock).mockReturnValue({
       isOnline: undefined,
       isInternetReachable: undefined,
       connectionType: undefined,
     });
 
-    expect(isOnline()).toBe(true);
+    expect(isOnline()).toBe(false);
   });
 
-  it("should assume online when network state is null", () => {
+  it("should return false when network state is null (M14 fix: safe for writes)", () => {
     (useNetworkStore.getState as jest.Mock).mockReturnValue({
       isOnline: null,
       isInternetReachable: null,
       connectionType: null,
     });
 
-    expect(isOnline()).toBe(true);
+    expect(isOnline()).toBe(false);
   });
 });
 

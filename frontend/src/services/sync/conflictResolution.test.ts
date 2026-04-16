@@ -32,13 +32,14 @@ describe("Conflict Resolution Strategies", () => {
   });
 
   describe("mergeQuantityStrategy", () => {
-    it("should sum quantities if both have numeric quantity", () => {
+    it("should use max quantity (last write wins for stock counts)", () => {
       const result = resolveConflict(
         clientData,
         serverData,
         mergeQuantityStrategy,
       );
-      expect(result).toEqual({ ...serverData, quantity: 30 });
+      // Fix H16: Use max (server's 20) instead of sum (30) for stock counts
+      expect(result).toEqual({ ...serverData, quantity: 20 });
     });
 
     it("should fallback to server wins if quantity is missing", () => {
