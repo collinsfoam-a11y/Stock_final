@@ -18,7 +18,16 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
-  # ==========================================
+  # Set lowercase image name
+  set-image-name:
+    name: Set Image Name
+    runs-on: ubuntu-latest
+    outputs:
+      image_name_lower: ${{ steps.lower.outputs.value }}
+    steps:
+      - id: lower
+        run: echo "value=${{ github.repository | lowercase }}" >> $GITHUB_OUTPUT
+
   # Backend Tests & Quality
   # ==========================================
   backend-test:
@@ -372,6 +381,10 @@ jobs:
     permissions:
       contents: read
       packages: write
+    
+    env:
+      IMAGE_NAME_LOWER: collinsfoam-a11y/stock_final
+      packages: write
 
     steps:
       - name: Checkout
@@ -404,8 +417,8 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-backend:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-backend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -416,8 +429,8 @@ jobs:
           file: ./nginx/Dockerfile
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-nginx:${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-nginx:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-nginx:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-nginx:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
