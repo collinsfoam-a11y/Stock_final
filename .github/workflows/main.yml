@@ -18,16 +18,6 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
-  # Set lowercase image name
-  set-image-name:
-    name: Set Image Name
-    runs-on: ubuntu-latest
-    outputs:
-      image_name_lower: ${{ steps.lower.outputs.value }}
-    steps:
-      - id: lower
-        run: echo "value=${{ github.repository | lowercase }}" >> $GITHUB_OUTPUT
-
   # Backend Tests & Quality
   # ==========================================
   backend-test:
