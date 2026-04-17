@@ -659,57 +659,7 @@ async def logout(
 
 
 # Session routes
-@api_router.post("/sessions/bulk/close")
-async def bulk_close_sessions(
-    session_ids: list[str], current_user: dict = Depends(get_current_user)
-):
-    """Bulk close sessions (supervisor only)"""
-    if current_user["role"] not in ["supervisor", "admin"]:
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
-
-    try:
-        updated_count = 0
-        errors = []
-
-        for session_id in session_ids:
-            try:
-                result = await db.sessions.update_one(
-                    {"$or": [{"id": session_id}, {"session_id": session_id}]},
-                    {
-                        "$set": {
-                            # Keep canonical session fields to match Session schema + UI expectations.
-                            "status": "CLOSED",
-                            "closed_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                            # Backwards compatible alias for older data readers (if any).
-                            "ended_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                        }
-                    },
-                )
-                if result.modified_count > 0:
-                    updated_count += 1
-                    # Log activity
-                    await activity_log_service.log_activity(
-                        user=current_user["username"],
-                        role=current_user["role"],
-                        action="bulk_close_session",
-                        entity_type="session",
-                        entity_id=session_id,
-                        details={"operation": "bulk_close"},
-                        ip_address=None,
-                        user_agent=None,
-                    )
-            except Exception as e:
-                errors.append({"session_id": session_id, "error": str(e)})
-
-        return {
-            "success": True,
-            "updated_count": updated_count,
-            "total": len(session_ids),
-            "errors": errors,
-        }
-    except Exception as e:
-        logger.error(f"Bulk close sessions error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+# NOTE: /sessions/bulk/close is handled by session_management_api.py (canonical)
 
 
 @api_router.post("/sessions/bulk/reconcile")
