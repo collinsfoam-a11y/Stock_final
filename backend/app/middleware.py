@@ -9,6 +9,27 @@ from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.types import ASGIApp, Receive, Send
+
+API_VERSION = "2.1.0"
+
+
+class APIVersionMiddleware:
+    """Middleware to add X-API-Version header to all responses."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
+        async def send_with_version(message):
+            if message["type"] == "http.response.start":
+                message["headers"].append((b"x-api-version", API_VERSION.encode()))
+            await send(message)
+
+        await self.app(scope, receive, send_with_version)
 
 
 def register_middleware(
@@ -116,5 +137,8 @@ def register_middleware(
             logger.info("LAN enforcement middleware enabled")
         except Exception as exc:
             logger.warning(f"LAN enforcement middleware registration failed: {exc}")
+
+    app.add_middleware(APIVersionMiddleware)
+    logger.info(f"API version middleware enabled (version: {API_VERSION})")
 
     app.add_middleware(GZipMiddleware, minimum_size=1000)

@@ -23,6 +23,9 @@ class NotificationType(str, Enum):
     """Types of notifications"""
 
     RECOUNT_ASSIGNED = "recount_assigned"
+    RECOUNT_COMPLETED = "recount_completed"
+    RECOUNT_CANCELLED = "recount_cancelled"
+    RECOUNT_OVERDUE = "recount_overdue"
     COUNT_APPROVED = "count_approved"
     COUNT_REJECTED = "count_rejected"
     SESSION_REMINDER = "session_reminder"
@@ -167,6 +170,52 @@ class NotificationService:
                 "item_code": item_code,
                 "barcode": barcode,
                 "assigned_to": assigned_to or user_id,
+            },
+        )
+
+    async def notify_recount_completed(
+        self,
+        user_id: str,
+        recount_id: str,
+        item_name: str,
+        result_qty: float,
+        completed_by: str,
+    ) -> str:
+        """Notify user that recount has been completed"""
+        return await self.create_notification(
+            user_id=user_id,
+            notification_type=NotificationType.RECOUNT_COMPLETED,
+            title="Recount Completed",
+            message=f"Recount for '{item_name}' completed. Result: {result_qty}",
+            priority=NotificationPriority.MEDIUM,
+            action_url=f"/recount/{recount_id}",
+            metadata={
+                "recount_id": recount_id,
+                "item_name": item_name,
+                "result_qty": result_qty,
+                "completed_by": completed_by,
+            },
+        )
+
+    async def notify_recount_overdue(
+        self,
+        user_id: str,
+        recount_id: str,
+        item_name: str,
+        due_date: str,
+    ) -> str:
+        """Notify user that recount is overdue"""
+        return await self.create_notification(
+            user_id=user_id,
+            notification_type=NotificationType.RECOUNT_OVERDUE,
+            title="Recount Overdue",
+            message=f"Recount for '{item_name}' is overdue. Due: {due_date}",
+            priority=NotificationPriority.HIGH,
+            action_url=f"/recount/{recount_id}",
+            metadata={
+                "recount_id": recount_id,
+                "item_name": item_name,
+                "due_date": due_date,
             },
         )
 

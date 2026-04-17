@@ -62,6 +62,7 @@ class RouterRegistry:
     v2_router: Optional[APIRouter] = None
     pin_auth_router: Optional[APIRouter] = None
     reconciliation_router: Optional[APIRouter] = None
+    recount_router: Optional[APIRouter] = None
     enterprise_available: bool = False
 
 
@@ -156,6 +157,13 @@ def register_routers(app: FastAPI, registry: RouterRegistry, logger: Any) -> Non
             logger.warning(f"Reconciliation router registration failed: {exc}")
 
     app.include_router(registry.notifications_router)
+
+    if registry.recount_router:
+        try:
+            app.include_router(registry.recount_router)
+            logger.info("Recount API router registered")
+        except Exception as exc:
+            logger.warning(f"Recount router registration failed: {exc}")
 
     logger.info("Phase 1-3 upgrade routers registered")
     logger.info("Admin Dashboard, Report Generation, and Dynamic Reports APIs registered")

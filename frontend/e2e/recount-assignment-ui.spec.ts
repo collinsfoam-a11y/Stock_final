@@ -1,5 +1,7 @@
 import { expect, test, type APIRequestContext, type BrowserContext } from "@playwright/test";
 
+import { getAuthenticatedSession } from "./helpers/auth";
+
 const BACKEND_BASE_URL = process.env.E2E_BACKEND_URL || "http://127.0.0.1:8001";
 
 type AuthUser = {
@@ -46,16 +48,23 @@ async function apiJson<T>(
   options: {
     token?: string;
     data?: unknown;
+    clientId?: string;
   } = {},
 ): Promise<T> {
-  const response = await request.fetch(`${BACKEND_BASE_URL}${path}`, {
-    method,
+  const url = `${BACKEND_BASE_URL}${path}`;
+  const requestOptions = {
     headers: {
       ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
-      ...(options.data ? { "Content-Type": "application/json" } : {}),
+      ...(options.clientId ? { "x-device-id": options.clientId } : {}),
     },
-    data: options.data,
-  });
+    ...(options.data ? { data: options.data } : {}),
+  };
+  const response =
+    method === "GET"
+      ? await request.get(url, requestOptions)
+      : method === "POST"
+        ? await request.post(url, requestOptions)
+        : await request.put(url, requestOptions);
 
   const body = await response.text();
   if (!response.ok()) {
@@ -69,9 +78,11 @@ async function login(
   request: APIRequestContext,
   username: string,
   password: string,
+  clientId: string,
 ): Promise<LoginResponse["data"]> {
   const payload = await apiJson<LoginResponse>(request, "POST", "/api/auth/login", {
     data: { username, password },
+    clientId,
   });
   return payload.data;
 }
@@ -113,9 +124,12 @@ test.describe("Recount Assignment UI", () => {
     const sharedPassword = "SmokePass123!";
     const ownerFullName = `UI Owner ${suffix}`;
     const assigneeFullName = `UI Assignee ${suffix}`;
+    const adminClientId = `playwright-admin-${suffix}`;
+    const ownerClientId = `playwright-owner-${suffix}`;
+    const assigneeClientId = `playwright-assignee-${suffix}`;
 
-    const adminAuth = await login(request, "admin", "admin123");
-    const supervisorAuth = await login(request, "supervisor", "super123");
+    const adminAuth = await getAuthenticatedSession(request, "admin");
+    const supervisorAuth = await getAuthenticatedSession(request, "supervisor");
 
     for (const user of [
       { username: ownerUsername, fullName: ownerFullName },
@@ -123,6 +137,7 @@ test.describe("Recount Assignment UI", () => {
     ]) {
       await apiJson(request, "POST", "/api/users", {
         token: adminAuth.access_token,
+        clientId: adminClientId,
         data: {
           username: user.username,
           password: sharedPassword,
@@ -133,11 +148,22 @@ test.describe("Recount Assignment UI", () => {
       });
     }
 
-    const ownerAuth = await login(request, ownerUsername, sharedPassword);
-    const assigneeAuth = await login(request, assigneeUsername, sharedPassword);
+    const ownerAuth = await login(
+      request,
+      ownerUsername,
+      sharedPassword,
+      ownerClientId,
+    );
+    const assigneeAuth = await login(
+      request,
+      assigneeUsername,
+      sharedPassword,
+      assigneeClientId,
+    );
 
     const erpItems = await apiJson<ERPItemsResponse>(request, "GET", "/api/erp/items?page=1&page_size=20", {
       token: ownerAuth.access_token,
+      clientId: ownerClientId,
     });
     const erpItem = erpItems.items.find((item) => item.barcode && item.warehouse);
     if (!erpItem?.barcode || !erpItem.warehouse) {
@@ -146,6 +172,7 @@ test.describe("Recount Assignment UI", () => {
 
     const session = await apiJson<SessionResponse>(request, "POST", "/api/sessions/", {
       token: ownerAuth.access_token,
+      clientId: ownerClientId,
       data: {
         warehouse: erpItem.warehouse,
         type: "STANDARD",
@@ -154,6 +181,7 @@ test.describe("Recount Assignment UI", () => {
 
     const countLine = await apiJson<CountLineResponse>(request, "POST", "/api/count-lines", {
       token: ownerAuth.access_token,
+      clientId: ownerClientId,
       data: {
         session_id: session.id,
         item_code: erpItem.item_code,

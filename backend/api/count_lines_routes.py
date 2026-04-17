@@ -1662,6 +1662,54 @@ async def bulk_approve_count_lines(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class CountLineBatchCreate(BaseModel):
+    """Batch create payload for multiple count lines."""
+
+    session_id: str
+    lines: list[CountLineCreate]
+
+
+@router.post("/count-lines/batch")
+async def create_count_lines_batch(
+    request: Request,
+    batch_data: CountLineBatchCreate,
+    current_user: dict = Depends(get_current_user),
+):
+    """Create multiple count lines in a single request (batch operation)."""
+    db = _get_db_client()
+    results = []
+    errors = []
+
+    session = await _get_mutable_session_or_409(db, batch_data.session_id)
+    if session.get("status") not in ["OPEN", "ACTIVE"]:
+        raise HTTPException(status_code=400, detail="Session is not active")
+
+    for idx, line_data in enumerate(batch_data.lines):
+        try:
+            modified_data = line_data.model_dump(exclude_unset=True)
+            modified_data["session_id"] = batch_data.session_id
+            modified_data["counted_by"] = current_user["username"]
+            modified_data["created_by"] = current_user["username"]
+            modified_data["batch_id"] = (
+                f"batch_{datetime.now(timezone.utc).replace(tzinfo=None).isoformat()}"
+            )
+
+            result = await db.count_lines.insert_one(modified_data)
+            results.append({"index": idx, "id": str(result.inserted_id), "success": True})
+        except Exception as e:
+            errors.append({"index": idx, "error": str(e)})
+
+    await recompute_session_totals(db, batch_data.session_id)
+
+    return {
+        "success": len(results) > 0,
+        "created": len(results),
+        "failed": len(errors),
+        "results": results,
+        "errors": errors,
+    }
+
+
 @router.post("/count-lines/bulk/reject")
 async def bulk_reject_count_lines(
     update_data: BulkCountLineUpdate,
@@ -1837,3 +1885,67 @@ async def get_item_batches(
     except Exception as e:
         logger.error(f"Error fetching item batches: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch item batches: {str(e)}")
+
+
+class CountLineMergeRequest(BaseModel):
+    """Request to merge duplicate count lines"""
+
+    source_line_ids: list[str]
+    target_line_id: str
+    keep_target_qty: bool = True
+
+
+@router.post("/count-lines/merge")
+async def merge_count_lines(
+    request: CountLineMergeRequest,
+    current_user: dict = Depends(get_current_user),
+    db_override=None,
+):
+    """Merge multiple count lines into one (deduplication)."""
+    if current_user.get("role") not in ["supervisor", "admin"]:
+        raise HTTPException(status_code=403, detail="Supervisor access required")
+
+    db = _get_db_client(db_override)
+    results: dict[str, list[Any]] = {"merged": [], "failed": []}
+
+    target_line = await db.count_lines.find_one({"id": request.target_line_id})
+    if not target_line:
+        raise HTTPException(status_code=404, detail="Target count line not found")
+
+    target_qty = target_line.get("counted_qty", 0)
+
+    for source_id in request.source_line_ids:
+        if source_id == request.target_line_id:
+            continue
+
+        source_line = await db.count_lines.find_one({"id": source_id})
+        if not source_line:
+            results["failed"].append({"id": source_id, "error": "Not found"})
+            continue
+
+        try:
+            if request.keep_target_qty:
+                merged_qty = target_qty + source_line.get("counted_qty", 0)
+            else:
+                merged_qty = source_line.get("counted_qty", 0) + target_qty
+
+            await db.count_lines.update_one(
+                {"id": request.target_line_id},
+                {
+                    "$set": {"counted_qty": merged_qty},
+                    "$push": {"merged_from": source_id},
+                },
+            )
+
+            await db.count_lines.update_one(
+                {"id": source_id},
+                {
+                    "$set": {"status": "MERGED", "merged_into": request.target_line_id},
+                },
+            )
+            results["merged"].append(source_id)
+
+        except Exception as e:
+            results["failed"].append({"id": source_id, "error": str(e)})
+
+    return {"success": True, "target_line_id": request.target_line_id, **results}

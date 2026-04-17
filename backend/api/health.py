@@ -59,12 +59,14 @@ def get_mongodb_status() -> dict[str, Any]:
 async def _build_readiness_checks() -> dict[str, Any]:
     checks: dict[str, Any] = {
         "mongodb": False,
+        "redis": False,
         "sql_server": False,
         "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
     }
 
     # Run checks
     await _check_mongodb_health(checks)
+    await _check_redis_health(checks)
     await _check_sql_server_health(checks)
     _check_system_resources_health(checks)
 
@@ -105,6 +107,29 @@ async def _check_sql_server_health(checks: dict[str, Any]) -> None:
     except Exception as exc:
         logger.error(f"SQL Server health check failed: {exc}")
         checks["sql_server_error"] = str(exc)
+
+
+async def _check_redis_health(checks: dict[str, Any]) -> None:
+    from backend.core.globals import cache_service
+
+    if not cache_service:
+        checks["redis"] = False
+        checks["redis_error"] = "Cache service not initialized"
+        return
+
+    try:
+        # Try to ping Redis
+        if hasattr(cache_service, "redis_client") and cache_service.redis_client:
+            await cache_service.redis_client.ping()
+            checks["redis"] = True
+        elif hasattr(cache_service, "use_redis") and cache_service.use_redis:
+            checks["redis"] = True
+        else:
+            checks["redis"] = True  # In-memory fallback is always "available"
+    except Exception as exc:
+        logger.warning(f"Redis health check failed: {exc}")
+        checks["redis"] = False
+        checks["redis_error"] = str(exc)
 
 
 def _check_system_resources_health(checks: dict[str, Any]) -> None:
@@ -375,7 +400,7 @@ async def detailed_health_check() -> dict[str, Any]:
     Usage: Monitoring dashboards, troubleshooting
     """
     from backend.config import settings
-    from backend.core.globals import database_health_service
+    from backend.core.globals import cache_service, database_health_service, websocket_manager
 
     resources = _gather_system_resources()
     mongo_pool_info = _build_mongo_pool_info()
@@ -385,13 +410,64 @@ async def detailed_health_check() -> dict[str, Any]:
     else:
         db_health = {"status": "unknown", "error": "Health service not initialized"}
 
+    # Build Redis health info
+    redis_health = {"status": "unknown"}
+    if cache_service:
+        try:
+            if hasattr(cache_service, "redis_client") and cache_service.redis_client:
+                await cache_service.redis_client.ping()
+                redis_health = {
+                    "status": "healthy",
+                    "type": "redis",
+                    "url": cache_service.redis_url or "redis://localhost",
+                }
+            elif hasattr(cache_service, "use_redis"):
+                redis_health = {
+                    "status": "healthy" if cache_service.use_redis else "degraded",
+                    "type": "in_memory" if not cache_service.use_redis else "redis",
+                    "fallback": not cache_service.use_redis,
+                }
+        except Exception as exc:
+            redis_health = {"status": "unhealthy", "error": str(exc)}
+
+    # Build WebSocket health info
+    ws_health = {"status": "unknown", "active_connections": 0}
+    if websocket_manager:
+        try:
+            ws_connections = getattr(websocket_manager, "active_connections", {})
+            ws_health = {
+                "status": "healthy",
+                "active_connections": len(ws_connections) if ws_connections else 0,
+                "rooms": len(getattr(websocket_manager, "rooms", {}) or {}),
+            }
+        except Exception as exc:
+            ws_health = {"status": "degraded", "error": str(exc)}
+
+    # Build SQL Server connection status
+    sql_health = {"status": "unknown", "is_connected": False}
+    try:
+        from backend.core.globals import sql_server_pool
+
+        if sql_server_pool:
+            sql_health = {
+                "status": "healthy",
+                "is_connected": True,
+            }
+    except Exception as exc:
+        sql_health = {"status": "unavailable", "error": str(exc)}
+
     health_data: dict[str, Any] = {
         **db_health,
         "service": "stock-verify-api",
         "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
         "version": getattr(settings, "APP_VERSION", "1.0.0"),
         "resources": resources,
-        "connection_pools": {"mongodb": mongo_pool_info},
+        "components": {
+            "mongodb": mongo_pool_info,
+            "redis": redis_health,
+            "websocket": ws_health,
+            "sql_server": sql_health,
+        },
     }
 
     return health_data

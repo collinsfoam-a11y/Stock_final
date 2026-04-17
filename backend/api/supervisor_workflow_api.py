@@ -36,6 +36,8 @@ class BatchApprovalRequest(BaseModel):
     count_line_ids: List[str] = Field(..., description="List of count line IDs to approve")
     require_photos: bool = Field(default=True, description="Require photo proof")
     approval_notes: Optional[str] = Field(None, description="Optional approval notes")
+    skip_variance_check: bool = Field(default=False, description="Skip variance threshold check")
+    variance_threshold: Optional[float] = Field(None, description="Custom variance threshold")
 
 
 class BatchRejectionRequest(BaseModel):
@@ -44,6 +46,23 @@ class BatchRejectionRequest(BaseModel):
     count_line_ids: List[str] = Field(..., description="List of count line IDs to reject")
     rejection_reason: str = Field(..., description="Reason for rejection")
     assign_to: Optional[str] = Field(None, description="User to assign recount to")
+    force: bool = Field(default=False, description="Force rejection even if already reviewed")
+
+
+class QuickApproveRequest(BaseModel):
+    """Quick approve with variance threshold"""
+
+    session_id: str = Field(..., description="Session ID for quick approve all")
+    variance_threshold: float = Field(default=10.0, description="Maximum variance to auto-approve")
+    max_items: int = Field(default=100, description="Maximum items to approve")
+
+
+class WorkflowAnalyticsRequest(BaseModel):
+    """Request for workflow analytics"""
+
+    start_date: Optional[str] = Field(None, description="Start date (ISO format)")
+    end_date: Optional[str] = Field(None, description="End date (ISO format)")
+    user_id: Optional[str] = Field(None, description="Filter by user ID")
 
 
 class BatchOperationResponse(BaseModel):
@@ -383,4 +402,154 @@ async def get_pending_approvals(
 
     except Exception as e:
         logger.error(f"Error getting pending approvals: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/quick-approve")
+async def quick_approve_count_lines(
+    request: QuickApproveRequest,
+    current_user: dict = require_permission(Permission.COUNT_LINE_APPROVE),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """
+    Quick approve all count lines below variance threshold.
+
+    Returns list of approved count lines.
+    """
+    try:
+        state_machine = CountLineStateMachine(db)
+        actor_id = _get_user_id(current_user)
+
+        threshold = request.variance_threshold
+        max_items = request.max_items
+
+        query = {
+            "session_id": request.session_id,
+            "status": {"$in": ["pending", "PENDING", "submitted"]},
+            "variance": {"$exists": True},
+        }
+
+        count_lines_cursor = db.count_lines.find(query).sort("submitted_at", -1).limit(max_items)
+        count_lines_list = await count_lines_cursor.to_list(length=max_items)
+
+        results = []
+        succeeded = 0
+        skipped = 0
+
+        for count_line in count_lines_list:
+            cl_id = count_line.get("id")
+            variance = abs(count_line.get("variance") or 0)
+            erp_qty = count_line.get("erp_qty") or 0
+
+            if erp_qty > 0 and variance / erp_qty > threshold:
+                skipped += 1
+                continue
+
+            try:
+                await state_machine.transition(
+                    count_line_id=cl_id,
+                    next_state=CountLineState.APPROVED.value,
+                    user_id=actor_id,
+                    user_role=current_user.get("role", "supervisor"),
+                    reason=f"Quick approve - variance {variance} within threshold",
+                )
+                results.append({"count_line_id": cl_id, "success": True})
+                succeeded += 1
+            except Exception as e:
+                results.append({"count_line_id": cl_id, "success": False, "error": str(e)})
+
+        return {
+            "success": True,
+            "session_id": request.session_id,
+            "variance_threshold": threshold,
+            "total_scanned": len(count_lines_list),
+            "approved": succeeded,
+            "skipped": skipped,
+            "results": results[:50],
+        }
+
+    except Exception as e:
+        logger.error(f"Error in quick approve: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/analytics")
+async def get_workflow_analytics(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: dict = require_permission(Permission.COUNT_LINE_APPROVE),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """
+    Get workflow analytics for supervisors.
+
+    Returns approval/rejection stats, average processing time, and user performance.
+    """
+    try:
+        from datetime import datetime
+
+        date_query: Dict[str, datetime] = {}
+        if start_date:
+            date_query["$gte"] = datetime.fromisoformat(start_date)
+        if end_date:
+            date_query["$lte"] = datetime.fromisoformat(end_date)
+
+        approval_match: Dict[str, Any] = {"status": "approved"}
+        if date_query:
+            approval_match["approved_at"] = date_query
+
+        approval_pipeline: List[Dict[str, Any]] = [
+            {"$match": approval_match},
+            {
+                "$group": {
+                    "_id": "$approved_by",
+                    "count": {"$sum": 1},
+                    "avg_variance": {"$avg": "$variance"},
+                }
+            },
+            {"$sort": {"count": -1}},
+            {"$limit": 10},
+        ]
+        approval_cursor = db.count_lines.aggregate(approval_pipeline)
+        approvals = await approval_cursor.to_list(10)
+
+        rejection_match: Dict[str, Any] = {"status": "rejected"}
+        if date_query:
+            rejection_match["rejected_at"] = date_query
+
+        rejection_pipeline: List[Dict[str, Any]] = [
+            {"$match": rejection_match},
+            {"$group": {"_id": "$rejected_by", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 10},
+        ]
+        rejection_cursor = db.count_lines.aggregate(rejection_pipeline)
+        rejections = await rejection_cursor.to_list(10)
+
+        total_approved = sum(a.get("count", 0) for a in approvals)
+        total_rejected = sum(r.get("count", 0) for r in rejections)
+
+        return {
+            "success": True,
+            "date_range": {"start": start_date, "end": end_date},
+            "summary": {
+                "total_approved": total_approved,
+                "total_rejected": total_rejected,
+                "approval_rate": round(total_approved / (total_approved + total_rejected) * 100, 2)
+                if total_approved + total_rejected > 0
+                else 0,
+            },
+            "top_approvers": [
+                {
+                    "user": a.get("_id"),
+                    "count": a.get("count"),
+                    "avg_variance": round(a.get("avg_variance") or 0, 2),
+                }
+                for a in approvals
+            ],
+            "top_rejectors": [{"user": r.get("_id"), "count": r.get("count")} for r in rejections],
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting workflow analytics: {e}")
         raise HTTPException(status_code=500, detail=str(e))

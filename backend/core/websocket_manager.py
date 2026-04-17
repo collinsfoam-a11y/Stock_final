@@ -83,5 +83,35 @@ class WebSocketManager:
             for connection in user_connections:
                 await connection.send_json(message)
 
+    async def get_connection_stats(self) -> dict:
+        """Get WebSocket connection statistics."""
+        return {
+            "total_users": len(self.active_connections),
+            "total_sessions": len(self.session_connections),
+            "user_connections": {
+                user_id: len(connections)
+                for user_id, connections in self.active_connections.items()
+            },
+            "session_connections": {
+                session_id: len(connections)
+                for session_id, connections in self.session_connections.items()
+            },
+        }
+
+    async def ping_all(self) -> int:
+        """Ping all connections to check liveness. Returns count of responsive connections."""
+        responsive = 0
+        for user_id, connections in list(self.active_connections.items()):
+            alive = []
+            for conn in connections:
+                try:
+                    await conn.send_json({"type": "ping", "timestamp": __import__("time").time()})
+                    responsive += 1
+                    alive.append(conn)
+                except Exception:
+                    pass
+            self.active_connections[user_id] = alive
+        return responsive
+
 
 manager = WebSocketManager()

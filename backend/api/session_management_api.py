@@ -83,6 +83,10 @@ class SessionStats(BaseModel):
     pending_items: int
     duration_seconds: float
     items_per_minute: float
+    scanned_items: int = 0
+    remaining_items: int = 0
+    completion_percent: float = 0.0
+    estimated_time_remaining: float = 0.0
 
 
 class HeartbeatResponse(BaseModel):
@@ -1328,6 +1332,16 @@ async def get_session_stats(
     duration = max(time.time() - started_at, 0)
     items_per_minute = (verified_items / duration * 60) if duration > 0 else 0
 
+    # Real-time progress tracking
+    scanned_items = verified_items + damage_items + pending_items
+    remaining_items = max(total_items - scanned_items, 0)
+    completion_percent = (scanned_items / total_items * 100) if total_items > 0 else 0.0
+
+    # Estimated time remaining based on current rate
+    estimated_time_remaining = 0.0
+    if items_per_minute > 0 and remaining_items > 0:
+        estimated_time_remaining = (remaining_items / items_per_minute) * 60
+
     return SessionStats(
         id=session_id,
         total_items=total_items,
@@ -1336,6 +1350,10 @@ async def get_session_stats(
         pending_items=pending_items,
         duration_seconds=duration,
         items_per_minute=round(items_per_minute, 2),
+        scanned_items=scanned_items,
+        remaining_items=remaining_items,
+        completion_percent=round(completion_percent, 2),
+        estimated_time_remaining=round(estimated_time_remaining, 2),
     )
 
 
@@ -1876,4 +1894,73 @@ async def logout_all_sessions(
         "revoked_tokens": revoked_tokens,
         "closed_sessions": sess_result.modified_count + v_sess_result.modified_count,
         "message": "All active sessions have been logged out.",
+    }
+
+
+class BulkSessionCloseRequest(BaseModel):
+    """Request for bulk closing sessions"""
+
+    session_ids: list[str]
+    force: bool = False
+
+
+@router.post("/bulk/close")
+async def bulk_close_sessions(
+    request: BulkSessionCloseRequest,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(get_current_user),
+):
+    """Close multiple sessions at once."""
+    results = []
+    succeeded = 0
+    failed = 0
+
+    for session_id in request.session_ids:
+        try:
+            session = await find_session(db, session_id)
+            if not session:
+                results.append(
+                    {"session_id": session_id, "success": False, "error": "Session not found"}
+                )
+                failed += 1
+                continue
+
+            if session.get("status") in ["CLOSED", "COMPLETED"]:
+                results.append(
+                    {"session_id": session_id, "success": False, "error": "Already closed"}
+                )
+                failed += 1
+                continue
+
+            if current_user["role"] not in ["supervisor", "admin"]:
+                if session.get("created_by") != current_user["username"]:
+                    results.append(
+                        {"session_id": session_id, "success": False, "error": "Access denied"}
+                    )
+                    failed += 1
+                    continue
+
+            await db.sessions.update_one(
+                {"id": session_id},
+                {
+                    "$set": {
+                        "status": "CLOSED",
+                        "closed_at": _current_utc_naive(),
+                        "closed_by": current_user["username"],
+                    }
+                },
+            )
+            results.append({"session_id": session_id, "success": True})
+            succeeded += 1
+
+        except Exception as e:
+            results.append({"session_id": session_id, "success": False, "error": str(e)})
+            failed += 1
+
+    return {
+        "success": succeeded > 0,
+        "total": len(request.session_ids),
+        "succeeded": succeeded,
+        "failed": failed,
+        "results": results,
     }

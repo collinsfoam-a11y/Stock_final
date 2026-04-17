@@ -5,6 +5,7 @@ Item Verification API - Verification, filtering, CSV export, and variance tracki
 import asyncio
 import csv
 import io
+import json
 import logging
 import traceback
 from copy import deepcopy
@@ -329,6 +330,8 @@ async def update_item_master(
                 await cache_service.delete_async("items", f"enhanced_{actual_barcode}")
             if actual_item_code:
                 await cache_service.delete_async("items", f"enhanced_{actual_item_code}")
+            # Clear search cache when items are updated
+            await cache_service.clear_pattern("search:*")
 
         # Log the change
         await db.audit_logs.insert_one(
@@ -834,6 +837,50 @@ async def export_items_csv(
     except Exception as e:
         logger.error(f"Error exporting items to CSV: {str(e)}")
         raise HTTPException(status_code=500, detail=f"CSV export failed: {str(e)}")
+
+
+@verification_router.get("/export/json")
+async def export_items_json(
+    category: Optional[str] = Query(None),
+    subcategory: Optional[str] = Query(None),
+    floor: Optional[str] = Query(None),
+    rack: Optional[str] = Query(None),
+    warehouse: Optional[str] = Query(None),
+    verified: Optional[bool] = Query(None),
+    search: Optional[str] = Query(None),
+    max_rows: int = Query(10000, ge=1, le=100000, description="Maximum rows to export"),
+    current_user: dict = Depends(get_current_user),
+):
+    """Export filtered items as JSON."""
+    try:
+        filter_query = build_item_filter_query(
+            category=category,
+            subcategory=subcategory,
+            floor=floor,
+            rack=rack,
+            warehouse=warehouse,
+            verified=verified,
+            search=search,
+        )
+
+        items = await db.erp_items.find(filter_query).limit(max_rows).to_list(length=max_rows)
+        rows = [_build_erpnext_item_export_row(item) for item in items]
+
+        filename = (
+            f"items_export_"
+            f"{datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S')}.json"
+        )
+
+        return StreamingResponse(
+            iter([json.dumps({"items": rows}, default=str)]),
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error exporting items to JSON: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"JSON export failed: {str(e)}")
 
 
 @verification_router.get("/export/xlsx")

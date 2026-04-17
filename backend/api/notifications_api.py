@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from backend.auth.dependencies import get_current_user
 from backend.db.runtime import get_db
-from backend.services.notification_service import NotificationService
+from backend.services.notification_service import NotificationService, NotificationType, NotificationPriority
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
@@ -48,6 +48,18 @@ class NotificationListResponse(BaseModel):
 
     notifications: list[dict]
     total: int
+    unread_count: int
+
+
+class BatchNotificationRequest(BaseModel):
+    """Request for batch notifications"""
+
+    user_ids: list[str]
+    notification_type: str
+    title: str
+    message: str
+    priority: str = "medium"
+    action_url: Optional[str] = None
     unread_count: int
 
 
@@ -218,8 +230,50 @@ async def unregister_notification_device(
     try:
         notification_service = NotificationService(db)
         user_id = _get_user_id(current_user)
-        await notification_service.unregister_device(user_id=user_id, token=payload.token)
+        await notification_service.unregister_device(
+            user_id=user_id,
+            token=payload.token,
+        )
         return {"success": True, "message": "Notification device unregistered"}
     except Exception as e:
         logger.error(f"Error unregistering notification device: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/batch")
+async def send_batch_notifications(
+    request: BatchNotificationRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Send notifications to multiple users at once."""
+    try:
+        notification_service = NotificationService(db)
+        results = []
+        for user_id in request.user_ids:
+            try:
+                notification_id = await notification_service.create_notification(
+                    user_id=user_id,
+                    notification_type=NotificationType(request.notification_type),
+                    title=request.title,
+                    message=request.message,
+                    priority=NotificationPriority(request.priority),
+                    action_url=request.action_url,
+                )
+                results.append(
+                    {"user_id": user_id, "success": True, "notification_id": notification_id}
+                )
+            except Exception as e:
+                results.append({"user_id": user_id, "success": False, "error": str(e)})
+
+        success_count = sum(1 for r in results if r["success"])
+        return {
+            "success": success_count > 0,
+            "total": len(request.user_ids),
+            "succeeded": success_count,
+            "failed": len(results) - success_count,
+            "results": results,
+        }
+    except Exception as e:
+        logger.error(f"Error sending batch notifications: {e}")
         raise HTTPException(status_code=500, detail=str(e))

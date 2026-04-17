@@ -283,3 +283,31 @@ class CacheService:
     # Aliases for compatibility if needed, but better to update callers
     get_async = get
     set_async = set
+
+
+async def cache_on_demand(prefix: str, ttl: int = 300):
+    """
+    Decorator to cache function results on-demand.
+    Usage: @cache_on_demand("search", ttl=60)
+    """
+
+    def decorator(func):
+        async def wrapper(*args, **kwargs):
+            from backend.core.globals import cache_service
+
+            if not cache_service:
+                return await func(*args, **kwargs)
+
+            cache_key = f"{prefix}:{str(args)}:{str(kwargs)}"
+            safe_key = cache_key.replace(":", "_").replace(" ", "")[:200]
+            cached = await cache_service.get(prefix, safe_key)
+            if cached:
+                return cached
+
+            result = await func(*args, **kwargs)
+            await cache_service.set(prefix, safe_key, result, ttl)
+            return result
+
+        return wrapper
+
+    return decorator
