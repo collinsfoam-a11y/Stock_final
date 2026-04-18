@@ -68,10 +68,10 @@ def main():
     jwt_secret = generate_secret()
     jwt_refresh_secret = generate_secret()
 
-    print("\nGenerated Secrets:")
+    print("\nGenerated Secrets (masked for security):")
     print("-" * 60)
-    print(f"JWT_SECRET={jwt_secret}")
-    print(f"JWT_REFRESH_SECRET={jwt_refresh_secret}")
+    print(f"JWT_SECRET={jwt_secret[:4]}***{jwt_secret[-4:]}")
+    print(f"JWT_REFRESH_SECRET={jwt_refresh_secret[:4]}***{jwt_refresh_secret[-4:]}")
     print("-" * 60)
 
     if args.write:
@@ -82,10 +82,9 @@ def main():
 
         update_env_file(env_path, jwt_secret, jwt_refresh_secret)
     else:
-        print("\nTo use these secrets:")
-        print("1. Copy the values above")
-        print("2. Paste them into your backend/.env file")
-        print("   OR run this script with --write to update automatically")
+        print(
+            "\nPlease run this script with the --write flag to automatically save them to your .env file."
+        )
 
 
 if __name__ == "__main__":

@@ -147,7 +147,7 @@ class JWTValidator:
                 detail=error,
             )
         except jwt.InvalidTokenError as e:
-            logger.error(f"[decode_token] InvalidTokenError: {e} with key {auth_deps.secret_key}")
+            logger.error(f"[decode_token] InvalidTokenError: {e}")
             from backend.error_messages import get_error_message
 
             error = get_error_message("AUTH_TOKEN_INVALID")
@@ -180,7 +180,7 @@ async def get_current_user(
         logger.debug(f"[get_current_user] Credentials provided: {credentials is not None}")
 
         token = JWTValidator.extract_token(request, credentials)
-        logger.debug(f"[get_current_user] Token extracted: {token[:30]}...")
+        logger.debug(f"[get_current_user] Token extracted successfully")
 
         payload = JWTValidator.decode_token(token)
         logger.debug(f"[get_current_user] Token decoded, payload keys: {list(payload.keys())}")

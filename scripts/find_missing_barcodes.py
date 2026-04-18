@@ -24,15 +24,15 @@ class BarcodeAnalyzer:
         self.token = token
         self.headers = {
             "Authorization": f"Bearer {token}" if token else None,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
-    def login(self, username: str = "admin", password: str = "admin123") -> bool:
+    def login(self, username: str, password: str) -> bool:
         """Authenticate and get access token"""
         try:
             response = requests.post(
                 f"{self.base_url}/api/auth/login",
-                json={"username": username, "password": password}
+                json={"username": username, "password": password},
             )
             if response.status_code == 200:
                 data = response.json()
@@ -44,7 +44,9 @@ class BarcodeAnalyzer:
             print(f"❌ Login failed: {e}")
         return False
 
-    def get_existing_barcodes(self, start: int, end: int, batch_size: int = 100) -> Set[int]:
+    def get_existing_barcodes(
+        self, start: int, end: int, batch_size: int = 100
+    ) -> Set[int]:
         """Query API to get all existing barcodes in the range"""
         existing = set()
 
@@ -57,7 +59,7 @@ class BarcodeAnalyzer:
                 f"{self.base_url}/api/items/search/optimized",
                 params={"q": "51", "limit": 50},
                 headers=self.headers,
-                timeout=10
+                timeout=10,
             )
 
             if response.status_code == 200:
@@ -80,7 +82,7 @@ class BarcodeAnalyzer:
                             f"{self.base_url}/api/items/search/optimized",
                             params={"q": query, "limit": batch_size, "offset": 0},
                             headers=self.headers,
-                            timeout=5
+                            timeout=5,
                         )
 
                         if response.status_code == 200:
@@ -95,7 +97,9 @@ class BarcodeAnalyzer:
                                             existing.add(bc_int)
 
                                 if items:
-                                    print(f"   Found {len(items)} items with prefix {query}... (Total: {len(existing)})")
+                                    print(
+                                        f"   Found {len(items)} items with prefix {query}... (Total: {len(existing)})"
+                                    )
                     except Exception as e:
                         continue
 
@@ -104,7 +108,9 @@ class BarcodeAnalyzer:
 
         return existing
 
-    def find_missing_ranges(self, start: int, end: int, existing: Set[int]) -> List[Tuple[int, int]]:
+    def find_missing_ranges(
+        self, start: int, end: int, existing: Set[int]
+    ) -> List[Tuple[int, int]]:
         """Identify consecutive ranges of missing barcodes"""
         missing_ranges = []
         range_start = None
@@ -124,8 +130,14 @@ class BarcodeAnalyzer:
 
         return missing_ranges
 
-    def generate_report(self, start: int, end: int, existing: Set[int],
-                       missing_ranges: List[Tuple[int, int]], output_file: str = None):
+    def generate_report(
+        self,
+        start: int,
+        end: int,
+        existing: Set[int],
+        missing_ranges: List[Tuple[int, int]],
+        output_file: str = None,
+    ):
         """Generate comprehensive report of missing barcodes"""
         total_range = end - start + 1
         existing_count = len(existing)
@@ -141,8 +153,8 @@ class BarcodeAnalyzer:
             "SUMMARY:",
             "-" * 80,
             f"Total Range Size:      {total_range:,} barcodes",
-            f"Existing Barcodes:     {existing_count:,} ({existing_count/total_range*100:.2f}%)",
-            f"Missing Barcodes:      {missing_count:,} ({missing_count/total_range*100:.2f}%)",
+            f"Existing Barcodes:     {existing_count:,} ({existing_count / total_range * 100:.2f}%)",
+            f"Missing Barcodes:      {missing_count:,} ({missing_count / total_range * 100:.2f}%)",
             f"Missing Ranges:        {len(missing_ranges)} consecutive gaps",
             "",
             "MISSING BARCODE RANGES:",
@@ -157,14 +169,18 @@ class BarcodeAnalyzer:
                 if gap_size == 1:
                     report_lines.append(f"{idx:4d}. {range_start} (single)")
                 else:
-                    report_lines.append(f"{idx:4d}. {range_start} - {range_end} ({gap_size:,} barcodes)")
+                    report_lines.append(
+                        f"{idx:4d}. {range_start} - {range_end} ({gap_size:,} barcodes)"
+                    )
 
-        report_lines.extend([
-            "",
-            "=" * 80,
-            "RECOMMENDATIONS:",
-            "-" * 80,
-        ])
+        report_lines.extend(
+            [
+                "",
+                "=" * 80,
+                "RECOMMENDATIONS:",
+                "-" * 80,
+            ]
+        )
 
         if missing_count > total_range * 0.5:
             report_lines.append("⚠️  WARNING: More than 50% of barcodes are missing!")
@@ -189,7 +205,7 @@ class BarcodeAnalyzer:
         # Save to file if requested
         if output_file:
             try:
-                with open(output_file, 'w') as f:
+                with open(output_file, "w") as f:
                     f.write(report_text)
 
                     # Also write detailed list
@@ -217,23 +233,46 @@ Examples:
   python scripts/find_missing_barcodes.py
   python scripts/find_missing_barcodes.py --start 510001 --end 519999
   python scripts/find_missing_barcodes.py --output missing_report.txt
-        """
+        """,
     )
 
-    parser.add_argument('--start', type=int, default=510001,
-                       help='Start of barcode range (default: 510001)')
-    parser.add_argument('--end', type=int, default=529999,
-                       help='End of barcode range (default: 529999)')
-    parser.add_argument('--output', type=str, default='missing_barcodes_report.txt',
-                       help='Output file for report (default: missing_barcodes_report.txt)')
-    parser.add_argument('--url', type=str, default='http://localhost:8001',
-                       help='Backend API URL (default: http://localhost:8001)')
-    parser.add_argument('--username', type=str, default='admin',
-                       help='API username (default: admin)')
-    parser.add_argument('--password', type=str, default='admin123',
-                       help='API password (default: admin123)')
+    parser.add_argument(
+        "--start",
+        type=int,
+        default=510001,
+        help="Start of barcode range (default: 510001)",
+    )
+    parser.add_argument(
+        "--end", type=int, default=529999, help="End of barcode range (default: 529999)"
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="missing_barcodes_report.txt",
+        help="Output file for report (default: missing_barcodes_report.txt)",
+    )
+    parser.add_argument(
+        "--url",
+        type=str,
+        default="http://localhost:8001",
+        help="Backend API URL (default: http://localhost:8001)",
+    )
+    parser.add_argument(
+        "--username", type=str, default="admin", help="API username (default: admin)"
+    )
+    parser.add_argument(
+        "--password",
+        type=str,
+        help="API password (use env var or prompt if not provided)",
+    )
 
     args = parser.parse_args()
+
+    password = args.password or os.environ.get("ADMIN_PASSWORD")
+    if not password:
+        import getpass
+
+        password = getpass.getpass("API password: ")
 
     print("\n" + "=" * 80)
     print("BARCODE GAP ANALYSIS TOOL")
@@ -247,7 +286,7 @@ Examples:
 
     # Login
     print("🔐 Authenticating...")
-    if not analyzer.login(args.username, args.password):
+    if not analyzer.login(args.username, password):
         print("❌ Failed to authenticate. Check credentials and backend status.")
         return 1
     print("✅ Authentication successful\n")
@@ -257,9 +296,14 @@ Examples:
         response = requests.get(f"{args.url}/health", timeout=5)
         health = response.json()
 
-        if health.get("dependencies", {}).get("sql_server", {}).get("status") != "healthy":
+        if (
+            health.get("dependencies", {}).get("sql_server", {}).get("status")
+            != "healthy"
+        ):
             print("⚠️  WARNING: SQL Server is not connected!")
-            print("   The analysis will only check MongoDB cache, which may be incomplete.")
+            print(
+                "   The analysis will only check MongoDB cache, which may be incomplete."
+            )
             print("   For accurate results, configure SQL Server connection.\n")
     except:
         pass
@@ -281,7 +325,9 @@ Examples:
     missing_ranges = analyzer.find_missing_ranges(args.start, args.end, existing)
 
     # Generate report
-    analyzer.generate_report(args.start, args.end, existing, missing_ranges, args.output)
+    analyzer.generate_report(
+        args.start, args.end, existing, missing_ranges, args.output
+    )
 
     return 0
 

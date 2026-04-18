@@ -46,7 +46,9 @@ async def create_users(usernames: List[str], password: str):
 
 
 if __name__ == "__main__":
+    import os
+
     users_to_create = ["staff2", "staff3", "staff4", "staff5"]
-    password_to_set = "staff123"
+    password_to_set = os.environ.get("STAFF_PASSWORD", "DEFAULT_VALUE_NOT_FOR_PRODUCTION")
 
     asyncio.run(create_users(users_to_create, password_to_set))

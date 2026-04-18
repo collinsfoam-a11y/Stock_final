@@ -1865,8 +1865,10 @@ async def logout_all_sessions(
     Logout all active sessions for the current user (Phase 1 Governance)
     Mandatory endpoint to resolve AUTH_SESSION_CONFLICT
     """
+    from backend.utils.api_utils import sanitize_for_logging
+
     username = current_user["username"]
-    logger.info(f"Revoking all sessions for user: {username}")
+    logger.info(f"Revoking all sessions for user: {sanitize_for_logging(username)}")
 
     # 1. Revoke all refresh tokens
     revoked_tokens = await refresh_token_service.revoke_all_user_tokens(username)

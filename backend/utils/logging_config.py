@@ -28,7 +28,7 @@ class NonClosingStreamHandler(logging.StreamHandler):
 
 
 class AppNameFilter(logging.Filter):
-    """Normalize emitted records to the configured application name."""
+    """Normalize emitted records to the configured application name and sanitize message."""
 
     def __init__(self, app_name: str):
         super().__init__()
@@ -37,6 +37,19 @@ class AppNameFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         record.app_logger_name = self.app_name
         record.source_logger = record.name
+
+        # Sanitize log message to prevent CWE-117 Log Injection
+        try:
+            msg = record.getMessage()
+            # Replace newlines and carriage returns to prevent log injection
+            msg = msg.replace("\r", "\\r").replace("\n", "\\n")
+            # Only set msg if we don't have args to avoid re-formatting errors
+            # Alternatively, safely override both msg and args
+            record.msg = msg
+            record.args = ()
+        except Exception:
+            pass
+
         return True
 
 

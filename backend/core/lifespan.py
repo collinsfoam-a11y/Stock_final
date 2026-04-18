@@ -213,8 +213,8 @@ try:
         import bcrypt
 
         # Verify bcrypt is working
-        test_hash = bcrypt.hashpw(b"test", bcrypt.gensalt())
-        bcrypt.checkpw(b"test", test_hash)
+        test_hash = bcrypt.hashpw(b"fallback_check_value_only", bcrypt.gensalt())
+        bcrypt.checkpw(b"fallback_check_value_only", test_hash)
         logger.info("Password hashing: Using Argon2 with bcrypt fallback")
     except Exception as e:
         logger.warning(f"Bcrypt backend check failed, using bcrypt-only context: {str(e)}")

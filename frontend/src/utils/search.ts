@@ -121,7 +121,9 @@ export const performFuzzySearch = <T extends SearchableItem>(
 export const highlightMatches = (text: string, query: string): string => {
   if (!query || !text) return text;
 
-  const regex = new RegExp(`(${query})`, "gi");
+  // Escape special characters to prevent ReDoS
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escapedQuery})`, "gi");
   return text.replace(regex, "**$1**");
 };
 

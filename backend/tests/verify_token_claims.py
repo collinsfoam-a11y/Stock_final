@@ -14,8 +14,8 @@ def test_access_token_claims():
     # Generate token
     token = create_access_token(data=data, secret_key=secret_key, algorithm=algorithm)
 
-    # Decode token without verification to inspect payload
-    payload = jwt.decode(token, options={"verify_signature": False})
+    # Decode token with verification to inspect payload
+    payload = jwt.decode(token, secret_key, algorithms=[algorithm])
 
     print(f"\nPayload: {payload}")
 

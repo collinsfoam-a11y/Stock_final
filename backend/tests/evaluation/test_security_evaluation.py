@@ -92,9 +92,10 @@ class TestAuthenticationSecurity:
     @pytest.mark.skipif(IS_MOCKED_AUTH, reason="Mock auth always succeeds")
     async def test_expired_token_rejected(self, async_client, test_db):
         """Test that expired tokens are rejected."""
-        # Use a known expired token (expired in the past)
+        # Use a known expired token structure but not an actual valid JWT
         expired_token = (
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjoxfQ.signature"
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+            ".eyJzdWIiOiJ0ZXN0IiwiZXhwIjoxfQ.mock_signature_value"
         )
 
         response = await async_client.get(

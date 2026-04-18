@@ -134,9 +134,11 @@ async def get_warehouses(
             if defaults:
                 # insert_many modifies 'defaults' in-place adding '_id'
                 await db["warehouses"].insert_many(defaults)
+                from backend.utils.api_utils import sanitize_for_logging
+
                 logger.info(
                     "Seeded default warehouses into MongoDB for zone %s",
-                    zone or "*",
+                    sanitize_for_logging(zone or "*"),
                 )
                 # Sanitize defaults to remove/convert ObjectId before returning
                 cleaned_defaults = []

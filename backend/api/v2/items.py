@@ -467,9 +467,12 @@ async def get_item_details(
             except Exception as e:
                 # Log error but don't fail the request
                 import logging
+                from backend.utils.api_utils import sanitize_for_logging
 
                 logger = logging.getLogger(__name__)
-                logger.warning(f"SQL verification failed for {item_code}: {str(e)}")
+                logger.warning(
+                    f"SQL verification failed for {sanitize_for_logging(item_code)}: {sanitize_for_logging(str(e))}"
+                )
 
         item_doc = cast(dict[str, Any], item)
         last_sql_verified_at = item_doc.get("last_sql_verified_at")

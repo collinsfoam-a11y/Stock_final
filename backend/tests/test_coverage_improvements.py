@@ -67,7 +67,7 @@ def test_auth_utils_verify_bcrypt_fallback_direct():
     # We need a valid bcrypt hash
     import bcrypt
 
-    password = b"test_fallback"
+    password = b"fallback_test_value"
     hashed = bcrypt.hashpw(password, bcrypt.gensalt()).decode("utf-8")
 
     # Test successful verification

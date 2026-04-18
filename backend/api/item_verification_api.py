@@ -522,7 +522,9 @@ async def verify_item(
                 if sql_sync_service.sql_connector.test_connection():
                     item = await sql_sync_service.sync_single_item_by_barcode(barcode)
             except Exception as e:
-                logger.warning(f"Failed to auto-refresh item {barcode} from SQL: {e}")
+                logger.warning(
+                    f"Failed to auto-refresh item {sanitize_for_logging(barcode)} from SQL: {sanitize_for_logging(str(e))}"
+                )
 
         # 2. If no item from SQL (or offline), get from MongoDB
         if not item:
