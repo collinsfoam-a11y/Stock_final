@@ -7,6 +7,7 @@ import asyncio
 import logging
 import re
 import time
+from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any, Optional, cast
 
@@ -24,6 +25,7 @@ from backend.auth.dependencies import get_current_user_async as get_current_user
 # Import services and database
 from backend.services.monitoring_service import MonitoringService
 from backend.services.sql_sync_service import SQLSyncService
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +53,22 @@ def init_enhanced_api(
         try:
             sql_sync_service = SQLSyncService(sql_connector_instance, db)
         except Exception as e:
-            logger.warning(f"Could not initialize SQL sync for enhanced API: {e}")
+            logger.warning(
+                "Could not initialize SQL sync for enhanced API: %s",
+                sanitize_for_logging(str(e), 200),
+            )
     else:
         # Fallback for tests or if not provided (though it should be)
         logger.warning("SQL Connector not provided to enhanced API, real-time sync disabled")
 
 
 _ALPHANUMERIC_PATTERN = re.compile(r"^[A-Z0-9_\-]+$")
+_CONTEXTUAL_ITEM_FIELDS = {
+    "expected_location",
+    "found_location",
+    "is_misplaced",
+    "relocation_status",
+}
 
 
 def _validate_barcode_format(barcode: Optional[str]) -> str:
@@ -96,6 +107,24 @@ class ItemResponse:
         self.timestamp = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
 
+def _to_cacheable_item(item_data: dict[str, Any]) -> dict[str, Any]:
+    cacheable_item = deepcopy(item_data)
+    for field in _CONTEXTUAL_ITEM_FIELDS:
+        cacheable_item.pop(field, None)
+    return cacheable_item
+
+
+def _extract_cached_item(cached_payload: Any) -> Optional[dict[str, Any]]:
+    if not isinstance(cached_payload, dict):
+        return None
+
+    cached_item = cached_payload.get("item", cached_payload)
+    if not isinstance(cached_item, dict):
+        return None
+
+    return _to_cacheable_item(cached_item)
+
+
 async def _sync_item_from_sql(barcode: str) -> Optional[dict[str, Any]]:
     if not sql_sync_service:
         return None
@@ -105,10 +134,17 @@ async def _sync_item_from_sql(barcode: str) -> Optional[dict[str, Any]]:
             timeout=3,
         )
     except asyncio.TimeoutError:
-        logger.warning("Real-time SQL sync timed out for %s; using fallback", barcode)
+        logger.warning(
+            "Real-time SQL sync timed out for %s; using fallback",
+            sanitize_for_logging(barcode),
+        )
         return None
     except Exception as e:
-        logger.warning("Real-time SQL sync failed for %s: %s", barcode, e)
+        logger.warning(
+            "Real-time SQL sync failed for %s: %s",
+            sanitize_for_logging(barcode),
+            sanitize_for_logging(str(e), 200),
+        )
         return None
 
     if not synced_item:
@@ -152,7 +188,7 @@ def _build_lookup_metadata(
 
 
 def _raise_item_not_found(barcode: str, response_time_ms: float) -> None:
-    logger.warning("Item not found for barcode: %s", barcode)
+    logger.warning("Item not found for barcode: %s", sanitize_for_logging(barcode))
     raise HTTPException(
         status_code=404,
         detail={
@@ -214,13 +250,21 @@ async def _decorate_item_with_misplacement_context(
         context_floor, context_rack = await _resolve_lookup_context(session_id, rack_no)
         _apply_misplaced_flag(item_data, context_floor, context_rack)
     except Exception as e:
-        logger.warning("Failed to calculate is_misplaced: %s", e)
+        logger.warning(
+            "Failed to calculate is_misplaced: %s",
+            sanitize_for_logging(str(e), 200),
+        )
 
 
 async def _cache_lookup_response(normalized_barcode: str, response_data: dict[str, Any]) -> None:
     if not cache_service:
         return
-    await cache_service.set_async("items", f"enhanced_{normalized_barcode}", response_data, ttl=1800)
+    await cache_service.set_async(
+        "items",
+        f"enhanced_{normalized_barcode}",
+        {"item": _to_cacheable_item(response_data)},
+        ttl=1800,
+    )
 
 
 async def _record_enhanced_lookup_metrics(
@@ -270,10 +314,11 @@ async def get_item_by_barcode_enhanced(
             source,
             response_time,
         )
-        await _decorate_item_with_misplacement_context(item_data, session_id, rack_no)
+        response_item = deepcopy(item_data)
+        await _decorate_item_with_misplacement_context(response_item, session_id, rack_no)
 
         response_data = {
-            "item": item_data,
+            "item": response_item,
             "metadata": _build_lookup_metadata(
                 include_metadata=include_metadata,
                 source=source,
@@ -282,7 +327,7 @@ async def get_item_by_barcode_enhanced(
                 current_user=current_user,
             ),
         }
-        await _cache_lookup_response(normalized_barcode, response_data)
+        await _cache_lookup_response(normalized_barcode, item_data)
         return response_data
 
     except HTTPException as exc:
@@ -292,7 +337,10 @@ async def get_item_by_barcode_enhanced(
         status_code = 500
         response_time = (time.time() - start_time) * 1000
         logger.error(
-            f"Enhanced barcode lookup failed: {barcode} in {response_time:.2f}ms - {str(e)}"
+            "Enhanced barcode lookup failed: %s in %.2fms - %s",
+            sanitize_for_logging(barcode, 100),
+            response_time,
+            sanitize_for_logging(str(e), 200),
         )
 
         raise HTTPException(
@@ -332,7 +380,7 @@ async def _fetch_from_specific_source(barcode: str, source: str) -> tuple[Option
     elif source == "cache":
         if cache_service:
             item = await cache_service.get_async("items", f"enhanced_{barcode}")
-            return item.get("item") if item else None, "cache"
+            return _extract_cached_item(item), "cache"
         else:
             raise HTTPException(status_code=503, detail="Cache service not available")
 
@@ -351,8 +399,9 @@ async def _fetch_with_fallback_strategy(barcode: str) -> tuple[Optional[dict], s
     if cache_service:
         try:
             cached = await cache_service.get_async("items", f"enhanced_{barcode}")
-            if cached and cached.get("item"):
-                return cached["item"], "cache"
+            cached_item = _extract_cached_item(cached)
+            if cached_item:
+                return cached_item, "cache"
         except Exception:
             pass  # Continue to next strategy
 
@@ -375,7 +424,10 @@ async def _fetch_with_fallback_strategy(barcode: str) -> tuple[Optional[dict], s
             mongo_item["_id"] = str(mongo_item["_id"])
             return mongo_item, "mongodb"
     except Exception as e:
-        logger.warning(f"MongoDB lookup failed: {str(e)}")
+        logger.warning(
+            "MongoDB lookup failed: %s",
+            sanitize_for_logging(str(e), 200),
+        )
 
     # All strategies failed
     return None, "not_found"
@@ -383,6 +435,7 @@ async def _fetch_with_fallback_strategy(barcode: str) -> tuple[Optional[dict], s
 
 def _build_relevance_stage(query: str) -> dict[str, Any]:
     """Build relevance scoring stage for aggregation pipeline"""
+    escaped_query = re.escape(query.strip())
     return {
         "$addFields": {
             "relevance_score": {
@@ -392,7 +445,7 @@ def _build_relevance_stage(query: str) -> dict[str, Any]:
                             {
                                 "$regexMatch": {
                                     "input": "$item_name",
-                                    "regex": query,
+                                    "regex": escaped_query,
                                     "options": "i",
                                 }
                             },
@@ -405,7 +458,7 @@ def _build_relevance_stage(query: str) -> dict[str, Any]:
                             {
                                 "$regexMatch": {
                                     "input": "$item_code",
-                                    "regex": query,
+                                    "regex": escaped_query,
                                     "options": "i",
                                 }
                             },
@@ -418,7 +471,7 @@ def _build_relevance_stage(query: str) -> dict[str, Any]:
                             {
                                 "$regexMatch": {
                                     "input": "$barcode",
-                                    "regex": query,
+                                    "regex": escaped_query,
                                     "options": "i",
                                 }
                             },
@@ -431,7 +484,7 @@ def _build_relevance_stage(query: str) -> dict[str, Any]:
                             {
                                 "$regexMatch": {
                                     "input": "$category",
-                                    "regex": query,
+                                    "regex": escaped_query,
                                     "options": "i",
                                 }
                             },
@@ -458,6 +511,7 @@ def _build_match_conditions(
     match_conditions: dict[str, Any] = {"$or": []}
 
     trimmed_query = query.strip()
+    escaped_query = re.escape(trimmed_query)
 
     # Use provided search_fields, with smart defaults based on query pattern
     # --- Rule 6: Serial Scan Engine (Strict Isolation) ---
@@ -467,7 +521,10 @@ def _build_match_conditions(
 
     if is_strict_barcode:
         target_fields = ["barcode"]
-        logger.info(f"Rule 6: Strict barcode search enabled for {trimmed_query}")
+        logger.info(
+            "Rule 6: Strict barcode search enabled for %s",
+            sanitize_for_logging(trimmed_query),
+        )
     else:
         # User requirements:
         # - "only barcode and item name are search criteria"
@@ -476,20 +533,20 @@ def _build_match_conditions(
 
     # Build $or conditions for all target fields
     for field in target_fields:
-        match_conditions["$or"].append({field: {"$regex": trimmed_query, "$options": "i"}})
+        match_conditions["$or"].append({field: {"$regex": escaped_query, "$options": "i"}})
 
     # Additional filters
     if category:
-        match_conditions["category"] = {"$regex": category, "$options": "i"}
+        match_conditions["category"] = {"$regex": re.escape(category), "$options": "i"}
 
     if warehouse:
-        match_conditions["warehouse"] = {"$regex": warehouse, "$options": "i"}
+        match_conditions["warehouse"] = {"$regex": re.escape(warehouse), "$options": "i"}
 
     if floor:
-        match_conditions["floor"] = {"$regex": floor, "$options": "i"}
+        match_conditions["floor"] = {"$regex": re.escape(floor), "$options": "i"}
 
     if rack:
-        match_conditions["rack"] = {"$regex": rack, "$options": "i"}
+        match_conditions["rack"] = {"$regex": re.escape(rack), "$options": "i"}
 
     if stock_level:
         stock_filter = _get_stock_level_filter(stock_level)
@@ -498,7 +555,7 @@ def _build_match_conditions(
 
     if not match_conditions["$or"]:
         # Fallback if no fields selected (shouldn't happen with logic above)
-        match_conditions["$or"].append({"item_name": {"$regex": query, "$options": "i"}})
+        match_conditions["$or"].append({"item_name": {"$regex": escaped_query, "$options": "i"}})
 
     return match_conditions
 
@@ -531,7 +588,13 @@ def _build_search_pipeline(
 
     # Match stage - search criteria
     match_conditions = _build_match_conditions(
-        query, search_fields, category, warehouse, stock_level, floor, rack
+        query=query,
+        search_fields=search_fields,
+        category=category,
+        warehouse=warehouse,
+        floor=floor,
+        rack=rack,
+        stock_level=stock_level,
     )
     pipeline.append({"$match": match_conditions})
 
@@ -659,7 +722,12 @@ async def advanced_item_search(
 
     except Exception as e:
         response_time = (time.time() - start_time) * 1000
-        logger.error(f"Advanced search failed: {query} in {response_time:.2f}ms - {str(e)}")
+        logger.error(
+            "Advanced search failed: %s in %.2fms - %s",
+            sanitize_for_logging(query, 100),
+            response_time,
+            sanitize_for_logging(str(e), 200),
+        )
 
         raise HTTPException(
             status_code=500,
@@ -699,7 +767,10 @@ async def get_unique_locations(current_user: dict = Depends(get_current_user)):
 
         return {"floors": floors, "racks": racks}
     except Exception as e:
-        logger.error(f"Failed to fetch locations: {str(e)}")
+        logger.error(
+            "Failed to fetch locations: %s",
+            sanitize_for_logging(str(e), 200),
+        )
         raise HTTPException(status_code=500, detail=f"Failed to fetch locations: {str(e)}")
 
 
@@ -740,7 +811,10 @@ async def get_item_api_performance(current_user: dict = Depends(get_current_user
         return performance_data
 
     except Exception as e:
-        logger.error(f"Performance stats failed: {str(e)}")
+        logger.error(
+            "Performance stats failed: %s",
+            sanitize_for_logging(str(e), 200),
+        )
         raise HTTPException(status_code=500, detail=f"Performance analysis failed: {str(e)}")
 
 
@@ -780,7 +854,10 @@ async def get_database_status(current_user: dict = Depends(get_current_user)):
         return await db_manager.check_database_health()
 
     except Exception as e:
-        logger.error(f"Database status check failed: {str(e)}")
+        logger.error(
+            "Database status check failed: %s",
+            sanitize_for_logging(str(e), 200),
+        )
         raise HTTPException(status_code=500, detail=f"Database status failed: {str(e)}")
 
 
@@ -811,5 +888,8 @@ async def optimize_database_performance(current_user: dict = Depends(get_current
         }
 
     except Exception as e:
-        logger.error(f"Database optimization failed: {str(e)}")
+        logger.error(
+            "Database optimization failed: %s",
+            sanitize_for_logging(str(e), 200),
+        )
         raise HTTPException(status_code=500, detail=f"Optimization failed: {str(e)}")

@@ -103,7 +103,7 @@ export async function createOfflineCountLine(
   }
 
   // Create audit metadata
-  const offlineId = generateOfflineId();
+  const offlineId = countData.idempotency_key?.trim() || generateOfflineId();
   const audit: OfflineAuditMetadata = {
     source: context.sourceScreen || "scan_screen",
     device_id: context.deviceId || null,

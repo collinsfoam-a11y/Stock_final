@@ -2,6 +2,7 @@ import { useAuthStore } from "../../store/authStore";
 import { AppError, type AppErrorCode } from "../../utils/errors";
 import { retryWithBackoff } from "../../utils/retry";
 import { CreateCountLinePayload, Item } from "../../types/scan";
+import { generateUUID } from "../../utils/uuid";
 import { validateBarcode } from "../../utils/validation";
 import api from "../httpClient";
 import { createLogger } from "../logging";
@@ -355,6 +356,9 @@ export const getItemByBarcode = async (
   }
 };
 
+/**
+ * Checks whether a serial number has already been counted in the session.
+ */
 export const checkSerialUniqueness = async (
   sessionId: string,
   serialNumber: string
@@ -378,6 +382,9 @@ export const checkSerialUniqueness = async (
   }
 };
 
+/**
+ * Shared response shape for optimized item search results.
+ */
 export interface OptimizedSearchResult {
   items: Item[];
   total: number;
@@ -486,9 +493,7 @@ export const searchItemsOptimized = async (
       _source: "api" as DataSource,
     }));
 
-    for (const item of mappedItems.slice(0, 10)) {
-      await cacheItem(item as any);
-    }
+    await Promise.all(mappedItems.slice(0, 10).map((item) => cacheItem(item as any)));
 
     return {
       items: mappedItems,
@@ -506,6 +511,9 @@ export const searchItemsOptimized = async (
   }
 };
 
+/**
+ * Returns server-provided search suggestions for short query assistance.
+ */
 export const getSearchSuggestions = async (query: string, limit: number = 5): Promise<string[]> => {
   try {
     if (!isOnline() || query.length < 2) {
@@ -524,6 +532,9 @@ export const getSearchSuggestions = async (query: string, limit: number = 5): Pr
   }
 };
 
+/**
+ * Loads the available category and warehouse filters for item search.
+ */
 export const getSearchFilters = async (): Promise<{
   categories: string[];
   warehouses: string[];
@@ -546,6 +557,9 @@ export const getSearchFilters = async (): Promise<{
   }
 };
 
+/**
+ * Runs semantic search when the backend and network are available.
+ */
 export const searchItemsSemantic = async (query: string, limit: number = 20): Promise<Item[]> => {
   try {
     if (!isOnline()) {
@@ -568,6 +582,9 @@ export const searchItemsSemantic = async (query: string, limit: number = 20): Pr
   }
 };
 
+/**
+ * Fetches risk prediction summaries for a supervisor session view.
+ */
 export const getRiskPredictions = async (sessionId: string, limit: number = 10) => {
   try {
     if (!isOnline()) return [];
@@ -583,6 +600,9 @@ export const getRiskPredictions = async (sessionId: string, limit: number = 10) 
   }
 };
 
+/**
+ * Sends an image to the visual-identification endpoint and normalizes the result.
+ */
 export const identifyItem = async (imageUri: string): Promise<Item[]> => {
   try {
     if (!isOnline()) {
@@ -619,6 +639,9 @@ export const identifyItem = async (imageUri: string): Promise<Item[]> => {
   }
 };
 
+/**
+ * Describes how an item has already been counted within a session.
+ */
 export interface ItemScanStatus {
   scanned: boolean;
   total_qty: number;
@@ -631,6 +654,9 @@ export interface ItemScanStatus {
   }[];
 }
 
+/**
+ * Checks whether an item has already been scanned in the current session.
+ */
 export const checkItemScanStatus = async (
   sessionId: string,
   itemCode: string
@@ -700,6 +726,19 @@ const createOfflineCountLineResult = async (
   };
 };
 
+const ensureCountLineIdempotencyKey = (
+  countData: CreateCountLinePayload
+): CreateCountLinePayload => ({
+  ...countData,
+  idempotency_key: countData.idempotency_key?.trim() || generateUUID(),
+});
+
+const filterCountLinesByVerified = <T extends { verified?: boolean }>(
+  lines: T[],
+  verified?: boolean
+): T[] =>
+  verified !== undefined ? lines.filter((line) => line.verified === verified) : lines;
+
 const paginateCountLineItems = (
   items: any[],
   requestedPage: number,
@@ -726,14 +765,22 @@ const paginateCountLineItems = (
   };
 };
 
-const getFilteredHydratedCountLines = async (
+const buildOfflinePaginatedCountLines = async (
   sessionId: string,
+  page: number,
+  pageSize: number,
+  source: DataSource,
+  stale: boolean,
   verified?: boolean
-): Promise<any[]> => {
+) => {
   const cachedLines = await getCountLinesBySessionFromCache(sessionId);
-  const filteredLines =
-    verified !== undefined ? cachedLines.filter((line) => line.verified === verified) : cachedLines;
-  return await hydrateCountLineNames(filteredLines);
+  const filteredLines = filterCountLinesByVerified(cachedLines, verified);
+  const paginated = paginateCountLineItems(filteredLines, page, pageSize, source, stale);
+
+  return {
+    ...paginated,
+    items: await hydrateCountLineNames(paginated.items),
+  };
 };
 
 /**
@@ -814,9 +861,10 @@ export const createCountLine = async (
   countData: CreateCountLinePayload
 ): Promise<any & { _source?: DataSource; _offline?: boolean }> => {
   const user = useAuthStore.getState().user;
+  const countDataWithIdempotency = ensureCountLineIdempotencyKey(countData);
 
   try {
-    const isOfflineSession = String(countData.session_id || "").startsWith("offline_");
+    const isOfflineSession = String(countDataWithIdempotency.session_id || "").startsWith("offline_");
 
     if (!isOnline() || isOfflineSession) {
       log.debug("Offline mode or offline session - creating offline count line", {
@@ -825,7 +873,10 @@ export const createCountLine = async (
       });
 
       try {
-        const offlineCountLine = await createOfflineCountLineResult(countData, user?.username);
+        const offlineCountLine = await createOfflineCountLineResult(
+          countDataWithIdempotency,
+          user?.username
+        );
         log.debug("Created offline count line", { id: offlineCountLine._id });
         return offlineCountLine;
       } catch (persistError) {
@@ -837,7 +888,7 @@ export const createCountLine = async (
     }
 
     log.debug("Online mode - creating count line via API");
-    const response = await api.post("/api/count-lines", countData, {
+    const response = await api.post("/api/count-lines", countDataWithIdempotency, {
       skipOfflineQueue: true,
     } as any);
     await cacheCountLine(response.data);
@@ -864,7 +915,7 @@ export const createCountLine = async (
 
     try {
       const offlineCountLine = await createOfflineCountLineResult(
-        countData,
+        countDataWithIdempotency,
         user?.username,
         true
       );
@@ -891,12 +942,13 @@ export const getCountLines = async (
   try {
     if (!isOnline()) {
       log.debug("Offline mode - returning cached count lines with pagination");
-      return paginateCountLineItems(
-        await getFilteredHydratedCountLines(sessionId, verified),
+      return buildOfflinePaginatedCountLines(
+        sessionId,
         page,
         pageSize,
         "cache",
-        true
+        true,
+        verified
       );
     }
 
@@ -927,33 +979,46 @@ export const getCountLines = async (
     });
 
     return {
-      ...paginateCountLineItems(
-        await getFilteredHydratedCountLines(sessionId, verified),
+      ...(await buildOfflinePaginatedCountLines(
+        sessionId,
         page,
         pageSize,
         "cache",
-        true
-      ),
+        true,
+        verified
+      )),
       _degraded: true,
     };
   }
 };
 
+/**
+ * Loads a single count line by identifier.
+ */
 export const getCountLineById = async (lineId: string) => {
   const response = await api.get(`/api/count-lines/${encodeURIComponent(lineId)}`);
   return response.data;
 };
 
+/**
+ * Minimal assignable-user shape used by session assignment flows.
+ */
 export interface AssignableStaffUser {
   username: string;
   full_name?: string | null;
 }
 
+/**
+ * Fetches the assignable staff list for workflow delegation.
+ */
 export const getAssignableStaffUsers = async (): Promise<AssignableStaffUser[]> => {
   const response = await api.get<AssignableStaffUser[]>("/api/users/assignable/staff");
   return Array.isArray(response.data) ? response.data : [];
 };
 
+/**
+ * Checks whether an item already has count lines in the given session.
+ */
 export const checkItemCounted = async (sessionId: string, itemCode: string) => {
   try {
     if (!isOnline()) {
@@ -973,6 +1038,9 @@ export const checkItemCounted = async (sessionId: string, itemCode: string) => {
   }
 };
 
+/**
+ * Adds quantity to an existing count line, optionally with batch data.
+ */
 export const addQuantityToCountLine = async (
   lineId: string,
   additionalQty: number,
@@ -992,6 +1060,9 @@ export const addQuantityToCountLine = async (
   }
 };
 
+/**
+ * Returns the configured list of variance reasons for count review flows.
+ */
 export const getVarianceReasons = async () => {
   const response = await api.get("/api/variance-reasons");
   if (response.data && response.data.reasons && Array.isArray(response.data.reasons)) {
@@ -1004,11 +1075,17 @@ export const getVarianceReasons = async () => {
   return response.data;
 };
 
+/**
+ * Approves a count line through the supervisor review endpoint.
+ */
 export const approveCountLine = async (lineId: string) => {
   const response = await api.put(`/api/count-lines/${lineId}/approve`);
   return response.data;
 };
 
+/**
+ * Rejects a count line with optional notes or reassignment details.
+ */
 export const rejectCountLine = async (
   lineId: string,
   payload?: { notes?: string; assign_to?: string }
@@ -1017,6 +1094,9 @@ export const rejectCountLine = async (
   return response.data;
 };
 
+/**
+ * Applies a session status transition using the appropriate backend endpoint.
+ */
 export const updateSessionStatus = async (sessionId: string, status: string) => {
   const normalizedStatus = (status || "").toUpperCase();
   if (normalizedStatus === "CLOSED" || normalizedStatus === "COMPLETED") {
@@ -1038,6 +1118,9 @@ export const updateSessionStatus = async (sessionId: string, status: string) => 
   return response.data;
 };
 
+/**
+ * Finalizes a session through the supervisor-only finalize workflow.
+ */
 export const finalizeSession = async (
   sessionId: string,
   payload?: { note?: string }
@@ -1051,6 +1134,9 @@ export const finalizeSession = async (
   }
 };
 
+/**
+ * Queues or creates an unknown item depending on network availability.
+ */
 export const createUnknownItem = async (itemData: Record<string, unknown>) => {
   try {
     if (!isOnline()) {
@@ -1069,6 +1155,9 @@ export const createUnknownItem = async (itemData: Record<string, unknown>) => {
   }
 };
 
+/**
+ * Requests a fresh ERP stock sync for a specific item code.
+ */
 export const refreshItemStock = async (itemCode: string) => {
   try {
     const response = await api.post(
@@ -1083,6 +1172,9 @@ export const refreshItemStock = async (itemCode: string) => {
   }
 };
 
+/**
+ * Deletes a count line by identifier.
+ */
 export const deleteCountLine = async (lineId: string) => {
   try {
     const response = await api.delete(`/api/count-lines/${lineId}`);
@@ -1093,6 +1185,9 @@ export const deleteCountLine = async (lineId: string) => {
   }
 };
 
+/**
+ * Marks a count line as verified.
+ */
 export const verifyStock = async (countLineId: string) => {
   try {
     const response = await api.put(`/api/count-lines/${countLineId}/verify`);
@@ -1103,6 +1198,9 @@ export const verifyStock = async (countLineId: string) => {
   }
 };
 
+/**
+ * Removes the verified flag from a count line.
+ */
 export const unverifyStock = async (countLineId: string) => {
   try {
     const response = await api.put(`/api/count-lines/${countLineId}/unverify`);

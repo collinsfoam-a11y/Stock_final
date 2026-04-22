@@ -241,6 +241,9 @@ const ItemSummaryDetails = ({
   );
 };
 
+/**
+ * Displays the scanned item summary card with stock, pricing, and bundle details.
+ */
 export function ItemSummarySection({
   barcode,
   isRefreshing,

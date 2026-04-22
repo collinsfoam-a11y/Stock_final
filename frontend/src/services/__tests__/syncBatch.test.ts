@@ -69,6 +69,8 @@ jest.mock("../offline/offlineStorage", () => ({
   getOfflineQueue: jest.fn(),
   getCacheStats: jest.fn(),
   removeManyFromOfflineQueue: jest.fn(),
+  removeSessionFromCache: jest.fn(),
+  updateOfflineQueueItem: jest.fn(),
   updateQueueItemRetries: jest.fn(),
 }));
 
@@ -111,6 +113,9 @@ describe("syncOfflineQueue", () => {
       undefined,
     );
     (offlineStorage.updateQueueItemRetries as jest.Mock).mockResolvedValue(
+      undefined,
+    );
+    (offlineStorage.updateOfflineQueueItem as jest.Mock).mockResolvedValue(
       undefined,
     );
   });
@@ -195,6 +200,29 @@ describe("syncOfflineQueue", () => {
       expect.objectContaining({
         error: "Server timeout",
         status: "failed_manual_review",
+      }),
+    );
+    expect(offlineStorage.removeManyFromOfflineQueue).not.toHaveBeenCalled();
+  });
+
+  it("should report auth retries as failed work instead of a clean sync", async () => {
+    const authError = Object.assign(new Error("Unauthorized"), {
+      response: { status: 401 },
+    });
+    (api.syncBatch as jest.Mock).mockRejectedValue(authError);
+
+    const result = await syncOfflineQueue();
+
+    expect(result.failed).toBe(1);
+    expect(result.errors).toContainEqual({
+      id: "op_1",
+      error: "Unauthorized",
+    });
+    expect(offlineStorage.updateOfflineQueueItem).toHaveBeenCalledWith(
+      "op_1",
+      expect.objectContaining({
+        status: "pending_retry",
+        last_error: "Unauthorized",
       }),
     );
     expect(offlineStorage.removeManyFromOfflineQueue).not.toHaveBeenCalled();

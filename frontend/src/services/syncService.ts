@@ -17,6 +17,9 @@ const log = createLogger("syncService");
 
 const MANUAL_REVIEW_RETRIES_THRESHOLD = 5;
 
+/**
+ * Aggregate outcome returned after syncing the offline queue.
+ */
 export interface SyncResult {
   success: number;
   failed: number;
@@ -24,6 +27,9 @@ export interface SyncResult {
   errors: { id: string; error: string }[];
 }
 
+/**
+ * Optional callbacks and flags that shape a sync run.
+ */
 export interface SyncOptions {
   onProgress?: (current: number, total: number) => void;
   background?: boolean;
@@ -122,8 +128,10 @@ const handleBatchResults = async (
   batch: OfflineQueueItem[],
   results: { success: boolean; id: string; message?: string }[],
 ) => {
+  const queueItemsById = new Map(batch.map((item) => [item.id, item]));
   const successIds: string[] = [];
   const errors: { id: string; error: string }[] = [];
+  const retryUpdates: Promise<unknown>[] = [];
   let successCount = 0;
   let failedCount = 0;
 
@@ -138,13 +146,19 @@ const handleBatchResults = async (
     const errorMessage = result.message || "Unknown error";
     errors.push({ id: result.id, error: errorMessage });
     log.warn(`Sync item failed: ${result.id} - ${errorMessage}`);
-    const queueItem = batch.find((item) => item.id === result.id);
+    const queueItem = queueItemsById.get(result.id);
     const nextRetryCount = (queueItem?.retries || 0) + 1;
-    await updateQueueItemRetries(result.id, {
-      error: errorMessage,
-      status: deriveFailureStatus(errorMessage, nextRetryCount),
-      attemptedAt: new Date().toISOString(),
-    });
+    retryUpdates.push(
+      updateQueueItemRetries(result.id, {
+        error: errorMessage,
+        status: deriveFailureStatus(errorMessage, nextRetryCount),
+        attemptedAt: new Date().toISOString(),
+      }),
+    );
+  }
+
+  if (retryUpdates.length > 0) {
+    await Promise.all(retryUpdates);
   }
 
   if (successIds.length > 0) {
@@ -161,32 +175,36 @@ const handleBatchFailure = async (batch: OfflineQueueItem[], batchError: unknown
 
   if (shouldRetryAfterAuth(batchError)) {
     log.warn("Auth error during sync - will retry after re-authentication");
-    for (const item of batch) {
-      await updateOfflineQueueItem(item.id, {
+    await Promise.all(
+      batch.map((item) =>
+        updateOfflineQueueItem(item.id, {
         status: "pending_retry",
         last_error: errorMessage,
         last_attempted_at: new Date().toISOString(),
-      });
-    }
+        }),
+      ),
+    );
     return {
-      failedCount: 0,
-      errors: [] as { id: string; error: string }[],
+      failedCount: batch.length,
+      errors: batch.map((item) => ({ id: item.id, error: errorMessage })),
     };
   }
 
   log.error(`Batch sync failed: ${errorMessage}`, batchError as Record<string, unknown>);
-  for (const item of batch) {
-    const nextRetryCount = item.retries + 1;
-    await updateQueueItemRetries(item.id, {
-      error: errorMessage,
-      status: deriveFailureStatus(errorMessage, nextRetryCount),
-      attemptedAt: new Date().toISOString(),
-    });
-  }
+  await Promise.all(
+    batch.map((item) => {
+      const nextRetryCount = item.retries + 1;
+      return updateQueueItemRetries(item.id, {
+        error: errorMessage,
+        status: deriveFailureStatus(errorMessage, nextRetryCount),
+        attemptedAt: new Date().toISOString(),
+      });
+    }),
+  );
 
   return {
     failedCount: batch.length,
-    errors: [] as { id: string; error: string }[],
+    errors: batch.map((item) => ({ id: item.id, error: errorMessage })),
   };
 };
 
@@ -209,6 +227,9 @@ const syncBatchChunk = async (batch: OfflineQueueItem[], batchIndex: number) => 
   }
 };
 
+/**
+ * Subscribes to network changes and schedules reconnect sync when allowed.
+ */
 export const initializeSyncService = () => {
   let networkReady = false;
 
@@ -248,6 +269,9 @@ export const initializeSyncService = () => {
   };
 };
 
+/**
+ * Returns the current online state and offline queue summary.
+ */
 export const getSyncStatus = async () => {
   const stats = await getCacheStats();
   const online = useNetworkStore.getState().isOnline;
@@ -261,6 +285,9 @@ export const getSyncStatus = async () => {
   };
 };
 
+/**
+ * Flushes queued offline operations in batches when auth and connectivity allow it.
+ */
 export const syncOfflineQueue = async (
   options?: SyncOptions,
 ): Promise<SyncResult> => {
@@ -327,6 +354,9 @@ export const syncOfflineQueue = async (
   }
 };
 
+/**
+ * Forces an explicit sync attempt using the standard offline queue flow.
+ */
 export const forceSync = async (options?: SyncOptions): Promise<SyncResult> => {
   return syncOfflineQueue(options);
 };

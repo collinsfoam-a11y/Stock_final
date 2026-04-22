@@ -8,6 +8,7 @@ import pytest
 from fastapi import HTTPException
 
 from backend.api.enhanced_item_api import (
+    _build_search_pipeline,
     _validate_barcode_format,
     advanced_item_search,
     get_item_by_barcode_enhanced,
@@ -114,6 +115,70 @@ async def test_get_item_by_barcode_enhanced_cache(setup_mocks):
 
 
 @pytest.mark.asyncio
+async def test_get_item_by_barcode_enhanced_strips_contextual_fields_from_cache(setup_mocks):
+    _, mock_cache, _ = setup_mocks
+
+    mock_cache.get_async.return_value = {
+        "item": {
+            "item_code": "CODE123",
+            "barcode": "510001",
+            "item_name": "Test Item",
+            "is_misplaced": True,
+            "expected_location": "F1/R1",
+        }
+    }
+
+    request = MagicMock(method="GET")
+    current_user = {"username": "testuser"}
+
+    response = await get_item_by_barcode_enhanced(
+        barcode="510001",
+        request=request,
+        current_user=current_user,
+        force_source=None,
+    )
+
+    assert response["metadata"]["source"] == "cache"
+    assert "is_misplaced" not in response["item"]
+    assert "expected_location" not in response["item"]
+
+
+@pytest.mark.asyncio
+async def test_get_item_by_barcode_enhanced_does_not_cache_contextual_fields(setup_mocks):
+    mock_db, mock_cache, _ = setup_mocks
+
+    mock_db.erp_items.find_one.return_value = {
+        "_id": "item123",
+        "item_code": "CODE123",
+        "barcode": "510001",
+        "item_name": "Test Item",
+        "floor": "F1",
+        "rack": "R1",
+    }
+    mock_db.sessions.find_one.return_value = {"id": "session-1", "floor": "F2", "rack": "R2"}
+    mock_cache.get_async.return_value = None
+
+    request = MagicMock(method="GET")
+    current_user = {"username": "testuser"}
+
+    response = await get_item_by_barcode_enhanced(
+        barcode="510001",
+        request=request,
+        current_user=current_user,
+        force_source=None,
+        session_id="session-1",
+        rack_no=None,
+    )
+
+    assert response["item"]["is_misplaced"] is True
+
+    cached_payload = mock_cache.set_async.await_args.args[2]
+    assert cached_payload["item"]["item_code"] == "CODE123"
+    assert "is_misplaced" not in cached_payload["item"]
+    assert "expected_location" not in cached_payload["item"]
+
+
+@pytest.mark.asyncio
 async def test_get_item_by_barcode_enhanced_sql_sync(setup_mocks):
     mock_db, mock_cache, _ = setup_mocks
 
@@ -209,12 +274,42 @@ async def test_advanced_item_search(setup_mocks):
         search_fields=["item_name", "item_code", "barcode"],
         limit=20,  # Explicitly pass limit
         offset=0,  # Explicitly pass offset
+        sort_by="relevance",
+        category=None,
+        warehouse=None,
+        floor=None,
+        rack=None,
+        stock_level=None,
         current_user=current_user,
     )
 
     assert len(response["items"]) == 2
     assert response["pagination"]["total"] == 2
     assert response["items"][0]["item_name"] == "Test Item 1"
+
+
+@pytest.mark.asyncio
+async def test_build_search_pipeline_preserves_filter_mapping_and_escapes_literals():
+    pipeline = _build_search_pipeline(
+        query="ABC+123",
+        search_fields=["item_name"],
+        limit=25,
+        offset=0,
+        sort_by="relevance",
+        category="Food(1)",
+        warehouse="Main",
+        stock_level="high",
+        floor="F[1]",
+        rack="R+1",
+    )
+
+    match_stage = pipeline[0]["$match"]
+    assert match_stage["$or"] == [{"item_name": {"$regex": r"ABC\+123", "$options": "i"}}]
+    assert match_stage["category"] == {"$regex": r"Food\(1\)", "$options": "i"}
+    assert match_stage["warehouse"] == {"$regex": "Main", "$options": "i"}
+    assert match_stage["floor"] == {"$regex": r"F\[1\]", "$options": "i"}
+    assert match_stage["rack"] == {"$regex": r"R\+1", "$options": "i"}
+    assert match_stage["stock_qty"] == {"$gte": 100}
 
 
 @pytest.mark.asyncio

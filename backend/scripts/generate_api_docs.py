@@ -111,7 +111,7 @@ All input data is validated using Pydantic models. Invalid data will return a 42
                                             "value": {
                                                 "username": "john_doe",
                                                 "email": "john.doe@company.com",
-                                                "password": "SecurePass123!",
+                                                "password": "<PASSWORD>",
                                                 "role": "staff",
                                                 "first_name": "John",
                                                 "last_name": "Doe",
@@ -123,7 +123,7 @@ All input data is validated using Pydantic models. Invalid data will return a 42
                                             "value": {
                                                 "username": "admin_user",
                                                 "email": "admin@company.com",
-                                                "password": "AdminPass456!",
+                                                "password": "<PASSWORD>",
                                                 "role": "admin",
                                                 "first_name": "Admin",
                                                 "last_name": "User",
@@ -184,14 +184,14 @@ All input data is validated using Pydantic models. Invalid data will return a 42
                                             "summary": "Login with username",
                                             "value": {
                                                 "username": "john_doe",
-                                                "password": "SecurePass123!",
+                                                "password": "<PASSWORD>",
                                             },
                                         },
                                         "email_login": {
                                             "summary": "Login with email",
                                             "value": {
                                                 "username": "john.doe@company.com",
-                                                "password": "SecurePass123!",
+                                                "password": "<PASSWORD>",
                                             },
                                         },
                                     }

@@ -73,6 +73,8 @@ DISALLOWED_BATCH_TOKENS = ("GO",)
 
 
 class SQLServerConnector:
+    """Read-only SQL Server connector for ERP inventory and lookup queries."""
+
     def __init__(self):
         self.connection = None
         self.config = None

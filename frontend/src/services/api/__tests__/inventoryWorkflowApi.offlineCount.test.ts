@@ -1,8 +1,12 @@
-import { createCountLine } from "../inventoryWorkflowApi";
+import { createCountLine, getCountLines } from "../inventoryWorkflowApi";
 import * as sessionManagementApi from "../sessionManagementApi";
 import * as offlineCountLineService from "../../offline/offlineCountLine";
 import * as offlineStorage from "../../offline/offlineStorage";
 import httpClient from "../../httpClient";
+
+jest.mock("../../../utils/uuid", () => ({
+  generateUUID: jest.fn(() => "idem-123"),
+}));
 
 jest.mock("../../logging", () => ({
   createLogger: () => ({
@@ -122,9 +126,70 @@ describe("createCountLine offline queueing", () => {
       },
     });
 
-    const { getCountLines } = await import("../inventoryWorkflowApi");
     await getCountLines("session-1");
 
     expect(offlineStorage.cacheCountLines).not.toHaveBeenCalled();
+  });
+
+  it("reuses one idempotency key across online submit and offline fallback", async () => {
+    jest.spyOn(sessionManagementApi, "isOnline").mockReturnValue(true);
+    (httpClient.post as jest.Mock).mockRejectedValue(new Error("Network down"));
+
+    await createCountLine({
+      session_id: "session-1",
+      item_code: "ITEM001",
+      counted_qty: 3,
+      rack_no: "A1",
+    });
+
+    expect(httpClient.post).toHaveBeenCalledWith(
+      "/api/count-lines",
+      expect.objectContaining({ idempotency_key: "idem-123" }),
+      expect.anything(),
+    );
+    expect(offlineCountLineService.createOfflineCountLine).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotency_key: "idem-123" }),
+      expect.anything(),
+    );
+  });
+
+  it("hydrates only the current offline page instead of the full cached session", async () => {
+    jest.spyOn(sessionManagementApi, "isOnline").mockReturnValue(false);
+    jest.spyOn(offlineStorage, "getCountLinesBySessionFromCache").mockResolvedValue([
+      {
+        _id: "line-1",
+        session_id: "session-1",
+        item_code: "ITEM001",
+        item_name: "ITEM001",
+        counted_qty: 1,
+        counted_by: "staff1",
+        counted_at: new Date().toISOString(),
+        cached_at: new Date().toISOString(),
+      },
+      {
+        _id: "line-2",
+        session_id: "session-1",
+        item_code: "ITEM002",
+        item_name: "ITEM002",
+        counted_qty: 2,
+        counted_by: "staff1",
+        counted_at: new Date().toISOString(),
+        cached_at: new Date().toISOString(),
+      },
+    ] as any);
+    jest
+      .spyOn(offlineStorage, "getItemFromCache")
+      .mockResolvedValueOnce({
+        item_code: "ITEM001",
+        item_name: "Soap Bar",
+        cached_at: new Date().toISOString(),
+      } as any);
+
+    const response = await getCountLines("session-1", 1, 1);
+
+    expect(response.items).toHaveLength(1);
+    expect(response.items[0]?.item_name).toBe("Soap Bar");
+    expect(offlineStorage.getItemFromCache).toHaveBeenCalledTimes(1);
+    expect(offlineStorage.getItemFromCache).toHaveBeenCalledWith("ITEM001");
   });
 });

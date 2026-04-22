@@ -41,9 +41,19 @@ import {
   AnimationTimings,
 } from "@/theme/uiConstants";
 
+/**
+ * Shared size options for the enhanced text input.
+ */
 export type InputSize = "sm" | "md" | "lg";
+
+/**
+ * Supported label layouts for the enhanced text input.
+ */
 export type LabelPosition = "floating" | "fixed" | "none";
 
+/**
+ * Props for the themed enhanced text input component.
+ */
 export interface EnhancedInputProps extends Omit<TextInputProps, "style"> {
   /** Input label */
   label?: string;
@@ -328,6 +338,9 @@ const HelperRow = ({
  *   rightIcon="close-circle"
  *   onRightIconPress={() => setValue('')}
  * />
+ */
+/**
+ * Renders a themed text input with validation, icons, and animated labels.
  */
 export const EnhancedInput: React.FC<EnhancedInputProps> = ({
   label,

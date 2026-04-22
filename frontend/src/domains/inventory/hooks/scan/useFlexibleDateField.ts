@@ -1,14 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DateFormatType } from "@/types/scan";
 
+/**
+ * Individual date parts that can be selected in the flexible picker UI.
+ */
 export type DatePickerPart = "day" | "month" | "year";
 
+/**
+ * Visibility and option state for the active picker sheet.
+ */
 export interface DatePickerState {
   visible: boolean;
   title: string;
   options: string[];
 }
 
+/**
+ * Parsed date values used to compose formatted date strings.
+ */
 export interface DateParts {
   day: string;
   month: string;
@@ -113,6 +122,9 @@ const buildPickerState = (part: DatePickerPart, options: string[]): DatePickerSt
   return { visible: true, title: titleByPart[part], options };
 };
 
+/**
+ * Validates date input against the currently selected input format.
+ */
 export const validateFlexibleDateInput = (
   input: string,
   format: DateFormatType,
@@ -133,6 +145,9 @@ export const validateFlexibleDateInput = (
   }
 };
 
+/**
+ * Manages picker state and formatted values for flexible manufacturing/expiry dates.
+ */
 export const useFlexibleDateField = ({
   value,
   format,

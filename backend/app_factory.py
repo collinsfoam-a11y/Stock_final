@@ -128,7 +128,10 @@ try:
     enterprise_router = ent_router
     ENTERPRISE_AVAILABLE = True
 except ImportError as e:
-    logger.info(f"Enterprise features not available: {e}")
+    logger.info(
+        "Enterprise features not available: %s",
+        sanitize_for_logging(str(e), 200),
+    )
 
 notes_router: Optional[APIRouter] = None
 try:
@@ -202,7 +205,10 @@ if sentry_dsn:
         )
         logger.info("Sentry SDK initialized")
     except Exception as e:
-        logger.warning(f"Failed to initialize Sentry SDK: {e}")
+        logger.warning(
+            "Failed to initialize Sentry SDK: %s",
+            sanitize_for_logging(str(e), 200),
+        )
 else:
     logger.info("Sentry DSN not found, skipping Sentry initialization")
 # Create FastAPI app with lifespan
@@ -245,6 +251,7 @@ async def root():
 
 @app.get("/api/mapping/test_direct")
 def test_direct():
+    """Return a minimal payload for mapping smoke tests."""
     return {"status": "ok"}
 
 
@@ -263,6 +270,7 @@ async def get_current_user(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> dict[str, Any]:
+    """Resolve the authenticated user for the current request."""
     return await auth_get_current_user(request, credentials)
 
 
@@ -318,12 +326,16 @@ async def init_default_users():
             )
             logger.info("Default user created: admin/admin123")
     except Exception as e:
-        logger.error(f"Error creating default users: {str(e)}")
+        logger.error(
+            "Error creating default users: %s",
+            sanitize_for_logging(str(e), 200),
+        )
         raise
 
 
 # Initialize mock ERP data
 async def init_mock_erp_data():
+    """Populate local mock ERP data when the collection is empty."""
     count = await db.erp_items.count_documents({})
     if count == 0:
         mock_items = [
@@ -447,7 +459,10 @@ async def check_rate_limit(ip_address: str) -> Result[bool, Exception]:
     rate_limit_enabled = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
 
     if not rate_limit_enabled:
-        logger.debug(f"Rate limiting disabled for IP: {ip_address}")
+        logger.debug(
+            "Rate limiting disabled for IP: %s",
+            sanitize_for_logging(ip_address),
+        )
         return Ok(True)
 
     namespace = "login_attempts"
@@ -467,7 +482,11 @@ async def check_rate_limit(ip_address: str) -> Result[bool, Exception]:
     if attempts >= max_attempts:
         # Block for configured TTL period
         await cache_service.set(namespace, key, attempts, ttl=ttl_seconds)
-        logger.warning(f"Rate limit exceeded for IP {ip_address}: {attempts} attempts")
+        logger.warning(
+            "Rate limit exceeded for IP %s: %s attempts",
+            sanitize_for_logging(ip_address),
+            attempts,
+        )
         return Fail(
             RateLimitExceededError(
                 f"Too many login attempts. Please try again in {ttl_seconds // 60} minutes.",
@@ -478,7 +497,10 @@ async def check_rate_limit(ip_address: str) -> Result[bool, Exception]:
     # Increment attempt counter with TTL
     await cache_service.set(namespace, key, attempts + 1, ttl=ttl_seconds)
     logger.debug(
-        f"Rate limit check passed for IP {ip_address}: {attempts + 1}/{max_attempts} attempts"
+        "Rate limit check passed for IP %s: %s/%s attempts",
+        sanitize_for_logging(ip_address),
+        attempts + 1,
+        max_attempts,
     )
     return Ok(True)
 
@@ -491,7 +513,11 @@ async def find_user_by_username(username: str) -> Result[dict[str, Any], Excepti
             return Fail(NotFoundError("User not found"))
         return Ok(user)
     except Exception as e:
-        logger.error(f"Error finding user {sanitize_for_logging(username)}: {str(e)}")
+        logger.error(
+            "Error finding user %s: %s",
+            sanitize_for_logging(username),
+            sanitize_for_logging(str(e), 200),
+        )
         return Fail(DatabaseError("Error accessing user data"))
 
 
@@ -532,7 +558,10 @@ async def generate_auth_tokens(
             }
         )
     except Exception as e:
-        logger.error(f"Error generating auth tokens: {str(e)}")
+        logger.error(
+            "Error generating auth tokens: %s",
+            sanitize_for_logging(str(e), 200),
+        )
         return Fail(DatabaseError("Error generating authentication tokens"))
 
 
@@ -552,7 +581,10 @@ async def log_failed_login_attempt(
             }
         )
     except Exception as e:
-        logger.error(f"Failed to log login attempt: {str(e)}")
+        logger.error(
+            "Failed to log login attempt: %s",
+            sanitize_for_logging(str(e), 200),
+        )
 
 
 async def log_successful_login(user: dict[str, Any], ip_address: str, request: Request) -> None:
@@ -584,7 +616,10 @@ async def log_successful_login(user: dict[str, Any], ip_address: str, request: R
         #     user_agent=request.headers.get("user-agent")
         # )
     except Exception as e:
-        logger.error(f"Failed to log successful login: {str(e)}")
+        logger.error(
+            "Failed to log successful login: %s",
+            sanitize_for_logging(str(e), 200),
+        )
 
 
 @api_router.post("/auth/refresh", response_model=ApiResponse[TokenResponse])
@@ -620,7 +655,7 @@ async def refresh_token(
 
         return Ok(refreshed)
     except Exception as e:
-        logger.error(f"Token refresh error: {str(e)}")
+        logger.error("Token refresh error: %s", sanitize_for_logging(str(e), 200))
         return Fail(e)
 
 
@@ -654,7 +689,7 @@ async def logout(
         clear_auth_cookies(response)
         return {"message": "Logged out successfully"}
     except Exception as e:
-        logger.error(f"Logout error: {str(e)}")
+        logger.error("Logout error: %s", sanitize_for_logging(str(e), 200))
         raise HTTPException(status_code=500, detail="Logout failed") from e
 
 
@@ -710,7 +745,10 @@ async def bulk_reconcile_sessions(
             "errors": errors,
         }
     except Exception as e:
-        logger.error(f"Bulk reconcile sessions error: {str(e)}")
+        logger.error(
+            "Bulk reconcile sessions error: %s",
+            sanitize_for_logging(str(e), 200),
+        )
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -757,7 +795,10 @@ async def bulk_export_sessions(
             "format": format,
         }
     except Exception as e:
-        logger.error(f"Bulk export sessions error: {str(e)}")
+        logger.error(
+            "Bulk export sessions error: %s",
+            sanitize_for_logging(str(e), 200),
+        )
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -841,7 +882,7 @@ async def get_sessions_analytics(current_user: dict = Depends(get_current_user))
             },
         }
     except Exception as e:
-        logger.error(f"Analytics error: {str(e)}")
+        logger.error("Analytics error: %s", sanitize_for_logging(str(e), 200))
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -875,7 +916,11 @@ async def get_session_by_id(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching session {session_id}: {str(e)}")
+        logger.error(
+            "Error fetching session %s: %s",
+            sanitize_for_logging(session_id),
+            sanitize_for_logging(str(e), 200),
+        )
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -952,7 +997,9 @@ def calculate_financial_impact(
 
 
 async def _load_count_line_context(line_data: CountLineCreate) -> tuple[dict[str, Any], dict[str, Any], float]:
-    session = await db.sessions.find_one({"session_id": line_data.session_id})
+    session = await db.sessions.find_one(
+        {"$or": [{"session_id": line_data.session_id}, {"id": line_data.session_id}]}
+    )
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
@@ -1067,7 +1114,10 @@ async def _update_item_location_from_count_line(line_data: CountLineCreate) -> N
     try:
         await db.erp_items.update_one({"item_code": line_data.item_code}, {"$set": update_fields})
     except Exception as exc:
-        logger.error(f"Failed to update item location: {str(exc)}")
+        logger.error(
+            "Failed to update item location: %s",
+            sanitize_for_logging(str(exc), 200),
+        )
 
 
 async def _refresh_session_count_line_stats(session_id: str) -> None:
@@ -1086,7 +1136,7 @@ async def _refresh_session_count_line_stats(session_id: str) -> None:
         if not stats:
             return
         await db.sessions.update_one(
-            {"id": session_id},
+            {"$or": [{"id": session_id}, {"session_id": session_id}]},
             {
                 "$set": {
                     "total_items": stats[0]["total_items"],
@@ -1095,7 +1145,10 @@ async def _refresh_session_count_line_stats(session_id: str) -> None:
             },
         )
     except Exception as exc:
-        logger.error(f"Failed to update session stats: {str(exc)}")
+        logger.error(
+            "Failed to update session stats: %s",
+            sanitize_for_logging(str(exc), 200),
+        )
 
 
 # Count Line routes
@@ -1106,6 +1159,7 @@ async def create_count_line(
     line_data: CountLineCreate,
     current_user: dict = Depends(get_current_user),
 ):
+    """Create a legacy count line while preserving existing review behavior."""
     _, erp_item, variance = await _load_count_line_context(line_data)
     _validate_variance_reason(line_data, variance)
 
@@ -1339,7 +1393,7 @@ register_routers(
 if os.getenv("LOG_ROUTE_TABLE", "false").lower() == "true":
     for route in app.routes:
         if hasattr(route, "path"):
-            logger.info(f"Route: {route.path}")
+            logger.info("Route: %s", route.path)
 
 register_static_serving(app, ROOT_DIR.parent / "frontend" / "dist", logger)
 

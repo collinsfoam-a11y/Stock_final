@@ -238,6 +238,9 @@ const handleSubmissionResult = async (
   onSuccess();
 };
 
+/**
+ * Defers item submission with validation, countdown handling, and offline-aware save behavior.
+ */
 export const useDeferredItemSubmission = ({
   barcode,
   sessionId,

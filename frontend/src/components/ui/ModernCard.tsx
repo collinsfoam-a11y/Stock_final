@@ -42,12 +42,19 @@ const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
 const AnimatedView = Animated.createAnimatedComponent(View);
 
+/**
+ * Supported visual treatments for the reusable card container.
+ */
 export type CardVariant =
   | "default"
   | "elevated"
   | "glass"
   | "gradient"
   | "outlined";
+
+/**
+ * Available shadow intensities for non-glass card variants.
+ */
 export type CardElevation = "none" | "sm" | "md" | "lg";
 
 interface ModernCardProps {
@@ -71,6 +78,9 @@ interface ModernCardProps {
   intensity?: number;
 }
 
+/**
+ * Renders a themed card wrapper with optional press, blur, and gradient states.
+ */
 export const ModernCard: React.FC<ModernCardProps> = ({
   children,
   title,
