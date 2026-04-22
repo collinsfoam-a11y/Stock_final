@@ -1,14 +1,14 @@
+import secrets
 from datetime import datetime, timezone
 
-import jwt
-
+from backend.auth.jwt_provider import jwt
 from backend.utils.auth_utils import create_access_token
 
 
 def test_access_token_claims():
     # Test data
     data = {"sub": "testuser", "role": "staff"}
-    secret_key = "test-secret"
+    secret_key = secrets.token_urlsafe(32)
     algorithm = "HS256"
 
     # Generate token
@@ -17,8 +17,6 @@ def test_access_token_claims():
     # Decode token with verification to inspect payload
     payload = jwt.decode(token, secret_key, algorithms=[algorithm])
 
-    print(f"\nPayload: {payload}")
-
     # Verify claims
     assert payload["sub"] == "testuser"
     assert payload["role"] == "staff"
@@ -26,7 +24,9 @@ def test_access_token_claims():
     assert "exp" in payload
 
     # Verify expiration is in the future
-    assert payload["exp"] > datetime.now(timezone.utc).replace(tzinfo=None).timestamp()
+    exp = payload["exp"]
+    exp_timestamp = exp.timestamp() if hasattr(exp, "timestamp") else float(exp)
+    assert exp_timestamp > datetime.now(timezone.utc).replace(tzinfo=None).timestamp()
 
 
 if __name__ == "__main__":

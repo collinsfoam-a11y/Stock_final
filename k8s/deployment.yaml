@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: stock-verify-backend
+  namespace: stock-verify
   labels:
     app: stock-verify-backend
 spec:
@@ -15,37 +16,31 @@ spec:
       labels:
         app: stock-verify-backend
     spec:
+      automountServiceAccountToken: false
       terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: backend
-          image: ghcr.io/mknoufi/stock_verify_ui-backend:latest
-          imagePullPolicy: Always
+          image: ghcr.io/mknoufi/stock_verify_ui-backend:2.1.0
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8001
+            - name: http
+              containerPort: 8001
           envFrom:
             - configMapRef:
                 name: stock-verify-config
           env:
-            - name: MONGO_URL
-              valueFrom:
-                secretKeyRef:
-                  name: backend-secrets
-                  key: mongodb-url
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: backend-secrets
-                  key: jwt-secret
-            - name: JWT_REFRESH_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: backend-secrets
-                  key: jwt-refresh-secret
-            - name: REDIS_URL
-              valueFrom:
-                secretKeyRef:
-                  name: backend-secrets
-                  key: redis-url
+            - name: MONGO_URL_FILE
+              value: /var/run/secrets/stock-verify/mongodb-url
+            - name: JWT_SECRET_FILE
+              value: /var/run/secrets/stock-verify/jwt-secret
+            - name: JWT_REFRESH_SECRET_FILE
+              value: /var/run/secrets/stock-verify/jwt-refresh-secret
+            - name: REDIS_URL_FILE
+              value: /var/run/secrets/stock-verify/redis-url
           readinessProbe:
             httpGet:
               path: /health/ready
@@ -78,20 +73,38 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            runAsUser: 10001
+            runAsGroup: 10001
             capabilities:
               drop:
                 - ALL
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: backend-secrets
+              mountPath: /var/run/secrets/stock-verify
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir: {}
+        - name: backend-secrets
+          secret:
+            secretName: backend-secrets
+            items:
+              - key: mongodb-url
+                path: mongodb-url
+              - key: jwt-secret
+                path: jwt-secret
+              - key: jwt-refresh-secret
+                path: jwt-refresh-secret
+              - key: redis-url
+                path: redis-url
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: stock-verify-frontend
+  namespace: stock-verify
   labels:
     app: stock-verify-frontend
 spec:
@@ -105,12 +118,18 @@ spec:
       labels:
         app: stock-verify-frontend
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: frontend
-          image: ghcr.io/mknoufi/stock_verify_ui-frontend:latest
-          imagePullPolicy: Always
+          image: ghcr.io/mknoufi/stock_verify_ui-frontend:2.1.0
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 80
+            - name: http
+              containerPort: 80
           readinessProbe:
             httpGet:
               path: /
@@ -134,3 +153,26 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 101
+            runAsGroup: 101
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+            - name: nginx-tmp
+              mountPath: /tmp
+      volumes:
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
+        - name: nginx-tmp
+          emptyDir: {}

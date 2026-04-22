@@ -4,6 +4,7 @@
 import asyncio
 import logging
 import os
+import secrets
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -213,14 +214,18 @@ try:
         import bcrypt
 
         # Verify bcrypt is working
-        test_hash = bcrypt.hashpw(b"fallback_check_value_only", bcrypt.gensalt())
-        bcrypt.checkpw(b"fallback_check_value_only", test_hash)
+        probe_password = secrets.token_bytes(24)
+        test_hash = bcrypt.hashpw(probe_password, bcrypt.gensalt())
+        bcrypt.checkpw(probe_password, test_hash)
         logger.info("Password hashing: Using Argon2 with bcrypt fallback")
     except Exception as e:
-        logger.warning(f"Bcrypt backend check failed, using bcrypt-only context: {str(e)}")
+        logger.warning(
+            "Bcrypt backend check failed, using bcrypt-only context: %s",
+            type(e).__name__,
+        )
         pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 except Exception as e:
-    logger.warning(f"Argon2 not available, using bcrypt-only: {str(e)}")
+    logger.warning("Argon2 not available, using bcrypt-only: %s", type(e).__name__)
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # SECURITY: settings from backend.config already enforce strong secrets
 SECRET_KEY: str = cast(str, settings.JWT_SECRET)

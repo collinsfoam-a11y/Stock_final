@@ -32,6 +32,7 @@ from backend.services.lock_service import LockService, ResourceLockedError
 from backend.services.notification_service import NotificationService
 from backend.services.snapshot_service import SnapshotService
 from backend.services.variant_service import VariantService
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -41,6 +42,10 @@ _activity_log_service: Optional[ActivityLogService] = None
 _lock_service: Optional[LockService] = None
 _snapshot_service: Optional[SnapshotService] = None
 _variant_service: Optional[VariantService] = None
+
+
+def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
 
 
 class CountLineApprovalRequest(BaseModel):
@@ -305,7 +310,10 @@ async def _broadcast_dashboard_refresh(
             roles={"supervisor", "admin"},
         )
     except Exception as exc:
-        logger.warning(f"Failed to broadcast dashboard refresh event: {exc}")
+        logger.warning(
+            "Failed to broadcast dashboard refresh event: %s",
+            _safe_log_value(exc, max_length=200),
+        )
 
 
 @router.post("/count-lines/draft")
@@ -391,7 +399,11 @@ async def save_count_line_draft(
                 await update_result
             draft_id = str(conflicting_draft["_id"])
 
-    logger.debug(f"Draft saved for item {line_data.item_code}: {line_data.counted_qty}")
+    logger.debug(
+        "Draft saved for item %s: %s",
+        _safe_log_value(line_data.item_code),
+        line_data.counted_qty,
+    )
     return {
         "success": True,
         "message": "Draft saved successfully",
@@ -761,7 +773,10 @@ async def create_count_line(
         # For now, let's just emit to the session channel.
 
     except Exception as e:
-        logger.warning(f"Failed to broadcast scan event: {e}")
+        logger.warning(
+            "Failed to broadcast scan event: %s",
+            _safe_log_value(e, max_length=200),
+        )
 
     await _broadcast_dashboard_refresh(
         "count_line_created",
@@ -773,7 +788,10 @@ async def create_count_line(
     try:
         await recompute_session_totals(db, line_data.session_id)
     except Exception as e:
-        logger.error(f"Failed to update session stats: {str(e)}")
+        logger.error(
+            "Failed to update session stats: %s",
+            _safe_log_value(e, max_length=200),
+        )
         # Non-critical error, continue execution
 
     # Update session barcode if this count line has a barcode and session doesn't have one yet
@@ -786,10 +804,15 @@ async def create_count_line(
                     {"$set": {"barcode": line_data.barcode}},
                 )
                 logger.info(
-                    f"Updated session {line_data.session_id} with barcode {line_data.barcode}"
+                    "Updated session %s with barcode %s",
+                    _safe_log_value(line_data.session_id),
+                    _safe_log_value(line_data.barcode),
                 )
     except Exception as e:
-        logger.error(f"Failed to update session barcode: {str(e)}")
+        logger.error(
+            "Failed to update session barcode: %s",
+            _safe_log_value(e, max_length=200),
+        )
         # Non-critical error, continue execution
 
     # Log high-risk correction
@@ -824,7 +847,10 @@ async def create_count_line(
                 },
             )
         except Exception as e:
-            logger.error(f"Failed to write audit log: {e}")
+            logger.error(
+                "Failed to write audit log: %s",
+                _safe_log_value(e, max_length=200),
+            )
 
     # Remove the MongoDB _id field before returning
     count_line.pop("_id", None)
@@ -1149,13 +1175,20 @@ async def approve_count_line(
                 details={"action": "approve_count_line", "line_id": line_id},
             )
         except Exception as e:
-            logger.error(f"Failed to write audit log: {e}")
+            logger.error(
+                "Failed to write audit log: %s",
+                _safe_log_value(e, max_length=200),
+            )
 
         return {"success": True, "message": "Count line approved"}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error approving count line {line_id}: {str(e)}")
+        logger.error(
+            "Error approving count line %s: %s",
+            _safe_log_value(line_id),
+            _safe_log_value(e, max_length=200),
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1251,7 +1284,11 @@ async def reject_count_line(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error rejecting count line {line_id}: {str(e)}")
+        logger.error(
+            "Error rejecting count line %s: %s",
+            _safe_log_value(line_id),
+            _safe_log_value(e, max_length=200),
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1276,7 +1313,10 @@ async def check_item_counted(
 
         return {"already_counted": len(count_lines) > 0, "count_lines": count_lines}
     except Exception as e:
-        logger.error(f"Error checking item count: {str(e)}")
+        logger.error(
+            "Error checking item count: %s",
+            _safe_log_value(e, max_length=200),
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1414,7 +1454,10 @@ async def add_quantity_to_count_line(
     try:
         await recompute_session_totals(db, str(count_line.get("session_id") or ""))
     except Exception as exc:
-        logger.warning(f"Failed to recompute session totals after add-quantity: {exc}")
+        logger.warning(
+            "Failed to recompute session totals after add-quantity: %s",
+            _safe_log_value(exc, max_length=200),
+        )
     else:
         await _broadcast_dashboard_refresh(
             "count_line_quantity_updated",
@@ -1488,7 +1531,10 @@ async def update_count_line(
     try:
         await recompute_session_totals(db, str(count_line.get("session_id") or ""))
     except Exception as exc:
-        logger.warning(f"Failed to recompute session totals after count-line update: {exc}")
+        logger.warning(
+            "Failed to recompute session totals after count-line update: %s",
+            _safe_log_value(exc, max_length=200),
+        )
     else:
         await _broadcast_dashboard_refresh(
             "count_line_updated",
@@ -1504,7 +1550,10 @@ async def _recalculate_session_stats(db, session_id: str) -> None:
     try:
         await recompute_session_totals(db, session_id)
     except Exception as e:
-        logger.error(f"Failed to update session stats after delete: {str(e)}")
+        logger.error(
+            "Failed to update session stats after delete: %s",
+            _safe_log_value(e, max_length=200),
+        )
 
 
 async def _log_delete_activity(
@@ -1564,7 +1613,11 @@ async def delete_count_line(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting count line {line_id}: {str(e)}")
+        logger.error(
+            "Error deleting count line %s: %s",
+            _safe_log_value(line_id),
+            _safe_log_value(e, max_length=200),
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1658,7 +1711,7 @@ async def bulk_approve_count_lines(
             "modified_count": result.modified_count,
         }
     except Exception as e:
-        logger.error(f"Error bulk approving: {str(e)}")
+        logger.error("Error bulk approving: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1764,7 +1817,7 @@ async def bulk_reject_count_lines(
             "modified_count": result.modified_count,
         }
     except Exception as e:
-        logger.error(f"Error bulk rejecting: {str(e)}")
+        logger.error("Error bulk rejecting: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1800,14 +1853,22 @@ async def get_item_batches(
                     source = "sql_server"
                 else:
                     logger.info(
-                        f"SQL connector available but not connected for '{item_identifier}'"
+                        "SQL connector available but not connected for '%s'",
+                        _safe_log_value(item_identifier),
                     )
             except Exception as sql_err:
-                logger.warning(f"SQL Server batch fetch failed for '{item_identifier}': {sql_err}")
+                logger.warning(
+                    "SQL Server batch fetch failed for '%s': %s",
+                    _safe_log_value(item_identifier),
+                    _safe_log_value(sql_err, max_length=200),
+                )
 
         # 2. Fallback to MongoDB if SQL failed or not available
         if not fetch_success:
-            logger.info(f"Using MongoDB fallback for item batches: {item_identifier}")
+            logger.info(
+                "Using MongoDB fallback for item batches: %s",
+                _safe_log_value(item_identifier),
+            )
             query: dict[str, Any] = {
                 "$or": [{"item_code": item_identifier}, {"barcode": item_identifier}]
             }
@@ -1883,7 +1944,10 @@ async def get_item_batches(
         }
 
     except Exception as e:
-        logger.error(f"Error fetching item batches: {str(e)}")
+        logger.error(
+            "Error fetching item batches: %s",
+            _safe_log_value(e, max_length=200),
+        )
         raise HTTPException(status_code=500, detail=f"Failed to fetch item batches: {str(e)}")
 
 

@@ -54,7 +54,7 @@ JWT_REFRESH_SECRET={jwt_refresh_secret}
 """
         env_path.write_text(content, encoding="utf-8")
 
-    print("✅ .env file updated successfully")
+    print(f"✅ Secrets written successfully to {env_path}")
 
 
 def main():
@@ -68,12 +68,6 @@ def main():
     jwt_secret = generate_secret()
     jwt_refresh_secret = generate_secret()
 
-    print("\nGenerated Secrets (masked for security):")
-    print("-" * 60)
-    print(f"JWT_SECRET={jwt_secret[:4]}***{jwt_secret[-4:]}")
-    print(f"JWT_REFRESH_SECRET={jwt_refresh_secret[:4]}***{jwt_refresh_secret[-4:]}")
-    print("-" * 60)
-
     if args.write:
         # Look for .env in current dir or backend dir
         env_path = Path(args.env_file)
@@ -82,9 +76,8 @@ def main():
 
         update_env_file(env_path, jwt_secret, jwt_refresh_secret)
     else:
-        print(
-            "\nPlease run this script with the --write flag to automatically save them to your .env file."
-        )
+        print("✅ Secrets generated in memory.")
+        print("Re-run with --write to store them in an env file.")
 
 
 if __name__ == "__main__":

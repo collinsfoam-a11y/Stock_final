@@ -3,6 +3,9 @@
 
 name: Scheduled Tasks
 
+permissions:
+  contents: read
+
 on:
   schedule:
     - cron: '0 6 * * *'  # Daily at 6 AM UTC
@@ -44,6 +47,9 @@ jobs:
   stale:
     name: Mark Stale
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
     
     steps:
       - uses: actions/stale@v9

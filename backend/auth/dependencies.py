@@ -10,6 +10,8 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from backend.utils.api_utils import sanitize_for_logging
+
 from .cookies import get_access_token_cookie
 from .jwt_provider import jwt
 
@@ -137,8 +139,8 @@ class JWTValidator:
                     detail=error,
                 )
             return payload
-        except jwt.ExpiredSignatureError as e:
-            logger.error(f"[decode_token] ExpiredSignatureError: {e}")
+        except jwt.ExpiredSignatureError:
+            logger.info("JWT token rejected: expired")
             from backend.error_messages import get_error_message
 
             error = get_error_message("AUTH_TOKEN_EXPIRED")
@@ -146,8 +148,8 @@ class JWTValidator:
                 status_code=error["status_code"],
                 detail=error,
             )
-        except jwt.InvalidTokenError as e:
-            logger.error(f"[decode_token] InvalidTokenError: {e}")
+        except jwt.InvalidTokenError:
+            logger.info("JWT token rejected: invalid")
             from backend.error_messages import get_error_message
 
             error = get_error_message("AUTH_TOKEN_INVALID")
@@ -175,25 +177,19 @@ async def get_current_user(
     Can be used in any router without circular import
     """
     try:
-        # Extract and validate token
-        logger.debug(f"[get_current_user] Request URL: {request.url.path}")
-        logger.debug(f"[get_current_user] Credentials provided: {credentials is not None}")
-
         token = JWTValidator.extract_token(request, credentials)
-        logger.debug(f"[get_current_user] Token extracted successfully")
-
         payload = JWTValidator.decode_token(token)
-        logger.debug(f"[get_current_user] Token decoded, payload keys: {list(payload.keys())}")
 
         # Retrieve user from database
         username = payload["sub"]
-        logger.debug(f"[get_current_user] Username from token: {username}")
 
         user = await UserRepository.get_user_by_username(username)
-        logger.debug(f"[get_current_user] User found: {user is not None}")
 
         if user is None:
-            logger.warning(f"[get_current_user] User not found in database: {username}")
+            logger.warning(
+                "Authenticated user not found in database: %s",
+                sanitize_for_logging(username),
+            )
             from backend.error_messages import get_error_message
 
             error = get_error_message("AUTH_USER_NOT_FOUND", {"username": username})
@@ -204,7 +200,10 @@ async def get_current_user(
 
         # H6 fix: Check if user account is active
         if not user.get("is_active", True):
-            logger.warning(f"[get_current_user] Deactivated user attempted access: {username}")
+            logger.warning(
+                "Deactivated user attempted access: %s",
+                sanitize_for_logging(username),
+            )
             raise HTTPException(
                 status_code=403,
                 detail={
@@ -215,15 +214,15 @@ async def get_current_user(
                 },
             )
 
-        logger.debug(f"[get_current_user] Authentication successful for user: {username}")
+        logger.debug("Authentication successful for user: %s", sanitize_for_logging(username))
         return user
 
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
-    except Exception as e:
+    except Exception:
         # Catch any unexpected errors and convert to auth error
-        logger.error(f"[get_current_user] Unexpected error: {e}", exc_info=True)
+        logger.exception("Unexpected authentication error")
         from backend.error_messages import get_error_message
 
         error = get_error_message("AUTH_TOKEN_INVALID")

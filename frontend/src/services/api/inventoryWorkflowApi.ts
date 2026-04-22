@@ -20,6 +20,9 @@ import { isOnline } from "./sessionManagementApi";
 
 const log = createLogger("InventoryWorkflowApi");
 
+/**
+ * Resolves an item by barcode, preferring live data and falling back to cached inventory.
+ */
 export const getItemByBarcode = async (
   barcode: string,
   retryCount: number = 3,
@@ -266,6 +269,9 @@ export interface OptimizedSearchResult {
   has_more?: boolean;
 }
 
+/**
+ * Performs item search and normalizes the optimized-search response for callers.
+ */
 export const searchItems = async (
   query: string,
   cursor?: string,
@@ -317,6 +323,9 @@ export const searchItems = async (
   }
 };
 
+/**
+ * Calls the optimized search endpoint and maps API or cache data into shared item shapes.
+ */
 export const searchItemsOptimized = async (
   query: string,
   page: number = 1,
@@ -575,6 +584,9 @@ export const checkItemScanStatus = async (
   }
 };
 
+/**
+ * Persists a draft count line when the device is online.
+ */
 export const saveDraft = async (lineData: CreateCountLinePayload) => {
   try {
     if (!isOnline()) return null;
@@ -643,6 +655,9 @@ const hydrateCountLineNames = async <
     })
   );
 
+/**
+ * Creates a count line against the API and degrades to offline persistence when needed.
+ */
 export const createCountLine = async (
   countData: CreateCountLinePayload
 ): Promise<any & { _source?: DataSource; _offline?: boolean }> => {
@@ -745,6 +760,9 @@ export const createCountLine = async (
   }
 };
 
+/**
+ * Loads paginated count lines for a session with cache-aware offline behavior.
+ */
 export const getCountLines = async (
   sessionId: string,
   page: number = 1,

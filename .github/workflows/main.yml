@@ -3,6 +3,9 @@
 
 name: CI/CD Pipeline
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main, develop]
@@ -399,7 +402,6 @@ jobs:
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-backend:${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-backend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -411,7 +413,6 @@ jobs:
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-nginx:${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-nginx:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

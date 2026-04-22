@@ -38,12 +38,17 @@ from backend.services.canonical_inventory import (
 from backend.services.session_state_machine import SessionStateMachine
 from backend.services.redis_service import get_redis
 from backend.services.runtime import get_refresh_token_service
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/sessions", tags=["Session Management"])
 
 ACTIVE_SESSION_STATUSES = ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]
+
+
+def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
 
 
 # Models
@@ -1270,7 +1275,7 @@ async def get_sessions_analytics(
     try:
         return {"success": True, "data": await _build_sessions_analytics_payload(db)}
     except Exception as e:
-        logger.error(f"Analytics error: {str(e)}")
+        logger.error("Analytics error: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -1865,10 +1870,8 @@ async def logout_all_sessions(
     Logout all active sessions for the current user (Phase 1 Governance)
     Mandatory endpoint to resolve AUTH_SESSION_CONFLICT
     """
-    from backend.utils.api_utils import sanitize_for_logging
-
     username = current_user["username"]
-    logger.info(f"Revoking all sessions for user: {sanitize_for_logging(username)}")
+    logger.info("Revoking all sessions for user: %s", _safe_log_value(username))
 
     # 1. Revoke all refresh tokens
     revoked_tokens = await refresh_token_service.revoke_all_user_tokens(username)

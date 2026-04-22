@@ -10,35 +10,49 @@ Usage:
     python scripts/find_missing_barcodes.py [--start 510001] [--end 529999] [--output missing_barcodes.txt]
 """
 
-import sys
 import argparse
-import requests
-from typing import Set, List, Tuple
-import json
+import getpass
+import os
+import sys
+from dataclasses import dataclass
 from datetime import datetime
+from typing import List, Set, Tuple
+
+import requests
+
+
+@dataclass(frozen=True)
+class APICredentials:
+    username: str
+    password: str
 
 
 class BarcodeAnalyzer:
     def __init__(self, base_url: str = "http://localhost:8001", token: str = None):
         self.base_url = base_url
         self.token = token
-        self.headers = {
-            "Authorization": f"Bearer {token}" if token else None,
-            "Content-Type": "application/json",
-        }
 
-    def login(self, username: str, password: str) -> bool:
+    def _build_headers(self) -> dict[str, str]:
+        headers = {"Content-Type": "application/json"}
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+        return headers
+
+    def authenticate(self, credentials: APICredentials) -> bool:
         """Authenticate and get access token"""
         try:
             response = requests.post(
                 f"{self.base_url}/api/auth/login",
-                json={"username": username, "password": password},
+                json={
+                    "username": credentials.username,
+                    "password": credentials.password,
+                },
+                timeout=10,
             )
             if response.status_code == 200:
                 data = response.json()
                 if data.get("success"):
                     self.token = data["data"]["access_token"]
-                    self.headers["Authorization"] = f"Bearer {self.token}"
                     return True
         except Exception as e:
             print(f"❌ Login failed: {e}")
@@ -51,14 +65,14 @@ class BarcodeAnalyzer:
         existing = set()
 
         print(f"🔍 Scanning barcodes from {start} to {end}...")
-        print(f"   This may take a while for large ranges...\n")
+        print("   This may take a while for large ranges...\n")
 
         # Strategy 1: Try bulk query if available
         try:
             response = requests.get(
                 f"{self.base_url}/api/items/search/optimized",
                 params={"q": "51", "limit": 50},
-                headers=self.headers,
+                headers=self._build_headers(),
                 timeout=10,
             )
 
@@ -81,7 +95,7 @@ class BarcodeAnalyzer:
                         response = requests.get(
                             f"{self.base_url}/api/items/search/optimized",
                             params={"q": query, "limit": batch_size, "offset": 0},
-                            headers=self.headers,
+                            headers=self._build_headers(),
                             timeout=5,
                         )
 
@@ -100,7 +114,7 @@ class BarcodeAnalyzer:
                                     print(
                                         f"   Found {len(items)} items with prefix {query}... (Total: {len(existing)})"
                                     )
-                    except Exception as e:
+                    except Exception:
                         continue
 
         except Exception as e:
@@ -270,8 +284,6 @@ Examples:
 
     password = args.password or os.environ.get("ADMIN_PASSWORD")
     if not password:
-        import getpass
-
         password = getpass.getpass("API password: ")
 
     print("\n" + "=" * 80)
@@ -283,10 +295,11 @@ Examples:
 
     # Initialize analyzer
     analyzer = BarcodeAnalyzer(base_url=args.url)
+    credentials = APICredentials(username=args.username, password=password)
 
     # Login
     print("🔐 Authenticating...")
-    if not analyzer.login(args.username, password):
+    if not analyzer.authenticate(credentials):
         print("❌ Failed to authenticate. Check credentials and backend status.")
         return 1
     print("✅ Authentication successful\n")
@@ -305,7 +318,7 @@ Examples:
                 "   The analysis will only check MongoDB cache, which may be incomplete."
             )
             print("   For accurate results, configure SQL Server connection.\n")
-    except:
+    except Exception:
         pass
 
     # Get existing barcodes
@@ -321,7 +334,7 @@ Examples:
         return 1
 
     # Find missing ranges
-    print(f"\n📊 Analyzing gaps in barcode series...")
+    print("\n📊 Analyzing gaps in barcode series...")
     missing_ranges = analyzer.find_missing_ranges(args.start, args.end, existing)
 
     # Generate report

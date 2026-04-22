@@ -21,10 +21,10 @@ redis==7.3.0  # Redis client
 # Using PyJWT + cryptography instead (see backend/auth/jwt_provider.py)
 passlib[argon2]==1.7.4
 bcrypt==4.0.1  # Pinned <4.1: passlib 1.7.x requires bcrypt.__about__.__version__ (removed in 4.1+)
-python-multipart==0.0.22
-authlib==1.6.9  # JWT provider (authlib.jose)
+python-multipart==0.0.26
+authlib==1.6.11  # JWT provider (authlib.jose)
 PyJWT==2.12.1  # Secure JWT implementation
-cryptography==46.0.5  # Security: CVE fixes
+cryptography==46.0.7  # Security: CVE fixes
 
 # Monitoring & Logging
 prometheus-client==0.24.1
@@ -38,13 +38,13 @@ orjson==3.11.7
 
 # Utilities
 httpx==0.28.1
-requests>=2.32.3  # Explicit pin; also a dev dep but needed transitively at runtime
-urllib3>=2.0,<2.3  # Keep compatible with requests 2.32.x
-chardet>=5.0,<6  # Keep compatible with requests 2.32.x
+requests>=2.33.0,<3  # Explicit secure runtime pin
+urllib3>=2.6.3,<3  # Keep aligned with the secure requests range
+chardet>=5.0,<6  # Keep compatible with the runtime requests range
 python-dateutil==2.9.0.post0
 email-validator==2.3.0
 rapidfuzz==3.14.3
-Pillow==12.1.1
+Pillow==12.2.0
 tenacity==9.1.4
 zeroconf==0.148.0
 

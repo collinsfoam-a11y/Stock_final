@@ -1,5 +1,6 @@
 import logging
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -34,14 +35,18 @@ try:
         try:
             import bcrypt
 
-            test_hash = bcrypt.hashpw(b"fallback_check_value_only", bcrypt.gensalt())
-            bcrypt.checkpw(b"fallback_check_value_only", test_hash)
+            probe_password = secrets.token_bytes(24)
+            test_hash = bcrypt.hashpw(probe_password, bcrypt.gensalt())
+            bcrypt.checkpw(probe_password, test_hash)
             logger.info("Password hashing: Using Argon2 with bcrypt fallback")
         except Exception as e:
-            logger.warning(f"Bcrypt backend check failed, using bcrypt-only context: {str(e)}")
+            logger.warning(
+                "Bcrypt backend check failed, using bcrypt-only context: %s",
+                type(e).__name__,
+            )
             pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 except Exception as e:
-    logger.warning(f"Argon2 not available, using bcrypt-only: {str(e)}")
+    logger.warning("Argon2 not available, using bcrypt-only: %s", type(e).__name__)
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 SECRET_KEY = str(settings.JWT_SECRET)
@@ -94,13 +99,17 @@ def _verify_bcrypt_fallback(password_bytes: bytes, hashed_password: str) -> bool
                 logger.debug("Password verified using direct bcrypt")
             return bool(result)
         else:
-            logger.error(f"Password hash is not a string: {type(hashed_password)}")
+            logger.error("Password hash is not a string: %s", type(hashed_password))
             return False
     except ImportError:
         logger.error("bcrypt module not available - password verification cannot proceed")
         return False
     except Exception as e:
-        logger.error(f"Direct bcrypt verification failed: {type(e).__name__}: {str(e)}")
+        logger.error(
+            "Direct bcrypt verification failed: %s: %s",
+            type(e).__name__,
+            str(e),
+        )
         return False
 
 

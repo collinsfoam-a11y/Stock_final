@@ -17,5 +17,15 @@ RUN npm --prefix frontend run build:web
 
 FROM nginx:1.25-alpine
 
-COPY nginx/nginx.conf /etc/nginx/nginx.conf
-COPY --from=frontend-build /app/frontend/dist /usr/share/nginx/html
+RUN apk add --no-cache libcap \
+    && mkdir -p /var/cache/nginx /var/run /var/log/nginx /var/www/certbot \
+    && chown -R nginx:nginx /var/cache/nginx /var/run /var/log/nginx /var/www/certbot /usr/share/nginx/html \
+    && setcap 'cap_net_bind_service=+ep' /usr/sbin/nginx
+
+COPY --chown=nginx:nginx nginx/nginx.conf /etc/nginx/nginx.conf
+COPY --from=frontend-build --chown=nginx:nginx /app/frontend/dist /usr/share/nginx/html
+
+USER nginx
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1/healthz || exit 1

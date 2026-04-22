@@ -3,6 +3,9 @@
 
 name: PR Checks
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     branches: [main, develop, my-fix-branch]
@@ -68,6 +71,8 @@ jobs:
   pr-size-check:
     name: PR Size Check
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     
     steps:
       - name: Check PR size

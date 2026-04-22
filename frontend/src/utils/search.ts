@@ -121,10 +121,30 @@ export const performFuzzySearch = <T extends SearchableItem>(
 export const highlightMatches = (text: string, query: string): string => {
   if (!query || !text) return text;
 
-  // Escape special characters to prevent ReDoS
-  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(${escapedQuery})`, "gi");
-  return text.replace(regex, "**$1**");
+  const normalizedText = text.toLocaleLowerCase();
+  const normalizedQuery = query.toLocaleLowerCase();
+  const matchLength = query.length;
+
+  if (!normalizedQuery || matchLength === 0) {
+    return text;
+  }
+
+  let currentIndex = 0;
+  let highlighted = "";
+
+  while (currentIndex < text.length) {
+    const matchIndex = normalizedText.indexOf(normalizedQuery, currentIndex);
+    if (matchIndex === -1) {
+      highlighted += text.slice(currentIndex);
+      break;
+    }
+
+    highlighted += text.slice(currentIndex, matchIndex);
+    highlighted += `**${text.slice(matchIndex, matchIndex + matchLength)}**`;
+    currentIndex = matchIndex + matchLength;
+  }
+
+  return highlighted;
 };
 
 /**

@@ -7,7 +7,6 @@ import csv
 import io
 import json
 import logging
-import traceback
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, cast
@@ -18,6 +17,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,11 @@ def init_verification_api(
 
 
 verification_router = APIRouter(prefix="/api/v2/erp/items", tags=["Item Verification"])
+
+
+def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
+    """Return a log-safe string for user-controlled values and exception messages."""
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
 
 
 def _regex_filter(value: Optional[str]) -> Optional[dict[str, str]]:
@@ -350,7 +355,11 @@ async def update_item_master(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating item master {barcode}: {str(e)}")
+        logger.error(
+            "Error updating item master %s: %s",
+            _safe_log_value(barcode),
+            _safe_log_value(e, max_length=200),
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -410,8 +419,7 @@ async def refresh_item_qty_from_sql(
     except HTTPException:
         raise
     except Exception as e:
-        error_details = traceback.format_exc()
-        logger.error(f"Error refreshing SQL qty for {barcode}: {str(e)}\n{error_details}")
+        logger.exception("Error refreshing SQL qty for %s", _safe_log_value(barcode))
         raise HTTPException(status_code=500, detail=f"Refresh failed: {str(e)}")
 
 
@@ -583,7 +591,11 @@ async def verify_item(
 
                 await db.conflict_forks.insert_one(fork.model_dump())
 
-                logger.warning(f"Conflict detected for {barcode}. Fork created: {fork.fork_id}")
+                logger.warning(
+                    "Conflict detected for %s. Fork created: %s",
+                    _safe_log_value(barcode),
+                    _safe_log_value(fork.fork_id),
+                )
 
                 return {
                     "success": True,
@@ -603,7 +615,9 @@ async def verify_item(
             # We assume the item exists because we read it, so valid match_count=0 means predicates failed
             # i.e. stock_qty changed
             logger.warning(
-                f"Optimistic Lock Failed for {barcode}. Expected qty: {expected_stock_qty}"
+                "Optimistic Lock Failed for %s. Expected qty: %s",
+                _safe_log_value(barcode),
+                expected_stock_qty,
             )
             raise HTTPException(
                 status_code=409,
@@ -649,7 +663,11 @@ async def verify_item(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error verifying item {barcode}: {str(e)}")
+        logger.error(
+            "Error verifying item %s: %s",
+            _safe_log_value(barcode),
+            _safe_log_value(e, max_length=200),
+        )
         raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")
 
 
@@ -719,7 +737,7 @@ async def get_filtered_items(
         }
 
     except Exception as e:
-        logger.error(f"Error getting filtered items: {str(e)}")
+        logger.error("Error getting filtered items: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Failed to get items: {str(e)}")
 
 
@@ -772,7 +790,7 @@ async def sync_items_for_offline_cache(
         }
 
     except Exception as e:
-        logger.error(f"Error syncing items: {str(e)}")
+        logger.error("Error syncing items: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Failed to sync items: {str(e)}")
 
 
@@ -837,7 +855,7 @@ async def export_items_csv(
         )
 
     except Exception as e:
-        logger.error(f"Error exporting items to CSV: {str(e)}")
+        logger.error("Error exporting items to CSV: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"CSV export failed: {str(e)}")
 
 
@@ -881,7 +899,7 @@ async def export_items_json(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error exporting items to JSON: {str(e)}")
+        logger.error("Error exporting items to JSON: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"JSON export failed: {str(e)}")
 
 
@@ -925,7 +943,7 @@ async def export_items_xlsx(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error exporting items to XLSX: {str(e)}")
+        logger.error("Error exporting items to XLSX: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Excel export failed: {str(e)}")
 
 
@@ -992,7 +1010,7 @@ async def get_variances(
         }
 
     except Exception as e:
-        logger.error(f"Error getting variances: {str(e)}")
+        logger.error("Error getting variances: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Failed to get variances: {str(e)}")
 
 
@@ -1060,7 +1078,10 @@ async def export_variances_csv(
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
     except Exception as e:
-        logger.error(f"Error exporting variances to CSV: {str(e)}")
+        logger.error(
+            "Error exporting variances to CSV: %s",
+            _safe_log_value(e, max_length=200),
+        )
         raise HTTPException(status_code=500, detail=f"Variance CSV export failed: {str(e)}")
 
 
@@ -1095,7 +1116,10 @@ async def export_variances_xlsx(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error exporting variances to XLSX: {str(e)}")
+        logger.error(
+            "Error exporting variances to XLSX: %s",
+            _safe_log_value(e, max_length=200),
+        )
         raise HTTPException(status_code=500, detail=f"Variance Excel export failed: {str(e)}")
 
 
@@ -1144,7 +1168,7 @@ async def get_live_users(current_user: dict = Depends(get_current_user)):
         return {"success": True, "users": result, "count": len(result)}
 
     except Exception as e:
-        logger.error(f"Error getting live users: {str(e)}")
+        logger.error("Error getting live users: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Failed to get live users: {str(e)}")
 
 
@@ -1191,5 +1215,8 @@ async def get_live_verifications(
         return {"success": True, "verifications": result, "count": len(result)}
 
     except Exception as e:
-        logger.error(f"Error getting live verifications: {str(e)}")
+        logger.error(
+            "Error getting live verifications: %s",
+            _safe_log_value(e, max_length=200),
+        )
         raise HTTPException(status_code=500, detail=f"Failed to get live verifications: {str(e)}")

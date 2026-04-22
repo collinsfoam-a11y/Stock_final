@@ -1,5 +1,7 @@
+import os
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi import HTTPException
 
 from backend.utils.auth_utils import (
@@ -67,7 +69,7 @@ def test_auth_utils_verify_bcrypt_fallback_direct():
     # We need a valid bcrypt hash
     import bcrypt
 
-    password = b"fallback_test_value"
+    password = os.urandom(24)
     hashed = bcrypt.hashpw(password, bcrypt.gensalt()).decode("utf-8")
 
     # Test successful verification
@@ -82,7 +84,7 @@ def test_auth_utils_verify_bcrypt_fallback_direct():
 
 def test_auth_utils_verify_password_fallback_trigger():
     """Test that verify_password triggers fallback when pwd_context fails"""
-    password = "test_password"
+    password = os.urandom(18).hex()
     # Create a real hash first
     real_hash = get_password_hash(password)
 

@@ -35,6 +35,9 @@ export interface SessionStatsResponse {
   itemsPerMinute?: number;
 }
 
+/**
+ * Returns whether the app should treat the network as safe for mutations.
+ */
 export const isOnline = () => {
   const { status, isOnline: rawOnline, isInternetReachable, connectionType } = getNetworkStatus();
 
@@ -50,6 +53,9 @@ export const isOnline = () => {
   return status === "ONLINE";
 };
 
+/**
+ * Creates a session online when possible and falls back to an offline placeholder otherwise.
+ */
 export const createSession = async (params: string | CreateSessionParams) => {
   const warehouse = typeof params === "string" ? params : params.warehouse;
   const sessionType = typeof params !== "string" ? params.type : undefined;
@@ -139,6 +145,9 @@ export const createSession = async (params: string | CreateSessionParams) => {
   }
 };
 
+/**
+ * Fetches paginated sessions with cache merge and offline fallback support.
+ */
 export const getSessions = async (page: number = 1, pageSize: number = 20) => {
   try {
     if (!isOnline()) {
@@ -243,6 +252,9 @@ export const getSessions = async (page: number = 1, pageSize: number = 20) => {
   }
 };
 
+/**
+ * Returns a single session from the API or offline cache.
+ */
 export const getSession = async (sessionId: string) => {
   try {
     if (!isOnline()) {
@@ -271,6 +283,9 @@ export const getSession = async (sessionId: string) => {
   }
 };
 
+/**
+ * Loads normalized session statistics for dashboards and active workflows.
+ */
 export const getSessionStats = async (sessionId: string): Promise<SessionStatsResponse | null> => {
   try {
     if (!isOnline()) {

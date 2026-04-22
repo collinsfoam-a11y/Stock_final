@@ -45,6 +45,39 @@ def _env_first(*names: str) -> Optional[str]:
     return None
 
 
+def _env_file_value(name: str) -> Optional[str]:
+    """Read a secret from the conventional `<NAME>_FILE` environment variable."""
+    file_var = f"{name}_FILE"
+    file_path = os.getenv(file_var)
+    if file_path is None or str(file_path).strip() == "":
+        return None
+
+    resolved_path = Path(file_path)
+    try:
+        value = resolved_path.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        raise ValueError(f"{file_var} points to an unreadable file: {resolved_path}") from exc
+
+    if not value:
+        raise ValueError(f"{file_var} points to an empty file: {resolved_path}")
+
+    return value
+
+
+def _secret_env_first(*names: str) -> Optional[str]:
+    """Return the first configured secret value from env vars or `_FILE` aliases."""
+    for name in names:
+        value = os.getenv(name)
+        if value is not None and str(value).strip() != "":
+            return str(value).strip()
+
+        file_value = _env_file_value(name)
+        if file_value is not None:
+            return file_value
+
+    return None
+
+
 def _parse_bool(value: object, *, default: bool = False) -> bool:
     """Coerce common environment-style boolean values."""
     if value is None:
@@ -146,17 +179,10 @@ class Settings(PydanticBaseSettings):
         """Resolve MongoDB URL from env aliases and auto-detect local port."""
 
         # 1) Accept common environment aliases.
-        # Prefer explicit MONGO_URL, then MONGODB_URI, then MONGODB_URL.
-        env_mongo_url = os.getenv("MONGO_URL")
-        env_mongodb_uri = os.getenv("MONGODB_URI")
-        env_mongodb_url = os.getenv("MONGODB_URL")
-
-        if env_mongo_url:
-            v = env_mongo_url
-        elif env_mongodb_uri:
-            v = env_mongodb_uri
-        elif env_mongodb_url:
-            v = env_mongodb_url
+        # Prefer explicit env vars, then `_FILE` aliases for secret-mounted deployments.
+        resolved_mongo_url = _secret_env_first("MONGO_URL", "MONGODB_URI", "MONGODB_URL")
+        if resolved_mongo_url:
+            v = resolved_mongo_url
 
         # 2) If still default, try auto-detection.
         if not v:
@@ -230,7 +256,7 @@ class Settings(PydanticBaseSettings):
     @classmethod
     def validate_jwt_secret(cls, v: Optional[str]) -> str:
         # Check environment variable first
-        env_value = os.getenv("JWT_SECRET")
+        env_value = _secret_env_first("JWT_SECRET")
         if env_value:
             v = env_value
         elif v is None:
@@ -260,7 +286,7 @@ class Settings(PydanticBaseSettings):
     @classmethod
     def validate_jwt_refresh_secret(cls, v: Optional[str]) -> str:
         # Check environment variable first
-        env_value = os.getenv("JWT_REFRESH_SECRET")
+        env_value = _secret_env_first("JWT_REFRESH_SECRET")
         if env_value:
             v = env_value
         elif v is None:
@@ -290,6 +316,14 @@ class Settings(PydanticBaseSettings):
     # Caching
     REDIS_URL: Optional[str] = None
     CACHE_TTL: int = Field(3600, ge=0)
+
+    @field_validator("REDIS_URL", mode="before")
+    @classmethod
+    def validate_redis_url(cls, v: Optional[str]) -> Optional[str]:
+        env_value = _secret_env_first("REDIS_URL")
+        if env_value:
+            return env_value
+        return v
 
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = Field(100, ge=1)
@@ -474,7 +508,8 @@ except Exception as e:
         def __init__(self):
             # Keep behavior consistent with Settings: support env aliases + auto-detect
             mongo_url = (
-                _env_first("MONGO_URL", "MONGODB_URI", "MONGODB_URL") or "mongodb://localhost:27017"
+                _secret_env_first("MONGO_URL", "MONGODB_URI", "MONGODB_URL")
+                or "mongodb://localhost:27017"
             )
             if mongo_url == "mongodb://localhost:27017":
                 try:
@@ -490,12 +525,12 @@ except Exception as e:
             self.SQL_SERVER_DATABASE = os.getenv("SQL_SERVER_DATABASE", "")
             self.SQL_SERVER_USER = os.getenv("SQL_SERVER_USER", "readonly_user")
             self.SQL_SERVER_PASSWORD = os.getenv("SQL_SERVER_PASSWORD")
-            jwt_secret = os.getenv("JWT_SECRET")
+            jwt_secret = _secret_env_first("JWT_SECRET")
             if not jwt_secret:
                 raise ValueError("JWT_SECRET environment variable is required")
             self.JWT_SECRET = jwt_secret
 
-            jwt_refresh_secret = os.getenv("JWT_REFRESH_SECRET")
+            jwt_refresh_secret = _secret_env_first("JWT_REFRESH_SECRET")
             if not jwt_refresh_secret:
                 raise ValueError("JWT_REFRESH_SECRET environment variable is required")
             self.JWT_REFRESH_SECRET = jwt_refresh_secret
@@ -508,7 +543,7 @@ except Exception as e:
             self.USE_CONNECTION_POOL = os.getenv("USE_CONNECTION_POOL", "true").lower() == "true"
             self.POOL_SIZE = int(os.getenv("POOL_SIZE", 10))
             self.MAX_OVERFLOW = int(os.getenv("MAX_OVERFLOW", 5))
-            self.REDIS_URL = os.getenv("REDIS_URL")
+            self.REDIS_URL = _secret_env_first("REDIS_URL")
             self.CACHE_TTL = int(os.getenv("CACHE_TTL", 3600))
             self.RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", 100))
             self.RATE_LIMIT_BURST = int(os.getenv("RATE_LIMIT_BURST", 20))
