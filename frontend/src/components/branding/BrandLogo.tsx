@@ -2,7 +2,6 @@ import React from "react";
 import {
   Image,
   type ImageStyle,
-  ImageResolvedAssetSource,
   StyleSheet,
   View,
   type ViewStyle,
@@ -11,10 +10,26 @@ import {
 type BrandLogoVariant = "wordmark" | "wordmarkTagline" | "symbol" | "icon";
 
 const SOURCES = {
-  icon: require("../../../assets/images/brand-icon.png"),
-  symbol: require("../../../assets/images/brand-symbol.png"),
-  wordmark: require("../../../assets/images/brand-wordmark.png"),
-  wordmarkTagline: require("../../../assets/images/brand-wordmark-tagline.png"),
+  icon: {
+    source: require("../../../assets/images/brand-icon.png"),
+    width: 1024,
+    height: 1024,
+  },
+  symbol: {
+    source: require("../../../assets/images/brand-symbol.png"),
+    width: 500,
+    height: 480,
+  },
+  wordmark: {
+    source: require("../../../assets/images/brand-wordmark.png"),
+    width: 1320,
+    height: 560,
+  },
+  wordmarkTagline: {
+    source: require("../../../assets/images/brand-wordmark-tagline.png"),
+    width: 2280,
+    height: 660,
+  },
 } as const;
 
 interface BrandLogoProps {
@@ -36,10 +51,9 @@ export function BrandLogo({
   style,
   containerStyle,
 }: BrandLogoProps) {
-  const source = SOURCES[variant];
-  const resolved = Image.resolveAssetSource(source) as ImageResolvedAssetSource;
-  const aspectRatio =
-    resolved.width && resolved.height ? resolved.width / resolved.height : 1;
+  const sourceConfig = SOURCES[variant];
+  const { source } = sourceConfig;
+  const aspectRatio = sourceConfig.width / sourceConfig.height;
 
   const getDimensions = () => {
     if (width && height) {
@@ -52,8 +66,8 @@ export function BrandLogo({
       return { width: height * aspectRatio, height };
     }
 
-    const boundedWidth = maxWidth ?? resolved.width ?? 1;
-    const boundedHeight = maxHeight ?? resolved.height ?? boundedWidth / aspectRatio;
+    const boundedWidth = maxWidth ?? sourceConfig.width;
+    const boundedHeight = maxHeight ?? sourceConfig.height ?? boundedWidth / aspectRatio;
     const widthLimitedHeight = boundedWidth / aspectRatio;
 
     if (widthLimitedHeight <= boundedHeight) {

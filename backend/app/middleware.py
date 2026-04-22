@@ -43,9 +43,10 @@ def _parse_csv_values(value: Any) -> list[str]:
 def _resolve_allowed_hosts(settings: Any, env: str) -> list[str]:
     allowed_hosts = _parse_csv_values(getattr(settings, "ALLOWED_HOSTS", None))
     if env in {"development", "test"}:
-        for host in ("localhost", "127.0.0.1", "testserver"):
-            if host not in allowed_hosts:
-                allowed_hosts.append(host)
+        # In local development/testing, frontend and mobile clients often hit the
+        # backend via LAN IPs or emulator aliases (e.g. 192.168.x.x, 10.0.2.2).
+        # Disabling TrustedHost in these environments avoids false 400 responses.
+        return ["*"]
     return allowed_hosts
 
 
