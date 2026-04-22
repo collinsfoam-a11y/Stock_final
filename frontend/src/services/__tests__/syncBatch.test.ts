@@ -50,6 +50,17 @@ jest.mock("../../store/authStore", () => ({
     }),
   },
 }));
+jest.mock("../../store/settingsStore", () => ({
+  useSettingsStore: {
+    getState: () => ({
+      settings: {
+        offlineMode: false,
+        autoSyncEnabled: true,
+        syncOnReconnect: true,
+      },
+    }),
+  },
+}));
 jest.mock(
   "@react-native-async-storage/async-storage",
   () =>
@@ -76,26 +87,34 @@ jest.mock("../offline/offlineStorage", () => ({
 
 // Now import the function under test
 // eslint-disable-next-line import/first
-import { syncOfflineQueue } from "../syncService";
+import { initializeSyncService, syncOfflineQueue } from "../syncService";
 // eslint-disable-next-line import/first
 import * as api from "../api/api";
 // eslint-disable-next-line import/first
 import * as offlineStorage from "../offline/offlineStorage";
+// eslint-disable-next-line import/first
+import { useNetworkStore } from "../../store/networkStore";
+
+const flushAsyncWork = async (iterations = 5) => {
+  for (let index = 0; index < iterations; index += 1) {
+    await Promise.resolve();
+  }
+};
+
+const mockOperations = [
+  {
+    id: "op_1",
+    type: "count_line",
+    data: {
+      session_id: "sess_1",
+      item_code: "ITEM001",
+      verified_qty: 10,
+    },
+    timestamp: "2023-01-01T00:00:00Z",
+  },
+];
 
 describe("syncOfflineQueue", () => {
-  const mockOperations = [
-    {
-      id: "op_1",
-      type: "count_line",
-      data: {
-        session_id: "sess_1",
-        item_code: "ITEM001",
-        verified_qty: 10,
-      },
-      timestamp: "2023-01-01T00:00:00Z",
-    },
-  ];
-
   beforeEach(() => {
     jest.clearAllMocks();
     // Default mock implementations
@@ -235,5 +254,67 @@ describe("syncOfflineQueue", () => {
 
     expect(api.syncBatch).not.toHaveBeenCalled();
     expect(result.total).toBe(0);
+  });
+});
+
+describe("initializeSyncService", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+    (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue(
+      mockOperations,
+    );
+    (offlineStorage.getCacheStats as jest.Mock).mockResolvedValue({
+      queuedOperations: 1,
+    });
+    (offlineStorage.removeManyFromOfflineQueue as jest.Mock).mockResolvedValue(
+      undefined,
+    );
+    (offlineStorage.updateQueueItemRetries as jest.Mock).mockResolvedValue(
+      undefined,
+    );
+    (offlineStorage.updateOfflineQueueItem as jest.Mock).mockResolvedValue(
+      undefined,
+    );
+    (api.isOnline as jest.Mock).mockReturnValue(true);
+    (api.syncBatch as jest.Mock).mockResolvedValue({
+      results: [{ id: "op_1", success: true }],
+    });
+    useNetworkStore.setState({
+      isOnline: false,
+      connectionType: "unknown",
+      isInternetReachable: null,
+      isRestrictedMode: false,
+    });
+  });
+
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
+  });
+
+  it("should reuse one active subscription across repeated initialization", async () => {
+    const first = initializeSyncService();
+    const second = initializeSyncService();
+
+    useNetworkStore.setState({ isOnline: true });
+    jest.advanceTimersByTime(2000);
+    await flushAsyncWork();
+
+    expect(api.syncBatch).toHaveBeenCalledTimes(1);
+
+    first.cleanup();
+    second.cleanup();
+  });
+
+  it("should cancel pending reconnect work during cleanup", async () => {
+    const syncService = initializeSyncService();
+
+    useNetworkStore.setState({ isOnline: true });
+    syncService.cleanup();
+    jest.advanceTimersByTime(2000);
+    await flushAsyncWork();
+
+    expect(api.syncBatch).not.toHaveBeenCalled();
   });
 });

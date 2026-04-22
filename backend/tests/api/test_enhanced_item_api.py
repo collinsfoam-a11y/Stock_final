@@ -171,6 +171,9 @@ async def test_get_item_by_barcode_enhanced_does_not_cache_contextual_fields(set
     )
 
     assert response["item"]["is_misplaced"] is True
+    mock_db.sessions.find_one.assert_awaited_once_with(
+        {"$or": [{"id": "session-1"}, {"session_id": "session-1"}]}
+    )
 
     cached_payload = mock_cache.set_async.await_args.args[2]
     assert cached_payload["item"]["item_code"] == "CODE123"

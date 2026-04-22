@@ -23,6 +23,7 @@ from backend.auth.dependencies import get_current_user_async as get_current_user
 
 # Import other dependencies directly
 # Import services and database
+from backend.services.canonical_inventory import build_session_lookup
 from backend.services.monitoring_service import MonitoringService
 from backend.services.sql_sync_service import SQLSyncService
 from backend.utils.api_utils import sanitize_for_logging
@@ -208,7 +209,7 @@ async def _resolve_lookup_context(
     if not session_id:
         return context_floor, context_rack
 
-    session = await db.sessions.find_one({"id": session_id})
+    session = await db.sessions.find_one(build_session_lookup(session_id))
     if not session:
         return context_floor, context_rack
 

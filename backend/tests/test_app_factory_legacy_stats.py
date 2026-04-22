@@ -22,3 +22,28 @@ async def test_refresh_session_count_line_stats_updates_by_id_or_session_id(monk
         {"$or": [{"id": "session-123"}, {"session_id": "session-123"}]},
         {"$set": {"total_items": 3, "total_variance": 7}},
     )
+
+
+@pytest.mark.asyncio
+async def test_get_session_by_id_supports_canonical_session_lookup(monkeypatch):
+    mock_db = MagicMock()
+    mock_db.sessions.find_one = AsyncMock(
+        return_value={
+            "id": "session-123",
+            "warehouse": "WH-1",
+            "staff_user": "staff1",
+            "staff_name": "Staff One",
+        }
+    )
+
+    monkeypatch.setattr(app_factory, "db", mock_db)
+
+    session = await app_factory.get_session_by_id(
+        "session-123",
+        {"username": "staff1", "role": "staff"},
+    )
+
+    mock_db.sessions.find_one.assert_awaited_once_with(
+        {"$or": [{"id": "session-123"}, {"session_id": "session-123"}]}
+    )
+    assert session.id == "session-123"

@@ -98,6 +98,7 @@ from backend.exceptions import AuthenticationError, NotFoundError  # noqa: E402
 from backend.exceptions import RateLimitError as RateLimitExceededError  # noqa: E402
 from backend.exceptions import StockVerifyException as DatabaseError  # noqa: E402
 from backend.exceptions import ValidationError  # noqa: E402
+from backend.services.canonical_inventory import build_session_lookup  # noqa: E402
 
 # Utils
 from backend.utils.api_utils import result_to_response, sanitize_for_logging  # noqa: E402
@@ -894,7 +895,7 @@ async def get_session_by_id(
 ):
     """Get a specific session by ID"""
     try:
-        session = await db.sessions.find_one({"session_id": session_id})
+        session = await db.sessions.find_one(build_session_lookup(session_id))
 
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")

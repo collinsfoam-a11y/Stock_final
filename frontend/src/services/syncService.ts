@@ -37,7 +37,16 @@ export interface SyncOptions {
 
 // Simple in-memory lock to prevent concurrent syncs
 let isSyncing = false;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let activeSyncCleanup: (() => void) | null = null;
 const EMPTY_SYNC_RESULT: SyncResult = { success: 0, failed: 0, total: 0, errors: [] };
+
+const clearReconnectTimer = () => {
+  if (reconnectTimer !== null) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+};
 
 const deriveFailureStatus = (
   errorMessage: string,
@@ -231,7 +240,13 @@ const syncBatchChunk = async (batch: OfflineQueueItem[], batchIndex: number) => 
  * Subscribes to network changes and schedules reconnect sync when allowed.
  */
 export const initializeSyncService = () => {
-  let networkReady = false;
+  if (activeSyncCleanup) {
+    return {
+      cleanup: activeSyncCleanup,
+    };
+  }
+
+  let networkReady = useNetworkStore.getState().isOnline;
 
   const unsubscribe = useNetworkStore.subscribe((state) => {
     const wasOnline = networkReady;
@@ -250,11 +265,13 @@ export const initializeSyncService = () => {
 
       log.debug("Network came online, scheduling sync");
 
-      setTimeout(() => {
+      clearReconnectTimer();
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
         const authState = useAuthStore.getState();
         if (authState.isAuthenticated && authState.user) {
           log.debug("Authenticated and online, triggering sync");
-          syncOfflineQueue({ background: true });
+          void syncOfflineQueue({ background: true });
         } else {
           log.debug("Not authenticated yet, skipping sync until login");
         }
@@ -262,10 +279,14 @@ export const initializeSyncService = () => {
     }
   });
 
+  activeSyncCleanup = () => {
+    clearReconnectTimer();
+    unsubscribe();
+    activeSyncCleanup = null;
+  };
+
   return {
-    cleanup: () => {
-      unsubscribe();
-    },
+    cleanup: activeSyncCleanup,
   };
 };
 

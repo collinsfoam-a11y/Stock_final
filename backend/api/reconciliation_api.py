@@ -11,6 +11,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
+from backend.services.canonical_inventory import build_session_lookup
 from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ async def get_session_reconciliation_summary(
 
     try:
         # 1. Validation: Check if session exists
-        session = await db.sessions.find_one({"id": session_id})
+        session = await db.sessions.find_one(build_session_lookup(session_id))
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
 
@@ -142,6 +143,8 @@ async def get_session_reconciliation_summary(
             "items": formatted_results,
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(
             "Error generating reconciliation for session %s: %s",
