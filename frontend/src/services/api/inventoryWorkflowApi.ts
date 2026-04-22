@@ -17,7 +17,7 @@ import {
   searchItemsInCache,
   type DataSource,
 } from "../offline/offlineStorage";
-import { isOnline } from "./sessionManagementApi";
+import { isOnline, shouldAttemptReadApi } from "./sessionManagementApi";
 
 const log = createLogger("InventoryWorkflowApi");
 
@@ -334,7 +334,7 @@ export const getItemByBarcode = async (
   const trimmedBarcode = normalizeBarcodeInput(barcode);
   log.debug(`Looking up barcode: ${trimmedBarcode}`, { original: barcode });
 
-  if (!isOnline()) {
+  if (!shouldAttemptReadApi()) {
     log.debug("Offline mode - searching cache");
     return await getCachedBarcodeItem(trimmedBarcode);
   }
@@ -440,7 +440,7 @@ export const searchItemsOptimized = async (
   cursor?: string
 ): Promise<OptimizedSearchResult> => {
   try {
-    if (!isOnline()) {
+    if (!shouldAttemptReadApi()) {
       const cachedItems = await searchItemsInCache(query);
       const mappedItems = cachedItems.map(mapCachedSearchItem);
       return {
@@ -516,7 +516,7 @@ export const searchItemsOptimized = async (
  */
 export const getSearchSuggestions = async (query: string, limit: number = 5): Promise<string[]> => {
   try {
-    if (!isOnline() || query.length < 2) {
+    if (!shouldAttemptReadApi() || query.length < 2) {
       return [];
     }
 
@@ -540,7 +540,7 @@ export const getSearchFilters = async (): Promise<{
   warehouses: string[];
 }> => {
   try {
-    if (!isOnline()) {
+    if (!shouldAttemptReadApi()) {
       return { categories: [], warehouses: [] };
     }
 
@@ -562,7 +562,7 @@ export const getSearchFilters = async (): Promise<{
  */
 export const searchItemsSemantic = async (query: string, limit: number = 20): Promise<Item[]> => {
   try {
-    if (!isOnline()) {
+    if (!shouldAttemptReadApi()) {
       return [];
     }
 
@@ -587,7 +587,7 @@ export const searchItemsSemantic = async (query: string, limit: number = 20): Pr
  */
 export const getRiskPredictions = async (sessionId: string, limit: number = 10) => {
   try {
-    if (!isOnline()) return [];
+    if (!shouldAttemptReadApi()) return [];
 
     const response = await api.get("/api/v2/supervisor/predictions", {
       params: { session_id: sessionId, limit },
@@ -662,7 +662,7 @@ export const checkItemScanStatus = async (
   itemCode: string
 ): Promise<ItemScanStatus> => {
   try {
-    if (!isOnline()) {
+    if (!shouldAttemptReadApi()) {
       const cachedLines = await getCountLinesBySessionFromCache(sessionId);
       const itemLines = cachedLines.filter((line) => line.item_code === itemCode);
 
@@ -940,7 +940,7 @@ export const getCountLines = async (
   verified?: boolean
 ): Promise<CountLineListResponse> => {
   try {
-    if (!isOnline()) {
+    if (!shouldAttemptReadApi()) {
       log.debug("Offline mode - returning cached count lines with pagination");
       return buildOfflinePaginatedCountLines(
         sessionId,
@@ -1021,7 +1021,7 @@ export const getAssignableStaffUsers = async (): Promise<AssignableStaffUser[]> 
  */
 export const checkItemCounted = async (sessionId: string, itemCode: string) => {
   try {
-    if (!isOnline()) {
+    if (!shouldAttemptReadApi()) {
       const cachedLines = await getCountLinesBySessionFromCache(sessionId);
       const itemLines = cachedLines.filter((line) => line.item_code === itemCode);
       return { already_counted: itemLines.length > 0, count_lines: itemLines };

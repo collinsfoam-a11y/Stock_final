@@ -327,6 +327,9 @@ class TestCreateCountLine:
         assert result["variance"] == 10
         assert result["counted_by"] == "testuser"
         assert result["approval_status"] == "NEEDS_REVIEW"
+        assert result["idempotency_key"]
+        inserted_count_line = mock_db.count_lines.insert_one.await_args.args[0]
+        assert inserted_count_line["idempotency_key"] == result["idempotency_key"]
         mock_db.count_line_drafts.update_many.assert_awaited_once()
 
     @pytest.mark.asyncio

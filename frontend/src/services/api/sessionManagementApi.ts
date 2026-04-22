@@ -197,6 +197,16 @@ export const isOnline = () => {
 };
 
 /**
+ * Returns whether reads should attempt the API before falling back to cache.
+ */
+export const shouldAttemptReadApi = () => {
+  const networkStatus = getNetworkStatus() as ReturnType<typeof getNetworkStatus> & {
+    shouldAttemptApi?: boolean;
+  };
+  return networkStatus.shouldAttemptApi ?? networkStatus.status !== "OFFLINE";
+};
+
+/**
  * Creates a session online when possible and falls back to an offline placeholder otherwise.
  */
 export const createSession = async (params: string | CreateSessionParams) => {
@@ -265,7 +275,7 @@ export const getSessions = async (page: number = 1, pageSize: number = 20) => {
   const validPageSize = Math.max(1, Math.min(100, Math.floor(Number(pageSize)) || 20));
 
   try {
-    if (!isOnline()) {
+    if (!shouldAttemptReadApi()) {
       return await getOfflinePaginatedSessions(validPage, validPageSize);
     }
 
@@ -311,7 +321,7 @@ export const getSessions = async (page: number = 1, pageSize: number = 20) => {
  */
 export const getSession = async (sessionId: string) => {
   try {
-    if (!isOnline()) {
+    if (!shouldAttemptReadApi()) {
       return await getSessionFromCache(sessionId);
     }
 
@@ -342,7 +352,7 @@ export const getSession = async (sessionId: string) => {
  */
 export const getSessionStats = async (sessionId: string): Promise<SessionStatsResponse | null> => {
   try {
-    if (!isOnline()) {
+    if (!shouldAttemptReadApi()) {
       log.debug("Offline - cannot fetch session stats from API");
       return null;
     }
@@ -379,7 +389,7 @@ export const getSessionStats = async (sessionId: string): Promise<SessionStatsRe
 
 export const getRackProgress = async (sessionId: string) => {
   try {
-    if (!isOnline()) {
+    if (!shouldAttemptReadApi()) {
       const cachedLines = await getCountLinesBySessionFromCache(sessionId);
 
       if (cachedLines.length === 0) {

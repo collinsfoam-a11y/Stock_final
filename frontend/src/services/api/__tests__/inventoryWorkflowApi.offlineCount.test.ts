@@ -37,6 +37,7 @@ describe("createCountLine offline queueing", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(sessionManagementApi, "isOnline").mockReturnValue(false);
+    jest.spyOn(sessionManagementApi, "shouldAttemptReadApi").mockReturnValue(false);
     jest.spyOn(offlineStorage, "getItemFromCache").mockResolvedValue(null as any);
     jest.spyOn(offlineStorage, "addToOfflineQueue").mockResolvedValue({} as any);
     jest.spyOn(offlineStorage, "cacheCountLine").mockResolvedValue({} as any);
@@ -103,6 +104,7 @@ describe("createCountLine offline queueing", () => {
 
   it("does not merge paginated API count lines into the offline cache", async () => {
     jest.spyOn(sessionManagementApi, "isOnline").mockReturnValue(true);
+    jest.spyOn(sessionManagementApi, "shouldAttemptReadApi").mockReturnValue(true);
     jest.spyOn(offlineStorage, "cacheCountLines").mockResolvedValue(undefined as any);
     (httpClient.get as jest.Mock).mockResolvedValue({
       data: {
@@ -129,6 +131,40 @@ describe("createCountLine offline queueing", () => {
     await getCountLines("session-1");
 
     expect(offlineStorage.cacheCountLines).not.toHaveBeenCalled();
+  });
+
+  it("attempts live count-line reads when network status is unknown", async () => {
+    jest.spyOn(sessionManagementApi, "isOnline").mockReturnValue(false);
+    jest.spyOn(sessionManagementApi, "shouldAttemptReadApi").mockReturnValue(true);
+    (httpClient.get as jest.Mock).mockResolvedValue({
+      data: {
+        items: [
+          {
+            id: "line-1",
+            session_id: "session-1",
+            item_code: "ITEM001",
+            item_name: "Soap Bar",
+            verified: false,
+          },
+        ],
+        pagination: {
+          page: 1,
+          page_size: 50,
+          total: 1,
+          total_pages: 1,
+          has_next: false,
+          has_prev: false,
+        },
+      },
+    });
+
+    const response = await getCountLines("session-1");
+
+    expect(httpClient.get).toHaveBeenCalledWith(
+      "/api/count-lines/session/session-1?page=1&page_size=50"
+    );
+    expect(response._source).toBe("api");
+    expect(response.items[0]?.item_name).toBe("Soap Bar");
   });
 
   it("reuses one idempotency key across online submit and offline fallback", async () => {

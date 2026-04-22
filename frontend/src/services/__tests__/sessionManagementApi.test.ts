@@ -131,6 +131,42 @@ describe("sessionManagementApi.getSession", () => {
     });
   });
 
+  it("attempts a live session read when network status is unknown", async () => {
+    let httpClient: any;
+    let network: any;
+    let getSession: any;
+
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      httpClient = require("../httpClient").default;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      network = require("../../utils/network");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ({ getSession } = require("../api/sessionManagementApi"));
+    });
+
+    network.getNetworkStatus.mockReturnValue({
+      status: "UNKNOWN",
+      isOnline: true,
+      isInternetReachable: null,
+      connectionType: "wifi",
+    });
+    httpClient.get.mockResolvedValue({
+      data: {
+        id: "session-unknown",
+        status: "OPEN",
+      },
+    });
+
+    const result = await getSession("session-unknown");
+
+    expect(httpClient.get).toHaveBeenCalledWith("/api/sessions/session-unknown");
+    expect(result).toEqual({
+      id: "session-unknown",
+      status: "OPEN",
+    });
+  });
+
   it("creates and queues an offline session when offline", async () => {
     let offlineStorage: any;
     let network: any;

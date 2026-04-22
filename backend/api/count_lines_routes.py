@@ -48,6 +48,13 @@ def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
     return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
 
 
+def _normalize_idempotency_key(value: Any) -> Optional[str]:
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
 class CountLineApprovalRequest(BaseModel):
     """Optional metadata for approving a count line."""
 
@@ -327,13 +334,14 @@ async def _find_idempotent_count_line(
     db: Any,
     line_data: CountLineCreate,
 ) -> Optional[dict[str, Any]]:
-    if not line_data.idempotency_key:
+    idempotency_key = _normalize_idempotency_key(line_data.idempotency_key)
+    if not idempotency_key:
         return None
 
     existing_idempotent = await db.count_lines.find_one(
         {
             "session_id": line_data.session_id,
-            "idempotency_key": line_data.idempotency_key,
+            "idempotency_key": idempotency_key,
         }
     )
     if existing_idempotent:
@@ -529,6 +537,11 @@ def _build_count_line_document(
     count_line_id = (
         extract_document_id(recount_update_target) if recount_update_target else str(uuid.uuid4())
     )
+    idempotency_key = (
+        _normalize_idempotency_key(line_data.idempotency_key)
+        or _normalize_idempotency_key((recount_update_target or {}).get("idempotency_key"))
+        or count_line_id
+    )
     counted_at = datetime.now(timezone.utc).replace(tzinfo=None)
     review_required = requires_supervisor_verification(variance)
     approval_status = "NEEDS_REVIEW" if review_required else "APPROVED"
@@ -536,7 +549,7 @@ def _build_count_line_document(
     count_line = {
         "id": count_line_id,
         "session_id": line_data.session_id,
-        "idempotency_key": line_data.idempotency_key,
+        "idempotency_key": idempotency_key,
         "recount_of_id": line_data.recount_of_id,
         "item_code": line_data.item_code,
         "barcode": line_data.barcode or erp_item.get("barcode"),

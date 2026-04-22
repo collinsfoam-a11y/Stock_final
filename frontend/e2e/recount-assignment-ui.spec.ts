@@ -239,7 +239,9 @@ test.describe("Recount Assignment UI", () => {
     const assigneePage = await assigneeContext.newPage();
 
     await assigneePage.goto("/notifications");
-    await expect(assigneePage.getByText("Notifications")).toBeVisible({ timeout: 30000 });
+    await expect(assigneePage.getByText("Notifications", { exact: true })).toBeVisible({
+      timeout: 30000,
+    });
     await expect(assigneePage.getByText("Recount Requested", { exact: true })).toBeVisible({
       timeout: 30000,
     });
