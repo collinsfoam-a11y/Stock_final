@@ -3,8 +3,10 @@ SQL Verification Service - Verifies item quantities from SQL Server
 Implements business logic requirement: Item selection triggers SQL qty read + Mongo writeback
 """
 
+import asyncio
 import logging
 import math
+import time
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
@@ -649,11 +651,148 @@ class SQLVerificationService:
             logger.error(f"Error getting SQL quantity for {item_code}: {str(e)}")
             raise
 
+    @staticmethod
+    def _batch_duration_ms(start: datetime) -> float:
+        return (datetime.now(timezone.utc).replace(tzinfo=None) - start).total_seconds() * 1000
+
+    async def _build_batch_failure_response(
+        self,
+        *,
+        item_codes: list[str],
+        error_code: str,
+        message: str,
+        status_code: int,
+        start: datetime,
+        latency_ms: Optional[float],
+        box_status: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        errors = [
+            self._error_response(
+                error_code=error_code,
+                message=message,
+                status_code=status_code,
+                item_code=code,
+                box_status=box_status,
+            )
+            for code in item_codes
+        ]
+        await asyncio.gather(
+            *[
+                self._record_governance_event(
+                    item_code=err["item_code"],
+                    sql_qty=None,
+                    mongo_qty=None,
+                    variance=None,
+                    latency_ms=latency_ms,
+                    seq=None,
+                    status="FAILED",
+                    error_info=err,
+                )
+                for err in errors
+            ]
+        )
+        return {
+            "success": False,
+            "error_code": error_code,
+            "message": message,
+            "status_code": status_code,
+            "verified_count": 0,
+            "error_count": len(errors),
+            "results": [],
+            "errors": errors,
+            "batch_duration_ms": self._batch_duration_ms(start),
+        }
+
+    async def _get_batch_quantities(
+        self, item_codes: list[str]
+    ) -> tuple[Optional[Dict[str, float]], Optional[dict[str, Any]], Optional[float]]:
+        from backend.sql_server_connector import (
+            DatabaseConnectionError,
+            DatabaseQueryError,
+            ERPQueryParameterError,
+            ERPReadOnlyViolation,
+        )
+
+        batch_start = time.perf_counter()
+        try:
+            quantities = await asyncio.to_thread(self.sql_connector.get_item_quantities_only, item_codes)
+            latency_ms = (time.perf_counter() - batch_start) * 1000
+            return quantities, None, latency_ms
+        except DatabaseConnectionError as exc:
+            logger.error(f"Batch SQL connection failed: {exc}")
+            failure = {
+                "error_code": "SQL_CONNECTION_ERROR",
+                "message": "ERP system is temporarily unavailable. Please try again later.",
+                "status_code": 503,
+                "box_status": "SQL_FAILURE",
+            }
+        except ERPReadOnlyViolation as exc:
+            logger.error(f"Batch ERP read-only violation: {exc}")
+            failure = {
+                "error_code": "ERP_READ_ONLY_VIOLATION",
+                "message": "Write operation blocked on ERP.",
+                "status_code": 400,
+                "box_status": None,
+            }
+        except ERPQueryParameterError as exc:
+            logger.error(f"Batch ERP parameterization error: {exc}")
+            failure = {
+                "error_code": "ERP_QUERY_PARAMETER_ERROR",
+                "message": "ERP query blocked due to unsafe parameters.",
+                "status_code": 400,
+                "box_status": None,
+            }
+        except DatabaseQueryError as exc:
+            logger.error(f"Batch ERP query failed: {exc}")
+            failure = {
+                "error_code": "ERP_QUERY_ERROR",
+                "message": "ERP batch query failed. Please try again later.",
+                "status_code": 500,
+                "box_status": None,
+            }
+        except Exception as exc:
+            logger.error(f"Batch verification failed: {exc}")
+            failure = {
+                "error_code": "SQL_BATCH_FAILURE",
+                "message": "Batch verification failed due to an internal error.",
+                "status_code": 500,
+                "box_status": None,
+            }
+
+        latency_ms = (time.perf_counter() - batch_start) * 1000
+        return None, failure, latency_ms
+
+    @staticmethod
+    def _is_incomplete_batch_result(quantities: Dict[str, float], item_codes: list[str]) -> bool:
+        if len(quantities) != len(item_codes):
+            return True
+        return any(quantities.get(code) is None for code in item_codes)
+
+    def _split_batch_verification_results(
+        self, results: list[Any]
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        processed_results: list[dict[str, Any]] = []
+        errors: list[dict[str, Any]] = []
+        for result in results:
+            if isinstance(result, Exception):
+                errors.append(
+                    self._error_response(
+                        error_code="VERIFICATION_INTERNAL_ERROR",
+                        message="Verification failed due to an internal error.",
+                        status_code=500,
+                        item_code="unknown",
+                    )
+                )
+                continue
+            if isinstance(result, dict) and not result.get("success"):
+                errors.append(result)
+                continue
+            if isinstance(result, dict):
+                processed_results.append(result)
+        return processed_results, errors
+
     async def batch_verify_items(self, item_codes: list[str]) -> Dict[str, Any]:
         """Verify multiple items in batch (Parallelized)."""
-        import asyncio
-        import time
-
         start = datetime.now(timezone.utc).replace(tzinfo=None)
 
         if not item_codes:
@@ -663,210 +802,46 @@ class SQLVerificationService:
                 "error_count": 0,
                 "results": [],
                 "errors": [],
-                "batch_duration_ms": (
-                    datetime.now(timezone.utc).replace(tzinfo=None) - start
-                ).total_seconds()
-                * 1000,
+                "batch_duration_ms": self._batch_duration_ms(start),
             }
 
-        from backend.sql_server_connector import (
-            DatabaseConnectionError,
-            DatabaseQueryError,
-            ERPQueryParameterError,
-            ERPReadOnlyViolation,
-        )
-
-        batch_latency_ms: Optional[float] = None
-        try:
-            batch_start = time.perf_counter()
-            quantities = await asyncio.to_thread(
-                self.sql_connector.get_item_quantities_only, item_codes
+        quantities, batch_failure, batch_latency_ms = await self._get_batch_quantities(item_codes)
+        if batch_failure:
+            return await self._build_batch_failure_response(
+                item_codes=item_codes,
+                error_code=batch_failure["error_code"],
+                message=batch_failure["message"],
+                status_code=batch_failure["status_code"],
+                box_status=batch_failure["box_status"],
+                start=start,
+                latency_ms=batch_latency_ms,
             )
-            batch_latency_ms = (time.perf_counter() - batch_start) * 1000
-        except DatabaseConnectionError as e:
-            logger.error(f"Batch SQL connection failed: {e}")
-            error_code = "SQL_CONNECTION_ERROR"
-            message = "ERP system is temporarily unavailable. Please try again later."
-            status_code = 503
-            box_status = "SQL_FAILURE"
-            quantities = None
-        except ERPReadOnlyViolation as e:
-            logger.error(f"Batch ERP read-only violation: {e}")
-            error_code = "ERP_READ_ONLY_VIOLATION"
-            message = "Write operation blocked on ERP."
-            status_code = 400
-            box_status = None
-            quantities = None
-        except ERPQueryParameterError as e:
-            logger.error(f"Batch ERP parameterization error: {e}")
-            error_code = "ERP_QUERY_PARAMETER_ERROR"
-            message = "ERP query blocked due to unsafe parameters."
-            status_code = 400
-            box_status = None
-            quantities = None
-        except DatabaseQueryError as e:
-            logger.error(f"Batch ERP query failed: {e}")
-            error_code = "ERP_QUERY_ERROR"
-            message = "ERP batch query failed. Please try again later."
-            status_code = 500
-            box_status = None
-            quantities = None
-        except Exception as e:
-            logger.error(f"Batch verification failed: {e}")
-            error_code = "SQL_BATCH_FAILURE"
-            message = "Batch verification failed due to an internal error."
-            status_code = 500
-            box_status = None
-            quantities = None
-
         if quantities is None:
-            errors = [
-                self._error_response(
-                    error_code=error_code,
-                    message=message,
-                    status_code=status_code,
-                    item_code=code,
-                    box_status=box_status,
-                )
-                for code in item_codes
-            ]
-            await asyncio.gather(
-                *[
-                    self._record_governance_event(
-                        item_code=err["item_code"],
-                        sql_qty=None,
-                        mongo_qty=None,
-                        variance=None,
-                        latency_ms=batch_latency_ms,
-                        seq=None,
-                        status="FAILED",
-                        error_info=err,
-                    )
-                    for err in errors
-                ]
+            return await self._build_batch_failure_response(
+                item_codes=item_codes,
+                error_code="SQL_BATCH_FAILURE",
+                message="Batch verification failed due to an internal error.",
+                status_code=500,
+                start=start,
+                latency_ms=batch_latency_ms,
             )
-            return {
-                "success": False,
-                "error_code": error_code,
-                "message": message,
-                "status_code": status_code,
-                "verified_count": 0,
-                "error_count": len(errors),
-                "results": [],
-                "errors": errors,
-                "batch_duration_ms": (
-                    datetime.now(timezone.utc).replace(tzinfo=None) - start
-                ).total_seconds()
-                * 1000,
-            }
 
-        if len(quantities) != len(item_codes):
-            error_code = "ERP_AMBIGUOUS_BATCH_RESULT"
-            message = "ERP batch returned incomplete results."
-            errors = [
-                self._error_response(
-                    error_code=error_code,
-                    message=message,
-                    status_code=500,
-                    item_code=code,
-                )
-                for code in item_codes
-            ]
-            await asyncio.gather(
-                *[
-                    self._record_governance_event(
-                        item_code=err["item_code"],
-                        sql_qty=None,
-                        mongo_qty=None,
-                        variance=None,
-                        latency_ms=batch_latency_ms,
-                        seq=None,
-                        status="FAILED",
-                        error_info=err,
-                    )
-                    for err in errors
-                ]
+        if self._is_incomplete_batch_result(quantities, item_codes):
+            return await self._build_batch_failure_response(
+                item_codes=item_codes,
+                error_code="ERP_AMBIGUOUS_BATCH_RESULT",
+                message="ERP batch returned incomplete results.",
+                status_code=500,
+                start=start,
+                latency_ms=batch_latency_ms,
             )
-            return {
-                "success": False,
-                "error_code": error_code,
-                "message": message,
-                "status_code": 500,
-                "verified_count": 0,
-                "error_count": len(errors),
-                "results": [],
-                "errors": errors,
-                "batch_duration_ms": (
-                    datetime.now(timezone.utc).replace(tzinfo=None) - start
-                ).total_seconds()
-                * 1000,
-            }
-
-        if any(quantities.get(code) is None for code in item_codes):
-            error_code = "ERP_AMBIGUOUS_BATCH_RESULT"
-            message = "ERP batch returned invalid quantity results."
-            errors = [
-                self._error_response(
-                    error_code=error_code,
-                    message=message,
-                    status_code=500,
-                    item_code=code,
-                )
-                for code in item_codes
-            ]
-            await asyncio.gather(
-                *[
-                    self._record_governance_event(
-                        item_code=err["item_code"],
-                        sql_qty=None,
-                        mongo_qty=None,
-                        variance=None,
-                        latency_ms=batch_latency_ms,
-                        seq=None,
-                        status="FAILED",
-                        error_info=err,
-                    )
-                    for err in errors
-                ]
-            )
-            return {
-                "success": False,
-                "error_code": error_code,
-                "message": message,
-                "status_code": 500,
-                "verified_count": 0,
-                "error_count": len(errors),
-                "results": [],
-                "errors": errors,
-                "batch_duration_ms": (
-                    datetime.now(timezone.utc).replace(tzinfo=None) - start
-                ).total_seconds()
-                * 1000,
-            }
 
         tasks = [
             self._verify_item_with_sql_qty(code, quantities[code], batch_latency_ms or 0.0)
             for code in item_codes
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        processed_results = []
-        errors = []
-
-        for res in results:
-            if isinstance(res, Exception):
-                errors.append(
-                    self._error_response(
-                        error_code="VERIFICATION_INTERNAL_ERROR",
-                        message="Verification failed due to an internal error.",
-                        status_code=500,
-                        item_code="unknown",
-                    )
-                )
-            elif isinstance(res, dict) and not res.get("success"):
-                errors.append(res)
-            else:
-                processed_results.append(res)
+        processed_results, errors = self._split_batch_verification_results(results)
 
         return {
             "success": len(errors) == 0,
@@ -874,10 +849,7 @@ class SQLVerificationService:
             "error_count": len(errors),
             "results": processed_results,
             "errors": errors,
-            "batch_duration_ms": (
-                datetime.now(timezone.utc).replace(tzinfo=None) - start
-            ).total_seconds()
-            * 1000,
+            "batch_duration_ms": self._batch_duration_ms(start),
         }
 
     async def get_verification_status(self, item_code: str) -> Dict[str, Any]:

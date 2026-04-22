@@ -685,6 +685,61 @@ async def _find_user_by_pin(
     return await _find_user_by_legacy_scan(db, pin, lookup_hash)
 
 
+def _validate_pin_login_payload(
+    credentials: PinLogin, client_ip: str
+) -> Optional[Result[dict[str, Any], Exception]]:
+    pin = credentials.pin
+    if not pin or len(pin) != 4 or not pin.isdigit():
+        logger.warning("Invalid PIN format", extra={"client_ip": client_ip})
+        return Fail(AuthenticationError("Invalid PIN format. PIN must be 4 digits."))
+    if not credentials.username:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "USERNAME_REQUIRED_FOR_PIN_LOGIN",
+                "message": "Username is required for PIN login. Login with credentials first.",
+            },
+        )
+    return None
+
+
+async def _resolve_pin_login_user(
+    db: Any, credentials: PinLogin, request: Request, client_ip: str
+) -> Result[dict[str, Any], Exception]:
+    found_user = await _find_user_by_pin(db, credentials.pin, credentials.username)
+    if not found_user:
+        logger.warning("No user found with matching PIN", extra={"client_ip": client_ip})
+        await log_failed_login_attempt(
+            username=credentials.username or "PIN_LOGIN",
+            ip_address=client_ip,
+            user_agent=request.headers.get("user-agent"),
+            error="Invalid PIN",
+        )
+        return Fail(AuthenticationError("Invalid PIN"))
+
+    if not found_user.get("is_active", True):
+        logger.error("User account is deactivated")
+        return Fail(AuthorizationError("Account is deactivated. Please contact support."))
+
+    if not getattr(settings, "AUTH_SINGLE_SESSION", True):
+        return Ok(found_user)
+
+    session_resolution = await _ensure_single_session_for_login(
+        found_user["username"],
+        request,
+        client_ip,
+    )
+    if session_resolution.is_err:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "AUTH_SESSION_CONFLICT",
+                "message": "Unable to recover the existing active session",
+            },
+        )
+    return Ok(found_user)
+
+
 @router.post("/auth/login-pin", response_model=ApiResponse[TokenResponse])
 @result_to_response(success_status=200)
 async def login_with_pin(
@@ -700,7 +755,6 @@ async def login_with_pin(
     """
     db = get_db()
     cache_service = get_cache_service()
-    pin = credentials.pin
     client_ip = request.client.host if request.client else ""
 
     logger.debug(
@@ -711,18 +765,9 @@ async def login_with_pin(
         },
     )
 
-    # Validate PIN format (4-digit numeric)
-    if not pin or len(pin) != 4 or not pin.isdigit():
-        logger.warning(f"Invalid PIN format from IP: {client_ip}")
-        return Fail(AuthenticationError("Invalid PIN format. PIN must be 4 digits."))
-    if not credentials.username:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": "USERNAME_REQUIRED_FOR_PIN_LOGIN",
-                "message": "Username is required for PIN login. Login with credentials first.",
-            },
-        )
+    validation_fail = _validate_pin_login_payload(credentials, client_ip)
+    if validation_fail:
+        return validation_fail
 
     try:
         # Check rate limiting
@@ -730,41 +775,10 @@ async def login_with_pin(
         if rate_limit_fail:
             return rate_limit_fail
 
-        # Find user by PIN
-        found_user = await _find_user_by_pin(db, pin, credentials.username)
-
-        if not found_user:
-            logger.warning(f"No user found with matching PIN from IP: {client_ip}")
-            await log_failed_login_attempt(
-                username=credentials.username or "PIN_LOGIN",
-                ip_address=client_ip,
-                user_agent=request.headers.get("user-agent"),
-                error="Invalid PIN",
-            )
-            return Fail(AuthenticationError("Invalid PIN"))
-
-        # Check active status
-        if not found_user.get("is_active", True):
-            logger.error("User account is deactivated")
-            return Fail(AuthorizationError("Account is deactivated. Please contact support."))
-
-        # Check for active session conflict (Phase 1 Governance)
-        # Strict Single Session Enforcement:
-        # Block second login attempt with 409 Conflict
-        if getattr(settings, "AUTH_SINGLE_SESSION", True):
-            session_resolution = await _ensure_single_session_for_login(
-                found_user["username"],
-                request,
-                client_ip,
-            )
-            if session_resolution.is_err:
-                raise HTTPException(
-                    status_code=409,
-                    detail={
-                        "error": "AUTH_SESSION_CONFLICT",
-                        "message": "Unable to recover the existing active session",
-                    },
-                )
+        user_result = await _resolve_pin_login_user(db, credentials, request, client_ip)
+        if user_result.is_err:
+            return user_result
+        found_user = user_result.unwrap()
 
         # Generate tokens
         tokens_result = await generate_auth_tokens(found_user, client_ip, request)
@@ -944,20 +958,23 @@ async def heartbeat(
     }
 
 
-@router.post("/auth/change-pin")
-async def change_pin(
-    request: Request,
-    current_user: dict[str, Any] = Depends(get_current_user),
-) -> dict[str, Any]:
-    """
-    Change user PIN.
-    Validates current PIN or current password before allowing change.
-    """
-    body = await request.json()
-    current_pin = body.get("current_pin")
-    current_password = body.get("current_password")
-    new_pin = body.get("new_pin")
+WEAK_PINS = {
+    "1234",
+    "0000",
+    "1111",
+    "2222",
+    "3333",
+    "4444",
+    "5555",
+    "6666",
+    "7777",
+    "8888",
+    "9999",
+    "4321",
+}
 
+
+def _validate_new_pin_value(new_pin: Optional[str]) -> str:
     if not new_pin:
         raise HTTPException(
             status_code=400,
@@ -966,8 +983,6 @@ async def change_pin(
                 "message": "new_pin is required",
             },
         )
-
-    # Validate new PIN format (must be 4 digits)
     if not new_pin.isdigit() or len(new_pin) != 4:
         raise HTTPException(
             status_code=400,
@@ -976,23 +991,7 @@ async def change_pin(
                 "message": "PIN must be exactly 4 digits",
             },
         )
-
-    # Check for weak PINs (sequential, repeated, common)
-    weak_pins = [
-        "1234",
-        "0000",
-        "1111",
-        "2222",
-        "3333",
-        "4444",
-        "5555",
-        "6666",
-        "7777",
-        "8888",
-        "9999",
-        "4321",
-    ]
-    if new_pin in weak_pins:
+    if new_pin in WEAK_PINS:
         raise HTTPException(
             status_code=400,
             detail={
@@ -1000,18 +999,21 @@ async def change_pin(
                 "message": "PIN is too weak. Avoid sequential or repeated digits.",
             },
         )
+    return new_pin
 
-    # Verify identity
-    db = get_db()
-    user = await db.users.find_one({"username": current_user["username"]})
 
+async def _load_user_for_pin_change(username: str) -> dict[str, Any]:
+    user = await get_db().users.find_one({"username": username})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    return user
 
-    # If verifying via current_password
+
+def _validate_pin_change_identity(
+    user: dict[str, Any], current_pin: Optional[str], current_password: Optional[str]
+) -> None:
     if current_password:
         if "hashed_password" not in user:
-            # Legacy or weird state
             raise HTTPException(status_code=400, detail="Cannot verify password")
         if not verify_password(current_password, user["hashed_password"]):
             raise HTTPException(
@@ -1021,9 +1023,9 @@ async def change_pin(
                     "message": "Current password is incorrect",
                 },
             )
+        return
 
-    # If verifying via current_pin
-    elif current_pin:
+    if current_pin:
         if "pin_hash" not in user:
             raise HTTPException(
                 status_code=400,
@@ -1040,46 +1042,56 @@ async def change_pin(
                     "message": "Current PIN is incorrect",
                 },
             )
-    else:
-        # Neither provided
-        # If user has no PIN, they MUST provide password to set it
-        # If user has a PIN, they must provide one of them
-        if "pin_hash" in user:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error_code": "AUTH_REQUIRED",
-                    "message": "Please provide current_pin or current_password",
-                },
-            )
-        else:
-            # Even if no PIN is set, we prefer they verify password for sensitive action
-            # But if that's the only way... let's enforce password if they have one.
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error_code": "AUTH_REQUIRED",
-                    "message": "Please provide current_password to set a PIN",
-                },
-            )
+        return
 
-    # Update PIN
+    required_message = (
+        "Please provide current_pin or current_password"
+        if "pin_hash" in user
+        else "Please provide current_password to set a PIN"
+    )
+    raise HTTPException(
+        status_code=400,
+        detail={
+            "error_code": "AUTH_REQUIRED",
+            "message": required_message,
+        },
+    )
+
+
+async def _persist_user_pin(username: str, new_pin: str) -> None:
     from backend.utils.crypto_utils import get_pin_lookup_hash
 
     new_pin_hash = get_password_hash(new_pin)
     pin_lookup_hash = get_pin_lookup_hash(new_pin)
-
-    await db.users.update_one(
-        {"username": current_user["username"]},
+    await get_db().users.update_one(
+        {"username": username},
         {
             "$set": {
                 "pin_hash": new_pin_hash,
                 "pin_lookup_hash": pin_lookup_hash,
-                # M12 fix: Use UTC timezone for consistency
                 "updated_at": datetime.now(timezone.utc),
             }
         },
     )
+
+
+@router.post("/auth/change-pin")
+async def change_pin(
+    request: Request,
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    Change user PIN.
+    Validates current PIN or current password before allowing change.
+    """
+    body = await request.json()
+    current_pin = body.get("current_pin")
+    current_password = body.get("current_password")
+    new_pin = _validate_new_pin_value(body.get("new_pin"))
+
+    user = await _load_user_for_pin_change(current_user["username"])
+    _validate_pin_change_identity(user, current_pin, current_password)
+    await _persist_user_pin(current_user["username"], new_pin)
 
     logger.info(f"PIN changed for user: {current_user['username']}")
 
@@ -1087,7 +1099,7 @@ async def change_pin(
     try:
         from backend.services.audit_service import AuditService
 
-        audit_service = AuditService(db)
+        audit_service = AuditService(get_db())
         await audit_service.log_event(
             event_type=AuditEventType.AUTH_PIN_SETUP,
             status=AuditLogStatus.SUCCESS,

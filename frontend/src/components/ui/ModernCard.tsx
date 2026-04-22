@@ -140,36 +140,40 @@ export const ModernCard: React.FC<ModernCardProps> = ({
 
   // Memoized dynamic styles
   const dynamicStyles = React.useMemo(() => {
-    const elevationShadows = {
-      none: {},
-      sm: theme
-        ? {
+    const spacing = theme?.spacing ?? modernSpacing;
+    const borderLight = theme?.colors.border.light ?? modernColors.border.light;
+    const borderMedium = theme?.colors.border.medium ?? modernColors.border.medium;
+    const paperBackground = theme?.colors.background.paper ?? modernColors.background.paper;
+    const primaryText = theme?.colors.text.primary ?? modernColors.text.primary;
+    const secondaryText = theme?.colors.text.secondary ?? modernColors.text.secondary;
+    const glassBackground = theme?.colors.glass ?? "rgba(255, 255, 255, 0.1)";
+    const glassBorder = theme?.colors.border.light ?? "rgba(255, 255, 255, 0.15)";
+    const shadowMap = theme
+      ? {
+          none: {},
+          sm: {
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 1 },
             shadowOpacity: 0.1,
             shadowRadius: 2,
             elevation: 2,
-          }
-        : modernShadows.sm,
-      md: theme
-        ? {
+          },
+          md: {
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.15,
             shadowRadius: 8,
             elevation: 4,
-          }
-        : modernShadows.md,
-      lg: theme
-        ? {
+          },
+          lg: {
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 10 },
             shadowOpacity: 0.2,
             shadowRadius: 20,
             elevation: 8,
-          }
-        : modernShadows.lg,
-    };
+          },
+        }
+      : modernShadows;
 
     return StyleSheet.create({
       card: {
@@ -181,68 +185,50 @@ export const ModernCard: React.FC<ModernCardProps> = ({
         flex: 1,
       },
       default: {
-        backgroundColor: theme
-          ? theme.colors.background.paper
-          : modernColors.background.paper,
+        backgroundColor: paperBackground,
         borderWidth: 1,
-        borderColor: theme
-          ? theme.colors.border.light
-          : modernColors.border.light,
-        ...elevationShadows[elevation],
+        borderColor: borderLight,
+        ...shadowMap[elevation],
       },
       elevated: {
-        backgroundColor: theme
-          ? theme.colors.background.paper
-          : modernColors.background.paper,
-        ...elevationShadows[elevation],
+        backgroundColor: paperBackground,
+        ...shadowMap[elevation],
       },
       glass: {
-        backgroundColor: theme
-          ? theme.colors.glass
-          : "rgba(255, 255, 255, 0.1)",
+        backgroundColor: glassBackground,
         borderWidth: 1,
-        borderColor: theme
-          ? theme.colors.border.light
-          : "rgba(255, 255, 255, 0.15)",
+        borderColor: glassBorder,
       },
       gradient: {
         backgroundColor: "transparent",
       },
       outlined: {
-        backgroundColor: theme
-          ? theme.colors.background.paper
-          : modernColors.background.paper,
+        backgroundColor: paperBackground,
         borderWidth: 2,
-        borderColor: theme
-          ? theme.colors.border.medium
-          : modernColors.border.medium,
+        borderColor: borderMedium,
       },
       title: {
         ...modernTypography.h5,
-        color: theme ? theme.colors.text.primary : modernColors.text.primary,
-        marginBottom: theme ? theme.spacing.xs : modernSpacing.xs,
+        color: primaryText,
+        marginBottom: spacing.xs,
       },
       subtitle: {
         ...modernTypography.body.small,
-        color: theme
-          ? theme.colors.text.secondary
-          : modernColors.text.secondary,
+        color: secondaryText,
       },
       footer: {
-        marginTop: theme ? theme.spacing.md : modernSpacing.md,
-        paddingTop: theme ? theme.spacing.md : modernSpacing.md,
+        marginTop: spacing.md,
+        paddingTop: spacing.md,
         borderTopWidth: 1,
-        borderTopColor: theme
-          ? theme.colors.border.light
-          : modernColors.border.light,
+        borderTopColor: borderLight,
       },
       header: {
         flexDirection: "row",
         alignItems: "center",
-        marginBottom: theme ? theme.spacing.md : modernSpacing.md,
+        marginBottom: spacing.md,
       },
       iconContainer: {
-        marginRight: theme ? theme.spacing.sm : modernSpacing.sm,
+        marginRight: spacing.sm,
       },
     });
   }, [theme, elevation, actualPadding]);
@@ -290,49 +276,24 @@ export const ModernCard: React.FC<ModernCardProps> = ({
 
     // Use standard components on web to avoid Reanimated issues
     const isWeb = Platform.OS === "web";
-    const Component = isWeb
-      ? onPress
-        ? TouchableOpacity
-        : View
-      : onPress
-        ? AnimatedTouchableOpacity
-        : AnimatedView;
+    let Component: React.ComponentType<any> = isWeb ? View : AnimatedView;
+    if (onPress) {
+      Component = isWeb ? TouchableOpacity : AnimatedTouchableOpacity;
+    }
 
-    // Web-specific props (remove animated props)
-    const webProps = isWeb
-      ? {
-          onPress,
-          onLongPress,
-          delayLongPress,
-          onPressIn: handlePressIn,
-          onPressOut: handlePressOut,
-          style: cardStyle,
-          testID,
-          accessible: true,
-          accessibilityRole: onPress ? "button" : ("none" as "button" | "none"),
-          accessibilityLabel: accessibilityLabel || title,
-          accessibilityHint,
-        }
-      : {};
-
-    // Native animated props
-    const nativeProps = !isWeb
-      ? {
-          onPress,
-          onLongPress,
-          delayLongPress,
-          onPressIn: handlePressIn,
-          onPressOut: handlePressOut,
-          style: [animatedStyle, cardStyle],
-          testID,
-          accessible: true,
-          accessibilityRole: onPress ? "button" : ("none" as "button" | "none"),
-          accessibilityLabel: accessibilityLabel || title,
-          accessibilityHint,
-        }
-      : {};
-
-    const props = isWeb ? webProps : nativeProps;
+    const props = {
+      onPress,
+      onLongPress,
+      delayLongPress,
+      onPressIn: handlePressIn,
+      onPressOut: handlePressOut,
+      style: isWeb ? cardStyle : [animatedStyle, cardStyle],
+      testID,
+      accessible: true,
+      accessibilityRole: onPress ? ("button" as const) : ("none" as const),
+      accessibilityLabel: accessibilityLabel || title,
+      accessibilityHint,
+    };
 
     if (variant === "gradient") {
       const colors =

@@ -69,6 +69,50 @@ const parseDateParts = (value: string, format: DateFormatType): DateParts => {
   return { day: "", month: "", year: "" };
 };
 
+const isValidDateYear = (year: number, earliestYear: number, currentDate: Date) =>
+  year >= earliestYear && year <= currentDate.getFullYear();
+
+const validateFullDateInput = (input: string, earliestYear: number, currentDate: Date) => {
+  const parts = input.split("/");
+  if (parts.length !== 3) return false;
+  const day = Number(parts[0] ?? Number.NaN);
+  const month = Number(parts[1] ?? Number.NaN);
+  const year = Number(parts[2] ?? Number.NaN);
+  if ([day, month, year].some((part) => Number.isNaN(part))) return false;
+  if (day < 1 || day > 31 || month < 1 || month > 12) return false;
+  if (!isValidDateYear(year, earliestYear, currentDate)) return false;
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) return false;
+  return date <= currentDate;
+};
+
+const validateMonthYearInput = (input: string, earliestYear: number, currentDate: Date) => {
+  const parts = input.split("/");
+  if (parts.length !== 2) return false;
+  const month = Number(parts[0] ?? Number.NaN);
+  const year = Number(parts[1] ?? Number.NaN);
+  if ([month, year].some((part) => Number.isNaN(part))) return false;
+  if (month < 1 || month > 12) return false;
+  if (!isValidDateYear(year, earliestYear, currentDate)) return false;
+  if (year !== currentDate.getFullYear()) return true;
+  return month <= currentDate.getMonth() + 1;
+};
+
+const validateYearOnlyInput = (input: string, earliestYear: number, currentDate: Date) => {
+  const year = Number(input);
+  if (Number.isNaN(year)) return false;
+  return isValidDateYear(year, earliestYear, currentDate);
+};
+
+const buildPickerState = (part: DatePickerPart, options: string[]): DatePickerState => {
+  const titleByPart: Record<DatePickerPart, string> = {
+    day: "Select Day",
+    month: "Select Month",
+    year: "Select Year",
+  };
+  return { visible: true, title: titleByPart[part], options };
+};
+
 export const validateFlexibleDateInput = (
   input: string,
   format: DateFormatType,
@@ -78,41 +122,12 @@ export const validateFlexibleDateInput = (
   if (!input) return true;
 
   switch (format) {
-    case "full": {
-      const parts = input.split("/");
-      if (parts.length !== 3) return false;
-      const day = Number(parts[0]);
-      const month = Number(parts[1]);
-      const year = Number(parts[2]);
-      if (Number.isNaN(day) || Number.isNaN(month) || Number.isNaN(year)) return false;
-      if (day < 1 || day > 31 || month < 1 || month > 12) return false;
-      const date = new Date(year, month - 1, day);
-      if (Number.isNaN(date.getTime())) return false;
-      if (date > currentDate) return false;
-      if (year < earliestYear) return false;
-      return true;
-    }
-    case "month_year": {
-      const parts = input.split("/");
-      if (parts.length !== 2) return false;
-      const month = Number(parts[0]);
-      const year = Number(parts[1]);
-      if (Number.isNaN(month) || Number.isNaN(year)) return false;
-      if (month < 1 || month > 12) return false;
-      if (year > currentDate.getFullYear()) return false;
-      if (year === currentDate.getFullYear() && month > currentDate.getMonth() + 1) {
-        return false;
-      }
-      if (year < earliestYear) return false;
-      return true;
-    }
-    case "year_only": {
-      const year = Number(input);
-      if (Number.isNaN(year)) return false;
-      if (year > currentDate.getFullYear()) return false;
-      if (year < earliestYear) return false;
-      return true;
-    }
+    case "full":
+      return validateFullDateInput(input, earliestYear, currentDate);
+    case "month_year":
+      return validateMonthYearInput(input, earliestYear, currentDate);
+    case "year_only":
+      return validateYearOnlyInput(input, earliestYear, currentDate);
     default:
       return true;
   }
@@ -169,30 +184,12 @@ export const useFlexibleDateField = ({
   const openPicker = useCallback(
     (part: DatePickerPart) => {
       setActivePickerPart(part);
-
-      if (part === "day") {
-        setPickerState({
-          visible: true,
-          title: "Select Day",
-          options: generateDayOptions(),
-        });
-        return;
-      }
-
-      if (part === "month") {
-        setPickerState({
-          visible: true,
-          title: "Select Month",
-          options: generateMonthOptions(),
-        });
-        return;
-      }
-
-      setPickerState({
-        visible: true,
-        title: "Select Year",
-        options: generateYearOptions(),
-      });
+      const optionsByPart: Record<DatePickerPart, string[]> = {
+        day: generateDayOptions(),
+        month: generateMonthOptions(),
+        year: generateYearOptions(),
+      };
+      setPickerState(buildPickerState(part, optionsByPart[part]));
     },
     [generateDayOptions, generateMonthOptions, generateYearOptions]
   );

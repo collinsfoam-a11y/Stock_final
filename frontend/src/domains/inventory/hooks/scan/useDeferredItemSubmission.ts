@@ -83,6 +83,161 @@ const showSubmissionError = (error: any) => {
   Alert.alert(titleByStatus[status] || "Unable to Save Count", message);
 };
 
+const resolveDamageQuantities = (
+  isDamageEnabled: boolean,
+  damageType: DamageType,
+  damageQty: string
+) => {
+  const parsedDamageQty = parseFloat(damageQty);
+  return {
+    damaged_qty: isDamageEnabled && damageType === "returnable" ? parsedDamageQty : 0,
+    non_returnable_damaged_qty:
+      isDamageEnabled && damageType === "nonreturnable" ? parsedDamageQty : 0,
+  };
+};
+
+type SubmissionPayloadContext = {
+  barcode?: string;
+  sessionId: string;
+  item: Item;
+  quantity: string;
+  currentFloor?: string | null;
+  currentRack?: string | null;
+  condition: string;
+  remark: string;
+  isDamageEnabled: boolean;
+  damageQty: string;
+  damageType: DamageType;
+  isSerializedItem: boolean;
+  serialNumbers: string[];
+  serialEntries: SerialEntryData[];
+  varianceRemark: string;
+  mrp: string;
+  hasMfgDate: boolean;
+  itemMfgDate: string;
+  itemMfgDateFormat: DateFormatType;
+  hasExpiryDate: boolean;
+  itemExpiryDate: string;
+  itemExpiryDateFormat: DateFormatType;
+  itemPhotos: string[];
+  damagePhoto: string | null;
+};
+
+const resolveItemCode = (item: Item, barcode?: string) => {
+  if (item.item_code) return item.item_code;
+  return barcode || "";
+};
+
+const resolveItemName = (item: Item, barcode?: string) => {
+  if (item.item_name) return item.item_name;
+  if (item.name) return item.name;
+  if (item.item_code) return item.item_code;
+  return barcode || "";
+};
+
+const resolveLocationValue = (value?: string | null) => value || "Unknown";
+
+const resolveMrpCountedValue = (mrp: string, item: Item) => {
+  const parsed = parseFloat(mrp);
+  if (!Number.isNaN(parsed) && parsed > 0) return parsed;
+  return item.mrp || 0;
+};
+
+const resolveManufacturingDateValue = (
+  hasMfgDate: boolean,
+  itemMfgDate: string,
+  item: Item
+) => (hasMfgDate && itemMfgDate ? itemMfgDate : item.manufacturing_date);
+
+const resolveExpiryDateValue = (
+  hasExpiryDate: boolean,
+  itemExpiryDate: string,
+  item: Item
+) => (hasExpiryDate && itemExpiryDate ? itemExpiryDate : item.expiry_date);
+
+const resolvePhotoProofs = (damagePhoto: string | null, itemPhotos: string[]) => {
+  const nowIso = new Date().toISOString();
+  const backendPhotoProofs = toBackendPhotoProofs(
+    [...(damagePhoto ? [damagePhoto] : []), ...itemPhotos],
+    nowIso,
+  );
+  return backendPhotoProofs.length > 0 ? backendPhotoProofs : undefined;
+};
+
+const buildCountLinePayload = (context: SubmissionPayloadContext): CreateCountLinePayload => {
+  const {
+    barcode,
+    sessionId,
+    item,
+    quantity,
+    currentFloor,
+    currentRack,
+    condition,
+    remark,
+    isDamageEnabled,
+    damageQty,
+    damageType,
+    isSerializedItem,
+    serialNumbers,
+    serialEntries,
+    varianceRemark,
+    mrp,
+    hasMfgDate,
+    itemMfgDate,
+    itemMfgDateFormat,
+    hasExpiryDate,
+    itemExpiryDate,
+    itemExpiryDateFormat,
+    itemPhotos,
+    damagePhoto,
+  } = context;
+
+  const validSerials = getValidSerialNumbers(isSerializedItem, serialNumbers);
+  const serialEntriesData = getValidSerialEntries(isSerializedItem, serialEntries);
+  const photoProofs = resolvePhotoProofs(damagePhoto, itemPhotos);
+  const damageQuantities = resolveDamageQuantities(isDamageEnabled, damageType, damageQty);
+
+  return {
+    session_id: sessionId,
+    item_code: resolveItemCode(item, barcode),
+    item_name: resolveItemName(item, barcode),
+    counted_qty: parseFloat(quantity),
+    floor_no: resolveLocationValue(currentFloor),
+    rack_no: resolveLocationValue(currentRack),
+    item_condition: condition,
+    remark,
+    damage_included: isDamageEnabled,
+    ...damageQuantities,
+    serial_numbers: validSerials,
+    serial_entries: serialEntriesData.length > 0 ? serialEntriesData : undefined,
+    variance_note: varianceRemark,
+    variance_reason: varianceRemark,
+    mrp_counted: resolveMrpCountedValue(mrp, item),
+    manufacturing_date: resolveManufacturingDateValue(hasMfgDate, itemMfgDate, item),
+    mfg_date_format: hasMfgDate ? itemMfgDateFormat : undefined,
+    expiry_date: resolveExpiryDateValue(hasExpiryDate, itemExpiryDate, item),
+    expiry_date_format: hasExpiryDate ? itemExpiryDateFormat : undefined,
+    photo_proofs: photoProofs,
+  };
+};
+
+const handleSubmissionResult = async (
+  result: { is_misplaced?: boolean },
+  onSuccess: () => void
+) => {
+  if (result.is_misplaced) {
+    Alert.alert(
+      "Misplaced Item",
+      "This item is not expected at this location. It has been flagged for review.",
+      [{ text: "OK", onPress: onSuccess }]
+    );
+    return;
+  }
+
+  toastService.show("Item verified successfully", { type: "success" });
+  onSuccess();
+};
+
 export const useDeferredItemSubmission = ({
   barcode,
   sessionId,
@@ -170,57 +325,36 @@ export const useDeferredItemSubmission = ({
     setSubmitCountdown(null);
     setSubmitting(true);
 
-    const qty = parseFloat(quantity);
-
     try {
-      const validSerials = getValidSerialNumbers(isSerializedItem, serialNumbers);
-      const serialEntriesData = getValidSerialEntries(isSerializedItem, serialEntries);
-
-      const nowIso = new Date().toISOString();
-      const backendPhotoProofs = toBackendPhotoProofs(
-        [...(damagePhoto ? [damagePhoto] : []), ...itemPhotos],
-        nowIso,
-      );
-
-      const payload: CreateCountLinePayload = {
-        session_id: sessionId,
-        item_code: item.item_code || barcode || "",
-        item_name: item.item_name || item.name || item.item_code || barcode || "",
-        counted_qty: qty,
-        floor_no: currentFloor || "Unknown",
-        rack_no: currentRack || "Unknown",
-        item_condition: condition,
+      const payload = buildCountLinePayload({
+        barcode,
+        sessionId,
+        item,
+        quantity,
+        currentFloor,
+        currentRack,
+        condition,
         remark,
-        damage_included: isDamageEnabled,
-        damaged_qty: isDamageEnabled && damageType === "returnable" ? parseFloat(damageQty) : 0,
-        non_returnable_damaged_qty:
-          isDamageEnabled && damageType === "nonreturnable" ? parseFloat(damageQty) : 0,
-        serial_numbers: validSerials,
-        serial_entries: serialEntriesData.length > 0 ? serialEntriesData : undefined,
-        variance_note: varianceRemark,
-        variance_reason: varianceRemark,
-        mrp_counted: parseFloat(mrp) || item.mrp || 0,
-        manufacturing_date: hasMfgDate && itemMfgDate ? itemMfgDate : item.manufacturing_date,
-        mfg_date_format: hasMfgDate ? itemMfgDateFormat : undefined,
-        expiry_date: hasExpiryDate && itemExpiryDate ? itemExpiryDate : item.expiry_date,
-        expiry_date_format: hasExpiryDate ? itemExpiryDateFormat : undefined,
-        photo_proofs: backendPhotoProofs.length > 0 ? backendPhotoProofs : undefined,
-      };
-
+        isDamageEnabled,
+        damageQty,
+        damageType,
+        isSerializedItem,
+        serialNumbers,
+        serialEntries,
+        varianceRemark,
+        mrp,
+        hasMfgDate,
+        itemMfgDate,
+        itemMfgDateFormat,
+        hasExpiryDate,
+        itemExpiryDate,
+        itemExpiryDateFormat,
+        itemPhotos,
+        damagePhoto,
+      });
       const result = await createCountLine(payload);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      if (result.is_misplaced) {
-        Alert.alert(
-          "Misplaced Item",
-          "This item is not expected at this location. It has been flagged for review.",
-          [{ text: "OK", onPress: onSuccess }]
-        );
-        return;
-      }
-
-      toastService.show("Item verified successfully", { type: "success" });
-      onSuccess();
+      await handleSubmissionResult(result, onSuccess);
     } catch (error: any) {
       showSubmissionError(error);
     } finally {

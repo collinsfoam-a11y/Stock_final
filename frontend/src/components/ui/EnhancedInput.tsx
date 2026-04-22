@@ -80,6 +80,226 @@ export interface EnhancedInputProps extends Omit<TextInputProps, "style"> {
 }
 
 const AnimatedText = Animated.createAnimatedComponent(Text);
+const SIZE_CONFIG: Record<
+  InputSize,
+  { height: number; fontSize: number; iconSize: number; paddingHorizontal: number }
+> = {
+  sm: {
+    height: ComponentSizes.input.sm,
+    fontSize: FontSizes.sm,
+    iconSize: ComponentSizes.icon.sm,
+    paddingHorizontal: Spacing.md,
+  },
+  md: {
+    height: ComponentSizes.input.md,
+    fontSize: FontSizes.md,
+    iconSize: ComponentSizes.icon.md,
+    paddingHorizontal: Spacing.base,
+  },
+  lg: {
+    height: ComponentSizes.input.lg,
+    fontSize: FontSizes.lg,
+    iconSize: ComponentSizes.icon.lg,
+    paddingHorizontal: Spacing.lg,
+  },
+};
+
+const resolveBorderColor = (
+  error: string | undefined,
+  success: boolean | undefined,
+  isFocused: boolean,
+  themeLegacy: any
+) => {
+  if (error) return themeLegacy.colors.error || "#DC2626";
+  if (success) return themeLegacy.colors.success || "#16A34A";
+  if (isFocused) return themeLegacy.colors.primary;
+  return themeLegacy.colors.border || "rgba(0, 0, 0, 0.1)";
+};
+
+const resolveIconColor = (
+  error: string | undefined,
+  success: boolean | undefined,
+  isFocused: boolean,
+  themeLegacy: any
+) => {
+  if (error) return themeLegacy.colors.error || "#DC2626";
+  if (success) return themeLegacy.colors.success || "#16A34A";
+  if (isFocused) return themeLegacy.colors.primary;
+  return themeLegacy.colors.textSecondary || "#888";
+};
+
+const getHelperMessage = (
+  error: string | undefined,
+  success: boolean | undefined,
+  successMessage: string | undefined,
+  helperText: string | undefined
+) => {
+  if (error) {
+    return { text: error, colorKey: "error" as const };
+  }
+  if (success && successMessage) {
+    return { text: successMessage, colorKey: "success" as const };
+  }
+  if (helperText) {
+    return { text: helperText, colorKey: "textSecondary" as const };
+  }
+  return null;
+};
+
+const resolveFloatingLabelColor = (
+  error: string | undefined,
+  isFocused: boolean,
+  themeLegacy: any
+) => {
+  if (error) return themeLegacy.colors.error;
+  if (isFocused) return themeLegacy.colors.primary;
+  return themeLegacy.colors.textSecondary;
+};
+
+const resolveRightIconName = (
+  isPassword: boolean,
+  isPasswordVisible: boolean,
+  rightIcon?: keyof typeof Ionicons.glyphMap
+) => {
+  if (isPassword) {
+    return isPasswordVisible ? ("eye-off" as const) : ("eye" as const);
+  }
+  return rightIcon;
+};
+
+const resolveFixedLabel = (labelPosition: LabelPosition, label?: string) =>
+  labelPosition === "fixed" ? label : undefined;
+
+const resolveContainerBackground = (disabled: boolean, backgroundColor: string) =>
+  disabled ? "rgba(0, 0, 0, 0.05)" : backgroundColor;
+
+const resolveRightActionHandler = (
+  isPassword: boolean,
+  togglePasswordVisibility: () => void,
+  onRightIconPress?: () => void
+) => (isPassword ? togglePasswordVisibility : onRightIconPress);
+
+const buildInputStyles = (
+  config: { fontSize: number },
+  textColor: string,
+  hasLeftIcon: boolean,
+  hasRightAction: boolean,
+  inputStyle?: StyleProp<TextStyle>
+) => {
+  const resolvedStyles: StyleProp<TextStyle>[] = [
+    styles.input,
+    { fontSize: config.fontSize, color: textColor },
+  ];
+  if (hasLeftIcon) {
+    resolvedStyles.push(styles.inputWithLeftIcon);
+  }
+  if (hasRightAction) {
+    resolvedStyles.push(styles.inputWithRightIcon);
+  }
+  if (inputStyle) {
+    resolvedStyles.push(inputStyle);
+  }
+  return resolvedStyles;
+};
+
+const FixedLabel = ({
+  label,
+  color,
+}: {
+  label?: string;
+  color: string;
+}) => {
+  if (!label) return null;
+  return <Text style={[styles.fixedLabel, { color }]}>{label}</Text>;
+};
+
+const FloatingLabel = ({
+  label,
+  visible,
+  color,
+  backgroundColor,
+  animatedStyle,
+}: {
+  label?: string;
+  visible: boolean;
+  color: string;
+  backgroundColor: string;
+  animatedStyle: any;
+}) => {
+  if (!label || !visible) return null;
+  return (
+    <AnimatedText
+      style={[
+        styles.floatingLabel,
+        { color, backgroundColor },
+        animatedStyle,
+      ]}
+    >
+      {label}
+    </AnimatedText>
+  );
+};
+
+const RightAction = ({
+  visible,
+  iconName,
+  iconSize,
+  iconColor,
+  onPress,
+}: {
+  visible: boolean;
+  iconName: keyof typeof Ionicons.glyphMap;
+  iconSize: number;
+  iconColor: string;
+  onPress?: () => void;
+}) => {
+  if (!visible) return null;
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={styles.rightIcon}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <Ionicons name={iconName} size={iconSize} color={iconColor} />
+    </TouchableOpacity>
+  );
+};
+
+const HelperRow = ({
+  helper,
+  showCounter,
+  charCount,
+  maxLength,
+  themeLegacy,
+}: {
+  helper: { text: string; colorKey: "error" | "success" | "textSecondary" } | null;
+  showCounter: boolean;
+  charCount: number;
+  maxLength?: number;
+  themeLegacy: any;
+}) => (
+  <View style={styles.bottomRow}>
+    <View style={styles.helperContainer}>
+      {helper ? (
+        <Text style={[styles.helperText, { color: themeLegacy.colors[helper.colorKey] }]}>
+          {helper.text}
+        </Text>
+      ) : null}
+    </View>
+
+    {showCounter && maxLength ? (
+      <Text
+        style={[
+          styles.counter,
+          { color: themeLegacy.colors.textSecondary },
+          charCount >= maxLength && { color: themeLegacy.colors.error },
+        ]}
+      >
+        {charCount}/{maxLength}
+      </Text>
+    ) : null}
+  </View>
+);
 
 /**
  * EnhancedInput - Beautiful text input with animations
@@ -138,47 +358,29 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const focusProgress = useSharedValue(0);
 
-  // Determine if label should float
-  const shouldFloat = isFocused || (value && value.length > 0);
-
-  // Size configurations
-  const sizeConfig = {
-    sm: {
-      height: ComponentSizes.input.sm,
-      fontSize: FontSizes.sm,
-      iconSize: ComponentSizes.icon.sm,
-      paddingHorizontal: Spacing.md,
-    },
-    md: {
-      height: ComponentSizes.input.md,
-      fontSize: FontSizes.md,
-      iconSize: ComponentSizes.icon.md,
-      paddingHorizontal: Spacing.base,
-    },
-    lg: {
-      height: ComponentSizes.input.lg,
-      fontSize: FontSizes.lg,
-      iconSize: ComponentSizes.icon.lg,
-      paddingHorizontal: Spacing.lg,
-    },
-  };
-
-  const config = sizeConfig[size];
-
-  // Colors based on state
-  const getBorderColor = () => {
-    if (error) return themeLegacy.colors.error || "#DC2626";
-    if (success) return themeLegacy.colors.success || "#16A34A";
-    if (isFocused) return themeLegacy.colors.primary;
-    return themeLegacy.colors.border || "rgba(0, 0, 0, 0.1)";
-  };
-
-  const getIconColor = () => {
-    if (error) return themeLegacy.colors.error || "#DC2626";
-    if (success) return themeLegacy.colors.success || "#16A34A";
-    if (isFocused) return themeLegacy.colors.primary;
-    return themeLegacy.colors.textSecondary || "#888";
-  };
+  const shouldFloat = isFocused || (value?.length ?? 0) > 0;
+  const config = SIZE_CONFIG[size];
+  const borderColor = resolveBorderColor(error, success, isFocused, themeLegacy);
+  const iconColor = resolveIconColor(error, success, isFocused, themeLegacy);
+  const helper = getHelperMessage(error, success, successMessage, helperText);
+  const backgroundColor = themeLegacy.colors.surface || themeLegacy.colors.background;
+  const isPassword = Boolean(secureTextEntry);
+  const showRightAction = Boolean(rightIcon || isPassword);
+  const rightIconName = resolveRightIconName(isPassword, isPasswordVisible, rightIcon);
+  const finalSecureEntry = isPassword && !isPasswordVisible;
+  const charCount = value?.length || 0;
+  const showCounterText = Boolean(showCounter && maxLength);
+  const fixedLabel = resolveFixedLabel(labelPosition, label);
+  const fixedLabelColor = error ? themeLegacy.colors.error : themeLegacy.colors.text;
+  const floatingLabelColor = resolveFloatingLabelColor(error, isFocused, themeLegacy);
+  const containerBackground = resolveContainerBackground(disabled, backgroundColor);
+  const inputStyles = buildInputStyles(
+    config,
+    themeLegacy.colors.text,
+    Boolean(leftIcon),
+    showRightAction,
+    inputStyle
+  );
 
   // Handlers
   const handleFocus = useCallback(
@@ -202,6 +404,11 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
   const togglePasswordVisibility = useCallback(() => {
     setIsPasswordVisible((prev) => !prev);
   }, []);
+  const rightActionPress = resolveRightActionHandler(
+    isPassword,
+    togglePasswordVisibility,
+    onRightIconPress
+  );
 
   // Animated label style
   const labelAnimatedStyle = useAnimatedStyle(() => {
@@ -223,89 +430,44 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
     };
   });
 
-  // Character counter
-  const charCount = value?.length || 0;
-  const showCounterText = showCounter && maxLength;
-
-  // Determine if we should show password toggle
-  const isPassword = secureTextEntry;
-  const finalSecureEntry = isPassword && !isPasswordVisible;
-  const passwordIcon = isPasswordVisible ? "eye-off" : "eye";
-
   return (
-    <View
-      style={[styles.container, fullWidth && styles.fullWidth, containerStyle]}
-    >
-      {/* Fixed label */}
-      {label && labelPosition === "fixed" && (
-        <Text
-          style={[
-            styles.fixedLabel,
-            { color: themeLegacy.colors.text },
-            error && { color: themeLegacy.colors.error },
-          ]}
-        >
-          {label}
-        </Text>
-      )}
+    <View style={[styles.container, fullWidth ? styles.fullWidth : undefined, containerStyle]}>
+      <FixedLabel
+        label={fixedLabel}
+        color={fixedLabelColor}
+      />
 
-      {/* Input container */}
       <View
         style={[
           styles.inputContainer,
           {
             minHeight: config.height,
             paddingHorizontal: config.paddingHorizontal,
-            borderColor: getBorderColor(),
-            backgroundColor: disabled
-              ? "rgba(0, 0, 0, 0.05)"
-              : themeLegacy.colors.surface || themeLegacy.colors.background,
+            borderColor,
+            backgroundColor: containerBackground,
           },
         ]}
       >
-        {/* Floating label */}
-        {label && labelPosition === "floating" && (
-          <AnimatedText
-            style={[
-              styles.floatingLabel,
-              {
-                color: isFocused
-                  ? themeLegacy.colors.primary
-                  : themeLegacy.colors.textSecondary,
-                backgroundColor:
-                  themeLegacy.colors.surface || themeLegacy.colors.background,
-              },
-              error && { color: themeLegacy.colors.error },
-              labelAnimatedStyle,
-            ]}
-          >
-            {label}
-          </AnimatedText>
-        )}
+        <FloatingLabel
+          label={label}
+          visible={labelPosition === "floating"}
+          color={floatingLabelColor}
+          backgroundColor={backgroundColor}
+          animatedStyle={labelAnimatedStyle}
+        />
 
-        {/* Left icon */}
         {leftIcon && (
           <Ionicons
             name={leftIcon}
             size={config.iconSize}
-            color={getIconColor()}
+            color={iconColor}
             style={styles.leftIcon}
           />
         )}
 
-        {/* Text input */}
         <TextInput
           ref={inputRef}
-          style={[
-            styles.input,
-            {
-              fontSize: config.fontSize,
-              color: themeLegacy.colors.text,
-            },
-            leftIcon && styles.inputWithLeftIcon,
-            (rightIcon || isPassword) && styles.inputWithRightIcon,
-            inputStyle,
-          ]}
+          style={inputStyles}
           placeholderTextColor={themeLegacy.colors.textSecondary || "#888"}
           editable={!disabled}
           value={value}
@@ -318,63 +480,22 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
           {...rest}
         />
 
-        {/* Right icon / Password toggle */}
-        {(rightIcon || isPassword) && (
-          <TouchableOpacity
-            onPress={isPassword ? togglePasswordVisibility : onRightIconPress}
-            style={styles.rightIcon}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons
-              name={isPassword ? passwordIcon : rightIcon!}
-              size={config.iconSize}
-              color={getIconColor()}
-            />
-          </TouchableOpacity>
-        )}
+        <RightAction
+          visible={showRightAction}
+          iconName={rightIconName as keyof typeof Ionicons.glyphMap}
+          iconSize={config.iconSize}
+          iconColor={iconColor}
+          onPress={rightActionPress}
+        />
       </View>
 
-      {/* Bottom row: helper/error text + counter */}
-      <View style={styles.bottomRow}>
-        {/* Helper/Error/Success text */}
-        <View style={styles.helperContainer}>
-          {error ? (
-            <Text
-              style={[styles.helperText, { color: themeLegacy.colors.error }]}
-            >
-              {error}
-            </Text>
-          ) : success && successMessage ? (
-            <Text
-              style={[styles.helperText, { color: themeLegacy.colors.success }]}
-            >
-              {successMessage}
-            </Text>
-          ) : helperText ? (
-            <Text
-              style={[
-                styles.helperText,
-                { color: themeLegacy.colors.textSecondary },
-              ]}
-            >
-              {helperText}
-            </Text>
-          ) : null}
-        </View>
-
-        {/* Character counter */}
-        {showCounterText && (
-          <Text
-            style={[
-              styles.counter,
-              { color: themeLegacy.colors.textSecondary },
-              charCount >= maxLength! && { color: themeLegacy.colors.error },
-            ]}
-          >
-            {charCount}/{maxLength}
-          </Text>
-        )}
-      </View>
+      <HelperRow
+        helper={helper}
+        showCounter={showCounterText}
+        charCount={charCount}
+        maxLength={maxLength}
+        themeLegacy={themeLegacy}
+      />
     </View>
   );
 };

@@ -415,6 +415,50 @@ class SQLSyncService:
             stats["errors"] = 1
             raise
 
+    async def _collect_mongo_item_codes(self) -> set[str]:
+        mongo_item_codes_cursor = self.mongo_db.erp_items.find({}, {"item_code": 1})
+        mongo_item_codes: set[str] = set()
+        async for item in mongo_item_codes_cursor:
+            item_code = item.get("item_code")
+            if item_code:
+                mongo_item_codes.add(item_code)
+        return mongo_item_codes
+
+    @staticmethod
+    def _select_new_items(
+        sql_items: list[dict[str, Any]], mongo_item_codes: set[str], limit: int
+    ) -> list[dict[str, Any]]:
+        new_items: list[dict[str, Any]] = []
+        for sql_item in sql_items:
+            item_code = sql_item.get("item_code")
+            if not item_code or item_code in mongo_item_codes:
+                continue
+            new_items.append(sql_item)
+            if len(new_items) >= limit:
+                break
+        return new_items
+
+    async def _create_discovered_items(
+        self, new_items: list[dict[str, Any]], stats: dict[str, Any], now: datetime
+    ) -> None:
+        for sql_item in new_items:
+            item_code = sql_item.get("item_code")
+            try:
+                sql_qty = _coerce_qty(sql_item.get("stock_qty"))
+                new_item = _build_new_item_dict(sql_item, sql_qty, now)
+                await self.mongo_db.erp_items.insert_one(new_item)
+                stats["items_discovered"] += 1
+                logger.debug(f"Created new item: {item_code}")
+            except Exception as exc:
+                logger.error(f"Error creating item {item_code}: {exc}")
+                stats["errors"] += 1
+
+    def _finish_discovery_stats(self, stats: dict[str, Any], start_time: datetime) -> None:
+        stats["duration"] = (
+            datetime.now(timezone.utc).replace(tzinfo=None) - start_time
+        ).total_seconds()
+        self._last_new_item_check = datetime.now(timezone.utc).replace(tzinfo=None)
+
     async def discover_new_items(self, limit: int = 100) -> dict[str, Any]:
         """
         Discover and create NEW items from SQL Server that don't exist in MongoDB.
@@ -442,11 +486,7 @@ class SQLSyncService:
             logger.info("Starting new item discovery from SQL Server...")
 
             # Step 1: Get all item codes from MongoDB
-            mongo_item_codes_cursor = self.mongo_db.erp_items.find({}, {"item_code": 1})
-            mongo_item_codes = set()
-            async for item in mongo_item_codes_cursor:
-                if item.get("item_code"):
-                    mongo_item_codes.add(item["item_code"])
+            mongo_item_codes = await self._collect_mongo_item_codes()
 
             logger.debug(f"Found {len(mongo_item_codes)} existing item codes in MongoDB")
 
@@ -456,41 +496,19 @@ class SQLSyncService:
             stats["items_checked"] = len(sql_items)
 
             # Step 3: Find items that exist in SQL but not in MongoDB
-            new_items = []
-            for sql_item in sql_items:
-                item_code = sql_item.get("item_code")
-                if item_code and item_code not in mongo_item_codes:
-                    new_items.append(sql_item)
-                    if len(new_items) >= limit:
-                        break
+            new_items = self._select_new_items(sql_items, mongo_item_codes, limit)
 
             if not new_items:
                 logger.info("No new items found in SQL Server")
-                stats["duration"] = (
-                    datetime.now(timezone.utc).replace(tzinfo=None) - start_time
-                ).total_seconds()
-                self._last_new_item_check = datetime.now(timezone.utc).replace(tzinfo=None)
+                self._finish_discovery_stats(stats, start_time)
                 return stats
 
             logger.info(f"Found {len(new_items)} new items to create")
 
             # Step 4: Create new items in MongoDB
             now = datetime.now(timezone.utc).replace(tzinfo=None)
-            for sql_item in new_items:
-                try:
-                    sql_qty = _coerce_qty(sql_item.get("stock_qty"))
-                    new_item = _build_new_item_dict(sql_item, sql_qty, now)
-                    await self.mongo_db.erp_items.insert_one(new_item)
-                    stats["items_discovered"] += 1
-                    logger.debug(f"Created new item: {sql_item.get('item_code')}")
-                except Exception as e:
-                    logger.error(f"Error creating item {sql_item.get('item_code')}: {e}")
-                    stats["errors"] += 1
-
-            stats["duration"] = (
-                datetime.now(timezone.utc).replace(tzinfo=None) - start_time
-            ).total_seconds()
-            self._last_new_item_check = datetime.now(timezone.utc).replace(tzinfo=None)
+            await self._create_discovered_items(new_items, stats, now)
+            self._finish_discovery_stats(stats, start_time)
             self._sync_stats["new_items_discovered"] += stats["items_discovered"]
 
             logger.info(

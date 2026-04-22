@@ -93,9 +93,56 @@ const resolveInventoryDataSource = (responseData: any): DataSource => {
   return "api";
 };
 
+const resolveDisplayName = (itemData: any) => {
+  if (itemData.item_name) return itemData.item_name;
+  if (itemData.category) return itemData.category;
+  return `Item ${itemData.item_code}`;
+};
+
+const resolveStockQuantity = (itemData: any) => {
+  if (itemData.stock_qty !== undefined && itemData.stock_qty !== null) {
+    return itemData.stock_qty;
+  }
+  if (itemData.current_stock !== undefined && itemData.current_stock !== null) {
+    return itemData.current_stock;
+  }
+  return 0;
+};
+
+const resolveUomName = (itemData: any) => {
+  if (itemData.uom_name) return itemData.uom_name;
+  if (itemData.uom) return itemData.uom;
+  return itemData.uom_code;
+};
+
+const resolveSalesPrice = (itemData: any) => {
+  if (itemData.sales_price !== undefined && itemData.sales_price !== null) {
+    return itemData.sales_price;
+  }
+  if (itemData.sale_price !== undefined && itemData.sale_price !== null) {
+    return itemData.sale_price;
+  }
+  return itemData.standard_rate;
+};
+
+const resolveSalePrice = (itemData: any) => {
+  if (itemData.sale_price !== undefined && itemData.sale_price !== null) {
+    return itemData.sale_price;
+  }
+  return itemData.sales_price;
+};
+
+const resolveManufacturingDate = (itemData: any) => {
+  if (itemData.manufacturing_date) return itemData.manufacturing_date;
+  return itemData.mfg_date;
+};
+
 const normalizeApiInventoryItem = (itemData: any, responseData: any): InventoryItemResult => {
-  const displayName = itemData.item_name || itemData.category || `Item ${itemData.item_code}`;
-  const stockQty = itemData.stock_qty ?? itemData.current_stock ?? 0;
+  const displayName = resolveDisplayName(itemData);
+  const stockQty = resolveStockQuantity(itemData);
+  const uomName = resolveUomName(itemData);
+  const salesPrice = resolveSalesPrice(itemData);
+  const salePrice = resolveSalePrice(itemData);
   const dataSource = resolveInventoryDataSource(responseData);
 
   return {
@@ -104,10 +151,10 @@ const normalizeApiInventoryItem = (itemData: any, responseData: any): InventoryI
     item_code: itemData.item_code,
     barcode: itemData.barcode,
     item_name: itemData.item_name || displayName,
-    uom_name: itemData.uom_name ?? itemData.uom ?? itemData.uom_code,
-    uom: itemData.uom_name ?? itemData.uom ?? itemData.uom_code,
-    sales_price: itemData.sales_price ?? itemData.sale_price ?? itemData.standard_rate,
-    sale_price: itemData.sale_price ?? itemData.sales_price,
+    uom_name: uomName,
+    uom: uomName,
+    sales_price: salesPrice,
+    sale_price: salePrice,
     mrp: itemData.mrp,
     category: itemData.category,
     subcategory: itemData.subcategory,
@@ -118,7 +165,7 @@ const normalizeApiInventoryItem = (itemData: any, responseData: any): InventoryI
     manual_barcode: itemData.manual_barcode,
     unit2_barcode: itemData.unit2_barcode,
     unit_m_barcode: itemData.unit_m_barcode,
-    manufacturing_date: itemData.manufacturing_date || itemData.mfg_date,
+    manufacturing_date: resolveManufacturingDate(itemData),
     expiry_date: itemData.expiry_date,
     mrp_variants: itemData.mrp_variants,
     is_serialized: itemData.is_serialized ?? false,
@@ -173,15 +220,7 @@ const mapCachedSearchItem = (item: any): Item & { _source: DataSource } => ({
   _source: "cache",
 });
 
-/**
- * Resolves an item by barcode, preferring live data and falling back to cached inventory.
- */
-export const getItemByBarcode = async (
-  barcode: string,
-  retryCount: number = 3,
-  sessionId?: string,
-  rackNo?: string
-): Promise<InventoryItemResult> => {
+const normalizeBarcodeInput = (barcode: string) => {
   const validation = validateBarcode(barcode);
   if (!validation.valid || !validation.value) {
     throw new AppError({
@@ -192,9 +231,106 @@ export const getItemByBarcode = async (
       context: { barcode },
     });
   }
+  return validation.value;
+};
 
-  const trimmedBarcode = validation.value;
+const shouldRetryInventoryLookup = (error: any) => {
+  const status = error?.response?.status;
+  return !(status && status >= 400 && status < 500);
+};
 
+const fetchInventoryItemFromApi = async (
+  barcode: string,
+  retryCount: number,
+  sessionId?: string,
+  rackNo?: string
+) => {
+  const response = await retryWithBackoff(
+    () =>
+      api.get(`/api/v2/erp/items/barcode/${encodeURIComponent(barcode)}/enhanced`, {
+        params: {
+          session_id: sessionId,
+          rack_no: rackNo,
+        },
+      }),
+    {
+      retries: retryCount,
+      backoffMs: 1000,
+      shouldRetry: shouldRetryInventoryLookup,
+    }
+  );
+
+  const itemData = response.data.item || response.data;
+  if (!itemData || !itemData.item_code) {
+    throw new AppError({
+      code: "ITEM_NOT_FOUND",
+      severity: "USER",
+      message: `Item not found: Barcode '${barcode}' not in database`,
+      userMessage: `No item found for barcode ${barcode}`,
+      context: { barcode },
+    });
+  }
+
+  return normalizeApiInventoryItem(itemData, response.data);
+};
+
+const tryCacheResolvedItem = async (item: InventoryItemResult) => {
+  try {
+    await cacheResolvedInventoryItem(item);
+  } catch (cacheError) {
+    log.warn("Failed to cache item", {
+      error: cacheError instanceof Error ? cacheError.message : String(cacheError),
+    });
+  }
+};
+
+const isNotFoundApiError = (apiError: any) => {
+  const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
+  return apiError?.response?.status === 404 || errorMessage.includes("404");
+};
+
+const handleBarcodeLookupFailure = async (trimmedBarcode: string, apiError: any) => {
+  if (isNotFoundApiError(apiError)) {
+    log.info("Item not found via API", { barcode: trimmedBarcode });
+  } else {
+    const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
+    log.error("API call failed", { error: errorMessage });
+  }
+
+  log.debug("API failed, trying cache fallback");
+  try {
+    return {
+      ...(await getCachedBarcodeItem(trimmedBarcode, {
+        code: "ITEM_NOT_FOUND",
+        message: "Item not found in cache",
+        userMessage: `Barcode ${trimmedBarcode} not found. Please try again when online.`,
+      })),
+      _source: "cache" as DataSource,
+      _degraded: true,
+    };
+  } catch (cacheError: any) {
+    if (cacheError instanceof AppError) {
+      throw cacheError;
+    }
+
+    log.error("Cache fallback also failed", { error: cacheError.message });
+    throw AppError.fromApiError(apiError, {
+      barcode: trimmedBarcode,
+      fallbackAttempted: true,
+    });
+  }
+};
+
+/**
+ * Resolves an item by barcode, preferring live data and falling back to cached inventory.
+ */
+export const getItemByBarcode = async (
+  barcode: string,
+  retryCount: number = 3,
+  sessionId?: string,
+  rackNo?: string
+): Promise<InventoryItemResult> => {
+  const trimmedBarcode = normalizeBarcodeInput(barcode);
   log.debug(`Looking up barcode: ${trimmedBarcode}`, { original: barcode });
 
   if (!isOnline()) {
@@ -204,86 +340,18 @@ export const getItemByBarcode = async (
 
   try {
     log.debug("Online mode - calling API");
-
-    const response = await retryWithBackoff(
-      () =>
-        api.get(`/api/v2/erp/items/barcode/${encodeURIComponent(trimmedBarcode)}/enhanced`, {
-          params: {
-            session_id: sessionId,
-            rack_no: rackNo,
-          },
-        }),
-      {
-        retries: retryCount,
-        backoffMs: 1000,
-        shouldRetry: (error: any) => {
-          const status = error?.response?.status;
-          if (status && status >= 400 && status < 500) {
-            return false;
-          }
-          return true;
-        },
-      }
+    const normalizedItem = await fetchInventoryItemFromApi(
+      trimmedBarcode,
+      retryCount,
+      sessionId,
+      rackNo
     );
 
-    const itemData = response.data.item || response.data;
-
-    if (!itemData || !itemData.item_code) {
-      throw new AppError({
-        code: "ITEM_NOT_FOUND",
-        severity: "USER",
-        message: `Item not found: Barcode '${trimmedBarcode}' not in database`,
-        userMessage: `No item found for barcode ${trimmedBarcode}`,
-        context: { barcode: trimmedBarcode },
-      });
-    }
-
-    const normalizedItem = normalizeApiInventoryItem(itemData, response.data);
-
     log.debug("Found via API", { itemCode: normalizedItem.item_code });
-
-    try {
-      await cacheResolvedInventoryItem(normalizedItem);
-    } catch (cacheError) {
-      log.warn("Failed to cache item", {
-        error: cacheError instanceof Error ? cacheError.message : String(cacheError),
-      });
-    }
-
+    await tryCacheResolvedItem(normalizedItem);
     return normalizedItem;
   } catch (apiError: any) {
-    const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
-    const isNotFound = apiError?.response?.status === 404 || errorMessage.includes("404");
-
-    if (isNotFound) {
-      log.info("Item not found via API", { barcode: trimmedBarcode });
-    } else {
-      log.error("API call failed", { error: errorMessage });
-    }
-
-    log.debug("API failed, trying cache fallback");
-    try {
-      return {
-        ...(await getCachedBarcodeItem(trimmedBarcode, {
-          code: "ITEM_NOT_FOUND",
-          message: "Item not found in cache",
-          userMessage: `Barcode ${trimmedBarcode} not found. Please try again when online.`,
-        })),
-        _source: "cache" as DataSource,
-        _degraded: true,
-      };
-    } catch (cacheError: any) {
-      if (cacheError instanceof AppError) {
-        throw cacheError;
-      }
-
-      log.error("Cache fallback also failed", { error: cacheError.message });
-
-      throw AppError.fromApiError(apiError, {
-        barcode: trimmedBarcode,
-        fallbackAttempted: true,
-      });
-    }
+    return await handleBarcodeLookupFailure(trimmedBarcode, apiError);
   }
 };
 

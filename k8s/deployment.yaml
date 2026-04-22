@@ -24,8 +24,8 @@ spec:
           type: RuntimeDefault
       containers:
         - name: backend
-          image: ghcr.io/mknoufi/stock_verify_ui-backend:2.1.0
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/mknoufi/stock_verify_ui-backend@sha256:2c2bc60e512c6ab57bf3a12efafa70d8c544a7dce435ea7a570f29ce4661f6e3
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 8001
@@ -125,8 +125,8 @@ spec:
           type: RuntimeDefault
       containers:
         - name: frontend
-          image: ghcr.io/mknoufi/stock_verify_ui-frontend:2.1.0
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/mknoufi/stock_verify_ui-frontend@sha256:f972e676c54abcc91052f4cb1ac1f81e119893e2b70e3eb874d7a557e762ccf6
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 80
@@ -157,8 +157,8 @@ spec:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             runAsNonRoot: true
-            runAsUser: 101
-            runAsGroup: 101
+            runAsUser: 10001
+            runAsGroup: 10001
             capabilities:
               drop:
                 - ALL

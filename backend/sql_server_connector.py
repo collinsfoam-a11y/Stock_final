@@ -277,6 +277,26 @@ class SQLServerConnector:
         sanitized = re.sub(r"\[[^\]]*\]", "[]", sanitized)
         return sanitized
 
+    def _assert_select_only_prefix(self, normalized_query: str) -> None:
+        if normalized_query.startswith("SELECT ") or normalized_query.startswith("WITH "):
+            return
+        raise ERPReadOnlyViolation("ERP read-only violation: non-SELECT query blocked")
+
+    def _assert_no_multi_statement(self, sanitized_query: str) -> None:
+        if ";" in sanitized_query:
+            raise ERPReadOnlyViolation("ERP read-only violation: multi-statement query blocked")
+
+    @staticmethod
+    def _contains_disallowed_token(normalized_query: str, token: str) -> bool:
+        return bool(re.search(rf"\b{re.escape(token)}\b", normalized_query))
+
+    def _assert_no_disallowed_tokens(
+        self, normalized_query: str, tokens: Sequence[str], error_message: str
+    ) -> None:
+        for token in tokens:
+            if self._contains_disallowed_token(normalized_query, token):
+                raise ERPReadOnlyViolation(error_message)
+
     def _assert_read_only_query(self, query: str) -> None:
         """Enforce ERP read-only policy at runtime for every SQL execution."""
         if not query or not isinstance(query, str):
@@ -288,23 +308,23 @@ class SQLServerConnector:
         if not normalized:
             raise DatabaseQueryError("SQL query is empty after normalization")
 
-        if not (normalized.startswith("SELECT ") or normalized.startswith("WITH ")):
-            raise ERPReadOnlyViolation("ERP read-only violation: non-SELECT query blocked")
-
-        if ";" in sanitized:
-            raise ERPReadOnlyViolation("ERP read-only violation: multi-statement query blocked")
-
-        for token in DISALLOWED_BATCH_TOKENS:
-            if re.search(rf"\b{re.escape(token)}\b", normalized):
-                raise ERPReadOnlyViolation("ERP read-only violation: batch separator blocked")
-
-        for keyword in DISALLOWED_SQL_KEYWORDS:
-            if re.search(rf"\b{re.escape(keyword)}\b", normalized):
-                raise ERPReadOnlyViolation("ERP read-only violation: write keyword blocked")
-
-        for keyword in DISALLOWED_SELECT_KEYWORDS:
-            if re.search(rf"\b{re.escape(keyword)}\b", normalized):
-                raise ERPReadOnlyViolation("ERP read-only violation: SELECT INTO blocked")
+        self._assert_select_only_prefix(normalized)
+        self._assert_no_multi_statement(sanitized)
+        self._assert_no_disallowed_tokens(
+            normalized,
+            DISALLOWED_BATCH_TOKENS,
+            "ERP read-only violation: batch separator blocked",
+        )
+        self._assert_no_disallowed_tokens(
+            normalized,
+            DISALLOWED_SQL_KEYWORDS,
+            "ERP read-only violation: write keyword blocked",
+        )
+        self._assert_no_disallowed_tokens(
+            normalized,
+            DISALLOWED_SELECT_KEYWORDS,
+            "ERP read-only violation: SELECT INTO blocked",
+        )
 
     def _validate_params(self, query: str, params: Optional[Sequence[Any]] = None) -> None:
         """Ensure parameterized queries use positional placeholders safely."""

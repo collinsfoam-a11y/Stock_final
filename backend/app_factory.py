@@ -951,63 +951,58 @@ def calculate_financial_impact(
     return new_value - old_value
 
 
-# Count Line routes
-# Legacy route retained under explicit namespace to avoid duplicate /api/count-lines.
-@api_router.post("/legacy/count-lines")
-async def create_count_line(
-    request: Request,
-    line_data: CountLineCreate,
-    current_user: dict = Depends(get_current_user),
-):
-    # Validate session exists
+async def _load_count_line_context(line_data: CountLineCreate) -> tuple[dict[str, Any], dict[str, Any], float]:
     session = await db.sessions.find_one({"session_id": line_data.session_id})
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # Get ERP item
     erp_item = await db.erp_items.find_one({"item_code": line_data.item_code})
     if not erp_item:
         raise HTTPException(status_code=404, detail="Item not found in ERP")
 
-    # Calculate variance (F6 fix: use .get() for safe access)
     variance = line_data.counted_qty - erp_item.get("stock_qty", 0)
+    return session, erp_item, variance
 
-    # Validate mandatory correction reason for variance
+
+def _validate_variance_reason(line_data: CountLineCreate, variance: float) -> None:
     if abs(variance) > 0 and not line_data.correction_reason and not line_data.variance_reason:
         raise HTTPException(
             status_code=400,
             detail="Correction reason is mandatory when variance exists",
         )
 
-    # Detect risk flags
+
+async def _resolve_review_status_and_risk_flags(
+    line_data: CountLineCreate,
+    erp_item: dict[str, Any],
+    variance: float,
+    counted_by: str,
+) -> tuple[str, list[str]]:
     risk_flags = detect_risk_flags(erp_item, line_data, variance)
-
-    # Calculate financial impact
-    # MM3 fix: Use .get() and pass erp_qty
-    erp_qty = erp_item.get("stock_qty", 0)
-    counted_mrp = line_data.mrp_counted or erp_item.get("mrp", 0)
-    financial_impact = calculate_financial_impact(
-        erp_item.get("mrp", 0), counted_mrp, line_data.counted_qty, erp_qty
-    )
-
-    # Determine approval status based on risk
-    # High-risk corrections require supervisor review
     approval_status = "NEEDS_REVIEW" if risk_flags else "PENDING"
-
-    # Check for duplicates
     duplicate_check = await db.count_lines.count_documents(
         {
             "session_id": line_data.session_id,
             "item_code": line_data.item_code,
-            "counted_by": current_user["username"],
+            "counted_by": counted_by,
         }
     )
     if duplicate_check > 0:
         risk_flags.append("DUPLICATE_CORRECTION")
         approval_status = "NEEDS_REVIEW"
+    return approval_status, risk_flags
 
-    # Create count line with enhanced fields
-    count_line = {
+
+def _build_count_line_payload(
+    line_data: CountLineCreate,
+    erp_item: dict[str, Any],
+    variance: float,
+    financial_impact: float,
+    approval_status: str,
+    risk_flags: list[str],
+    counted_by: str,
+) -> dict[str, Any]:
+    return {
         "id": str(uuid.uuid4()),
         "session_id": line_data.session_id,
         "item_code": line_data.item_code,
@@ -1045,7 +1040,7 @@ async def create_count_line(
         "risk_flags": risk_flags,
         "financial_impact": financial_impact,
         # User and timestamp
-        "counted_by": current_user["username"],
+        "counted_by": counted_by,
         "counted_at": datetime.now(timezone.utc).replace(tzinfo=None),
         # MRP tracking
         "mrp_erp": erp_item["mrp"],
@@ -1060,29 +1055,25 @@ async def create_count_line(
         "verified_by": None,
     }
 
-    await db.count_lines.insert_one(count_line)
 
-    # Update item location in ERP items collection if floor/rack provided
-    if line_data.floor_no or line_data.rack_no:
-        update_fields = {}
-        if line_data.floor_no:
-            update_fields["floor_no"] = line_data.floor_no
-        if line_data.rack_no:
-            update_fields["rack_no"] = line_data.rack_no
+async def _update_item_location_from_count_line(line_data: CountLineCreate) -> None:
+    update_fields = {
+        key: value
+        for key, value in {"floor_no": line_data.floor_no, "rack_no": line_data.rack_no}.items()
+        if value
+    }
+    if not update_fields:
+        return
+    try:
+        await db.erp_items.update_one({"item_code": line_data.item_code}, {"$set": update_fields})
+    except Exception as exc:
+        logger.error(f"Failed to update item location: {str(exc)}")
 
-        if update_fields:
-            try:
-                await db.erp_items.update_one(
-                    {"item_code": line_data.item_code}, {"$set": update_fields}
-                )
-            except Exception as e:
-                logger.error(f"Failed to update item location: {str(e)}")
-                # Non-critical error, continue execution
 
-    # Update session stats atomically using aggregation
+async def _refresh_session_count_line_stats(session_id: str) -> None:
     try:
         pipeline = [
-            {"$match": {"session_id": line_data.session_id}},
+            {"$match": {"session_id": session_id}},
             {
                 "$group": {
                     "_id": None,
@@ -1092,19 +1083,58 @@ async def create_count_line(
             },
         ]
         stats = await db.count_lines.aggregate(pipeline).to_list(1)  # type: ignore
-        if stats:
-            await db.sessions.update_one(
-                {"id": line_data.session_id},
-                {
-                    "$set": {
-                        "total_items": stats[0]["total_items"],
-                        "total_variance": stats[0]["total_variance"],
-                    }
-                },
-            )
-    except Exception as e:
-        logger.error(f"Failed to update session stats: {str(e)}")
-        # Non-critical error, continue execution
+        if not stats:
+            return
+        await db.sessions.update_one(
+            {"id": session_id},
+            {
+                "$set": {
+                    "total_items": stats[0]["total_items"],
+                    "total_variance": stats[0]["total_variance"],
+                }
+            },
+        )
+    except Exception as exc:
+        logger.error(f"Failed to update session stats: {str(exc)}")
+
+
+# Count Line routes
+# Legacy route retained under explicit namespace to avoid duplicate /api/count-lines.
+@api_router.post("/legacy/count-lines")
+async def create_count_line(
+    request: Request,
+    line_data: CountLineCreate,
+    current_user: dict = Depends(get_current_user),
+):
+    _, erp_item, variance = await _load_count_line_context(line_data)
+    _validate_variance_reason(line_data, variance)
+
+    erp_qty = erp_item.get("stock_qty", 0)
+    counted_mrp = line_data.mrp_counted or erp_item.get("mrp", 0)
+    financial_impact = calculate_financial_impact(
+        erp_item.get("mrp", 0), counted_mrp, line_data.counted_qty, erp_qty
+    )
+
+    approval_status, risk_flags = await _resolve_review_status_and_risk_flags(
+        line_data,
+        erp_item,
+        variance,
+        current_user["username"],
+    )
+
+    count_line = _build_count_line_payload(
+        line_data,
+        erp_item,
+        variance,
+        financial_impact,
+        approval_status,
+        risk_flags,
+        current_user["username"],
+    )
+
+    await db.count_lines.insert_one(count_line)
+    await _update_item_location_from_count_line(line_data)
+    await _refresh_session_count_line_stats(line_data.session_id)
 
     # Log high-risk correction
     if risk_flags:

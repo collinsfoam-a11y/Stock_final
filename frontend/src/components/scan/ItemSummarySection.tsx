@@ -1,6 +1,7 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
+import type { ReactNode } from "react";
 
 import ModernCard from "@/components/ui/ModernCard";
 import { useSettingsStore } from "@/store/settingsStore";
@@ -69,6 +70,177 @@ const getSourceBadgeStyle = (source?: string) => {
   }
 };
 
+const formatStockDisplay = (showItemStock: boolean, stockQty: number, stockUom: string) => {
+  if (!showItemStock) return "---";
+  return stockUom ? `${stockQty} ${stockUom}` : String(stockQty);
+};
+
+const formatPriceDisplay = (enabled: boolean, value: number) => (enabled ? `₹${value}` : "---");
+
+const MisplacedBanner = ({ expectedLocation }: { expectedLocation?: string }) => (
+  <View style={styles.misplacedBadge}>
+    <Ionicons name="alert-circle" size={24} color={colors.white} />
+    <View style={styles.misplacedContent}>
+      <Text style={styles.misplacedTitle}>MISPLACED ITEM</Text>
+      <Text style={styles.misplacedText}>
+        This item belongs in{" "}
+        <Text style={styles.misplacedHighlight}>{expectedLocation || "another location"}</Text>
+      </Text>
+    </View>
+  </View>
+);
+
+const ItemHeader = ({
+  item,
+  sourceBadge,
+  imageCacheEnabled,
+  showItemImages,
+}: {
+  item: ItemSummaryItem;
+  sourceBadge: ReturnType<typeof getSourceBadgeStyle> | null;
+  imageCacheEnabled: boolean;
+  showItemImages: boolean;
+}) => (
+  <View style={styles.itemHeader}>
+    <View style={styles.iconContainer}>
+      {showItemImages && item.image_url ? (
+        <Image
+          source={{ uri: item.image_url }}
+          style={styles.itemImage}
+          contentFit="cover"
+          cachePolicy={imageCacheEnabled ? "disk" : "none"}
+          transition={300}
+        />
+      ) : (
+        <Ionicons name="cube-outline" size={24} color={colors.primary[600]} />
+      )}
+    </View>
+
+    <View style={styles.itemInfo}>
+      <View style={styles.titleRow}>
+        <Text
+          style={[styles.itemName, { color: semanticColors.text.primary }]}
+          numberOfLines={2}
+        >
+          {item.item_name || item.name}
+        </Text>
+
+        {sourceBadge && (
+          <View style={[styles.sourceBadge, sourceBadge.container]}>
+            <Text style={[styles.sourceBadgeText, sourceBadge.text]}>{sourceBadge.label}</Text>
+          </View>
+        )}
+      </View>
+
+      <Text style={[styles.itemCode, { color: semanticColors.text.secondary }]}>
+        {item.category || "-"} • {item.subcategory || "-"}
+      </Text>
+    </View>
+  </View>
+);
+
+const DetailBlock = ({
+  label,
+  value,
+  action,
+}: {
+  label: string;
+  value: string;
+  action?: ReactNode;
+}) => (
+  <View style={styles.detailItem}>
+    <View style={styles.detailHeader}>
+      <Text style={[styles.detailLabel, { color: semanticColors.text.secondary }]}>{label}</Text>
+      {action}
+    </View>
+    <Text
+      style={[styles.detailValue, { color: semanticColors.text.primary }]}
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.7}
+    >
+      {value}
+    </Text>
+  </View>
+);
+
+const BundleSection = ({ bundleComponents }: { bundleComponents: BundleComponent[] }) => (
+  <View style={styles.bundleSection}>
+    <Text style={[styles.bundleTitle, { color: semanticColors.text.primary }]}>
+      Bundle Components
+    </Text>
+    {bundleComponents.map((component, index) => (
+      <View
+        key={`${component.item_code || component.item_name || "bundle"}-${index}`}
+        style={styles.bundleItem}
+      >
+        <Ionicons name="cube-outline" size={18} color={colors.primary[600]} />
+        <Text style={[styles.bundleItemName, { color: semanticColors.text.primary }]}>
+          {component.item_name || component.item_code}
+        </Text>
+        <Text style={[styles.bundleItemQty, { color: colors.primary[700] }]}>
+          x{component.qty_per_bundle ?? 0}
+        </Text>
+      </View>
+    ))}
+  </View>
+);
+
+const CacheStaleWarning = () => (
+  <View style={styles.staleWarning}>
+    <Ionicons name="warning" size={18} color={colors.warning[700]} />
+    <View style={styles.staleWarningContent}>
+      <Text style={styles.staleWarningTitle}>ERP Offline</Text>
+      <Text style={styles.staleWarningText}>Variance is based on a cached stock snapshot.</Text>
+    </View>
+  </View>
+);
+
+const resolveSummaryDisplayData = (item: ItemSummaryItem, barcode?: string) => ({
+  sourceBadge: item._source ? getSourceBadgeStyle(item._source) : null,
+  bundleComponents: Array.isArray(item.components) ? item.components : [],
+  stockQty: item.current_stock ?? item.stock_qty ?? 0,
+  stockUom: item.uom_name || item.uom_code || "",
+  displayBarcode: item.barcode || barcode || "N/A",
+  salePrice: item.sale_price || item.sales_price || 0,
+});
+
+const ItemSummaryDetails = ({
+  showDetails,
+  displayBarcode,
+  item,
+  bundleComponents,
+}: {
+  showDetails: boolean;
+  displayBarcode: string;
+  item: ItemSummaryItem;
+  bundleComponents: BundleComponent[];
+}) => {
+  if (!showDetails) return null;
+
+  return (
+    <>
+      <View style={styles.barcodeSection}>
+        <Text style={styles.barcodeLabel}>Barcode</Text>
+        <Text
+          style={styles.barcodeValue}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}
+        >
+          {displayBarcode}
+        </Text>
+      </View>
+
+      {item.is_bundle && bundleComponents.length > 0 ? (
+        <BundleSection bundleComponents={bundleComponents} />
+      ) : null}
+
+      {item._source === "cache" ? <CacheStaleWarning /> : null}
+    </>
+  );
+};
+
 export function ItemSummarySection({
   barcode,
   isRefreshing,
@@ -80,86 +252,26 @@ export function ItemSummarySection({
   showItemStock,
 }: ItemSummarySectionProps) {
   const imageCacheEnabled = useSettingsStore((state) => state.settings.imageCache);
-  const sourceBadge = item._source ? getSourceBadgeStyle(item._source) : null;
-  const bundleComponents = Array.isArray(item.components) ? item.components : [];
-  const stockQty = item.current_stock ?? item.stock_qty ?? 0;
-  const stockUom = item.uom_name || item.uom_code || "";
-  const displayBarcode = item.barcode || barcode || "N/A";
+  const { sourceBadge, bundleComponents, stockQty, stockUom, displayBarcode, salePrice } =
+    resolveSummaryDisplayData(item, barcode);
 
   return (
     <View>
-      {item.is_misplaced && (
-        <View style={styles.misplacedBadge}>
-          <Ionicons name="alert-circle" size={24} color={colors.white} />
-          <View style={styles.misplacedContent}>
-            <Text style={styles.misplacedTitle}>MISPLACED ITEM</Text>
-            <Text style={styles.misplacedText}>
-              This item belongs in{" "}
-              <Text style={styles.misplacedHighlight}>
-                {item.expected_location || "another location"}
-              </Text>
-            </Text>
-          </View>
-        </View>
-      )}
+      {item.is_misplaced ? <MisplacedBanner expectedLocation={item.expected_location} /> : null}
 
       <ModernCard style={styles.itemCard}>
-        <View style={styles.itemHeader}>
-          <View style={styles.iconContainer}>
-            {showItemImages && item.image_url ? (
-              <Image
-                source={{ uri: item.image_url }}
-                style={styles.itemImage}
-                contentFit="cover"
-                cachePolicy={imageCacheEnabled ? "disk" : "none"}
-                transition={300}
-              />
-            ) : (
-              <Ionicons
-                name="cube-outline"
-                size={24}
-                color={colors.primary[600]}
-              />
-            )}
-          </View>
-
-          <View style={styles.itemInfo}>
-            <View style={styles.titleRow}>
-              <Text
-                style={[styles.itemName, { color: semanticColors.text.primary }]}
-                numberOfLines={2}
-              >
-                {item.item_name || item.name}
-              </Text>
-
-              {sourceBadge && (
-                <View style={[styles.sourceBadge, sourceBadge.container]}>
-                  <Text style={[styles.sourceBadgeText, sourceBadge.text]}>
-                    {sourceBadge.label}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            <Text
-              style={[styles.itemCode, { color: semanticColors.text.secondary }]}
-            >
-              {item.category || "-"} • {item.subcategory || "-"}
-            </Text>
-          </View>
-        </View>
+        <ItemHeader
+          item={item}
+          sourceBadge={sourceBadge}
+          imageCacheEnabled={imageCacheEnabled}
+          showItemImages={showItemImages}
+        />
 
         <View style={styles.detailsGrid}>
-          <View style={styles.detailItem}>
-            <View style={styles.detailHeader}>
-              <Text
-                style={[
-                  styles.detailLabel,
-                  { color: semanticColors.text.secondary },
-                ]}
-              >
-                Stock
-              </Text>
+          <DetailBlock
+            label="Stock"
+            value={formatStockDisplay(showItemStock, stockQty, stockUom)}
+            action={
               <TouchableOpacity
                 onPress={onRefreshStock}
                 disabled={isRefreshing}
@@ -172,132 +284,27 @@ export function ItemSummarySection({
                   style={{ opacity: isRefreshing ? 0.5 : 1 }}
                 />
               </TouchableOpacity>
-            </View>
-            <Text
-              style={[styles.detailValue, { color: semanticColors.text.primary }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.7}
-            >
-              {showItemStock
-                ? stockUom
-                  ? `${stockQty} ${stockUom}`
-                  : String(stockQty)
-                : "---"}
-            </Text>
-          </View>
+            }
+          />
 
-          <View style={styles.detailItem}>
-            <Text
-              style={[
-                styles.detailLabel,
-                { color: semanticColors.text.secondary },
-              ]}
-            >
-              MRP
-            </Text>
-            <Text
-              style={[styles.detailValue, { color: semanticColors.text.primary }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.7}
-            >
-              {showItemPrices ? `₹${item.mrp || 0}` : "---"}
-            </Text>
-          </View>
+          <DetailBlock
+            label="MRP"
+            value={formatPriceDisplay(showItemPrices, item.mrp || 0)}
+          />
 
-          <View style={styles.detailItem}>
-            <Text
-              style={[
-                styles.detailLabel,
-                { color: semanticColors.text.secondary },
-              ]}
-            >
-              Price
-            </Text>
-            <Text
-              style={[styles.detailValue, { color: semanticColors.text.primary }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.7}
-            >
-              {showItemPrices
-                ? `₹${item.sale_price || item.sales_price || 0}`
-                : "---"}
-            </Text>
-          </View>
+          <DetailBlock
+            label="Price"
+            value={formatPriceDisplay(showItemPrices, salePrice)}
+          />
         </View>
       </ModernCard>
 
-      {showDetails && (
-        <>
-          <View style={styles.barcodeSection}>
-            <Text style={styles.barcodeLabel}>Barcode</Text>
-            <Text
-              style={styles.barcodeValue}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.6}
-            >
-              {displayBarcode}
-            </Text>
-          </View>
-
-          {item.is_bundle && bundleComponents.length > 0 && (
-            <View style={styles.bundleSection}>
-              <Text
-                style={[
-                  styles.bundleTitle,
-                  { color: semanticColors.text.primary },
-                ]}
-              >
-                Bundle Components
-              </Text>
-              {bundleComponents.map((component, index) => (
-                <View
-                  key={`${component.item_code || component.item_name || "bundle"}-${index}`}
-                  style={styles.bundleItem}
-                >
-                  <Ionicons
-                    name="cube-outline"
-                    size={18}
-                    color={colors.primary[600]}
-                  />
-                  <Text
-                    style={[
-                      styles.bundleItemName,
-                      { color: semanticColors.text.primary },
-                    ]}
-                  >
-                    {component.item_name || component.item_code}
-                  </Text>
-                  <Text
-                    style={[styles.bundleItemQty, { color: colors.primary[700] }]}
-                  >
-                    x{component.qty_per_bundle ?? 0}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {item._source === "cache" && (
-            <View style={styles.staleWarning}>
-              <Ionicons
-                name="warning"
-                size={18}
-                color={colors.warning[700]}
-              />
-              <View style={styles.staleWarningContent}>
-                <Text style={styles.staleWarningTitle}>ERP Offline</Text>
-                <Text style={styles.staleWarningText}>
-                  Variance is based on a cached stock snapshot.
-                </Text>
-              </View>
-            </View>
-          )}
-        </>
-      )}
+      <ItemSummaryDetails
+        showDetails={showDetails}
+        displayBarcode={displayBarcode}
+        item={item}
+        bundleComponents={bundleComponents}
+      />
     </View>
   );
 }

@@ -31,6 +31,7 @@ export interface SyncOptions {
 
 // Simple in-memory lock to prevent concurrent syncs
 let isSyncing = false;
+const EMPTY_SYNC_RESULT: SyncResult = { success: 0, failed: 0, total: 0, errors: [] };
 
 const deriveFailureStatus = (
   errorMessage: string,
@@ -50,6 +51,162 @@ const deriveFailureStatus = (
   }
 
   return "pending_retry";
+};
+
+const shouldSkipSync = (options?: SyncOptions): SyncResult | null => {
+  if (isSyncing) {
+    log.debug("Sync already in progress, skipping");
+    return EMPTY_SYNC_RESULT;
+  }
+
+  if (!isOnline()) {
+    log.debug("Offline, skipping sync");
+    return EMPTY_SYNC_RESULT;
+  }
+
+  const settings = useSettingsStore.getState().settings;
+  if (options?.background && (settings.offlineMode || !settings.autoSyncEnabled)) {
+    log.debug("Background sync disabled by user settings");
+    return EMPTY_SYNC_RESULT;
+  }
+
+  const authState = useAuthStore.getState();
+  if (!authState.isAuthenticated || !authState.user) {
+    log.debug("Not authenticated, skipping sync");
+    return EMPTY_SYNC_RESULT;
+  }
+
+  return null;
+};
+
+const toSyncOperations = (batch: OfflineQueueItem[]) =>
+  batch.map((item: OfflineQueueItem) => ({
+    id: item.id,
+    type: item.type,
+    data: item.data,
+    timestamp: item.timestamp,
+  }));
+
+const toErrorMessage = (error: unknown, fallback = "Unknown batch error") =>
+  error instanceof Error ? error.message : fallback;
+
+const shouldRetryAfterAuth = (error: unknown) =>
+  (error as { response?: { status?: number } })?.response?.status === 401;
+
+const removeSyncedSessionsFromCache = async (
+  batch: OfflineQueueItem[],
+  successIds: string[],
+) => {
+  const successSet = new Set(successIds);
+  for (const item of batch) {
+    if (!successSet.has(item.id) || item.type !== "session") {
+      continue;
+    }
+
+    const data = item.data as Record<string, unknown> | undefined;
+    if (!data || "operation" in data) {
+      continue;
+    }
+
+    const offlineId = data.id || data.session_id;
+    if (typeof offlineId === "string") {
+      await removeSessionFromCache(offlineId);
+      log.debug("Removed synced offline session from cache", {
+        sessionId: offlineId,
+      });
+    }
+  }
+};
+
+const handleBatchResults = async (
+  batch: OfflineQueueItem[],
+  results: { success: boolean; id: string; message?: string }[],
+) => {
+  const successIds: string[] = [];
+  const errors: { id: string; error: string }[] = [];
+  let successCount = 0;
+  let failedCount = 0;
+
+  for (const result of results) {
+    if (result.success) {
+      successIds.push(result.id);
+      successCount += 1;
+      continue;
+    }
+
+    failedCount += 1;
+    const errorMessage = result.message || "Unknown error";
+    errors.push({ id: result.id, error: errorMessage });
+    log.warn(`Sync item failed: ${result.id} - ${errorMessage}`);
+    const queueItem = batch.find((item) => item.id === result.id);
+    const nextRetryCount = (queueItem?.retries || 0) + 1;
+    await updateQueueItemRetries(result.id, {
+      error: errorMessage,
+      status: deriveFailureStatus(errorMessage, nextRetryCount),
+      attemptedAt: new Date().toISOString(),
+    });
+  }
+
+  if (successIds.length > 0) {
+    await removeManyFromOfflineQueue(successIds);
+    log.debug(`Removed ${successIds.length} synced items from queue`);
+    await removeSyncedSessionsFromCache(batch, successIds);
+  }
+
+  return { successCount, failedCount, errors };
+};
+
+const handleBatchFailure = async (batch: OfflineQueueItem[], batchError: unknown) => {
+  const errorMessage = toErrorMessage(batchError);
+
+  if (shouldRetryAfterAuth(batchError)) {
+    log.warn("Auth error during sync - will retry after re-authentication");
+    for (const item of batch) {
+      await updateOfflineQueueItem(item.id, {
+        status: "pending_retry",
+        last_error: errorMessage,
+        last_attempted_at: new Date().toISOString(),
+      });
+    }
+    return {
+      failedCount: 0,
+      errors: [] as { id: string; error: string }[],
+    };
+  }
+
+  log.error(`Batch sync failed: ${errorMessage}`, batchError as Record<string, unknown>);
+  for (const item of batch) {
+    const nextRetryCount = item.retries + 1;
+    await updateQueueItemRetries(item.id, {
+      error: errorMessage,
+      status: deriveFailureStatus(errorMessage, nextRetryCount),
+      attemptedAt: new Date().toISOString(),
+    });
+  }
+
+  return {
+    failedCount: batch.length,
+    errors: [] as { id: string; error: string }[],
+  };
+};
+
+const syncBatchChunk = async (batch: OfflineQueueItem[], batchIndex: number) => {
+  const operations = toSyncOperations(batch);
+  log.debug(`Processing batch ${batchIndex + 1}`, {
+    batchSize: batch.length,
+    operations: operations.map((operation: Record<string, unknown>) => ({
+      id: operation.id,
+      type: operation.type,
+    })),
+  });
+
+  try {
+    const response = await syncBatch(operations);
+    return await handleBatchResults(batch, response.results || []);
+  } catch (error: unknown) {
+    const failure = await handleBatchFailure(batch, error);
+    return { successCount: 0, ...failure };
+  }
 };
 
 export const initializeSyncService = () => {
@@ -107,35 +264,15 @@ export const getSyncStatus = async () => {
 export const syncOfflineQueue = async (
   options?: SyncOptions,
 ): Promise<SyncResult> => {
-  if (isSyncing) {
-    log.debug("Sync already in progress, skipping");
-    return { success: 0, failed: 0, total: 0, errors: [] };
-  }
-
-  if (!isOnline()) {
-    log.debug("Offline, skipping sync");
-    return { success: 0, failed: 0, total: 0, errors: [] };
-  }
-
-  const settings = useSettingsStore.getState().settings;
-  if (options?.background && (settings.offlineMode || !settings.autoSyncEnabled)) {
-    log.debug("Background sync disabled by user settings");
-    return { success: 0, failed: 0, total: 0, errors: [] };
-  }
-
-  const authState = useAuthStore.getState();
-  if (!authState.isAuthenticated || !authState.user) {
-    log.debug("Not authenticated, skipping sync");
-    return { success: 0, failed: 0, total: 0, errors: [] };
-  }
+  const skipped = shouldSkipSync(options);
+  if (skipped) return skipped;
 
   isSyncing = true;
 
   try {
     const queue = await getOfflineQueue();
     if (queue.length === 0) {
-      isSyncing = false;
-      return { success: 0, failed: 0, total: 0, errors: [] };
+      return EMPTY_SYNC_RESULT;
     }
 
     const total = queue.length;
@@ -146,115 +283,14 @@ export const syncOfflineQueue = async (
     let processed = 0;
     let successCount = 0;
     let failedCount = 0;
-    let errors: { id: string; error: string }[] = [];
+    const errors: { id: string; error: string }[] = [];
 
     for (let i = 0; i < total; i += BATCH_SIZE) {
       const batch = queue.slice(i, i + BATCH_SIZE);
-
-      try {
-        // Optimistically transform queue items to expected sync format
-        const operations = batch.map((item: OfflineQueueItem) => ({
-          id: item.id,
-          type: item.type,
-          data: item.data,
-          timestamp: item.timestamp,
-        }));
-
-        log.debug(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1}`, {
-          batchSize: batch.length,
-          operations: operations.map((op: Record<string, unknown>) => ({
-            id: op.id,
-            type: op.type,
-          })),
-        });
-
-        const response = await syncBatch(operations);
-
-        // Handle response
-        const results = response.results || [];
-        const successIds: string[] = [];
-
-        for (const res of results) {
-          if (res.success) {
-            successIds.push(res.id);
-            successCount++;
-          } else {
-            failedCount++;
-            const errorMessage = res.message || "Unknown error";
-            errors.push({ id: res.id, error: errorMessage });
-            log.warn(`Sync item failed: ${res.id} - ${errorMessage}`);
-            const queueItem = batch.find((item) => item.id === res.id);
-            const nextRetryCount = (queueItem?.retries || 0) + 1;
-            await updateQueueItemRetries(res.id, {
-              error: errorMessage,
-              status: deriveFailureStatus(errorMessage, nextRetryCount),
-              attemptedAt: new Date().toISOString(),
-            });
-          }
-        }
-
-        // Remove successful items locally
-        if (successIds.length > 0) {
-          await removeManyFromOfflineQueue(successIds);
-          log.debug(`Removed ${successIds.length} synced items from queue`);
-
-          const successSet = new Set(successIds);
-          for (const item of batch) {
-            if (!successSet.has(item.id) || item.type !== "session") {
-              continue;
-            }
-
-            const data = item.data as Record<string, unknown> | undefined;
-            if (!data || "operation" in data) {
-              continue;
-            }
-
-            const offlineId = data.id || data.session_id;
-            if (typeof offlineId === "string") {
-              await removeSessionFromCache(offlineId);
-              log.debug("Removed synced offline session from cache", {
-                sessionId: offlineId,
-              });
-            }
-          }
-        }
-      } catch (batchError: unknown) {
-        const errorMessage =
-          batchError instanceof Error
-            ? batchError.message
-            : "Unknown batch error";
-
-        // Check if this is an auth error (401) - don't retry, just mark all as failed
-        const axiosError = batchError as { response?: { status?: number } };
-        if (axiosError.response?.status === 401) {
-          log.warn(
-            "Auth error during sync - will retry after re-authentication",
-          );
-          for (const item of batch) {
-            await updateOfflineQueueItem(item.id, {
-              status: "pending_retry",
-              last_error: errorMessage,
-              last_attempted_at: new Date().toISOString(),
-            });
-          }
-        } else {
-          log.error(
-            `Batch sync failed: ${errorMessage}`,
-            batchError as Record<string, unknown>,
-          );
-
-          // Mark all items in this batch as failed and increment retries
-          failedCount += batch.length;
-          for (const item of batch) {
-            const nextRetryCount = item.retries + 1;
-            await updateQueueItemRetries(item.id, {
-              error: errorMessage,
-              status: deriveFailureStatus(errorMessage, nextRetryCount),
-              attemptedAt: new Date().toISOString(),
-            });
-          }
-        }
-      }
+      const batchResult = await syncBatchChunk(batch, Math.floor(i / BATCH_SIZE));
+      successCount += batchResult.successCount;
+      failedCount += batchResult.failedCount;
+      errors.push(...batchResult.errors);
 
       processed += batch.length;
       options?.onProgress?.(processed, total);

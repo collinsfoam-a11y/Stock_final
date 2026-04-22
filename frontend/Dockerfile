@@ -17,15 +17,17 @@ RUN npm run build:web
 
 FROM nginx:1.27-alpine AS runtime
 
-RUN apk add --no-cache libcap \
+RUN addgroup -S app -g 10001 \
+    && adduser -S -D -H -u 10001 -G app app \
+    && apk add --no-cache libcap \
     && mkdir -p /var/cache/nginx /var/run /tmp \
-    && chown -R nginx:nginx /var/cache/nginx /var/run /tmp /usr/share/nginx/html /etc/nginx/conf.d \
+    && chown -R app:app /var/cache/nginx /var/run /tmp /usr/share/nginx/html /etc/nginx/conf.d \
     && setcap 'cap_net_bind_service=+ep' /usr/sbin/nginx
 
-COPY --chown=nginx:nginx nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build --chown=nginx:nginx /app/dist /usr/share/nginx/html
+COPY --chown=app:app nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build --chown=app:app /app/dist /usr/share/nginx/html
 
-USER nginx
+USER 10001:10001
 
 EXPOSE 80
 
