@@ -96,7 +96,6 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
   const hasAutoRequestedPermissionRef = useRef(false);
   const [permission, requestPermission] = useCameraPermissions();
 
-  const [lastScanned, setLastScanned] = useState<string | null>(null);
   const [scanFeedback, setScanFeedback] = useState<{
     type: "success" | "error" | "warning";
     message: string;
@@ -220,7 +219,6 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
   const handleResetDetected = useCallback(() => {
     clearBurstPauseTimer();
     setDetectedCodes([]);
-    setLastScanned(null);
     clearRecentScanTimes(recentScanTimesRef.current);
     setScanFeedback({
       type: "success",
@@ -242,7 +240,6 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
   // Reset state when modal opens
   useEffect(() => {
     if (visible) {
-      setLastScanned(null);
       setScanFeedback(null);
       setDetectedCodes([]);
       setScanPaused(false);
@@ -330,7 +327,6 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
         status,
         message,
       });
-      setLastScanned(scannedValue);
 
       if (!validation.valid) {
         Haptics.notificationAsync(
@@ -534,9 +530,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
               )}
             </View>
             <View style={styles.countBadge}>
-              <Text style={styles.countText}>
-                {existingSerials.length + (lastScanned ? 0 : 0)}
-              </Text>
+              <Text style={styles.countText}>{existingSerials.length}</Text>
             </View>
           </View>
 

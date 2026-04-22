@@ -44,6 +44,45 @@ interface UseDeferredItemSubmissionParams {
 
 export { toBackendPhotoProofs } from "./submissionPayload";
 
+const getValidSerialNumbers = (isSerializedItem: boolean, serialNumbers: string[]): string[] =>
+  isSerializedItem
+    ? serialNumbers
+        .filter((serial) => serial.trim().length > 0)
+        .map((serial) => normalizeSerialValue(serial))
+    : [];
+
+const getValidSerialEntries = (
+  isSerializedItem: boolean,
+  serialEntries: SerialEntryData[],
+) =>
+  isSerializedItem
+    ? serialEntries
+        .filter((entry) => entry.serial_number.trim().length > 0)
+        .map((entry) => ({
+          serial_number: normalizeSerialValue(entry.serial_number),
+          mrp: entry.mrp,
+          manufacturing_date: entry.manufacturing_date,
+          mfg_date_format: entry.mfg_date_format,
+          expiry_date: entry.expiry_date,
+          expiry_date_format: entry.expiry_date_format,
+        }))
+    : [];
+
+const showSubmissionError = (error: any) => {
+  const message = getReadableInventoryErrorMessage(error, "save-count");
+  const status = error?.response?.status;
+  if (status === 423) {
+    toastService.show(message, { type: "warning" });
+    return;
+  }
+
+  const titleByStatus: Record<number, string> = {
+    409: "Duplicate Scan",
+    422: "Check the Details",
+  };
+  Alert.alert(titleByStatus[status] || "Unable to Save Count", message);
+};
+
 export const useDeferredItemSubmission = ({
   barcode,
   sessionId,
@@ -134,27 +173,13 @@ export const useDeferredItemSubmission = ({
     const qty = parseFloat(quantity);
 
     try {
-      const validSerials = isSerializedItem
-        ? serialNumbers.filter((serial) => serial.trim().length > 0).map(normalizeSerialValue)
-        : [];
-
-      const serialEntriesData = isSerializedItem
-        ? serialEntries
-            .filter((entry) => entry.serial_number.trim().length > 0)
-            .map((entry) => ({
-              serial_number: normalizeSerialValue(entry.serial_number),
-              mrp: entry.mrp,
-              manufacturing_date: entry.manufacturing_date,
-              mfg_date_format: entry.mfg_date_format,
-              expiry_date: entry.expiry_date,
-              expiry_date_format: entry.expiry_date_format,
-            }))
-        : [];
+      const validSerials = getValidSerialNumbers(isSerializedItem, serialNumbers);
+      const serialEntriesData = getValidSerialEntries(isSerializedItem, serialEntries);
 
       const nowIso = new Date().toISOString();
       const backendPhotoProofs = toBackendPhotoProofs(
         [...(damagePhoto ? [damagePhoto] : []), ...itemPhotos],
-        nowIso
+        nowIso,
       );
 
       const payload: CreateCountLinePayload = {
@@ -197,17 +222,7 @@ export const useDeferredItemSubmission = ({
       toastService.show("Item verified successfully", { type: "success" });
       onSuccess();
     } catch (error: any) {
-      if (error.response?.status === 409) {
-        Alert.alert("Duplicate Scan", getReadableInventoryErrorMessage(error, "save-count"));
-      } else if (error.response?.status === 423) {
-        toastService.show(getReadableInventoryErrorMessage(error, "save-count"), {
-          type: "warning",
-        });
-      } else if (error.response?.status === 422) {
-        Alert.alert("Check the Details", getReadableInventoryErrorMessage(error, "save-count"));
-      } else {
-        Alert.alert("Unable to Save Count", getReadableInventoryErrorMessage(error, "save-count"));
-      }
+      showSubmissionError(error);
     } finally {
       setSubmitting(false);
     }

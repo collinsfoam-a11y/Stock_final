@@ -99,6 +99,209 @@ class SQLVerificationService:
         except Exception as e:
             logger.error(f"Governance event insert failed for {item_code}: {str(e)}")
 
+    def _validate_sql_qty_or_error(self, item_code: str, sql_qty: float) -> Optional[Dict[str, Any]]:
+        if isinstance(sql_qty, bool) or not isinstance(sql_qty, (int, float)):
+            raise SQLInvalidNumericError("Non-numeric SQL result")
+        if not math.isfinite(sql_qty):
+            raise SQLInvalidNumericError("Non-finite SQL result")
+        if sql_qty >= 0:
+            return None
+
+        logger.error(f"CRITICAL: Negative SQL quantity rejected: {sql_qty} for {item_code}")
+        return self._error_response(
+            error_code="SQL_NEGATIVE_QTY",
+            message="Governance rejection: negative SQL quantity",
+            status_code=422,
+            item_code=item_code,
+        )
+
+    def _warn_high_latency_if_needed(self, item_code: str, latency_ms: float, max_latency_ms: float) -> None:
+        if latency_ms <= max_latency_ms:
+            return
+        logger.warning(f"PERFORMANCE: SQL Latency High ({latency_ms:.2f}ms) for {item_code}")
+
+    async def _load_mongo_item_snapshot(self, item_code: str) -> Optional[dict[str, Any]]:
+        mongo_item = await db.erp_items.find_one({"$or": [{"item_code": item_code}, {"barcode": item_code}]})
+        if mongo_item:
+            return mongo_item
+        logger.warning(f"Item {item_code} not found in Mongo Ledger")
+        return None
+
+    def _normalize_mongo_qty_or_error(
+        self, item_code: str, mongo_qty: Any
+    ) -> tuple[Optional[float], Optional[Dict[str, Any]]]:
+        normalized_qty = 0 if mongo_qty is None else mongo_qty
+        if hasattr(normalized_qty, "to_decimal"):
+            try:
+                normalized_qty = float(normalized_qty.to_decimal())
+            except Exception:
+                logger.error(
+                    f"CRITICAL: Non-numeric Mongo quantity rejected: {normalized_qty} for {item_code}"
+                )
+                return None, self._error_response(
+                    error_code="MONGO_NON_NUMERIC_QTY",
+                    message="Governance rejection: non-numeric Mongo quantity",
+                    status_code=422,
+                    item_code=item_code,
+                )
+
+        if isinstance(normalized_qty, bool) or not isinstance(normalized_qty, (int, float)):
+            logger.error(
+                f"CRITICAL: Non-numeric Mongo quantity rejected: {normalized_qty} for {item_code}"
+            )
+            return None, self._error_response(
+                error_code="MONGO_NON_NUMERIC_QTY",
+                message="Governance rejection: non-numeric Mongo quantity",
+                status_code=422,
+                item_code=item_code,
+            )
+
+        if not math.isfinite(normalized_qty):
+            logger.error(
+                f"CRITICAL: Non-finite Mongo quantity rejected: {normalized_qty} for {item_code}"
+            )
+            return None, self._error_response(
+                error_code="MONGO_NON_FINITE_QTY",
+                message="Governance rejection: non-finite Mongo quantity",
+                status_code=422,
+                item_code=item_code,
+            )
+
+        return float(normalized_qty), None
+
+    def _variance_threshold_error(
+        self, *, item_code: str, variance: float, max_variance: float, strict_mode: bool
+    ) -> Optional[Dict[str, Any]]:
+        if abs(variance) <= max_variance:
+            return None
+
+        logger.warning(f"VARIANCE: Large variance detected ({variance}) for {item_code}")
+        if not strict_mode:
+            return None
+
+        return self._error_response(
+            error_code="SQL_VARIANCE_THRESHOLD",
+            message="Variance exceeds governance threshold",
+            status_code=422,
+            item_code=item_code,
+            status="ERROR",
+        )
+
+    def _build_sql_update_data(
+        self,
+        *,
+        sql_qty: float,
+        mongo_qty: float,
+        variance: float,
+        latency_ms: float,
+        new_seq: int,
+        status: str,
+    ) -> dict[str, Any]:
+        return {
+            "sql_verified_qty": sql_qty,
+            "last_sql_verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            "variance": variance,
+            "mongo_cached_qty_previous": mongo_qty,
+            "sql_qty_mismatch_flag": variance != 0,
+            "sql_verification_status": status,
+            "sql_verification_seq": new_seq,
+            "sql_verification_source": "SQL_SERVER",
+            "sql_verification_latency_ms": round(latency_ms, 2),
+        }
+
+    async def _handle_update_conflict_or_loss(
+        self,
+        *,
+        item_code: str,
+        sql_qty: float,
+        mongo_item: dict[str, Any],
+        mongo_qty: float,
+    ) -> Dict[str, Any]:
+        check_item = await db.erp_items.find_one({"_id": mongo_item["_id"]})
+        if check_item and check_item.get("stock_qty") != mongo_qty:
+            logger.warning(
+                f"CONFLICT: Mongo state changed during verification for {item_code}. Forking record."
+            )
+            await db.verification_conflicts.insert_one(
+                {
+                    "original_item_id": mongo_item["_id"],
+                    "item_code": item_code,
+                    "conflict_timestamp": datetime.now(timezone.utc).replace(tzinfo=None),
+                    "attempted_sql_qty": sql_qty,
+                    "mongo_qty_at_read": mongo_qty,
+                    "mongo_qty_current": check_item.get("stock_qty"),
+                    "type": "VERIFICATION_CONFLICT_FORK",
+                }
+            )
+            return {
+                "error": self._error_response(
+                    error_code="VERIFICATION_CONFLICT",
+                    message="State conflict: data changed during verification",
+                    status_code=409,
+                    item_code=item_code,
+                    status="conflict",
+                ),
+                "event_status": "CONFLICT",
+            }
+
+        logger.warning(f"No document updated (Item deleted?): {item_code}")
+        return {
+            "error": self._error_response(
+                error_code="ITEM_LOST",
+                message="Item lost during update",
+                status_code=404,
+                item_code=item_code,
+            ),
+            "event_status": "FAILED",
+        }
+
+    async def _apply_sql_verification_update(
+        self,
+        *,
+        item_code: str,
+        sql_qty: float,
+        mongo_item: dict[str, Any],
+        mongo_qty: float,
+        variance: float,
+        latency_ms: float,
+        current_seq: int,
+    ) -> Dict[str, Any]:
+        new_seq = current_seq + 1
+        status = "MATCH" if variance == 0 else "MISMATCH"
+        update_data = self._build_sql_update_data(
+            sql_qty=sql_qty,
+            mongo_qty=mongo_qty,
+            variance=variance,
+            latency_ms=latency_ms,
+            new_seq=new_seq,
+            status=status,
+        )
+        update_result = await db.erp_items.update_one(
+            {"_id": mongo_item["_id"], "stock_qty": mongo_qty},
+            {"$set": update_data},
+        )
+        if update_result.modified_count == 0:
+            conflict_outcome = await self._handle_update_conflict_or_loss(
+                item_code=item_code,
+                sql_qty=sql_qty,
+                mongo_item=mongo_item,
+                mongo_qty=mongo_qty,
+            )
+            conflict_outcome.update({"seq": new_seq})
+            return conflict_outcome
+
+        logger.info(
+            f"GOVERNANCE_LOG: item={item_code} sql={sql_qty} mongo={mongo_qty} "
+            f"var={variance} lat={latency_ms:.2f}ms seq={new_seq} stat={status}"
+        )
+        return {
+            "error": None,
+            "event_status": status,
+            "seq": new_seq,
+            "status": status,
+            "verified_at": update_data["last_sql_verified_at"],
+        }
+
     async def _verify_item_with_sql_qty(
         self, item_code: str, sql_qty: float, latency_ms: float
     ) -> Dict[str, Any]:
@@ -116,33 +319,14 @@ class SQLVerificationService:
         result: Dict[str, Any]
 
         try:
-            # 2. Validation Rules (Rule 5)
-            if isinstance(sql_qty, bool) or not isinstance(sql_qty, (int, float)):
-                raise SQLInvalidNumericError("Non-numeric SQL result")
-            if not math.isfinite(sql_qty):
-                raise SQLInvalidNumericError("Non-finite SQL result")
-            if sql_qty < 0:
-                logger.error(f"CRITICAL: Negative SQL quantity rejected: {sql_qty} for {item_code}")
-                error_info = self._error_response(
-                    error_code="SQL_NEGATIVE_QTY",
-                    message="Governance rejection: negative SQL quantity",
-                    status_code=422,
-                    item_code=item_code,
-                )
-                return error_info
+            validation_error = self._validate_sql_qty_or_error(item_code, sql_qty)
+            if validation_error:
+                error_info = validation_error
+                return validation_error
 
-            # Log warning if latency is high (Rule 5)
-            if latency_ms > SQL_MAX_LATENCY_MS:
-                logger.warning(
-                    f"PERFORMANCE: SQL Latency High ({latency_ms:.2f}ms) for {item_code}"
-                )
-
-            # 3. Read Mongo Snapshot
-            mongo_item = await db.erp_items.find_one(
-                {"$or": [{"item_code": item_code}, {"barcode": item_code}]}
-            )
+            self._warn_high_latency_if_needed(item_code, latency_ms, SQL_MAX_LATENCY_MS)
+            mongo_item = await self._load_mongo_item_snapshot(item_code)
             if not mongo_item:
-                logger.warning(f"Item {item_code} not found in Mongo Ledger")
                 error_info = self._error_response(
                     error_code="ITEM_NOT_FOUND",
                     message="Item not found in MongoDB",
@@ -151,149 +335,49 @@ class SQLVerificationService:
                 )
                 return error_info
 
-            mongo_qty = mongo_item.get("stock_qty", 0)
-            if mongo_qty is None:
-                mongo_qty = 0
-            # Normalize Decimal128-like values without hard dependency on bson
-            if hasattr(mongo_qty, "to_decimal"):
-                try:
-                    mongo_qty = float(mongo_qty.to_decimal())
-                except Exception:
-                    logger.error(
-                        f"CRITICAL: Non-numeric Mongo quantity rejected: {mongo_qty} for {item_code}"
-                    )
-                    error_info = self._error_response(
-                        error_code="MONGO_NON_NUMERIC_QTY",
-                        message="Governance rejection: non-numeric Mongo quantity",
-                        status_code=422,
-                        item_code=item_code,
-                    )
-                    return error_info
-            if isinstance(mongo_qty, bool) or not isinstance(mongo_qty, (int, float)):
-                logger.error(
-                    f"CRITICAL: Non-numeric Mongo quantity rejected: {mongo_qty} for {item_code}"
-                )
-                error_info = self._error_response(
-                    error_code="MONGO_NON_NUMERIC_QTY",
-                    message="Governance rejection: non-numeric Mongo quantity",
-                    status_code=422,
-                    item_code=item_code,
-                )
-                return error_info
-            if not math.isfinite(mongo_qty):
-                logger.error(
-                    f"CRITICAL: Non-finite Mongo quantity rejected: {mongo_qty} for {item_code}"
-                )
-                error_info = self._error_response(
-                    error_code="MONGO_NON_FINITE_QTY",
-                    message="Governance rejection: non-finite Mongo quantity",
-                    status_code=422,
-                    item_code=item_code,
-                )
-                return error_info
-            current_seq = mongo_item.get("sql_verification_seq", 0)
+            mongo_qty, mongo_qty_error = self._normalize_mongo_qty_or_error(
+                item_code, mongo_item.get("stock_qty", 0)
+            )
+            if mongo_qty_error:
+                error_info = mongo_qty_error
+                return mongo_qty_error
 
-            # 4. Compute Variance
+            current_seq = int(mongo_item.get("sql_verification_seq", 0) or 0)
             variance = sql_qty - mongo_qty
-
-            # Rule 5: Variance Threshold Override Check
-            if abs(variance) > SQL_MAX_VARIANCE:
-                logger.warning(f"VARIANCE: Large variance detected ({variance}) for {item_code}")
-
-                if SQL_VERIFY_STRICT:
-                    error_info = self._error_response(
-                        error_code="SQL_VARIANCE_THRESHOLD",
-                        message="Variance exceeds governance threshold",
-                        status_code=422,
-                        item_code=item_code,
-                        status="ERROR",
-                    )
-                    return error_info
-
-            # 5. Prepare Atomic Update
-            new_seq = current_seq + 1
-            seq = new_seq
-            status = "MATCH" if variance == 0 else "MISMATCH"
-
-            update_data = {
-                "sql_verified_qty": sql_qty,
-                "last_sql_verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                "variance": variance,
-                "mongo_cached_qty_previous": mongo_qty,
-                "sql_qty_mismatch_flag": variance != 0,
-                "sql_verification_status": status,
-                # Forensic Fields
-                "sql_verification_seq": new_seq,
-                "sql_verification_source": "SQL_SERVER",
-                "sql_verification_latency_ms": round(latency_ms, 2),
-            }
-
-            # 6. Atomic Conditional Write (Optimistic Locking)
-            # "Only write if Mongo quantity has not changed" (Rule 2.6)
-            update_result = await db.erp_items.update_one(
-                {
-                    "_id": mongo_item["_id"],
-                    "stock_qty": mongo_qty,  # Lock condition
-                },
-                {"$set": update_data},
+            threshold_error = self._variance_threshold_error(
+                item_code=item_code,
+                variance=variance,
+                max_variance=SQL_MAX_VARIANCE,
+                strict_mode=SQL_VERIFY_STRICT,
             )
+            if threshold_error:
+                error_info = threshold_error
+                return threshold_error
 
-            # 7. Conflict Handling (Rule 4)
-            if update_result.modified_count == 0:
-                # Determine if it was a match fail (record gone) or lock fail (qty changed)
-                check_item = await db.erp_items.find_one({"_id": mongo_item["_id"]})
-                if check_item and check_item.get("stock_qty") != mongo_qty:
-                    logger.warning(
-                        f"CONFLICT: Mongo state changed during verification for {item_code}. Forking record."
-                    )
-
-                    # Fork record logic
-                    fork_record = {
-                        "original_item_id": mongo_item["_id"],
-                        "item_code": item_code,
-                        "conflict_timestamp": datetime.now(timezone.utc).replace(tzinfo=None),
-                        "attempted_sql_qty": sql_qty,
-                        "mongo_qty_at_read": mongo_qty,
-                        "mongo_qty_current": check_item.get("stock_qty"),
-                        "type": "VERIFICATION_CONFLICT_FORK",
-                    }
-                    await db.verification_conflicts.insert_one(fork_record)
-
-                    error_info = self._error_response(
-                        error_code="VERIFICATION_CONFLICT",
-                        message="State conflict: data changed during verification",
-                        status_code=409,
-                        item_code=item_code,
-                        status="conflict",
-                    )
-                    event_status = "CONFLICT"
-                    return error_info
-                else:
-                    logger.warning(f"No document updated (Item deleted?): {item_code}")
-                    error_info = self._error_response(
-                        error_code="ITEM_LOST",
-                        message="Item lost during update",
-                        status_code=404,
-                        item_code=item_code,
-                    )
-                    return error_info
-
-            # 8. Logging
-            logger.info(
-                f"GOVERNANCE_LOG: item={item_code} sql={sql_qty} mongo={mongo_qty} "
-                f"var={variance} lat={latency_ms:.2f}ms seq={new_seq} stat={status}"
+            update_outcome = await self._apply_sql_verification_update(
+                item_code=item_code,
+                sql_qty=sql_qty,
+                mongo_item=mongo_item,
+                mongo_qty=mongo_qty,
+                variance=variance,
+                latency_ms=latency_ms,
+                current_seq=current_seq,
             )
+            seq = update_outcome.get("seq")
+            event_status = update_outcome.get("event_status", event_status)
+            if update_outcome.get("error"):
+                error_info = update_outcome["error"]
+                return update_outcome["error"]
 
-            event_status = status
             result = {
                 "success": True,
                 "item_code": item_code,
                 "sql_qty": sql_qty,
                 "mongo_qty": mongo_qty,
                 "variance": variance,
-                "verified_at": update_data["last_sql_verified_at"],
+                "verified_at": update_outcome["verified_at"],
                 "mismatch": variance != 0,
-                "seq": new_seq,
+                "seq": seq,
                 "latency_ms": latency_ms,
             }
             return result

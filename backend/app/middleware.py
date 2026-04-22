@@ -32,6 +32,105 @@ class APIVersionMiddleware:
         await self.app(scope, receive, send_with_version)
 
 
+def _parse_csv_values(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [item.strip() for item in value.split(",") if item.strip()]
+    if not value:
+        return []
+    return [str(item).strip() for item in value if str(item).strip()]
+
+
+def _resolve_allowed_hosts(settings: Any, env: str) -> list[str]:
+    allowed_hosts = _parse_csv_values(getattr(settings, "ALLOWED_HOSTS", None))
+    if env in {"development", "test"}:
+        for host in ("localhost", "127.0.0.1", "testserver"):
+            if host not in allowed_hosts:
+                allowed_hosts.append(host)
+    return allowed_hosts
+
+
+def _resolve_allowed_origins(settings: Any, env: str, logger: Any) -> list[str]:
+    configured_origins = _parse_csv_values(getattr(settings, "CORS_ALLOW_ORIGINS", None))
+    if configured_origins:
+        return configured_origins
+
+    if env != "development":
+        logger.warning(
+            "CORS_ALLOW_ORIGINS not configured for non-development environment; "
+            "requests may be blocked"
+        )
+        return []
+
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8081",
+        "http://127.0.0.1:8081",
+        "exp://localhost:8081",
+    ]
+    dev_origins = _parse_csv_values(getattr(settings, "CORS_DEV_ORIGINS", None))
+    if dev_origins:
+        allowed_origins.extend(dev_origins)
+        logger.info("Added %s additional CORS origins from CORS_DEV_ORIGINS", len(dev_origins))
+    return allowed_origins
+
+
+def _resolve_cors_origin_regex(env: str) -> str | None:
+    if env != "development":
+        return None
+    return (
+        r"(https?|exp)://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|"
+        r"10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?"
+    )
+
+
+def _register_trusted_host_middleware(
+    app: FastAPI, *, allowed_hosts: list[str], env: str, logger: Any
+) -> None:
+    if allowed_hosts and "*" not in allowed_hosts:
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
+        logger.info("Trusted host middleware enabled (hosts: %s)", allowed_hosts)
+        return
+    if env not in {"development", "test"}:
+        logger.warning(
+            "ALLOWED_HOSTS not configured for non-development environment; "
+            "Host header validation is disabled"
+        )
+
+
+def _register_security_headers(
+    app: FastAPI, security_headers_middleware: Any, logger: Any
+) -> None:
+    if security_headers_middleware is None:
+        logger.warning("Security headers middleware not available")
+        return
+
+    try:
+        strict_csp = os.getenv("STRICT_CSP", "false").lower() == "true"
+        force_https = os.getenv("FORCE_HTTPS", "false").lower() == "true"
+        app.add_middleware(
+            security_headers_middleware,  # type: ignore[arg-type]
+            STRICT_CSP=strict_csp,
+            force_https=force_https,
+        )
+        logger.info("Security headers middleware enabled")
+    except Exception as exc:
+        logger.warning("Security headers middleware registration failed: %s", exc)
+
+
+def _register_lan_enforcement(app: FastAPI, settings: Any, logger: Any) -> None:
+    if not getattr(settings, "ENABLE_LAN_ENFORCEMENT", False):
+        return
+
+    try:
+        from backend.middleware.lan_enforcement import LANEnforcementMiddleware
+
+        app.add_middleware(LANEnforcementMiddleware)
+        logger.info("LAN enforcement middleware enabled")
+    except Exception as exc:
+        logger.warning("LAN enforcement middleware registration failed: %s", exc)
+
+
 def register_middleware(
     app: FastAPI,
     *,
@@ -41,50 +140,9 @@ def register_middleware(
 ) -> None:
     """Register app middleware while preserving current behavior/order."""
     env = getattr(settings, "ENVIRONMENT", "development").lower()
-    allowed_hosts_value = getattr(settings, "ALLOWED_HOSTS", None)
-    allowed_hosts: list[str] = []
-    if isinstance(allowed_hosts_value, str):
-        allowed_hosts = [host.strip() for host in allowed_hosts_value.split(",") if host.strip()]
-    elif allowed_hosts_value:
-        allowed_hosts = [str(host).strip() for host in allowed_hosts_value if str(host).strip()]
-
-    if env in {"development", "test"}:
-        for host in ("localhost", "127.0.0.1", "testserver"):
-            if host not in allowed_hosts:
-                allowed_hosts.append(host)
-
-    if getattr(settings, "CORS_ALLOW_ORIGINS", None):
-        allowed_origins = [
-            o.strip() for o in (settings.CORS_ALLOW_ORIGINS or "").split(",") if o.strip()
-        ]
-    elif env == "development":
-        allowed_origins = [
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-            "http://localhost:8081",
-            "http://127.0.0.1:8081",
-            "exp://localhost:8081",
-        ]
-        if getattr(settings, "CORS_DEV_ORIGINS", None):
-            dev_origins = [
-                o.strip() for o in (settings.CORS_DEV_ORIGINS or "").split(",") if o.strip()
-            ]
-            allowed_origins.extend(dev_origins)
-            logger.info(f"Added {len(dev_origins)} additional CORS origins from CORS_DEV_ORIGINS")
-    else:
-        allowed_origins = []
-        if not getattr(settings, "CORS_ALLOW_ORIGINS", None):
-            logger.warning(
-                "CORS_ALLOW_ORIGINS not configured for non-development environment; "
-                "requests may be blocked"
-            )
-
-    cors_origin_regex = None
-    if env == "development":
-        cors_origin_regex = (
-            r"(https?|exp)://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|"
-            r"10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?"
-        )
+    allowed_hosts = _resolve_allowed_hosts(settings, env)
+    allowed_origins = _resolve_allowed_origins(settings, env, logger)
+    cors_origin_regex = _resolve_cors_origin_regex(env)
 
     app.add_middleware(
         CORSMiddleware,
@@ -104,41 +162,11 @@ def register_middleware(
         ],
     )
 
-    if allowed_hosts and "*" not in allowed_hosts:
-        app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
-        logger.info(f"Trusted host middleware enabled (hosts: {allowed_hosts})")
-    elif env not in {"development", "test"}:
-        logger.warning(
-            "ALLOWED_HOSTS not configured for non-development environment; "
-            "Host header validation is disabled"
-        )
-
-    if security_headers_middleware is not None:
-        try:
-            strict_csp = os.getenv("STRICT_CSP", "false").lower() == "true"
-            force_https = os.getenv("FORCE_HTTPS", "false").lower() == "true"
-
-            app.add_middleware(
-                security_headers_middleware,  # type: ignore[arg-type]
-                STRICT_CSP=strict_csp,
-                force_https=force_https,
-            )
-            logger.info("Security headers middleware enabled")
-        except Exception as exc:
-            logger.warning(f"Security headers middleware registration failed: {exc}")
-    else:
-        logger.warning("Security headers middleware not available")
-
-    if getattr(settings, "ENABLE_LAN_ENFORCEMENT", False):
-        try:
-            from backend.middleware.lan_enforcement import LANEnforcementMiddleware
-
-            app.add_middleware(LANEnforcementMiddleware)
-            logger.info("LAN enforcement middleware enabled")
-        except Exception as exc:
-            logger.warning(f"LAN enforcement middleware registration failed: {exc}")
+    _register_trusted_host_middleware(app, allowed_hosts=allowed_hosts, env=env, logger=logger)
+    _register_security_headers(app, security_headers_middleware, logger)
+    _register_lan_enforcement(app, settings, logger)
 
     app.add_middleware(APIVersionMiddleware)
-    logger.info(f"API version middleware enabled (version: {API_VERSION})")
+    logger.info("API version middleware enabled (version: %s)", API_VERSION)
 
     app.add_middleware(GZipMiddleware, minimum_size=1000)

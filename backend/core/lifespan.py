@@ -429,7 +429,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
                 )
                 sql_connected = True
                 logger.info("OK: SQL Server connection established")
-            except (ConnectionError, TimeoutError, OSError) as e:
+            except (ConnectionError, OSError) as e:
                 logger.warning(f"SQL Server connection failed (network/system error): {str(e)}")
                 logger.warning("ERP sync will be disabled until SQL Server is configured")
             except asyncio.TimeoutError:

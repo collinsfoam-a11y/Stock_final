@@ -177,6 +177,109 @@ def _user_to_detail(user: dict[str, Any]) -> UserDetailResponse:
     )
 
 
+def _error_detail(message: str, code: str) -> dict[str, Any]:
+    return {"success": False, "error": {"message": message, "code": code}}
+
+
+def _raise_http_error(status_code: int, message: str, code: str) -> None:
+    raise HTTPException(status_code=status_code, detail=_error_detail(message, code))
+
+
+def _validate_permission_list(permissions: list[str]) -> None:
+    valid_perms = [p.value for p in Permission]
+    invalid = [p for p in permissions if p not in valid_perms]
+    if invalid:
+        _raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            f"Invalid permissions: {', '.join(invalid)}",
+            "INVALID_PERMISSIONS",
+        )
+
+
+def _is_self_update(existing: dict[str, Any], current_user: dict[str, Any]) -> bool:
+    return str(existing.get("_id")) == str(current_user.get("_id"))
+
+
+def _apply_role_update(
+    update: dict[str, Any],
+    request: UpdateUserRequest,
+    existing: dict[str, Any],
+    current_user: dict[str, Any],
+) -> None:
+    if request.role is None:
+        return
+    if _is_self_update(existing, current_user) and request.role != "admin":
+        _raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            "Cannot demote yourself",
+            "SELF_DEMOTION_FORBIDDEN",
+        )
+    update["role"] = request.role
+
+
+def _apply_active_update(
+    update: dict[str, Any],
+    request: UpdateUserRequest,
+    existing: dict[str, Any],
+    current_user: dict[str, Any],
+) -> None:
+    if request.is_active is None:
+        return
+    if _is_self_update(existing, current_user) and not request.is_active:
+        _raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            "Cannot deactivate yourself",
+            "SELF_DEACTIVATION_FORBIDDEN",
+        )
+    update["is_active"] = request.is_active
+
+
+async def _apply_email_update(
+    update: dict[str, Any], db: Any, oid: Any, request: UpdateUserRequest
+) -> None:
+    if request.email is None:
+        return
+    if request.email:
+        dup = await db.users.find_one({"email": request.email, "_id": {"$ne": oid}})
+        if dup:
+            _raise_http_error(status.HTTP_409_CONFLICT, "Email already exists", "DUPLICATE_EMAIL")
+    update["email"] = request.email
+
+
+def _apply_profile_update(update: dict[str, Any], request: UpdateUserRequest) -> None:
+    if request.full_name is not None:
+        update["full_name"] = request.full_name
+    if request.password is not None:
+        update["hashed_password"] = get_password_hash(request.password)
+    if request.pin is not None:
+        update["pin_hash"] = get_password_hash(request.pin)
+        update["pin_lookup_hash"] = get_pin_lookup_hash(request.pin)
+
+
+def _apply_permissions_update(update: dict[str, Any], request: UpdateUserRequest) -> None:
+    if request.permissions is not None:
+        _validate_permission_list(request.permissions)
+        update["permissions"] = request.permissions
+    if request.disabled_permissions is not None:
+        update["disabled_permissions"] = request.disabled_permissions
+
+
+async def _build_update_payload(
+    db: Any,
+    oid: Any,
+    request: UpdateUserRequest,
+    existing: dict[str, Any],
+    current_user: dict[str, Any],
+) -> dict[str, Any]:
+    update: dict[str, Any] = {"updated_at": datetime.now(timezone.utc).replace(tzinfo=None)}
+    await _apply_email_update(update, db, oid, request)
+    _apply_profile_update(update, request)
+    _apply_role_update(update, request, existing, current_user)
+    _apply_active_update(update, request, existing, current_user)
+    _apply_permissions_update(update, request)
+    return update
+
+
 # ============================================================================
 # API Endpoints
 # ============================================================================
@@ -446,119 +549,17 @@ async def update_user(
 
     db = get_db()
 
-    # Validate ObjectId
     try:
         oid = ObjectId(user_id)
     except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "success": False,
-                "error": {
-                    "message": "Invalid user ID",
-                    "code": "INVALID_ID",
-                },
-            },
-        )
+        _raise_http_error(status.HTTP_400_BAD_REQUEST, "Invalid user ID", "INVALID_ID")
 
-    # Check if user exists
     existing = await db.users.find_one({"_id": oid})
     if not existing:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "success": False,
-                "error": {
-                    "message": "User not found",
-                    "code": "NOT_FOUND",
-                },
-            },
-        )
+        _raise_http_error(status.HTTP_404_NOT_FOUND, "User not found", "NOT_FOUND")
 
-    # Build update
-    update: dict[str, Any] = {"updated_at": datetime.now(timezone.utc).replace(tzinfo=None)}
-
-    if request.email is not None:
-        # Check for duplicate email
-        if request.email:
-            dup = await db.users.find_one({"email": request.email, "_id": {"$ne": oid}})
-            if dup:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail={
-                        "success": False,
-                        "error": {
-                            "message": "Email already exists",
-                            "code": "DUPLICATE_EMAIL",
-                        },
-                    },
-                )
-        update["email"] = request.email
-
-    if request.full_name is not None:
-        update["full_name"] = request.full_name
-
-    if request.password is not None:
-        update["hashed_password"] = get_password_hash(request.password)
-
-    if request.pin is not None:
-        update["pin_hash"] = get_password_hash(request.pin)
-        update["pin_lookup_hash"] = get_pin_lookup_hash(request.pin)
-
-    if request.role is not None:
-        # Prevent admin from demoting themselves
-        if str(existing["_id"]) == str(current_user.get("_id")):
-            if request.role != "admin":
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "success": False,
-                        "error": {
-                            "message": "Cannot demote yourself",
-                            "code": "SELF_DEMOTION_FORBIDDEN",
-                        },
-                    },
-                )
-        update["role"] = request.role
-
-    if request.is_active is not None:
-        # Prevent admin from deactivating themselves
-        if str(existing["_id"]) == str(current_user.get("_id")):
-            if not request.is_active:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "success": False,
-                        "error": {
-                            "message": "Cannot deactivate yourself",
-                            "code": "SELF_DEACTIVATION_FORBIDDEN",
-                        },
-                    },
-                )
-        update["is_active"] = request.is_active
-
-    if request.permissions is not None:
-        valid_perms = [p.value for p in Permission]
-        invalid = [p for p in request.permissions if p not in valid_perms]
-        if invalid:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "success": False,
-                    "error": {
-                        "message": (f"Invalid permissions: {', '.join(invalid)}"),
-                        "code": "INVALID_PERMISSIONS",
-                    },
-                },
-            )
-        update["permissions"] = request.permissions
-
-    if request.disabled_permissions is not None:
-        update["disabled_permissions"] = request.disabled_permissions
-
+    update = await _build_update_payload(db, oid, request, existing, current_user)
     await db.users.update_one({"_id": oid}, {"$set": update})
-
-    # Fetch updated user
     updated = await db.users.find_one({"_id": oid})
 
     logger.info(
@@ -568,16 +569,7 @@ async def update_user(
     )
 
     if not updated:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "success": False,
-                "error": {
-                    "message": "User not found",
-                    "code": "NOT_FOUND",
-                },
-            },
-        )
+        _raise_http_error(status.HTTP_404_NOT_FOUND, "User not found", "NOT_FOUND")
 
     return _user_to_detail(cast(dict[str, Any], updated))
 

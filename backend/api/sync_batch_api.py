@@ -518,141 +518,205 @@ async def session_heartbeat(
     }
 
 
-async def _process_session_op(
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _normalize_operation_name(session_data: dict[str, Any]) -> Optional[str]:
+    operation_raw = session_data.get("operation")
+    return operation_raw.strip().lower() if isinstance(operation_raw, str) else None
+
+
+def _resolve_session_id(value: Any, id_mapping: dict[str, str]) -> Optional[str]:
+    if value is None:
+        return None
+    key = str(value)
+    return id_mapping.get(key, key)
+
+
+def _is_privileged_session_user(current_user: dict[str, Any]) -> bool:
+    return current_user.get("role") in {"supervisor", "admin"}
+
+
+def _session_status_update(operation: str, now: datetime) -> dict[str, Any]:
+    if operation in {"bulk_close", "close"}:
+        return {"$set": {"status": "CLOSED", "closed_at": now, "ended_at": now}}
+    return {"$set": {"status": "RECONCILE", "reconciled_at": now}}
+
+
+def _extract_bulk_session_ids(session_data: dict[str, Any]) -> list[Any]:
+    raw_ids = (
+        session_data.get("sessionIds")
+        or session_data.get("session_ids")
+        or session_data.get("session_ids".upper())  # defensive
+    )
+    if not isinstance(raw_ids, list) or not raw_ids:
+        raise ValueError("Missing sessionIds for bulk session operation")
+    return raw_ids
+
+
+def _resolve_bulk_session_ids(raw_ids: list[Any], id_mapping: dict[str, str]) -> list[str]:
+    return [
+        resolved
+        for value in raw_ids
+        for resolved in [_resolve_session_id(value, id_mapping)]
+        if resolved
+    ]
+
+
+async def _apply_bulk_session_operation(
     session_data: dict[str, Any],
     current_user: dict[str, Any],
     id_mapping: dict[str, str],
     db: Any,
+    operation: str,
+    now: datetime,
 ) -> str:
-    """Process a session sync operation."""
-    operation_raw = session_data.get("operation")
-    operation = operation_raw.strip().lower() if isinstance(operation_raw, str) else None
+    if not _is_privileged_session_user(current_user):
+        raise ValueError("Insufficient permissions for bulk session operation")
 
-    def _resolve_session_id(value: Any) -> Optional[str]:
-        if value is None:
-            return None
-        key = str(value)
-        return id_mapping.get(key, key)
+    resolved_ids = _resolve_bulk_session_ids(_extract_bulk_session_ids(session_data), id_mapping)
+    update_doc = _session_status_update(operation, now)
+    updated = 0
+    for session_id in resolved_ids:
+        result = await db.sessions.update_one({"id": session_id}, update_doc)
+        if getattr(result, "modified_count", 0) > 0:
+            updated += 1
+    return f"Bulk session operation '{operation}' applied (updated={updated})"
 
-    # Offline queue can contain session mutations (close/reconcile) besides session creation.
-    # Those payloads will not include warehouse and should be handled explicitly here.
-    if operation:
-        now = datetime.now(timezone.utc).replace(tzinfo=None)
 
-        if operation in {"bulk_close", "bulk_reconcile"}:
-            if current_user.get("role") not in {"supervisor", "admin"}:
-                raise ValueError("Insufficient permissions for bulk session operation")
+def _extract_single_session_operation_id(
+    session_data: dict[str, Any], id_mapping: dict[str, str]
+) -> str:
+    raw_session_id = session_data.get("sessionId") or session_data.get("session_id") or session_data.get(
+        "id"
+    )
+    resolved_session_id = _resolve_session_id(raw_session_id, id_mapping)
+    if not resolved_session_id:
+        raise ValueError("Missing sessionId for session operation")
+    return resolved_session_id
 
-            raw_ids = (
-                session_data.get("sessionIds")
-                or session_data.get("session_ids")
-                or session_data.get("session_ids".upper())  # defensive
-            )
-            if not isinstance(raw_ids, list) or not raw_ids:
-                raise ValueError("Missing sessionIds for bulk session operation")
 
-            resolved_ids = [
-                resolved
-                for value in raw_ids
-                for resolved in [_resolve_session_id(value)]
-                if resolved
-            ]
+def _assert_single_session_permission(
+    session: dict[str, Any], current_user: dict[str, Any]
+) -> None:
+    if _is_privileged_session_user(current_user):
+        return
+    if session.get("staff_user") != current_user.get("username"):
+        raise ValueError("Not authorized to modify this session")
 
-            updated = 0
-            for session_id in resolved_ids:
-                if operation == "bulk_close":
-                    result = await db.sessions.update_one(
-                        {"id": session_id},
-                        {"$set": {"status": "CLOSED", "closed_at": now, "ended_at": now}},
-                    )
-                else:
-                    # M2 fix: Set status to RECONCILE (not ACTIVE) for consistency
-                    result = await db.sessions.update_one(
-                        {"id": session_id},
-                        {"$set": {"status": "RECONCILE", "reconciled_at": now}},
-                    )
-                if getattr(result, "modified_count", 0) > 0:
-                    updated += 1
 
-            return f"Bulk session operation '{operation}' applied (updated={updated})"
+async def _apply_single_session_operation(
+    session_data: dict[str, Any],
+    current_user: dict[str, Any],
+    id_mapping: dict[str, str],
+    db: Any,
+    operation: str,
+    now: datetime,
+) -> str:
+    resolved_session_id = _extract_single_session_operation_id(session_data, id_mapping)
+    session = await db.sessions.find_one({"id": resolved_session_id})
+    if not session:
+        raise ValueError("Session not found")
 
-        if operation in {"close", "reconcile"}:
-            raw_session_id = (
-                session_data.get("sessionId")
-                or session_data.get("session_id")
-                or session_data.get("id")
-            )
-            resolved_session_id = _resolve_session_id(raw_session_id)
-            if not resolved_session_id:
-                raise ValueError("Missing sessionId for session operation")
+    _assert_single_session_permission(session, current_user)
+    await db.sessions.update_one({"id": resolved_session_id}, _session_status_update(operation, now))
+    return f"Session operation '{operation}' applied"
 
-            session = await db.sessions.find_one({"id": resolved_session_id})
-            if not session:
-                raise ValueError("Session not found")
 
-            # Staff can only mutate their own session; supervisors/admin can mutate any.
-            if current_user.get("role") not in {"supervisor", "admin"} and session.get(
-                "staff_user"
-            ) != current_user.get("username"):
-                raise ValueError("Not authorized to modify this session")
+async def _process_session_mutation_operation(
+    session_data: dict[str, Any],
+    current_user: dict[str, Any],
+    id_mapping: dict[str, str],
+    db: Any,
+) -> Optional[str]:
+    operation = _normalize_operation_name(session_data)
+    if not operation:
+        return None
 
-            if operation == "close":
-                await db.sessions.update_one(
-                    {"id": resolved_session_id},
-                    {"$set": {"status": "CLOSED", "closed_at": now, "ended_at": now}},
-                )
-            else:
-                # M2 fix: Set status to RECONCILE for consistency
-                await db.sessions.update_one(
-                    {"id": resolved_session_id},
-                    {"$set": {"status": "RECONCILE", "reconciled_at": now}},
-                )
+    now = _utc_now()
+    if operation in {"bulk_close", "bulk_reconcile"}:
+        return await _apply_bulk_session_operation(
+            session_data, current_user, id_mapping, db, operation, now
+        )
+    if operation in {"close", "reconcile"}:
+        return await _apply_single_session_operation(
+            session_data, current_user, id_mapping, db, operation, now
+        )
+    return None
 
-            return f"Session operation '{operation}' applied"
 
+def _extract_warehouse(session_data: dict[str, Any]) -> str:
     warehouse = (session_data.get("warehouse") or "").strip()
     if not warehouse:
         raise ValueError("Missing warehouse for session operation")
+    return warehouse
 
-    staff_user = current_user.get("username", "unknown_user")
-    staff_name = current_user.get("full_name") or staff_user
 
-    offline_id = session_data.get("session_id") or session_data.get("id")
-    if offline_id:
-        existing_by_offline = await db.sessions.find_one({"offline_id": str(offline_id)})
-        if existing_by_offline:
-            session_id = existing_by_offline.get("id") or str(existing_by_offline.get("_id"))
-            id_mapping[str(offline_id)] = session_id
-            return "Session already synced"
+def _normalize_session_type(value: Any) -> str:
+    normalized_type = value.strip().upper() if isinstance(value, str) else "STANDARD"
+    if normalized_type not in {"STANDARD", "BLIND", "STRICT"}:
+        return "STANDARD"
+    return normalized_type
 
-    existing_session = await db.sessions.find_one(
+
+async def _find_session_by_offline_id(db: Any, offline_id: Optional[Any]) -> Optional[dict[str, Any]]:
+    if not offline_id:
+        return None
+    return await db.sessions.find_one({"offline_id": str(offline_id)})
+
+
+async def _find_existing_open_session(db: Any, staff_user: str, warehouse: str) -> Optional[dict[str, Any]]:
+    return await db.sessions.find_one(
         {
             "staff_user": staff_user,
             "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]},
             "warehouse": {"$regex": f"^{re.escape(warehouse)}$", "$options": "i"},
         }
     )
+
+
+def _link_offline_id_to_session(
+    id_mapping: dict[str, str], offline_id: Optional[Any], session_id: Optional[str]
+) -> None:
+    if offline_id and session_id:
+        id_mapping[str(offline_id)] = session_id
+
+
+async def _process_session_creation(
+    session_data: dict[str, Any],
+    current_user: dict[str, Any],
+    id_mapping: dict[str, str],
+    db: Any,
+) -> str:
+    warehouse = _extract_warehouse(session_data)
+    staff_user = current_user.get("username", "unknown_user")
+    staff_name = current_user.get("full_name") or staff_user
+    offline_id = session_data.get("session_id") or session_data.get("id")
+
+    existing_by_offline = await _find_session_by_offline_id(db, offline_id)
+    if existing_by_offline:
+        session_id = existing_by_offline.get("id") or str(existing_by_offline.get("_id"))
+        _link_offline_id_to_session(id_mapping, offline_id, session_id)
+        return "Session already synced"
+
+    existing_session = await _find_existing_open_session(db, staff_user, warehouse)
     if existing_session:
         session_id = existing_session.get("id") or str(existing_session.get("_id"))
+        _link_offline_id_to_session(id_mapping, offline_id, session_id)
         if offline_id:
-            id_mapping[str(offline_id)] = session_id
             await db.sessions.update_one(
                 {"id": session_id},
                 {"$set": {"offline_id": str(offline_id), "created_offline": True}},
             )
         return "Session already exists"
 
-    raw_type = session_data.get("type")
-    normalized_type = raw_type.strip().upper() if isinstance(raw_type, str) else "STANDARD"
-    if normalized_type not in {"STANDARD", "BLIND", "STRICT"}:
-        normalized_type = "STANDARD"
-
     session = Session(
         warehouse=warehouse,
         staff_user=staff_user,
         staff_name=staff_name,
         status=session_data.get("status", "OPEN"),
-        type=normalized_type,
+        type=_normalize_session_type(session_data.get("type")),
     )
 
     session_doc = session.model_dump()
@@ -660,30 +724,43 @@ async def _process_session_op(
         session_doc["offline_id"] = offline_id
         id_mapping[str(offline_id)] = session.id
 
-    session_doc.update(
-        {"created_offline": True, "synced_at": datetime.now(timezone.utc).replace(tzinfo=None)}
-    )
+    session_doc.update({"created_offline": True, "synced_at": _utc_now()})
     await db.sessions.insert_one(session_doc)
     return "Session synced"
 
 
-async def _process_count_line_op(
-    line_data: dict[str, Any],
+async def _process_session_op(
+    session_data: dict[str, Any],
     current_user: dict[str, Any],
     id_mapping: dict[str, str],
     db: Any,
 ) -> str:
-    """Process a count_line sync operation."""
-    temp_session_id = line_data.get("session_id")
-    if temp_session_id is not None:
-        lookup_key = str(temp_session_id)
-        if lookup_key in id_mapping:
-            line_data["session_id"] = id_mapping[lookup_key]
+    """Process a session sync operation."""
+    operation_result = await _process_session_mutation_operation(
+        session_data, current_user, id_mapping, db
+    )
+    if operation_result:
+        return operation_result
+    return await _process_session_creation(session_data, current_user, id_mapping, db)
 
+
+def _remap_line_session_id(line_data: dict[str, Any], id_mapping: dict[str, str]) -> None:
+    temp_session_id = line_data.get("session_id")
+    if temp_session_id is None:
+        return
+    lookup_key = str(temp_session_id)
+    if lookup_key in id_mapping:
+        line_data["session_id"] = id_mapping[lookup_key]
+
+
+def _require_count_line_session_id(line_data: dict[str, Any]) -> str:
     session_id = str(line_data.get("session_id") or "")
     if not session_id:
         raise ValueError("Missing session_id for count line operation")
+    return session_id
 
+
+async def _assert_session_accepts_offline_count(db: Any, session_id: str) -> None:
     session = await find_session(db, session_id)
     if not session:
         raise ValueError("Session not found for count line operation")
@@ -692,15 +769,16 @@ async def _process_count_line_op(
         "CLOSED",
     }:
         raise ValueError("Session is finalized and cannot accept offline counts")
-    if str(session.get("status", "")).upper() not in {"OPEN", "ACTIVE"}:
-        # Allow RECONCILE sessions if they have reconciled_at set
-        # (the schema normalizer stores RECONCILE as ACTIVE + reconciled_at)
-        if not session.get("reconciled_at"):
-            raise ValueError("Session is not active")
+    if str(session.get("status", "")).upper() in {"OPEN", "ACTIVE"}:
+        return
+    if not session.get("reconciled_at"):
+        raise ValueError("Session is not active")
 
+
+def _set_count_line_defaults(line_data: dict[str, Any], current_user: dict[str, Any]) -> None:
     line_data.setdefault("counted_by", current_user.get("username"))
-    line_data.setdefault("counted_at", datetime.now(timezone.utc).replace(tzinfo=None))
-    line_data.setdefault("synced_at", datetime.now(timezone.utc).replace(tzinfo=None))
+    line_data.setdefault("counted_at", _utc_now())
+    line_data.setdefault("synced_at", _utc_now())
     line_data.setdefault("created_by", line_data.get("counted_by"))
     line_data.setdefault("verified", False)
     audit_metadata = line_data.get("audit")
@@ -719,163 +797,208 @@ async def _process_count_line_op(
     if not line_data.get("id"):
         line_data["id"] = line_data.get("_id") or str(uuid.uuid4())
 
-    if line_data.get("idempotency_key"):
-        existing_idempotent = await db.count_lines.find_one(
-            {
-                "session_id": session_id,
-                "idempotency_key": line_data["idempotency_key"],
-            }
-        )
-        if existing_idempotent:
-            return "Count line already synced"
 
+async def _count_line_is_idempotent(db: Any, session_id: str, line_data: dict[str, Any]) -> bool:
+    idempotency_key = line_data.get("idempotency_key")
+    if not idempotency_key:
+        return False
+    existing_idempotent = await db.count_lines.find_one(
+        {"session_id": session_id, "idempotency_key": idempotency_key}
+    )
+    return bool(existing_idempotent)
+
+
+async def _find_erp_item_for_line(db: Any, line_data: dict[str, Any]) -> Optional[dict[str, Any]]:
+    barcode = line_data.get("barcode")
+    item_code = line_data.get("item_code")
+    if barcode:
+        item = await db.erp_items.find_one({"barcode": barcode})
+        if item:
+            return item
+    if item_code:
+        return await db.erp_items.find_one({"item_code": item_code})
+    return None
+
+
+def _compute_variance_percent(erp_qty: float, counted_qty: float, variance: float) -> float:
+    if erp_qty > 0:
+        return abs(variance) / erp_qty * 100
+    return 0 if counted_qty == 0 else 100
+
+
+def _collect_risk_flags(
+    line_data: dict[str, Any],
+    *,
+    variance: float,
+    variance_percent: float,
+    erp_mrp: float,
+    counted_mrp: float,
+) -> list[str]:
+    risk_flags: list[str] = []
+    mrp_change_percent = ((counted_mrp - erp_mrp) / erp_mrp * 100) if erp_mrp > 0 else 0
+    if abs(variance) > 100 or variance_percent > 50:
+        risk_flags.append("LARGE_VARIANCE")
+    if mrp_change_percent < -20:
+        risk_flags.append("MRP_REDUCED_SIGNIFICANTLY")
+    if erp_mrp > 10000 and variance_percent > 5:
+        risk_flags.append("HIGH_VALUE_VARIANCE")
+
+    has_serials = bool(line_data.get("serial_numbers")) or bool(line_data.get("serial_entries"))
+    if erp_mrp > 5000 and not has_serials:
+        risk_flags.append("SERIAL_MISSING_HIGH_VALUE")
+
+    has_reason = bool(line_data.get("correction_reason")) or bool(line_data.get("variance_reason"))
+    if abs(variance) > 0 and not has_reason:
+        risk_flags.append("MISSING_CORRECTION_REASON")
+    if abs(mrp_change_percent) > 5 and not has_reason:
+        risk_flags.append("MRP_CHANGE_WITHOUT_REASON")
+
+    photo_required = (
+        abs(variance) > 100 or variance_percent > 50 or abs(mrp_change_percent) > 20 or erp_mrp > 10000
+    )
+    has_photo = bool(line_data.get("photo_base64")) or bool(line_data.get("photo_proofs"))
+    if photo_required and not has_photo:
+        risk_flags.append("PHOTO_PROOF_REQUIRED")
+    return risk_flags
+
+
+def _mark_misplacement_if_needed(
+    line_data: dict[str, Any], erp_item: Optional[dict[str, Any]], risk_flags: list[str]
+) -> bool:
+    if not erp_item:
+        return False
+
+    found_floor = (line_data.get("floor_no") or "").strip().upper()
+    found_rack = (line_data.get("rack_no") or "").strip().upper()
+    expected_floor = (erp_item.get("floor") or "").strip().upper()
+    expected_rack = (erp_item.get("rack") or "").strip().upper()
+    if not (expected_floor or expected_rack):
+        return False
+
+    floor_mismatch = found_floor and expected_floor and found_floor != expected_floor
+    rack_mismatch = found_rack and expected_rack and found_rack != expected_rack
+    if not (floor_mismatch or rack_mismatch):
+        return False
+
+    risk_flags.append("MISPLACED_ITEM")
+    line_data["expected_location"] = f"{expected_floor}/{expected_rack}"
+    line_data["found_location"] = f"{found_floor}/{found_rack}"
+    line_data["relocation_status"] = "PENDING"
+    return True
+
+
+def _merge_risk_flags(line_data: dict[str, Any], risk_flags: list[str]) -> None:
+    existing_flags = set(line_data.get("risk_flags", []))
+    existing_flags.update(risk_flags)
+    line_data["risk_flags"] = list(existing_flags)
+
+
+def _set_approval_status(line_data: dict[str, Any]) -> None:
+    if line_data.get("risk_flags") and line_data.get("approval_status") not in [
+        "APPROVED",
+        "REJECTED",
+    ]:
+        line_data["approval_status"] = "NEEDS_REVIEW"
+        return
+    if not line_data.get("approval_status"):
+        line_data["approval_status"] = "PENDING"
+
+
+async def _populate_offline_count_line_stats(db: Any, line_data: dict[str, Any]) -> None:
     # Calculate missing backend fields like variance and risk_flags for offline counts
     try:
-        erp_item = None
-        barcode = line_data.get("barcode")
-        item_code = line_data.get("item_code")
-
-        # M3 fix: Always await async Motor calls directly
-        if barcode:
-            erp_item = await db.erp_items.find_one({"barcode": barcode})
-
-        if not erp_item and item_code:
-            erp_item = await db.erp_items.find_one({"item_code": item_code})
-
-        # Calculate variance
+        erp_item = await _find_erp_item_for_line(db, line_data)
         erp_qty = erp_item.get("stock_qty", 0) if erp_item else 0
         erp_mrp = erp_item.get("mrp", 0.0) if erp_item else 0.0
-
         counted_qty = float(line_data.get("counted_qty", 0.0))
-        # Frontend might send mrp_counted or counted_mrp
         mrp_c = line_data.get("mrp_counted") or line_data.get("counted_mrp") or erp_mrp
         counted_mrp = float(mrp_c)
-
         variance = counted_qty - erp_qty
-        # H1 fix: Use erp_qty on the ERP side so quantity variance is reflected
+        variance_percent = _compute_variance_percent(erp_qty, counted_qty, variance)
         financial_impact = (counted_mrp * counted_qty) - (erp_mrp * erp_qty)
-
-        # Manually invoke risk flags because line_data is a dict
-        # (CountLineCreate expects strict types)
-        risk_flags = []
-        # M1 fix: Don't default to 100% for zero-stock items; use 0 if both are 0
-        if erp_qty > 0:
-            variance_percent = abs(variance) / erp_qty * 100
-        elif counted_qty == 0:
-            variance_percent = 0
-        else:
-            variance_percent = 100
-        mrp_change_percent = ((counted_mrp - erp_mrp) / erp_mrp * 100) if erp_mrp > 0 else 0
-
-        if abs(variance) > 100 or variance_percent > 50:
-            risk_flags.append("LARGE_VARIANCE")
-        if mrp_change_percent < -20:
-            risk_flags.append("MRP_REDUCED_SIGNIFICANTLY")
-        if erp_mrp > 10000 and variance_percent > 5:
-            risk_flags.append("HIGH_VALUE_VARIANCE")
-
-        has_serials = bool(line_data.get("serial_numbers"))
-        has_serials = has_serials or bool(line_data.get("serial_entries"))
-        if erp_mrp > 5000 and not has_serials:
-            risk_flags.append("SERIAL_MISSING_HIGH_VALUE")
-
-        has_reason = bool(line_data.get("correction_reason")) or bool(
-            line_data.get("variance_reason")
+        risk_flags = _collect_risk_flags(
+            line_data,
+            variance=variance,
+            variance_percent=variance_percent,
+            erp_mrp=erp_mrp,
+            counted_mrp=counted_mrp,
         )
-        if abs(variance) > 0 and not has_reason:
-            risk_flags.append("MISSING_CORRECTION_REASON")
-
-        if abs(mrp_change_percent) > 5 and not has_reason:
-            risk_flags.append("MRP_CHANGE_WITHOUT_REASON")
-
-        photo_required = (
-            abs(variance) > 100
-            or variance_percent > 50
-            or abs(mrp_change_percent) > 20
-            or erp_mrp > 10000
-        )
-        has_photo = bool(line_data.get("photo_base64")) or bool(line_data.get("photo_proofs"))
-        if photo_required and not has_photo:
-            risk_flags.append("PHOTO_PROOF_REQUIRED")
-
-        # Check for misplacements
-        is_misplaced = False
-        if erp_item:
-            found_floor = (line_data.get("floor_no") or "").strip().upper()
-            found_rack = (line_data.get("rack_no") or "").strip().upper()
-            expected_floor = (erp_item.get("floor") or "").strip().upper()
-            expected_rack = (erp_item.get("rack") or "").strip().upper()
-            if expected_floor or expected_rack:
-                if (found_floor and expected_floor and found_floor != expected_floor) or (
-                    found_rack and expected_rack and found_rack != expected_rack
-                ):
-                    is_misplaced = True
-                    risk_flags.append("MISPLACED_ITEM")
-                    line_data["expected_location"] = f"{expected_floor}/{expected_rack}"
-                    line_data["found_location"] = f"{found_floor}/{found_rack}"
-                    line_data["relocation_status"] = "PENDING"
+        is_misplaced = _mark_misplacement_if_needed(line_data, erp_item, risk_flags)
 
         line_data["variance"] = variance
         line_data["erp_qty"] = erp_qty
         line_data["mrp_erp"] = erp_mrp
         line_data["mrp_counted"] = counted_mrp
         line_data["financial_impact"] = financial_impact
-        # To avoid duplicating risk flags if sent by client
-        existing_flags = set(line_data.get("risk_flags", []))
-        existing_flags.update(risk_flags)
-        line_data["risk_flags"] = list(existing_flags)
+        _merge_risk_flags(line_data, risk_flags)
         line_data["is_misplaced"] = line_data.get("is_misplaced", False) or is_misplaced
-
-        # Approval logic
-        if line_data["risk_flags"] and line_data.get("approval_status") not in [
-            "APPROVED",
-            "REJECTED",
-        ]:
-            line_data["approval_status"] = "NEEDS_REVIEW"
-        elif not line_data.get("approval_status"):
-            line_data["approval_status"] = "PENDING"
-
+        _set_approval_status(line_data)
     except Exception as e:
         logger.error(f"Failed to calculate missing stats for offline count: {e}")
         line_data.setdefault("approval_status", "PENDING")
 
-    line_data.setdefault("status", "pending")
 
-    existing_duplicate = await find_duplicate_count_line(
-        db,
-        line_data,
-    )
-    if existing_duplicate and can_reuse_rejected_count_line(existing_duplicate, line_data):
-        line_data["id"] = extract_document_id(existing_duplicate) or line_data["id"]
-        line_data["status"] = "pending"
-        line_data["approval_status"] = line_data.get("approval_status") or "PENDING"
-        line_data["verified"] = False
-        line_data["verified_by"] = None
-        line_data["verified_at"] = None
-        line_data["rejected_by"] = None
-        line_data["rejected_at"] = None
-        line_data["assigned_to"] = None
-        line_data["recount_requested_at"] = None
-        line_data["recount_requested_by"] = None
-        line_data["recount_iteration"] = (
-            int(existing_duplicate.get("recount_iteration", 0) or 0) + 1
-        )
-        update_payload = dict(line_data)
-        update_payload.pop("_id", None)
-        await db.count_lines.update_one(
-            {"_id": existing_duplicate["_id"]}, {"$set": update_payload}
-        )
-        await recompute_session_totals(db, session_id)
-        return "Rejected count line updated through explicit recount sync"
+def _apply_recount_reset_fields(
+    line_data: dict[str, Any], existing_duplicate: dict[str, Any]
+) -> None:
+    line_data["id"] = extract_document_id(existing_duplicate) or line_data["id"]
+    line_data["status"] = "pending"
+    line_data["approval_status"] = line_data.get("approval_status") or "PENDING"
+    line_data["verified"] = False
+    line_data["verified_by"] = None
+    line_data["verified_at"] = None
+    line_data["rejected_by"] = None
+    line_data["rejected_at"] = None
+    line_data["assigned_to"] = None
+    line_data["recount_requested_at"] = None
+    line_data["recount_requested_by"] = None
+    line_data["recount_iteration"] = int(existing_duplicate.get("recount_iteration", 0) or 0) + 1
 
-    if existing_duplicate:
+
+async def _handle_duplicate_count_line(
+    db: Any,
+    session_id: str,
+    line_data: dict[str, Any],
+    existing_duplicate: dict[str, Any],
+) -> str:
+    if not can_reuse_rejected_count_line(existing_duplicate, line_data):
         raise ValueError(
             "Duplicate Scan: This item has already been counted in this specific location (Floor/Rack)."
         )
 
+    _apply_recount_reset_fields(line_data, existing_duplicate)
+    update_payload = dict(line_data)
+    update_payload.pop("_id", None)
+    await db.count_lines.update_one({"_id": existing_duplicate["_id"]}, {"$set": update_payload})
+    await recompute_session_totals(db, session_id)
+    return "Rejected count line updated through explicit recount sync"
+
+
+async def _process_count_line_op(
+    line_data: dict[str, Any],
+    current_user: dict[str, Any],
+    id_mapping: dict[str, str],
+    db: Any,
+) -> str:
+    """Process a count_line sync operation."""
+    _remap_line_session_id(line_data, id_mapping)
+    session_id = _require_count_line_session_id(line_data)
+    await _assert_session_accepts_offline_count(db, session_id)
+    _set_count_line_defaults(line_data, current_user)
+    if await _count_line_is_idempotent(db, session_id, line_data):
+        return "Count line already synced"
+    await _populate_offline_count_line_stats(db, line_data)
+    line_data.setdefault("status", "pending")
+    existing_duplicate = await find_duplicate_count_line(db, line_data)
+    if existing_duplicate:
+        return await _handle_duplicate_count_line(
+            db=db,
+            session_id=session_id,
+            line_data=line_data,
+            existing_duplicate=existing_duplicate,
+        )
     await db.count_lines.insert_one(line_data)
     await recompute_session_totals(db, session_id)
-
     return "Count line synced with canonical duplicate validation"
 
 

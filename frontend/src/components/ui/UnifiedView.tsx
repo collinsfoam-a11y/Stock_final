@@ -24,10 +24,10 @@ import {
   radius,
   shadows,
   semanticColors,
+  type RadiusKey,
+  type ShadowKey,
+  type SpacingKey,
 } from "../../theme/unified";
-import type { SpacingKey } from "../../theme/unified";
-import type { RadiusKey } from "../../theme/unified";
-import type { ShadowKey } from "../../theme/unified";
 
 // ==========================================
 // TYPES

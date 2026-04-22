@@ -91,7 +91,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
         style={[
           styles.skeleton,
           {
-            width: typeof width === "string" ? width : width,
+            width,
             height: variantStyle.height,
             borderRadius: variantStyle.borderRadius,
             backgroundColor: modernColors.neutral[200],
@@ -130,7 +130,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
       style={[
         styles.skeleton,
         {
-          width: typeof width === "string" ? width : width,
+          width,
           height: variantStyle.height,
           borderRadius: variantStyle.borderRadius,
           backgroundColor: modernColors.neutral[200],

@@ -34,10 +34,12 @@ export const triggerHaptic = async (pattern: HapticPattern): Promise<void> => {
   try {
     switch (pattern) {
       case "tap":
+      case "drag":
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         break;
 
       case "success":
+      case "notification":
         await Haptics.notificationAsync(
           Haptics.NotificationFeedbackType.Success,
         );
@@ -58,25 +60,12 @@ export const triggerHaptic = async (pattern: HapticPattern): Promise<void> => {
         break;
 
       case "toggle":
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        break;
-
-      case "drag":
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        break;
-
-      case "drop":
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        break;
-
       case "refresh":
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         break;
 
-      case "notification":
-        await Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        );
+      case "drop":
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         break;
 
       default:

@@ -66,53 +66,95 @@ class RouterRegistry:
     enterprise_available: bool = False
 
 
-def register_routers(app: FastAPI, registry: RouterRegistry, logger: Any) -> None:
-    """Register all routers in a single composition point."""
-    app.include_router(registry.health_router, tags=["health"])
-    app.include_router(registry.health_router, prefix="/api", tags=["health"])
-    app.include_router(registry.info_router)
+def _include_router_specs(
+    app: FastAPI, specs: list[tuple[APIRouter, Optional[str], Optional[list[str]]]]
+) -> None:
+    for router, prefix, tags in specs:
+        kwargs: dict[str, Any] = {}
+        if prefix is not None:
+            kwargs["prefix"] = prefix
+        if tags is not None:
+            kwargs["tags"] = tags
+        app.include_router(router, **kwargs)
 
-    app.include_router(registry.permissions_router, prefix="/api")
-    app.include_router(registry.user_management_router, prefix="/api")
-    app.include_router(registry.mapping_router)
-    app.include_router(registry.exports_router, prefix="/api")
-    app.include_router(registry.auth_router, prefix="/api")
-    app.include_router(registry.search_router)
-    app.include_router(registry.metrics_router, prefix="/api")
-    app.include_router(registry.sync_router, prefix="/api")
-    app.include_router(registry.sync_management_router, prefix="/api")
-    app.include_router(registry.self_diagnosis_router, prefix="/api/diagnosis")
-    app.include_router(registry.security_router)
-    app.include_router(registry.verification_router)
-    app.include_router(registry.erp_router, prefix="/api")
-    app.include_router(registry.variance_router, prefix="/api")
-    app.include_router(registry.admin_control_router)
-    app.include_router(registry.dynamic_fields_router)
-    app.include_router(registry.dynamic_reports_router)
-    app.include_router(registry.realtime_dashboard_router, prefix="/api")
-    app.include_router(registry.logs_router, prefix="/api")
-    app.include_router(registry.master_settings_router)
-    app.include_router(registry.service_logs_router)
-    app.include_router(registry.locations_router)
-    app.include_router(registry.count_lines_router, prefix="/api")
-    app.include_router(registry.analytics_router, prefix="/api")
 
-    app.include_router(registry.sync_batch_router)
-    app.include_router(registry.unknown_items_public_router, prefix="/api")
-    app.include_router(registry.unknown_items_router)
-    app.include_router(registry.rack_router)
-    app.include_router(registry.session_mgmt_router)
-    app.include_router(registry.user_settings_router)
-    app.include_router(registry.preferences_router, prefix="/api")
-    app.include_router(registry.reporting_router)
-    app.include_router(registry.admin_dashboard_router, prefix="/api")
-    app.include_router(registry.report_generation_router, prefix="/api")
-    app.include_router(registry.error_reporting_router)
-    app.include_router(registry.websocket_router)
-    app.include_router(registry.sql_verification_router)
-    app.include_router(registry.enhanced_item_router)
-    app.include_router(registry.pi_router)
+def _include_optional_router(
+    app: FastAPI,
+    router: Optional[APIRouter],
+    logger: Any,
+    *,
+    prefix: Optional[str] = None,
+    tags: Optional[list[str]] = None,
+    success_log: Optional[str] = None,
+    failure_log: str,
+) -> None:
+    if not router:
+        return
+    try:
+        kwargs: dict[str, Any] = {}
+        if prefix is not None:
+            kwargs["prefix"] = prefix
+        if tags is not None:
+            kwargs["tags"] = tags
+        app.include_router(router, **kwargs)
+        if success_log:
+            logger.info(success_log)
+    except Exception as exc:
+        logger.warning(f"{failure_log}: {exc}")
 
+
+def _register_core_router_set(app: FastAPI, registry: RouterRegistry) -> None:
+    specs: list[tuple[APIRouter, Optional[str], Optional[list[str]]]] = [
+        (registry.health_router, None, ["health"]),
+        (registry.health_router, "/api", ["health"]),
+        (registry.info_router, None, None),
+        (registry.permissions_router, "/api", None),
+        (registry.user_management_router, "/api", None),
+        (registry.mapping_router, None, None),
+        (registry.exports_router, "/api", None),
+        (registry.auth_router, "/api", None),
+        (registry.search_router, None, None),
+        (registry.metrics_router, "/api", None),
+        (registry.sync_router, "/api", None),
+        (registry.sync_management_router, "/api", None),
+        (registry.self_diagnosis_router, "/api/diagnosis", None),
+        (registry.security_router, None, None),
+        (registry.verification_router, None, None),
+        (registry.erp_router, "/api", None),
+        (registry.variance_router, "/api", None),
+        (registry.admin_control_router, None, None),
+        (registry.dynamic_fields_router, None, None),
+        (registry.dynamic_reports_router, None, None),
+        (registry.realtime_dashboard_router, "/api", None),
+        (registry.logs_router, "/api", None),
+        (registry.master_settings_router, None, None),
+        (registry.service_logs_router, None, None),
+        (registry.locations_router, None, None),
+        (registry.count_lines_router, "/api", None),
+        (registry.analytics_router, "/api", None),
+        (registry.sync_batch_router, None, None),
+        (registry.unknown_items_public_router, "/api", None),
+        (registry.unknown_items_router, None, None),
+        (registry.rack_router, None, None),
+        (registry.session_mgmt_router, None, None),
+        (registry.user_settings_router, None, None),
+        (registry.preferences_router, "/api", None),
+        (registry.reporting_router, None, None),
+        (registry.admin_dashboard_router, "/api", None),
+        (registry.report_generation_router, "/api", None),
+        (registry.error_reporting_router, None, None),
+        (registry.websocket_router, None, None),
+        (registry.sql_verification_router, None, None),
+        (registry.enhanced_item_router, None, None),
+        (registry.pi_router, None, None),
+        (registry.supervisor_pin_router, "/api", ["Supervisor"]),
+        (registry.api_router, "/api", None),
+        (registry.notifications_router, None, None),
+    ]
+    _include_router_specs(app, specs)
+
+
+def _register_optional_router_set(app: FastAPI, registry: RouterRegistry, logger: Any) -> None:
     if registry.enterprise_available and registry.enterprise_router is not None:
         app.include_router(registry.enterprise_router, prefix="/api")
         logger.info("Enterprise API router registered at /api/enterprise/*")
@@ -126,44 +168,46 @@ def register_routers(app: FastAPI, registry: RouterRegistry, logger: Any) -> Non
         except Exception as exc:
             logger.warning(f"Feature API router registration failed: {exc}")
 
-    if registry.enrichment_router:
-        try:
-            app.include_router(registry.enrichment_router)
-            logger.info("Enrichment API router registered")
-        except Exception as exc:
-            logger.warning(f"Enrichment API router not available: {exc}")
+    _include_optional_router(
+        app,
+        registry.enrichment_router,
+        logger,
+        success_log="Enrichment API router registered",
+        failure_log="Enrichment API router not available",
+    )
+    _include_optional_router(
+        app,
+        registry.v2_router,
+        logger,
+        success_log="API v2 router registered",
+        failure_log="API v2 router registration failed",
+    )
+    _include_optional_router(
+        app,
+        registry.pin_auth_router,
+        logger,
+        prefix="/api",
+        tags=["PIN Auth"],
+        failure_log="PIN auth API router registration failed",
+    )
+    _include_optional_router(
+        app,
+        registry.reconciliation_router,
+        logger,
+        failure_log="Reconciliation router registration failed",
+    )
+    _include_optional_router(
+        app,
+        registry.recount_router,
+        logger,
+        success_log="Recount API router registered",
+        failure_log="Recount router registration failed",
+    )
 
-    if registry.v2_router:
-        try:
-            app.include_router(registry.v2_router)
-            logger.info("API v2 router registered")
-        except Exception as exc:
-            logger.warning(f"API v2 router registration failed: {exc}")
 
-    app.include_router(registry.supervisor_pin_router, prefix="/api", tags=["Supervisor"])
-
-    if registry.pin_auth_router:
-        try:
-            app.include_router(registry.pin_auth_router, prefix="/api", tags=["PIN Auth"])
-        except Exception as exc:
-            logger.warning(f"PIN auth API router registration failed: {exc}")
-
-    app.include_router(registry.api_router, prefix="/api")
-
-    if registry.reconciliation_router:
-        try:
-            app.include_router(registry.reconciliation_router)
-        except Exception as exc:
-            logger.warning(f"Reconciliation router registration failed: {exc}")
-
-    app.include_router(registry.notifications_router)
-
-    if registry.recount_router:
-        try:
-            app.include_router(registry.recount_router)
-            logger.info("Recount API router registered")
-        except Exception as exc:
-            logger.warning(f"Recount router registration failed: {exc}")
-
+def register_routers(app: FastAPI, registry: RouterRegistry, logger: Any) -> None:
+    """Register all routers in a single composition point."""
+    _register_core_router_set(app, registry)
+    _register_optional_router_set(app, registry, logger)
     logger.info("Phase 1-3 upgrade routers registered")
     logger.info("Admin Dashboard, Report Generation, and Dynamic Reports APIs registered")

@@ -15,132 +15,95 @@ const DEFAULT_WEB_PORT = 19006;
 let cachedPort: number | null = null;
 let portDetectionAttempted = false;
 
+const parsePortNumber = (value?: string | null): number | null => {
+  if (!value) return null;
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed <= 0) return null;
+  return parsed;
+};
+
+const logPortSelection = (message: string, port: number) => {
+  if (__DEV__) {
+    console.log(`📡 ${message}: ${port}`);
+  }
+};
+
+const cacheAndLogPort = (message: string, port: number): number => {
+  cachedPort = port;
+  logPortSelection(message, port);
+  return port;
+};
+
+const detectPortFromWindowLocation = (): number | null => {
+  if (Platform.OS !== "web" || typeof window === "undefined") return null;
+  return parsePortNumber(window.location.port);
+};
+
+const detectPortFromExpoHostUri = (): number | null => {
+  if (Platform.OS === "web" || !Constants.expoConfig?.hostUri) return null;
+  const parts = Constants.expoConfig.hostUri.split(":");
+  return parts.length === 2 ? parsePortNumber(parts[1]) : null;
+};
+
+const probeFrontendPort = async (): Promise<number | null> => {
+  for (const port of EXPO_PORTS) {
+    try {
+      const response = await fetch(`http://localhost:${port}`, {
+        method: "HEAD",
+        signal: AbortSignal.timeout(1000),
+      });
+      if (response.ok || response.status < 500) {
+        return port;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+};
+
+const getPlatformDefaultPort = (): number =>
+  Platform.OS === "web" ? DEFAULT_WEB_PORT : METRO_PORT;
+
 /**
  * Detect which port the frontend is running on
  * Checks common Expo ports and returns the first one that's active
  */
 export const detectFrontendPort = async (): Promise<number | null> => {
-  if (cachedPort) {
-    return cachedPort;
-  }
-
-  if (portDetectionAttempted) {
-    return null;
-  }
+  if (cachedPort) return cachedPort;
+  if (portDetectionAttempted) return null;
 
   portDetectionAttempted = true;
 
-  // On web, try to detect from window location
-  if (Platform.OS === "web" && typeof window !== "undefined") {
-    const port = window.location.port;
-    if (port) {
-      const portNum = parseInt(port, 10);
-      if (!isNaN(portNum) && portNum > 0) {
-        cachedPort = portNum;
-        if (__DEV__) {
-          __DEV__ &&
-            console.log(
-              `📡 Detected frontend port from window.location: ${cachedPort}`,
-            );
-        }
-        return cachedPort;
-      }
-    }
-  }
+  const fromWindow = detectPortFromWindowLocation();
+  if (fromWindow) return cacheAndLogPort("Detected frontend port from window.location", fromWindow);
 
-  // Native: Try to get from Expo Constants
-  if (Platform.OS !== "web" && Constants.expoConfig?.hostUri) {
-    const parts = Constants.expoConfig.hostUri.split(":");
-    const portStr = parts[1];
-    if (parts.length === 2 && portStr) {
-      const port = parseInt(portStr, 10);
-      if (!isNaN(port)) {
-        cachedPort = port;
-        if (__DEV__) {
-          __DEV__ &&
-            console.log(
-              `📡 Detected frontend port from Expo Constants: ${cachedPort}`,
-            );
-        }
-        return cachedPort;
-      }
-    }
-  }
+  const fromExpo = detectPortFromExpoHostUri();
+  if (fromExpo) return cacheAndLogPort("Detected frontend port from Expo Constants", fromExpo);
 
-  // Try to detect by checking which ports are in use
-  // Check common Expo ports
-  for (const port of EXPO_PORTS) {
-    try {
-      const response = await fetch(`http://localhost:${port}`, {
-        method: "HEAD",
-        signal: AbortSignal.timeout(1000), // 1 second timeout
-      });
+  const probedPort = await probeFrontendPort();
+  if (probedPort) return cacheAndLogPort("Detected frontend port", probedPort);
 
-      if (response.ok || response.status < 500) {
-        cachedPort = port;
-        if (__DEV__) {
-          __DEV__ && console.log(`📡 Detected frontend port: ${cachedPort}`);
-        }
-        return cachedPort;
-      }
-    } catch {
-      // Port not available, try next
-      continue;
-    }
-  }
-
-  // Fallback: Use default web port for web platform
+  const fallbackPort = getPlatformDefaultPort();
   if (Platform.OS === "web") {
-    cachedPort = DEFAULT_WEB_PORT;
-    if (__DEV__) {
-      __DEV__ && console.log(`📡 Using default web port: ${cachedPort}`);
-    }
-    return cachedPort;
+    return cacheAndLogPort("Using default web port", fallbackPort);
   }
-
-  // Fallback: Use Metro port for native platforms
-  cachedPort = METRO_PORT;
-  if (__DEV__) {
-    __DEV__ && console.log(`📡 Using default Metro port: ${cachedPort}`);
-  }
-  return cachedPort;
+  return cacheAndLogPort("Using default Metro port", fallbackPort);
 };
 
 /**
  * Get frontend port synchronously (returns cached or default)
  */
 export const getFrontendPortSync = (): number => {
-  if (cachedPort) {
-    return cachedPort;
+  if (cachedPort) return cachedPort;
+
+  const detectedPort = detectPortFromWindowLocation() || detectPortFromExpoHostUri();
+  if (detectedPort) {
+    cachedPort = detectedPort;
+    return detectedPort;
   }
 
-  // On web, try to get from window location
-  if (Platform.OS === "web" && typeof window !== "undefined") {
-    const port = window.location.port;
-    if (port) {
-      const portNum = parseInt(port, 10);
-      if (!isNaN(portNum) && portNum > 0) {
-        cachedPort = portNum;
-        return cachedPort;
-      }
-    }
-  }
-
-  // Native: Try to get from Expo Constants
-  if (Platform.OS !== "web" && Constants.expoConfig?.hostUri) {
-    const parts = Constants.expoConfig.hostUri.split(":");
-    const portStr = parts[1];
-    if (parts.length === 2 && portStr) {
-      const port = parseInt(portStr, 10);
-      if (!isNaN(port)) {
-        cachedPort = port;
-        return cachedPort;
-      }
-    }
-  }
-
-  // Return default based on platform
-  return Platform.OS === "web" ? DEFAULT_WEB_PORT : METRO_PORT;
+  return getPlatformDefaultPort();
 };
 
 /**

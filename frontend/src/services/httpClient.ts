@@ -178,6 +178,84 @@ const refreshAccessToken = async (): Promise<string | null> => {
   }
 };
 
+const ensureHeadersObject = (config: any): Record<string, any> => {
+  if (!config.headers) {
+    config.headers = {};
+  }
+  return config.headers as Record<string, any>;
+};
+
+const isPublicRequestUrl = (fullUrl: string, isHealthRequest: boolean): boolean =>
+  fullUrl.includes("/auth/login") ||
+  fullUrl.includes("/auth/login-pin") ||
+  fullUrl.includes("/auth/refresh") ||
+  fullUrl.includes("/auth/logout") ||
+  isHealthRequest;
+
+const getAuthHeaderFromConfig = (config: any): unknown => {
+  const headers = ensureHeadersObject(config);
+  return (
+    headers["Authorization"] ||
+    headers.common?.["Authorization"] ||
+    apiClient.defaults.headers.common["Authorization"]
+  );
+};
+
+const attachDeviceIdHeader = async (config: any): Promise<void> => {
+  try {
+    const deviceId = await getDeviceId();
+    if (deviceId) {
+      ensureHeadersObject(config)["X-Device-ID"] = deviceId;
+    }
+  } catch (err) {
+    log.warn("Failed to attach device ID header", { error: String(err) });
+  }
+};
+
+const injectAuthTokenIfMissing = async (config: any, isHealthRequest: boolean): Promise<void> => {
+  const headers = ensureHeadersObject(config);
+  if (isHealthRequest || headers["Authorization"] || headers.common?.["Authorization"]) {
+    return;
+  }
+
+  try {
+    const token = await secureStorage.getItem("auth_token");
+    if (!token) return;
+    headers["Authorization"] = `Bearer ${token}`;
+    if (shouldLogNetworkDebug) {
+      log.debug("Injected missing Auth token from storage");
+    }
+  } catch {
+    // Ignore storage errors, proceed without token
+  }
+};
+
+const logRequestDebug = (
+  fullUrl: string,
+  config: any,
+  authHeader: unknown,
+): void => {
+  if (!shouldLogNetworkDebug) return;
+  const hasAuth = Boolean(authHeader);
+  if (!hasAuth && !fullUrl.includes("/auth/login") && !fullUrl.includes("/health")) {
+    log.debug("API request (No Auth Header)", { url: fullUrl });
+  } else if (hasAuth && !fullUrl.includes("/auth/login")) {
+    const tokenString = String(authHeader);
+    log.debug("API request (With Auth)", {
+      url: fullUrl,
+      headerType: typeof authHeader,
+      tokenPrefix: tokenString.substring(0, 15),
+      tokenLength: tokenString.length,
+    });
+  }
+
+  log.debug("API request", {
+    method: config.method?.toUpperCase(),
+    url: fullUrl,
+    payload: summarizePayload(config.data),
+  });
+};
+
 // Add request interceptor for debugging (never log raw payloads or auth headers)
 apiClient.interceptors.request.use(
   async (config) => {
@@ -185,71 +263,17 @@ apiClient.interceptors.request.use(
     const isHealthRequest = isPublicHealthRequestUrl(fullUrl);
 
     if (isHealthRequest) {
-      stripHealthRequestHeaders(config.headers as Record<string, unknown>);
+      stripHealthRequestHeaders(ensureHeadersObject(config));
     } else {
-      try {
-        const deviceId = await getDeviceId();
-        if (deviceId) {
-          config.headers["X-Device-ID"] = deviceId;
-        }
-      } catch (err) {
-        log.warn("Failed to attach device ID header", { error: String(err) });
-      }
+      await attachDeviceIdHeader(config);
     }
 
-    // Ensure Auth token is attached if available (fixes 401 loop if defaults are lost)
-    if (
-      !isHealthRequest &&
-      !config.headers["Authorization"] &&
-      !config.headers.common?.["Authorization"]
-    ) {
-      try {
-        const token = await secureStorage.getItem("auth_token");
-        if (token) {
-          config.headers["Authorization"] = `Bearer ${token}`;
-          if (shouldLogNetworkDebug) {
-            // Avoid logging the full token
-            log.debug("Injected missing Auth token from storage");
-          }
-        }
-      } catch (_err) {
-        // Ignore storage errors, proceed without token
-      }
-    }
-    const authHeader =
-      config.headers["Authorization"] ||
-      config.headers.common?.["Authorization"] ||
-      apiClient.defaults.headers.common["Authorization"];
-    const hasAuth = !!authHeader;
+    await injectAuthTokenIfMissing(config, isHealthRequest);
+    const authHeader = getAuthHeaderFromConfig(config);
+    logRequestDebug(fullUrl, config, authHeader);
 
-    if (shouldLogNetworkDebug) {
-      if (!hasAuth && !fullUrl.includes("/auth/login") && !fullUrl.includes("/health")) {
-        log.debug("API request (No Auth Header)", { url: fullUrl });
-      } else if (hasAuth && !fullUrl.includes("/auth/login")) {
-        const tokenString = String(authHeader);
-        log.debug("API request (With Auth)", {
-          url: fullUrl,
-          headerType: typeof authHeader,
-          tokenPrefix: tokenString.substring(0, 15),
-          tokenLength: tokenString.length,
-        });
-      }
-
-      log.debug("API request", {
-        method: config.method?.toUpperCase(),
-        url: fullUrl,
-        payload: summarizePayload(config.data),
-      });
-    }
-
-    // Guard: Prevent authenticated calls if no token is available (except for login/health)
-    const isPublic =
-    fullUrl.includes("/auth/login") ||
-    fullUrl.includes("/auth/login-pin") ||
-    fullUrl.includes("/auth/refresh") ||
-    // /auth/register removed from public routes; bootstrap handled server-side
-    fullUrl.includes("/auth/logout") ||
-      isHealthRequest;
+    const isPublic = isPublicRequestUrl(fullUrl, isHealthRequest);
+    const hasAuth = Boolean(authHeader);
     if (!isPublic && !hasAuth && !CAN_USE_COOKIE_AUTH) {
       log.warn("Blocking authenticated call: No token available", {
         url: fullUrl,

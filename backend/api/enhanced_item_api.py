@@ -96,6 +96,149 @@ class ItemResponse:
         self.timestamp = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
 
+async def _sync_item_from_sql(barcode: str) -> Optional[dict[str, Any]]:
+    if not sql_sync_service:
+        return None
+    try:
+        synced_item = await asyncio.wait_for(
+            sql_sync_service.sync_single_item_by_barcode(barcode),
+            timeout=3,
+        )
+    except asyncio.TimeoutError:
+        logger.warning("Real-time SQL sync timed out for %s; using fallback", barcode)
+        return None
+    except Exception as e:
+        logger.warning("Real-time SQL sync failed for %s: %s", barcode, e)
+        return None
+
+    if not synced_item:
+        return None
+    synced_item["_id"] = str(synced_item["_id"])
+    return synced_item
+
+
+async def _resolve_item_data_source(
+    normalized_barcode: str, force_source: Optional[str]
+) -> tuple[Optional[dict[str, Any]], str]:
+    if force_source:
+        item_data, source = await _fetch_from_specific_source(normalized_barcode, force_source)
+        return cast(Optional[dict[str, Any]], item_data), source
+
+    synced_item = await _sync_item_from_sql(normalized_barcode)
+    if synced_item:
+        return synced_item, "sql_server_sync"
+
+    item_data, source = await _fetch_with_fallback_strategy(normalized_barcode)
+    return cast(Optional[dict[str, Any]], item_data), source
+
+
+def _build_lookup_metadata(
+    *,
+    include_metadata: bool,
+    source: str,
+    response_time_ms: float,
+    normalized_barcode: str,
+    current_user: dict[str, Any],
+) -> Optional[dict[str, Any]]:
+    if not include_metadata:
+        return None
+    return {
+        "source": source,
+        "response_time_ms": response_time_ms,
+        "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+        "barcode_searched": normalized_barcode,
+        "user": current_user["username"],
+    }
+
+
+def _raise_item_not_found(barcode: str, response_time_ms: float) -> None:
+    logger.warning("Item not found for barcode: %s", barcode)
+    raise HTTPException(
+        status_code=404,
+        detail={
+            "message": "Item not found",
+            "barcode": barcode,
+            "source": "not_found",
+            "response_time_ms": response_time_ms,
+        },
+    )
+
+
+async def _resolve_lookup_context(
+    session_id: Optional[str], rack_no: Optional[str]
+) -> tuple[Optional[str], Optional[str]]:
+    context_rack = rack_no.strip().upper() if rack_no else None
+    context_floor = None
+    if not session_id:
+        return context_floor, context_rack
+
+    session = await db.sessions.find_one({"id": session_id})
+    if not session:
+        return context_floor, context_rack
+
+    if not context_rack and session.get("rack"):
+        context_rack = str(session.get("rack")).strip().upper()
+    if session.get("floor"):
+        context_floor = str(session.get("floor")).strip().upper()
+    return context_floor, context_rack
+
+
+def _apply_misplaced_flag(
+    item_data: dict[str, Any],
+    context_floor: Optional[str],
+    context_rack: Optional[str],
+) -> None:
+    item_floor = (item_data.get("floor") or "").strip().upper()
+    item_rack = (item_data.get("rack") or "").strip().upper()
+    if not (item_floor or item_rack):
+        return
+
+    is_misplaced = False
+    if context_rack and item_rack and context_rack != item_rack:
+        is_misplaced = True
+    if context_floor and item_floor and context_floor != item_floor:
+        is_misplaced = True
+
+    item_data["is_misplaced"] = is_misplaced
+    if is_misplaced:
+        item_data["expected_location"] = f"{item_floor}/{item_rack}"
+
+
+async def _decorate_item_with_misplacement_context(
+    item_data: Optional[dict[str, Any]], session_id: Optional[str], rack_no: Optional[str]
+) -> None:
+    if not item_data or not (session_id or rack_no):
+        return
+
+    try:
+        context_floor, context_rack = await _resolve_lookup_context(session_id, rack_no)
+        _apply_misplaced_flag(item_data, context_floor, context_rack)
+    except Exception as e:
+        logger.warning("Failed to calculate is_misplaced: %s", e)
+
+
+async def _cache_lookup_response(normalized_barcode: str, response_data: dict[str, Any]) -> None:
+    if not cache_service:
+        return
+    await cache_service.set_async("items", f"enhanced_{normalized_barcode}", response_data, ttl=1800)
+
+
+async def _record_enhanced_lookup_metrics(
+    request: Request, status_code: int, start_time: float
+) -> None:
+    if not monitoring_service:
+        return
+    try:
+        await monitoring_service.track_request(
+            endpoint="enhanced_barcode_lookup",
+            method=request.method,
+            status_code=status_code,
+            duration=time.time() - start_time,
+        )
+    except Exception:
+        logger.debug("Failed to record enhanced barcode metrics", exc_info=True)
+
+
 @enhanced_item_router.get("/barcode/{barcode}/enhanced")
 async def get_item_by_barcode_enhanced(
     barcode: str,
@@ -114,135 +257,32 @@ async def get_item_by_barcode_enhanced(
     status_code = 200
 
     try:
-        # Validate barcode format and normalize input
         normalized_barcode = _validate_barcode_format(barcode)
-
-        # Determine data source strategy
-        if force_source:
-            item_data, source = await _fetch_from_specific_source(normalized_barcode, force_source)
-        else:
-            # Try to sync from SQL Server first for this specific item to ensure fresh data
-            if sql_sync_service:
-                try:
-                    # Fire and forget sync for this item to minimize latency,
-                    # OR await it if we want guaranteed freshness.
-                    # Given the requirement "on one item selecting the qty
-                    # is updated with sql server", await for guaranteed freshness.
-                    synced_item = await asyncio.wait_for(
-                        sql_sync_service.sync_single_item_by_barcode(normalized_barcode),
-                        timeout=3,
-                    )
-                    if synced_item:
-                        # If sync found and updated the item, use it directly
-                        # Convert ObjectId to string
-                        synced_item["_id"] = str(synced_item["_id"])
-                        item_data, source = synced_item, "sql_server_sync"
-                    else:
-                        # Fallback if sync didn't find item (SQL down or not in SQL)
-                        item_data, source = await _fetch_with_fallback_strategy(normalized_barcode)
-                except asyncio.TimeoutError:
-                    logger.warning(
-                        f"Real-time SQL sync timed out for {normalized_barcode}; using fallback"
-                    )
-                    item_data, source = await _fetch_with_fallback_strategy(normalized_barcode)
-                except Exception as e:
-                    logger.warning(f"Real-time SQL sync failed for {normalized_barcode}: {e}")
-                    item_data, source = await _fetch_with_fallback_strategy(normalized_barcode)
-            else:
-                item_data, source = await _fetch_with_fallback_strategy(normalized_barcode)
-
+        item_data, source = await _resolve_item_data_source(normalized_barcode, force_source)
         response_time = (time.time() - start_time) * 1000
 
-        # Return 404 if item not found
         if not item_data or source == "not_found":
-            logger.warning(f"Item not found for barcode: {normalized_barcode}")
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "message": "Item not found",
-                    "barcode": normalized_barcode,
-                    "source": "not_found",
-                    "response_time_ms": response_time,
-                },
-            )
+            _raise_item_not_found(normalized_barcode, response_time)
 
-        # Log performance
         logger.info(
-            f"Enhanced barcode lookup: {normalized_barcode} from {source} in {response_time:.2f}ms"
+            "Enhanced barcode lookup: %s from %s in %.2fms",
+            normalized_barcode,
+            source,
+            response_time,
         )
+        await _decorate_item_with_misplacement_context(item_data, session_id, rack_no)
 
-        # Prepare response
         response_data = {
             "item": item_data,
-            "metadata": (
-                {
-                    "source": source,
-                    "response_time_ms": response_time,
-                    "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
-                    "barcode_searched": normalized_barcode,
-                    "user": current_user["username"],
-                }
-                if include_metadata
-                else None
+            "metadata": _build_lookup_metadata(
+                include_metadata=include_metadata,
+                source=source,
+                response_time_ms=response_time,
+                normalized_barcode=normalized_barcode,
+                current_user=current_user,
             ),
         }
-
-        # --- Misplaced Item Logic ---
-        # Check if item is misplaced relative to the provided session/rack context
-        if item_data and (session_id or rack_no):
-            try:
-                # 1. Determine Context Location
-                context_floor = None
-                context_rack = None
-
-                if rack_no:
-                    context_rack = rack_no.strip().upper()
-
-                # If session_id provided, fetch session for floor (and rack if not provided)
-                if session_id:
-                    session = await db.sessions.find_one({"id": session_id})
-                    if session:
-                        if not context_rack and session.get("rack"):
-                            context_rack = str(session.get("rack")).strip().upper()
-                        if session.get("floor"):
-                            context_floor = str(session.get("floor")).strip().upper()
-
-                # 2. Determine Item Expected Location from ERP Data
-                # ERP item might have 'floor'/'rack' or 'location'
-                item_floor = (item_data.get("floor") or "").strip().upper()
-                item_rack = (item_data.get("rack") or "").strip().upper()
-
-                # 3. Compare (if Item has specific location assigned)
-                if item_floor or item_rack:
-                    is_misplaced = False
-
-                    # Check Rack mismatch
-                    if context_rack and item_rack and context_rack != item_rack:
-                        is_misplaced = True
-
-                    # Check Floor mismatch (only if we have context floor)
-                    if context_floor and item_floor and context_floor != item_floor:
-                        is_misplaced = True
-
-                    # Add flag to item_data
-                    item_data["is_misplaced"] = is_misplaced
-
-                    # Also add expected location for UI convenience
-                    if is_misplaced:
-                        item_data["expected_location"] = f"{item_floor}/{item_rack}"
-
-            except Exception as e:
-                logger.warning(f"Failed to calculate is_misplaced: {e}")
-
-        # Cache successful result
-        if item_data and cache_service:
-            await cache_service.set_async(
-                "items",
-                f"enhanced_{normalized_barcode}",
-                response_data,
-                ttl=1800,  # 30 minutes
-            )
-
+        await _cache_lookup_response(normalized_barcode, response_data)
         return response_data
 
     except HTTPException as exc:
@@ -266,16 +306,7 @@ async def get_item_by_barcode_enhanced(
             },
         )
     finally:
-        if monitoring_service:
-            try:
-                await monitoring_service.track_request(
-                    endpoint="enhanced_barcode_lookup",
-                    method=request.method,
-                    status_code=status_code,
-                    duration=time.time() - start_time,
-                )
-            except Exception:
-                logger.debug("Failed to record enhanced barcode metrics", exc_info=True)
+        await _record_enhanced_lookup_metrics(request, status_code, start_time)
 
 
 async def _fetch_from_specific_source(barcode: str, source: str) -> tuple[Optional[dict], str]:

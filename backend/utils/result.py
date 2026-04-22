@@ -117,9 +117,9 @@ class Result(Generic[T, E]):
         """Create a result from a callable, automatically catching exceptions."""
         try:
             return cls.ok(func(*args, **kwargs))
-        except error_type as e:
-            return cls.fail(e)
         except Exception as e:
+            if isinstance(e, error_type):
+                return cls.fail(cast(E, e))
             logger.exception("Unexpected error in from_callable")
             return cls.fail(error_type(f"Unexpected error: {str(e)}"))
 

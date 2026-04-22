@@ -18,6 +18,84 @@ interface UseItemSubmissionProps {
   sessionType: string | null;
 }
 
+const calculateFinalQuantity = (form: ReturnType<typeof useItemForm>): number =>
+  form.isBatchMode
+    ? form.batches.reduce((sum, batch) => sum + batch.quantity, 0)
+    : parseFloat(form.quantity);
+
+const confirmStrictVariance = async (
+  sessionType: string | null,
+  item: Item,
+  enteredQty: number,
+): Promise<boolean> => {
+  if (sessionType !== "STRICT") return true;
+  const currentStock = Number(item.stock_qty || 0);
+  if (enteredQty === currentStock) return true;
+
+  return new Promise((resolve) => {
+    Alert.alert(
+      "Strict Mode Warning",
+      `Counted quantity (${enteredQty}) does not match stock quantity (${currentStock}). Are you sure?`,
+      [
+        { text: "Cancel", onPress: () => resolve(false), style: "cancel" },
+        {
+          text: "Confirm Variance",
+          onPress: () => resolve(true),
+          style: "destructive",
+        },
+      ],
+    );
+  });
+};
+
+const selectDuplicateAction = async (existingQty: number): Promise<"ADD" | "CANCEL" | "NEW"> =>
+  new Promise((resolve) => {
+    Alert.alert(
+      "Item Already Counted",
+      `This item has already been counted (Qty: ${existingQty}). Do you want to add to the existing count?`,
+      [
+        { text: "Cancel", onPress: () => resolve("CANCEL"), style: "cancel" },
+        { text: "Add to Existing", onPress: () => resolve("ADD") },
+        { text: "Create New Entry", onPress: () => resolve("NEW") },
+      ],
+    );
+  });
+
+const resolveCountLineId = (existingLine: any): string | null => {
+  const lineId = existingLine?.id || existingLine?.line_id || existingLine?._id;
+  return lineId ? String(lineId) : null;
+};
+
+const buildCountLinePayload = (
+  form: ReturnType<typeof useItemForm>,
+  item: Item,
+  sessionId: string,
+  finalQty: number,
+): CreateCountLinePayload => {
+  const payload: CreateCountLinePayload = {
+    session_id: sessionId,
+    item_code: item.item_code,
+    item_name: item.item_name || item.name || item.item_code,
+    batch_id: item.batch_id || undefined,
+    counted_qty: finalQty,
+    batches: form.isBatchMode ? form.batches : undefined,
+    damaged_qty: form.isDamageEnabled ? Number(form.damageQty) : 0,
+    item_condition: form.condition,
+    condition_details: form.condition === "Other" ? form.conditionDetails : undefined,
+    remark: form.remark || undefined,
+    photo_base64: form.itemPhoto?.base64,
+    mrp_counted: form.mrpEditable && form.mrp ? Number(form.mrp) : undefined,
+    category_correction: form.categoryEditable ? form.category : undefined,
+    subcategory_correction: form.categoryEditable ? form.subCategory : undefined,
+    manufacturing_date: form.mfgDate || undefined,
+  };
+
+  if (form.isSerialEnabled) {
+    payload.serial_numbers = form.serialNumbers.map((sn) => normalizeSerialValue(sn));
+  }
+  return payload;
+};
+
 export const useItemSubmission = ({
   form,
   item,
@@ -27,133 +105,58 @@ export const useItemSubmission = ({
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  const addToExistingCountLine = async (existingLine: any, finalQty: number) => {
+    setLoading(true);
+    try {
+      const lineId = resolveCountLineId(existingLine);
+      if (!lineId) throw new Error("Missing count line id for add-quantity");
+      await addQuantityToCountLine(lineId, finalQty, form.isBatchMode ? form.batches : undefined);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert("Success", "Quantity added successfully", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to add quantity";
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDuplicateCount = async (finalQty: number): Promise<boolean> => {
+    try {
+      const checkResult = await checkItemCounted(sessionId as string, item!.item_code);
+      const existingLine = checkResult.count_lines?.[0];
+      if (!checkResult.already_counted || !existingLine) return false;
+
+      const userChoice = await selectDuplicateAction(existingLine.counted_qty);
+      if (userChoice === "CANCEL") return true;
+      if (userChoice === "ADD") {
+        await addToExistingCountLine(existingLine, finalQty);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.warn("Error checking item counted:", error);
+      return false;
+    }
+  };
+
   const handleSubmit = async () => {
     if (!form.validateForm(item, sessionType)) return;
     if (!item || !sessionId) return;
 
-    let finalQty = 0;
-    if (form.isBatchMode) {
-      finalQty = form.batches.reduce((sum, b) => sum + b.quantity, 0);
-    } else {
-      finalQty = parseFloat(form.quantity);
-    }
+    const finalQty = calculateFinalQuantity(form);
+    const confirmed = await confirmStrictVariance(sessionType, item, finalQty);
+    if (!confirmed) return;
 
-    // Strict Mode Variance Check
-    if (sessionType === "STRICT") {
-      const currentStock = Number(item.stock_qty || 0);
-      const enteredQty = finalQty;
-      if (enteredQty !== currentStock) {
-        const confirmed = await new Promise((resolve) => {
-          Alert.alert(
-            "Strict Mode Warning",
-            `Counted quantity (${enteredQty}) does not match stock quantity (${currentStock}). Are you sure?`,
-            [
-              {
-                text: "Cancel",
-                onPress: () => resolve(false),
-                style: "cancel",
-              },
-              {
-                text: "Confirm Variance",
-                onPress: () => resolve(true),
-                style: "destructive",
-              },
-            ]
-          );
-        });
-        if (!confirmed) return;
-      }
-    }
-
-    // Check for existing count
-    try {
-      const checkResult = await checkItemCounted(sessionId as string, item.item_code);
-      if (
-        checkResult.already_counted &&
-        checkResult.count_lines &&
-        checkResult.count_lines.length > 0
-      ) {
-        const existingLine = checkResult.count_lines[0];
-
-        const userChoice = await new Promise<"ADD" | "CANCEL" | "NEW">((resolve) => {
-          Alert.alert(
-            "Item Already Counted",
-            `This item has already been counted (Qty: ${existingLine.counted_qty}). Do you want to add to the existing count?`,
-            [
-              {
-                text: "Cancel",
-                onPress: () => resolve("CANCEL"),
-                style: "cancel",
-              },
-              { text: "Add to Existing", onPress: () => resolve("ADD") },
-              { text: "Create New Entry", onPress: () => resolve("NEW") },
-            ]
-          );
-        });
-
-        if (userChoice === "CANCEL") return;
-
-	        if (userChoice === "ADD") {
-	          setLoading(true);
-	          try {
-	            const lineId =
-	              (existingLine as any)?.id ||
-	              (existingLine as any)?.line_id ||
-	              (existingLine as any)?._id;
-	            if (!lineId) {
-	              throw new Error("Missing count line id for add-quantity");
-	            }
-	            await addQuantityToCountLine(
-	              String(lineId),
-	              finalQty,
-	              form.isBatchMode ? form.batches : undefined
-	            );
-	            setLoading(false);
-	            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-	            Alert.alert("Success", "Quantity added successfully", [
-	              { text: "OK", onPress: () => router.back() },
-	            ]);
-	            return;
-          } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : "Failed to add quantity";
-            Alert.alert("Error", errorMessage);
-            setLoading(false);
-            return;
-          }
-        }
-        // If NEW, proceed to createCountLine below
-      }
-    } catch (error) {
-      console.warn("Error checking item counted:", error);
-      // Proceed to create new line if check fails
-    }
+    const handledDuplicate = await handleDuplicateCount(finalQty);
+    if (handledDuplicate) return;
 
     setLoading(true);
     try {
-      const payload: CreateCountLinePayload = {
-        session_id: sessionId as string,
-        item_code: item.item_code,
-        item_name: item.item_name || item.name || item.item_code,
-        batch_id: item.batch_id || undefined,
-        counted_qty: finalQty,
-        batches: form.isBatchMode ? form.batches : undefined,
-        damaged_qty: form.isDamageEnabled ? Number(form.damageQty) : 0,
-        item_condition: form.condition,
-        condition_details: form.condition === "Other" ? form.conditionDetails : undefined,
-        remark: form.remark || undefined,
-        photo_base64: form.itemPhoto?.base64,
-        mrp_counted: form.mrpEditable && form.mrp ? Number(form.mrp) : undefined,
-        category_correction: form.categoryEditable ? form.category : undefined,
-        subcategory_correction: form.categoryEditable ? form.subCategory : undefined,
-        manufacturing_date: form.mfgDate || undefined,
-      };
-
-      if (form.isSerialEnabled) {
-        payload.serial_numbers = form.serialNumbers.map((sn) => normalizeSerialValue(sn));
-      }
-
+      const payload = buildCountLinePayload(form, item, sessionId as string, finalQty);
       await createCountLine(payload);
-
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Success", "Item counted successfully", [
         { text: "OK", onPress: () => router.back() },

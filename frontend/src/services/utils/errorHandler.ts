@@ -15,136 +15,154 @@ export interface ApiError {
   context?: any;
 }
 
+type MutableApiError = Required<
+  Pick<ApiError, "message" | "detail" | "code" | "category" | "statusCode" | "details" | "context">
+>;
+
+const STATUS_FALLBACKS: Record<number, Pick<MutableApiError, "message" | "code" | "category">> = {
+  400: {
+    message: "Invalid request. Please check your input.",
+    code: "VAL_002",
+    category: "validation",
+  },
+  401: {
+    message: "Session expired. Please login again.",
+    code: "AUTH_003",
+    category: "authentication",
+  },
+  403: {
+    message: "You don't have permission to perform this action.",
+    code: "AUTHZ_001",
+    category: "authorization",
+  },
+  404: {
+    message: "Requested resource not found.",
+    code: "RES_001",
+    category: "resource",
+  },
+  409: {
+    message: "This operation conflicts with existing data.",
+    code: "VAL_002",
+    category: "validation",
+  },
+  422: {
+    message: "Validation error. Please check your input.",
+    code: "VAL_002",
+    category: "validation",
+  },
+  429: {
+    message: "Too many requests. Please wait a moment and try again.",
+    code: "SRV_002",
+    category: "server",
+  },
+  500: {
+    message: "Server error. Please try again later.",
+    code: "SRV_001",
+    category: "server",
+  },
+  503: {
+    message: "Service temporarily unavailable. Please try again.",
+    code: "DB_001",
+    category: "database",
+  },
+};
+
+const createDefaultApiError = (): MutableApiError => ({
+  message: "An unexpected error occurred",
+  detail: "Please try again or contact support if the problem persists.",
+  code: "UNK_001",
+  category: "unknown",
+  statusCode: 500,
+  details: null,
+  context: null,
+});
+
+const applyStructuredServerError = (result: MutableApiError, details: any): boolean => {
+  if (!details || typeof details !== "object") return false;
+  if (details.message) result.message = details.message;
+  if (details.detail) result.detail = details.detail;
+  if (details.code) result.code = details.code;
+  if (details.category) result.category = details.category;
+  if (details.context) result.context = details.context;
+  return true;
+};
+
+const applyStatusFallback = (result: MutableApiError, statusCode: number): void => {
+  const fallback = STATUS_FALLBACKS[statusCode];
+  if (!fallback) return;
+  result.message = fallback.message;
+  result.code = fallback.code;
+  result.category = fallback.category;
+};
+
+const buildServerApiError = (error: any): MutableApiError => {
+  const result = createDefaultApiError();
+  result.statusCode = error.response.status;
+  result.details = error.response.data;
+
+  if (typeof result.details === "string") {
+    result.message = result.details;
+    result.detail = result.details;
+    return result;
+  }
+
+  const hasStructuredPayload = applyStructuredServerError(result, result.details);
+  if (!hasStructuredPayload) {
+    applyStatusFallback(result, result.statusCode);
+  }
+
+  return result;
+};
+
+const buildRequestApiError = (error: any): MutableApiError => {
+  if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+    return {
+      ...createDefaultApiError(),
+      statusCode: 0,
+      message: "Connection timeout. Please check your internet connection and try again.",
+      code: "NET_001",
+      category: "network",
+      detail:
+        "The request took too long to complete. Your connection may be slow or unstable.",
+    };
+  }
+
+  if (error.code === "ECONNREFUSED" || !error.response) {
+    return {
+      ...createDefaultApiError(),
+      statusCode: 0,
+      message: "Cannot connect to server. Please check if the server is running.",
+      code: "NET_002",
+      category: "network",
+      detail: "The server is not responding. It may be down or unreachable.",
+    };
+  }
+
+  return {
+    ...createDefaultApiError(),
+    statusCode: 0,
+    message: "Network error. Please check your internet connection.",
+    code: "NET_001",
+    category: "network",
+    detail: "Unable to reach the server. Please check your network connection.",
+  };
+};
+
+const buildSetupApiError = (error: any): MutableApiError => ({
+  ...createDefaultApiError(),
+  message: error.message || "An unexpected error occurred",
+  detail: error.message || "Please try again or contact support.",
+});
+
 export class ErrorHandler {
   /**
    * Handle API errors with user-friendly messages
    */
   static handleApiError(error: any, context?: string): ApiError {
     __DEV__ && console.error(`[${context || "API Error"}]:`, error);
-
-    let message = "An unexpected error occurred";
-    let detail = "Please try again or contact support if the problem persists.";
-    let code = "UNK_001";
-    let category = "unknown";
-    let statusCode = 500;
-    let details = null;
-    let errorContext = null;
-
-    if (error.response) {
-      // Server responded with error
-      statusCode = error.response.status;
-      details = error.response.data;
-
-      // Check if server returned structured error response
-      if (details && typeof details === "object") {
-        // New structured error format
-        if (details.message) message = details.message;
-        if (details.detail) detail = details.detail;
-        if (details.code) code = details.code;
-        if (details.category) category = details.category;
-        if (details.context) errorContext = details.context;
-      } else if (typeof details === "string") {
-        // Legacy string error format
-        message = details;
-        detail = details;
-      }
-
-      // Fallback to status code based messages if structured format not available
-      if (!details || typeof details === "string") {
-        switch (statusCode) {
-          case 400:
-            message = message || "Invalid request. Please check your input.";
-            code = code || "VAL_002";
-            category = category || "validation";
-            break;
-          case 401:
-            message = message || "Session expired. Please login again.";
-            code = code || "AUTH_003";
-            category = category || "authentication";
-            break;
-          case 403:
-            message =
-              message || "You don't have permission to perform this action.";
-            code = code || "AUTHZ_001";
-            category = category || "authorization";
-            break;
-          case 404:
-            message = message || "Requested resource not found.";
-            code = code || "RES_001";
-            category = category || "resource";
-            break;
-          case 409:
-            message = message || "This operation conflicts with existing data.";
-            code = code || "VAL_002";
-            category = category || "validation";
-            break;
-          case 422:
-            message = message || "Validation error. Please check your input.";
-            code = code || "VAL_002";
-            category = category || "validation";
-            break;
-          case 429:
-            message =
-              message ||
-              "Too many requests. Please wait a moment and try again.";
-            code = code || "SRV_002";
-            category = category || "server";
-            break;
-          case 500:
-            message = message || "Server error. Please try again later.";
-            code = code || "SRV_001";
-            category = category || "server";
-            break;
-          case 503:
-            message =
-              message || "Service temporarily unavailable. Please try again.";
-            code = code || "DB_001";
-            category = category || "database";
-            break;
-          default:
-            message = message || "An error occurred";
-        }
-      }
-    } else if (error.request) {
-      // Request made but no response
-      if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
-        message =
-          "Connection timeout. Please check your internet connection and try again.";
-        code = "NET_001";
-        category = "network";
-        detail =
-          "The request took too long to complete. Your connection may be slow or unstable.";
-      } else if (error.code === "ECONNREFUSED" || !error.response) {
-        message =
-          "Cannot connect to server. Please check if the server is running.";
-        code = "NET_002";
-        category = "network";
-        detail = "The server is not responding. It may be down or unreachable.";
-      } else {
-        message = "Network error. Please check your internet connection.";
-        code = "NET_001";
-        category = "network";
-        detail =
-          "Unable to reach the server. Please check your network connection.";
-      }
-      statusCode = 0;
-    } else {
-      // Error in request setup
-      message = error.message || "An unexpected error occurred";
-      detail = error.message || "Please try again or contact support.";
-      code = "UNK_001";
-      category = "unknown";
-    }
-
-    return {
-      message,
-      detail,
-      code,
-      category,
-      statusCode,
-      details,
-      context: errorContext,
-    };
+    if (error.response) return buildServerApiError(error);
+    if (error.request) return buildRequestApiError(error);
+    return buildSetupApiError(error);
   }
 
   /**

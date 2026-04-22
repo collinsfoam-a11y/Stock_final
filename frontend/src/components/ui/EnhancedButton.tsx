@@ -200,7 +200,7 @@ export const EnhancedButton: React.FC<EnhancedButtonProps> = ({
     if (loading) {
       return (
         <ActivityIndicator
-          size={size === "sm" ? "small" : "small"}
+          size="small"
           color={resolvedTextColor}
           style={iconMargin}
         />

@@ -181,8 +181,8 @@ export function FilterPanel({
       (selectedValues[sectionId as keyof FilterValues] as string[]) || []
     ).includes(value);
 
-  const slideAnim = position === "right" ? SlideInRight : SlideInRight;
-  const slideOutAnim = position === "right" ? SlideOutRight : SlideOutRight;
+  const slideAnim = SlideInRight;
+  const slideOutAnim = SlideOutRight;
 
   return (
     <Modal

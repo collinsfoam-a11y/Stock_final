@@ -4,7 +4,6 @@
  */
 
 import { useEffect, useRef, useCallback, useState } from "react";
-import { Platform } from "react-native";
 import { createLogger } from "../services/logging";
 import ConnectionManager, { ConnectionInfo } from "../services/connectionManager";
 // import EnvironmentConfig from "../config/environment";
@@ -27,6 +26,9 @@ interface UseAutoConnectionReturn {
   lastChecked: string | null;
   enhancedReconnect: () => Promise<void>;
 }
+
+const toConnectionError = (error: unknown, fallbackMessage: string): Error =>
+  error instanceof Error ? error : new Error(fallbackMessage);
 
 export const useAutoConnection = (
   options: UseAutoConnectionOptions = {}
@@ -83,10 +85,11 @@ export const useAutoConnection = (
       log.info("Reconnection successful");
     } catch (err) {
       log.error("Reconnection failed", { error: err });
-      setError(err instanceof Error ? err : new Error("Reconnection failed"));
+      const connectionError = toConnectionError(err, "Reconnection failed");
+      setError(connectionError);
 
       if (onConnectionError) {
-        onConnectionError(err instanceof Error ? err : new Error("Reconnection failed"));
+        onConnectionError(connectionError);
       }
     } finally {
       setIsReconnecting(false);
@@ -114,23 +117,8 @@ export const useAutoConnection = (
       }
     }, reconnectInterval);
 
-    // Platform-specific app state listening
-    if (Platform.OS === "ios") {
-      // iOS app state listener would go here
-    } else if (Platform.OS === "android") {
-      // Android app state listener would go here
-    }
-
     return () => {
-      if (Platform.OS === "ios") {
-        // Cleanup iOS listener
-      }
-      if (Platform.OS === "android") {
-        // Cleanup Android listener
-      }
-      if (interval) {
-        clearInterval(interval);
-      }
+      clearInterval(interval);
     };
   }, [enableAutoReconnect, reconnectInterval, reconnect, connectionManager]);
 
@@ -184,10 +172,11 @@ export const useAutoConnection = (
       }
     } catch (err) {
       log.error("Enhanced reconnection failed", { error: err });
-      setError(err instanceof Error ? err : new Error("Enhanced reconnection failed"));
+      const connectionError = toConnectionError(err, "Enhanced reconnection failed");
+      setError(connectionError);
 
       if (onConnectionError) {
-        onConnectionError(err instanceof Error ? err : new Error("Enhanced reconnection failed"));
+        onConnectionError(connectionError);
       }
     } finally {
       setIsReconnecting(false);

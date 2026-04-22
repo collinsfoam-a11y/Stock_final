@@ -277,6 +277,174 @@ class ItemUpdateRequest(BaseModel):
     uom: Optional[str] = None
 
 
+def _not_found_error(barcode: str) -> HTTPException:
+    return HTTPException(status_code=404, detail=f"Item with barcode/code {barcode} not found")
+
+
+async def _find_item_by_barcode_or_code(barcode: str) -> dict[str, Any]:
+    item = await db.erp_items.find_one({"barcode": barcode})
+    if item:
+        return item
+
+    item = await db.erp_items.find_one({"item_code": barcode})
+    if item:
+        return item
+
+    raise _not_found_error(barcode)
+
+
+def _resolve_item_identity(
+    item: dict[str, Any], fallback_barcode: str
+) -> tuple[Optional[str], str, dict[str, Any]]:
+    actual_barcode = item.get("barcode")
+    actual_item_code = item.get("item_code") or fallback_barcode
+    if actual_item_code:
+        return actual_barcode, actual_item_code, {"item_code": actual_item_code}
+    if actual_barcode:
+        return actual_barcode, actual_item_code, {"barcode": actual_barcode}
+    return actual_barcode, actual_item_code, {"barcode": fallback_barcode}
+
+
+def _build_master_update_doc(request: ItemUpdateRequest, current_user: dict[str, Any]) -> dict[str, Any]:
+    update_fields: dict[str, Any] = {
+        "last_updated_by": current_user["username"],
+        "last_updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
+    }
+    field_mapping = {
+        "mrp": "mrp",
+        "sales_price": "sales_price",
+        "category": "category",
+        "subcategory": "subcategory",
+        "uom": "uom",
+    }
+    for req_field, update_field in field_mapping.items():
+        value = getattr(request, req_field)
+        if value is not None:
+            update_fields[update_field] = value
+    return {"$set": update_fields}
+
+
+async def _invalidate_item_cache(
+    *,
+    actual_barcode: Optional[str],
+    actual_item_code: Optional[str],
+    clear_search_cache: bool = False,
+) -> None:
+    if not cache_service:
+        return
+    if actual_barcode:
+        await cache_service.delete_async("items", f"enhanced_{actual_barcode}")
+    if actual_item_code:
+        await cache_service.delete_async("items", f"enhanced_{actual_item_code}")
+    if clear_search_cache:
+        await cache_service.clear_pattern("search:*")
+
+
+async def _insert_master_update_audit_log(
+    *,
+    actual_item_code: str,
+    actual_barcode: Optional[str],
+    requested_barcode: str,
+    request: ItemUpdateRequest,
+    current_user: dict[str, Any],
+) -> None:
+    await db.audit_logs.insert_one(
+        {
+            "action": "MASTER_UPDATE",
+            "item_code": actual_item_code,
+            "barcode": actual_barcode or requested_barcode,
+            "changes": request.model_dump(exclude_none=True),
+            "user": current_user["username"],
+            "timestamp": datetime.now(timezone.utc).replace(tzinfo=None),
+        }
+    )
+
+
+def _build_verification_filter(
+    *,
+    actual_barcode: Optional[str],
+    actual_item_code: str,
+    requested_barcode: str,
+    expected_stock_qty: Optional[float],
+) -> dict[str, Any]:
+    if actual_item_code:
+        update_filter: dict[str, Any] = {"item_code": actual_item_code}
+    elif actual_barcode:
+        update_filter = {"barcode": actual_barcode}
+    else:
+        update_filter = {"barcode": requested_barcode}
+
+    if expected_stock_qty is not None:
+        update_filter["stock_qty"] = expected_stock_qty
+    return update_filter
+
+
+async def _fetch_item_with_optional_sql_refresh(barcode: str) -> dict[str, Any]:
+    if sql_sync_service:
+        try:
+            if sql_sync_service.sql_connector.test_connection():
+                refreshed_item = await sql_sync_service.sync_single_item_by_barcode(barcode)
+                if refreshed_item:
+                    return refreshed_item
+        except Exception as e:
+            logger.warning(
+                "Failed to auto-refresh item %s from SQL: %s",
+                sanitize_for_logging(barcode),
+                sanitize_for_logging(str(e)),
+            )
+    return await _find_item_by_barcode_or_code(barcode)
+
+
+def _verification_has_material_conflict(item: dict[str, Any], request: VerificationRequest) -> bool:
+    if item.get("verified") is not True:
+        return False
+    existing_qty = item.get("verified_qty")
+    return request.verified_qty is not None and request.verified_qty != existing_qty
+
+
+async def _create_conflict_fork_response(
+    *,
+    item: dict[str, Any],
+    request: VerificationRequest,
+    current_user: dict[str, Any],
+    barcode: str,
+) -> dict[str, Any]:
+    from backend.core.schemas.conflict import ConflictFork
+
+    existing_qty = item.get("verified_qty")
+    fork = ConflictFork(
+        original_item_id=str(item.get("_id")),
+        session_id=request.session_id or "unknown",
+        user_id=current_user["username"],
+        conflicting_payload=request.model_dump(exclude_none=True),
+        reason=f"Attempted to overwrite APPROVED qty {existing_qty} with {request.verified_qty}",
+    )
+
+    await db.conflict_forks.insert_one(fork.model_dump())
+    logger.warning(
+        "Conflict detected for %s. Fork created: %s",
+        _safe_log_value(barcode),
+        _safe_log_value(fork.fork_id),
+    )
+    return {
+        "success": True,
+        "item": serialize_item_document(item),
+        "variance": item.get("variance"),
+        "message": f"Conflict detected! Original verification preserved. Fork ID: {fork.fork_id}",
+        "fork_id": fork.fork_id,
+    }
+
+
+async def _fetch_updated_item(update_filter: dict[str, Any], actual_barcode: Optional[str]) -> dict[str, Any]:
+    updated_item = await db.erp_items.find_one(update_filter)
+    if not updated_item and actual_barcode:
+        updated_item = await db.erp_items.find_one({"barcode": actual_barcode})
+    if not updated_item:
+        raise HTTPException(status_code=500, detail="Verification updated item not found")
+    updated_item["_id"] = str(updated_item["_id"])
+    return updated_item
+
+
 @verification_router.patch("/{barcode}/update-master")
 async def update_item_master(
     barcode: str,
@@ -287,69 +455,21 @@ async def update_item_master(
     Update item master details (MRP, Price, Category, etc.)
     """
     try:
-        # Get current item by barcode
-        item = await db.erp_items.find_one({"barcode": barcode})
-        if not item:
-            # Fallback to item_code for legacy support
-            item = await db.erp_items.find_one({"item_code": barcode})
-            if not item:
-                raise HTTPException(
-                    status_code=404, detail=f"Item with barcode/code {barcode} not found"
-                )
-
-        # Use the actual item_code and barcode for updates and logging
-        actual_barcode = item.get("barcode")
-        actual_item_code = item.get("item_code") or barcode
-
-        update_filter: dict[str, Any]
-        if actual_item_code:
-            update_filter = {"item_code": actual_item_code}
-        elif actual_barcode:
-            update_filter = {"barcode": actual_barcode}
-        else:
-            update_filter = {"barcode": barcode}
-
-        update_doc = {
-            "$set": {
-                "last_updated_by": current_user["username"],
-                "last_updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
-            }
-        }
-
-        if request.mrp is not None:
-            update_doc["$set"]["mrp"] = request.mrp
-        if request.sales_price is not None:
-            update_doc["$set"]["sales_price"] = request.sales_price
-        if request.category is not None:
-            update_doc["$set"]["category"] = request.category
-        if request.subcategory is not None:
-            update_doc["$set"]["subcategory"] = request.subcategory
-        if request.uom is not None:
-            update_doc["$set"]["uom"] = request.uom
-
-        await db.erp_items.update_one(update_filter, update_doc)
-
-        # Invalidate cache for this item
-        if cache_service:
-            if actual_barcode:
-                await cache_service.delete_async("items", f"enhanced_{actual_barcode}")
-            if actual_item_code:
-                await cache_service.delete_async("items", f"enhanced_{actual_item_code}")
-            # Clear search cache when items are updated
-            await cache_service.clear_pattern("search:*")
-
-        # Log the change
-        await db.audit_logs.insert_one(
-            {
-                "action": "MASTER_UPDATE",
-                "item_code": actual_item_code,
-                "barcode": actual_barcode or barcode,
-                "changes": request.model_dump(exclude_none=True),
-                "user": current_user["username"],
-                "timestamp": datetime.now(timezone.utc).replace(tzinfo=None),
-            }
+        item = await _find_item_by_barcode_or_code(barcode)
+        actual_barcode, actual_item_code, update_filter = _resolve_item_identity(item, barcode)
+        await db.erp_items.update_one(update_filter, _build_master_update_doc(request, current_user))
+        await _invalidate_item_cache(
+            actual_barcode=actual_barcode,
+            actual_item_code=actual_item_code,
+            clear_search_cache=True,
         )
-
+        await _insert_master_update_audit_log(
+            actual_item_code=actual_item_code,
+            actual_barcode=actual_barcode,
+            requested_barcode=barcode,
+            request=request,
+            current_user=current_user,
+        )
         return {"success": True, "message": "Item details updated successfully"}
 
     except HTTPException:
@@ -522,142 +642,56 @@ async def verify_item(
     Mark an item as verified/unverified with user tracking and timestamp
     """
     try:
-        item = None
-
-        # 1. Try to auto-refresh from SQL first (FR requirement)
-        if sql_sync_service:
-            try:
-                if sql_sync_service.sql_connector.test_connection():
-                    item = await sql_sync_service.sync_single_item_by_barcode(barcode)
-            except Exception as e:
-                logger.warning(
-                    f"Failed to auto-refresh item {sanitize_for_logging(barcode)} from SQL: {sanitize_for_logging(str(e))}"
-                )
-
-        # 2. If no item from SQL (or offline), get from MongoDB
-        if not item:
-            # Get current item by barcode
-            item = await db.erp_items.find_one({"barcode": barcode})
-            if not item:
-                # Fallback to item_code
-                item = await db.erp_items.find_one({"item_code": barcode})
-                if not item:
-                    raise HTTPException(
-                        status_code=404, detail=f"Item with barcode/code {barcode} not found"
-                    )
-
-        actual_barcode = item.get("barcode")
-        actual_item_code = item.get("item_code") or barcode
-
-        update_filter: dict[str, Any]
-        if actual_item_code:
-            update_filter = {"item_code": actual_item_code}
-        elif actual_barcode:
-            update_filter = {"barcode": actual_barcode}
-        else:
-            update_filter = {"barcode": barcode}
-
-        # GOVERNANCE FIX: Optimistic Locking (Rule 3)
-        # We MUST ensure stock_qty hasn't changed since we read it
+        item = await _fetch_item_with_optional_sql_refresh(barcode)
+        actual_barcode, actual_item_code, base_filter = _resolve_item_identity(item, barcode)
         expected_stock_qty = item.get("stock_qty")
-        if expected_stock_qty is not None:
-            update_filter["stock_qty"] = expected_stock_qty
-
-        # ... (Conflict Forking Logic remains here) ...
-        # GOVERNANCE: Conflict Forking Engine
-        # Check if item is already approved
-        if item.get("verified") is True:
-            # Check for material differences in the verification request
-            existing_qty = item.get("verified_qty")
-            # Calculate variance for new request
-            # new_variance = _calculate_variance(request, item.get("stock_qty", 0.0))
-
-            # Simple conflict check: if quantity differs or condition differs
-            is_conflict = False
-            if request.verified_qty is not None and request.verified_qty != existing_qty:
-                is_conflict = True
-
-            if is_conflict:
-                from backend.core.schemas.conflict import ConflictFork
-
-                # Create Fork
-                fork = ConflictFork(
-                    original_item_id=str(item.get("_id")),
-                    session_id=request.session_id or "unknown",
-                    user_id=current_user["username"],
-                    conflicting_payload=request.model_dump(exclude_none=True),
-                    reason=f"Attempted to overwrite APPROVED qty {existing_qty} with {request.verified_qty}",
-                )
-
-                await db.conflict_forks.insert_one(fork.model_dump())
-
-                logger.warning(
-                    "Conflict detected for %s. Fork created: %s",
-                    _safe_log_value(barcode),
-                    _safe_log_value(fork.fork_id),
-                )
-
-                return {
-                    "success": True,
-                    "item": serialize_item_document(item),  # Return ORIGINAL item
-                    "variance": item.get("variance"),
-                    "message": f"Conflict detected! Original verification preserved. Fork ID: {fork.fork_id}",
-                    "fork_id": fork.fork_id,
-                }
+        update_filter = _build_verification_filter(
+            actual_barcode=actual_barcode,
+            actual_item_code=actual_item_code,
+            requested_barcode=barcode,
+            expected_stock_qty=expected_stock_qty,
+        )
+        if _verification_has_material_conflict(item, request):
+            return await _create_conflict_fork_response(
+                item=item, request=request, current_user=current_user, barcode=barcode
+            )
 
         variance = _calculate_variance(request, item.get("stock_qty", 0.0))
         update_doc = _build_item_update_doc(request, current_user, item)
-
         result = await db.erp_items.update_one(update_filter, update_doc)
-
         if result.matched_count == 0:
-            # Optimistic Lock Failure
-            # We assume the item exists because we read it, so valid match_count=0 means predicates failed
-            # i.e. stock_qty changed
             logger.warning(
                 "Optimistic Lock Failed for %s. Expected qty: %s",
                 _safe_log_value(barcode),
                 expected_stock_qty,
             )
             raise HTTPException(
-                status_code=409,
-                detail="Data changed during verification (Optimistic Lock). Please refresh and try again.",
+                    status_code=409,
+                detail=(
+                    "Data changed during verification (Optimistic Lock). "
+                    "Please refresh and try again."
+                ),
             )
 
-        # Invalidate cache for this item
-        if cache_service:
-            if actual_barcode:
-                await cache_service.delete_async("items", f"enhanced_{actual_barcode}")
-            if actual_item_code:
-                await cache_service.delete_async("items", f"enhanced_{actual_item_code}")
-
-        # Get the actual is_serialized value that was set in the update_doc
+        await _invalidate_item_cache(
+            actual_barcode=actual_barcode,
+            actual_item_code=actual_item_code,
+            clear_search_cache=False,
+        )
         is_serialized_from_update = update_doc["$set"].get("is_serialized")
-
         verification_log = _build_verification_log_doc(
             request, current_user, item, variance, is_serialized_from_update
         )
-
         await db.verification_logs.insert_one(verification_log)
-
         if variance is not None and variance != 0:
             await db.item_variances.insert_one(verification_log)
 
-        updated_item = await db.erp_items.find_one(update_filter)
-        if not updated_item and actual_barcode:
-            updated_item = await db.erp_items.find_one({"barcode": actual_barcode})
-        if not updated_item:
-            raise HTTPException(status_code=500, detail="Verification updated item not found")
-
-        updated_item["_id"] = str(updated_item["_id"])
-
+        updated_item = await _fetch_updated_item(update_filter, actual_barcode)
         return {
             "success": True,
             "item": updated_item,
             "variance": variance,
-            "message": (
-                f"Item {actual_item_code} marked as {'verified' if request.verified else 'unverified'}"
-            ),
+            "message": f"Item {actual_item_code} marked as {'verified' if request.verified else 'unverified'}",
         }
 
     except HTTPException:
