@@ -239,6 +239,57 @@ class TestCreateSessionEndpoint:
             app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
+    async def test_create_session_returns_existing_open_session(self, mock_user_staff):
+        existing_session = {
+            "_id": "mongo_1",
+            "id": "sess_existing",
+            "warehouse": "WH001",
+            "staff_user": "staff1",
+            "staff_name": "Staff User",
+            "status": "OPEN",
+            "type": "STANDARD",
+            "started_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            "last_heartbeat": datetime.now(timezone.utc).replace(tzinfo=None),
+        }
+
+        mock_db = AsyncMock()
+        mock_db.sessions = AsyncMock()
+        mock_db.sessions.find_one = AsyncMock(return_value=existing_session)
+        mock_db.sessions.update_many = AsyncMock()
+        mock_db.sessions.insert_one = AsyncMock()
+        mock_db.verification_sessions = AsyncMock()
+        mock_db.verification_sessions.update_many = AsyncMock()
+        mock_db.verification_sessions.insert_one = AsyncMock()
+
+        async def override_get_db():
+            return mock_db
+
+        async def override_get_current_user():
+            return mock_user_staff
+
+        from backend.auth.dependencies import get_current_user_async
+        from backend.db.runtime import get_db
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user_async] = override_get_current_user
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://localhost",
+            ) as client:
+                response = await client.post(
+                    "/api/sessions/",
+                    json={"warehouse": "WH001", "type": "STANDARD"},
+                )
+                assert response.status_code == 200
+                assert response.json()["id"] == "sess_existing"
+                mock_db.sessions.update_many.assert_not_awaited()
+                mock_db.sessions.insert_one.assert_not_awaited()
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
     async def test_create_session_empty_warehouse(self, mock_user_staff):
         """Test session creation fails with empty warehouse"""
         mock_db = MagicMock()
@@ -1200,6 +1251,118 @@ class TestUserWorkflowEndpoint:
                 assert data[0]["priority_band"] in {"HIGH", "CRITICAL"}
                 assert data[0]["pending_review_since"] is not None
                 assert data[0]["recount_assigned_at"] is not None
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_get_user_workflows_sorts_highest_priority_first(self, mock_user_supervisor):
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        active_sessions = [
+            {
+                "id": "sess_1",
+                "session_id": "sess_1",
+                "warehouse": "WH001",
+                "staff_user": "staff1",
+                "staff_name": "Staff One",
+                "status": "ACTIVE",
+                "type": "STANDARD",
+                "started_at": now,
+                "last_heartbeat": now,
+                "rack_no": "R1",
+                "location_name": "F1",
+                "total_items": 12,
+                "total_variance": 4.5,
+            },
+            {
+                "id": "sess_2",
+                "session_id": "sess_2",
+                "warehouse": "WH002",
+                "staff_user": "staff2",
+                "staff_name": "Staff Two",
+                "status": "ACTIVE",
+                "type": "STANDARD",
+                "started_at": now,
+                "last_heartbeat": now,
+                "rack_no": "R2",
+                "location_name": "F2",
+                "total_items": 10,
+                "total_variance": 0.0,
+            },
+        ]
+
+        session_count_cursor = MagicMock()
+        session_count_cursor.to_list = AsyncMock(
+            return_value=[
+                {"_id": "sess_1", "items_counted": 6, "reviewed_items": 3, "last_counted_at": now},
+                {"_id": "sess_2", "items_counted": 8, "reviewed_items": 8, "last_counted_at": now},
+            ]
+        )
+
+        pending_cursor = MagicMock()
+        pending_cursor.to_list = AsyncMock(
+            return_value=[
+                {
+                    "_id": "staff1",
+                    "pending_approvals": 2,
+                    "pending_review_since": now,
+                    "last_pending_at": now,
+                }
+            ]
+        )
+
+        recount_cursor = MagicMock()
+        recount_cursor.to_list = AsyncMock(
+            return_value=[
+                {
+                    "_id": "staff1",
+                    "assigned_recounts": 1,
+                    "recount_assigned_at": now,
+                    "last_recount_at": now,
+                }
+            ]
+        )
+
+        users_cursor = MagicMock()
+        users_cursor.to_list = AsyncMock(
+            return_value=[
+                {"username": "staff1", "full_name": "Staff One", "role": "staff"},
+                {"username": "staff2", "full_name": "Staff Two", "role": "staff"},
+            ]
+        )
+
+        mock_db = MagicMock()
+        mock_db.sessions = MagicMock()
+        mock_db.sessions.find = MagicMock(return_value=_AsyncCursor(active_sessions))
+        mock_db.count_lines = MagicMock()
+        mock_db.count_lines.aggregate = MagicMock(
+            side_effect=[session_count_cursor, pending_cursor, recount_cursor]
+        )
+        mock_db.users = MagicMock()
+        mock_db.users.find = MagicMock(return_value=users_cursor)
+
+        async def override_get_db():
+            return mock_db
+
+        async def override_get_current_user():
+            return mock_user_supervisor
+
+        from backend.auth.dependencies import get_current_user_async
+        from backend.db.runtime import get_db
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user_async] = override_get_current_user
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://localhost",
+            ) as client:
+                response = await client.get("/api/sessions/user-workflows")
+                assert response.status_code == 200
+                data = response.json()
+
+                assert [row["username"] for row in data] == ["staff1", "staff2"]
+                assert data[0]["priority_score"] >= data[1]["priority_score"]
         finally:
             app.dependency_overrides.clear()
 

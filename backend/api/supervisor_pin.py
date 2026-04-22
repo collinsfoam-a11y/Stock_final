@@ -8,9 +8,14 @@ from backend.auth.dependencies import get_current_user
 from backend.db.runtime import get_db
 from backend.services.activity_log import ActivityLogService
 from backend.utils.auth_utils import verify_password
+from backend.utils.api_utils import sanitize_for_logging
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _safe_log_value(value: object, *, max_length: int = 120) -> str:
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
 
 
 class PinVerificationRequest(BaseModel):
@@ -79,7 +84,10 @@ async def verify_supervisor_pin(
         )
 
     if not verify_password(request.pin, stored_pin_hash):
-        logger.warning(f"Failed PIN attempt for supervisor {request.supervisor_username}")
+        logger.warning(
+            "Failed PIN attempt for supervisor %s",
+            _safe_log_value(request.supervisor_username),
+        )
         # Record failed attempt (MM7 fix: use datetime for TTL compatibility)
         await db.rate_limits.update_one(
             {"_id": rate_key},

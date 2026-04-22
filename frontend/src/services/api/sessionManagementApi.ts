@@ -13,6 +13,7 @@ import {
 import { getNetworkStatus } from "../../utils/network";
 import { createLogger } from "../logging";
 import { generateOfflineId } from "../../utils/uuid";
+import type { Session } from "../../types";
 
 const log = createLogger("SessionManagementApi");
 
@@ -34,6 +35,148 @@ export interface SessionStatsResponse {
   durationSeconds?: number;
   itemsPerMinute?: number;
 }
+
+type SessionCreateConfig = {
+  warehouse?: string;
+  sessionType?: string;
+  locationType?: string;
+  locationName?: string;
+  rackNo?: string;
+};
+
+type SessionPage = {
+  items: Session[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+};
+
+const normalizeCreateSessionParams = (
+  params: string | CreateSessionParams
+): SessionCreateConfig => ({
+  warehouse: typeof params === "string" ? params : params.warehouse,
+  sessionType: typeof params !== "string" ? params.type : undefined,
+  locationType: typeof params !== "string" ? params.location_type : undefined,
+  locationName: typeof params !== "string" ? params.location_name : undefined,
+  rackNo: typeof params !== "string" ? params.rack_no : undefined,
+});
+
+const buildOfflineSession = ({
+  warehouse,
+  sessionType,
+  locationType,
+  locationName,
+  rackNo,
+}: SessionCreateConfig) => ({
+  id: generateOfflineId(),
+  warehouse,
+  location_type: locationType,
+  location_name: locationName,
+  rack_no: rackNo,
+  status: "OPEN",
+  type: sessionType || "STANDARD",
+  staff_user: "offline_user",
+  staff_name: "Offline User",
+  started_at: new Date().toISOString(),
+  total_items: 0,
+  total_variance: 0,
+  _source: "offline" as DataSource,
+  _createdOffline: true,
+});
+
+const persistOfflineSession = async (offlineSession: ReturnType<typeof buildOfflineSession>) => {
+  await cacheSession(offlineSession);
+  await addToOfflineQueue("session", offlineSession);
+  return offlineSession;
+};
+
+const buildSessionCreatePayload = ({
+  warehouse,
+  sessionType,
+  locationType,
+  locationName,
+  rackNo,
+}: SessionCreateConfig) => ({
+  warehouse,
+  location_type: locationType,
+  location_name: locationName,
+  rack_no: rackNo,
+  ...(sessionType && { type: sessionType }),
+});
+
+const paginateSessions = (sessions: Session[], page: number, pageSize: number): SessionPage => {
+  const skip = (page - 1) * pageSize;
+  return {
+    items: sessions.slice(skip, skip + pageSize),
+    pagination: {
+      page,
+      page_size: pageSize,
+      total: sessions.length,
+      total_pages: Math.ceil(sessions.length / pageSize),
+      has_next: skip + pageSize < sessions.length,
+      has_prev: page > 1,
+    },
+  };
+};
+
+const getOfflinePaginatedSessions = async (
+  page: number,
+  pageSize: number
+): Promise<SessionPage> => {
+  const cache = await getSessionsCache();
+  return paginateSessions(Object.values(cache) as Session[], page, pageSize);
+};
+
+const normalizeSessionsResponse = (
+  responseData: any,
+  page: number,
+  pageSize: number
+): SessionPage => {
+  const sessions = Array.isArray(responseData?.items)
+    ? (responseData.items as Session[])
+    : Array.isArray(responseData)
+      ? (responseData as Session[])
+      : [];
+  return {
+    items: sessions,
+    pagination:
+      responseData?.pagination || {
+        page,
+        page_size: pageSize,
+        total: sessions.length,
+        total_pages: 1,
+        has_next: false,
+        has_prev: false,
+      },
+  };
+};
+
+const mergeSessionsWithVisibleCache = async (sessions: Session[]): Promise<Session[]> => {
+  const cache = await getSessionsCache();
+  const cachedSessions = Object.values(cache) as Session[];
+  const user = useAuthStore.getState().user;
+  const isSupervisor = user?.role === "supervisor";
+  const visibleCached = isSupervisor
+    ? cachedSessions
+    : cachedSessions.filter((session) => session.staff_user === user?.username);
+
+  if (visibleCached.length === 0) {
+    return sessions;
+  }
+
+  const seenIds = new Set(
+    sessions
+      .map((session) => session?.id || session?.session_id || session?._id)
+      .filter(Boolean)
+  );
+  const missingCached = visibleCached.filter((session) => !seenIds.has(session.id));
+  return missingCached.length > 0 ? [...sessions, ...missingCached] : sessions;
+};
 
 /**
  * Returns whether the app should treat the network as safe for mutations.
@@ -57,43 +200,22 @@ export const isOnline = () => {
  * Creates a session online when possible and falls back to an offline placeholder otherwise.
  */
 export const createSession = async (params: string | CreateSessionParams) => {
-  const warehouse = typeof params === "string" ? params : params.warehouse;
-  const sessionType = typeof params !== "string" ? params.type : undefined;
-  const locationType = typeof params !== "string" ? params.location_type : undefined;
-  const locationName = typeof params !== "string" ? params.location_name : undefined;
-  const rackNo = typeof params !== "string" ? params.rack_no : undefined;
-
+  const config = normalizeCreateSessionParams(params);
   const networkStatus = getNetworkStatus();
 
   log.debug("Create session requested", {
-    warehouse,
-    type: sessionType,
+    warehouse: config.warehouse,
+    type: config.sessionType,
     networkStatus: networkStatus.status,
-  });
-
-  const createOfflineSession = () => ({
-    id: generateOfflineId(),
-    warehouse,
-    location_type: locationType,
-    location_name: locationName,
-    rack_no: rackNo,
-    status: "OPEN",
-    type: sessionType || "STANDARD",
-    staff_user: "offline_user",
-    staff_name: "Offline User",
-    started_at: new Date().toISOString(),
-    total_items: 0,
-    total_variance: 0,
-    _source: "offline" as DataSource,
-    _createdOffline: true,
   });
 
   try {
     if (!isOnline()) {
-      log.info("Creating offline session", { warehouse, type: sessionType });
-      const offlineSession = createOfflineSession();
-      await cacheSession(offlineSession);
-      await addToOfflineQueue("session", offlineSession);
+      log.info("Creating offline session", {
+        warehouse: config.warehouse,
+        type: config.sessionType,
+      });
+      const offlineSession = await persistOfflineSession(buildOfflineSession(config));
       log.debug("Created offline session", {
         id: offlineSession.id,
         source: offlineSession._source,
@@ -101,15 +223,7 @@ export const createSession = async (params: string | CreateSessionParams) => {
       return offlineSession;
     }
 
-    const payload = {
-      warehouse,
-      location_type: locationType,
-      location_name: locationName,
-      rack_no: rackNo,
-      ...(sessionType && { type: sessionType }),
-    };
-
-    const response = await api.post("/api/sessions", payload, {
+    const response = await api.post("/api/sessions", buildSessionCreatePayload(config), {
       timeout: 3000,
       skipOfflineQueue: true,
     } as any);
@@ -134,9 +248,7 @@ export const createSession = async (params: string | CreateSessionParams) => {
       error: error instanceof Error ? error.message : String(error),
     });
 
-    const offlineSession = createOfflineSession();
-    await cacheSession(offlineSession);
-    await addToOfflineQueue("session", offlineSession);
+    const offlineSession = await persistOfflineSession(buildOfflineSession(config));
     log.debug("Created offline session after API error", {
       id: offlineSession.id,
       source: offlineSession._source,
@@ -149,28 +261,13 @@ export const createSession = async (params: string | CreateSessionParams) => {
  * Fetches paginated sessions with cache merge and offline fallback support.
  */
 export const getSessions = async (page: number = 1, pageSize: number = 20) => {
+  const validPage = Math.max(1, Math.floor(Number(page)) || 1);
+  const validPageSize = Math.max(1, Math.min(100, Math.floor(Number(pageSize)) || 20));
+
   try {
     if (!isOnline()) {
-      const cache = await getSessionsCache();
-      const allSessions = Object.values(cache);
-      const skip = (page - 1) * pageSize;
-      const paginatedSessions = allSessions.slice(skip, skip + pageSize);
-
-      return {
-        items: paginatedSessions,
-        pagination: {
-          page,
-          page_size: pageSize,
-          total: allSessions.length,
-          total_pages: Math.ceil(allSessions.length / pageSize),
-          has_next: skip + pageSize < allSessions.length,
-          has_prev: page > 1,
-        },
-      };
+      return await getOfflinePaginatedSessions(validPage, validPageSize);
     }
-
-    const validPage = Math.max(1, Math.floor(Number(page)) || 1);
-    const validPageSize = Math.max(1, Math.min(100, Math.floor(Number(pageSize)) || 20));
 
     const response = await api.get("/api/sessions", {
       params: {
@@ -179,76 +276,33 @@ export const getSessions = async (page: number = 1, pageSize: number = 20) => {
       },
     });
 
-    const responseData = response.data?.data ?? response.data;
-    const sessions = Array.isArray(responseData?.items)
-      ? responseData.items
-      : Array.isArray(responseData)
-        ? responseData
-        : [];
-    const pagination = responseData?.pagination ||
-      response.data?.pagination || {
-        page,
-        page_size: pageSize,
-        total: sessions.length,
-        total_pages: 1,
-        has_next: false,
-        has_prev: false,
-      };
+    const normalizedResponse = normalizeSessionsResponse(
+      response.data?.data ?? response.data,
+      validPage,
+      validPageSize
+    );
 
-    if (Array.isArray(sessions) && sessions.length > 0) {
-      await cacheSessions(sessions);
+    if (normalizedResponse.items.length > 0) {
+      await cacheSessions(normalizedResponse.items);
     }
 
-    let mergedSessions = sessions;
+    let mergedSessions = normalizedResponse.items;
     try {
-      const cache = await getSessionsCache();
-      const cachedSessions = Object.values(cache);
-      const user = useAuthStore.getState().user;
-      const isSupervisor = user?.role === "supervisor";
-      const visibleCached = isSupervisor
-        ? cachedSessions
-        : cachedSessions.filter((session) => session.staff_user === user?.username);
-
-      if (visibleCached.length > 0) {
-        const seenIds = new Set(
-          sessions
-            .map((session: any) => session?.id || session?.session_id || session?._id)
-            .filter(Boolean)
-        );
-        const missingCached = visibleCached.filter((session) => !seenIds.has(session.id));
-        if (missingCached.length > 0) {
-          mergedSessions = [...sessions, ...missingCached];
-        }
-      }
+      mergedSessions = await mergeSessionsWithVisibleCache(normalizedResponse.items);
     } catch (cacheError) {
       __DEV__ && console.warn("Unable to merge cached sessions:", cacheError);
     }
 
     return {
       items: mergedSessions,
-      pagination,
+      pagination: normalizedResponse.pagination,
     };
   } catch (error: any) {
     if (error?.response?.status !== 401) {
       __DEV__ && console.error("Error getting sessions:", error);
     }
 
-    const cache = await getSessionsCache();
-    const allSessions = Object.values(cache);
-    const skip = (page - 1) * pageSize;
-    const paginatedSessions = allSessions.slice(skip, skip + pageSize);
-
-    return {
-      items: paginatedSessions,
-      pagination: {
-        page,
-        page_size: pageSize,
-        total: allSessions.length,
-        total_pages: Math.ceil(allSessions.length / pageSize),
-        has_next: skip + pageSize < allSessions.length,
-        has_prev: page > 1,
-      },
-    };
+    return await getOfflinePaginatedSessions(validPage, validPageSize);
   }
 };
 

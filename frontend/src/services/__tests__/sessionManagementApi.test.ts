@@ -130,4 +130,98 @@ describe("sessionManagementApi.getSession", () => {
       status: "OPEN",
     });
   });
+
+  it("creates and queues an offline session when offline", async () => {
+    let offlineStorage: any;
+    let network: any;
+    let createSession: any;
+
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      offlineStorage = require("../offline/offlineStorage");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      network = require("../../utils/network");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ({ createSession } = require("../api/sessionManagementApi"));
+    });
+
+    network.getNetworkStatus.mockReturnValue({
+      status: "OFFLINE",
+      isOnline: false,
+      isInternetReachable: false,
+      connectionType: "none",
+    });
+    offlineStorage.cacheSession.mockResolvedValue(undefined);
+    offlineStorage.addToOfflineQueue.mockResolvedValue(undefined);
+
+    const result = await createSession("WH-OFFLINE");
+
+    expect(result.id).toBe("offline_session_1");
+    expect(result._createdOffline).toBe(true);
+    expect(offlineStorage.cacheSession).toHaveBeenCalledWith(
+      expect.objectContaining({ warehouse: "WH-OFFLINE" }),
+    );
+    expect(offlineStorage.addToOfflineQueue).toHaveBeenCalledWith(
+      "session",
+      expect.objectContaining({ warehouse: "WH-OFFLINE" }),
+    );
+  });
+
+  it("merges visible cached sessions into API results", async () => {
+    let authStore: any;
+    let httpClient: any;
+    let offlineStorage: any;
+    let network: any;
+    let getSessions: any;
+
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      authStore = require("../../store/authStore");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      httpClient = require("../httpClient").default;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      offlineStorage = require("../offline/offlineStorage");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      network = require("../../utils/network");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ({ getSessions } = require("../api/sessionManagementApi"));
+    });
+
+    authStore.useAuthStore.getState.mockReturnValue({
+      user: { username: "staff1", role: "staff" },
+      isAuthenticated: true,
+    });
+    network.getNetworkStatus.mockReturnValue({
+      status: "ONLINE",
+      isOnline: true,
+      isInternetReachable: true,
+      connectionType: "wifi",
+    });
+    httpClient.get.mockResolvedValue({
+      data: {
+        items: [{ id: "session-api", staff_user: "staff1", status: "OPEN" }],
+        pagination: {
+          page: 1,
+          page_size: 20,
+          total: 1,
+          total_pages: 1,
+          has_next: false,
+          has_prev: false,
+        },
+      },
+    });
+    offlineStorage.getSessionsCache.mockResolvedValue({
+      "session-api": { id: "session-api", staff_user: "staff1", status: "OPEN" },
+      "session-cache": { id: "session-cache", staff_user: "staff1", status: "OPEN" },
+      "session-other": { id: "session-other", staff_user: "staff2", status: "OPEN" },
+    });
+    offlineStorage.cacheSessions.mockResolvedValue(undefined);
+
+    const result = await getSessions(1, 20);
+
+    expect(result.items.map((item: any) => item.id)).toEqual([
+      "session-api",
+      "session-cache",
+    ]);
+  });
 });

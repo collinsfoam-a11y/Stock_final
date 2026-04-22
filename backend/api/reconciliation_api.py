@@ -11,10 +11,15 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v2/reconciliation", tags=["Reconciliation"])
+
+
+def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
 
 
 def _get_db() -> AsyncIOMotorDatabase:
@@ -138,5 +143,9 @@ async def get_session_reconciliation_summary(
         }
 
     except Exception as e:
-        logger.error(f"Error generating reconciliation for session {session_id}: {e}")
+        logger.error(
+            "Error generating reconciliation for session %s: %s",
+            _safe_log_value(session_id),
+            _safe_log_value(e, max_length=200),
+        )
         raise HTTPException(status_code=500, detail=f"Reconciliation failed: {str(e)}")

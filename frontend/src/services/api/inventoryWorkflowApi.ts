@@ -1,5 +1,5 @@
 import { useAuthStore } from "../../store/authStore";
-import { AppError } from "../../utils/errors";
+import { AppError, type AppErrorCode } from "../../utils/errors";
 import { retryWithBackoff } from "../../utils/retry";
 import { CreateCountLinePayload, Item } from "../../types/scan";
 import { validateBarcode } from "../../utils/validation";
@@ -20,6 +20,159 @@ import { isOnline } from "./sessionManagementApi";
 
 const log = createLogger("InventoryWorkflowApi");
 
+type InventoryItemResult = Item & {
+  _source?: DataSource;
+  _cachedAt?: string;
+  _stale?: boolean;
+  _degraded?: boolean;
+};
+
+type CountLineListResponse = {
+  items: any[];
+  pagination: any;
+  _source?: DataSource;
+  _stale?: boolean;
+  _degraded?: boolean;
+};
+
+const toCachedInventoryItem = (cached: any): InventoryItemResult => {
+  const stale = isCacheStale(cached.cached_at);
+  const stockValue = cached.current_stock ?? cached.stock_qty ?? 0;
+  return {
+    id: cached.item_code,
+    name: cached.item_name,
+    item_code: cached.item_code,
+    barcode: cached.barcode,
+    item_name: cached.item_name,
+    description: cached.description,
+    stock_qty: stockValue,
+    current_stock: stockValue,
+    uom_name: cached.uom_name ?? cached.uom,
+    mrp: cached.mrp,
+    sales_price: cached.sales_price,
+    category: cached.category,
+    subcategory: cached.subcategory,
+    is_serialized: cached.is_serialized ?? false,
+    _source: "cache",
+    _cachedAt: cached.cached_at,
+    _stale: stale,
+  };
+};
+
+const getCachedBarcodeItem = async (
+  barcode: string,
+  options?: {
+    code?: AppErrorCode;
+    message?: string;
+    userMessage?: string;
+  }
+): Promise<InventoryItemResult> => {
+  const items = await searchItemsInCache(barcode);
+  if (items.length > 0 && items[0]) {
+    log.debug("Found in cache", { itemCode: items[0].item_code });
+    return toCachedInventoryItem(items[0]);
+  }
+
+  throw new AppError({
+    code: options?.code || "ITEM_CACHE_MISS",
+    severity: "USER",
+    message: options?.message || `Item not found in offline cache: ${barcode}`,
+    userMessage:
+      options?.userMessage || "Item not found in offline cache. Connect to internet to search.",
+    context: { barcode },
+  });
+};
+
+const resolveInventoryDataSource = (responseData: any): DataSource => {
+  if (responseData.metadata?.source === "sql_server_sync") {
+    return "sql";
+  }
+  if (responseData.metadata?.source === "cache") {
+    return "cache";
+  }
+  return "api";
+};
+
+const normalizeApiInventoryItem = (itemData: any, responseData: any): InventoryItemResult => {
+  const displayName = itemData.item_name || itemData.category || `Item ${itemData.item_code}`;
+  const stockQty = itemData.stock_qty ?? itemData.current_stock ?? 0;
+  const dataSource = resolveInventoryDataSource(responseData);
+
+  return {
+    id: itemData.id || itemData._id || itemData.item_code,
+    name: itemData.name || displayName,
+    item_code: itemData.item_code,
+    barcode: itemData.barcode,
+    item_name: itemData.item_name || displayName,
+    uom_name: itemData.uom_name ?? itemData.uom ?? itemData.uom_code,
+    uom: itemData.uom_name ?? itemData.uom ?? itemData.uom_code,
+    sales_price: itemData.sales_price ?? itemData.sale_price ?? itemData.standard_rate,
+    sale_price: itemData.sale_price ?? itemData.sales_price,
+    mrp: itemData.mrp,
+    category: itemData.category,
+    subcategory: itemData.subcategory,
+    warehouse: itemData.warehouse,
+    stock_qty: stockQty,
+    current_stock: stockQty,
+    batch_id: itemData.batch_id,
+    manual_barcode: itemData.manual_barcode,
+    unit2_barcode: itemData.unit2_barcode,
+    unit_m_barcode: itemData.unit_m_barcode,
+    manufacturing_date: itemData.manufacturing_date || itemData.mfg_date,
+    expiry_date: itemData.expiry_date,
+    mrp_variants: itemData.mrp_variants,
+    is_serialized: itemData.is_serialized ?? false,
+    is_misplaced: itemData.is_misplaced,
+    expected_location: itemData.expected_location,
+    _source: dataSource,
+  };
+};
+
+const cacheResolvedInventoryItem = async (item: InventoryItemResult): Promise<void> => {
+  await cacheItem({
+    item_code: item.item_code,
+    barcode: item.barcode,
+    item_name: item.item_name || item.name || item.item_code || "",
+    description: (item as any).description,
+    uom: item.uom ?? item.uom_code ?? item.uom_name,
+    uom_name: item.uom_name,
+    mrp: item.mrp,
+    sales_price: item.sales_price,
+    sale_price: item.sale_price ?? item.sales_price,
+    category: item.category,
+    subcategory: item.subcategory,
+    warehouse: item.warehouse,
+    manual_barcode: item.manual_barcode,
+    unit2_barcode: item.unit2_barcode,
+    unit_m_barcode: item.unit_m_barcode,
+    batch_id: item.batch_id,
+    current_stock: item.current_stock || item.stock_qty,
+    is_serialized: item.is_serialized,
+  });
+};
+
+const mapCachedSearchItem = (item: any): Item & { _source: DataSource } => ({
+  id: item.item_code,
+  name: item.item_name,
+  item_code: item.item_code,
+  barcode: item.barcode,
+  item_name: item.item_name,
+  description: item.description,
+  uom: item.uom,
+  stock_qty: item.current_stock,
+  mrp: item.mrp,
+  sale_price: item.sale_price,
+  sales_price: item.sales_price,
+  category: item.category,
+  subcategory: item.subcategory,
+  warehouse: item.warehouse,
+  manual_barcode: item.manual_barcode,
+  unit2_barcode: item.unit2_barcode,
+  unit_m_barcode: item.unit_m_barcode,
+  batch_id: item.batch_id,
+  _source: "cache",
+});
+
 /**
  * Resolves an item by barcode, preferring live data and falling back to cached inventory.
  */
@@ -28,7 +181,7 @@ export const getItemByBarcode = async (
   retryCount: number = 3,
   sessionId?: string,
   rackNo?: string
-): Promise<Item & { _source?: DataSource; _cachedAt?: string; _stale?: boolean }> => {
+): Promise<InventoryItemResult> => {
   const validation = validateBarcode(barcode);
   if (!validation.valid || !validation.value) {
     throw new AppError({
@@ -44,46 +197,9 @@ export const getItemByBarcode = async (
 
   log.debug(`Looking up barcode: ${trimmedBarcode}`, { original: barcode });
 
-  const returnCachedItem = (
-    cached: any
-  ): Item & { _source: DataSource; _cachedAt: string; _stale: boolean } => {
-    const stale = isCacheStale(cached.cached_at);
-    const stockValue = cached.current_stock ?? cached.stock_qty ?? 0;
-    return {
-      id: cached.item_code,
-      name: cached.item_name,
-      item_code: cached.item_code,
-      barcode: cached.barcode,
-      item_name: cached.item_name,
-      description: cached.description,
-      stock_qty: stockValue,
-      current_stock: stockValue,
-      uom_name: cached.uom_name ?? cached.uom,
-      mrp: cached.mrp,
-      sales_price: cached.sales_price,
-      category: cached.category,
-      subcategory: cached.subcategory,
-      is_serialized: cached.is_serialized ?? false,
-      _source: "cache",
-      _cachedAt: cached.cached_at,
-      _stale: stale,
-    };
-  };
-
   if (!isOnline()) {
     log.debug("Offline mode - searching cache");
-    const items = await searchItemsInCache(trimmedBarcode);
-    if (items.length > 0 && items[0]) {
-      log.debug("Found in cache", { itemCode: items[0].item_code });
-      return returnCachedItem(items[0]);
-    }
-    throw new AppError({
-      code: "ITEM_CACHE_MISS",
-      severity: "USER",
-      message: `Item not found in offline cache: ${trimmedBarcode}`,
-      userMessage: "Item not found in offline cache. Connect to internet to search.",
-      context: { barcode: trimmedBarcode },
-    });
+    return await getCachedBarcodeItem(trimmedBarcode);
   }
 
   try {
@@ -122,69 +238,12 @@ export const getItemByBarcode = async (
       });
     }
 
-    const displayName = itemData.item_name || itemData.category || `Item ${itemData.item_code}`;
-    const stockQty = itemData.stock_qty ?? itemData.current_stock ?? 0;
-
-    let dataSource: DataSource = "api";
-    if (response.data.metadata?.source === "sql_server_sync") {
-      dataSource = "sql";
-    } else if (response.data.metadata?.source === "cache") {
-      dataSource = "cache";
-    }
-
-    const normalizedItem: Item & { _source: DataSource } = {
-      id: itemData.id || itemData._id || itemData.item_code,
-      name: itemData.name || displayName,
-      item_code: itemData.item_code,
-      barcode: itemData.barcode,
-      item_name: itemData.item_name || displayName,
-      uom_name: itemData.uom_name ?? itemData.uom ?? itemData.uom_code,
-      uom: itemData.uom_name ?? itemData.uom ?? itemData.uom_code,
-      sales_price: itemData.sales_price ?? itemData.sale_price ?? itemData.standard_rate,
-      sale_price: itemData.sale_price ?? itemData.sales_price,
-      mrp: itemData.mrp,
-      category: itemData.category,
-      subcategory: itemData.subcategory,
-      warehouse: itemData.warehouse,
-      stock_qty: stockQty,
-      current_stock: stockQty,
-      batch_id: itemData.batch_id,
-      manual_barcode: itemData.manual_barcode,
-      unit2_barcode: itemData.unit2_barcode,
-      unit_m_barcode: itemData.unit_m_barcode,
-      manufacturing_date: itemData.manufacturing_date || itemData.mfg_date,
-      expiry_date: itemData.expiry_date,
-      mrp_variants: itemData.mrp_variants,
-      is_serialized: itemData.is_serialized ?? false,
-      is_misplaced: itemData.is_misplaced,
-      expected_location: itemData.expected_location,
-      _source: dataSource,
-    };
+    const normalizedItem = normalizeApiInventoryItem(itemData, response.data);
 
     log.debug("Found via API", { itemCode: normalizedItem.item_code });
 
     try {
-      await cacheItem({
-        item_code: normalizedItem.item_code,
-        barcode: normalizedItem.barcode,
-        item_name:
-          normalizedItem.item_name || normalizedItem.name || normalizedItem.item_code || "",
-        description: (normalizedItem as any).description,
-        uom: normalizedItem.uom ?? normalizedItem.uom_code ?? normalizedItem.uom_name,
-        uom_name: normalizedItem.uom_name,
-        mrp: normalizedItem.mrp,
-        sales_price: normalizedItem.sales_price,
-        sale_price: normalizedItem.sale_price ?? normalizedItem.sales_price,
-        category: normalizedItem.category,
-        subcategory: normalizedItem.subcategory,
-        warehouse: normalizedItem.warehouse,
-        manual_barcode: normalizedItem.manual_barcode,
-        unit2_barcode: normalizedItem.unit2_barcode,
-        unit_m_barcode: normalizedItem.unit_m_barcode,
-        batch_id: normalizedItem.batch_id,
-        current_stock: normalizedItem.current_stock || normalizedItem.stock_qty,
-        is_serialized: normalizedItem.is_serialized,
-      });
+      await cacheResolvedInventoryItem(normalizedItem);
     } catch (cacheError) {
       log.warn("Failed to cache item", {
         error: cacheError instanceof Error ? cacheError.message : String(cacheError),
@@ -204,22 +263,15 @@ export const getItemByBarcode = async (
 
     log.debug("API failed, trying cache fallback");
     try {
-      const items = await searchItemsInCache(trimmedBarcode);
-      if (items.length > 0 && items[0]) {
-        log.debug("Found in cache fallback", { itemCode: items[0].item_code });
-        return {
-          ...returnCachedItem(items[0]),
-          _source: "cache" as DataSource,
-          _degraded: true,
-        } as any;
-      }
-      throw new AppError({
-        code: "ITEM_NOT_FOUND",
-        severity: "USER",
-        message: "Item not found in cache",
-        userMessage: `Barcode ${trimmedBarcode} not found. Please try again when online.`,
-        context: { barcode: trimmedBarcode },
-      });
+      return {
+        ...(await getCachedBarcodeItem(trimmedBarcode, {
+          code: "ITEM_NOT_FOUND",
+          message: "Item not found in cache",
+          userMessage: `Barcode ${trimmedBarcode} not found. Please try again when online.`,
+        })),
+        _source: "cache" as DataSource,
+        _degraded: true,
+      };
     } catch (cacheError: any) {
       if (cacheError instanceof AppError) {
         throw cacheError;
@@ -296,27 +348,7 @@ export const searchItems = async (
     });
     const cachedItems = await searchItemsInCache(query);
     return {
-      items: cachedItems.map((item) => ({
-        id: item.item_code,
-        name: item.item_name,
-        item_code: item.item_code,
-        barcode: item.barcode,
-        item_name: item.item_name,
-        description: item.description,
-        uom: item.uom,
-        stock_qty: item.current_stock,
-        mrp: item.mrp,
-        sale_price: item.sale_price,
-        sales_price: item.sales_price,
-        category: item.category,
-        subcategory: item.subcategory,
-        warehouse: item.warehouse,
-        manual_barcode: item.manual_barcode,
-        unit2_barcode: item.unit2_barcode,
-        unit_m_barcode: item.unit_m_barcode,
-        batch_id: item.batch_id,
-        _source: "cache",
-      })),
+      items: cachedItems.map(mapCachedSearchItem),
       total: cachedItems.length,
       hasMore: false,
     };
@@ -335,27 +367,7 @@ export const searchItemsOptimized = async (
   try {
     if (!isOnline()) {
       const cachedItems = await searchItemsInCache(query);
-      const mappedItems = cachedItems.map((item) => ({
-        id: item.item_code,
-        name: item.item_name,
-        item_code: item.item_code,
-        barcode: item.barcode,
-        item_name: item.item_name,
-        description: item.description,
-        uom: item.uom,
-        stock_qty: item.current_stock,
-        mrp: item.mrp,
-        sale_price: item.sale_price,
-        sales_price: item.sales_price,
-        category: item.category,
-        subcategory: item.subcategory,
-        warehouse: item.warehouse,
-        manual_barcode: item.manual_barcode,
-        unit2_barcode: item.unit2_barcode,
-        unit_m_barcode: item.unit_m_barcode,
-        batch_id: item.batch_id,
-        _source: "cache" as DataSource,
-      }));
+      const mappedItems = cachedItems.map(mapCachedSearchItem);
       return {
         items: mappedItems,
         total: mappedItems.length,
@@ -584,6 +596,78 @@ export const checkItemScanStatus = async (
   }
 };
 
+const resolveCountLineItemName = async (countData: CreateCountLinePayload): Promise<string> => {
+  if (hasMeaningfulCountLineName(countData)) {
+    return countData.item_name!.trim();
+  }
+
+  try {
+    const cachedItem = await getItemFromCache(countData.item_code);
+    if (cachedItem) {
+      return cachedItem.item_name;
+    }
+  } catch {
+    // Ignore cache lookup error
+  }
+
+  return "Unknown Item";
+};
+
+const createOfflineCountLineResult = async (
+  countData: CreateCountLinePayload,
+  username?: string,
+  degraded: boolean = false
+): Promise<any & { _source: DataSource; _offline: boolean; _degraded?: boolean }> => {
+  const itemName = await resolveCountLineItemName(countData);
+  const offlineCountLine = (await createOfflineCountLine(countData, {
+    username,
+    itemName,
+  })) as any;
+
+  return {
+    ...offlineCountLine,
+    _source: "local" as DataSource,
+    _offline: true,
+    ...(degraded ? { _degraded: true } : {}),
+  };
+};
+
+const paginateCountLineItems = (
+  items: any[],
+  requestedPage: number,
+  requestedPageSize: number,
+  source: DataSource = "cache",
+  stale: boolean = false
+): CountLineListResponse => {
+  const total = items.length;
+  const totalPages = Math.ceil(total / requestedPageSize);
+  const startIndex = (requestedPage - 1) * requestedPageSize;
+  const endIndex = startIndex + requestedPageSize;
+  return {
+    items: items.slice(startIndex, endIndex),
+    pagination: {
+      page: requestedPage,
+      page_size: requestedPageSize,
+      total,
+      total_pages: totalPages,
+      has_next: requestedPage < totalPages,
+      has_prev: requestedPage > 1,
+    },
+    _source: source,
+    _stale: stale,
+  };
+};
+
+const getFilteredHydratedCountLines = async (
+  sessionId: string,
+  verified?: boolean
+): Promise<any[]> => {
+  const cachedLines = await getCountLinesBySessionFromCache(sessionId);
+  const filteredLines =
+    verified !== undefined ? cachedLines.filter((line) => line.verified === verified) : cachedLines;
+  return await hydrateCountLineNames(filteredLines);
+};
+
 /**
  * Persists a draft count line when the device is online.
  */
@@ -661,20 +745,6 @@ const hydrateCountLineNames = async <
 export const createCountLine = async (
   countData: CreateCountLinePayload
 ): Promise<any & { _source?: DataSource; _offline?: boolean }> => {
-  const resolveItemName = async (): Promise<string> => {
-    if (hasMeaningfulCountLineName(countData)) {
-      return countData.item_name!.trim();
-    }
-
-    try {
-      const cachedItem = await getItemFromCache(countData.item_code);
-      if (cachedItem) return cachedItem.item_name;
-    } catch {
-      // Ignore cache lookup error
-    }
-    return "Unknown Item";
-  };
-
   const user = useAuthStore.getState().user;
 
   try {
@@ -686,20 +756,10 @@ export const createCountLine = async (
         isOfflineSession,
       });
 
-      const itemName = await resolveItemName();
-      // MM4 fix: Wrap in try/catch to handle persistence failures gracefully
       try {
-        const offlineCountLine = (await createOfflineCountLine(countData, {
-          username: user?.username,
-          itemName,
-        })) as any;
-
+        const offlineCountLine = await createOfflineCountLineResult(countData, user?.username);
         log.debug("Created offline count line", { id: offlineCountLine._id });
-        return {
-          ...offlineCountLine,
-          _source: "local" as DataSource,
-          _offline: true,
-        };
+        return offlineCountLine;
       } catch (persistError) {
         log.error("Failed to persist offline count line", {
           error: persistError instanceof Error ? persistError.message : String(persistError),
@@ -734,23 +794,14 @@ export const createCountLine = async (
       error: error instanceof Error ? error.message : String(error),
     });
 
-    // MM4 fix: Wrap fallback in try/catch to prevent unhandled throw
     try {
-      const itemName = await resolveItemName();
-      const offlineCountLine = (await createOfflineCountLine(countData, {
-        username: user?.username,
-        itemName,
-      })) as any;
-
-      log.debug("Created offline count line as fallback", {
-        id: offlineCountLine._id,
-      });
-      return {
-        ...offlineCountLine,
-        _source: "local" as DataSource,
-        _offline: true,
-        _degraded: true,
-      } as any;
+      const offlineCountLine = await createOfflineCountLineResult(
+        countData,
+        user?.username,
+        true
+      );
+      log.debug("Created offline count line as fallback", { id: offlineCountLine._id });
+      return offlineCountLine;
     } catch (fallbackError) {
       log.error("Offline fallback also failed", {
         error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
@@ -768,53 +819,17 @@ export const getCountLines = async (
   page: number = 1,
   pageSize: number = 50,
   verified?: boolean
-): Promise<{
-  items: any[];
-  pagination: any;
-  _source?: DataSource;
-  _stale?: boolean;
-  _degraded?: boolean;
-}> => {
-  const paginateItems = (
-    items: any[],
-    requestedPage: number,
-    requestedPageSize: number,
-    source: DataSource = "cache",
-    stale: boolean = false
-  ) => {
-    const total = items.length;
-    const totalPages = Math.ceil(total / requestedPageSize);
-    const startIndex = (requestedPage - 1) * requestedPageSize;
-    const endIndex = startIndex + requestedPageSize;
-    const pageItems = items.slice(startIndex, endIndex);
-
-    return {
-      items: pageItems,
-      pagination: {
-        page: requestedPage,
-        page_size: requestedPageSize,
-        total,
-        total_pages: totalPages,
-        has_next: requestedPage < totalPages,
-        has_prev: requestedPage > 1,
-      },
-      _source: source,
-      _stale: stale,
-    };
-  };
-
+): Promise<CountLineListResponse> => {
   try {
     if (!isOnline()) {
       log.debug("Offline mode - returning cached count lines with pagination");
-
-      const cachedLines = await getCountLinesBySessionFromCache(sessionId);
-      const filteredLines =
-        verified !== undefined
-          ? cachedLines.filter((line) => line.verified === verified)
-          : cachedLines;
-      const hydratedLines = await hydrateCountLineNames(filteredLines);
-
-      return paginateItems(hydratedLines, page, pageSize, "cache", true);
+      return paginateCountLineItems(
+        await getFilteredHydratedCountLines(sessionId, verified),
+        page,
+        pageSize,
+        "cache",
+        true
+      );
     }
 
     let url = `/api/count-lines/session/${sessionId}?page=${page}&page_size=${pageSize}`;
@@ -843,15 +858,14 @@ export const getCountLines = async (
       error: error instanceof Error ? error.message : String(error),
     });
 
-    const cachedLines = await getCountLinesBySessionFromCache(sessionId);
-    const filteredLines =
-      verified !== undefined
-        ? cachedLines.filter((line) => line.verified === verified)
-        : cachedLines;
-    const hydratedLines = await hydrateCountLineNames(filteredLines);
-
     return {
-      ...paginateItems(hydratedLines, page, pageSize, "cache", true),
+      ...paginateCountLineItems(
+        await getFilteredHydratedCountLines(sessionId, verified),
+        page,
+        pageSize,
+        "cache",
+        true
+      ),
       _degraded: true,
     };
   }

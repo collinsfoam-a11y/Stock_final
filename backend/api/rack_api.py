@@ -16,10 +16,15 @@ from backend.services.lock_manager import get_lock_manager
 from backend.services.pubsub_service import get_pubsub_service
 from backend.services.session_state_machine import SessionStateMachine
 from backend.services.redis_service import get_redis
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/racks", tags=["Rack Management"])
+
+
+def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
 
 
 # Models
@@ -91,7 +96,11 @@ async def get_or_create_rack(db, rack_id: str, floor: str) -> dict:
             "updated_at": time.time(),
         }
         await db.rack_registry.insert_one(rack)
-        logger.info(f"Created new rack: {rack_id} on {floor}")
+        logger.info(
+            "Created new rack: %s on %s",
+            _safe_log_value(rack_id),
+            _safe_log_value(floor),
+        )
 
     return rack
 
@@ -159,7 +168,11 @@ async def get_available_racks(
             )
         )
 
-    logger.info(f"Found {len(result)} available racks (floor={floor})")
+    logger.info(
+        "Found %s available racks (floor=%s)",
+        len(result),
+        _safe_log_value(floor),
+    )
     return result
 
 
@@ -273,7 +286,12 @@ async def claim_rack(
             },
         )
 
-        logger.info(f"✓ Rack {rack_id} claimed by {user_id} (session: {session_id})")
+        logger.info(
+            "Rack %s claimed by %s (session: %s)",
+            _safe_log_value(rack_id),
+            _safe_log_value(user_id),
+            _safe_log_value(session_id),
+        )
 
         return RackClaimResponse(
             success=True,
@@ -287,7 +305,11 @@ async def claim_rack(
     except Exception as e:
         # Release lock on error
         await lock_manager.release_rack_lock(rack_id, user_id)
-        logger.error(f"Error claiming rack {rack_id}: {str(e)}")
+        logger.error(
+            "Error claiming rack %s: %s",
+            _safe_log_value(rack_id),
+            _safe_log_value(e, max_length=200),
+        )
         raise HTTPException(status_code=500, detail=f"Failed to claim rack: {str(e)}")
 
 
@@ -329,7 +351,7 @@ async def release_rack(
     released = await lock_manager.release_rack_lock(rack_id, user_id)
 
     if not released:
-        logger.warning(f"Failed to release Redis lock for rack {rack_id}")
+        logger.warning("Failed to release Redis lock for rack %s", _safe_log_value(rack_id))
 
     # Update rack status
     await update_rack_status(db, rack_id, status="available")
@@ -357,7 +379,11 @@ async def release_rack(
     # Broadcast update
     await pubsub_service.publish_rack_update(rack_id, "released", {"user_id": user_id})
 
-    logger.info(f"✓ Rack {rack_id} released by {user_id}")
+    logger.info(
+        "Rack %s released by %s",
+        _safe_log_value(rack_id),
+        _safe_log_value(user_id),
+    )
 
     return RackReleaseResponse(
         success=True, rack_id=rack_id, message=f"Rack {rack_id} released successfully"
@@ -411,7 +437,7 @@ async def pause_rack(
     # Broadcast update
     await pubsub_service.publish_rack_update(rack_id, "paused", {"user_id": user_id})
 
-    logger.info(f"Rack {rack_id} paused by {user_id}")
+    logger.info("Rack %s paused by %s", _safe_log_value(rack_id), _safe_log_value(user_id))
 
     return {"success": True, "rack_id": rack_id, "status": "paused"}
 
@@ -476,7 +502,7 @@ async def resume_rack(
     # Broadcast update
     await pubsub_service.publish_rack_update(rack_id, "resumed", {"user_id": user_id})
 
-    logger.info(f"Rack {rack_id} resumed by {user_id}")
+    logger.info("Rack %s resumed by %s", _safe_log_value(rack_id), _safe_log_value(user_id))
 
     return {"success": True, "rack_id": rack_id, "status": "active"}
 

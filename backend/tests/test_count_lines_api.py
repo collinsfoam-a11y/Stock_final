@@ -489,6 +489,47 @@ class TestCreateCountLine:
         assert result["baseline_hash"] == "snapshot-hash"
 
     @pytest.mark.asyncio
+    async def test_create_count_line_reuses_rejected_count_line(
+        self, mock_db, line_data, erp_item
+    ):
+        mock_db.sessions.find_one.return_value = {"id": "session123", "status": "OPEN"}
+        mock_db.erp_items.find_one.return_value = erp_item
+        mock_db.count_lines.find_one = AsyncMock(return_value=None)
+
+        rejected_line = {
+            "_id": "mongo-line-1",
+            "id": "line-existing",
+            "session_id": "session123",
+            "item_code": "ITEM001",
+            "floor_no": "F1",
+            "rack_no": "R1",
+            "status": "rejected",
+            "recount_iteration": 2,
+        }
+
+        with (
+            patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db),
+            patch(
+                "backend.api.count_lines_routes.find_duplicate_count_line",
+                AsyncMock(return_value=rejected_line),
+            ),
+            patch(
+                "backend.api.count_lines_routes.can_reuse_rejected_count_line",
+                return_value=True,
+            ),
+        ):
+            result = await create_count_line(
+                request=AsyncMock(),
+                line_data=line_data,
+                current_user={"username": "testuser"},
+            )
+
+        mock_db.count_lines.update_one.assert_awaited_once()
+        mock_db.count_lines.insert_one.assert_not_awaited()
+        assert result["id"] == "line-existing"
+        assert result["recount_iteration"] == 3
+
+    @pytest.mark.asyncio
     async def test_save_count_line_draft_persists(self, mock_db, line_data):
         with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
             result = await save_count_line_draft(

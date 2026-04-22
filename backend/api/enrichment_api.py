@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.services.enrichment_service import EnrichmentService
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,10 @@ enrichment_router = APIRouter(prefix="/api/v1/enrichment", tags=["Enrichment"])
 
 # These will be initialized at runtime
 enrichment_service: Optional[EnrichmentService] = None
+
+
+def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
 
 
 def init_enrichment_api(service: EnrichmentService):
@@ -138,7 +143,11 @@ async def record_item_enrichment(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Enrichment API error for {request.item_code}: {str(e)}")
+        logger.error(
+            "Enrichment API error for %s: %s",
+            _safe_log_value(request.item_code),
+            _safe_log_value(e, max_length=200),
+        )
         raise HTTPException(status_code=500, detail=f"Failed to record enrichment: {str(e)}")
 
 
@@ -166,7 +175,11 @@ async def check_data_completeness(
         )
 
     except Exception as e:
-        logger.error(f"Completeness check error for {item_code}: {str(e)}")
+        logger.error(
+            "Completeness check error for %s: %s",
+            _safe_log_value(item_code),
+            _safe_log_value(e, max_length=200),
+        )
         raise HTTPException(status_code=500, detail=f"Failed to check completeness: {str(e)}")
 
 
@@ -192,7 +205,7 @@ async def get_enrichment_statistics(
         return {"success": True, "stats": stats}
 
     except Exception as e:
-        logger.error(f"Enrichment stats error: {str(e)}")
+        logger.error("Enrichment stats error: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Failed to get enrichment stats: {str(e)}")
 
 
@@ -218,7 +231,7 @@ async def get_incomplete_items(
         return {"success": True, "items": items, "count": len(items)}
 
     except Exception as e:
-        logger.error(f"Get incomplete items error: {str(e)}")
+        logger.error("Get incomplete items error: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Failed to get incomplete items: {str(e)}")
 
 
@@ -244,7 +257,7 @@ async def get_enrichment_leaderboard_endpoint(
         return {"success": True, "leaderboard": leaderboard}
 
     except Exception as e:
-        logger.error(f"Leaderboard error: {str(e)}")
+        logger.error("Leaderboard error: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Failed to get leaderboard: {str(e)}")
 
 
@@ -275,7 +288,7 @@ async def bulk_import_enrichments_endpoint(
         return {"success": True, "results": results}
 
     except Exception as e:
-        logger.error(f"Bulk import error: {str(e)}")
+        logger.error("Bulk import error: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Bulk import failed: {str(e)}")
 
 
@@ -311,5 +324,5 @@ async def validate_enrichment_data_endpoint(
         }
 
     except Exception as e:
-        logger.error(f"Validation error: {str(e)}")
+        logger.error("Validation error: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")

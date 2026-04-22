@@ -8,6 +8,7 @@ import json
 import logging
 import re
 import time
+import uuid
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Optional
@@ -747,6 +748,434 @@ async def _build_sessions_analytics_payload(db: AsyncIOMotorDatabase) -> dict[st
     }
 
 
+def _validate_session_create_request(
+    session_data: SessionCreate,
+) -> tuple[str, Optional[str], Optional[str], Optional[str]]:
+    warehouse = session_data.warehouse.strip()
+    if not warehouse:
+        raise HTTPException(status_code=400, detail="Warehouse name cannot be empty")
+
+    return (
+        warehouse,
+        *_parse_session_location_parts(
+            warehouse,
+            location_type=session_data.location_type,
+            location_name=session_data.location_name,
+            rack_no=session_data.rack_no,
+        ),
+    )
+
+
+async def _find_existing_session_for_warehouse(
+    db: AsyncIOMotorDatabase,
+    username: str,
+    warehouse: str,
+) -> Optional[dict[str, Any]]:
+    existing_session = await db.sessions.find_one(
+        {
+            "staff_user": username,
+            "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]},
+            "warehouse": {"$regex": f"^{re.escape(warehouse)}$", "$options": "i"},
+        }
+    )
+    if not existing_session:
+        return None
+
+    if "_id" in existing_session and "id" not in existing_session:
+        existing_session["id"] = str(existing_session["_id"])
+        del existing_session["_id"]
+    return existing_session
+
+
+async def _close_existing_user_sessions(db: AsyncIOMotorDatabase, username: str) -> None:
+    open_sessions_filter = {
+        "staff_user": username,
+        "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]},
+    }
+    now_ts = time.time()
+    now_dt = datetime.now(timezone.utc)
+
+    await db.sessions.update_many(
+        open_sessions_filter,
+        {
+            "$set": {
+                "status": "CLOSED",
+                "completed_at": now_dt,
+                "close_reason": "SYSTEM_AUTO_CLOSE_NEW_SESSION",
+            }
+        },
+    )
+    await db.verification_sessions.update_many(
+        {"user_id": username, "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]}},
+        {
+            "$set": {
+                "status": "CLOSED",
+                "completed_at": now_ts,
+                "close_reason": "SYSTEM_AUTO_CLOSE_NEW_SESSION",
+            }
+        },
+    )
+
+
+async def _revoke_existing_refresh_tokens(username: str) -> None:
+    refresh_token_service = get_refresh_token_service()
+    if refresh_token_service:
+        await refresh_token_service.revoke_all_user_tokens(username)
+
+
+def _build_new_session(
+    session_data: SessionCreate,
+    current_user: dict[str, Any],
+    warehouse: str,
+    location_type: Optional[str],
+    location_name: Optional[str],
+    rack_no: Optional[str],
+) -> Session:
+    now = datetime.now(timezone.utc)
+    return Session(
+        id=str(uuid.uuid4()),
+        warehouse=warehouse,
+        location_type=location_type,
+        location_name=location_name,
+        rack_no=rack_no,
+        staff_user=current_user["username"],
+        staff_name=current_user.get("full_name", current_user["username"]),
+        type=session_data.type or "STANDARD",
+        status="OPEN",
+        started_at=now,
+        last_heartbeat=now,
+    )
+
+
+async def _get_latest_session_config_version_id(db: AsyncIOMotorDatabase) -> str:
+    latest_config = await db.config_versions.find_one(sort=[("created_at", -1)])
+    return latest_config["id"] if latest_config else "LEGACY_NO_VERSION"
+
+
+async def _persist_session_snapshot(
+    db: AsyncIOMotorDatabase,
+    session: Session,
+    warehouse: str,
+    location_type: Optional[str],
+    location_name: Optional[str],
+    rack_no: Optional[str],
+) -> None:
+    from backend.core.schemas.snapshot import SessionSnapshot
+
+    snapshot_items = await _collect_snapshot_items(
+        db,
+        warehouse,
+        location_type=location_type,
+        location_name=location_name,
+        rack_no=rack_no,
+    )
+    _, snapshot_hash = _build_snapshot_payload_and_hash(snapshot_items)
+
+    session.snapshot_hash = snapshot_hash
+
+    snapshot = SessionSnapshot(
+        session_id=session.id,
+        warehouse=warehouse,
+        snapshot_hash=snapshot_hash,
+        items=snapshot_items,
+        item_count=len(snapshot_items),
+        config_version_id=session.config_version_id,
+    )
+    await db.session_snapshots.insert_one(snapshot.model_dump())
+    session.snapshot_items_ref = snapshot.id
+
+
+async def _insert_session_documents(
+    db: AsyncIOMotorDatabase,
+    session: Session,
+    username: str,
+) -> None:
+    session_doc = session.model_dump()
+    session_doc["session_id"] = session.id
+    await db.sessions.insert_one(session_doc)
+    await db.verification_sessions.insert_one(
+        {
+            "session_id": session.id,
+            "user_id": username,
+            "status": "ACTIVE",
+            "started_at": time.time(),
+            "last_heartbeat": time.time(),
+            "rack_id": None,
+            "floor": None,
+        }
+    )
+
+
+def _active_workflow_session_query() -> dict[str, Any]:
+    return {
+        "status": {"$in": ACTIVE_SESSION_STATUSES},
+        "$and": [
+            {"$or": [{"closed_at": {"$exists": False}}, {"closed_at": {"$in": [None, ""]}}]},
+            {
+                "$or": [
+                    {"finalized_at": {"$exists": False}},
+                    {"finalized_at": {"$in": [None, ""]}},
+                ]
+            },
+        ],
+    }
+
+
+async def _fetch_active_workflow_sessions(
+    db: AsyncIOMotorDatabase,
+) -> list[dict[str, Any]]:
+    cursor = db.sessions.find(_active_workflow_session_query()).sort("last_heartbeat", -1)
+    return await cursor.to_list(length=200)
+
+
+def _collect_session_metadata(
+    active_sessions: list[dict[str, Any]],
+) -> tuple[list[str], dict[str, dict[str, Any]]]:
+    session_ids: list[str] = []
+    session_meta_by_id: dict[str, dict[str, Any]] = {}
+
+    for document in active_sessions:
+        document_id = document.get("id") or document.get("session_id")
+        if isinstance(document_id, str) and document_id:
+            session_ids.append(document_id)
+            session_meta_by_id[document_id] = document
+
+    return session_ids, session_meta_by_id
+
+
+async def _fetch_session_counts_by_id(
+    db: AsyncIOMotorDatabase,
+    session_ids: list[str],
+) -> dict[str, dict[str, Any]]:
+    if not session_ids:
+        return {}
+
+    rows = await db.count_lines.aggregate(
+        [
+            {"$match": {"session_id": {"$in": session_ids}}},
+            {
+                "$group": {
+                    "_id": "$session_id",
+                    "items_counted": {"$sum": 1},
+                    "reviewed_items": {
+                        "$sum": {"$cond": [{"$in": ["$status", ["approved", "locked"]]}, 1, 0]}
+                    },
+                    "last_counted_at": {"$max": {"$ifNull": ["$updated_at", "$counted_at"]}},
+                }
+            },
+        ]
+    ).to_list(length=max(len(session_ids), 1))
+    return {row["_id"]: row for row in rows if isinstance(row.get("_id"), str)}
+
+
+async def _fetch_pending_reviews_by_user(
+    db: AsyncIOMotorDatabase,
+) -> dict[str, dict[str, Any]]:
+    rows = await db.count_lines.aggregate(
+        [
+            {
+                "$match": {
+                    "counted_by": {"$exists": True, "$nin": [None, ""]},
+                    **PENDING_APPROVAL_MATCH,
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$counted_by",
+                    "pending_approvals": {"$sum": 1},
+                    "pending_review_since": {"$min": {"$ifNull": ["$submitted_at", "$counted_at"]}},
+                    "last_pending_at": {"$max": {"$ifNull": ["$updated_at", "$counted_at"]}},
+                }
+            },
+        ]
+    ).to_list(length=500)
+    return {row["_id"]: row for row in rows if isinstance(row.get("_id"), str)}
+
+
+async def _fetch_recounts_by_user(
+    db: AsyncIOMotorDatabase,
+) -> dict[str, dict[str, Any]]:
+    rows = await db.count_lines.aggregate(
+        [
+            {"$match": OPEN_RECOUNT_MATCH},
+            {
+                "$group": {
+                    "_id": "$assigned_to",
+                    "assigned_recounts": {"$sum": 1},
+                    "recount_assigned_at": {
+                        "$min": {
+                            "$ifNull": [
+                                "$recount_requested_at",
+                                {"$ifNull": ["$rejected_at", "$counted_at"]},
+                            ]
+                        }
+                    },
+                    "last_recount_at": {
+                        "$max": {
+                            "$ifNull": [
+                                "$rejected_at",
+                                {"$ifNull": ["$updated_at", "$counted_at"]},
+                            ]
+                        }
+                    },
+                }
+            },
+        ]
+    ).to_list(length=500)
+    return {row["_id"]: row for row in rows if isinstance(row.get("_id"), str)}
+
+
+def _group_sessions_by_user(
+    active_sessions: list[dict[str, Any]],
+    pending_by_user: dict[str, dict[str, Any]],
+    recount_by_user: dict[str, dict[str, Any]],
+) -> tuple[dict[str, list[dict[str, Any]]], set[str]]:
+    sessions_by_user: dict[str, list[dict[str, Any]]] = {}
+    candidate_usernames = set(pending_by_user.keys()) | set(recount_by_user.keys())
+
+    for session in active_sessions:
+        username = session.get("staff_user") or session.get("user_id")
+        if not isinstance(username, str) or not username:
+            continue
+        candidate_usernames.add(username)
+        sessions_by_user.setdefault(username, []).append(session)
+
+    return sessions_by_user, candidate_usernames
+
+
+async def _fetch_users_by_username(
+    db: AsyncIOMotorDatabase,
+    candidate_usernames: set[str],
+) -> dict[str, dict[str, Any]]:
+    if not candidate_usernames:
+        return {}
+
+    user_docs = await db.users.find({"username": {"$in": sorted(candidate_usernames)}}).to_list(
+        length=len(candidate_usernames)
+    )
+    return {
+        user.get("username"): user
+        for user in user_docs
+        if isinstance(user.get("username"), str) and user.get("username")
+    }
+
+
+def _build_user_workflow_summary(
+    username: str,
+    sessions_by_user: dict[str, list[dict[str, Any]]],
+    session_meta_by_id: dict[str, dict[str, Any]],
+    session_counts_by_id: dict[str, dict[str, Any]],
+    pending_by_user: dict[str, dict[str, Any]],
+    recount_by_user: dict[str, dict[str, Any]],
+    user_by_username: dict[str, dict[str, Any]],
+) -> UserWorkflowSummary:
+    user_sessions = sessions_by_user.get(username, [])
+    user_sessions.sort(
+        key=lambda item: _coerce_datetime(item.get("last_heartbeat")) or datetime.min,
+        reverse=True,
+    )
+    active_session = user_sessions[0] if user_sessions else None
+    active_session_id = (
+        (active_session.get("id") or active_session.get("session_id")) if active_session else None
+    )
+    session_meta = session_meta_by_id.get(active_session_id, {}) if active_session_id else {}
+    session_counts = session_counts_by_id.get(active_session_id, {}) if active_session_id else {}
+
+    pending_info = pending_by_user.get(username, {})
+    recount_info = recount_by_user.get(username, {})
+    items_counted = int(session_counts.get("items_counted", 0) or 0)
+    reviewed_items = int(session_counts.get("reviewed_items", 0) or 0)
+    total_items = int(session_meta.get("total_items", 0) or 0)
+    progress_percent = round((items_counted / total_items) * 100, 1) if total_items > 0 else 0.0
+    pending_review_since = _coerce_datetime(
+        pending_info.get("pending_review_since") or pending_info.get("last_pending_at")
+    )
+    recount_assigned_at = _coerce_datetime(
+        recount_info.get("recount_assigned_at") or recount_info.get("last_recount_at")
+    )
+
+    last_activity = _max_datetime(
+        active_session.get("last_heartbeat") if active_session else None,
+        session_counts.get("last_counted_at"),
+        pending_info.get("last_pending_at"),
+        recount_info.get("last_recount_at"),
+    )
+    session_status = _normalize_session_status(
+        _effective_session_status(active_session).value if active_session else None
+    )
+    workflow_stage = _derive_workflow_stage(
+        session_status,
+        int(pending_info.get("pending_approvals", 0) or 0),
+        int(recount_info.get("assigned_recounts", 0) or 0),
+    )
+    presence_status = _derive_presence_status(last_activity)
+    priority_score = _calculate_priority_score(
+        workflow_stage=workflow_stage,
+        presence_status=presence_status,
+        session_status=session_status,
+        pending_approvals=int(pending_info.get("pending_approvals", 0) or 0),
+        assigned_recounts=int(recount_info.get("assigned_recounts", 0) or 0),
+        total_variance=float(session_meta.get("total_variance", 0) or 0),
+        pending_review_since=pending_review_since,
+        recount_assigned_at=recount_assigned_at,
+        last_activity=last_activity,
+    )
+
+    user_doc = user_by_username.get(username, {})
+    return UserWorkflowSummary(
+        username=username,
+        full_name=user_doc.get("full_name"),
+        role=user_doc.get("role") or "staff",
+        workflow_stage=workflow_stage,
+        presence_status=presence_status,
+        active_session_id=active_session_id if isinstance(active_session_id, str) else None,
+        session_status=session_status,
+        session_type=session_meta.get("type"),
+        warehouse=session_meta.get("warehouse"),
+        rack_id=active_session.get("rack_no") if active_session else None,
+        floor=active_session.get("location_name") if active_session else None,
+        session_started_at=_max_datetime(
+            session_meta.get("started_at"),
+            active_session.get("started_at") if active_session else None,
+        ),
+        last_activity=last_activity,
+        pending_review_since=pending_review_since,
+        recount_assigned_at=recount_assigned_at,
+        open_session_count=len(user_sessions),
+        items_counted=items_counted,
+        reviewed_items=reviewed_items,
+        total_items=total_items,
+        progress_percent=progress_percent,
+        pending_approvals=int(pending_info.get("pending_approvals", 0) or 0),
+        assigned_recounts=int(recount_info.get("assigned_recounts", 0) or 0),
+        total_variance=float(session_meta.get("total_variance", 0) or 0),
+        priority_score=priority_score,
+        priority_band=_priority_band_for_score(priority_score),
+        next_action=_derive_next_action(
+            workflow_stage=workflow_stage,
+            presence_status=presence_status,
+            session_status=session_status,
+        ),
+    )
+
+
+def _sort_user_workflows(results: list[UserWorkflowSummary]) -> None:
+    presence_rank = {
+        WorkflowPresenceStatus.ONLINE: 2,
+        WorkflowPresenceStatus.IDLE: 1,
+        WorkflowPresenceStatus.OFFLINE: 0,
+    }
+    results.sort(
+        key=lambda row: (
+            row.priority_score,
+            row.active_session_id is not None,
+            presence_rank.get(row.presence_status, 0),
+            row.last_activity or datetime.min,
+        ),
+        reverse=True,
+    )
+
+
 # Endpoints
 
 
@@ -825,150 +1254,41 @@ async def create_session(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> Session:
-    """Create a new session"""
-    import uuid
-    from datetime import datetime, timezone
-
-    # Input validation
-    warehouse = session_data.warehouse.strip()
-    if not warehouse:
-        raise HTTPException(status_code=400, detail="Warehouse name cannot be empty")
-    location_type, location_name, rack_no = _parse_session_location_parts(
-        warehouse,
-        location_type=session_data.location_type,
-        location_name=session_data.location_name,
-        rack_no=session_data.rack_no,
+    """Create a new session with snapshot/config persistence and single-session enforcement."""
+    warehouse, location_type, location_name, rack_no = _validate_session_create_request(
+        session_data
     )
-
-    existing_session = await db.sessions.find_one(
-        {
-            "staff_user": current_user["username"],
-            "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]},
-            "warehouse": {"$regex": f"^{re.escape(warehouse)}$", "$options": "i"},
-        }
+    existing_session = await _find_existing_session_for_warehouse(
+        db, current_user["username"], warehouse
     )
     if existing_session:
-        if "_id" in existing_session and "id" not in existing_session:
-            existing_session["id"] = str(existing_session["_id"])
-            del existing_session["_id"]
         logger.info(
             "Existing open session found for warehouse; returning existing session",
             extra={"warehouse": warehouse, "session_id": existing_session.get("id")},
         )
         return Session(**existing_session)
 
-    # Enforce Invariant E: Single Session per User
-    # In a live production environment, opening a new session must invalidate old ones.
+    await _close_existing_user_sessions(db, current_user["username"])
+    await _revoke_existing_refresh_tokens(current_user["username"])
 
-    # Find any active sessions for this user across both collections
-    open_sessions_filter = {
-        "staff_user": current_user["username"],
-        "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]},
-    }
-
-    # Auto-close strategy to satisfy "Single Session" mandate
-    # We close them with a special status to indicate system intervention
-    now_ts = time.time()
-    now_dt = datetime.now(timezone.utc)
-
-    # 1. Close in main sessions collection
-    await db.sessions.update_many(
-        open_sessions_filter,
-        {
-            "$set": {
-                "status": "CLOSED",
-                "completed_at": now_dt,
-                "close_reason": "SYSTEM_AUTO_CLOSE_NEW_SESSION",
-            }
-        },
-    )
-
-    # 2. Close in verification_sessions
-    await db.verification_sessions.update_many(
-        {"user_id": current_user["username"], "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]}},
-        {
-            "$set": {
-                "status": "CLOSED",
-                "completed_at": now_ts,
-                "close_reason": "SYSTEM_AUTO_CLOSE_NEW_SESSION",
-            }
-        },
-    )
-
-    # 3. Revoke previous refresh tokens to ensure session is strictly bound
-    refresh_token_service = get_refresh_token_service()
-    if refresh_token_service:
-        await refresh_token_service.revoke_all_user_tokens(current_user["username"])
-
-    # Create Session object
-    session = Session(
-        id=str(uuid.uuid4()),
-        warehouse=warehouse,
-        location_type=location_type,
-        location_name=location_name,
-        rack_no=rack_no,
-        staff_user=current_user["username"],
-        staff_name=current_user.get("full_name", current_user["username"]),
-        type=session_data.type or "STANDARD",
-        status="OPEN",
-        started_at=datetime.now(timezone.utc),
-        last_heartbeat=datetime.now(timezone.utc),
-    )
-
-    # GOVERNANCE: Snapshot & Config Enforcement
-    from backend.core.schemas.snapshot import SessionSnapshot
-
-    # 1. Get latest config version
-    latest_config = await db.config_versions.find_one(sort=[("created_at", -1)])
-    config_version_id = latest_config["id"] if latest_config else "LEGACY_NO_VERSION"
-    session.config_version_id = config_version_id
-
-    # 2. Fetch items for snapshot.
-    # Prefer exact warehouse match, then structured location, then controlled aliases.
-    snapshot_items = await _collect_snapshot_items(
-        db,
+    session = _build_new_session(
+        session_data,
+        current_user,
         warehouse,
-        location_type=location_type,
-        location_name=location_name,
-        rack_no=rack_no,
+        location_type,
+        location_name,
+        rack_no,
     )
-
-    # 3. Create Hash
-    items_payload, snapshot_hash = _build_snapshot_payload_and_hash(snapshot_items)
-
-    session.snapshot_hash = snapshot_hash
-
-    # 4. Save Snapshot
-    snapshot = SessionSnapshot(
-        session_id=session.id,
-        warehouse=warehouse,
-        snapshot_hash=snapshot_hash,
-        items=snapshot_items,
-        item_count=len(snapshot_items),
-        config_version_id=config_version_id,
+    session.config_version_id = await _get_latest_session_config_version_id(db)
+    await _persist_session_snapshot(
+        db,
+        session,
+        warehouse,
+        location_type,
+        location_name,
+        rack_no,
     )
-
-    # Store snapshot in separate collection
-    await db.session_snapshots.insert_one(snapshot.model_dump())
-    session.snapshot_items_ref = snapshot.id
-
-    # Insert into db.sessions
-    session_doc = session.model_dump()
-    session_doc["session_id"] = session.id
-    await db.sessions.insert_one(session_doc)
-
-    # Deprecated compatibility mirror for older code paths that have not yet been removed.
-    # Active flows must read from `sessions`.
-    verification_session = {
-        "session_id": session.id,
-        "user_id": current_user["username"],
-        "status": "ACTIVE",
-        "started_at": time.time(),
-        "last_heartbeat": time.time(),
-        "rack_id": None,
-        "floor": None,
-    }
-    await db.verification_sessions.insert_one(verification_session)
+    await _insert_session_documents(db, session, current_user["username"])
 
     return session
 
@@ -1025,241 +1345,33 @@ async def get_user_workflows(
     """Return the currently running workflow grouped by user."""
     del current_user  # Authorization is enforced by the dependency above.
 
-    active_sessions_cursor = db.sessions.find(
-        {
-            "status": {"$in": ACTIVE_SESSION_STATUSES},
-            "$and": [
-                {"$or": [{"closed_at": {"$exists": False}}, {"closed_at": {"$in": [None, ""]}}]},
-                {
-                    "$or": [
-                        {"finalized_at": {"$exists": False}},
-                        {"finalized_at": {"$in": [None, ""]}},
-                    ]
-                },
-            ],
-        }
-    ).sort("last_heartbeat", -1)
-    active_sessions = await active_sessions_cursor.to_list(length=200)
-
-    session_ids = [
-        session.get("id") or session.get("session_id")
-        for session in active_sessions
-        if isinstance(session.get("id") or session.get("session_id"), str)
-        and (session.get("id") or session.get("session_id"))
-    ]
-
-    session_meta_by_id: dict[str, dict[str, Any]] = {}
-    for document in active_sessions:
-        document_id = document.get("id") or document.get("session_id")
-        if isinstance(document_id, str) and document_id:
-            session_meta_by_id[document_id] = document
-
-    session_counts_by_id: dict[str, dict[str, Any]] = {}
-    if session_ids:
-        session_count_rows = await db.count_lines.aggregate(
-            [
-                {"$match": {"session_id": {"$in": session_ids}}},
-                {
-                    "$group": {
-                        "_id": "$session_id",
-                        "items_counted": {"$sum": 1},
-                        "reviewed_items": {
-                            "$sum": {"$cond": [{"$in": ["$status", ["approved", "locked"]]}, 1, 0]}
-                        },
-                        "last_counted_at": {"$max": {"$ifNull": ["$updated_at", "$counted_at"]}},
-                    }
-                },
-            ]
-        ).to_list(length=max(len(session_ids), 1))
-
-        session_counts_by_id = {
-            row["_id"]: row for row in session_count_rows if isinstance(row.get("_id"), str)
-        }
-
-    pending_rows = await db.count_lines.aggregate(
-        [
-            {
-                "$match": {
-                    "counted_by": {"$exists": True, "$nin": [None, ""]},
-                    **PENDING_APPROVAL_MATCH,
-                }
-            },
-            {
-                "$group": {
-                    "_id": "$counted_by",
-                    "pending_approvals": {"$sum": 1},
-                    "pending_review_since": {"$min": {"$ifNull": ["$submitted_at", "$counted_at"]}},
-                    "last_pending_at": {"$max": {"$ifNull": ["$updated_at", "$counted_at"]}},
-                }
-            },
-        ]
-    ).to_list(length=500)
-    pending_by_user = {row["_id"]: row for row in pending_rows if isinstance(row.get("_id"), str)}
-
-    recount_rows = await db.count_lines.aggregate(
-        [
-            {"$match": OPEN_RECOUNT_MATCH},
-            {
-                "$group": {
-                    "_id": "$assigned_to",
-                    "assigned_recounts": {"$sum": 1},
-                    "recount_assigned_at": {
-                        "$min": {
-                            "$ifNull": [
-                                "$recount_requested_at",
-                                {"$ifNull": ["$rejected_at", "$counted_at"]},
-                            ]
-                        }
-                    },
-                    "last_recount_at": {
-                        "$max": {
-                            "$ifNull": [
-                                "$rejected_at",
-                                {"$ifNull": ["$updated_at", "$counted_at"]},
-                            ]
-                        }
-                    },
-                }
-            },
-        ]
-    ).to_list(length=500)
-    recount_by_user = {row["_id"]: row for row in recount_rows if isinstance(row.get("_id"), str)}
-
-    sessions_by_user: dict[str, list[dict[str, Any]]] = {}
-    candidate_usernames = set(pending_by_user.keys()) | set(recount_by_user.keys())
-
-    for session in active_sessions:
-        username = session.get("staff_user") or session.get("user_id")
-        if not isinstance(username, str) or not username:
-            continue
-        candidate_usernames.add(username)
-        sessions_by_user.setdefault(username, []).append(session)
-
+    active_sessions = await _fetch_active_workflow_sessions(db)
+    session_ids, session_meta_by_id = _collect_session_metadata(active_sessions)
+    session_counts_by_id = await _fetch_session_counts_by_id(db, session_ids)
+    pending_by_user = await _fetch_pending_reviews_by_user(db)
+    recount_by_user = await _fetch_recounts_by_user(db)
+    sessions_by_user, candidate_usernames = _group_sessions_by_user(
+        active_sessions,
+        pending_by_user,
+        recount_by_user,
+    )
     if not candidate_usernames:
         return []
 
-    user_docs = await db.users.find({"username": {"$in": sorted(candidate_usernames)}}).to_list(
-        length=len(candidate_usernames)
-    )
-    user_by_username = {
-        user.get("username"): user
-        for user in user_docs
-        if isinstance(user.get("username"), str) and user.get("username")
-    }
-
-    results: list[UserWorkflowSummary] = []
-
-    for username in sorted(candidate_usernames):
-        user_sessions = sessions_by_user.get(username, [])
-        user_sessions.sort(
-            key=lambda item: _coerce_datetime(item.get("last_heartbeat")) or datetime.min,
-            reverse=True,
+    user_by_username = await _fetch_users_by_username(db, candidate_usernames)
+    results = [
+        _build_user_workflow_summary(
+            username,
+            sessions_by_user,
+            session_meta_by_id,
+            session_counts_by_id,
+            pending_by_user,
+            recount_by_user,
+            user_by_username,
         )
-        active_session = user_sessions[0] if user_sessions else None
-        active_session_id = (
-            (active_session.get("id") or active_session.get("session_id"))
-            if active_session
-            else None
-        )
-        session_meta = session_meta_by_id.get(active_session_id, {}) if active_session_id else {}
-        session_counts = (
-            session_counts_by_id.get(active_session_id, {}) if active_session_id else {}
-        )
-
-        pending_info = pending_by_user.get(username, {})
-        recount_info = recount_by_user.get(username, {})
-        items_counted = int(session_counts.get("items_counted", 0) or 0)
-        reviewed_items = int(session_counts.get("reviewed_items", 0) or 0)
-        total_items = int(session_meta.get("total_items", 0) or 0)
-        progress_percent = round((items_counted / total_items) * 100, 1) if total_items > 0 else 0.0
-        pending_review_since = _coerce_datetime(
-            pending_info.get("pending_review_since") or pending_info.get("last_pending_at")
-        )
-        recount_assigned_at = _coerce_datetime(
-            recount_info.get("recount_assigned_at") or recount_info.get("last_recount_at")
-        )
-
-        last_activity = _max_datetime(
-            active_session.get("last_heartbeat") if active_session else None,
-            session_counts.get("last_counted_at"),
-            pending_info.get("last_pending_at"),
-            recount_info.get("last_recount_at"),
-        )
-        session_status = _normalize_session_status(
-            _effective_session_status(active_session).value if active_session else None
-        )
-        workflow_stage = _derive_workflow_stage(
-            session_status,
-            int(pending_info.get("pending_approvals", 0) or 0),
-            int(recount_info.get("assigned_recounts", 0) or 0),
-        )
-        presence_status = _derive_presence_status(last_activity)
-        priority_score = _calculate_priority_score(
-            workflow_stage=workflow_stage,
-            presence_status=presence_status,
-            session_status=session_status,
-            pending_approvals=int(pending_info.get("pending_approvals", 0) or 0),
-            assigned_recounts=int(recount_info.get("assigned_recounts", 0) or 0),
-            total_variance=float(session_meta.get("total_variance", 0) or 0),
-            pending_review_since=pending_review_since,
-            recount_assigned_at=recount_assigned_at,
-            last_activity=last_activity,
-        )
-
-        user_doc = user_by_username.get(username, {})
-        results.append(
-            UserWorkflowSummary(
-                username=username,
-                full_name=user_doc.get("full_name"),
-                role=user_doc.get("role") or "staff",
-                workflow_stage=workflow_stage,
-                presence_status=presence_status,
-                active_session_id=active_session_id if isinstance(active_session_id, str) else None,
-                session_status=session_status,
-                session_type=session_meta.get("type"),
-                warehouse=session_meta.get("warehouse"),
-                rack_id=active_session.get("rack_no") if active_session else None,
-                floor=active_session.get("location_name") if active_session else None,
-                session_started_at=_max_datetime(
-                    session_meta.get("started_at"),
-                    active_session.get("started_at") if active_session else None,
-                ),
-                last_activity=last_activity,
-                pending_review_since=pending_review_since,
-                recount_assigned_at=recount_assigned_at,
-                open_session_count=len(user_sessions),
-                items_counted=items_counted,
-                reviewed_items=reviewed_items,
-                total_items=total_items,
-                progress_percent=progress_percent,
-                pending_approvals=int(pending_info.get("pending_approvals", 0) or 0),
-                assigned_recounts=int(recount_info.get("assigned_recounts", 0) or 0),
-                total_variance=float(session_meta.get("total_variance", 0) or 0),
-                priority_score=priority_score,
-                priority_band=_priority_band_for_score(priority_score),
-                next_action=_derive_next_action(
-                    workflow_stage=workflow_stage,
-                    presence_status=presence_status,
-                    session_status=session_status,
-                ),
-            )
-        )
-
-    presence_rank = {
-        WorkflowPresenceStatus.ONLINE: 2,
-        WorkflowPresenceStatus.IDLE: 1,
-        WorkflowPresenceStatus.OFFLINE: 0,
-    }
-    results.sort(
-        key=lambda row: (
-            row.priority_score,
-            row.active_session_id is not None,
-            presence_rank.get(row.presence_status, 0),
-            row.last_activity or datetime.min,
-        ),
-        reverse=True,
-    )
-
+        for username in sorted(candidate_usernames)
+    ]
+    _sort_user_workflows(results)
     return results
 
 

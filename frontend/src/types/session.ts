@@ -22,6 +22,9 @@ export type SessionStatus =
 
 export interface Session {
   id: string;
+  // Legacy compatibility aliases still present in some API/cache flows.
+  _id?: string;
+  session_id?: string;
   warehouse: string;
   staff_user: string; // references User.username
   staff_name: string;

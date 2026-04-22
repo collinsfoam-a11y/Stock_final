@@ -12,9 +12,14 @@ from backend.api.schemas_variance import VarianceThresholdConfig
 from backend.auth.permissions import Permission, require_permission
 from backend.db.runtime import get_db
 from backend.services.config_version_service import ConfigVersionService
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _safe_log_value(value: object, *, max_length: int = 120) -> str:
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
 
 
 @router.get("/admin/variance-thresholds")
@@ -118,7 +123,9 @@ async def create_variance_threshold(
     )
 
     logger.info(
-        f"Created variance threshold config: {config_data.name} by {current_user.get('username')}"
+        "Created variance threshold config: %s by %s",
+        _safe_log_value(config_data.name),
+        _safe_log_value(current_user.get("username")),
     )
 
     return {
@@ -171,7 +178,11 @@ async def update_variance_threshold(
         change_type="UPDATE",
     )
 
-    logger.info(f"Updated variance threshold config: {config_id} by {current_user.get('username')}")
+    logger.info(
+        "Updated variance threshold config: %s by %s",
+        _safe_log_value(config_id),
+        _safe_log_value(current_user.get("username")),
+    )
 
     return {
         "success": True,
@@ -227,11 +238,13 @@ async def delete_variance_threshold(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting config: {e}")
+        logger.error("Error deleting config: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=str(e))
 
     logger.info(
-        f"Deleted variance threshold config: {config.get('name')} by {current_user.get('username')}"
+        "Deleted variance threshold config: %s by %s",
+        _safe_log_value(config.get("name")),
+        _safe_log_value(current_user.get("username")),
     )
 
     return {"success": True, "message": "Configuration deleted successfully"}

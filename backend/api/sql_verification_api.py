@@ -4,15 +4,21 @@ Provides endpoints for verifying item quantities against SQL Server
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException, Depends
-from backend.services.sql_verification_service import sql_verification_service
-from backend.auth.dependencies import get_current_user
+from fastapi import APIRouter, Depends, HTTPException
+
 from backend.api.schemas import ApiResponse
+from backend.auth.dependencies import get_current_user
+from backend.services.sql_verification_service import sql_verification_service
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v2/verification", tags=["SQL Verification"])
+
+
+def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
 
 
 @router.post("/items/{item_code}/verify-qty")
@@ -53,7 +59,11 @@ async def verify_item_quantity(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error verifying item {item_code}: {str(e)}")
+        logger.error(
+            "Error verifying item %s: %s",
+            _safe_log_value(item_code),
+            _safe_log_value(e, max_length=200),
+        )
         raise HTTPException(
             status_code=500,
             detail={"code": "INTERNAL_ERROR", "message": f"An unexpected error occurred: {str(e)}"},

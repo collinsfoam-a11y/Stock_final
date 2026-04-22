@@ -13,11 +13,16 @@ from pydantic import BaseModel
 
 from backend.auth import get_current_user
 from backend.db.runtime import get_db
+from backend.utils.api_utils import sanitize_for_logging
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+
+def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
 
 
 class ErrorReport(BaseModel):
@@ -102,12 +107,13 @@ async def report_error(
 
         # Log to system
         logger.error(
-            f"Error reported: {error.type}",
+            "Error reported: %s",
+            _safe_log_value(error.type),
             extra={
-                "error_message": error.message,
-                "severity": error.severity,
-                "context": error.context,
-                "user_id": error.user_id,
+                "error_message": _safe_log_value(error.message, max_length=200),
+                "severity": _safe_log_value(error.severity),
+                "context_keys": sorted(error.context.keys()) if isinstance(error.context, dict) else [],
+                "user_id": _safe_log_value(error.user_id),
             },
         )
 
@@ -145,7 +151,7 @@ async def report_error(
         )
 
     except Exception as e:
-        logger.error(f"Error reporting failed: {str(e)}")
+        logger.error("Error reporting failed: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail="Failed to report error")
 
 
@@ -182,7 +188,7 @@ async def get_errors(
         return JSONResponse({"errors": errors, "count": len(errors)})
 
     except Exception as e:
-        logger.error(f"Failed to fetch errors: {str(e)}")
+        logger.error("Failed to fetch errors: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail="Failed to fetch errors")
 
 
@@ -244,7 +250,7 @@ async def get_error_dashboard(
         return JSONResponse(dashboard)
 
     except Exception as e:
-        logger.error(f"Failed to get dashboard: {str(e)}")
+        logger.error("Failed to get dashboard: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail="Failed to get dashboard")
 
 
@@ -270,7 +276,7 @@ async def get_error_detail(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get error detail: {str(e)}")
+        logger.error("Failed to get error detail: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail="Failed to get error detail")
 
 
@@ -298,7 +304,12 @@ async def update_error_status(
         old_status = error["status"]
         error["status"] = status
 
-        logger.info(f"Error {error_id} status updated: {old_status} -> {status}")
+        logger.info(
+            "Error %s status updated: %s -> %s",
+            _safe_log_value(error_id),
+            _safe_log_value(old_status),
+            _safe_log_value(status),
+        )
 
         return JSONResponse(
             {
@@ -311,7 +322,7 @@ async def update_error_status(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to update error status: {str(e)}")
+        logger.error("Failed to update error status: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail="Failed to update error status")
 
 
@@ -332,7 +343,7 @@ async def delete_error(
         return JSONResponse({"success": True, "message": "Error deleted successfully"})
 
     except Exception as e:
-        logger.error(f"Failed to delete error: {str(e)}")
+        logger.error("Failed to delete error: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail="Failed to delete error")
 
 
@@ -375,7 +386,7 @@ async def get_error_summary(
         return JSONResponse(summary)
 
     except Exception as e:
-        logger.error(f"Failed to get error summary: {str(e)}")
+        logger.error("Failed to get error summary: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail="Failed to get error summary")
 
 
@@ -386,8 +397,10 @@ async def notify_admin_critical_error(error: ErrorReport):
     try:
         # Always log at critical level.
         logger.critical(
-            f"CRITICAL ERROR: {error.type} - {error.message}",
-            extra={"context": error.context},
+            "CRITICAL ERROR: %s - %s",
+            _safe_log_value(error.type),
+            _safe_log_value(error.message, max_length=200),
+            extra={"context_keys": sorted(error.context.keys()) if isinstance(error.context, dict) else []},
         )
 
         # Persist a notification record for admin dashboards (best-effort).
@@ -417,4 +430,4 @@ async def notify_admin_critical_error(error: ErrorReport):
             }
         )
     except Exception as e:
-        logger.error(f"Failed to notify admin: {str(e)}")
+        logger.error("Failed to notify admin: %s", _safe_log_value(e, max_length=200))

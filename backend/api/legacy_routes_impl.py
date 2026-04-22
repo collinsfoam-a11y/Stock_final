@@ -91,7 +91,7 @@ try:
 except ImportError as e:
     ENTERPRISE_AVAILABLE = False
     enterprise_router = None  # type: ignore
-    logger.info(f"Enterprise features not available: {e}")
+    logger.info("Enterprise features not available: %s", sanitize_for_logging(str(e), max_length=200))
     init_enrichment_api = None  # type: ignore # noqa: F811
     enrichment_router = None  # type: ignore # noqa: F811
 
@@ -268,7 +268,7 @@ async def init_default_users():
             )
             logger.info("Default user created: admin/admin123")
     except Exception as e:
-        logger.error(f"Error creating default users: {str(e)}")
+        logger.error("Error creating default users: %s", sanitize_for_logging(str(e), max_length=200))
         raise
 
 
@@ -396,7 +396,7 @@ async def check_rate_limit(ip_address: str) -> Result[bool, Exception]:
     rate_limit_enabled = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
 
     if not rate_limit_enabled:
-        logger.debug(f"Rate limiting disabled for IP: {ip_address}")
+        logger.debug("Rate limiting disabled for IP: %s", sanitize_for_logging(ip_address))
         return Ok(True)
 
     namespace = "login_attempts"
@@ -416,7 +416,11 @@ async def check_rate_limit(ip_address: str) -> Result[bool, Exception]:
     if attempts >= max_attempts:
         # Block for configured TTL period
         await cache_service.set(namespace, key, attempts, ttl=ttl_seconds)
-        logger.warning(f"Rate limit exceeded for IP {ip_address}: {attempts} attempts")
+        logger.warning(
+            "Rate limit exceeded for IP %s: %s attempts",
+            sanitize_for_logging(ip_address),
+            attempts,
+        )
         return Fail(
             RateLimitExceededError(
                 f"Too many login attempts. Please try again in {ttl_seconds // 60} minutes.",
@@ -427,7 +431,10 @@ async def check_rate_limit(ip_address: str) -> Result[bool, Exception]:
     # Increment attempt counter with TTL
     await cache_service.set(namespace, key, attempts + 1, ttl=ttl_seconds)
     logger.debug(
-        f"Rate limit check passed for IP {ip_address}: {attempts + 1}/{max_attempts} attempts"
+        "Rate limit check passed for IP %s: %s/%s attempts",
+        sanitize_for_logging(ip_address),
+        attempts + 1,
+        max_attempts,
     )
     return Ok(True)
 
@@ -440,7 +447,11 @@ async def find_user_by_username(username: str) -> Result[dict[str, Any], Excepti
             return Fail(NotFoundError("User not found"))
         return Ok(user)
     except Exception as e:
-        logger.error(f"Error finding user {sanitize_for_logging(username)}: {str(e)}")
+        logger.error(
+            "Error finding user %s: %s",
+            sanitize_for_logging(username),
+            sanitize_for_logging(str(e), max_length=200),
+        )
         return Fail(DatabaseError("Error accessing user data"))
 
 
@@ -481,7 +492,7 @@ async def generate_auth_tokens(
             }
         )
     except Exception as e:
-        logger.error(f"Error generating auth tokens: {str(e)}")
+        logger.error("Error generating auth tokens: %s", sanitize_for_logging(str(e), max_length=200))
         return Fail(DatabaseError("Error generating authentication tokens"))
 
 
@@ -501,7 +512,7 @@ async def log_failed_login_attempt(
             }
         )
     except Exception as e:
-        logger.error(f"Failed to log login attempt: {str(e)}")
+        logger.error("Failed to log login attempt: %s", sanitize_for_logging(str(e), max_length=200))
 
 
 async def log_successful_login(user: dict[str, Any], ip_address: str, request: Request) -> None:
@@ -533,7 +544,10 @@ async def log_successful_login(user: dict[str, Any], ip_address: str, request: R
         #     user_agent=request.headers.get("user-agent")
         # )
     except Exception as e:
-        logger.error(f"Failed to log successful login: {str(e)}")
+        logger.error(
+            "Failed to log successful login: %s",
+            sanitize_for_logging(str(e), max_length=200),
+        )
 
 
 @api_router.post("/auth/refresh", response_model=ApiResponse[TokenResponse])
@@ -564,7 +578,7 @@ async def refresh_token(request: Request) -> Result[dict[str, Any], Exception]:
 
         return Ok(refreshed)
     except Exception as e:
-        logger.error(f"Token refresh error: {str(e)}")
+        logger.error("Token refresh error: %s", sanitize_for_logging(str(e), max_length=200))
         return Fail(e)
 
 
@@ -588,7 +602,7 @@ async def logout(
 
         return {"message": "Logged out successfully"}
     except Exception as e:
-        logger.error(f"Logout error: {str(e)}")
+        logger.error("Logout error: %s", sanitize_for_logging(str(e), max_length=200))
         raise HTTPException(status_code=500, detail="Logout failed") from e
 
 
@@ -599,7 +613,10 @@ async def create_session(
     session_data: SessionCreate,
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> Session:
-    logger.debug(f"create_session called. User: {current_user.get('username')}")
+    logger.debug(
+        "create_session called. User: %s",
+        sanitize_for_logging(str(current_user.get("username") or "")),
+    )
 
     # Input validation and sanitization
     warehouse = session_data.warehouse.strip()
@@ -766,7 +783,7 @@ async def bulk_close_sessions(
             "errors": errors,
         }
     except Exception as e:
-        logger.error(f"Bulk close sessions error: {str(e)}")
+        logger.error("Bulk close sessions error: %s", sanitize_for_logging(str(e), max_length=200))
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -816,7 +833,10 @@ async def bulk_reconcile_sessions(
             "errors": errors,
         }
     except Exception as e:
-        logger.error(f"Bulk reconcile sessions error: {str(e)}")
+        logger.error(
+            "Bulk reconcile sessions error: %s",
+            sanitize_for_logging(str(e), max_length=200),
+        )
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -858,7 +878,7 @@ async def bulk_export_sessions(
             "format": format,
         }
     except Exception as e:
-        logger.error(f"Bulk export sessions error: {str(e)}")
+        logger.error("Bulk export sessions error: %s", sanitize_for_logging(str(e), max_length=200))
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -942,7 +962,7 @@ async def get_sessions_analytics(current_user: dict = Depends(get_current_user))
             },
         }
     except Exception as e:
-        logger.error(f"Analytics error: {str(e)}")
+        logger.error("Analytics error: %s", sanitize_for_logging(str(e), max_length=200))
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -969,7 +989,11 @@ async def get_session_by_id(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching session {session_id}: {str(e)}")
+        logger.error(
+            "Error fetching session %s: %s",
+            sanitize_for_logging(session_id),
+            sanitize_for_logging(str(e), max_length=200),
+        )
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -1201,7 +1225,10 @@ async def create_count_line(
                 },
             )
     except Exception as e:
-        logger.error(f"Failed to update session stats: {str(e)}")
+        logger.error(
+            "Failed to update session stats: %s",
+            sanitize_for_logging(str(e), max_length=200),
+        )
         # Non-critical error, continue execution
 
     # Log high-risk correction
@@ -1374,7 +1401,11 @@ async def approve_count_line(
 
         return {"success": True, "message": "Count line approved"}
     except Exception as e:
-        logger.error(f"Error approving count line {line_id}: {str(e)}")
+        logger.error(
+            "Error approving count line %s: %s",
+            sanitize_for_logging(line_id),
+            sanitize_for_logging(str(e), max_length=200),
+        )
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -1406,7 +1437,11 @@ async def reject_count_line(
 
         return {"success": True, "message": "Count line rejected"}
     except Exception as e:
-        logger.error(f"Error rejecting count line {line_id}: {str(e)}")
+        logger.error(
+            "Error rejecting count line %s: %s",
+            sanitize_for_logging(line_id),
+            sanitize_for_logging(str(e), max_length=200),
+        )
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -1428,7 +1463,7 @@ async def check_item_counted(
 
         return {"already_counted": len(count_lines) > 0, "count_lines": count_lines}
     except Exception as e:
-        logger.error(f"Error checking item count: {str(e)}")
+        logger.error("Error checking item count: %s", sanitize_for_logging(str(e), max_length=200))
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
