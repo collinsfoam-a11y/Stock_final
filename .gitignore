@@ -115,3 +115,8 @@ backend/tests/evaluation/reports/*.json
 frontend/dist/
 frontend/dist-debug/
 frontend/dist-debug2/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key

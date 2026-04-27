@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "Stock_final",
+  "project_id": "bf71853f-a017-47b6-a399-27f75260573a"
+}
