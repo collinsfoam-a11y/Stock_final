@@ -14,6 +14,7 @@ from fastapi import HTTPException
 ALLOWED_WRITERS = [
     "sql_verification_service.py",
     "item_verification_api.py",  # Manual verification allowed
+    "test_support_api.py",  # EXEMPT: test-only fixture mutation surface
     "test_governance_contracts.py",  # Self-reference
     "seed_sample_data.py",  # Seeding allowed
     "seed_e2e.py",  # Seeding allowed

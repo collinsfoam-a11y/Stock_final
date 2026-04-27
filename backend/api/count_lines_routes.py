@@ -2,7 +2,7 @@ import inspect
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, NoReturn, Optional
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -28,7 +28,9 @@ from backend.services.canonical_inventory import (
     materialize_count_line_review_state,
     recompute_session_totals,
 )
+from backend.services.count_line_write_service import CountLineGovernanceDecision, CountLineWriteService
 from backend.services.lock_service import LockService, ResourceLockedError
+from backend.services.logic_guard import build_request_context, enforce_session_logic
 from backend.services.notification_service import NotificationService
 from backend.services.snapshot_service import SnapshotService
 from backend.services.variant_service import VariantService
@@ -53,6 +55,10 @@ def _normalize_idempotency_key(value: Any) -> Optional[str]:
         return None
     normalized = value.strip()
     return normalized or None
+
+
+def _raise_count_lines_internal_error(detail: str, exc: Exception) -> NoReturn:
+    raise HTTPException(status_code=500, detail=detail) from exc
 
 
 class CountLineApprovalRequest(BaseModel):
@@ -89,6 +95,11 @@ def init_count_lines_api(
     variant_service: Optional[VariantService] = None,
 ):
     global _activity_log_service, _lock_service, _snapshot_service, _variant_service
+    if snapshot_service is None:
+        try:
+            snapshot_service = SnapshotService(get_db())
+        except RuntimeError:
+            snapshot_service = None
     _activity_log_service = activity_log_service
     _lock_service = lock_service
     _snapshot_service = snapshot_service
@@ -105,6 +116,13 @@ def _get_db_client(db_override=None):
         raise HTTPException(status_code=500, detail="Database is not initialized")
 
 
+def _get_count_line_write_service(db: Any) -> CountLineWriteService:
+    return CountLineWriteService(
+        db,
+        snapshot_service=_snapshot_service,
+    )
+
+
 def _require_supervisor(current_user: dict):
     if current_user.get("role") not in {"supervisor", "admin"}:
         raise HTTPException(status_code=403, detail="Supervisor access required")
@@ -117,6 +135,50 @@ async def _get_mutable_session_or_409(db: Any, session_id: str) -> dict[str, Any
     if is_session_finalized(session):
         raise HTTPException(status_code=409, detail="Session is finalized and cannot be modified")
     return session
+
+
+async def _enforce_count_line_session_logic(
+    *,
+    db: Any,
+    session: dict[str, Any],
+    request: Request | None,
+    current_user: dict[str, Any],
+    operation_name: str,
+) -> None:
+    await enforce_session_logic(
+        db=db,
+        session=session,
+        request_context=build_request_context(
+            request=request,
+            current_user=current_user,
+            session_id=str(session.get("id") or session.get("session_id") or ""),
+            warehouse=session.get("warehouse"),
+            endpoint_name="count_lines_routes",
+            operation_name=operation_name,
+        ),
+        is_mutation=True,
+    )
+
+
+async def _enforce_count_line_logic_from_line(
+    *,
+    db: Any,
+    count_line: dict[str, Any],
+    request: Request | None,
+    current_user: dict[str, Any],
+    operation_name: str,
+) -> None:
+    session_id = str(count_line.get("session_id") or "")
+    if not session_id:
+        raise HTTPException(status_code=409, detail="Count line is missing session context")
+    session = await _get_mutable_session_or_409(db, session_id)
+    await _enforce_count_line_session_logic(
+        db=db,
+        session=session,
+        request=request,
+        current_user=current_user,
+        operation_name=operation_name,
+    )
 
 
 async def _ensure_count_line_mutable(
@@ -213,11 +275,6 @@ def calculate_financial_impact(
     old_value = erp_mrp * erp_qty
     new_value = counted_mrp * counted_qty
     return new_value - old_value
-
-
-def requires_supervisor_verification(variance: float) -> bool:
-    """Only non-zero variance lines require supervisor review."""
-    return abs(float(variance or 0)) > 0
 
 
 def _build_draft_line_id(line_data: CountLineCreate) -> str:
@@ -349,7 +406,9 @@ async def _find_idempotent_count_line(
     return existing_idempotent
 
 
-async def _find_erp_item_for_count_line(db: Any, line_data: CountLineCreate) -> Optional[dict[str, Any]]:
+async def _find_erp_item_for_count_line(
+    db: Any, line_data: CountLineCreate
+) -> Optional[dict[str, Any]]:
     erp_item = None
     if line_data.barcode:
         result_item = db.erp_items.find_one({"barcode": line_data.barcode})
@@ -369,6 +428,31 @@ async def _get_erp_item_for_count_line(db: Any, line_data: CountLineCreate) -> d
     return erp_item
 
 
+async def _get_erp_item_for_existing_count_line(db: Any, count_line: dict[str, Any]) -> dict[str, Any]:
+    barcode = count_line.get("barcode")
+    if barcode:
+        result_item = db.erp_items.find_one({"barcode": barcode})
+        erp_item = await result_item if inspect.isawaitable(result_item) else result_item
+        if erp_item:
+            return erp_item
+
+    item_code = count_line.get("item_code")
+    if item_code:
+        result_item = db.erp_items.find_one({"item_code": item_code})
+        erp_item = await result_item if inspect.isawaitable(result_item) else result_item
+        if erp_item:
+            return erp_item
+
+    return {
+        "item_code": item_code,
+        "item_name": count_line.get("item_name"),
+        "category": count_line.get("category_correction"),
+        "mrp": count_line.get("mrp_erp"),
+        "sale_price": count_line.get("mrp_erp"),
+        "sales_price": count_line.get("mrp_erp"),
+    }
+
+
 async def _resolve_snapshot_baseline(
     line_data: CountLineCreate,
     erp_item: dict[str, Any],
@@ -384,7 +468,9 @@ async def _resolve_snapshot_baseline(
         erp_snapshot.get("erp_qty") if erp_snapshot else erp_item.get("stock_qty", 0)
     )
     erp_qty = 0.0 if erp_qty_source is None else float(erp_qty_source or 0)
-    baseline_hash = erp_snapshot.get("baseline_hash") if erp_snapshot else "UNHASHED_FALLBACK"
+    baseline_hash = (
+        str(erp_snapshot.get("baseline_hash") or "") if erp_snapshot else "UNHASHED_FALLBACK"
+    )
     return erp_qty, baseline_hash
 
 
@@ -423,12 +509,6 @@ def _build_count_line_risk_context(
     variance: float,
     erp_qty: float,
 ) -> tuple[list[str], bool, float]:
-    if abs(variance) > 0 and not line_data.correction_reason and not line_data.variance_reason:
-        raise HTTPException(
-            status_code=400,
-            detail="Correction reason is mandatory when variance exists",
-        )
-
     risk_flags = detect_risk_flags(erp_item, line_data, variance)
     is_misplaced = _apply_misplaced_stock_flags(erp_item, line_data, risk_flags)
     if session.get("type") == "STRICT" and abs(variance) > 0:
@@ -528,7 +608,7 @@ def _build_count_line_document(
     current_user: dict[str, Any],
     erp_qty: float,
     baseline_hash: str,
-    variance: float,
+    governance: CountLineGovernanceDecision,
     risk_flags: list[str],
     financial_impact: float,
     is_misplaced: bool,
@@ -543,8 +623,6 @@ def _build_count_line_document(
         or count_line_id
     )
     counted_at = datetime.now(timezone.utc).replace(tzinfo=None)
-    review_required = requires_supervisor_verification(variance)
-    approval_status = "NEEDS_REVIEW" if review_required else "APPROVED"
 
     count_line = {
         "id": count_line_id,
@@ -557,7 +635,7 @@ def _build_count_line_document(
         "erp_qty": erp_qty,
         "baseline_hash": baseline_hash,
         "counted_qty": line_data.counted_qty,
-        "variance": variance,
+        "variance": governance.variance,
         "variance_reason": line_data.variance_reason,
         "variance_note": line_data.variance_note,
         "remark": line_data.remark,
@@ -571,7 +649,9 @@ def _build_count_line_document(
         "manufacturing_date": line_data.manufacturing_date,
         "mfg_date_format": line_data.mfg_date_format.value if line_data.mfg_date_format else None,
         "expiry_date": line_data.expiry_date,
-        "expiry_date_format": line_data.expiry_date_format.value if line_data.expiry_date_format else None,
+        "expiry_date_format": line_data.expiry_date_format.value
+        if line_data.expiry_date_format
+        else None,
         "non_returnable_damaged_qty": line_data.non_returnable_damaged_qty,
         "correction_reason": (
             line_data.correction_reason.model_dump() if line_data.correction_reason else None
@@ -582,13 +662,11 @@ def _build_count_line_document(
             else None
         ),
         "correction_metadata": (
-            line_data.correction_metadata.model_dump()
-            if line_data.correction_metadata
-            else None
+            line_data.correction_metadata.model_dump() if line_data.correction_metadata else None
         ),
-        "approval_status": approval_status,
-        "approval_by": "system" if not review_required else None,
-        "approval_at": counted_at if not review_required else None,
+        "approval_status": governance.approval_status,
+        "approval_by": governance.approved_by,
+        "approval_at": governance.approved_at,
         "rejection_reason": None,
         "is_misplaced": is_misplaced,
         "expected_location": line_data.expected_location,
@@ -606,18 +684,21 @@ def _build_count_line_document(
         "split_section": line_data.split_section,
         "category_correction": line_data.category_correction,
         "subcategory_correction": line_data.subcategory_correction,
+        "requires_supervisor_approval": governance.requires_supervisor_approval,
+        "variance_data": governance.variance_data,
+        "violated_thresholds": governance.violated_thresholds,
         "serial_numbers": line_data.serial_numbers if line_data.serial_numbers else None,
         "serial_entries": (
             [serial.model_dump() for serial in line_data.serial_entries]
             if line_data.serial_entries
             else None
         ),
-        "status": "pending" if review_required else "approved",
+        "status": governance.status,
         "verified": False,
         "verified_at": None,
         "verified_by": None,
-        "approved_by": "system" if not review_required else None,
-        "approved_at": counted_at if not review_required else None,
+        "approved_by": governance.approved_by,
+        "approved_at": governance.approved_at,
         "rejected_by": None,
         "rejected_at": None,
         "recount_requested_at": None,
@@ -625,7 +706,9 @@ def _build_count_line_document(
         "assigned_to": None,
     }
     if recount_update_target:
-        count_line["recount_iteration"] = int(recount_update_target.get("recount_iteration", 0) or 0) + 1
+        count_line["recount_iteration"] = (
+            int(recount_update_target.get("recount_iteration", 0) or 0) + 1
+        )
 
     return count_line, counted_at
 
@@ -637,14 +720,24 @@ async def _persist_count_line_document(
     count_line: dict[str, Any],
     counted_at: datetime,
     recount_update_target: Optional[dict[str, Any]],
+    *,
+    write_service: CountLineWriteService,
+    session: dict[str, Any],
 ) -> None:
     if recount_update_target:
-        await db.count_lines.update_one(
-            {"_id": recount_update_target["_id"]},
-            {"$set": count_line},
+        await write_service.process_write(
+            {
+                "operation": "update_one",
+                "filter": {"_id": recount_update_target["_id"]},
+                "update": {"$set": count_line},
+            },
+            context={"session": session, "username": username},
         )
     else:
-        await db.count_lines.insert_one(count_line)
+        await write_service.process_write(
+            {"operation": "insert_one", "document": count_line},
+            context={"session": session, "username": username},
+        )
 
     draft_update_result = db.count_line_drafts.update_many(
         {
@@ -664,6 +757,111 @@ async def _persist_count_line_document(
     )
     if inspect.isawaitable(draft_update_result):
         await draft_update_result
+
+
+async def _create_and_persist_count_line(
+    db: Any,
+    *,
+    session: dict[str, Any],
+    line_data: CountLineCreate,
+    current_user: dict[str, Any],
+    write_service: CountLineWriteService,
+) -> tuple[dict[str, Any], datetime, CountLineGovernanceDecision, list[str], float]:
+    erp_item = await _get_erp_item_for_count_line(db, line_data)
+    erp_qty, baseline_hash = await write_service.resolve_baseline(
+        session_id=line_data.session_id,
+        item_code=line_data.item_code,
+        username=current_user["username"],
+        erp_item=erp_item,
+    )
+    governance = await write_service.evaluate_new_count_line(
+        session=session,
+        item_code=line_data.item_code,
+        counted_qty=line_data.counted_qty,
+        erp_item=erp_item,
+        expected_qty=erp_qty,
+        variance_reason=line_data.variance_reason,
+        correction_reason=line_data.correction_reason,
+        location=line_data.floor_no,
+    )
+    risk_flags, is_misplaced, financial_impact = _build_count_line_risk_context(
+        session,
+        erp_item,
+        line_data,
+        governance.variance,
+        erp_qty,
+    )
+
+    lock_state = await _acquire_count_line_locks(line_data, erp_item, current_user["username"])
+    try:
+        recount_update_target = await _resolve_recount_target(db, line_data)
+        count_line, counted_at = _build_count_line_document(
+            line_data,
+            erp_item,
+            current_user,
+            erp_qty,
+            baseline_hash,
+            governance,
+            risk_flags,
+            financial_impact,
+            is_misplaced,
+            recount_update_target,
+        )
+        await _persist_count_line_document(
+            db,
+            line_data,
+            current_user["username"],
+            count_line,
+            counted_at,
+            recount_update_target,
+            write_service=write_service,
+            session=session,
+        )
+    finally:
+        await _release_count_line_locks(lock_state, current_user["username"])
+
+    return count_line, counted_at, governance, risk_flags, financial_impact
+
+
+def _build_count_line_mutation_update(
+    *,
+    count_line: dict[str, Any],
+    current_user: dict[str, Any],
+    governance: CountLineGovernanceDecision,
+    counted_qty: float,
+    financial_impact: float,
+    variance_reason: Optional[str],
+    batches: Optional[list[dict[str, Any]]] = None,
+) -> dict[str, Any]:
+    update_data: dict[str, Any] = {
+        "counted_qty": counted_qty,
+        "variance": governance.variance,
+        "variance_reason": variance_reason,
+        "approval_status": governance.approval_status,
+        "approved_at": governance.approved_at,
+        "approved_by": governance.approved_by,
+        "assigned_to": None,
+        "financial_impact": financial_impact,
+        "recount_requested_at": None,
+        "recount_requested_by": None,
+        "rejected_at": None,
+        "rejected_by": None,
+        "rejection_reason": None,
+        "requires_supervisor_approval": governance.requires_supervisor_approval,
+        "status": governance.status,
+        "updated_at": _current_timestamp(),
+        "updated_by": current_user.get("username"),
+        "variance_data": governance.variance_data,
+        "verified": False,
+        "verified_at": None,
+        "verified_by": None,
+        "violated_thresholds": governance.violated_thresholds,
+    }
+    if batches is not None:
+        update_data["batches"] = batches
+    if count_line.get("approval_note") is not None:
+        update_data["approval_note"] = None
+    return update_data
 
 
 async def _broadcast_scan_created(
@@ -763,6 +961,15 @@ async def save_count_line_draft(
     Upserts the current autosave payload into count_line_drafts.
     """
     db = _get_db_client()
+    session = await find_session(db, line_data.session_id)
+    if isinstance(session, dict):
+        await _enforce_count_line_session_logic(
+            db=db,
+            session=session,
+            request=request,
+            current_user=current_user,
+            operation_name="save_count_line_draft",
+        )
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     username = current_user["username"]
     draft_line_id = _build_draft_line_id(line_data)
@@ -858,7 +1065,15 @@ async def create_count_line(
 ):
     """Create or resubmit a count line while preserving snapshot and review semantics."""
     db = _get_db_client()
+    write_service = _get_count_line_write_service(db)
     session = await _get_mutable_session_or_409(db, line_data.session_id)
+    await _enforce_count_line_session_logic(
+        db=db,
+        session=session,
+        request=request,
+        current_user=current_user,
+        operation_name="create_count_line",
+    )
     _ensure_session_accepts_counts(session)
 
     existing_idempotent = await _find_idempotent_count_line(db, line_data)
@@ -866,17 +1081,27 @@ async def create_count_line(
         return existing_idempotent
 
     erp_item = await _get_erp_item_for_count_line(db, line_data)
-    erp_qty, baseline_hash = await _resolve_snapshot_baseline(
-        line_data,
-        erp_item,
-        current_user["username"],
+    erp_qty, baseline_hash = await write_service.resolve_baseline(
+        session_id=line_data.session_id,
+        item_code=line_data.item_code,
+        username=current_user["username"],
+        erp_item=erp_item,
     )
-    variance = line_data.counted_qty - erp_qty
+    governance = await write_service.evaluate_new_count_line(
+        session=session,
+        item_code=line_data.item_code,
+        counted_qty=line_data.counted_qty,
+        erp_item=erp_item,
+        expected_qty=erp_qty,
+        variance_reason=line_data.variance_reason,
+        correction_reason=line_data.correction_reason,
+        location=line_data.floor_no,
+    )
     risk_flags, is_misplaced, financial_impact = _build_count_line_risk_context(
         session,
         erp_item,
         line_data,
-        variance,
+        governance.variance,
         erp_qty,
     )
 
@@ -893,7 +1118,7 @@ async def create_count_line(
             current_user,
             erp_qty,
             baseline_hash,
-            variance,
+            governance,
             risk_flags,
             financial_impact,
             is_misplaced,
@@ -906,11 +1131,13 @@ async def create_count_line(
             count_line,
             counted_at,
             recount_update_target,
+            write_service=write_service,
+            session=session,
         )
     finally:
         await _release_count_line_locks(lock_state, current_user["username"])
 
-    await _broadcast_scan_created(line_data, count_line, variance)
+    await _broadcast_scan_created(line_data, count_line, governance.variance)
     await _broadcast_dashboard_refresh(
         "count_line_created",
         session_id=line_data.session_id,
@@ -924,16 +1151,16 @@ async def create_count_line(
 
     await _maybe_update_session_barcode(db, line_data)
 
-    if risk_flags:
+    if count_line.get("risk_flags"):
         await _record_high_risk_correction(
             request,
             db,
             current_user,
             line_data,
             count_line,
-            risk_flags,
-            variance,
-            financial_impact,
+            list(count_line.get("risk_flags") or []),
+            float(count_line.get("variance") or governance.variance),
+            float(count_line.get("financial_impact") or 0.0),
         )
 
     count_line.pop("_id", None)
@@ -954,21 +1181,33 @@ async def verify_stock(
     if not count_line:
         raise HTTPException(status_code=404, detail="Count line not found")
     await _ensure_count_line_mutable(db_client, count_line)
+    await _enforce_count_line_logic_from_line(
+        db=db_client,
+        count_line=count_line,
+        request=request,
+        current_user=current_user,
+        operation_name="verify_stock",
+    )
     if not count_line_requires_supervisor_review(count_line):
         raise HTTPException(
             status_code=409,
             detail="Only variance items require supervisor verification",
         )
 
-    update_result = await db_client.count_lines.update_one(
-        {"_id": count_line["_id"]},
-        update={
-            "$set": {
-                "verified": True,
-                "verified_by": current_user["username"],
-                "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
-            }
+    write_service = _get_count_line_write_service(db_client)
+    update_result = await write_service.process_write(
+        {
+            "operation": "update_one",
+            "filter": {"_id": count_line["_id"]},
+            "update": {
+                "$set": {
+                    "verified": True,
+                    "verified_by": current_user["username"],
+                    "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                }
+            },
         },
+        context={"session_id": str(count_line.get("session_id") or "")},
     )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
@@ -1008,10 +1247,22 @@ async def unverify_stock(
     if not count_line:
         raise HTTPException(status_code=404, detail="Count line not found")
     await _ensure_count_line_mutable(db_client, count_line)
+    await _enforce_count_line_logic_from_line(
+        db=db_client,
+        count_line=count_line,
+        request=request,
+        current_user=current_user,
+        operation_name="unverify_stock",
+    )
 
-    update_result = await db_client.count_lines.update_one(
-        {"_id": count_line["_id"]},
-        update={"$set": {"verified": False, "verified_by": None, "verified_at": None}},
+    write_service = _get_count_line_write_service(db_client)
+    update_result = await write_service.process_write(
+        {
+            "operation": "update_one",
+            "filter": {"_id": count_line["_id"]},
+            "update": {"$set": {"verified": False, "verified_by": None, "verified_at": None}},
+        },
+        context={"session_id": str(count_line.get("session_id") or "")},
     )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
@@ -1187,11 +1438,12 @@ async def get_count_line_detail(
     return materialize_count_line_review_state(count_line)
 
 
-@router.put("/count-lines/{line_id}/approve")
 async def approve_count_line(
     line_id: str,
     request: Optional[CountLineApprovalRequest] = None,
     current_user: dict = Depends(get_current_user),
+    *,
+    http_request: Request | None = None,
 ):
     """Approve a count line variance."""
     if current_user["role"] not in ["supervisor", "admin"]:
@@ -1204,22 +1456,34 @@ async def approve_count_line(
         if not count_line:
             raise HTTPException(status_code=404, detail="Count line not found")
         await _ensure_count_line_mutable(db, count_line)
+        await _enforce_count_line_logic_from_line(
+            db=db,
+            count_line=count_line,
+            request=http_request,
+            current_user=current_user,
+            operation_name="approve_count_line",
+        )
 
         approved_at = _current_timestamp()
 
-        result = await db.count_lines.update_one(
-            {"_id": count_line["_id"]},
+        write_service = _get_count_line_write_service(db)
+        result = await write_service.process_write(
             {
-                "$set": {
-                    "status": "approved",
-                    "approval_status": "APPROVED",
-                    "approved_by": current_user["username"],
-                    "approved_at": approved_at,
-                    "approval_note": request.notes if request else None,
-                    "rejection_reason": None,
-                    "assigned_to": None,
-                }
+                "operation": "update_one",
+                "filter": {"_id": count_line["_id"]},
+                "update": {
+                    "$set": {
+                        "status": "approved",
+                        "approval_status": "APPROVED",
+                        "approved_by": current_user["username"],
+                        "approved_at": approved_at,
+                        "approval_note": request.notes if request else None,
+                        "rejection_reason": None,
+                        "assigned_to": None,
+                    }
+                },
             },
+            context={"session_id": str(count_line.get("session_id") or "")},
         )
 
         if result.matched_count == 0:
@@ -1272,14 +1536,15 @@ async def approve_count_line(
             _safe_log_value(line_id),
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        _raise_count_lines_internal_error("Failed to approve count line", e)
 
 
-@router.put("/count-lines/{line_id}/reject")
 async def reject_count_line(
     line_id: str,
     request: Optional[CountLineRejectRequest] = None,
     current_user: dict = Depends(get_current_user),
+    *,
+    http_request: Request | None = None,
 ):
     """Reject a count line (request recount)."""
     if current_user["role"] not in ["supervisor", "admin"]:
@@ -1292,6 +1557,13 @@ async def reject_count_line(
         if not count_line:
             raise HTTPException(status_code=404, detail="Count line not found")
         await _ensure_count_line_mutable(db, count_line)
+        await _enforce_count_line_logic_from_line(
+            db=db,
+            count_line=count_line,
+            request=http_request,
+            current_user=current_user,
+            operation_name="reject_count_line",
+        )
 
         rejected_at = _current_timestamp()
         owner_id = count_line.get("counted_by") or count_line.get("created_by")
@@ -1300,23 +1572,28 @@ async def reject_count_line(
             request.notes if request and request.notes else "Supervisor requested recount"
         )
 
-        result = await db.count_lines.update_one(
-            {"_id": count_line["_id"]},
+        write_service = _get_count_line_write_service(db)
+        result = await write_service.process_write(
             {
-                "$set": {
-                    "status": "rejected",
-                    "approval_status": "REJECTED",
-                    "rejected_by": current_user["username"],
-                    "rejected_at": rejected_at,
-                    "verified": False,
-                    "verified_by": None,
-                    "verified_at": None,
-                    "rejection_reason": rejection_reason,
-                    "recount_requested_at": rejected_at,
-                    "recount_requested_by": current_user["username"],
-                    "assigned_to": assigned_to,
-                }
+                "operation": "update_one",
+                "filter": {"_id": count_line["_id"]},
+                "update": {
+                    "$set": {
+                        "status": "rejected",
+                        "approval_status": "REJECTED",
+                        "rejected_by": current_user["username"],
+                        "rejected_at": rejected_at,
+                        "verified": False,
+                        "verified_by": None,
+                        "verified_at": None,
+                        "rejection_reason": rejection_reason,
+                        "recount_requested_at": rejected_at,
+                        "recount_requested_by": current_user["username"],
+                        "assigned_to": assigned_to,
+                    }
+                },
             },
+            context={"session_id": str(count_line.get("session_id") or "")},
         )
 
         if result.matched_count == 0:
@@ -1372,7 +1649,37 @@ async def reject_count_line(
             _safe_log_value(line_id),
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        _raise_count_lines_internal_error("Failed to reject count line", e)
+
+
+@router.put("/count-lines/{line_id}/approve")
+async def approve_count_line_route(
+    line_id: str,
+    http_request: Request,
+    request: Optional[CountLineApprovalRequest] = None,
+    current_user: dict = Depends(get_current_user),
+):
+    return await approve_count_line(
+        line_id=line_id,
+        request=request,
+        current_user=current_user,
+        http_request=http_request,
+    )
+
+
+@router.put("/count-lines/{line_id}/reject")
+async def reject_count_line_route(
+    line_id: str,
+    http_request: Request,
+    request: Optional[CountLineRejectRequest] = None,
+    current_user: dict = Depends(get_current_user),
+):
+    return await reject_count_line(
+        line_id=line_id,
+        request=request,
+        current_user=current_user,
+        http_request=http_request,
+    )
 
 
 @router.get("/count-lines/check/{session_id}/{item_code}")
@@ -1400,7 +1707,7 @@ async def check_item_counted(
             "Error checking item count: %s",
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        _raise_count_lines_internal_error("Failed to check item count status", e)
 
 
 @router.get("/count-lines/check-serial/{session_id}/{serial_number}")
@@ -1483,6 +1790,7 @@ def _current_timestamp() -> datetime:
 @router.patch("/count-lines/{line_id}/add-quantity")
 async def add_quantity_to_count_line(
     line_id: str,
+    request: Request,
     payload: AddQuantityRequest,
     current_user: dict = Depends(get_current_user),
 ):
@@ -1493,11 +1801,19 @@ async def add_quantity_to_count_line(
     "Add to Existing" instead of creating a new count line.
     """
     db = _get_db_client()
+    write_service = _get_count_line_write_service(db)
 
     count_line = await _find_count_line(db, line_id)
     if not count_line:
         raise HTTPException(status_code=404, detail="Count line not found")
-    await _ensure_count_line_mutable(db, count_line)
+    session = await _ensure_count_line_mutable(db, count_line)
+    await _enforce_count_line_logic_from_line(
+        db=db,
+        count_line=count_line,
+        request=request,
+        current_user=current_user,
+        operation_name="add_quantity_to_count_line",
+    )
 
     if payload.additional_qty == 0:
         raise HTTPException(status_code=400, detail="additional_qty must be non-zero")
@@ -1510,26 +1826,29 @@ async def add_quantity_to_count_line(
 
     old_counted_qty = float(count_line.get("counted_qty") or 0)
     new_counted_qty = old_counted_qty + float(payload.additional_qty)
-
-    erp_qty = float(count_line.get("erp_qty") or 0)
-    new_variance = new_counted_qty - erp_qty
-
-    mrp_erp = float(count_line.get("mrp_erp") or 0)
-    mrp_counted = float(count_line.get("mrp_counted") or mrp_erp)
-    financial_impact = (mrp_counted * new_counted_qty) - (mrp_erp * new_counted_qty)
-
-    update_data: dict[str, Any] = {
+    erp_item = await _get_erp_item_for_existing_count_line(db, count_line)
+    update_data = {
         "counted_qty": new_counted_qty,
-        "variance": new_variance,
-        "financial_impact": financial_impact,
         "updated_at": _current_timestamp(),
         "updated_by": current_user.get("username"),
     }
     if payload.batches is not None:
         update_data["batches"] = payload.batches
 
-    update_result = await db.count_lines.update_one(
-        {"_id": count_line["_id"]}, {"$set": update_data}
+    update_result = await write_service.process_write(
+        {
+            "operation": "update_one",
+            "filter": {"_id": count_line["_id"]},
+            "update": {"$set": update_data},
+        },
+        context={
+            "session": session,
+            "erp_item": erp_item,
+            "username": current_user.get("username"),
+            "variance_reason": count_line.get("variance_reason"),
+            "correction_reason": count_line.get("correction_reason"),
+            "location": str(count_line.get("floor_no") or ""),
+        },
     )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
@@ -1548,12 +1867,18 @@ async def add_quantity_to_count_line(
             count_line=count_line,
         )
 
-    return {"success": True, "message": "Quantity added successfully", "data": update_data}
+    return {
+        "success": True,
+        "message": "Quantity added successfully",
+        "data": update_data,
+        "financial_impact": update_data.get("financial_impact"),
+    }
 
 
 @router.put("/count-lines/{line_id}")
 async def update_count_line(
     line_id: str,
+    request: Request,
     payload: CountLineUpdateRequest,
     current_user: dict = Depends(get_current_user),
 ):
@@ -1564,11 +1889,19 @@ async def update_count_line(
     to avoid accidental overwrites of governance fields.
     """
     db = _get_db_client()
+    write_service = _get_count_line_write_service(db)
 
     count_line = await _find_count_line(db, line_id)
     if not count_line:
         raise HTTPException(status_code=404, detail="Count line not found")
-    await _ensure_count_line_mutable(db, count_line)
+    session = await _ensure_count_line_mutable(db, count_line)
+    await _enforce_count_line_logic_from_line(
+        db=db,
+        count_line=count_line,
+        request=request,
+        current_user=current_user,
+        operation_name="update_count_line",
+    )
 
     if payload.counted_qty is None and payload.batches is None:
         raise HTTPException(status_code=400, detail="No updatable fields provided")
@@ -1579,34 +1912,37 @@ async def update_count_line(
     ) != current_user.get("username"):
         raise HTTPException(status_code=403, detail="Not authorized to modify this count line")
 
-    update_data: dict[str, Any] = {
-        "updated_at": _current_timestamp(),
-        "updated_by": current_user.get("username"),
-    }
-
     if payload.counted_qty is not None:
         new_counted_qty = float(payload.counted_qty)
-        erp_qty = float(count_line.get("erp_qty") or 0)
-        new_variance = new_counted_qty - erp_qty
-
-        mrp_erp = float(count_line.get("mrp_erp") or 0)
-        mrp_counted = float(count_line.get("mrp_counted") or mrp_erp)
-        # MM3 fix: Use erp_qty on the ERP side for correct financial impact
-        financial_impact = (mrp_counted * new_counted_qty) - (mrp_erp * erp_qty)
-
-        update_data.update(
-            {
-                "counted_qty": new_counted_qty,
-                "variance": new_variance,
-                "financial_impact": financial_impact,
-            }
-        )
+        erp_item = await _get_erp_item_for_existing_count_line(db, count_line)
+        update_data = {
+            "counted_qty": new_counted_qty,
+            "updated_at": _current_timestamp(),
+            "updated_by": current_user.get("username"),
+        }
+    else:
+        update_data = {
+            "updated_at": _current_timestamp(),
+            "updated_by": current_user.get("username"),
+        }
 
     if payload.batches is not None:
         update_data["batches"] = payload.batches
 
-    update_result = await db.count_lines.update_one(
-        {"_id": count_line["_id"]}, {"$set": update_data}
+    update_result = await write_service.process_write(
+        {
+            "operation": "update_one",
+            "filter": {"_id": count_line["_id"]},
+            "update": {"$set": update_data},
+        },
+        context={
+            "session": session,
+            "erp_item": erp_item if payload.counted_qty is not None else None,
+            "username": current_user.get("username"),
+            "variance_reason": count_line.get("variance_reason"),
+            "correction_reason": count_line.get("correction_reason"),
+            "location": str(count_line.get("floor_no") or ""),
+        },
     )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
@@ -1678,8 +2014,19 @@ async def delete_count_line(
         if not count_line:
             raise HTTPException(status_code=404, detail="Count line not found")
         await _ensure_count_line_mutable(db, count_line)
+        await _enforce_count_line_logic_from_line(
+            db=db,
+            count_line=count_line,
+            request=request,
+            current_user=current_user,
+            operation_name="delete_count_line",
+        )
 
-        result = await db.count_lines.delete_one({"_id": count_line["_id"]})
+        write_service = _get_count_line_write_service(db)
+        result = await write_service.process_write(
+            {"operation": "delete_one", "filter": {"_id": count_line["_id"]}},
+            context={"session_id": str(count_line.get("session_id") or "")},
+        )
         if result.deleted_count == 0:
             raise HTTPException(status_code=404, detail="Count line not found")
 
@@ -1701,7 +2048,7 @@ async def delete_count_line(
             _safe_log_value(line_id),
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        _raise_count_lines_internal_error("Failed to delete count line", e)
 
 
 @router.get("/sessions/{session_id}/items/{item_code}/scan-status")
@@ -1740,6 +2087,7 @@ async def check_item_scan_status(
 
 @router.post("/count-lines/bulk/approve")
 async def bulk_approve_count_lines(
+    request: Request,
     update_data: BulkCountLineUpdate,
     current_user: dict = Depends(get_current_user),
 ):
@@ -1758,28 +2106,43 @@ async def bulk_approve_count_lines(
         candidate_lines = await db.count_lines.find(query).to_list(length=max(len(ids), 1))
         for candidate in candidate_lines:
             await _ensure_count_line_mutable(db, candidate)
-
-        result = await db.count_lines.update_many(
-            query,
-            {
-                "$set": {
-                    "status": "approved",
-                    "approval_status": "APPROVED",
-                    "approved_by": current_user["username"],
-                    "approved_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                    "verified": True,
-                    "verified_by": current_user["username"],
-                    "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                    "approval_note": update_data.notes,
-                }
-            },
-        )
+            await _enforce_count_line_logic_from_line(
+                db=db,
+                count_line=candidate,
+                request=request,
+                current_user=current_user,
+                operation_name="bulk_approve_count_lines",
+            )
 
         session_ids = {
             str(candidate.get("session_id"))
             for candidate in candidate_lines
             if candidate.get("session_id")
         }
+        write_service = _get_count_line_write_service(db)
+        result = await write_service.process_write(
+            {
+                "operation": "update_many",
+                "filter": query,
+                "update": {
+                    "$set": {
+                        "status": "approved",
+                        "approval_status": "APPROVED",
+                        "approved_by": current_user["username"],
+                        "approved_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                        "verified": True,
+                        "verified_by": current_user["username"],
+                        "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                        "approval_note": update_data.notes,
+                    }
+                },
+            },
+            context={
+                "candidate_lines": candidate_lines,
+                "session_ids": list(session_ids),
+            },
+        )
+
         for session_id in session_ids:
             await recompute_session_totals(db, session_id)
         if session_ids:
@@ -1795,7 +2158,7 @@ async def bulk_approve_count_lines(
         }
     except Exception as e:
         logger.error("Error bulk approving: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=str(e))
+        _raise_count_lines_internal_error("Failed to bulk approve count lines", e)
 
 
 class CountLineBatchCreate(BaseModel):
@@ -1815,23 +2178,41 @@ async def create_count_lines_batch(
     db = _get_db_client()
     results = []
     errors = []
+    write_service = _get_count_line_write_service(db)
 
     session = await _get_mutable_session_or_409(db, batch_data.session_id)
+    await _enforce_count_line_session_logic(
+        db=db,
+        session=session,
+        request=request,
+        current_user=current_user,
+        operation_name="create_count_lines_batch",
+    )
     if session.get("status") not in ["OPEN", "ACTIVE"]:
         raise HTTPException(status_code=400, detail="Session is not active")
 
     for idx, line_data in enumerate(batch_data.lines):
         try:
-            modified_data = line_data.model_dump(exclude_unset=True)
-            modified_data["session_id"] = batch_data.session_id
-            modified_data["counted_by"] = current_user["username"]
-            modified_data["created_by"] = current_user["username"]
-            modified_data["batch_id"] = (
-                f"batch_{datetime.now(timezone.utc).replace(tzinfo=None).isoformat()}"
+            enriched_line = CountLineCreate.model_validate(
+                {
+                    **line_data.model_dump(mode="json"),
+                    "session_id": batch_data.session_id,
+                    "batch_id": (
+                        line_data.batch_id
+                        or f"batch_{datetime.now(timezone.utc).replace(tzinfo=None).isoformat()}"
+                    ),
+                }
             )
-
-            result = await db.count_lines.insert_one(modified_data)
-            results.append({"index": idx, "id": str(result.inserted_id), "success": True})
+            count_line, _counted_at, _governance, _risk_flags, _financial_impact = (
+                await _create_and_persist_count_line(
+                    db,
+                    session=session,
+                    line_data=enriched_line,
+                    current_user=current_user,
+                    write_service=write_service,
+                )
+            )
+            results.append({"index": idx, "id": str(count_line.get("id") or ""), "success": True})
         except Exception as e:
             errors.append({"index": idx, "error": str(e)})
 
@@ -1848,6 +2229,7 @@ async def create_count_lines_batch(
 
 @router.post("/count-lines/bulk/reject")
 async def bulk_reject_count_lines(
+    request: Request,
     update_data: BulkCountLineUpdate,
     current_user: dict = Depends(get_current_user),
 ):
@@ -1866,26 +2248,41 @@ async def bulk_reject_count_lines(
         candidate_lines = await db.count_lines.find(query).to_list(length=max(len(ids), 1))
         for candidate in candidate_lines:
             await _ensure_count_line_mutable(db, candidate)
-
-        result = await db.count_lines.update_many(
-            query,
-            {
-                "$set": {
-                    "status": "rejected",
-                    "approval_status": "REJECTED",
-                    "rejected_by": current_user["username"],
-                    "rejected_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                    "verified": False,
-                    "rejection_reason": update_data.notes,
-                }
-            },
-        )
+            await _enforce_count_line_logic_from_line(
+                db=db,
+                count_line=candidate,
+                request=request,
+                current_user=current_user,
+                operation_name="bulk_reject_count_lines",
+            )
 
         session_ids = {
             str(candidate.get("session_id"))
             for candidate in candidate_lines
             if candidate.get("session_id")
         }
+        write_service = _get_count_line_write_service(db)
+        result = await write_service.process_write(
+            {
+                "operation": "update_many",
+                "filter": query,
+                "update": {
+                    "$set": {
+                        "status": "rejected",
+                        "approval_status": "REJECTED",
+                        "rejected_by": current_user["username"],
+                        "rejected_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                        "verified": False,
+                        "rejection_reason": update_data.notes,
+                    }
+                },
+            },
+            context={
+                "candidate_lines": candidate_lines,
+                "session_ids": list(session_ids),
+            },
+        )
+
         for session_id in session_ids:
             await recompute_session_totals(db, session_id)
         if session_ids:
@@ -1901,11 +2298,113 @@ async def bulk_reject_count_lines(
         }
     except Exception as e:
         logger.error("Error bulk rejecting: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=str(e))
+        _raise_count_lines_internal_error("Failed to bulk reject count lines", e)
 
 
 # Canonical /api/item-batches/* route is served by erp_api.
 # Keep this endpoint for count-lines specific workflows to avoid route shadowing.
+def _sql_connector_is_connected(sql_connector: Any) -> bool:
+    return bool(sql_connector and getattr(sql_connector, "connection", None))
+
+
+def _build_mongo_item_batch_query(item_identifier: str) -> dict[str, Any]:
+    query: dict[str, Any] = {"$or": [{"item_code": item_identifier}, {"barcode": item_identifier}]}
+    if item_identifier.isdigit():
+        query["$or"].append({"item_id": int(item_identifier)})
+    return query
+
+
+def _mongo_item_to_batch(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "batch_id": item.get("batch_id"),
+        "batch_no": item.get("batch_no", ""),
+        "barcode": item.get("barcode"),
+        "mfg_date": item.get("mfg_date"),
+        "expiry_date": item.get("expiry_date"),
+        "stock_qty": item.get("stock_qty", 0),
+        "mrp": item.get("mrp"),
+        "warehouse_id": item.get("warehouse_id"),
+        "warehouse_name": item.get("warehouse_name", "Cached"),
+        "item_code": item.get("item_code"),
+        "item_name": item.get("item_name"),
+    }
+
+
+def _normalize_batch_record(batch: dict[str, Any]) -> dict[str, Any]:
+    barcode = batch.get("barcode") or batch.get("auto_barcode") or ""
+    return {
+        "batch_id": batch.get("batch_id"),
+        "batch_no": batch.get("batch_no"),
+        "barcode": barcode,
+        "mfg_date": batch.get("mfg_date"),
+        "expiry_date": batch.get("expiry_date"),
+        "stock_qty": batch.get("stock_qty", 0),
+        "mrp": batch.get("mrp"),
+        "opening_stock": batch.get("opening_stock", 0),
+        "warehouse_id": batch.get("warehouse_id"),
+        "warehouse_name": batch.get("warehouse_name"),
+        "shelf_id": batch.get("shelf_id"),
+        "shelf_name": batch.get("shelf_name"),
+        "item_code": batch.get("item_code"),
+        "item_name": batch.get("item_name"),
+    }
+
+
+def _stock_sort_value(value: Any) -> float:
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _sort_batches_by_stock(batches: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        batches,
+        key=lambda batch: (
+            -_stock_sort_value(batch.get("stock_qty")),
+            str(batch.get("batch_no") or ""),
+        ),
+    )
+
+
+def _load_batches_from_sql(
+    item_identifier: str,
+    sql_connector: Any,
+) -> tuple[list[dict[str, Any]], bool]:
+    if not sql_connector:
+        return [], False
+
+    try:
+        if _sql_connector_is_connected(sql_connector):
+            return list(sql_connector.get_item_batches(item_identifier)), True
+
+        logger.info(
+            "SQL connector available but not connected for '%s'",
+            _safe_log_value(item_identifier),
+        )
+    except Exception as sql_err:
+        logger.warning(
+            "SQL Server batch fetch failed for '%s': %s",
+            _safe_log_value(item_identifier),
+            _safe_log_value(sql_err, max_length=200),
+        )
+
+    return [], False
+
+
+async def _load_batches_from_mongo(
+    db: Any,
+    item_identifier: str,
+) -> list[dict[str, Any]]:
+    logger.info(
+        "Using MongoDB fallback for item batches: %s",
+        _safe_log_value(item_identifier),
+    )
+    cursor = db.erp_items.find(_build_mongo_item_batch_query(item_identifier))
+    mongo_items = await cursor.to_list(length=100)
+    return [_mongo_item_to_batch(item) for item in mongo_items]
+
+
 @router.get("/count-lines/item-batches/{item_identifier}")
 async def get_item_batches(
     item_identifier: str,
@@ -1918,104 +2417,14 @@ async def get_item_batches(
     """
     try:
         db = _get_db_client(db_override)
-
-        # Get SQL connector from app state
         sql_connector = getattr(router, "sql_connector", None)
+        batches, fetched_from_sql = _load_batches_from_sql(item_identifier, sql_connector)
+        source = "sql_server" if fetched_from_sql else "mongodb_offline_fallback"
+        if not fetched_from_sql:
+            batches = await _load_batches_from_mongo(db, item_identifier)
 
-        batches = []
-        fetch_success = False
-        source = "mongodb_offline_fallback"
-
-        # 1. Try fetching from SQL Server if available
-        if sql_connector:
-            try:
-                # Check if SQL connector is actually connected
-                if getattr(sql_connector, "connection", None):
-                    batches = sql_connector.get_item_batches(item_identifier)
-                    fetch_success = True
-                    source = "sql_server"
-                else:
-                    logger.info(
-                        "SQL connector available but not connected for '%s'",
-                        _safe_log_value(item_identifier),
-                    )
-            except Exception as sql_err:
-                logger.warning(
-                    "SQL Server batch fetch failed for '%s': %s",
-                    _safe_log_value(item_identifier),
-                    _safe_log_value(sql_err, max_length=200),
-                )
-
-        # 2. Fallback to MongoDB if SQL failed or not available
-        if not fetch_success:
-            logger.info(
-                "Using MongoDB fallback for item batches: %s",
-                _safe_log_value(item_identifier),
-            )
-            query: dict[str, Any] = {
-                "$or": [{"item_code": item_identifier}, {"barcode": item_identifier}]
-            }
-            # Add item_id if it's a number
-            if item_identifier.isdigit():
-                query["$or"].append({"item_id": int(item_identifier)})
-
-            cursor = db.erp_items.find(query)
-            mongo_items = await cursor.to_list(length=100)
-
-            # Transform MongoDB items to batch format
-            for item in mongo_items:
-                batches.append(
-                    {
-                        "batch_id": item.get("batch_id"),
-                        "batch_no": item.get("batch_no", ""),
-                        "barcode": item.get("barcode"),
-                        "mfg_date": item.get("mfg_date"),
-                        "expiry_date": item.get("expiry_date"),
-                        "stock_qty": item.get("stock_qty", 0),
-                        "mrp": item.get("mrp"),
-                        "warehouse_id": item.get("warehouse_id"),
-                        "warehouse_name": item.get("warehouse_name", "Cached"),
-                        "item_code": item.get("item_code"),
-                        "item_name": item.get("item_name"),
-                    }
-                )
-
-        # Transform batch data to include both manual and auto barcodes
-        transformed_batches = []
-        for batch in batches:
-            # Use manual barcode if available, otherwise auto barcode
-            barcode = batch.get("barcode") or batch.get("auto_barcode") or ""
-
-            transformed_batch = {
-                "batch_id": batch.get("batch_id"),
-                "batch_no": batch.get("batch_no"),
-                "barcode": barcode,
-                "mfg_date": batch.get("mfg_date"),
-                "expiry_date": batch.get("expiry_date"),
-                "stock_qty": batch.get("stock_qty", 0),
-                "mrp": batch.get("mrp"),
-                "opening_stock": batch.get("opening_stock", 0),
-                "warehouse_id": batch.get("warehouse_id"),
-                "warehouse_name": batch.get("warehouse_name"),
-                "shelf_id": batch.get("shelf_id"),
-                "shelf_name": batch.get("shelf_name"),
-                "item_code": batch.get("item_code"),
-                "item_name": batch.get("item_name"),
-            }
-            transformed_batches.append(transformed_batch)
-
-        def _stock_value(value: Any) -> float:
-            try:
-                return float(value or 0)
-            except (TypeError, ValueError):
-                return 0.0
-
-        transformed_batches = sorted(
-            transformed_batches,
-            key=lambda batch: (
-                -_stock_value(batch.get("stock_qty")),
-                str(batch.get("batch_no") or ""),
-            ),
+        transformed_batches = _sort_batches_by_stock(
+            [_normalize_batch_record(batch) for batch in batches]
         )
 
         return {
@@ -2031,7 +2440,7 @@ async def get_item_batches(
             "Error fetching item batches: %s",
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=f"Failed to fetch item batches: {str(e)}")
+        _raise_count_lines_internal_error("Failed to fetch item batches", e)
 
 
 class CountLineMergeRequest(BaseModel):
@@ -2044,7 +2453,8 @@ class CountLineMergeRequest(BaseModel):
 
 @router.post("/count-lines/merge")
 async def merge_count_lines(
-    request: CountLineMergeRequest,
+    http_request: Request,
+    payload: CountLineMergeRequest,
     current_user: dict = Depends(get_current_user),
     db_override=None,
 ):
@@ -2054,45 +2464,80 @@ async def merge_count_lines(
 
     db = _get_db_client(db_override)
     results: dict[str, list[Any]] = {"merged": [], "failed": []}
+    write_service = _get_count_line_write_service(db)
 
-    target_line = await db.count_lines.find_one({"id": request.target_line_id})
+    target_line = await db.count_lines.find_one({"id": payload.target_line_id})
     if not target_line:
         raise HTTPException(status_code=404, detail="Target count line not found")
+    await _enforce_count_line_logic_from_line(
+        db=db,
+        count_line=target_line,
+        request=http_request,
+        current_user=current_user,
+        operation_name="merge_count_lines",
+    )
 
-    target_qty = target_line.get("counted_qty", 0)
+    target_session = await _ensure_count_line_mutable(db, target_line)
+    target_qty = float(target_line.get("counted_qty", 0) or 0)
 
-    for source_id in request.source_line_ids:
-        if source_id == request.target_line_id:
+    for source_id in payload.source_line_ids:
+        if source_id == payload.target_line_id:
             continue
 
         source_line = await db.count_lines.find_one({"id": source_id})
         if not source_line:
             results["failed"].append({"id": source_id, "error": "Not found"})
             continue
+        await _enforce_count_line_logic_from_line(
+            db=db,
+            count_line=source_line,
+            request=http_request,
+            current_user=current_user,
+            operation_name="merge_count_lines",
+        )
 
         try:
-            if request.keep_target_qty:
-                merged_qty = target_qty + source_line.get("counted_qty", 0)
+            if payload.keep_target_qty:
+                merged_qty = target_qty + float(source_line.get("counted_qty", 0) or 0)
             else:
-                merged_qty = source_line.get("counted_qty", 0) + target_qty
+                merged_qty = float(source_line.get("counted_qty", 0) or 0) + target_qty
 
-            await db.count_lines.update_one(
-                {"id": request.target_line_id},
+            erp_item = await _get_erp_item_for_existing_count_line(db, target_line)
+
+            await write_service.process_write(
                 {
-                    "$set": {"counted_qty": merged_qty},
-                    "$push": {"merged_from": source_id},
+                    "operation": "update_one",
+                    "filter": {"id": payload.target_line_id},
+                    "update": {
+                        "$set": {"counted_qty": merged_qty},
+                        "$push": {"merged_from": source_id},
+                    },
+                },
+                context={
+                    "session": target_session,
+                    "erp_item": erp_item,
+                    "variance_reason": target_line.get("variance_reason"),
+                    "correction_reason": target_line.get("correction_reason"),
+                    "location": target_line.get("floor_no"),
+                    "username": current_user.get("username"),
                 },
             )
 
-            await db.count_lines.update_one(
-                {"id": source_id},
+            await write_service.process_write(
                 {
-                    "$set": {"status": "MERGED", "merged_into": request.target_line_id},
+                    "operation": "update_one",
+                    "filter": {"id": source_id},
+                    "update": {
+                        "$set": {"status": "MERGED", "merged_into": payload.target_line_id},
+                    },
                 },
+                context={"session_id": str(source_line.get("session_id") or "")},
             )
             results["merged"].append(source_id)
+            target_qty = merged_qty
+            target_line["counted_qty"] = merged_qty
 
         except Exception as e:
             results["failed"].append({"id": source_id, "error": str(e)})
 
-    return {"success": True, "target_line_id": request.target_line_id, **results}
+    return {"success": True, "target_line_id": payload.target_line_id, **results}

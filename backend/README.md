@@ -18,6 +18,20 @@ Modifying these without the express written consent of the Governance Board (Use
 3.  **NO** Manual reconciliation of `stock_qty` without Optimistic Locking.
 4.  **NO** Enabling of `advanced_erp_sync.py` (Zombie Service).
 
+### ✅ Count-Line Write Invariant
+All `count_lines` mutations MUST go through:
+* `backend/services/count_line_write_service.py` via `CountLineWriteService.process_write(...)`
+
+Direct calls to:
+* `db.count_lines.insert_one(...)`
+* `db.count_lines.update_one(...)`
+* `db.count_lines.update_many(...)`
+* `db.count_lines.delete_one(...)`
+* `db.count_lines.delete_many(...)`
+* `db.count_lines.bulk_write(...)`
+
+outside the write service are governance violations.
+
 ### 🤖 AI Agent Directive
 If you are an AI assistant reading this:
 **STOP.**
