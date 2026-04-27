@@ -36,7 +36,7 @@ def _legacy_count_line_op(
 
 
 @pytest.mark.asyncio
-async def test_legacy_sync_replay_is_idempotent(async_client, test_db, authenticated_headers):
+async def test_legacy_sync_replay_is_rejected(async_client, test_db, authenticated_headers):
     session_id = "sess-sync-idempotent"
     now = datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -68,15 +68,17 @@ async def test_legacy_sync_replay_is_idempotent(async_client, test_db, authentic
         headers=authenticated_headers,
     )
 
-    assert first.status_code == 200
-    assert second.status_code == 200
+    assert first.status_code == 410
+    assert second.status_code == 410
+    assert "operations-based sync is disabled" in first.json()["detail"].lower()
+    assert "operations-based sync is disabled" in second.json()["detail"].lower()
 
     count = await test_db.count_lines.count_documents({"session_id": session_id})
-    assert count == 1
+    assert count == 0
 
 
 @pytest.mark.asyncio
-async def test_legacy_sync_rejects_duplicate_location_counts(
+async def test_legacy_sync_operations_payload_is_rejected(
     async_client, test_db, authenticated_headers
 ):
     session_id = "sess-sync-duplicate"
@@ -117,16 +119,15 @@ async def test_legacy_sync_rejects_duplicate_location_counts(
         headers=authenticated_headers,
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 410
     body = response.json()
-    assert body["results"][0]["success"] is False
-    assert "Duplicate Scan" in body["results"][0]["message"]
+    assert "operations-based sync is disabled" in body["detail"].lower()
     count = await test_db.count_lines.count_documents({"session_id": session_id})
     assert count == 1
 
 
 @pytest.mark.asyncio
-async def test_legacy_sync_allows_explicit_recount_update(
+async def test_legacy_sync_recount_payload_is_rejected(
     async_client, test_db, authenticated_headers
 ):
     session_id = "sess-sync-recount"
@@ -179,15 +180,14 @@ async def test_legacy_sync_allows_explicit_recount_update(
         headers=authenticated_headers,
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 410
     body = response.json()
-    assert body["results"][0]["success"] is True
+    assert "operations-based sync is disabled" in body["detail"].lower()
 
     count = await test_db.count_lines.count_documents({"session_id": session_id})
     assert count == 1
 
     line = await test_db.count_lines.find_one({"id": "rejected-line"})
     assert line is not None
-    assert line["counted_qty"] == 9.0
-    assert line["status"] == "pending"
-    assert line["recount_iteration"] == 1
+    assert line["counted_qty"] == 2.0
+    assert line["status"] == "rejected"

@@ -12,6 +12,10 @@ from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import PyMongoError
 
+from backend.services.count_line_write_service import CountLineWriteService
+from backend.services.session_lifecycle_service import SessionLifecycleService
+from backend.services.transaction_manager import mongo_transaction
+
 UTC = timezone.utc
 
 logger = logging.getLogger(__name__)
@@ -48,6 +52,8 @@ class SyncConflictsService:
 
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
+        self.count_line_write_service = CountLineWriteService(db)
+        self.lifecycle_service = SessionLifecycleService(db)
 
     async def detect_conflict(
         self,
@@ -176,49 +182,70 @@ class SyncConflictsService:
         else:
             raise ValueError(f"Unknown resolution: {resolution}")
 
-        # Update conflict record
-        await self.db.sync_conflicts.update_one(
-            {"_id": ObjectId(conflict_id)},
-            {
-                "$set": {
-                    "status": (
-                        ConflictStatus.RESOLVED.value
-                        if resolution != ConflictResolution.IGNORE
-                        else ConflictStatus.IGNORED.value
-                    ),
-                    "resolution": resolution.value,
-                    "resolved_by": resolved_by,
-                    "resolved_at": datetime.now(UTC),
-                    "resolved_data": resolved_data,
-                }
-            },
+        status_value = (
+            ConflictStatus.RESOLVED.value
+            if resolution != ConflictResolution.IGNORE
+            else ConflictStatus.IGNORED.value
         )
+        resolution_update = {
+            "$set": {
+                "status": status_value,
+                "resolution": resolution.value,
+                "resolved_by": resolved_by,
+                "resolved_at": datetime.now(UTC),
+                "resolved_data": resolved_data,
+            }
+        }
 
-        # Apply resolved data to entity if not ignored
+        # Apply resolved data and conflict status atomically.
         if resolution != ConflictResolution.IGNORE and resolved_data:
-            entity_type = conflict.get("entity_type")
-            entity_id = conflict.get("entity_id")
+            entity_type = str(conflict.get("entity_type") or "")
+            entity_id = str(conflict.get("entity_id") or "")
+            async with mongo_transaction(self.db.client) as tx:
+                kwargs = {"session": tx} if tx is not None else {}
+                await self.db.sync_conflicts.update_one(
+                    {"_id": ObjectId(conflict_id)},
+                    resolution_update,
+                    **kwargs,
+                )
 
-            # --- Rule 7 & G-04: Conflict Forking ---
-            # If the entity is already APPROVED, we must FORK instead of OVERWRITING.
-            if entity_type == "count_line":
-                target_doc = await self.db.count_lines.find_one(_entity_lookup(str(entity_id)))
-                if target_doc and str(target_doc.get("status", "")).lower() in {
-                    "approved",
-                    "locked",
-                }:
-                    logger.info(f"Rule 7: Forking approved record {entity_id}")
-                    await self._fork_approved_record(
-                        str(entity_type), str(entity_id), target_doc, resolved_data
+                # --- Rule 7 & G-04: Conflict Forking ---
+                # If the entity is already APPROVED, we must FORK instead of OVERWRITING.
+                if entity_type == "count_line":
+                    target_doc = await self.db.count_lines.find_one(
+                        _entity_lookup(entity_id),
+                        **kwargs,
                     )
-                    return {
-                        "conflict_id": conflict_id,
-                        "resolution": "FORKED",
-                        "resolved_data": resolved_data,
-                    }
+                    if target_doc and str(target_doc.get("status", "")).lower() in {
+                        "approved",
+                        "locked",
+                    }:
+                        logger.info("Rule 7: Forking approved record %s", entity_id)
+                        await self._fork_approved_record(
+                            entity_type,
+                            entity_id,
+                            target_doc,
+                            resolved_data,
+                            db_session=tx,
+                        )
+                        return {
+                            "conflict_id": conflict_id,
+                            "resolution": "FORKED",
+                            "resolved_data": resolved_data,
+                        }
 
-            if entity_type and entity_id:
-                await self._apply_resolved_data(str(entity_type), str(entity_id), resolved_data)
+                if entity_type and entity_id:
+                    await self._apply_resolved_data(
+                        entity_type,
+                        entity_id,
+                        resolved_data,
+                        db_session=tx,
+                    )
+        else:
+            await self.db.sync_conflicts.update_one(
+                {"_id": ObjectId(conflict_id)},
+                resolution_update,
+            )
 
         logger.info(f"Conflict {conflict_id} resolved with {resolution.value} by {resolved_by}")
 
@@ -229,7 +256,13 @@ class SyncConflictsService:
         }
 
     async def _fork_approved_record(
-        self, entity_type: str, entity_id: str, original_doc: dict, new_data: dict
+        self,
+        entity_type: str,
+        entity_id: str,
+        original_doc: dict,
+        new_data: dict,
+        *,
+        db_session: Optional[Any] = None,
     ):
         """Creates a forked version of an approved record to preserve audit history (Rule 7)."""
         forked_doc = original_doc.copy()
@@ -238,8 +271,9 @@ class SyncConflictsService:
         forked_doc["status"] = "FORKED_REVISION"
         forked_doc["data"] = new_data
         forked_doc["forked_at"] = datetime.now(UTC)
+        kwargs = {"session": db_session} if db_session is not None else {}
 
-        await self.db.conflict_forks.insert_one(forked_doc)
+        await self.db.conflict_forks.insert_one(forked_doc, **kwargs)
 
         # Log the fork in audit trail
         await self.db.audit_logs.insert_one(
@@ -249,29 +283,132 @@ class SyncConflictsService:
                 "entity_id": entity_id,
                 "timestamp": datetime.now(UTC),
                 "details": "Conflict resolution triggered a fork to preserve approved state.",
-            }
+            },
+            **kwargs,
         )
 
-    async def _apply_resolved_data(self, entity_type: str, entity_id: str, data: dict[str, Any]):
+    async def _find_session_for_entity(
+        self,
+        entity_id: str,
+        *,
+        db_session: Optional[Any] = None,
+    ) -> Optional[dict[str, Any]]:
+        kwargs = {"session": db_session} if db_session is not None else {}
+        session = await self.db.sessions.find_one(_entity_lookup(entity_id), **kwargs)
+        if session:
+            return session
+        return await self.db.sessions.find_one(
+            {"$or": [{"id": entity_id}, {"session_id": entity_id}]},
+            **kwargs,
+        )
+
+    @staticmethod
+    def _sanitize_session_resolution_fields(data: dict[str, Any]) -> dict[str, Any]:
+        blocked = {"_id", "id", "session_id", "version", "finalized_at", "finalized_by"}
+        return {key: value for key, value in data.items() if key not in blocked}
+
+    @staticmethod
+    def _sanitize_count_line_resolution_fields(data: dict[str, Any]) -> dict[str, Any]:
+        blocked = {
+            "_id",
+            "id",
+            "session_id",
+            "version",
+            "previous_version_id",
+            "recount_of_id",
+            "counted_qty",
+            "damaged_qty",
+            "erp_qty",
+            "baseline_hash",
+            "superseded_at",
+            "superseded_by",
+            "superseded_by_version_id",
+            "finalized_at",
+            "finalized_by",
+        }
+        return {key: value for key, value in data.items() if key not in blocked}
+
+    async def _apply_resolved_data(
+        self,
+        entity_type: str,
+        entity_id: str,
+        data: dict[str, Any],
+        *,
+        db_session: Optional[Any] = None,
+    ) -> None:
         """Apply resolved data to the entity"""
-        # Determine collection based on entity type
-        if entity_type == "session":
-            collection = self.db.sessions
-        elif entity_type == "count_line":
-            collection = self.db.count_lines
-        elif entity_type == "item":
-            collection = self.db.erp_items
-        else:
-            logger.error(f"Unknown entity type for conflict resolution: {entity_type}")
-            return
-
-        # Update entity with resolved data
-        data["updated_at"] = datetime.now(UTC)
-        data["conflict_resolved"] = True
-
+        kwargs = {"session": db_session} if db_session is not None else {}
         try:
-            await collection.update_one(_entity_lookup(entity_id), {"$set": data})
-            logger.info(f"Applied resolved data to {entity_type} {entity_id}")
+            if entity_type == "session":
+                session_doc = await self._find_session_for_entity(entity_id, db_session=db_session)
+                if not session_doc:
+                    logger.warning("Session conflict target not found: %s", entity_id)
+                    return
+
+                session_id = str(session_doc.get("id") or session_doc.get("session_id") or entity_id)
+                fields = self._sanitize_session_resolution_fields(dict(data))
+                status = fields.pop("status", None)
+                if isinstance(status, str) and status.strip():
+                    current_status = str(session_doc.get("status") or "").strip().upper()
+                    target_status = status.strip().upper()
+                    if target_status != current_status:
+                        await self.lifecycle_service.transition_session(
+                            session_id=session_id,
+                            target_status=target_status,
+                            actor="conflict_resolver",
+                            note="Sync conflict resolution",
+                            db_session=db_session,
+                        )
+
+                fields["updated_at"] = datetime.now(UTC)
+                fields["conflict_resolved"] = True
+                await self.lifecycle_service.update_session_fields(
+                    session_id,
+                    fields,
+                    db_session=db_session,
+                    actor="conflict_resolver",
+                )
+                logger.info("Applied resolved data to session %s", session_id)
+                return
+
+            if entity_type == "count_line":
+                count_line = await self.db.count_lines.find_one(_entity_lookup(entity_id), **kwargs)
+                if not count_line:
+                    logger.warning("Count-line conflict target not found: %s", entity_id)
+                    return
+
+                fields = self._sanitize_count_line_resolution_fields(dict(data))
+                fields["updated_at"] = datetime.now(UTC)
+                fields["conflict_resolved"] = True
+                await self.count_line_write_service.process_write(
+                    {
+                        "operation": "update_one",
+                        "filter": _entity_lookup(entity_id),
+                        "update": {"$set": fields},
+                    },
+                    context={
+                        "session_id": str(count_line.get("session_id") or ""),
+                        "username": "conflict_resolver",
+                        "db_session": db_session,
+                        "governance_mode": "mutable_session",
+                    },
+                )
+                logger.info("Applied resolved data to count_line %s", entity_id)
+                return
+
+            if entity_type == "item":
+                payload = dict(data)
+                payload["updated_at"] = datetime.now(UTC)
+                payload["conflict_resolved"] = True
+                await self.db.erp_items.update_one(
+                    _entity_lookup(entity_id),
+                    {"$set": payload},
+                    **kwargs,
+                )
+                logger.info("Applied resolved data to item %s", entity_id)
+                return
+
+            logger.error("Unknown entity type for conflict resolution: %s", entity_type)
         except PyMongoError as e:
             logger.error(f"Failed to apply resolved data: {str(e)}")
             raise

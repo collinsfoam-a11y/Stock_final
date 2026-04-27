@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.api.schemas_variance import CountLineSubmission
 from backend.auth.dependencies import get_current_user
 from backend.db.runtime import get_db
+from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.variance_service import VarianceService
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,13 @@ async def submit_count_line(
     if count_line.get("status") in ["submitted", "approved", "locked"]:
         raise HTTPException(status_code=400, detail="Count line already submitted")
 
+    # Staff users may only submit their own lines; supervisors/admins may submit any.
+    role = str(current_user.get("role") or "").strip().lower()
+    if role not in {"supervisor", "admin"}:
+        owner = str(count_line.get("counted_by") or count_line.get("created_by") or "").strip()
+        if owner and owner != str(current_user.get("username") or "").strip():
+            raise HTTPException(status_code=403, detail="Not authorized to submit this count line")
+
     # H2 fix: Check parent session status — block submissions on finalized sessions
     session = await db.sessions.find_one(
         {
@@ -81,6 +89,19 @@ async def submit_count_line(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found in ERP")
 
+    write_service = CountLineWriteService(db)
+
+    expected_qty = count_line.get("erp_qty")
+    if expected_qty in (None, ""):
+        resolved_qty, baseline_hash = await write_service.resolve_baseline(
+            session_id=str(count_line.get("session_id") or ""),
+            item_code=str(count_line.get("item_code") or ""),
+            username=current_user.get("username", "system"),
+            erp_item=item,
+        )
+        expected_qty = resolved_qty
+        count_line["baseline_hash"] = baseline_hash
+
     # Initialize variance service
     variance_service = VarianceService(db)
 
@@ -91,7 +112,7 @@ async def submit_count_line(
     variance_data = await variance_service.calculate_variance(
         item_code=count_line["item_code"],
         counted_qty=count_line.get("counted_qty", 0),
-        expected_qty=item.get("stock_qty", 0),
+        expected_qty=float(expected_qty or 0.0),
         unit_price=unit_price,
         valuation_basis="last_cost",
     )
@@ -133,7 +154,18 @@ async def submit_count_line(
             update_data["variance_reason"] = submission_data.variance_reason
 
     # Update count line
-    await db.count_lines.update_one({"id": count_id}, {"$set": update_data})
+    await write_service.process_write(
+        {
+            "operation": "update_one",
+            "filter": {"id": count_id},
+            "update": {"$set": update_data},
+        },
+        context={
+            "session": session,
+            "session_id": str(count_line.get("session_id") or ""),
+            "username": current_user.get("username"),
+        },
+    )
 
     # H3 fix: Recompute session totals after status change
     from backend.services.canonical_inventory import recompute_session_totals

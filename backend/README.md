@@ -32,6 +32,22 @@ Direct calls to:
 
 outside the write service are governance violations.
 
+### ✅ Session Lifecycle Write Invariant
+All mutations to:
+* `sessions`
+* `verification_sessions`
+* `recount_requests`
+* `session_snapshots`
+
+MUST go through:
+* `backend/services/session_lifecycle_service.py`
+
+### ✅ Unknown-Item Write Invariant
+All `unknown_items` mutations MUST go through:
+* `backend/services/unknown_item_service.py`
+
+Borrowing another service's write authority is a governance violation.
+
 ### 🤖 AI Agent Directive
 If you are an AI assistant reading this:
 **STOP.**

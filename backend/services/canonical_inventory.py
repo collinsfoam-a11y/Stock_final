@@ -11,12 +11,15 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from backend.services.session_lifecycle_service import SessionLifecycleService
+
 ACTIVE_SESSION_STATUSES = {"OPEN", "ACTIVE", "PAUSED", "RECONCILE"}
 FINALIZED_SESSION_STATUSES = {"COMPLETED", "CLOSED", "CANCELLED"}
 LOCKED_COUNT_LINE_STATUSES = {"locked"}
 APPROVED_COUNT_LINE_STATUSES = {"approved", "locked"}
 BLOCKING_APPROVAL_STATUSES = {"NEEDS_REVIEW", "REJECTED"}
 BLOCKING_COUNT_LINE_STATUSES = {"rejected"}
+SUPERSEDED_COUNT_LINE_STATUSES = {"superseded"}
 
 
 def normalize_location_value(value: Any) -> Optional[str]:
@@ -153,6 +156,18 @@ def is_count_line_locked(count_line: Optional[dict[str, Any]]) -> bool:
     return normalize_count_line_status(count_line.get("status")) in LOCKED_COUNT_LINE_STATUSES
 
 
+def is_superseded_count_line(count_line: Optional[dict[str, Any]]) -> bool:
+    if not count_line:
+        return False
+    if normalize_count_line_status(count_line.get("status")) in SUPERSEDED_COUNT_LINE_STATUSES:
+        return True
+    if count_line.get("superseded_by_version_id"):
+        return True
+    if count_line.get("superseded_at"):
+        return True
+    return False
+
+
 def build_count_line_duplicate_filter(line_data: dict[str, Any]) -> dict[str, Any]:
     return {
         "session_id": str(line_data.get("session_id") or ""),
@@ -184,6 +199,8 @@ async def find_duplicate_count_line(
         existing_id = extract_document_id(existing)
         if exclude_id and existing_id == exclude_id:
             continue
+        if is_superseded_count_line(existing):
+            continue
         return existing
     return None
 
@@ -202,6 +219,9 @@ def can_reuse_rejected_count_line(
 
 
 def is_blocking_finalization(count_line: dict[str, Any]) -> bool:
+    if is_superseded_count_line(count_line):
+        return False
+
     if is_count_line_locked(count_line):
         return False
 
@@ -226,10 +246,17 @@ def is_blocking_finalization(count_line: dict[str, Any]) -> bool:
     return True
 
 
-async def get_session_count_lines(db: Any, session_id: str) -> list[dict[str, Any]]:
+async def get_session_count_lines(
+    db: Any,
+    session_id: str,
+    *,
+    include_superseded: bool = False,
+) -> list[dict[str, Any]]:
     cursor = db.count_lines.find({"session_id": session_id})
     lines: list[dict[str, Any]] = []
     async for line in cursor:
+        if not include_superseded and is_superseded_count_line(line):
+            continue
         lines.append(line)
     return lines
 
@@ -243,6 +270,8 @@ async def recompute_session_totals(db: Any, session_id: str) -> dict[str, Any]:
 
     cursor = db.count_lines.find({"session_id": session_id})
     async for line in cursor:
+        if is_superseded_count_line(line):
+            continue
         total_items += 1
         total_variance += float(line.get("variance") or 0.0)
         damage_items += int(float(line.get("damaged_qty") or 0.0))
@@ -291,5 +320,6 @@ async def recompute_session_totals(db: Any, session_id: str) -> dict[str, Any]:
     if last_activity is not None:
         session_update["last_activity"] = last_activity
 
-    await db.sessions.update_one(build_session_lookup(session_id), {"$set": session_update})
+    lifecycle_service = SessionLifecycleService(db)
+    await lifecycle_service.update_session_totals(session_id, session_update)
     return session_update

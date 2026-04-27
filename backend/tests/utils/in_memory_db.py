@@ -105,6 +105,10 @@ def _match_filter(document: dict[str, Any], filter_query: dict[str, Optional[Any
             if not any(_match_filter(document, clause) for clause in value):
                 return False
             continue
+        if key == "$and":
+            if not all(_match_filter(document, clause) for clause in value):
+                return False
+            continue
 
         # Handle $exists specifically
         if isinstance(value, dict) and "$exists" in value:
@@ -235,7 +239,13 @@ class InMemoryCollection:
         self._documents.append(doc_copy)
         return InsertOneResult(inserted_id=doc_copy["_id"])
 
-    async def insert_many(self, documents: list[dict[str, Any]], ordered: bool = True) -> list[str]:
+    async def insert_many(
+        self,
+        documents: list[dict[str, Any]],
+        ordered: bool = True,
+        *args,
+        **kwargs,
+    ) -> list[str]:
         ids = []
         for document in documents:
             doc_copy = copy.deepcopy(document)
@@ -249,6 +259,8 @@ class InMemoryCollection:
         filter_query: dict[str, Optional[Any]],
         replacement: dict[str, Any],
         upsert: bool = False,
+        *args,
+        **kwargs,
     ) -> UpdateResult:
         """
         Replaces a single document matching the filter.
@@ -286,6 +298,8 @@ class InMemoryCollection:
         array_filters: Optional[
             list[dict]
         ] = None,  # Added array_filters to signature to match generic usage
+        *args,
+        **kwargs,
     ) -> UpdateResult:
         for doc in self._documents:
             if _match_filter(doc, filter_query):
@@ -314,6 +328,8 @@ class InMemoryCollection:
         self,
         filter_query: dict[str, Optional[Any]],
         update: dict[str, Any],
+        *args,
+        **kwargs,
     ) -> UpdateResult:
         matched = 0
         modified = 0
@@ -324,14 +340,24 @@ class InMemoryCollection:
                     modified += 1
         return UpdateResult(matched_count=matched, modified_count=modified)
 
-    async def delete_one(self, filter_query: dict[str, Optional[Any]]) -> DeleteResult:
+    async def delete_one(
+        self,
+        filter_query: dict[str, Optional[Any]],
+        *args,
+        **kwargs,
+    ) -> DeleteResult:
         for i, doc in enumerate(self._documents):
             if _match_filter(doc, filter_query):
                 self._documents.pop(i)
                 return DeleteResult(deleted_count=1)
         return DeleteResult(deleted_count=0)
 
-    async def delete_many(self, filter_query: dict[str, Optional[Any]]) -> DeleteResult:
+    async def delete_many(
+        self,
+        filter_query: dict[str, Optional[Any]],
+        *args,
+        **kwargs,
+    ) -> DeleteResult:
         to_keep = []
         deleted = 0
         for doc in self._documents:
@@ -342,13 +368,20 @@ class InMemoryCollection:
         self._documents = to_keep
         return DeleteResult(deleted_count=deleted)
 
-    async def count_documents(self, filter_query: dict[str, Optional[Any]] = None) -> int:
+    async def count_documents(
+        self,
+        filter_query: dict[str, Optional[Any]] = None,
+        *args,
+        **kwargs,
+    ) -> int:
         return sum(1 for doc in self._documents if _match_filter(doc, filter_query))
 
     def find(
         self,
         filter_query: dict[str, Optional[Any]] = None,
         projection: dict[str, Optional[int]] = None,
+        *args,
+        **kwargs,
     ):
         results = []
         for doc in self._documents:
@@ -387,6 +420,7 @@ class InMemoryDatabase:
         self.count_lines = InMemoryCollection()
         self.count_line_drafts = InMemoryCollection()
         self.unknown_items = InMemoryCollection()
+        self.recount_requests = InMemoryCollection()
         self.erp_items = InMemoryCollection()
         self.erp_sync_metadata = InMemoryCollection()
         self.erp_config = InMemoryCollection()
@@ -403,6 +437,7 @@ class InMemoryDatabase:
         self.audit_logs = InMemoryCollection()
         self.system_events = InMemoryCollection()
         self.item_serials = InMemoryCollection()
+        self.variance_threshold_configs = InMemoryCollection()
 
         # Governance Collections
         self.system_settings = InMemoryCollection()
@@ -416,6 +451,34 @@ class InMemoryDatabase:
         """Simulate db.command('ping')."""
         return {"ok": 1}
 
+    @staticmethod
+    def _unwrap_collection(value: Any) -> Optional[InMemoryCollection]:
+        if isinstance(value, InMemoryCollection):
+            return value
+        wrapped = getattr(value, "_collection", None)
+        if isinstance(wrapped, InMemoryCollection):
+            return wrapped
+        return None
+
+    def _snapshot_collections(self) -> dict[str, list[dict[str, Any]]]:
+        snapshot: dict[str, list[dict[str, Any]]] = {}
+        for name, value in self.__dict__.items():
+            collection = self._unwrap_collection(value)
+            if collection is None:
+                continue
+            snapshot[name] = copy.deepcopy(collection._documents)
+        return snapshot
+
+    def _restore_collections(self, snapshot: dict[str, list[dict[str, Any]]]) -> None:
+        for name, documents in snapshot.items():
+            collection = self._unwrap_collection(getattr(self, name, None))
+            if collection is None:
+                continue
+            collection._documents = copy.deepcopy(documents)
+
+    async def start_session(self):
+        return InMemoryClientSession(self)
+
     def __getitem__(self, name: str) -> InMemoryCollection:
         """Allow accessing collections via db['name']."""
         if hasattr(self, name):
@@ -425,6 +488,39 @@ class InMemoryDatabase:
         collection = InMemoryCollection()
         setattr(self, name, collection)
         return collection
+
+
+class InMemoryClientSession:
+    def __init__(self, db: InMemoryDatabase) -> None:
+        self._db = db
+
+    async def __aenter__(self) -> InMemoryClientSession:
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+    def start_transaction(self):
+        return _InMemoryTransaction(self._db)
+
+    async def end_session(self) -> None:
+        return None
+
+
+class _InMemoryTransaction:
+    def __init__(self, db: InMemoryDatabase) -> None:
+        self._db = db
+        self._snapshot: Optional[dict[str, list[dict[str, Any]]]] = None
+
+    async def __aenter__(self):
+        self._snapshot = self._db._snapshot_collections()
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> bool:
+        if exc_type is not None and self._snapshot is not None:
+            self._db._restore_collections(self._snapshot)
+        self._snapshot = None
+        return False
 
 
 def setup_server_with_in_memory_db(monkeypatch) -> InMemoryDatabase:
@@ -437,10 +533,17 @@ def setup_server_with_in_memory_db(monkeypatch) -> InMemoryDatabase:
     from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
     import backend.server as server_module
+    import backend.core.lifespan as lifespan_module
+    import backend.db.runtime as runtime_module
     from backend.db.runtime import set_client, set_db
 
     fake_db = InMemoryDatabase()
     monkeypatch.setattr(server_module, "db", fake_db)
+
+    # Integration tests seed collections directly; keep runtime guards enabled in
+    # production, but bypass auto-install in in-memory test wiring.
+    monkeypatch.setattr(runtime_module, "install_db_write_guards", lambda db: db)
+    monkeypatch.setattr(lifespan_module, "install_db_write_guards", lambda db: db)
 
     # Initialize runtime database reference for tests
     set_db(cast(AsyncIOMotorDatabase, fake_db))

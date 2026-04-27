@@ -33,6 +33,7 @@ class AsyncIterator:
 def mock_db():
     """Mock MongoDB database"""
     db = MagicMock()
+    db.client = None
 
     # Collections
     db.users = MagicMock()
@@ -89,7 +90,6 @@ def mock_staff():
 async def test_stock_verification_workflow(mock_db, mock_supervisor):
     """Test complete stock verification workflow"""
     from backend.server import get_count_lines, unverify_stock, verify_stock
-    from backend.services.activity_log import ActivityLogService
 
     # Setup
     count_line = {
@@ -97,11 +97,22 @@ async def test_stock_verification_workflow(mock_db, mock_supervisor):
         "session_id": "session-1",
         "item_code": "ITEM001",
         "verified": False,
+        "location_id": "LOC-1",
+        "floor_id": "F1",
+        "rack_id": "R1",
     }
 
     mock_db.count_lines.find_one = AsyncMock(return_value=count_line)
     mock_db.count_lines.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
     mock_db.count_lines.count_documents = AsyncMock(return_value=1)
+    mock_db.sessions.find_one = AsyncMock(
+        return_value={
+            "id": "session-1",
+            "session_id": "session-1",
+            "status": "ACTIVE",
+            "staff_user": "supervisor",
+        }
+    )
 
     mock_cursor = MagicMock()
     mock_cursor.sort = MagicMock(return_value=mock_cursor)
@@ -110,19 +121,14 @@ async def test_stock_verification_workflow(mock_db, mock_supervisor):
     mock_cursor.to_list = AsyncMock(return_value=[count_line])
     mock_db.count_lines.find = MagicMock(return_value=mock_cursor)
 
-    activity_service = ActivityLogService(mock_db)
-
-    with (
-        patch("backend.server.activity_log_service", activity_service),
-        patch.object(activity_service, "log_activity", new_callable=AsyncMock),
-    ):
+    with patch("backend.api.count_lines_routes._activity_log_service", None):
         # 1. Verify stock
         result = await verify_stock("line-1", mock_supervisor, db_override=mock_db)
         assert result["verified"] is True
 
         # Verify update was called
         update_call = mock_db.count_lines.update_one.call_args
-        update_doc = update_call[1]["update"]
+        update_doc = update_call.args[1]
         assert update_doc["$set"]["verified"] is True
 
         # 2. Get verified items

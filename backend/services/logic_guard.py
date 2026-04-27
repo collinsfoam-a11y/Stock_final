@@ -3,20 +3,19 @@
 from __future__ import annotations
 
 import logging
-import inspect
 from collections.abc import Mapping
 from typing import Any, Literal, Optional
 
 from fastapi import HTTPException, Request
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from backend.services.canonical_inventory import build_session_lookup
 from backend.services.flag_resolver import (
     FlagResolution,
     FlagResolutionError,
     is_global_disable_active,
     resolve_phase0_flags,
 )
+from backend.services.session_lifecycle_service import SessionLifecycleService
 
 logger = logging.getLogger(__name__)
 
@@ -243,18 +242,12 @@ async def persist_pin_if_needed(*, db, session, context: LogicExecutionContext) 
     if not session_id:
         return
 
-    result = db.sessions.update_one(
-        build_session_lookup(session_id),
-        {
-            "$set": {
-                "logic_version": context.pin_logic_version,
-                "logic_scope_source": context.pin_scope_source,
-            }
-        },
+    lifecycle_service = SessionLifecycleService(db)
+    await lifecycle_service.persist_logic_pin(
+        session_id=session_id,
+        logic_version=context.pin_logic_version,
+        logic_scope_source=context.pin_scope_source,
     )
-    result = await result if inspect.isawaitable(result) else result
-    if getattr(result, "matched_count", 0) == 0:
-        raise HTTPException(status_code=500, detail="Failed to persist session logic pin")
 
     if isinstance(session, dict):
         session["logic_version"] = context.pin_logic_version

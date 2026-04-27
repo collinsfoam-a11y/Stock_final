@@ -65,6 +65,7 @@ from backend.services.sql_sync_service import SQLSyncService
 from backend.services.sync_conflicts_service import SyncConflictsService
 from backend.services.lock_service import LockService
 from backend.services.variant_service import VariantService
+from backend.services.governance_guard import install_db_write_guards
 from backend.sql_server_connector import SQLServerConnector
 from backend.utils.port_detector import PortDetector, save_backend_info
 
@@ -182,6 +183,7 @@ client: AsyncIOMotorClient = AsyncIOMotorClient(
 )
 # Use DB_NAME from settings (database name should not be in URL for this setup)
 db = client[settings.DB_NAME]
+install_db_write_guards(db)
 
 # Database optimizer
 if not RUNNING_UNDER_PYTEST:

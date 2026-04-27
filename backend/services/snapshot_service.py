@@ -1,6 +1,6 @@
 import hashlib
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -25,44 +25,37 @@ class SnapshotService:
         self, session_id: str, item_code: str, current_user: str
     ) -> Optional[dict[str, Any]]:
         """
-        Fetch existing snapshot for item in session, or create a new one from live ERP data.
+        Legacy API compatibility helper.
+        Returns existing immutable baseline data only; never creates or mutates snapshots.
         """
-        # 1. Check for existing snapshot
+        # 1. Legacy per-item snapshot lookup (read-only).
         existing = await self.db.stock_snapshots.find_one(
             {"session_id": session_id, "item_code": item_code}
         )
         if existing:
             return existing
 
-        # 2. Fetch live ERP data to freeze it
-        erp_item = await self.db.erp_items.find_one({"item_code": item_code})
-        if not erp_item:
-            logger.warning(f"Cannot create snapshot: Item {item_code} not found in ERP")
-            return None
+        # 2. Session baseline snapshot lookup (read-only).
+        session_snapshot = await self.db.session_snapshots.find_one({"session_id": session_id})
+        if isinstance(session_snapshot, dict):
+            snapshot_hash = str(session_snapshot.get("snapshot_hash") or "").strip()
+            for item in session_snapshot.get("items") or []:
+                if str(item.get("item_code") or "").strip() != str(item_code or "").strip():
+                    continue
+                return {
+                    "session_id": session_id,
+                    "item_code": item_code,
+                    "erp_qty": float(item.get("stock_qty") or 0.0),
+                    "baseline_hash": snapshot_hash or "SESSION_SNAPSHOT",
+                    "created_by": current_user,
+                }
 
-        # 3. Create new snapshot
-        now = datetime.now(timezone.utc).replace(tzinfo=None)
-        erp_qty = float(erp_item.get("stock_qty", 0.0))
-
-        import uuid
-
-        snapshot = {
-            "id": str(uuid.uuid4()),
-            "session_id": session_id,
-            "item_code": item_code,
-            "barcode": erp_item.get("barcode"),
-            "erp_qty": erp_qty,
-            "timestamp": now,
-            "baseline_hash": self._generate_hash(item_code, erp_qty, now),
-            "created_by": current_user,
-        }
-
-        await self.db.stock_snapshots.insert_one(snapshot)
-        logger.info(
-            f"Rule 2: Frozen snapshot created for {item_code} in session {session_id} (Qty: {erp_qty})"
+        logger.warning(
+            "Immutable baseline missing for item %s in session %s; no snapshot created",
+            item_code,
+            session_id,
         )
-
-        return snapshot
+        return None
 
     async def verify_snapshot_integrity(self, snapshot_id: str) -> bool:
         """Verify the hash of a snapshot to detect tampering."""

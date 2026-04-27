@@ -21,6 +21,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from backend.config import settings
 from backend.db.runtime import get_db, lifespan_db
+from backend.services.count_line_write_service import CountLineWriteService
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,20 @@ async def _lookup_erp_item_name(db: AsyncIOMotorDatabase, doc: dict[str, Any]) -
     return item_name.strip() if isinstance(item_name, str) and item_name.strip() else None
 
 
+async def _session_is_finalized(db: AsyncIOMotorDatabase, session_id: str) -> bool:
+    normalized_session_id = str(session_id or "").strip()
+    if not normalized_session_id:
+        return False
+    session = await db.sessions.find_one(
+        {"$or": [{"id": normalized_session_id}, {"session_id": normalized_session_id}]},
+        {"status": 1, "finalized_at": 1},
+    )
+    if not session:
+        return False
+    status = str(session.get("status") or "").strip().upper()
+    return bool(session.get("finalized_at")) or status in {"FINALIZED", "COMPLETED", "CLOSED", "CANCELLED"}
+
+
 async def repair_item_names(
     db: AsyncIOMotorDatabase,
     *,
@@ -104,6 +119,7 @@ async def repair_item_names(
         "repaired": 0,
         "skipped_no_erp_match": 0,
         "skipped_no_meaningful_name": 0,
+        "skipped_finalized_session": 0,
         "errors": 0,
         "per_collection": {
             collection: {
@@ -115,6 +131,8 @@ async def repair_item_names(
         },
         "examples": [],
     }
+
+    write_service = CountLineWriteService(db)
 
     for collection_name in collections:
         collection = db[collection_name]
@@ -168,10 +186,29 @@ async def repair_item_names(
                         },
                     )
                 else:
-                    result = await collection.update_one(
-                        {"_id": doc["_id"]},
-                        {"$set": {"item_name": repaired_name}},
-                    )
+                    if collection_name == "count_lines":
+                        session_id_value = str(doc.get("session_id") or "")
+                        if await _session_is_finalized(db, session_id_value):
+                            stats["skipped_finalized_session"] += 1
+                            continue
+                        result = await write_service.process_write(
+                            {
+                                "operation": "update_one",
+                                "filter": {"_id": doc["_id"]},
+                                "update": {"$set": {"item_name": repaired_name}},
+                            },
+                            context={
+                                "session_id": session_id_value,
+                                "username": "system_repair_item_names",
+                                "governance_mode": "repair",
+                                "validation_mode": "repair_skip",
+                            },
+                        )
+                    else:
+                        result = await collection.update_one(
+                            {"_id": doc["_id"]},
+                            {"$set": {"item_name": repaired_name}},
+                        )
                     if result.modified_count:
                         stats["repaired"] += 1
                         stats["per_collection"][collection_name]["repaired"] += 1
@@ -248,6 +285,7 @@ def _print_summary(stats: dict[str, Any], execute: bool) -> None:
     print(f"Repaired: {stats['repaired']}")
     print(f"Skipped (no ERP match): {stats['skipped_no_erp_match']}")
     print(f"Skipped (no meaningful ERP name): {stats['skipped_no_meaningful_name']}")
+    print(f"Skipped (finalized session): {stats['skipped_finalized_session']}")
     print(f"Errors: {stats['errors']}")
     print("Per collection:")
     for collection, collection_stats in stats["per_collection"].items():

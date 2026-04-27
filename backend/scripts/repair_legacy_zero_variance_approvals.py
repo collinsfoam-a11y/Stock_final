@@ -30,6 +30,7 @@ from backend.services.canonical_inventory import (
     normalize_approval_status,
     normalize_count_line_status,
 )
+from backend.services.count_line_write_service import CountLineWriteService
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,7 @@ async def repair_legacy_zero_variance_approvals(
         query["session_id"] = session_id
 
     cursor = db.count_lines.find(query).sort("counted_at", 1)
+    write_service = CountLineWriteService(db)
 
     async for doc in cursor:
         if limit is not None and stats["scanned"] >= limit:
@@ -139,8 +141,26 @@ async def repair_legacy_zero_variance_approvals(
                 )
                 continue
 
-            result = await db.count_lines.update_one({"_id": doc["_id"]}, {"$set": update_doc})
-            if result.modified_count:
+            filter_query: dict[str, Any]
+            if doc.get("_id") is not None:
+                filter_query = {"_id": doc["_id"]}
+            else:
+                filter_query = {"id": str(doc.get("id") or "")}
+
+            result = await write_service.process_write(
+                {
+                    "operation": "update_one",
+                    "filter": filter_query,
+                    "update": {"$set": update_doc},
+                },
+                context={
+                    "session_id": str(doc.get("session_id") or ""),
+                    "username": "system",
+                    "governance_mode": "repair",
+                    "validation_mode": "repair_skip",
+                },
+            )
+            if int(getattr(result, "modified_count", 0) or 0) > 0:
                 stats["repaired"] += 1
         except Exception:
             stats["errors"] += 1

@@ -8,6 +8,8 @@ from typing import Optional
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
+from backend.services.governance_guard import install_db_write_guards
+
 _MONGO_CLIENT: Optional[AsyncIOMotorClient] = None
 _DATABASE: Optional[AsyncIOMotorDatabase] = None
 
@@ -21,6 +23,7 @@ async def lifespan_db(
 
     _MONGO_CLIENT = AsyncIOMotorClient(uri)
     _DATABASE = _MONGO_CLIENT[db_name]
+    install_db_write_guards(_DATABASE)
 
     try:
         yield _MONGO_CLIENT, _DATABASE
@@ -41,6 +44,7 @@ def get_db() -> AsyncIOMotorDatabase:
         raise RuntimeError(
             "Mongo database has not been initialised. Ensure lifespan is configured."
         )
+    install_db_write_guards(_DATABASE)
     return _DATABASE
 
 
@@ -54,6 +58,7 @@ def set_db(db: AsyncIOMotorDatabase) -> None:
     """Set the active database instance."""
     global _DATABASE
     _DATABASE = db
+    install_db_write_guards(_DATABASE)
 
 
 def set_client(client: AsyncIOMotorClient) -> None:

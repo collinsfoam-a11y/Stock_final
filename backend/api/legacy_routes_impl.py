@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Any, Optional, TypeVar, cast
 
 import jwt
-from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.requests import Request
@@ -39,10 +38,12 @@ from backend.config import settings  # noqa: E402
 from backend.error_messages import get_error_message  # noqa: E402
 from backend.exceptions import AuthenticationError, NotFoundError
 from backend.exceptions import RateLimitError as RateLimitExceededError
-from backend.exceptions import (  # noqa: E402; Using base class as generic database error for now
+from backend.exceptions import (  # noqa: E402
     StockVerifyException as DatabaseError,
 )
 from backend.exceptions import ValidationError
+from backend.services.count_line_write_service import CountLineWriteService
+from backend.services.governance_guard import GovernanceViolation, raise_forbidden_direct_write
 
 # Service type imports
 # Production services
@@ -671,7 +672,7 @@ async def create_session(
         type=session_data.type or "STANDARD",
     )
 
-    await db.sessions.insert_one(session.model_dump())
+    raise_forbidden_direct_write("legacy_routes_impl.create_session")
 
     # Log activity asynchronously (fire-and-forget to avoid blocking response)
     if activity_log_service:
@@ -746,45 +747,9 @@ async def bulk_close_sessions(
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     try:
-        updated_count = 0
-        errors = []
-
-        for session_id in session_ids:
-            try:
-                result = await db.sessions.update_one(
-                    {"id": session_id},
-                    {
-                        "$set": {
-                            "status": "CLOSED",
-                            "closed_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                        }
-                    },
-                )
-                if result.modified_count > 0:
-                    updated_count += 1
-                    # Log activity
-                    await activity_log_service.log_activity(
-                        user=current_user["username"],
-                        role=current_user["role"],
-                        action="bulk_close_session",
-                        entity_type="session",
-                        entity_id=session_id,
-                        details={"operation": "bulk_close"},
-                        ip_address=None,
-                        user_agent=None,
-                    )
-            except Exception as e:
-                errors.append({"session_id": session_id, "error": str(e)})
-
-        return {
-            "success": True,
-            "updated_count": updated_count,
-            "total": len(session_ids),
-            "errors": errors,
-        }
-    except Exception as e:
-        logger.error("Bulk close sessions error: %s", sanitize_for_logging(str(e), max_length=200))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise_forbidden_direct_write("legacy_routes_impl.bulk_close_sessions")
+    except GovernanceViolation as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
 
 
 @api_router.post("/sessions/bulk/reconcile")
@@ -796,48 +761,9 @@ async def bulk_reconcile_sessions(
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     try:
-        updated_count = 0
-        errors = []
-
-        for session_id in session_ids:
-            try:
-                result = await db.sessions.update_one(
-                    {"id": session_id},
-                    {
-                        "$set": {
-                            "status": "ACTIVE",
-                            "reconciled_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                        }
-                    },
-                )
-                if result.modified_count > 0:
-                    updated_count += 1
-                    # Log activity
-                    await activity_log_service.log_activity(
-                        user=current_user["username"],
-                        role=current_user["role"],
-                        action="bulk_reconcile_session",
-                        entity_type="session",
-                        entity_id=session_id,
-                        details={"operation": "bulk_reconcile"},
-                        ip_address=None,
-                        user_agent=None,
-                    )
-            except Exception as e:
-                errors.append({"session_id": session_id, "error": str(e)})
-
-        return {
-            "success": True,
-            "updated_count": updated_count,
-            "total": len(session_ids),
-            "errors": errors,
-        }
-    except Exception as e:
-        logger.error(
-            "Bulk reconcile sessions error: %s",
-            sanitize_for_logging(str(e), max_length=200),
-        )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise_forbidden_direct_write("legacy_routes_impl.bulk_reconcile_sessions")
+    except GovernanceViolation as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
 
 
 @api_router.post("/sessions/bulk/export")
@@ -1098,8 +1024,16 @@ async def create_count_line(
     if not erp_item:
         raise HTTPException(status_code=404, detail="Item not found in ERP")
 
-    # Calculate variance
-    variance = line_data.counted_qty - erp_item["stock_qty"]
+    write_service = CountLineWriteService(db)
+    erp_qty, baseline_hash = await write_service.resolve_baseline(
+        session_id=line_data.session_id,
+        item_code=line_data.item_code,
+        username=current_user["username"],
+        erp_item=erp_item,
+    )
+
+    # Calculate variance from immutable session baseline (never live SQL stock).
+    variance = line_data.counted_qty - erp_qty
 
     # Validate mandatory correction reason for variance
     if abs(variance) > 0 and not line_data.correction_reason and not line_data.variance_reason:
@@ -1113,9 +1047,7 @@ async def create_count_line(
 
     # Calculate financial impact
     counted_mrp = line_data.mrp_counted or erp_item["mrp"]
-    financial_impact = calculate_financial_impact(
-        erp_item["mrp"], counted_mrp, line_data.counted_qty
-    )
+    financial_impact = calculate_financial_impact(erp_item["mrp"], counted_mrp, line_data.counted_qty, erp_qty)
 
     # Determine approval status based on risk
     # High-risk corrections require supervisor review
@@ -1142,7 +1074,8 @@ async def create_count_line(
         "item_code": line_data.item_code,
         "item_name": erp_item["item_name"],
         "barcode": erp_item["barcode"],
-        "erp_qty": erp_item["stock_qty"],
+        "erp_qty": erp_qty,
+        "baseline_hash": baseline_hash,
         "counted_qty": line_data.counted_qty,
         "variance": variance,
         # Legacy fields
@@ -1199,7 +1132,7 @@ async def create_count_line(
         "verified_by": None,
     }
 
-    await db.count_lines.insert_one(count_line)
+    raise_forbidden_direct_write("legacy_routes_impl.create_count_line")
 
     # Update session stats atomically using aggregation
     try:
@@ -1215,15 +1148,7 @@ async def create_count_line(
         ]
         stats = await db.count_lines.aggregate(pipeline).to_list(1)  # type: ignore
         if stats:
-            await db.sessions.update_one(
-                {"id": line_data.session_id},
-                {
-                    "$set": {
-                        "total_items": stats[0]["total_items"],
-                        "total_variance": stats[0]["total_variance"],
-                    }
-                },
-            )
+            raise_forbidden_direct_write("legacy_routes_impl.update_session_stats")
     except Exception as e:
         logger.error(
             "Failed to update session stats: %s",
@@ -1272,15 +1197,20 @@ async def verify_stock(
     """Mark a count line as verified. Exposed for direct test usage."""
     _require_supervisor(current_user)
     db_client = _get_db_client(db_override)
+    count_line = await db_client.count_lines.find_one({"id": line_id})
+    if not count_line:
+        raise HTTPException(status_code=404, detail="Count line not found")
+    filter_query = {"_id": count_line["_id"]} if count_line.get("_id") else {"id": line_id}
+    write_service = CountLineWriteService(db_client)
 
-    update_result = await db_client.count_lines.update_one(
-        {"id": line_id},
-        update={
-            "$set": {
-                "verified": True,
-                "verified_by": current_user["username"],
-                "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
-            }
+    update_result = await write_service.process_write(
+        {"operation": "update_one", "filter": filter_query, "update": {"$set": {}}},
+        context={
+            "transition": "verify",
+            "username": current_user["username"],
+            "session_id": str(count_line.get("session_id") or ""),
+            "governance_mode": "mutable_session",
+            "skip_session_totals_update": True,
         },
     )
     if update_result.modified_count == 0:
@@ -1310,10 +1240,21 @@ async def unverify_stock(
     """Remove verification metadata from a count line."""
     _require_supervisor(current_user)
     db_client = _get_db_client(db_override)
+    count_line = await db_client.count_lines.find_one({"id": line_id})
+    if not count_line:
+        raise HTTPException(status_code=404, detail="Count line not found")
+    filter_query = {"_id": count_line["_id"]} if count_line.get("_id") else {"id": line_id}
+    write_service = CountLineWriteService(db_client)
 
-    update_result = await db_client.count_lines.update_one(
-        {"id": line_id},
-        update={"$set": {"verified": False, "verified_by": None, "verified_at": None}},
+    update_result = await write_service.process_write(
+        {"operation": "update_one", "filter": filter_query, "update": {"$set": {}}},
+        context={
+            "transition": "unverify",
+            "username": current_user["username"],
+            "session_id": str(count_line.get("session_id") or ""),
+            "governance_mode": "mutable_session",
+            "skip_session_totals_update": True,
+        },
     )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
@@ -1381,32 +1322,9 @@ async def approve_count_line(
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     try:
-        result = await db.count_lines.update_one(
-            {"_id": ObjectId(line_id)},
-            {
-                "$set": {
-                    "status": "APPROVED",
-                    "approval_status": "approved",
-                    "approved_by": current_user["username"],
-                    "approved_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                    "verified": True,
-                    "verified_by": current_user["username"],
-                    "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                }
-            },
-        )
-
-        if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="Count line not found")
-
-        return {"success": True, "message": "Count line approved"}
-    except Exception as e:
-        logger.error(
-            "Error approving count line %s: %s",
-            sanitize_for_logging(line_id),
-            sanitize_for_logging(str(e), max_length=200),
-        )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise_forbidden_direct_write("legacy_routes_impl.approve_count_line")
+    except GovernanceViolation as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
 
 
 @api_router.put("/count-lines/{line_id}/reject")
@@ -1419,30 +1337,9 @@ async def reject_count_line(
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     try:
-        result = await db.count_lines.update_one(
-            {"_id": ObjectId(line_id)},
-            {
-                "$set": {
-                    "status": "REJECTED",
-                    "approval_status": "rejected",
-                    "rejected_by": current_user["username"],
-                    "rejected_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                    "verified": False,
-                }
-            },
-        )
-
-        if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="Count line not found")
-
-        return {"success": True, "message": "Count line rejected"}
-    except Exception as e:
-        logger.error(
-            "Error rejecting count line %s: %s",
-            sanitize_for_logging(line_id),
-            sanitize_for_logging(str(e), max_length=200),
-        )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise_forbidden_direct_write("legacy_routes_impl.reject_count_line")
+    except GovernanceViolation as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
 
 
 @api_router.get("/count-lines/check/{session_id}/{item_code}")

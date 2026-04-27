@@ -44,7 +44,36 @@ async def test_unverify_stock_rejects_non_supervisor():
 @pytest.mark.governance
 async def test_verify_stock_allows_supervisor_and_updates(monkeypatch):
     mock_db = MagicMock()
+    mock_db.count_lines.find_one = AsyncMock(
+        side_effect=[
+            {
+                "id": "line-1",
+                "_id": "mongo-line-1",
+                "session_id": "sess-1",
+                "location_id": "LOC-1",
+                "floor_id": "F1",
+                "rack_id": "R1",
+            },
+            {
+                "id": "line-1",
+                "_id": "mongo-line-1",
+                "session_id": "sess-1",
+                "location_id": "LOC-1",
+                "floor_id": "F1",
+                "rack_id": "R1",
+            },
+            {
+                "id": "line-1",
+                "_id": "mongo-line-1",
+                "session_id": "sess-1",
+                "location_id": "LOC-1",
+                "floor_id": "F1",
+                "rack_id": "R1",
+            },
+        ]
+    )
     mock_db.count_lines.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+    mock_db.sessions.find_one = AsyncMock(return_value={"id": "sess-1", "status": "ACTIVE"})
 
     import backend.app_factory as app_factory
 

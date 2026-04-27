@@ -2,8 +2,6 @@
 Script to verify Multi-Location Reconciliation Logic.
 """
 
-from datetime import timezone
-
 import sys
 import asyncio
 from pathlib import Path
@@ -15,6 +13,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from backend.config import settings
+from backend.services.governance_guard import raise_forbidden_direct_write
 
 MONGODB_URL = settings.MONGO_URL
 DB_NAME = settings.DB_NAME
@@ -46,13 +45,7 @@ async def run_verification():
     try:
         # 2. Setup Data
         print(f"Creating Test Session: {session_id}", flush=True)
-        await db.sessions.insert_one(
-            {
-                "id": session_id,
-                "status": "ACTIVE",
-                "created_at": str(datetime.now(timezone.utc).replace(tzinfo=None)),
-            }
-        )
+        raise_forbidden_direct_write("scripts.verify_reconciliation.sessions_insert")
 
         print(f"Creating Test Item: {item_code} (Stock: 10)", flush=True)
         await db.erp_items.insert_one(
@@ -68,31 +61,11 @@ async def run_verification():
         # 3. Simulate Counts
         # Location A: 6 items (Variance -4 if calculated individually)
         print("Simulating Count: Location A (Qty: 6)", flush=True)
-        await db.count_lines.insert_one(
-            {
-                "id": str(uuid.uuid4()),
-                "session_id": session_id,
-                "item_code": item_code,
-                "counted_qty": 6.0,
-                "floor_no": "Floor1",
-                "rack_no": "RackA",
-                "counted_at": datetime.now(timezone.utc).replace(tzinfo=None),
-            }
-        )
+        raise_forbidden_direct_write("scripts.verify_reconciliation.count_lines_insert_a")
 
         # Location B: 4 items (Variance -6 if calculated individually)
         print("Simulating Count: Location B (Qty: 4)", flush=True)
-        await db.count_lines.insert_one(
-            {
-                "id": str(uuid.uuid4()),
-                "session_id": session_id,
-                "item_code": item_code,
-                "counted_qty": 4.0,
-                "floor_no": "Floor1",
-                "rack_no": "RackB",
-                "counted_at": datetime.now(timezone.utc).replace(tzinfo=None),
-            }
-        )
+        raise_forbidden_direct_write("scripts.verify_reconciliation.count_lines_insert_b")
 
         # 4. Run Reconciliation
         print("\n--- Calling Reconciliation API ---", flush=True)
@@ -148,12 +121,10 @@ async def run_verification():
 
     # Cleanup
     print("\nCleaning up test data...", flush=True)
-    await db.sessions.delete_one({"id": session_id})
-    await db.erp_items.delete_one({"item_code": item_code})
-    await db.count_lines.delete_many({"session_id": session_id})
+    raise_forbidden_direct_write("scripts.verify_reconciliation.sessions_delete")
+    raise_forbidden_direct_write("scripts.verify_reconciliation.erp_items_delete")
+    raise_forbidden_direct_write("scripts.verify_reconciliation.count_lines_delete_many")
 
 
 if __name__ == "__main__":
-    from datetime import datetime
-
     asyncio.run(run_verification())

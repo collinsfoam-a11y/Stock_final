@@ -3,9 +3,12 @@ import os
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from backend.services.governance_guard import install_db_write_guards, raise_forbidden_direct_write
+
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 client = AsyncIOMotorClient(MONGO_URL)
 db = client.stock_verification
+install_db_write_guards(db)
 
 
 async def check_sujata():
@@ -38,31 +41,8 @@ async def check_sujata():
         session_id = session.get("id")
 
     if session_id:
-        print(f"\n--- Injecting Count Line for SUJ001 into Session {session_id} ---")
-        from datetime import datetime
-
-        new_line = {
-            "id": "manual-inject-sujata-001",
-            "session_id": session_id,
-            "item_code": "SUJ001",
-            "item_name": "Sujata Dynamix Mixer Grinder",
-            "barcode": "8901234567890",
-            "erp_qty": 15.0,
-            "counted_qty": 15.0,
-            "variance": 0.0,
-            "damaged_qty": 1.0,
-            "mrp_erp": 12500.0,
-            "mrp_counted": 14650.0,
-            "serial_numbers": ["ab23", "ab38"],
-            "status": "pending",
-            "approval_status": "NEEDS_REVIEW",
-            "counted_by": "staff1",
-            "counted_at": datetime.now(),
-            "verified": True,
-            "risk_flags": [],
-        }
-        await db.count_lines.insert_one(new_line)
-        print("Injection Successful.")
+        print("\n--- Manual injection is disabled by governance policy ---")
+        raise_forbidden_direct_write("scripts.verify_sujata_db.manual_count_line_injection")
     else:
         print("No active session found to inject into.")
 

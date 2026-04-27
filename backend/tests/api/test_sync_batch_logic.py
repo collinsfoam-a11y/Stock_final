@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -10,50 +11,78 @@ from backend.api.sync_batch_api import SyncRecord, _process_count_line_op, sync_
 @pytest.mark.asyncio
 async def test_sync_single_record_scopes_upsert_by_session_id(monkeypatch):
     db = MagicMock()
-    db.count_lines.update_one = AsyncMock(return_value=SimpleNamespace())
     db.count_lines.find_one = AsyncMock(return_value=None)
     db.item_serials.insert_many = AsyncMock(return_value=None)
-    db.erp_items.find_one = AsyncMock(return_value={"item_name": "Test Item"})
-    db.sessions.find_one = AsyncMock(return_value={"status": "OPEN"})
-    recompute = AsyncMock(return_value=None)
-    monkeypatch.setattr("backend.api.sync_batch_api.recompute_session_totals", recompute)
+
+    lifecycle_service = SimpleNamespace(
+        ensure_session_active=AsyncMock(
+            return_value={
+                "id": "session-a",
+                "session_id": "session-a",
+                "status": "ACTIVE",
+                "staff_user": "staff1",
+            }
+        )
+    )
+    write_service = SimpleNamespace(process_write=AsyncMock(return_value=None))
+    monkeypatch.setattr(
+        "backend.api.sync_batch_api.find_duplicate_count_line",
+        AsyncMock(return_value=None),
+    )
 
     record = SyncRecord(
         client_record_id="offline-line-1",
         session_id="session-a",
+        location_id="showroom",
+        floor_id="1",
+        rack_id="A1",
         item_code="ITEM-1",
         verified_qty=3,
         created_at=datetime.now(timezone.utc).isoformat(),
         updated_at=datetime.now(timezone.utc).isoformat(),
     )
 
-    success, error = await sync_single_record(record, db, "staff1")
+    success, error = await sync_single_record(
+        record,
+        db,
+        "staff1",
+        write_service=write_service,
+        lifecycle_service=lifecycle_service,
+    )
 
     assert success is True
     assert error is None
-    filter_query = db.count_lines.update_one.await_args.args[0]
+    filter_query = db.count_lines.find_one.await_args.args[0]
     assert filter_query == {
         "session_id": "session-a",
         "idempotency_key": "offline-line-1",
     }
+    write_payload = write_service.process_write.await_args.args[0]["document"]
+    assert write_payload["idempotency_key"] == "offline-line-1"
+    assert write_payload["session_id"] == "session-a"
 
 
 @pytest.mark.asyncio
 async def test_process_count_line_op_accepts_non_dict_audit_metadata(monkeypatch):
     db = MagicMock()
     db.count_lines.find_one = AsyncMock(return_value=None)
-    db.count_lines.insert_one = AsyncMock(return_value=None)
+
+    fake_session = {"id": "session-a", "session_id": "session-a", "status": "ACTIVE"}
+    write_service = SimpleNamespace(process_write=AsyncMock(return_value=None))
+
+    class _LifecycleService:
+        def __init__(self, _db):
+            self._db = _db
+
+        async def ensure_session_active(self, session_id):
+            assert session_id == "session-a"
+            return dict(fake_session)
+
+    monkeypatch.setattr("backend.api.sync_batch_api.SessionLifecycleService", _LifecycleService)
+    monkeypatch.setattr("backend.api.sync_batch_api.CountLineWriteService", lambda _db: write_service)
 
     monkeypatch.setattr(
-        "backend.api.sync_batch_api.find_session",
-        AsyncMock(return_value={"id": "session-a", "status": "OPEN"}),
-    )
-    monkeypatch.setattr(
         "backend.api.sync_batch_api.find_duplicate_count_line",
-        AsyncMock(return_value=None),
-    )
-    monkeypatch.setattr(
-        "backend.api.sync_batch_api.recompute_session_totals",
         AsyncMock(return_value=None),
     )
 
@@ -61,6 +90,9 @@ async def test_process_count_line_op_accepts_non_dict_audit_metadata(monkeypatch
         {
             "_id": "legacy-id",
             "session_id": "session-a",
+            "location_id": "showroom",
+            "floor_id": "1",
+            "rack_id": "A1",
             "item_code": "ITEM-1",
             "counted_qty": 2,
             "audit": None,
@@ -71,7 +103,7 @@ async def test_process_count_line_op_accepts_non_dict_audit_metadata(monkeypatch
     )
 
     assert message == "Count line synced with canonical duplicate validation"
-    inserted = db.count_lines.insert_one.await_args.args[0]
+    inserted = write_service.process_write.await_args.args[0]["document"]
     assert inserted["idempotency_key"] == "legacy-id"
 
 
@@ -79,12 +111,27 @@ async def test_process_count_line_op_accepts_non_dict_audit_metadata(monkeypatch
 async def test_process_count_line_op_drops_object_id_from_recount_update(monkeypatch):
     db = MagicMock()
     db.count_lines.find_one = AsyncMock(return_value=None)
-    db.count_lines.update_one = AsyncMock(return_value=None)
+    db.client = MagicMock()
 
-    monkeypatch.setattr(
-        "backend.api.sync_batch_api.find_session",
-        AsyncMock(return_value={"id": "session-a", "status": "OPEN"}),
-    )
+    fake_session = {
+        "id": "session-a",
+        "session_id": "session-a",
+        "status": "ACTIVE",
+        "staff_user": "staff1",
+    }
+    write_service = SimpleNamespace(process_write=AsyncMock(return_value=None))
+
+    class _LifecycleService:
+        def __init__(self, _db):
+            self._db = _db
+
+        async def ensure_session_active(self, session_id):
+            assert session_id == "session-a"
+            return dict(fake_session)
+
+    monkeypatch.setattr("backend.api.sync_batch_api.SessionLifecycleService", _LifecycleService)
+    monkeypatch.setattr("backend.api.sync_batch_api.CountLineWriteService", lambda _db: write_service)
+
     monkeypatch.setattr(
         "backend.api.sync_batch_api.find_duplicate_count_line",
         AsyncMock(
@@ -93,6 +140,7 @@ async def test_process_count_line_op_drops_object_id_from_recount_update(monkeyp
                 "id": "rejected-line",
                 "status": "rejected",
                 "approval_status": "REJECTED",
+                "version": 1,
             }
         ),
     )
@@ -100,15 +148,20 @@ async def test_process_count_line_op_drops_object_id_from_recount_update(monkeyp
         "backend.api.sync_batch_api.can_reuse_rejected_count_line",
         lambda *_args, **_kwargs: True,
     )
-    monkeypatch.setattr(
-        "backend.api.sync_batch_api.recompute_session_totals",
-        AsyncMock(return_value=None),
-    )
+
+    @asynccontextmanager
+    async def _fake_transaction(_client):
+        yield None
+
+    monkeypatch.setattr("backend.api.sync_batch_api.mongo_transaction", _fake_transaction)
 
     message = await _process_count_line_op(
         {
             "_id": "legacy-id",
             "session_id": "session-a",
+            "location_id": "showroom",
+            "floor_id": "1",
+            "rack_id": "A1",
             "item_code": "ITEM-1",
             "counted_qty": 5,
             "recount_of_id": "rejected-line",
@@ -118,6 +171,10 @@ async def test_process_count_line_op_drops_object_id_from_recount_update(monkeyp
         db,
     )
 
-    assert message == "Rejected count line updated through explicit recount sync"
-    update_payload = db.count_lines.update_one.await_args.args[1]["$set"]
-    assert "_id" not in update_payload
+    assert message == "Rejected count line superseded by new recount version"
+    assert write_service.process_write.await_count == 2
+    insert_payload = write_service.process_write.await_args_list[0].args[0]["document"]
+    assert "_id" not in insert_payload
+    assert insert_payload["status"] == "pending"
+    update_payload = write_service.process_write.await_args_list[1].args[0]["update"]["$set"]
+    assert update_payload["status"] == "SUPERSEDED"

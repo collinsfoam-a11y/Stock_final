@@ -2,12 +2,21 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import hashlib
 import inspect
+import json
 from typing import Any, Optional
 
+from bson import ObjectId
 from fastapi import HTTPException
 
+from backend.services.concurrency import ConcurrencyError, coerce_version
+from backend.services.governance_audit_service import GovernanceAuditService
+from backend.services.governance_guard import GovernanceViolation, assert_valid_write, write_authority
+from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.snapshot_service import SnapshotService
+from backend.services.transaction_manager import mongo_transaction
+from backend.services.validation_service import ValidationService
 from backend.services.variance_service import VarianceService
 
 
@@ -31,12 +40,111 @@ def _as_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
+def _is_superseded_status(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    return value.strip().lower() == "superseded"
+
+
+def _is_superseded_count_line(line: Any) -> bool:
+    if not isinstance(line, dict):
+        return False
+    if _is_superseded_status(line.get("status")):
+        return True
+    if line.get("superseded_by_version_id"):
+        return True
+    if line.get("superseded_at"):
+        return True
+    return False
+
+
 def _resolve_unit_price(item: dict[str, Any]) -> float:
     for field_name in ("last_cost", "sale_price", "sales_price", "mrp"):
         value = _as_float(item.get(field_name), default=0.0)
         if value != 0.0 or item.get(field_name) not in (None, ""):
             return value
     return 0.0
+
+
+def _build_semantic_hash(document: dict[str, Any]) -> str:
+    payload = {
+        "session_id": str(document.get("session_id") or ""),
+        "item_id": str(document.get("item_code") or document.get("item_id") or ""),
+        "location_id": str(document.get("location_id") or ""),
+        "counted_qty": _as_float(document.get("counted_qty")),
+        "version": int(document.get("version", 1) or 1),
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _normalize_update_array_values(value: Any) -> list[Any]:
+    if isinstance(value, dict) and isinstance(value.get("$each"), list):
+        return list(value.get("$each") or [])
+    if isinstance(value, list):
+        return list(value)
+    return [value]
+
+
+def _apply_update_document_to_merged(
+    merged_document: dict[str, Any],
+    update_doc: dict[str, Any],
+) -> None:
+    # Replacement-style updates (no operators) behave like top-level key updates.
+    if not any(str(key).startswith("$") for key in update_doc):
+        merged_document.update(update_doc)
+        return
+
+    set_doc = update_doc.get("$set")
+    if isinstance(set_doc, dict):
+        merged_document.update(set_doc)
+
+    inc_doc = update_doc.get("$inc")
+    if isinstance(inc_doc, dict):
+        for field_name, delta in inc_doc.items():
+            current_value = merged_document.get(field_name)
+            if isinstance(current_value, (int, float)) and isinstance(delta, (int, float)):
+                merged_document[field_name] = current_value + delta
+            elif isinstance(delta, (int, float)):
+                merged_document[field_name] = delta
+
+    unset_doc = update_doc.get("$unset")
+    if isinstance(unset_doc, dict):
+        for field_name in unset_doc.keys():
+            merged_document.pop(field_name, None)
+
+    for operator in ("$push", "$addToSet"):
+        push_doc = update_doc.get(operator)
+        if not isinstance(push_doc, dict):
+            continue
+        for field_name, raw_values in push_doc.items():
+            values = _normalize_update_array_values(raw_values)
+            existing = merged_document.get(field_name)
+            if not isinstance(existing, list):
+                existing = [] if existing is None else [existing]
+            if operator == "$addToSet":
+                for value in values:
+                    if value not in existing:
+                        existing.append(value)
+            else:
+                existing.extend(values)
+            merged_document[field_name] = existing
+
+    pull_doc = update_doc.get("$pull")
+    if isinstance(pull_doc, dict):
+        for field_name, raw_condition in pull_doc.items():
+            existing = merged_document.get(field_name)
+            if not isinstance(existing, list):
+                continue
+            if isinstance(raw_condition, dict) and isinstance(raw_condition.get("$in"), list):
+                disallowed_values = list(raw_condition.get("$in") or [])
+                merged_document[field_name] = [
+                    value for value in existing if value not in disallowed_values
+                ]
+            else:
+                merged_document[field_name] = [
+                    value for value in existing if value != raw_condition
+                ]
 
 
 @dataclass(frozen=True)
@@ -51,6 +159,35 @@ class CountLineGovernanceDecision:
     violated_thresholds: list[dict[str, Any]]
 
 
+@dataclass(frozen=True)
+class CountLineGovernanceModeProfile:
+    require_active_session: bool
+    require_full_context: bool
+
+
+DEFAULT_GOVERNANCE_MODE = "active_session"
+GOVERNANCE_MODE_PROFILES: dict[str, CountLineGovernanceModeProfile] = {
+    "active_session": CountLineGovernanceModeProfile(
+        require_active_session=True,
+        require_full_context=True,
+    ),
+    "mutable_session": CountLineGovernanceModeProfile(
+        require_active_session=False,
+        require_full_context=True,
+    ),
+    "finalization": CountLineGovernanceModeProfile(
+        require_active_session=False,
+        require_full_context=False,
+    ),
+    "repair": CountLineGovernanceModeProfile(
+        require_active_session=False,
+        require_full_context=False,
+    ),
+}
+DEFAULT_VALIDATION_MODE = "enforce"
+VALIDATION_MODES = {"enforce", "repair_skip"}
+
+
 class CountLineWriteService:
     """Authoritative write-side governance for count-line mutations."""
 
@@ -60,10 +197,18 @@ class CountLineWriteService:
         *,
         snapshot_service: Optional[SnapshotService] = None,
         variance_service: Optional[VarianceService] = None,
+        validation_service: Optional[ValidationService] = None,
+        lifecycle_service: Optional[SessionLifecycleService] = None,
+        audit_service: Optional[GovernanceAuditService] = None,
     ) -> None:
         self.db = db
         self.snapshot_service = snapshot_service or SnapshotService(db)
         self.variance_service = variance_service or VarianceService(db)
+        self.validation_service = validation_service or ValidationService(db)
+        self.lifecycle_service = lifecycle_service or SessionLifecycleService(db)
+        self.audit_service = audit_service or GovernanceAuditService(db)
+        self._session_snapshot_cache: dict[str, Optional[dict[str, Any]]] = {}
+        self._session_snapshot_item_index: dict[str, dict[str, float]] = {}
 
     async def _resolve_awaitable(self, value: Any) -> Any:
         resolved = value
@@ -73,71 +218,221 @@ class CountLineWriteService:
             resolved = await resolved
         return resolved
 
-    async def process_write(
+    async def _execute_authorized_write(self, write_call: Any) -> Any:
+        with write_authority("CountLineWriteService"):
+            result = write_call()
+            return await self._resolve_awaitable(result)
+
+    @staticmethod
+    def _resolve_governance_mode_profile(
+        context: dict[str, Any],
+    ) -> CountLineGovernanceModeProfile:
+        if "require_active_session" in context or "require_full_context" in context:
+            raise GovernanceViolation(
+                "CRITICAL: free-form governance flags have been removed. "
+                "Use governance_mode."
+            )
+
+        mode_name = str(context.get("governance_mode") or DEFAULT_GOVERNANCE_MODE).strip().lower()
+        profile = GOVERNANCE_MODE_PROFILES.get(mode_name)
+        if profile is None:
+            raise GovernanceViolation(
+                f"CRITICAL: Unsupported governance_mode '{mode_name}'"
+            )
+        return profile
+
+    @staticmethod
+    def _should_run_runtime_validation(context: dict[str, Any]) -> bool:
+        if "skip_runtime_validation" in context:
+            raise GovernanceViolation(
+                "CRITICAL: skip_runtime_validation has been removed. Use validation_mode."
+            )
+
+        validation_mode = str(
+            context.get("validation_mode") or DEFAULT_VALIDATION_MODE
+        ).strip().lower()
+        if validation_mode not in VALIDATION_MODES:
+            raise GovernanceViolation(
+                f"CRITICAL: Unsupported validation_mode '{validation_mode}'"
+            )
+        if validation_mode == "repair_skip":
+            governance_mode = str(context.get("governance_mode") or "").strip().lower()
+            if governance_mode != "repair":
+                raise GovernanceViolation(
+                    "CRITICAL: validation_mode='repair_skip' requires governance_mode='repair'"
+                )
+            return False
+        return True
+
+    @staticmethod
+    def _extract_db_session(context: dict[str, Any]) -> Optional[Any]:
+        return context.get("db_session") or context.get("mongo_session")
+
+    async def _load_session_for_write(
         self,
+        session_id: str,
+        *,
+        db_session: Optional[Any],
+    ) -> dict[str, Any]:
+        kwargs = {"session": db_session} if db_session is not None else {}
+        session = await self._resolve_awaitable(
+            self.db.sessions.find_one(
+                {"$or": [{"id": session_id}, {"session_id": session_id}]},
+                **kwargs,
+            )
+        )
+        if not isinstance(session, dict):
+            raise GovernanceViolation(f"CRITICAL: Session not found: {session_id}")
+        return session
+
+    async def _capture_session_versions(
+        self,
+        session_ids: list[str],
+        *,
+        context: dict[str, Any],
+        db_session: Optional[Any],
+    ) -> dict[str, int]:
+        expected_map: dict[str, int] = {}
+        expected_ctx = context.get("expected_session_version")
+        if isinstance(expected_ctx, int):
+            for session_id in session_ids:
+                expected_map[session_id] = int(expected_ctx)
+        elif isinstance(expected_ctx, dict):
+            for session_id in session_ids:
+                if session_id in expected_ctx:
+                    expected_map[session_id] = int(expected_ctx[session_id])
+
+        versions: dict[str, int] = {}
+        for session_id in session_ids:
+            session_doc = await self._load_session_for_write(session_id, db_session=db_session)
+            current_version = coerce_version(session_doc.get("version"))
+            expected = expected_map.get(session_id)
+            if expected is not None and expected != current_version:
+                raise ConcurrencyError(
+                    f"CRITICAL: Session version mismatch for {session_id}: "
+                    f"expected {expected}, current {current_version}"
+                )
+            versions[session_id] = current_version
+        return versions
+
+    async def _compute_session_totals(
+        self,
+        session_id: str,
+        *,
+        db_session: Optional[Any],
+    ) -> dict[str, Any]:
+        from backend.services.canonical_inventory import is_count_line_effectively_reviewed
+
+        total_items = 0
+        total_variance = 0.0
+        verified_items = 0
+        damage_items = 0
+        last_activity: Optional[datetime] = None
+        kwargs = {"session": db_session} if db_session is not None else {}
+        cursor = self.db.count_lines.find({"session_id": session_id}, **kwargs)
+        async for line in cursor:
+            if _is_superseded_count_line(line):
+                continue
+            total_items += 1
+            total_variance += float(line.get("variance") or 0.0)
+            damage_items += int(float(line.get("damaged_qty") or 0.0))
+            if is_count_line_effectively_reviewed(line):
+                verified_items += 1
+            candidate_activity = (
+                line.get("updated_at") or line.get("approved_at") or line.get("counted_at")
+            )
+            if isinstance(candidate_activity, datetime):
+                if candidate_activity.tzinfo is not None:
+                    candidate_activity = candidate_activity.astimezone(timezone.utc).replace(
+                        tzinfo=None
+                    )
+                if last_activity is None or candidate_activity > last_activity:
+                    last_activity = candidate_activity
+
+        session_update: dict[str, Any] = {
+            "total_items": total_items,
+            "total_variance": total_variance,
+            "verified_items": verified_items,
+            "pending_items": max(total_items - verified_items, 0),
+            "damage_items": damage_items,
+            "updated_at": _utc_now(),
+        }
+        if last_activity is not None:
+            session_update["last_activity"] = last_activity
+        return session_update
+
+    async def _update_session_totals_for_sessions(
+        self,
+        *,
+        session_ids: list[str],
+        context: dict[str, Any],
+        db_session: Optional[Any],
+        expected_versions: dict[str, int],
+    ) -> None:
+        actor = str(context.get("username") or context.get("actor") or "system")
+        for session_id in session_ids:
+            totals = await self._compute_session_totals(session_id, db_session=db_session)
+            await self.lifecycle_service.update_session_totals(
+                session_id,
+                totals,
+                db_session=db_session,
+                expected_version=expected_versions.get(session_id),
+                actor=actor,
+            )
+
+    async def _log_count_line_audit(
+        self,
+        *,
         payload: dict[str, Any],
-        context: Optional[dict[str, Any]] = None,
-    ) -> Any:
-        """
-        Single persistence boundary for count-line mutations.
-
-        Contract:
-            process_write(payload, context) -> result
-
-        payload:
-            {
-                "operation": "insert_one|update_one|update_many|delete_one|delete_many",
-                "filter": {...},          # for update/delete
-                "update": {...},          # for update
-                "document": {...},        # for insert
-                "upsert": bool,           # optional update_one flag
-            }
-
-        context (optional):
-            {
-                "session": {...},                 # optional preloaded session document
-                "session_id": "sess-123",         # optional session identifier
-                "session_ids": ["..."],           # optional multiple session ids
-                "candidate_lines": [ {...} ],     # optional preloaded matched count lines
-                "enforce_snapshot": True,         # default True
-                "allow_missing_session": False,   # default False
-                "enforce_variance": False,        # compatibility hint; quantity writes govern anyway
-                "set_status_from_governance": True,
-                "variance_reason": "...",
-                "correction_reason": {...} | "...",
-                "location": "FLOOR-A",
-                "erp_item": {...},
-                "username": "user-id",
-                "require_correction_reason_for_variance": False,
-            }
-        """
-        if not isinstance(payload, dict):
-            raise ValueError("payload must be a dictionary")
-
+        context: dict[str, Any],
+        session_ids: list[str],
+        db_session: Optional[Any],
+    ) -> None:
         operation = str(payload.get("operation") or "").strip().lower()
-        if operation not in {
-            "insert_one",
-            "update_one",
-            "update_many",
-            "delete_one",
-            "delete_many",
-        }:
-            raise ValueError(f"Unsupported count-line write operation: {operation}")
+        document = payload.get("document") if isinstance(payload.get("document"), dict) else {}
+        actor = str(context.get("username") or context.get("actor") or "system")
+        audit_operation = "COUNT"
+        if operation == "insert_one" and document.get("previous_version_id"):
+            audit_operation = "RECOUNT"
 
-        ctx = context or {}
-        await self._assert_snapshot_integrity_for_write(payload, ctx)
-        self._apply_state_transition_for_write(payload, ctx)
+        item_id = str(document.get("item_code") or document.get("item_id") or "")
+        location_id = str(document.get("location_id") or "")
+        idempotency_key = document.get("idempotency_key")
+        semantic_hash = document.get("semantic_hash")
+        version = int(document.get("version", 1) or 1)
 
-        if self._should_apply_governance(payload, ctx):
-            await self._enforce_variance_for_write(payload, ctx)
+        for session_id in session_ids:
+            await self.audit_service.log_write_event(
+                event="COUNT_LINE_WRITE",
+                operation=audit_operation,
+                session_id=session_id,
+                item_id=item_id or None,
+                location_id=location_id or None,
+                version=version,
+                idempotency_key=str(idempotency_key) if idempotency_key else None,
+                semantic_hash=str(semantic_hash) if semantic_hash else None,
+                actor_id=actor,
+                db_session=db_session,
+            )
 
+    async def _execute_count_line_operation(
+        self,
+        *,
+        payload: dict[str, Any],
+        context: dict[str, Any],
+        db_session: Optional[Any],
+    ) -> Any:
+        operation = str(payload.get("operation") or "").strip().lower()
         collection = self.db.count_lines
+        kwargs = {"session": db_session} if db_session is not None else {}
+
         if operation == "insert_one":
             document = payload.get("document")
             if not isinstance(document, dict):
                 raise ValueError("insert_one payload requires a 'document' dictionary")
-            insert_result = collection.insert_one(document)
-            return await self._resolve_awaitable(insert_result)
+            return await self._execute_authorized_write(
+                lambda: collection.insert_one(document, **kwargs)
+            )
 
         if operation == "update_one":
             filter_query = payload.get("filter")
@@ -145,63 +440,363 @@ class CountLineWriteService:
             if not isinstance(filter_query, dict) or not isinstance(update_doc, dict):
                 raise ValueError("update_one payload requires 'filter' and 'update' dictionaries")
             upsert = bool(payload.get("upsert", False))
-            prefer_keyword = bool(ctx.get("keyword_update", False))
+            prefer_keyword = bool(context.get("keyword_update", False))
             if prefer_keyword:
                 try:
-                    update_result = collection.update_one(
-                        filter_query,
-                        update=update_doc,
-                        upsert=upsert,
-                    )
-                except TypeError:
-                    if upsert:
-                        update_result = collection.update_one(filter_query, update_doc, upsert)
-                    else:
-                        update_result = collection.update_one(filter_query, update_doc)
-            else:
-                try:
-                    update_result = collection.update_one(filter_query, update_doc, upsert=upsert)
-                except TypeError:
-                    try:
-                        update_result = collection.update_one(filter_query, update_doc)
-                    except TypeError:
-                        update_result = collection.update_one(
+                    return await self._execute_authorized_write(
+                        lambda: collection.update_one(
                             filter_query,
                             update=update_doc,
                             upsert=upsert,
+                            **kwargs,
                         )
-            return await self._resolve_awaitable(update_result)
+                    )
+                except TypeError:
+                    if upsert:
+                        return await self._execute_authorized_write(
+                            lambda: collection.update_one(filter_query, update_doc, upsert, **kwargs)
+                        )
+                    return await self._execute_authorized_write(
+                        lambda: collection.update_one(filter_query, update_doc, **kwargs)
+                    )
+            try:
+                return await self._execute_authorized_write(
+                    lambda: collection.update_one(filter_query, update_doc, upsert=upsert, **kwargs)
+                )
+            except TypeError:
+                try:
+                    return await self._execute_authorized_write(
+                        lambda: collection.update_one(filter_query, update_doc, **kwargs)
+                    )
+                except TypeError:
+                    return await self._execute_authorized_write(
+                        lambda: collection.update_one(
+                            filter_query,
+                            update=update_doc,
+                            upsert=upsert,
+                            **kwargs,
+                        )
+                    )
 
         if operation == "update_many":
             filter_query = payload.get("filter")
             update_doc = payload.get("update")
             if not isinstance(filter_query, dict) or not isinstance(update_doc, dict):
                 raise ValueError("update_many payload requires 'filter' and 'update' dictionaries")
-            prefer_keyword = bool(ctx.get("keyword_update", False))
+            prefer_keyword = bool(context.get("keyword_update", False))
             if prefer_keyword:
                 try:
-                    update_result = collection.update_many(filter_query, update=update_doc)
+                    return await self._execute_authorized_write(
+                        lambda: collection.update_many(filter_query, update=update_doc, **kwargs)
+                    )
                 except TypeError:
-                    update_result = collection.update_many(filter_query, update_doc)
-            else:
-                try:
-                    update_result = collection.update_many(filter_query, update_doc)
-                except TypeError:
-                    update_result = collection.update_many(filter_query, update=update_doc)
-            return await self._resolve_awaitable(update_result)
+                    return await self._execute_authorized_write(
+                        lambda: collection.update_many(filter_query, update_doc, **kwargs)
+                    )
+            try:
+                return await self._execute_authorized_write(
+                    lambda: collection.update_many(filter_query, update_doc, **kwargs)
+                )
+            except TypeError:
+                return await self._execute_authorized_write(
+                    lambda: collection.update_many(filter_query, update=update_doc, **kwargs)
+                )
 
         if operation == "delete_one":
             filter_query = payload.get("filter")
             if not isinstance(filter_query, dict):
                 raise ValueError("delete_one payload requires a 'filter' dictionary")
-            delete_result = collection.delete_one(filter_query)
-            return await self._resolve_awaitable(delete_result)
+            return await self._execute_authorized_write(
+                lambda: collection.delete_one(filter_query, **kwargs)
+            )
 
         filter_query = payload.get("filter")
         if not isinstance(filter_query, dict):
             raise ValueError("delete_many payload requires a 'filter' dictionary")
-        delete_result = collection.delete_many(filter_query)
-        return await self._resolve_awaitable(delete_result)
+        return await self._execute_authorized_write(
+            lambda: collection.delete_many(filter_query, **kwargs)
+        )
+
+    async def _process_write_core(
+        self,
+        payload: dict[str, Any],
+        context: dict[str, Any],
+        *,
+        db_session: Optional[Any],
+    ) -> Any:
+        operation = str(payload.get("operation") or "").strip().lower()
+        if operation not in {"insert_one", "update_one", "update_many", "delete_one", "delete_many"}:
+            raise ValueError(f"Unsupported count-line write operation: {operation}")
+
+        ctx = dict(context)
+        ctx["db_session"] = db_session
+
+        await self._assert_snapshot_integrity_for_write(payload, ctx)
+        await self._assert_mandatory_write_invariants(payload, ctx)
+        self._apply_state_transition_for_write(payload, ctx)
+        if self._should_apply_governance(payload, ctx):
+            await self._enforce_variance_for_write(payload, ctx)
+
+        session_ids = await self._collect_session_ids_for_write(payload, ctx)
+        expected_versions = await self._capture_session_versions(
+            session_ids,
+            context=ctx,
+            db_session=db_session,
+        )
+
+        resolved = await self._execute_count_line_operation(
+            payload=payload,
+            context=ctx,
+            db_session=db_session,
+        )
+        await self._run_post_write_validation(
+            operation=operation,
+            payload=payload,
+            context=ctx,
+            resolved_result=resolved,
+        )
+
+        if not bool(ctx.get("skip_session_totals_update", False)):
+            await self._update_session_totals_for_sessions(
+                session_ids=session_ids,
+                context=ctx,
+                db_session=db_session,
+                expected_versions=expected_versions,
+            )
+
+        await self._log_count_line_audit(
+            payload=payload,
+            context=ctx,
+            session_ids=session_ids,
+            db_session=db_session,
+        )
+        return resolved
+
+    async def commit(
+        self,
+        payload: dict[str, Any],
+        context: Optional[dict[str, Any]] = None,
+    ) -> Any:
+        if not isinstance(payload, dict):
+            raise ValueError("payload must be a dictionary")
+
+        ctx = context or {}
+        if "skip_transaction" in ctx:
+            raise GovernanceViolation(
+                "CRITICAL: skip_transaction bypass has been removed from CountLineWriteService"
+            )
+        external_session = self._extract_db_session(ctx)
+        if external_session is not None:
+            return await self._process_write_core(payload, ctx, db_session=external_session)
+
+        async with mongo_transaction(self.db.client) as tx:
+            tx_context = dict(ctx)
+            tx_context["db_session"] = tx
+            return await self._process_write_core(payload, tx_context, db_session=tx)
+
+    async def process_write(
+        self,
+        payload: dict[str, Any],
+        context: Optional[dict[str, Any]] = None,
+    ) -> Any:
+        return await self.commit(payload, context)
+
+    async def _run_post_write_validation(
+        self,
+        *,
+        operation: str,
+        payload: dict[str, Any],
+        context: dict[str, Any],
+        resolved_result: Any,
+    ) -> None:
+        if not self._should_run_runtime_validation(context):
+            return
+        db_session = self._extract_db_session(context)
+        kwargs = {"session": db_session} if db_session is not None else {}
+
+        if operation == "insert_one":
+            document = payload.get("document")
+            if isinstance(document, dict):
+                if hasattr(resolved_result, "inserted_id") and "_id" not in document:
+                    document["_id"] = getattr(resolved_result, "inserted_id")
+                await self.validation_service.validate_count_line(document)
+            return
+
+        if operation == "update_one":
+            filter_query = payload.get("filter")
+            updated = None
+            upserted_id = getattr(resolved_result, "upserted_id", None)
+            if upserted_id is not None:
+                updated = await self._resolve_awaitable(
+                    self.db.count_lines.find_one({"_id": upserted_id}, **kwargs)
+                )
+            elif isinstance(filter_query, dict):
+                updated = await self._resolve_awaitable(
+                    self.db.count_lines.find_one(filter_query, **kwargs)
+                )
+            if isinstance(updated, dict):
+                await self.validation_service.validate_count_line(updated)
+            return
+
+        if operation == "update_many":
+            filter_query = payload.get("filter")
+            if isinstance(filter_query, dict):
+                updated_lines = await self._resolve_awaitable(
+                    self.db.count_lines.find(filter_query, **kwargs).to_list(length=5000)
+                )
+                for line in updated_lines or []:
+                    if isinstance(line, dict):
+                        await self.validation_service.validate_count_line(line)
+            return
+
+    async def _assert_mandatory_write_invariants(
+        self,
+        payload: dict[str, Any],
+        context: dict[str, Any],
+    ) -> None:
+        mode_profile = self._resolve_governance_mode_profile(context)
+        db_session = self._extract_db_session(context)
+        kwargs = {"session": db_session} if db_session is not None else {}
+        operation = str(payload.get("operation") or "").strip().lower()
+        if operation == "insert_one":
+            document = payload.get("document")
+            if not isinstance(document, dict):
+                raise GovernanceViolation("CRITICAL: insert_one requires document context")
+            session_id = document.get("session_id") or context.get("session_id")
+            idempotency_key = document.get("idempotency_key")
+            if session_id and idempotency_key:
+                existing = await self._resolve_awaitable(
+                    self.db.count_lines.find_one(
+                        {
+                            "session_id": session_id,
+                            "idempotency_key": idempotency_key,
+                        },
+                        **kwargs,
+                    )
+                )
+                if isinstance(existing, dict):
+                    raise GovernanceViolation(
+                        "CRITICAL: Duplicate idempotency_key for count-line write"
+                    )
+
+            previous_version_id = document.get("previous_version_id")
+            if previous_version_id:
+                previous_filter: dict[str, Any] = {"id": str(previous_version_id)}
+                if ObjectId.is_valid(str(previous_version_id)):
+                    previous_filter = {
+                        "$or": [
+                            {"id": str(previous_version_id)},
+                            {"_id": ObjectId(str(previous_version_id))},
+                        ]
+                    }
+                previous_doc = await self._resolve_awaitable(
+                    self.db.count_lines.find_one(previous_filter, **kwargs)
+                )
+                if not isinstance(previous_doc, dict):
+                    raise GovernanceViolation(
+                        "CRITICAL: previous_version_id references missing count line"
+                    )
+                incoming_version = int(document.get("version", 0) or 0)
+                expected_version = int(previous_doc.get("version", 1) or 1) + 1
+                if incoming_version != expected_version:
+                    raise GovernanceViolation(
+                        "CRITICAL: Invalid version progression for recount write"
+                    )
+
+            semantic_hash = document.get("semantic_hash") or _build_semantic_hash(document)
+            document["semantic_hash"] = semantic_hash
+            existing_semantic = await self._resolve_awaitable(
+                self.db.count_lines.find_one({"semantic_hash": semantic_hash}, **kwargs)
+            )
+            if isinstance(existing_semantic, dict):
+                raise GovernanceViolation(
+                    "CRITICAL: Duplicate semantic hash for logical count write"
+                )
+
+            await assert_valid_write(
+                {
+                    "db": self.db,
+                    "session": context.get("session"),
+                    "session_id": session_id,
+                    "document": document,
+                    "db_session": db_session,
+                    "require_active_session": mode_profile.require_active_session,
+                    "require_full_context": mode_profile.require_full_context,
+                }
+            )
+            return
+
+        if operation in {"update_one", "delete_one"}:
+            filter_query = payload.get("filter")
+            if not isinstance(filter_query, dict):
+                raise GovernanceViolation("CRITICAL: Missing filter for single-document mutation")
+            existing = await self._resolve_awaitable(
+                self.db.count_lines.find_one(filter_query, **kwargs)
+            )
+            if not isinstance(existing, dict):
+                raise GovernanceViolation("CRITICAL: Count line not found for guarded mutation")
+
+            merged_document = dict(existing)
+            if operation == "update_one":
+                update_doc = payload.get("update")
+                if isinstance(update_doc, dict):
+                    _apply_update_document_to_merged(merged_document, update_doc)
+                if "counted_qty" in merged_document:
+                    semantic_hash = _build_semantic_hash(merged_document)
+                    set_doc = update_doc.setdefault("$set", {}) if isinstance(update_doc, dict) else {}
+                    if isinstance(set_doc, dict):
+                        set_doc["semantic_hash"] = semantic_hash
+                    existing_collision = await self._resolve_awaitable(
+                        self.db.count_lines.find_one({"semantic_hash": semantic_hash}, **kwargs)
+                    )
+                    existing_collision_id = (
+                        str(existing_collision.get("id") or existing_collision.get("_id"))
+                        if isinstance(existing_collision, dict)
+                        else None
+                    )
+                    current_id = str(existing.get("id") or existing.get("_id") or "")
+                    if existing_collision_id and existing_collision_id != current_id:
+                        raise GovernanceViolation(
+                            "CRITICAL: Duplicate semantic hash for logical count write"
+                        )
+            await assert_valid_write(
+                {
+                    "db": self.db,
+                    "session": context.get("session"),
+                    "session_id": merged_document.get("session_id") or context.get("session_id"),
+                    "document": merged_document,
+                    "db_session": db_session,
+                    "require_active_session": mode_profile.require_active_session,
+                    "require_full_context": mode_profile.require_full_context,
+                }
+            )
+            return
+
+        if operation in {"update_many", "delete_many"}:
+            candidate_lines = context.get("candidate_lines")
+            if not isinstance(candidate_lines, list):
+                filter_query = payload.get("filter")
+                if not isinstance(filter_query, dict):
+                    raise GovernanceViolation("CRITICAL: Missing filter for bulk mutation")
+                candidate_lines = await self._resolve_awaitable(
+                    self.db.count_lines.find(filter_query, **kwargs).to_list(length=5000)
+                )
+            if not candidate_lines:
+                raise GovernanceViolation("CRITICAL: No candidate lines for guarded bulk mutation")
+            for line in candidate_lines:
+                if not isinstance(line, dict):
+                    continue
+                await assert_valid_write(
+                    {
+                        "db": self.db,
+                        "session": context.get("session"),
+                        "session_id": line.get("session_id") or context.get("session_id"),
+                        "document": line,
+                        "db_session": db_session,
+                        "require_active_session": mode_profile.require_active_session,
+                        "require_full_context": mode_profile.require_full_context,
+                    }
+                )
 
     def _apply_state_transition_for_write(
         self,
@@ -297,8 +892,10 @@ class CountLineWriteService:
         payload: dict[str, Any],
         context: dict[str, Any],
     ) -> bool:
-        if bool(context.get("skip_governance", False)):
-            return False
+        if "skip_governance" in context:
+            raise GovernanceViolation(
+                "CRITICAL: skip_governance bypass has been removed from CountLineWriteService"
+            )
 
         operation = str(payload.get("operation") or "").strip().lower()
         if operation == "insert_one":
@@ -339,31 +936,56 @@ class CountLineWriteService:
         item_code: str,
         username: str,
         erp_item: Optional[dict[str, Any]] = None,
+        db_session: Optional[Any] = None,
     ) -> tuple[float, str]:
-        session_snapshot = await self._resolve_awaitable(
-            self.db.session_snapshots.find_one({"session_id": session_id})
-        )
+        kwargs = {"session": db_session} if db_session is not None else {}
+        normalized_item_code = str(item_code or "").strip()
+        if db_session is None and session_id in self._session_snapshot_cache:
+            session_snapshot = self._session_snapshot_cache[session_id]
+        else:
+            session_snapshot = await self._resolve_awaitable(
+                self.db.session_snapshots.find_one({"session_id": session_id}, **kwargs)
+            )
+            if db_session is None:
+                self._session_snapshot_cache[session_id] = (
+                    session_snapshot if isinstance(session_snapshot, dict) else None
+                )
+
         if isinstance(session_snapshot, dict):
             snapshot_hash = str(session_snapshot.get("snapshot_hash") or "").strip()
-            for item in session_snapshot.get("items") or []:
-                if str(item.get("item_code") or "").strip() != item_code:
-                    continue
-                return _as_float(item.get("stock_qty")), snapshot_hash or "SESSION_SNAPSHOT"
+            item_index = self._session_snapshot_item_index.get(session_id)
+            if item_index is None:
+                item_index = {}
+                for item in session_snapshot.get("items") or []:
+                    indexed_item_code = str(item.get("item_code") or "").strip()
+                    if not indexed_item_code:
+                        continue
+                    item_index[indexed_item_code] = _as_float(item.get("stock_qty"))
+                self._session_snapshot_item_index[session_id] = item_index
+            if normalized_item_code in item_index:
+                return item_index[normalized_item_code], snapshot_hash or "SESSION_SNAPSHOT"
+            # Item absent in frozen baseline: treat baseline as zero, never live ERP qty.
+            return 0.0, snapshot_hash or "SESSION_SNAPSHOT_MISS"
 
-        snapshot = None
-        if hasattr(self.snapshot_service, "get_or_create_snapshot"):
-            try:
-                snapshot_result = self.snapshot_service.get_or_create_snapshot(
-                    session_id, item_code, username
+        # Legacy fallback: read-only lookup from pre-existing stock_snapshots.
+        try:
+            legacy_snapshot = await self._resolve_awaitable(
+                self.db.stock_snapshots.find_one(
+                    {"session_id": session_id, "item_code": normalized_item_code},
+                    **kwargs,
                 )
-                snapshot = await self._resolve_awaitable(snapshot_result)
-            except Exception:
-                snapshot = None
-        if isinstance(snapshot, dict):
-            return float(snapshot.get("erp_qty") or 0.0), str(snapshot.get("baseline_hash") or "")
+            )
+        except Exception:
+            legacy_snapshot = None
+        if isinstance(legacy_snapshot, dict):
+            return float(legacy_snapshot.get("erp_qty") or 0.0), str(
+                legacy_snapshot.get("baseline_hash") or "STOCK_SNAPSHOT"
+            )
 
-        baseline_qty = float((erp_item or {}).get("stock_qty") or 0.0)
-        return baseline_qty, "UNHASHED_FALLBACK"
+        raise HTTPException(
+            status_code=409,
+            detail="Baseline snapshot missing for session/item. Write blocked.",
+        )
 
     async def evaluate_policy(
         self,
@@ -503,6 +1125,8 @@ class CountLineWriteService:
         context: dict[str, Any],
     ) -> list[str]:
         session_ids: set[str] = set()
+        db_session = self._extract_db_session(context)
+        kwargs = {"session": db_session} if db_session is not None else {}
 
         context_session_id = context.get("session_id")
         if context_session_id:
@@ -542,18 +1166,18 @@ class CountLineWriteService:
         projection = {"_id": 0, "session_id": 1}
         if operation in {"update_one", "delete_one"}:
             try:
-                existing_result = self.db.count_lines.find_one(filter_query, projection)
+                existing_result = self.db.count_lines.find_one(filter_query, projection, **kwargs)
             except TypeError:
-                existing_result = self.db.count_lines.find_one(filter_query)
+                existing_result = self.db.count_lines.find_one(filter_query, **kwargs)
             existing = await self._resolve_awaitable(existing_result)
             if existing and existing.get("session_id"):
                 session_ids.add(str(existing["session_id"]))
             return sorted(session_ids)
 
         try:
-            cursor = self.db.count_lines.find(filter_query, projection)
+            cursor = self.db.count_lines.find(filter_query, projection, **kwargs)
         except TypeError:
-            cursor = self.db.count_lines.find(filter_query)
+            cursor = self.db.count_lines.find(filter_query, **kwargs)
         matched_result = cursor.to_list(length=5000)
         matched = await self._resolve_awaitable(matched_result)
         for doc in matched:
@@ -587,7 +1211,11 @@ class CountLineWriteService:
                 return
 
             filter_query = payload.get("filter") or {}
-            existing = await self._resolve_awaitable(self.db.count_lines.find_one(filter_query))
+            db_session = self._extract_db_session(context)
+            kwargs = {"session": db_session} if db_session is not None else {}
+            existing = await self._resolve_awaitable(
+                self.db.count_lines.find_one(filter_query, **kwargs)
+            )
             merged = dict(existing or {})
             merged.update(set_doc)
             if not merged:
@@ -607,6 +1235,8 @@ class CountLineWriteService:
         document: dict[str, Any],
         context: dict[str, Any],
     ) -> tuple[CountLineGovernanceDecision, dict[str, Any], Optional[dict[str, Any]]]:
+        db_session = self._extract_db_session(context)
+        kwargs = {"session": db_session} if db_session is not None else {}
         item_code = str(document.get("item_code") or context.get("item_code") or "").strip()
         if not item_code:
             raise HTTPException(status_code=409, detail="Count line is missing item_code")
@@ -622,24 +1252,28 @@ class CountLineWriteService:
             barcode = str(document.get("barcode") or "").strip()
             if barcode:
                 erp_item = await self._resolve_awaitable(
-                    self.db.erp_items.find_one({"barcode": barcode})
+                    self.db.erp_items.find_one({"barcode": barcode}, **kwargs)
                 )
             if erp_item is None:
                 erp_item = await self._resolve_awaitable(
-                    self.db.erp_items.find_one({"item_code": item_code})
+                    self.db.erp_items.find_one({"item_code": item_code}, **kwargs)
                 )
             erp_item = erp_item or {}
 
-        if expected_qty == 0.0 and session_id:
+        if session_id:
             baseline_qty, baseline_hash = await self.resolve_baseline(
                 session_id=session_id,
                 item_code=item_code,
                 username=str(context.get("username") or "system"),
                 erp_item=erp_item,
+                db_session=db_session,
             )
             expected_qty = baseline_qty
-            document.setdefault("erp_qty", baseline_qty)
-            document.setdefault("baseline_hash", baseline_hash)
+            document["erp_qty"] = baseline_qty
+            document["baseline_hash"] = baseline_hash
+        elif expected_qty == 0.0:
+            expected_qty = float((erp_item or {}).get("stock_qty") or 0.0)
+            document.setdefault("erp_qty", expected_qty)
 
         governance = await self.evaluate_policy(
             item_code=item_code,
@@ -671,9 +1305,12 @@ class CountLineWriteService:
         if not session_id:
             return None
 
+        db_session = self._extract_db_session(context)
+        kwargs = {"session": db_session} if db_session is not None else {}
         return await self._resolve_awaitable(
             self.db.sessions.find_one(
-                {"$or": [{"id": session_id}, {"session_id": session_id}]}
+                {"$or": [{"id": session_id}, {"session_id": session_id}]},
+                **kwargs,
             )
         )
 
@@ -806,6 +1443,10 @@ class CountLineWriteService:
         target["item_name"] = target.get("item_name") or erp_item.get("item_name") or "Unknown"
         if not target.get("barcode") and erp_item.get("barcode"):
             target["barcode"] = erp_item.get("barcode")
+        current_sql_qty = _as_float(erp_item.get("stock_qty"), default=expected_qty)
+        target["current_sql_qty"] = current_sql_qty
+        target["erp_drift"] = current_sql_qty - expected_qty
+        target["final_gap"] = counted_qty - current_sql_qty
         target["mrp_erp"] = mrp_erp
         target["mrp_counted"] = mrp_counted
         target["financial_impact"] = (mrp_counted * counted_qty) - (mrp_erp * expected_qty)

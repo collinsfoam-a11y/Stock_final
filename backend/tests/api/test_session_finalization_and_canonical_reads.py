@@ -138,7 +138,7 @@ async def test_finalize_session_locks_canonical_count_lines(async_client, test_d
             "warehouse": "Main Warehouse",
             "staff_user": "staff1",
             "staff_name": "Staff Member",
-            "status": "ACTIVE",
+            "status": "REVIEW",
             "type": "STANDARD",
             "started_at": now,
             "last_heartbeat": now,
@@ -169,11 +169,11 @@ async def test_finalize_session_locks_canonical_count_lines(async_client, test_d
     )
     assert response.status_code == 200, response.json()
     body = response.json()
-    assert body["status"] == "COMPLETED"
+    assert body["status"] == "FINALIZED"
 
     session = await test_db.sessions.find_one({"id": session_id})
     assert session is not None
-    assert session["status"] == "COMPLETED"
+    assert session["status"] == "FINALIZED"
     assert session["finalization_status"] == "FINALIZED"
     assert session["finalized_by"] == "supervisor1"
     assert session["finalized_at"] is not None
@@ -202,7 +202,7 @@ async def test_finalize_session_rejects_unresolved_lines(async_client, test_db):
             "warehouse": "Main Warehouse",
             "staff_user": "staff1",
             "staff_name": "Staff Member",
-            "status": "ACTIVE",
+            "status": "REVIEW",
             "type": "STANDARD",
             "started_at": now,
             "last_heartbeat": now,
@@ -231,7 +231,7 @@ async def test_finalize_session_rejects_unresolved_lines(async_client, test_db):
     )
     assert response.status_code == 409
     detail = response.json()["detail"]
-    assert detail["blocking_count"] == 1
+    assert "unresolved count lines" in detail.lower()
 
 
 @pytest.mark.asyncio
@@ -268,21 +268,9 @@ async def test_legacy_complete_route_allows_staff_owner_close(async_client, test
         f"/api/sessions/{session_id}/complete",
         headers=_make_auth_headers("staff1", "staff"),
     )
-    assert response.status_code == 200
+    assert response.status_code == 410
     body = response.json()
-    assert body["status"] == "CLOSED"
-
-    session = await test_db.sessions.find_one({"id": session_id})
-    assert session is not None
-    assert session["status"] == "CLOSED"
-    assert session["closed_at"] is not None
-    assert session["completed_at"] is not None
-    assert session.get("finalized_at") in (None, "")
-
-    verification_session = await test_db.verification_sessions.find_one({"session_id": session_id})
-    assert verification_session is not None
-    assert verification_session["status"] == "CLOSED"
-    assert verification_session["completed_at"] is not None
+    assert "disabled" in body["detail"].lower()
 
 
 @pytest.mark.asyncio

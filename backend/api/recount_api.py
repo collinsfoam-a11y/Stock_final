@@ -3,11 +3,11 @@ Recount Request API - Enhanced recount workflow with notifications and staff ass
 """
 
 import logging
+import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
-from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
@@ -15,11 +15,15 @@ from pydantic import BaseModel
 from backend.auth.dependencies import get_current_user
 from backend.auth.permissions import Permission, require_permission
 from backend.db.runtime import get_db
+from backend.services.count_line_write_service import CountLineWriteService
+from backend.services.governance_guard import GovernanceViolation
 from backend.services.notification_service import (
     NotificationPriority,
     NotificationService,
     NotificationType,
 )
+from backend.services.session_lifecycle_service import SessionLifecycleService
+from backend.services.transaction_manager import mongo_transaction
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/recount", tags=["Recount"])
@@ -110,6 +114,7 @@ async def create_recount_request(
                 status_code=400, detail="Can only create recount from rejected count line"
             )
 
+        now_dt = datetime.now(timezone.utc).replace(tzinfo=None)
         recount_doc = {
             "count_line_id": request.count_line_id,
             "item_name": count_line.get("item_name", "Unknown"),
@@ -126,16 +131,18 @@ async def create_recount_request(
             "assigned_to": request.assign_to,
             "notes": request.notes,
             "due_date": request.due_date,
-            "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
-            "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            "created_at": now_dt,
+            "updated_at": now_dt,
             "completed_at": None,
             "result_qty": None,
             "recount_iteration": int(count_line.get("recount_iteration", 0) or 0) + 1,
         }
-
-        result = await db.recount_requests.insert_one(recount_doc)
-        recount_doc["_id"] = result.inserted_id
-        recount_doc["id"] = str(result.inserted_id)
+        lifecycle_service = SessionLifecycleService(db)
+        recount_doc = await lifecycle_service.create_recount_request(
+            recount_doc=recount_doc,
+            actor=current_user["username"],
+        )
+        recount_doc["id"] = str(recount_doc.get("_id") or recount_doc.get("id") or "")
 
         notification_service = NotificationService(db)
         target_user = request.assign_to or count_line.get("counted_by")
@@ -172,6 +179,8 @@ async def create_recount_request(
 
     except HTTPException:
         raise
+    except GovernanceViolation as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Error creating recount request: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -220,12 +229,12 @@ async def get_recount_request(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Get single recount request details."""
-    recount = await db.recount_requests.find_one({"_id": ObjectId(recount_id)})
+    lifecycle_service = SessionLifecycleService(db)
+    recount = await lifecycle_service.get_recount_request(recount_id)
     if not recount:
         raise HTTPException(status_code=404, detail="Recount request not found")
 
-    recount["_id"] = str(recount["_id"])
-    recount["id"] = recount["_id"]
+    recount["id"] = str(recount.get("_id") or recount.get("id") or recount_id)
 
     return RecountResponse(
         id=recount["id"],
@@ -256,7 +265,8 @@ async def assign_recount_request(
 ):
     """Assign recount request to a staff member."""
     try:
-        recount = await db.recount_requests.find_one({"_id": ObjectId(request.recount_id)})
+        lifecycle_service = SessionLifecycleService(db)
+        recount = await lifecycle_service.get_recount_request(request.recount_id)
         if not recount:
             raise HTTPException(status_code=404, detail="Recount request not found")
 
@@ -264,17 +274,17 @@ async def assign_recount_request(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        await db.recount_requests.update_one(
-            {"_id": ObjectId(request.recount_id)},
-            {
-                "$set": {
-                    "assigned_to": request.assign_to,
-                    "status": RecountStatus.ASSIGNED.value,
-                    "assigned_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                    "assigned_by": current_user["username"],
-                    "notes": request.notes or recount.get("notes"),
-                    "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                }
+        now_dt = datetime.now(timezone.utc).replace(tzinfo=None)
+        await lifecycle_service.transition_recount_request(
+            recount_id=request.recount_id,
+            target_status=RecountStatus.ASSIGNED.value,
+            actor=current_user["username"],
+            fields={
+                "assigned_to": request.assign_to,
+                "assigned_at": now_dt,
+                "assigned_by": current_user["username"],
+                "notes": request.notes or recount.get("notes"),
+                "updated_at": now_dt,
             },
         )
 
@@ -295,6 +305,8 @@ async def assign_recount_request(
 
     except HTTPException:
         raise
+    except GovernanceViolation as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Error assigning recount: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -309,37 +321,147 @@ async def complete_recount_request(
 ):
     """Complete a recount request with results."""
     try:
-        recount = await db.recount_requests.find_one({"_id": ObjectId(recount_id)})
+        lifecycle_service = SessionLifecycleService(db)
+        recount = await lifecycle_service.get_recount_request(recount_id)
         if not recount:
             raise HTTPException(status_code=404, detail="Recount request not found")
 
-        update_data = {
-            "status": RecountStatus.COMPLETED.value,
-            "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
-            "completed_at": datetime.now(timezone.utc).replace(tzinfo=None),
-            "completed_by": current_user["username"],
+        username = str(current_user.get("username") or "").strip()
+        role = str(current_user.get("role") or "").strip().lower()
+        is_privileged = role in {"supervisor", "admin"}
+        assigned_to = str(recount.get("assigned_to") or "").strip()
+        created_by = str(recount.get("created_by") or "").strip()
+        if not is_privileged:
+            if assigned_to and assigned_to != username:
+                raise HTTPException(status_code=403, detail="Only assigned staff can complete recount")
+            if not assigned_to and created_by and created_by != username:
+                raise HTTPException(status_code=403, detail="Not authorized to complete this recount")
+
+        now_dt = datetime.now(timezone.utc).replace(tzinfo=None)
+        update_data: dict[str, object] = {
+            "updated_at": now_dt,
+            "completed_at": now_dt,
+            "completed_by": username,
         }
-
-        if request.result_qty is not None:
-            update_data["result_qty"] = request.result_qty
-
         if request.notes:
             update_data["completion_notes"] = request.notes
 
-        await db.recount_requests.update_one({"_id": ObjectId(recount_id)}, {"$set": update_data})
-
-        if request.result_qty is not None:
-            await db.count_lines.update_one(
-                {"id": recount["count_line_id"]},
-                {
-                    "$set": {
-                        "counted_qty": request.result_qty,
-                        "recount_completed_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                        "recount_completed_by": current_user["username"],
-                    },
-                    "$unset": {"recount_requested_at": "", "recount_requested_by": ""},
-                },
+        if request.result_qty is None:
+            await lifecycle_service.transition_recount_request(
+                recount_id=recount_id,
+                target_status=RecountStatus.COMPLETED.value,
+                actor=username,
+                fields=update_data,
             )
+        else:
+            update_data["result_qty"] = request.result_qty
+            async with mongo_transaction(db.client) as tx:
+                recount = await lifecycle_service.get_recount_request(recount_id, db_session=tx)
+                if not recount:
+                    raise HTTPException(status_code=404, detail="Recount request not found")
+
+                existing_line = await db.count_lines.find_one(
+                    {"id": recount["count_line_id"]},
+                    session=tx,
+                )
+                if not existing_line:
+                    raise HTTPException(status_code=404, detail="Count line for recount not found")
+
+                session_id = str(existing_line.get("session_id") or recount.get("session_id") or "")
+                session = await lifecycle_service.ensure_session_active(session_id, db_session=tx)
+
+                location_id = str(
+                    existing_line.get("location_id")
+                    or session.get("location_id")
+                    or session.get("warehouse")
+                    or ""
+                ).strip()
+                floor_id = str(
+                    existing_line.get("floor_id")
+                    or existing_line.get("floor_no")
+                    or session.get("floor_id")
+                    or ""
+                ).strip()
+                rack_id = str(
+                    existing_line.get("rack_id")
+                    or existing_line.get("rack_no")
+                    or session.get("rack_no")
+                    or ""
+                ).strip()
+                if not location_id or not floor_id or not rack_id:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="CRITICAL: Recount requires location_id, floor_id and rack_id context",
+                    )
+
+                previous_line_id = str(existing_line.get("id") or existing_line.get("_id"))
+                new_line = dict(existing_line)
+                new_line.pop("_id", None)
+                new_line["id"] = str(uuid.uuid4())
+                new_line["counted_qty"] = request.result_qty
+                new_line["status"] = "pending"
+                new_line["approval_status"] = "PENDING"
+                new_line["verified"] = False
+                new_line["verified_by"] = None
+                new_line["verified_at"] = None
+                new_line["rejected_by"] = None
+                new_line["rejected_at"] = None
+                new_line["recount_requested_at"] = None
+                new_line["recount_requested_by"] = None
+                new_line["recount_completed_at"] = now_dt
+                new_line["recount_completed_by"] = username
+                new_line["updated_at"] = now_dt
+                new_line["updated_by"] = username
+                new_line["location_id"] = location_id
+                new_line["floor_id"] = floor_id
+                new_line["rack_id"] = rack_id
+                new_line.setdefault("floor_no", floor_id)
+                new_line.setdefault("rack_no", rack_id)
+                new_line["version"] = int(existing_line.get("version", 1) or 1) + 1
+                new_line["previous_version_id"] = previous_line_id
+                new_line["recount_of_id"] = (
+                    existing_line.get("recount_of_id")
+                    or existing_line.get("id")
+                    or previous_line_id
+                )
+                new_line["recount_iteration"] = int(existing_line.get("recount_iteration", 0) or 0) + 1
+
+                write_service = CountLineWriteService(db)
+                tx_context = {
+                    "session": session,
+                    "username": username,
+                    "db_session": tx,
+                }
+                await write_service.process_write(
+                    {"operation": "insert_one", "document": new_line},
+                    context={**tx_context, "skip_session_totals_update": True},
+                )
+                await write_service.process_write(
+                    {
+                        "operation": "update_one",
+                        "filter": {"_id": existing_line["_id"]},
+                        "update": {
+                            "$set": {
+                                "status": "SUPERSEDED",
+                                "superseded_at": now_dt,
+                                "superseded_by": username,
+                                "superseded_by_version_id": new_line["id"],
+                                "location_id": location_id,
+                                "floor_id": floor_id,
+                                "rack_id": rack_id,
+                            }
+                        },
+                    },
+                    context=tx_context,
+                )
+
+                await lifecycle_service.transition_recount_request(
+                    recount_id=recount_id,
+                    target_status=RecountStatus.COMPLETED.value,
+                    actor=username,
+                    fields=update_data,
+                    db_session=tx,
+                )
 
         notification_service = NotificationService(db)
         await notification_service.create_notification(
@@ -356,6 +478,8 @@ async def complete_recount_request(
 
     except HTTPException:
         raise
+    except GovernanceViolation as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Error completing recount: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -370,20 +494,21 @@ async def cancel_recount_request(
 ):
     """Cancel a recount request."""
     try:
-        recount = await db.recount_requests.find_one({"_id": ObjectId(recount_id)})
+        lifecycle_service = SessionLifecycleService(db)
+        recount = await lifecycle_service.get_recount_request(recount_id)
         if not recount:
             raise HTTPException(status_code=404, detail="Recount request not found")
 
-        await db.recount_requests.update_one(
-            {"_id": ObjectId(recount_id)},
-            {
-                "$set": {
-                    "status": RecountStatus.CANCELLED.value,
-                    "cancelled_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                    "cancelled_by": current_user["username"],
-                    "cancellation_reason": reason or "Cancelled by supervisor",
-                    "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                }
+        now_dt = datetime.now(timezone.utc).replace(tzinfo=None)
+        await lifecycle_service.transition_recount_request(
+            recount_id=recount_id,
+            target_status=RecountStatus.CANCELLED.value,
+            actor=current_user["username"],
+            fields={
+                "cancelled_at": now_dt,
+                "cancelled_by": current_user["username"],
+                "cancellation_reason": reason or "Cancelled by supervisor",
+                "updated_at": now_dt,
             },
         )
 
@@ -391,6 +516,8 @@ async def cancel_recount_request(
 
     except HTTPException:
         raise
+    except GovernanceViolation as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Error cancelling recount: {e}")
         raise HTTPException(status_code=500, detail=str(e))

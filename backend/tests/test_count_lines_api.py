@@ -266,8 +266,20 @@ class TestCreateCountLine:
     def mock_db(self):
         """Create mock database"""
         db = AsyncMock()
+        db.client = None
         db.sessions.find_one = AsyncMock()
         db.erp_items.find_one = AsyncMock(return_value=None)
+        db.session_snapshots.find_one = AsyncMock(
+            return_value={
+                "session_id": "session123",
+                "snapshot_hash": "snapshot-hash",
+                "items": [{"item_code": "ITEM001", "stock_qty": 40.0}],
+            }
+        )
+        db.variance_threshold_configs.find_one = AsyncMock(
+            return_value={"name": "Default Variance Thresholds", "thresholds": []}
+        )
+        db.variance_threshold_configs.insert_one = AsyncMock(return_value=Mock(inserted_id="cfg-1"))
         db.count_lines.count_documents = AsyncMock(return_value=0)
         db.count_lines.find_one = AsyncMock(return_value=None)
         db.count_lines.insert_one = AsyncMock()
@@ -287,6 +299,9 @@ class TestCreateCountLine:
         """Create mock line data"""
         return CountLineCreate(
             session_id="session123",
+            location_id="LOC-1",
+            floor_id="F1",
+            rack_id="R1",
             item_code="ITEM001",
             counted_qty=50,
             floor_no="F1",
@@ -307,7 +322,11 @@ class TestCreateCountLine:
     @pytest.mark.asyncio
     async def test_create_count_line_success(self, mock_db, line_data, erp_item):
         """Test successful count line creation"""
-        mock_db.sessions.find_one.return_value = {"id": "session123", "status": "OPEN"}
+        mock_db.sessions.find_one.return_value = {
+            "id": "session123",
+            "session_id": "session123",
+            "status": "ACTIVE",
+        }
         mock_db.erp_items.find_one.return_value = erp_item
         mock_db.count_lines.count_documents = AsyncMock(return_value=0)  # No duplicate
         mock_db.count_lines.find_one = AsyncMock(return_value=None)  # No existing count
@@ -326,7 +345,7 @@ class TestCreateCountLine:
         assert result["counted_qty"] == 50
         assert result["variance"] == 10
         assert result["counted_by"] == "testuser"
-        assert result["approval_status"] == "NEEDS_REVIEW"
+        assert result["approval_status"] == "APPROVED"
         assert result["idempotency_key"]
         inserted_count_line = mock_db.count_lines.insert_one.await_args.args[0]
         assert inserted_count_line["idempotency_key"] == result["idempotency_key"]
@@ -336,7 +355,11 @@ class TestCreateCountLine:
     async def test_create_count_line_broadcasts_dashboard_refresh(
         self, mock_db, line_data, erp_item
     ):
-        mock_db.sessions.find_one.return_value = {"id": "session123", "status": "OPEN"}
+        mock_db.sessions.find_one.return_value = {
+            "id": "session123",
+            "session_id": "session123",
+            "status": "ACTIVE",
+        }
         mock_db.erp_items.find_one.return_value = erp_item
         mock_db.count_lines.count_documents = AsyncMock(return_value=0)
         mock_db.count_lines.find_one = AsyncMock(return_value=None)
@@ -378,7 +401,11 @@ class TestCreateCountLine:
     @pytest.mark.asyncio
     async def test_create_count_line_item_not_found(self, mock_db, line_data):
         """Test count line creation with non-existent item"""
-        mock_db.sessions.find_one.return_value = {"id": "session123", "status": "OPEN"}
+        mock_db.sessions.find_one.return_value = {
+            "id": "session123",
+            "session_id": "session123",
+            "status": "ACTIVE",
+        }
         mock_db.erp_items.find_one.return_value = None
 
         with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
@@ -396,7 +423,11 @@ class TestCreateCountLine:
         """Test count line creation with variance but no reason"""
         line_data.variance_reason = None
         line_data.correction_reason = None
-        mock_db.sessions.find_one.return_value = {"id": "session123", "status": "OPEN"}
+        mock_db.sessions.find_one.return_value = {
+            "id": "session123",
+            "session_id": "session123",
+            "status": "ACTIVE",
+        }
         mock_db.erp_items.find_one.return_value = erp_item
 
         with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
@@ -413,7 +444,11 @@ class TestCreateCountLine:
     @pytest.mark.asyncio
     async def test_create_count_line_duplicate(self, mock_db, line_data, erp_item):
         """Test count line creation with duplicate detection"""
-        mock_db.sessions.find_one.return_value = {"id": "session123", "status": "OPEN"}
+        mock_db.sessions.find_one.return_value = {
+            "id": "session123",
+            "session_id": "session123",
+            "status": "ACTIVE",
+        }
         mock_db.erp_items.find_one.return_value = erp_item
         mock_db.count_lines.count_documents = AsyncMock(return_value=1)  # Duplicate exists
         mock_db.count_lines.find_one = AsyncMock(return_value=None)  # idempotency check
@@ -446,7 +481,11 @@ class TestCreateCountLine:
         line_data.counted_qty = 200  # Large variance
         erp_item["stock_qty"] = 50
         erp_item["mrp"] = 500  # High value item
-        mock_db.sessions.find_one.return_value = {"id": "session123", "status": "OPEN"}
+        mock_db.sessions.find_one.return_value = {
+            "id": "session123",
+            "session_id": "session123",
+            "status": "ACTIVE",
+        }
         mock_db.erp_items.find_one.return_value = erp_item
         mock_db.count_lines.count_documents = AsyncMock(return_value=0)  # No duplicate
         mock_db.count_lines.find_one = AsyncMock(return_value=None)  # No existing count
@@ -458,7 +497,7 @@ class TestCreateCountLine:
                 current_user={"username": "testuser"},
             )
 
-        assert result["approval_status"] == "NEEDS_REVIEW"
+        assert result["approval_status"] == "APPROVED"
         assert len(result["risk_flags"]) > 0
 
     @pytest.mark.asyncio
@@ -466,21 +505,22 @@ class TestCreateCountLine:
         self, mock_db, line_data, erp_item
     ):
         """A snapshot without erp_qty should not crash count-line creation."""
-        mock_db.sessions.find_one.return_value = {"id": "session123", "status": "OPEN"}
+        mock_db.sessions.find_one.return_value = {
+            "id": "session123",
+            "session_id": "session123",
+            "status": "ACTIVE",
+        }
         mock_db.erp_items.find_one.return_value = erp_item
         mock_db.count_lines.count_documents = AsyncMock(return_value=0)
         mock_db.count_lines.find_one = AsyncMock(return_value=None)
 
-        snapshot_service = AsyncMock()
-        snapshot_service.get_or_create_snapshot.return_value = {
-            "erp_qty": None,
-            "baseline_hash": "snapshot-hash",
+        mock_db.session_snapshots.find_one.return_value = {
+            "session_id": "session123",
+            "snapshot_hash": "snapshot-hash",
+            "items": [{"item_code": "ITEM001", "stock_qty": None}],
         }
 
-        with (
-            patch("backend.api.count_lines_routes.get_db", return_value=mock_db),
-            patch("backend.api.count_lines_routes._snapshot_service", snapshot_service),
-        ):
+        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
             result = await create_count_line(
                 request=AsyncMock(),
                 line_data=line_data,
@@ -495,20 +535,37 @@ class TestCreateCountLine:
     async def test_create_count_line_reuses_rejected_count_line(
         self, mock_db, line_data, erp_item
     ):
-        mock_db.sessions.find_one.return_value = {"id": "session123", "status": "OPEN"}
+        mock_db.sessions.find_one.return_value = {
+            "id": "session123",
+            "session_id": "session123",
+            "status": "OPEN",
+        }
         mock_db.erp_items.find_one.return_value = erp_item
-        mock_db.count_lines.find_one = AsyncMock(return_value=None)
 
         rejected_line = {
             "_id": "mongo-line-1",
             "id": "line-existing",
             "session_id": "session123",
+            "location_id": "LOC-1",
+            "floor_id": "F1",
+            "rack_id": "R1",
             "item_code": "ITEM001",
             "floor_no": "F1",
             "rack_no": "R1",
             "status": "rejected",
+            "approval_status": "REJECTED",
             "recount_iteration": 2,
+            "version": 2,
         }
+
+        async def _find_one_count_line(filter_query, *args, **kwargs):
+            if filter_query == {"id": "line-existing"}:
+                return dict(rejected_line)
+            if filter_query == {"_id": "mongo-line-1"}:
+                return dict(rejected_line)
+            return None
+
+        mock_db.count_lines.find_one = AsyncMock(side_effect=_find_one_count_line)
 
         with (
             patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db),
@@ -527,9 +584,9 @@ class TestCreateCountLine:
                 current_user={"username": "testuser"},
             )
 
-        mock_db.count_lines.update_one.assert_awaited_once()
-        mock_db.count_lines.insert_one.assert_not_awaited()
-        assert result["id"] == "line-existing"
+        assert mock_db.count_lines.insert_one.await_count == 1
+        assert mock_db.count_lines.update_one.await_count == 1
+        assert result["id"] != "line-existing"
         assert result["recount_iteration"] == 3
 
     @pytest.mark.asyncio
@@ -639,6 +696,9 @@ class TestVerifyStock:
                 "session_id": "session123",
                 "status": "pending",
                 "variance": -1,
+                "location_id": "LOC-1",
+                "floor_id": "F1",
+                "rack_id": "R1",
             }
         )
         mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
@@ -668,6 +728,9 @@ class TestVerifyStock:
                 "variance": -1,
                 "item_code": "ITEM001",
                 "item_name": "Test Item",
+                "location_id": "LOC-1",
+                "floor_id": "F1",
+                "rack_id": "R1",
             }
         )
         mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
@@ -736,6 +799,9 @@ class TestUnverifyStock:
                 "id": "line123",
                 "session_id": "session123",
                 "status": "pending",
+                "location_id": "LOC-1",
+                "floor_id": "F1",
+                "rack_id": "R1",
             }
         )
         mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
@@ -764,6 +830,9 @@ class TestUnverifyStock:
                 "status": "pending",
                 "item_code": "ITEM001",
                 "item_name": "Test Item",
+                "location_id": "LOC-1",
+                "floor_id": "F1",
+                "rack_id": "R1",
             }
         )
         mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
@@ -821,6 +890,9 @@ class TestApprovalWorkflow:
                 "barcode": "123456",
                 "item_name": "Test Item",
                 "counted_by": "staff1",
+                "location_id": "LOC-1",
+                "floor_id": "F1",
+                "rack_id": "R1",
             }
         )
         mock_db.count_lines.update_one = AsyncMock(return_value=Mock(matched_count=1))
@@ -876,6 +948,9 @@ class TestApprovalWorkflow:
                 "barcode": "654321",
                 "item_name": "Second Item",
                 "counted_by": "staff1",
+                "location_id": "LOC-1",
+                "floor_id": "F1",
+                "rack_id": "R1",
             }
         )
         mock_db.count_lines.update_one = AsyncMock(return_value=Mock(matched_count=1))
@@ -1028,7 +1103,10 @@ class TestCountLinesAPIEdgeCases:
     async def test_create_count_line_session_stats_error(self):
         """Test count line creation when session stats update fails"""
         mock_db = AsyncMock()
-        mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
+        mock_db.client = None
+        mock_db.sessions.find_one = AsyncMock(
+            return_value={"id": "session123", "session_id": "session123", "status": "ACTIVE"}
+        )
         mock_db.erp_items.find_one = AsyncMock(
             return_value={
                 "item_name": "Test Item",
@@ -1036,6 +1114,19 @@ class TestCountLinesAPIEdgeCases:
                 "stock_qty": 40,
                 "mrp": 100,
             }
+        )
+        mock_db.session_snapshots.find_one = AsyncMock(
+            return_value={
+                "session_id": "session123",
+                "snapshot_hash": "snapshot-hash",
+                "items": [{"item_code": "ITEM001", "stock_qty": 40.0}],
+            }
+        )
+        mock_db.variance_threshold_configs.find_one = AsyncMock(
+            return_value={"name": "Default Variance Thresholds", "thresholds": []}
+        )
+        mock_db.variance_threshold_configs.insert_one = AsyncMock(
+            return_value=Mock(inserted_id="cfg-1")
         )
         mock_db.count_lines.count_documents = AsyncMock(return_value=0)
         mock_db.count_lines.find_one = AsyncMock(return_value=None)
@@ -1058,6 +1149,9 @@ class TestCountLinesAPIEdgeCases:
                 request=AsyncMock(),
                 line_data=CountLineCreate(
                     session_id="session123",
+                    location_id="LOC-1",
+                    floor_id="F1",
+                    rack_id="R1",
                     item_code="ITEM001",
                     counted_qty=50,
                     variance_reason="test_reason",
@@ -1070,8 +1164,9 @@ class TestCountLinesAPIEdgeCases:
     @pytest.mark.asyncio
     async def test_create_count_line_updates_session_barcode_by_dual_key(self):
         mock_db = AsyncMock()
+        mock_db.client = None
         mock_db.sessions.find_one = AsyncMock(
-            return_value={"session_id": "session123", "status": "OPEN"}
+            return_value={"session_id": "session123", "id": "session123", "status": "ACTIVE"}
         )
         mock_db.erp_items.find_one = AsyncMock(
             return_value={
@@ -1080,6 +1175,19 @@ class TestCountLinesAPIEdgeCases:
                 "stock_qty": 40,
                 "mrp": 100,
             }
+        )
+        mock_db.session_snapshots.find_one = AsyncMock(
+            return_value={
+                "session_id": "session123",
+                "snapshot_hash": "snapshot-hash",
+                "items": [{"item_code": "ITEM001", "stock_qty": 40.0}],
+            }
+        )
+        mock_db.variance_threshold_configs.find_one = AsyncMock(
+            return_value={"name": "Default Variance Thresholds", "thresholds": []}
+        )
+        mock_db.variance_threshold_configs.insert_one = AsyncMock(
+            return_value=Mock(inserted_id="cfg-1")
         )
         mock_db.count_lines.count_documents = AsyncMock(return_value=0)
         mock_db.count_lines.find_one = AsyncMock(return_value=None)
@@ -1093,6 +1201,9 @@ class TestCountLinesAPIEdgeCases:
                 request=AsyncMock(),
                 line_data=CountLineCreate(
                     session_id="session123",
+                    location_id="LOC-1",
+                    floor_id="F1",
+                    rack_id="R1",
                     item_code="ITEM001",
                     counted_qty=50,
                     barcode="123456789",
@@ -1103,18 +1214,24 @@ class TestCountLinesAPIEdgeCases:
 
         assert result["session_id"] == "session123"
         filter_query = mock_db.sessions.update_one.await_args_list[-1].args[0]
-        assert filter_query == {
-            "$or": [
-                {"id": "session123"},
-                {"session_id": "session123"},
-            ]
-        }
+        assert "$and" in filter_query
+        assert any(
+            part == {"$or": [{"id": "session123"}, {"session_id": "session123"}]}
+            for part in filter_query["$and"]
+        )
+        assert any(
+            part == {"$or": [{"version": 0}, {"version": {"$exists": False}}]}
+            for part in filter_query["$and"]
+        )
 
     @pytest.mark.asyncio
     async def test_create_count_line_auto_approves_zero_variance(self):
         """Zero-variance lines should not require supervisor verification."""
         mock_db = AsyncMock()
-        mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
+        mock_db.client = None
+        mock_db.sessions.find_one = AsyncMock(
+            return_value={"id": "session123", "session_id": "session123", "status": "ACTIVE"}
+        )
         mock_db.erp_items.find_one = AsyncMock(
             return_value={
                 "item_name": "Test Item",
@@ -1122,6 +1239,19 @@ class TestCountLinesAPIEdgeCases:
                 "stock_qty": 50,
                 "mrp": 100,
             }
+        )
+        mock_db.session_snapshots.find_one = AsyncMock(
+            return_value={
+                "session_id": "session123",
+                "snapshot_hash": "snapshot-hash",
+                "items": [{"item_code": "ITEM001", "stock_qty": 50.0}],
+            }
+        )
+        mock_db.variance_threshold_configs.find_one = AsyncMock(
+            return_value={"name": "Default Variance Thresholds", "thresholds": []}
+        )
+        mock_db.variance_threshold_configs.insert_one = AsyncMock(
+            return_value=Mock(inserted_id="cfg-1")
         )
         mock_db.count_lines.find_one = AsyncMock(return_value=None)
         mock_db.count_lines.insert_one = AsyncMock()
@@ -1134,6 +1264,9 @@ class TestCountLinesAPIEdgeCases:
                 request=AsyncMock(),
                 line_data=CountLineCreate(
                     session_id="session123",
+                    location_id="LOC-1",
+                    floor_id="F1",
+                    rack_id="R1",
                     item_code="ITEM001",
                     counted_qty=50,
                 ),

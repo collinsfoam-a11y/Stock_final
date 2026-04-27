@@ -14,11 +14,26 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 # Database name - check config
 DB_NAME = "stock_verification"  # Default from config.py
+GOVERNED_COLLECTIONS = {
+    "count_lines",
+    "sessions",
+    "verification_sessions",
+    "recount_requests",
+    "session_snapshots",
+    "unknown_items",
+}
 
 
 async def restore_collection(client, db_name: str, collection_name: str, json_file: Path):
     """Restore a single collection from JSON file"""
     try:
+        if collection_name in GOVERNED_COLLECTIONS:
+            print(
+                f"   ⛔ Restore blocked for governed collection '{collection_name}'. "
+                "Use canonical domain services."
+            )
+            return 0
+
         db = client[db_name]
         collection = db[collection_name]
 

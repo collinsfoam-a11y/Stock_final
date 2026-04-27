@@ -128,6 +128,11 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
             [("idempotency_key", 1)],
             {"name": "idx_count_line_idempotency", "unique": True, "sparse": True},
         ),
+        # Domain semantic idempotency guard (session + item + context + qty + version hash)
+        (
+            [("semantic_hash", 1)],
+            {"name": "idx_count_line_semantic_hash", "unique": True, "sparse": True},
+        ),
         # H12 fix: Compound index for duplicate detection matching build_count_line_duplicate_filter
         (
             [("session_id", 1), ("item_code", 1), ("floor_no", 1), ("rack_no", 1)],

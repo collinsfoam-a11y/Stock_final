@@ -126,6 +126,13 @@ class MigrationManager:
             sparse=True,
             name="count_lines.idempotency_key",
         )
+        await self._create_index_safe(
+            self.db.count_lines,
+            "semantic_hash",
+            unique=True,
+            sparse=True,
+            name="count_lines.semantic_hash",
+        )
         simple_indexes = ["session_id", "item_code", "counted_by", "status", "verified"]
         for field in simple_indexes:
             await self._create_index_safe(self.db.count_lines, field, name=f"count_lines.{field}")

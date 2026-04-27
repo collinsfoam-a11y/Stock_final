@@ -8,7 +8,6 @@ import logging
 import re
 import time
 import uuid
-from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -16,7 +15,6 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.api.schemas import Session
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
 from backend.middleware.security import batch_rate_limiter
@@ -24,13 +22,15 @@ from backend.services.canonical_inventory import (
     can_reuse_rejected_count_line,
     extract_document_id,
     find_duplicate_count_line,
-    find_session,
-    recompute_session_totals,
 )
 from backend.services.circuit_breaker import get_circuit_breaker
+from backend.services.count_line_write_service import CountLineWriteService
+from backend.services.governance_guard import GovernanceViolation, raise_forbidden_direct_write
 from backend.services.lock_manager import LockManager, get_lock_manager
 from backend.services.redis_service import get_redis
+from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.sync_conflicts_service import SyncConflictsService
+from backend.services.transaction_manager import mongo_transaction
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,9 @@ class SyncRecord(BaseModel):
 
     client_record_id: str = Field(..., description="Unique client-side record ID")
     session_id: str = Field(..., description="Session ID")
-    rack_id: Optional[str] = Field(None, description="Rack ID")
+    location_id: str = Field(..., description="Location ID")
+    floor_id: str = Field(..., description="Floor ID")
+    rack_id: str = Field(..., description="Rack ID")
     floor: Optional[str] = Field(None, description="Floor")
     item_code: str = Field(..., description="Item code")
     verified_qty: float = Field(..., description="Verified quantity")
@@ -215,7 +217,15 @@ async def validate_record(
     return None
 
 
-async def sync_single_record(record: SyncRecord, db, user_id: str) -> tuple[bool, Optional[str]]:
+async def sync_single_record(
+    record: SyncRecord,
+    db,
+    user_id: str,
+    *,
+    user_role: Optional[str] = None,
+    write_service: Optional[CountLineWriteService] = None,
+    lifecycle_service: Optional[SessionLifecycleService] = None,
+) -> tuple[bool, Optional[str]]:
     """
     Sync a single record to database
 
@@ -223,39 +233,40 @@ async def sync_single_record(record: SyncRecord, db, user_id: str) -> tuple[bool
         (success: bool, error_message: Optional[str])
     """
     try:
-        # C2+MM2 fix: Check session status before writing (allowlist approach matching legacy path)
-        session = await db.sessions.find_one(
-            {"$or": [{"id": record.session_id}, {"session_id": record.session_id}]}
-        )
-        if session:
-            session_status = str(session.get("status", "")).upper()
-            if session.get("finalized_at"):
-                return (
-                    False,
-                    f"Session {record.session_id} is finalized and cannot accept new records",
-                )
-            allowed = {"OPEN", "ACTIVE"}
-            # Allow RECONCILE sessions if reconciled_at is set
-            if session_status == "RECONCILE" or (
-                session_status == "ACTIVE" and session.get("reconciled_at")
-            ):
-                pass  # allowed
-            elif session_status not in allowed:
-                return (
-                    False,
-                    f"Session {record.session_id} is {session_status} and cannot accept new records",
-                )
+        lifecycle_service = lifecycle_service or SessionLifecycleService(db)
+        session = await lifecycle_service.ensure_session_active(record.session_id)
+        if str(user_role or "").strip().lower() not in {"supervisor", "admin"}:
+            owner = str(session.get("staff_user") or "").strip()
+            if owner and owner != user_id:
+                return False, "Not authorized to sync records for this session"
+
+        floor_id = (record.floor_id or record.floor or "").strip()
+        rack_id = (record.rack_id or "").strip()
+        location_id = (record.location_id or "").strip()
+        if not location_id or not floor_id or not rack_id:
+            return (
+                False,
+                "CRITICAL: location_id, floor_id, and rack_id are required for sync writes",
+            )
 
         status_normalized = (record.status or "").strip().lower()
         is_finalized = status_normalized == "finalized"
-        # Prepare document
+        counted_at = datetime.fromisoformat(record.created_at.replace("Z", "+00:00")).replace(
+            tzinfo=None
+        )
+        updated_at = datetime.fromisoformat(record.updated_at.replace("Z", "+00:00")).replace(
+            tzinfo=None
+        )
         doc = {
-            "id": record.client_record_id,
+            "id": str(uuid.uuid4()),
             "client_record_id": record.client_record_id,
             "idempotency_key": record.client_record_id,
             "session_id": record.session_id,
-            "rack_no": record.rack_id,
-            "floor_no": record.floor,
+            "location_id": location_id,
+            "floor_id": floor_id,
+            "rack_id": rack_id,
+            "floor_no": floor_id,
+            "rack_no": rack_id,
             "item_code": record.item_code,
             "counted_qty": record.verified_qty,
             "damaged_qty": record.damaged_qty,
@@ -271,26 +282,39 @@ async def sync_single_record(record: SyncRecord, db, user_id: str) -> tuple[bool
             "approval_status": "APPROVED" if is_finalized else "PENDING",
             "verified": is_finalized,
             "verified_by": user_id if is_finalized else None,
-            "verified_at": record.updated_at if is_finalized else None,
+            "verified_at": updated_at if is_finalized else None,
             "finalized_by": user_id if is_finalized else None,
-            "finalized_at": record.updated_at if is_finalized else None,
-            "counted_at": record.created_at,
-            "updated_at": record.updated_at,
+            "finalized_at": updated_at if is_finalized else None,
+            "counted_at": counted_at,
+            "updated_at": updated_at,
             "sync_status": "synced",
             "synced_by": user_id,
             "synced_at": time.time(),
+            "version": 1,
+            "previous_version_id": None,
+            "recount_of_id": None,
         }
 
-        # Upsert record
-        await db.count_lines.update_one(
-            {
-                "session_id": record.session_id,
-                "idempotency_key": record.client_record_id,
-            },
-            {"$set": doc},
-            upsert=True,
-        )
-        await recompute_session_totals(db, record.session_id)
+        if await _count_line_is_idempotent(db, record.session_id, doc):
+            return True, None
+
+        write_service = write_service or CountLineWriteService(db)
+        existing_duplicate = await find_duplicate_count_line(db, doc)
+        if existing_duplicate:
+            await _handle_duplicate_count_line(
+                db=db,
+                session_id=record.session_id,
+                line_data=doc,
+                existing_duplicate=existing_duplicate,
+                write_service=write_service,
+                session=session,
+                username=user_id,
+            )
+        else:
+            await write_service.process_write(
+                {"operation": "insert_one", "document": doc},
+                context={"session": session, "username": user_id},
+            )
 
         # Insert serial numbers
         if record.serial_numbers:
@@ -316,6 +340,9 @@ async def sync_single_record(record: SyncRecord, db, user_id: str) -> tuple[bool
 
         return True, None
 
+    except GovernanceViolation as e:
+        logger.error(f"Governance violation syncing record {record.client_record_id}: {str(e)}")
+        return False, str(e)
     except Exception as e:
         logger.error(f"Error syncing record {record.client_record_id}: {str(e)}")
         return False, str(e)
@@ -358,13 +385,13 @@ async def sync_batch(
             headers={"Retry-After": str(rate_info.get("retry_after", 60))},
         )
 
-    # Legacy payloads only provided an operations array
-    if not request.records and request.operations:
-        return await _process_legacy_operations(
-            operations=request.operations,
-            batch_id=request.batch_id,
-            current_user=current_user,
-            start_time=start_time,
+    if request.operations:
+        raise HTTPException(
+            status_code=410,
+            detail=(
+                "CRITICAL: Legacy operations-based sync is disabled. "
+                "Submit records-based payload only."
+            ),
         )
 
     if not request.records:
@@ -407,6 +434,8 @@ async def sync_batch(
     errors = []
 
     try:
+        write_service = CountLineWriteService(db)
+        lifecycle_service = SessionLifecycleService(db)
         # Validate all records first
         for record in request.records:
             # Check idempotency first using client_record_id as operation_id
@@ -422,7 +451,14 @@ async def sync_batch(
                 conflicts.append(conflict)
             else:
                 # Sync valid record
-                success, error_msg = await sync_single_record(record, db, user_id)
+                success, error_msg = await sync_single_record(
+                    record,
+                    db,
+                    user_id,
+                    user_role=str(current_user.get("role") or ""),
+                    write_service=write_service,
+                    lifecycle_service=lifecycle_service,
+                )
 
                 if success:
                     # Record idempotency
@@ -572,17 +608,7 @@ async def _apply_bulk_session_operation(
     operation: str,
     now: datetime,
 ) -> str:
-    if not _is_privileged_session_user(current_user):
-        raise ValueError("Insufficient permissions for bulk session operation")
-
-    resolved_ids = _resolve_bulk_session_ids(_extract_bulk_session_ids(session_data), id_mapping)
-    update_doc = _session_status_update(operation, now)
-    updated = 0
-    for session_id in resolved_ids:
-        result = await db.sessions.update_one({"id": session_id}, update_doc)
-        if getattr(result, "modified_count", 0) > 0:
-            updated += 1
-    return f"Bulk session operation '{operation}' applied (updated={updated})"
+    raise_forbidden_direct_write("sync_batch_api.bulk_session_operation")
 
 
 def _extract_single_session_operation_id(
@@ -614,14 +640,7 @@ async def _apply_single_session_operation(
     operation: str,
     now: datetime,
 ) -> str:
-    resolved_session_id = _extract_single_session_operation_id(session_data, id_mapping)
-    session = await db.sessions.find_one({"id": resolved_session_id})
-    if not session:
-        raise ValueError("Session not found")
-
-    _assert_single_session_permission(session, current_user)
-    await db.sessions.update_one({"id": resolved_session_id}, _session_status_update(operation, now))
-    return f"Session operation '{operation}' applied"
+    raise_forbidden_direct_write("sync_batch_api.single_session_operation")
 
 
 async def _process_session_mutation_operation(
@@ -689,44 +708,7 @@ async def _process_session_creation(
     id_mapping: dict[str, str],
     db: Any,
 ) -> str:
-    warehouse = _extract_warehouse(session_data)
-    staff_user = current_user.get("username", "unknown_user")
-    staff_name = current_user.get("full_name") or staff_user
-    offline_id = session_data.get("session_id") or session_data.get("id")
-
-    existing_by_offline = await _find_session_by_offline_id(db, offline_id)
-    if existing_by_offline:
-        session_id = existing_by_offline.get("id") or str(existing_by_offline.get("_id"))
-        _link_offline_id_to_session(id_mapping, offline_id, session_id)
-        return "Session already synced"
-
-    existing_session = await _find_existing_open_session(db, staff_user, warehouse)
-    if existing_session:
-        session_id = existing_session.get("id") or str(existing_session.get("_id"))
-        _link_offline_id_to_session(id_mapping, offline_id, session_id)
-        if offline_id:
-            await db.sessions.update_one(
-                {"id": session_id},
-                {"$set": {"offline_id": str(offline_id), "created_offline": True}},
-            )
-        return "Session already exists"
-
-    session = Session(
-        warehouse=warehouse,
-        staff_user=staff_user,
-        staff_name=staff_name,
-        status=session_data.get("status", "OPEN"),
-        type=_normalize_session_type(session_data.get("type")),
-    )
-
-    session_doc = session.model_dump()
-    if offline_id:
-        session_doc["offline_id"] = offline_id
-        id_mapping[str(offline_id)] = session.id
-
-    session_doc.update({"created_offline": True, "synced_at": _utc_now()})
-    await db.sessions.insert_one(session_doc)
-    return "Session synced"
+    raise_forbidden_direct_write("sync_batch_api.session_creation_operation")
 
 
 async def _process_session_op(
@@ -760,19 +742,28 @@ def _require_count_line_session_id(line_data: dict[str, Any]) -> str:
     return session_id
 
 
-async def _assert_session_accepts_offline_count(db: Any, session_id: str) -> None:
-    session = await find_session(db, session_id)
-    if not session:
-        raise ValueError("Session not found for count line operation")
-    if session.get("finalized_at") or str(session.get("status", "")).upper() in {
-        "COMPLETED",
-        "CLOSED",
-    }:
-        raise ValueError("Session is finalized and cannot accept offline counts")
-    if str(session.get("status", "")).upper() in {"OPEN", "ACTIVE"}:
-        return
-    if not session.get("reconciled_at"):
-        raise ValueError("Session is not active")
+async def _assert_session_accepts_offline_count(db: Any, session_id: str) -> dict[str, Any]:
+    lifecycle_service = SessionLifecycleService(db)
+    session = await lifecycle_service.ensure_session_active(session_id)
+    return session
+
+
+def _enforce_required_count_line_context(line_data: dict[str, Any]) -> None:
+    location_id = str(line_data.get("location_id") or "").strip()
+    floor_id = str(
+        line_data.get("floor_id")
+        or line_data.get("floor_no")
+        or line_data.get("floor")
+        or ""
+    ).strip()
+    rack_id = str(line_data.get("rack_id") or line_data.get("rack_no") or "").strip()
+    if not location_id or not floor_id or not rack_id:
+        raise ValueError("CRITICAL: location_id, floor_id, rack_id are mandatory for count-line sync")
+    line_data["location_id"] = location_id
+    line_data["floor_id"] = floor_id
+    line_data["rack_id"] = rack_id
+    line_data.setdefault("floor_no", floor_id)
+    line_data.setdefault("rack_no", rack_id)
 
 
 def _set_count_line_defaults(line_data: dict[str, Any], current_user: dict[str, Any]) -> None:
@@ -796,6 +787,9 @@ def _set_count_line_defaults(line_data: dict[str, Any], current_user: dict[str, 
     # (setdefault won't overwrite explicit None)
     if not line_data.get("id"):
         line_data["id"] = line_data.get("_id") or str(uuid.uuid4())
+    line_data.setdefault("version", 1)
+    line_data.setdefault("previous_version_id", None)
+    line_data.setdefault("recount_of_id", None)
 
 
 async def _count_line_is_idempotent(db: Any, session_id: str, line_data: dict[str, Any]) -> bool:
@@ -905,54 +899,46 @@ def _set_approval_status(line_data: dict[str, Any]) -> None:
 
 
 async def _populate_offline_count_line_stats(db: Any, line_data: dict[str, Any]) -> None:
-    # Calculate missing backend fields like variance and risk_flags for offline counts
-    try:
-        erp_item = await _find_erp_item_for_line(db, line_data)
-        erp_qty = erp_item.get("stock_qty", 0) if erp_item else 0
-        erp_mrp = erp_item.get("mrp", 0.0) if erp_item else 0.0
-        counted_qty = float(line_data.get("counted_qty", 0.0))
-        mrp_c = line_data.get("mrp_counted") or line_data.get("counted_mrp") or erp_mrp
-        counted_mrp = float(mrp_c)
-        variance = counted_qty - erp_qty
-        variance_percent = _compute_variance_percent(erp_qty, counted_qty, variance)
-        financial_impact = (counted_mrp * counted_qty) - (erp_mrp * erp_qty)
-        risk_flags = _collect_risk_flags(
-            line_data,
-            variance=variance,
-            variance_percent=variance_percent,
-            erp_mrp=erp_mrp,
-            counted_mrp=counted_mrp,
-        )
-        is_misplaced = _mark_misplacement_if_needed(line_data, erp_item, risk_flags)
+    # Precompute fields from immutable baseline; CountLineWriteService re-validates on write.
+    erp_item = await _find_erp_item_for_line(db, line_data)
+    current_sql_qty = float((erp_item or {}).get("stock_qty") or 0.0)
+    erp_mrp = float((erp_item or {}).get("mrp") or 0.0)
+    counted_qty = float(line_data.get("counted_qty", 0.0))
+    mrp_c = line_data.get("mrp_counted") or line_data.get("counted_mrp") or erp_mrp
+    counted_mrp = float(mrp_c)
 
-        line_data["variance"] = variance
-        line_data["erp_qty"] = erp_qty
-        line_data["mrp_erp"] = erp_mrp
-        line_data["mrp_counted"] = counted_mrp
-        line_data["financial_impact"] = financial_impact
-        _merge_risk_flags(line_data, risk_flags)
-        line_data["is_misplaced"] = line_data.get("is_misplaced", False) or is_misplaced
-        _set_approval_status(line_data)
-    except Exception as e:
-        logger.error(f"Failed to calculate missing stats for offline count: {e}")
-        line_data.setdefault("approval_status", "PENDING")
+    write_service = CountLineWriteService(db)
+    baseline_qty, baseline_hash = await write_service.resolve_baseline(
+        session_id=str(line_data.get("session_id") or ""),
+        item_code=str(line_data.get("item_code") or ""),
+        username=str(line_data.get("synced_by") or line_data.get("counted_by") or "sync"),
+        erp_item=erp_item or {},
+    )
 
+    variance = counted_qty - baseline_qty
+    variance_percent = _compute_variance_percent(baseline_qty, counted_qty, variance)
+    financial_impact = (counted_mrp * counted_qty) - (erp_mrp * baseline_qty)
+    risk_flags = _collect_risk_flags(
+        line_data,
+        variance=variance,
+        variance_percent=variance_percent,
+        erp_mrp=erp_mrp,
+        counted_mrp=counted_mrp,
+    )
+    is_misplaced = _mark_misplacement_if_needed(line_data, erp_item, risk_flags)
 
-def _apply_recount_reset_fields(
-    line_data: dict[str, Any], existing_duplicate: dict[str, Any]
-) -> None:
-    line_data["id"] = extract_document_id(existing_duplicate) or line_data["id"]
-    line_data["status"] = "pending"
-    line_data["approval_status"] = line_data.get("approval_status") or "PENDING"
-    line_data["verified"] = False
-    line_data["verified_by"] = None
-    line_data["verified_at"] = None
-    line_data["rejected_by"] = None
-    line_data["rejected_at"] = None
-    line_data["assigned_to"] = None
-    line_data["recount_requested_at"] = None
-    line_data["recount_requested_by"] = None
-    line_data["recount_iteration"] = int(existing_duplicate.get("recount_iteration", 0) or 0) + 1
+    line_data["variance"] = variance
+    line_data["erp_qty"] = baseline_qty
+    line_data["baseline_hash"] = baseline_hash
+    line_data["current_sql_qty"] = current_sql_qty
+    line_data["erp_drift"] = current_sql_qty - baseline_qty
+    line_data["final_gap"] = counted_qty - current_sql_qty
+    line_data["mrp_erp"] = erp_mrp
+    line_data["mrp_counted"] = counted_mrp
+    line_data["financial_impact"] = financial_impact
+    _merge_risk_flags(line_data, risk_flags)
+    line_data["is_misplaced"] = line_data.get("is_misplaced", False) or is_misplaced
+    _set_approval_status(line_data)
 
 
 async def _handle_duplicate_count_line(
@@ -960,18 +946,75 @@ async def _handle_duplicate_count_line(
     session_id: str,
     line_data: dict[str, Any],
     existing_duplicate: dict[str, Any],
+    *,
+    write_service: CountLineWriteService,
+    session: dict[str, Any],
+    username: str,
 ) -> str:
     if not can_reuse_rejected_count_line(existing_duplicate, line_data):
         raise ValueError(
             "Duplicate Scan: This item has already been counted in this specific location (Floor/Rack)."
         )
 
-    _apply_recount_reset_fields(line_data, existing_duplicate)
-    update_payload = dict(line_data)
-    update_payload.pop("_id", None)
-    await db.count_lines.update_one({"_id": existing_duplicate["_id"]}, {"$set": update_payload})
-    await recompute_session_totals(db, session_id)
-    return "Rejected count line updated through explicit recount sync"
+    previous_line_id = extract_document_id(existing_duplicate) or str(existing_duplicate.get("_id"))
+    root_recount_id = (
+        existing_duplicate.get("recount_of_id")
+        or existing_duplicate.get("id")
+        or previous_line_id
+    )
+    new_line_data = dict(line_data)
+    # Never carry legacy Mongo _id into new version inserts.
+    new_line_data.pop("_id", None)
+    new_line_data["id"] = str(uuid.uuid4())
+    new_line_data["status"] = "pending"
+    new_line_data["approval_status"] = new_line_data.get("approval_status") or "PENDING"
+    new_line_data["verified"] = False
+    new_line_data["verified_by"] = None
+    new_line_data["verified_at"] = None
+    new_line_data["rejected_by"] = None
+    new_line_data["rejected_at"] = None
+    new_line_data["assigned_to"] = None
+    new_line_data["recount_requested_at"] = None
+    new_line_data["recount_requested_by"] = None
+    new_line_data["recount_iteration"] = int(existing_duplicate.get("recount_iteration", 0) or 0) + 1
+    new_line_data["version"] = int(existing_duplicate.get("version", 1) or 1) + 1
+    new_line_data["previous_version_id"] = previous_line_id
+    new_line_data["recount_of_id"] = root_recount_id
+
+    async with mongo_transaction(db.client) as tx:
+        await write_service.process_write(
+            {"operation": "insert_one", "document": new_line_data},
+            context={
+                "session": session,
+                "username": username,
+                "db_session": tx,
+                "skip_session_totals_update": True,
+            },
+        )
+        await write_service.process_write(
+            {
+                "operation": "update_one",
+                "filter": {"_id": existing_duplicate["_id"]},
+                "update": {
+                    "$set": {
+                        "status": "SUPERSEDED",
+                        "superseded_at": _utc_now(),
+                        "superseded_by": username,
+                        "superseded_by_version_id": new_line_data["id"],
+                        "location_id": new_line_data.get("location_id"),
+                        "floor_id": new_line_data.get("floor_id"),
+                        "rack_id": new_line_data.get("rack_id"),
+                    }
+                },
+            },
+            context={
+                "session": session,
+                "username": username,
+                "session_id": session_id,
+                "db_session": tx,
+            },
+        )
+    return "Rejected count line superseded by new recount version"
 
 
 async def _process_count_line_op(
@@ -983,12 +1026,13 @@ async def _process_count_line_op(
     """Process a count_line sync operation."""
     _remap_line_session_id(line_data, id_mapping)
     session_id = _require_count_line_session_id(line_data)
-    await _assert_session_accepts_offline_count(db, session_id)
+    session = await _assert_session_accepts_offline_count(db, session_id)
+    _enforce_required_count_line_context(line_data)
     _set_count_line_defaults(line_data, current_user)
     if await _count_line_is_idempotent(db, session_id, line_data):
         return "Count line already synced"
-    await _populate_offline_count_line_stats(db, line_data)
     line_data.setdefault("status", "pending")
+    write_service = CountLineWriteService(db)
     existing_duplicate = await find_duplicate_count_line(db, line_data)
     if existing_duplicate:
         return await _handle_duplicate_count_line(
@@ -996,9 +1040,14 @@ async def _process_count_line_op(
             session_id=session_id,
             line_data=line_data,
             existing_duplicate=existing_duplicate,
+            write_service=write_service,
+            session=session,
+            username=str(current_user.get("username") or "system"),
         )
-    await db.count_lines.insert_one(line_data)
-    await recompute_session_totals(db, session_id)
+    await write_service.process_write(
+        {"operation": "insert_one", "document": line_data},
+        context={"session": session, "username": str(current_user.get("username") or "system")},
+    )
     return "Count line synced with canonical duplicate validation"
 
 
@@ -1008,18 +1057,7 @@ async def _process_unknown_item_op(
     id_mapping: dict[str, str],
     db: Any,
 ) -> str:
-    """Process an unknown_item sync operation."""
-    temp_session_id = item_data.get("session_id")
-    if temp_session_id is not None:
-        lookup_key = str(temp_session_id)
-        if lookup_key in id_mapping:
-            item_data["session_id"] = id_mapping[lookup_key]
-
-    item_data.setdefault("reported_by", current_user.get("username"))
-    item_data.setdefault("reported_at", datetime.now(timezone.utc).replace(tzinfo=None))
-    item_data.setdefault("synced_at", datetime.now(timezone.utc).replace(tzinfo=None))
-    await db.unknown_items.insert_one(item_data)
-    return "Unknown item synced"
+    raise_forbidden_direct_write("sync_batch_api.unknown_item_operation")
 
 
 # Operation type → handler mapping
@@ -1036,68 +1074,10 @@ async def _process_legacy_operations(
     current_user: dict[str, Any],
     start_time: float,
 ) -> BatchSyncResponse:
-    """Handle legacy offline queue operations payloads."""
-    db = get_db()
-
-    id_mapping: dict[str, str] = {}
-    results: list[SyncResult] = []
-    ok_ids: list[str] = []
-    error_entries: list[SyncError] = []
-
-    ordered_ops = sorted(operations, key=lambda op: op.timestamp or "")
-
-    for op in ordered_ops:
-        success = False
-        message: Optional[str] = None
-
-        try:
-            # Check idempotency
-            existing_op = await db.idempotency_operations.find_one({"operation_id": op.id})
-            if existing_op:
-                success = True
-                message = "Already processed (idempotency)"
-            else:
-                handler = _LEGACY_OP_HANDLERS.get(op.type)
-                if handler:
-                    data = deepcopy(op.data)
-                    message = await handler(data, current_user, id_mapping, db)
-                    success = True
-                    # Record idempotency
-                    await db.idempotency_operations.insert_one(
-                        {
-                            "operation_id": op.id,
-                            "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                        }
-                    )
-                else:
-                    message = f"Unknown operation type: {op.type}"
-        except Exception as exc:
-            logger.error(f"Legacy sync operation failed ({op.id}): {exc}")
-            message = str(exc)
-
-        results.append(SyncResult(id=op.id, success=success, message=message))
-        if success:
-            ok_ids.append(op.id)
-        else:
-            error_entries.append(
-                SyncError(
-                    client_record_id=op.id,
-                    error_type="legacy_sync_error",
-                    message=message or "Unknown legacy sync error",
-                )
-            )
-
-    processing_time = (time.time() - start_time) * 1000
-
-    return BatchSyncResponse(
-        ok=ok_ids,
-        conflicts=[],
-        errors=error_entries,
-        batch_id=batch_id,
-        processing_time_ms=processing_time,
-        total_records=len(operations),
-        results=results,
-        processed_count=len(operations),
-        success_count=len(ok_ids),
-        failed_count=len(operations) - len(ok_ids),
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "CRITICAL: Legacy operations-based sync is disabled. "
+            "Use records-based sync only."
+        ),
     )

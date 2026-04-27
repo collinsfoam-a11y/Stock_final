@@ -27,16 +27,15 @@ from backend.core.websocket_manager import manager
 from backend.db.runtime import get_db
 from backend.services.lock_manager import get_lock_manager
 from backend.services.canonical_inventory import (
-    build_session_lookup,
     find_session,
     get_session_count_lines,
-    is_blocking_finalization,
     is_count_line_effectively_reviewed,
+    is_superseded_count_line,
     is_session_finalized,
     normalize_session_status as normalize_canonical_session_status,
-    recompute_session_totals,
 )
-from backend.services.session_state_machine import SessionStateMachine
+from backend.services.governance_guard import normalize_session_status as normalize_session_status_canonical
+from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.redis_service import get_redis
 from backend.services.runtime import get_refresh_token_service
 from backend.utils.api_utils import sanitize_for_logging
@@ -490,12 +489,13 @@ async def _get_session_line_summary(
     session_id: str,
 ) -> dict[str, Any]:
     lines = await get_session_count_lines(db, session_id)
-    item_count = len(lines)
-    verified_count = sum(1 for line in lines if is_count_line_effectively_reviewed(line))
-    total_variance = sum(float(line.get("variance") or 0.0) for line in lines)
-    damage_items = int(sum(float(line.get("damaged_qty") or 0.0) for line in lines))
+    active_lines = [line for line in lines if not is_superseded_count_line(line)]
+    item_count = len(active_lines)
+    verified_count = sum(1 for line in active_lines if is_count_line_effectively_reviewed(line))
+    total_variance = sum(float(line.get("variance") or 0.0) for line in active_lines)
+    damage_items = int(sum(float(line.get("damaged_qty") or 0.0) for line in active_lines))
     return {
-        "lines": lines,
+        "lines": active_lines,
         "item_count": item_count,
         "verified_count": verified_count,
         "pending_count": max(item_count - verified_count, 0),
@@ -788,33 +788,8 @@ async def _find_existing_session_for_warehouse(
 
 
 async def _close_existing_user_sessions(db: AsyncIOMotorDatabase, username: str) -> None:
-    open_sessions_filter = {
-        "staff_user": username,
-        "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]},
-    }
-    now_ts = time.time()
-    now_dt = datetime.now(timezone.utc)
-
-    await db.sessions.update_many(
-        open_sessions_filter,
-        {
-            "$set": {
-                "status": "CLOSED",
-                "completed_at": now_dt,
-                "close_reason": "SYSTEM_AUTO_CLOSE_NEW_SESSION",
-            }
-        },
-    )
-    await db.verification_sessions.update_many(
-        {"user_id": username, "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]}},
-        {
-            "$set": {
-                "status": "CLOSED",
-                "completed_at": now_ts,
-                "close_reason": "SYSTEM_AUTO_CLOSE_NEW_SESSION",
-            }
-        },
-    )
+    # Governance: auto-close is forbidden outside canonical finalize path.
+    logger.info("Skipping auto-close for existing sessions (user=%s)", _safe_log_value(username))
 
 
 async def _revoke_existing_refresh_tokens(username: str) -> None:
@@ -859,6 +834,7 @@ async def _persist_session_snapshot(
     location_type: Optional[str],
     location_name: Optional[str],
     rack_no: Optional[str],
+    username: str,
 ) -> None:
     from backend.core.schemas.snapshot import SessionSnapshot
 
@@ -881,7 +857,12 @@ async def _persist_session_snapshot(
         item_count=len(snapshot_items),
         config_version_id=session.config_version_id,
     )
-    await db.session_snapshots.insert_one(snapshot.model_dump())
+    lifecycle_service = SessionLifecycleService(db)
+    await lifecycle_service.record_session_snapshot(
+        session_id=session.id,
+        snapshot_doc=snapshot.model_dump(),
+        actor=username,
+    )
     session.snapshot_items_ref = snapshot.id
 
 
@@ -890,19 +871,15 @@ async def _insert_session_documents(
     session: Session,
     username: str,
 ) -> None:
+    lifecycle_service = SessionLifecycleService(db)
     session_doc = session.model_dump()
     session_doc["session_id"] = session.id
-    await db.sessions.insert_one(session_doc)
-    await db.verification_sessions.insert_one(
-        {
-            "session_id": session.id,
-            "user_id": username,
-            "status": "ACTIVE",
-            "started_at": time.time(),
-            "last_heartbeat": time.time(),
-            "rack_id": None,
-            "floor": None,
-        }
+    await lifecycle_service.create_session(session_doc=session_doc, username=username)
+    await lifecycle_service.transition_session(
+        session_id=session.id,
+        target_status="ACTIVE",
+        actor=username,
+        note="Session activated on creation",
     )
 
 
@@ -1287,6 +1264,7 @@ async def create_session(
         location_type,
         location_name,
         rack_no,
+        current_user["username"],
     )
     await _insert_session_documents(db, session, current_user["username"])
 
@@ -1520,16 +1498,11 @@ async def session_heartbeat(
 
     # Update session last_heartbeat
     heartbeat_at = _current_utc_naive()
-    await db.sessions.update_one(
-        build_session_lookup(session_id), {"$set": {"last_heartbeat": heartbeat_at}}
+    lifecycle_service = SessionLifecycleService(db)
+    await lifecycle_service.update_session_fields(
+        session_id,
+        {"last_heartbeat": heartbeat_at},
     )
-    try:
-        await db.verification_sessions.update_one(
-            {"session_id": session_id},
-            {"$set": {"last_heartbeat": time.time()}},
-        )
-    except Exception:
-        logger.debug("Legacy verification_sessions heartbeat mirror skipped", exc_info=True)
 
     logger.debug(
         f"Heartbeat: session={session_id}, user={user_id}, rack_renewed={rack_lock_renewed}"
@@ -1553,7 +1526,7 @@ async def update_session_status(
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
-    Update session status (e.g. to RECONCILE)
+    Update session status through canonical lifecycle transitions.
     """
     user_id = current_user["username"]
 
@@ -1569,39 +1542,41 @@ async def update_session_status(
     if current_user["role"] not in {"supervisor", "admin"} and _session_owner(session) != user_id:
         raise HTTPException(status_code=403, detail="Not your session")
 
-    normalized_status = status.upper()
-    current_status = _effective_session_status(session).value
+    requested = str(status or "").strip().upper()
+    requested_canonical = normalize_session_status_canonical(requested)
+    if requested == "PAUSED":
+        requested_canonical = "ACTIVE"
+    if requested in {"RECONCILE", "REVIEW"}:
+        requested_canonical = "REVIEW"
+    if requested in {"COMPLETED", "CLOSED", "FINALIZED"}:
+        requested_canonical = "FINALIZED"
 
-    if not SessionStateMachine.can_transition(current_status, normalized_status):
+    if requested_canonical not in {"CREATED", "ACTIVE", "REVIEW", "FINALIZED"} and requested not in {
+        "PAUSED",
+        "RECONCILE",
+    }:
+        raise HTTPException(status_code=400, detail=f"Unsupported session status: {requested}")
+
+    lifecycle_service = SessionLifecycleService(db)
+    current_canonical = normalize_session_status_canonical(session.get("status"))
+
+    if requested_canonical == current_canonical:
+        await lifecycle_service.update_session_fields(
+            session_id,
+            {"last_heartbeat": _current_utc_naive()},
+        )
+    elif requested_canonical == "FINALIZED":
         raise HTTPException(
             status_code=409,
-            detail=f"Invalid session transition: {current_status} -> {normalized_status}",
+            detail="Use /finalize endpoint for session finalization",
         )
-
-    now_dt = _current_utc_naive()
-    session_update: dict[str, Any] = {"last_heartbeat": now_dt}
-    if normalized_status == "RECONCILE":
-        session_update.update({"status": "ACTIVE", "reconciled_at": now_dt})
-    elif normalized_status == "ACTIVE":
-        session_update.update({"status": "ACTIVE", "reconciled_at": None})
-    elif normalized_status == "PAUSED":
-        session_update["status"] = "PAUSED"
     else:
-        session_update["status"] = normalized_status
-
-    await db.sessions.update_one(build_session_lookup(session_id), {"$set": session_update})
-    try:
-        await db.verification_sessions.update_one(
-            {"session_id": session_id},
-            {
-                "$set": {
-                    "status": normalized_status,
-                    "last_heartbeat": time.time(),
-                }
-            },
+        await lifecycle_service.transition_session(
+            session_id=session_id,
+            target_status=requested_canonical,
+            actor=user_id,
+            note="Manual session status update",
         )
-    except Exception:
-        logger.debug("Legacy verification_sessions status mirror skipped", exc_info=True)
 
     # Broadcast update
     await manager.broadcast_to_session(
@@ -1609,7 +1584,7 @@ async def update_session_status(
             "type": "session_update",
             "payload": {
                 "session_id": session_id,
-                "status": normalized_status,
+                "status": requested_canonical,
                 "updated_by": user_id,
                 "updated_at": time.time(),
             },
@@ -1626,14 +1601,14 @@ async def update_session_status(
                 "type": "session_update",
                 "payload": {
                     "session_id": session_id,
-                    "status": normalized_status,
+                    "status": requested_canonical,
                     "reason": "Supervisor update",
                 },
             },
             user_id=session_owner,
         )
 
-    return {"success": True, "id": session_id, "status": normalized_status}
+    return {"success": True, "id": session_id, "status": requested_canonical}
 
 
 async def _finalize_session_canonical(
@@ -1644,6 +1619,7 @@ async def _finalize_session_canonical(
     *,
     note: Optional[str] = None,
 ) -> dict[str, Any]:
+    lifecycle_service = SessionLifecycleService(db)
     session = await find_session(db, session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
@@ -1654,82 +1630,30 @@ async def _finalize_session_canonical(
     if is_session_finalized(session):
         raise HTTPException(status_code=409, detail="Session is already finalized")
 
-    if _effective_session_status(session) != CanonicalSessionStatus.RECONCILE:
+    session_status_raw = str(session.get("status") or "").strip().upper()
+    session_status_canonical = normalize_session_status_canonical(session_status_raw)
+    if session_status_canonical != "REVIEW" and session_status_raw not in {"REVIEW", "RECONCILE"}:
         raise HTTPException(
             status_code=409,
-            detail="Session must be in RECONCILE before finalization",
+            detail="Session must be in REVIEW before finalization",
         )
 
-    await recompute_session_totals(db, session_id)
-    lines = await get_session_count_lines(db, session_id)
-    blocking_lines = [line for line in lines if is_blocking_finalization(line)]
-    if blocking_lines:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "message": "Session has unresolved count lines and cannot be finalized",
-                "blocking_count": len(blocking_lines),
-                "blocking_line_ids": [
-                    str(line.get("id") or line.get("_id")) for line in blocking_lines[:25]
-                ],
-            },
-        )
-
-    finalized_at = _current_utc_naive()
     finalized_by = current_user["username"]
-    line_update: dict[str, Any] = {
-        "status": "locked",
-        "approval_status": "APPROVED",
-        "verified": True,
-        "verified_by": finalized_by,
-        "verified_at": finalized_at,
-        "approved_by": finalized_by,
-        "approved_at": finalized_at,
-        "finalized_by": finalized_by,
-        "finalized_at": finalized_at,
-        "updated_at": finalized_at,
-        "updated_by": finalized_by,
-    }
-    if note:
-        line_update["finalization_note"] = note
-
-    await db.count_lines.update_many(
-        {
-            "session_id": session_id,
-            "status": {"$ne": "locked"},
-            "approval_status": {"$nin": ["REJECTED", "NEEDS_REVIEW"]},
-        },
-        {"$set": line_update},
-    )
-    totals = await recompute_session_totals(db, session_id)
-
-    session_update: dict[str, Any] = {
-        "status": "COMPLETED",
-        "finalization_status": "FINALIZED",
-        "finalized_at": finalized_at,
-        "finalized_by": finalized_by,
-        "completed_at": finalized_at,
-        "closed_at": finalized_at,
-        "last_heartbeat": finalized_at,
-        **totals,
-    }
-    if note:
-        session_update["finalization_note"] = note
-
-    await db.sessions.update_one(build_session_lookup(session_id), {"$set": session_update})
     try:
-        await db.verification_sessions.update_one(
-            {"session_id": session_id},
-            {
-                "$set": {
-                    "status": "COMPLETED",
-                    "completed_at": finalized_at.timestamp(),
-                    "last_heartbeat": finalized_at.timestamp(),
-                }
-            },
+        finalize_result = await lifecycle_service.finalize_session_canonical(
+            session_id=session_id,
+            actor=finalized_by,
+            note=note,
         )
-    except Exception:
-        logger.debug("Legacy verification_sessions finalize mirror skipped", exc_info=True)
+    except Exception as exc:
+        message = str(exc)
+        if "cannot be finalized" in message.lower() or "unresolved count lines" in message.lower():
+            raise HTTPException(status_code=409, detail=message) from exc
+        if "version mismatch" in message.lower() or "concurrent" in message.lower():
+            raise HTTPException(status_code=409, detail=message) from exc
+        raise
+
+    finalized_at = finalize_result["finalized_at"]
 
     if session.get("rack_no"):
         await lock_manager.release_rack_lock(session["rack_no"], session.get("staff_user"))
@@ -1753,7 +1677,7 @@ async def _finalize_session_canonical(
                 "session_id": session_id,
                 "completed_by": finalized_by,
                 "completed_at": finalized_at.timestamp(),
-                "status": "COMPLETED",
+                "status": "FINALIZED",
             },
         },
         session_id=session_id,
@@ -1762,7 +1686,7 @@ async def _finalize_session_canonical(
     return {
         "success": True,
         "id": session_id,
-        "status": "COMPLETED",
+        "status": "FINALIZED",
         "finalized_at": finalized_at.isoformat(),
         "finalized_by": finalized_by,
         "message": "Session finalized successfully",
@@ -1775,94 +1699,13 @@ async def _complete_session_legacy_compatible(
     current_user: dict[str, Any],
     lock_manager: Any,
 ) -> dict[str, Any]:
-    user_id = current_user["username"]
-    canonical_session = await find_session(db, session_id)
-
-    legacy_session: Optional[dict[str, Any]] = None
-    try:
-        legacy_session = await db.verification_sessions.find_one({"session_id": session_id})
-    except Exception:
-        logger.debug("Legacy verification session lookup skipped", exc_info=True)
-
-    if not canonical_session and not legacy_session:
-        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
-
-    session_owner = _session_owner(canonical_session) or (legacy_session or {}).get("user_id") or ""
-    if current_user.get("role") not in {"supervisor", "admin"} and session_owner != user_id:
-        raise HTTPException(status_code=403, detail="Not your session")
-
-    if canonical_session and is_session_finalized(canonical_session):
-        raise HTTPException(status_code=409, detail="Session is already finalized")
-
-    current_status = (
-        _effective_session_status(canonical_session).value
-        if canonical_session
-        else str((legacy_session or {}).get("status") or "").upper()
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "CRITICAL: /complete path is disabled. "
+            "Use canonical /finalize flow only."
+        ),
     )
-    if not SessionStateMachine.can_transition(current_status, "CLOSED"):
-        raise HTTPException(
-            status_code=409,
-            detail=f"Invalid session transition: {current_status} -> CLOSED",
-        )
-
-    completed_at = _current_utc_naive()
-    rack_id = (
-        (canonical_session or {}).get("rack_no") or (legacy_session or {}).get("rack_id") or None
-    )
-
-    if rack_id:
-        await lock_manager.release_rack_lock(rack_id, session_owner or user_id)
-        try:
-            await db.rack_registry.update_one(
-                {"rack_id": rack_id},
-                {"$set": {"status": "completed", "updated_at": time.time()}},
-            )
-        except Exception:
-            logger.debug("Rack registry completion mirror skipped", exc_info=True)
-
-    if legacy_session:
-        await db.verification_sessions.update_one(
-            {"session_id": session_id},
-            {"$set": {"status": "CLOSED", "completed_at": completed_at.timestamp()}},
-        )
-
-    if canonical_session:
-        await db.sessions.update_one(
-            build_session_lookup(session_id),
-            {
-                "$set": {
-                    "status": "CLOSED",
-                    "closed_at": completed_at,
-                    "completed_at": completed_at,
-                    "last_heartbeat": completed_at,
-                }
-            },
-        )
-
-    try:
-        await lock_manager.delete_session(session_id)
-    except Exception:
-        logger.debug("Session lock deletion skipped during finalization", exc_info=True)
-
-    await manager.broadcast_to_session(
-        message={
-            "type": "session_completed",
-            "payload": {
-                "session_id": session_id,
-                "completed_by": user_id,
-                "completed_at": completed_at.timestamp(),
-                "status": "CLOSED",
-            },
-        },
-        session_id=session_id,
-    )
-
-    return {
-        "success": True,
-        "id": session_id,
-        "status": "CLOSED",
-        "message": "Session completed successfully",
-    }
 
 
 @router.post("/{session_id}/finalize")
@@ -1988,29 +1831,17 @@ async def logout_all_sessions(
     # 1. Revoke all refresh tokens
     revoked_tokens = await refresh_token_service.revoke_all_user_tokens(username)
 
-    # 2. Close all active session records
-    # Update sessions collection
-    sess_result = await db.sessions.update_many(
-        {"staff_user": username, "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]}},
-        {"$set": {"status": "CLOSED", "completed_at": _current_utc_naive()}},
+    # Governance: session closure is only allowed via canonical finalize endpoint.
+    active_count = await db.sessions.count_documents(
+        {"staff_user": username, "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]}}
     )
-
-    # Update verification_sessions collection
-    v_sess_result = await db.verification_sessions.update_many(
-        {"user_id": username, "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]}},
-        {"$set": {"status": "CLOSED", "completed_at": time.time()}},
-    )
-
-    # 3. Release any rack locks (if any)
-    # This might require iterating or a more complex query if we had many,
-    # but for now we rely on the session heartbeat timeout to clean up Redis.
 
     return {
         "success": True,
         "username": username,
         "revoked_tokens": revoked_tokens,
-        "closed_sessions": sess_result.modified_count + v_sess_result.modified_count,
-        "message": "All active sessions have been logged out.",
+        "active_sessions_remaining": active_count,
+        "message": "Tokens revoked. Session closure must be done via /finalize.",
     }
 
 
@@ -2027,57 +1858,10 @@ async def bulk_close_sessions(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
 ):
-    """Close multiple sessions at once."""
-    results = []
-    succeeded = 0
-    failed = 0
-
-    for session_id in request.session_ids:
-        try:
-            session = await find_session(db, session_id)
-            if not session:
-                results.append(
-                    {"session_id": session_id, "success": False, "error": "Session not found"}
-                )
-                failed += 1
-                continue
-
-            if session.get("status") in ["CLOSED", "COMPLETED"]:
-                results.append(
-                    {"session_id": session_id, "success": False, "error": "Already closed"}
-                )
-                failed += 1
-                continue
-
-            if current_user["role"] not in ["supervisor", "admin"]:
-                if session.get("created_by") != current_user["username"]:
-                    results.append(
-                        {"session_id": session_id, "success": False, "error": "Access denied"}
-                    )
-                    failed += 1
-                    continue
-
-            await db.sessions.update_one(
-                {"id": session_id},
-                {
-                    "$set": {
-                        "status": "CLOSED",
-                        "closed_at": _current_utc_naive(),
-                        "closed_by": current_user["username"],
-                    }
-                },
-            )
-            results.append({"session_id": session_id, "success": True})
-            succeeded += 1
-
-        except Exception as e:
-            results.append({"session_id": session_id, "success": False, "error": str(e)})
-            failed += 1
-
-    return {
-        "success": succeeded > 0,
-        "total": len(request.session_ids),
-        "succeeded": succeeded,
-        "failed": failed,
-        "results": results,
-    }
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "CRITICAL: bulk_close_sessions is disabled. "
+            "Use per-session canonical /finalize flow."
+        ),
+    )

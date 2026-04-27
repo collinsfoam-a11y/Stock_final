@@ -117,47 +117,9 @@ async def backfill_empty_session_snapshots(
                 )
                 continue
 
-            await db.session_snapshots.update_one(
-                {"_id": snapshot_doc["_id"]},
-                {
-                    "$set": {
-                        "warehouse": warehouse,
-                        "items": items_payload,
-                        "item_count": len(items_payload),
-                        "snapshot_hash": snapshot_hash,
-                    }
-                },
-            )
-            stats["repaired"] += 1
-
-            if session_doc is not None:
-                session_update = {"snapshot_hash": snapshot_hash}
-                if snapshot_doc.get("id") and not session_doc.get("snapshot_items_ref"):
-                    session_update["snapshot_items_ref"] = snapshot_doc["id"]
-                if snapshot_doc.get("config_version_id") and not session_doc.get(
-                    "config_version_id"
-                ):
-                    session_update["config_version_id"] = snapshot_doc["config_version_id"]
-
-                session_filter = (
-                    {"_id": session_doc["_id"]}
-                    if session_doc.get("_id")
-                    else {"id": current_session_id}
-                )
-                session_result = await db.sessions.update_one(
-                    session_filter,
-                    {"$set": session_update},
-                )
-                if session_result.matched_count:
-                    stats["updated_sessions"] += 1
-
-            logger.info(
-                "Repaired snapshot",
-                extra={
-                    "session_id": current_session_id,
-                    "warehouse": warehouse,
-                    "item_count": len(items_payload),
-                },
+            raise RuntimeError(
+                "CRITICAL: Snapshot execution mode is disabled. "
+                "Baseline snapshots remain immutable after session start."
             )
         except Exception:
             stats["errors"] += 1
@@ -170,6 +132,11 @@ async def backfill_empty_session_snapshots(
 
 
 async def _run_backfill(args: argparse.Namespace) -> dict[str, int]:
+    if args.execute:
+        raise RuntimeError(
+            "CRITICAL: Baseline snapshots are immutable after session start. "
+            "Execution mode is disabled."
+        )
     async with lifespan_db(settings.MONGO_URL, settings.DB_NAME):
         db = get_db()
         if db is None:

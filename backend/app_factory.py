@@ -99,6 +99,9 @@ from backend.exceptions import RateLimitError as RateLimitExceededError  # noqa:
 from backend.exceptions import StockVerifyException as DatabaseError  # noqa: E402
 from backend.exceptions import ValidationError  # noqa: E402
 from backend.services.canonical_inventory import build_session_lookup  # noqa: E402
+from backend.services.count_line_write_service import CountLineWriteService  # noqa: E402
+from backend.services.governance_guard import raise_forbidden_direct_write  # noqa: E402
+from backend.services.session_lifecycle_service import SessionLifecycleService  # noqa: E402
 
 # Utils
 from backend.utils.api_utils import result_to_response, sanitize_for_logging  # noqa: E402
@@ -702,55 +705,13 @@ async def logout(
 async def bulk_reconcile_sessions(
     session_ids: list[str], current_user: dict = Depends(get_current_user)
 ):
-    """Bulk reconcile sessions (supervisor only)"""
-    if current_user["role"] not in ["supervisor", "admin"]:
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
-
-    try:
-        updated_count = 0
-        errors = []
-
-        for session_id in session_ids:
-            try:
-                result = await db.sessions.update_one(
-                    {"$or": [{"id": session_id}, {"session_id": session_id}]},
-                    {
-                        "$set": {
-                            # Store as ACTIVE + reconciled_at so the Session schema can present it
-                            # back to clients as RECONCILE while keeping DB normalized.
-                            "status": "ACTIVE",
-                            "reconciled_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                        }
-                    },
-                )
-                if result.modified_count > 0:
-                    updated_count += 1
-                    # Log activity
-                    await activity_log_service.log_activity(
-                        user=current_user["username"],
-                        role=current_user["role"],
-                        action="bulk_reconcile_session",
-                        entity_type="session",
-                        entity_id=session_id,
-                        details={"operation": "bulk_reconcile"},
-                        ip_address=None,
-                        user_agent=None,
-                    )
-            except Exception as e:
-                errors.append({"session_id": session_id, "error": str(e)})
-
-        return {
-            "success": True,
-            "updated_count": updated_count,
-            "total": len(session_ids),
-            "errors": errors,
-        }
-    except Exception as e:
-        logger.error(
-            "Bulk reconcile sessions error: %s",
-            sanitize_for_logging(str(e), 200),
-        )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "CRITICAL: /sessions/bulk/reconcile is disabled. "
+            "Use canonical session finalization flow."
+        ),
+    )
 
 
 @api_router.post("/sessions/bulk/export")
@@ -1008,7 +969,15 @@ async def _load_count_line_context(line_data: CountLineCreate) -> tuple[dict[str
     if not erp_item:
         raise HTTPException(status_code=404, detail="Item not found in ERP")
 
-    variance = line_data.counted_qty - erp_item.get("stock_qty", 0)
+    write_service = CountLineWriteService(db)
+    baseline_qty, _ = await write_service.resolve_baseline(
+        session_id=line_data.session_id,
+        item_code=line_data.item_code,
+        username="system",
+        erp_item=erp_item,
+    )
+    erp_item["stock_qty"] = baseline_qty
+    variance = line_data.counted_qty - baseline_qty
     return session, erp_item, variance
 
 
@@ -1136,13 +1105,12 @@ async def _refresh_session_count_line_stats(session_id: str) -> None:
         stats = await db.count_lines.aggregate(pipeline).to_list(1)  # type: ignore
         if not stats:
             return
-        await db.sessions.update_one(
-            {"$or": [{"id": session_id}, {"session_id": session_id}]},
+        lifecycle_service = SessionLifecycleService(db)
+        await lifecycle_service.update_session_totals(
+            session_id,
             {
-                "$set": {
-                    "total_items": stats[0]["total_items"],
-                    "total_variance": stats[0]["total_variance"],
-                }
+                "total_items": stats[0]["total_items"],
+                "total_variance": stats[0]["total_variance"],
             },
         )
     except Exception as exc:
@@ -1161,6 +1129,13 @@ async def create_count_line(
     current_user: dict = Depends(get_current_user),
 ):
     """Create a legacy count line while preserving existing review behavior."""
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "CRITICAL: /legacy/count-lines is disabled. "
+            "Use canonical /count-lines write flow."
+        ),
+    )
     _, erp_item, variance = await _load_count_line_context(line_data)
     _validate_variance_reason(line_data, variance)
 
@@ -1187,7 +1162,7 @@ async def create_count_line(
         current_user["username"],
     )
 
-    await db.count_lines.insert_one(count_line)
+    raise_forbidden_direct_write("app_factory.legacy_count_lines_insert")
     await _update_item_location_from_count_line(line_data)
     await _refresh_session_count_line_stats(line_data.session_id)
 
@@ -1232,15 +1207,20 @@ async def verify_stock(
     """Mark a count line as verified. Exposed for direct test usage."""
     _require_supervisor(current_user)
     db_client = _get_db_client(db_override)
+    count_line = await db_client.count_lines.find_one({"id": line_id})
+    if not count_line:
+        raise HTTPException(status_code=404, detail="Count line not found")
+    filter_query = {"_id": count_line["_id"]} if count_line.get("_id") else {"id": line_id}
+    write_service = CountLineWriteService(db_client)
 
-    update_result = await db_client.count_lines.update_one(
-        {"id": line_id},
-        update={
-            "$set": {
-                "verified": True,
-                "verified_by": current_user["username"],
-                "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
-            }
+    update_result = await write_service.process_write(
+        {"operation": "update_one", "filter": filter_query, "update": {"$set": {}}},
+        context={
+            "transition": "verify",
+            "username": current_user["username"],
+            "session_id": str(count_line.get("session_id") or ""),
+            "governance_mode": "mutable_session",
+            "skip_session_totals_update": True,
         },
     )
     if update_result.modified_count == 0:
@@ -1270,10 +1250,21 @@ async def unverify_stock(
     """Remove verification metadata from a count line."""
     _require_supervisor(current_user)
     db_client = _get_db_client(db_override)
+    count_line = await db_client.count_lines.find_one({"id": line_id})
+    if not count_line:
+        raise HTTPException(status_code=404, detail="Count line not found")
+    filter_query = {"_id": count_line["_id"]} if count_line.get("_id") else {"id": line_id}
+    write_service = CountLineWriteService(db_client)
 
-    update_result = await db_client.count_lines.update_one(
-        {"id": line_id},
-        update={"$set": {"verified": False, "verified_by": None, "verified_at": None}},
+    update_result = await write_service.process_write(
+        {"operation": "update_one", "filter": filter_query, "update": {"$set": {}}},
+        context={
+            "transition": "unverify",
+            "username": current_user["username"],
+            "session_id": str(count_line.get("session_id") or ""),
+            "governance_mode": "mutable_session",
+            "skip_session_totals_update": True,
+        },
     )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")

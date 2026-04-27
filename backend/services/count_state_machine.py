@@ -20,6 +20,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Optional
 
+from backend.services.count_line_write_service import CountLineWriteService
+
 logger = logging.getLogger(__name__)
 
 
@@ -280,9 +282,22 @@ class CountLineStateMachine:
         # Add metadata if provided
         if metadata:
             update_data["state_metadata"] = metadata
+            if "assigned_to" in metadata:
+                update_data["assigned_to"] = metadata.get("assigned_to")
 
-        # Update count line
-        await self.db.count_lines.update_one({"id": count_line_id}, {"$set": update_data})
+        # Update count line through canonical write authority
+        write_service = CountLineWriteService(self.db)
+        await write_service.process_write(
+            {
+                "operation": "update_one",
+                "filter": {"id": count_line_id},
+                "update": {"$set": update_data},
+            },
+            context={
+                "session_id": str(count_line.get("session_id") or ""),
+                "username": user_id,
+            },
+        )
 
         # Log state transition
         await self._log_transition(

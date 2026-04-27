@@ -38,6 +38,14 @@ SYNTHETIC_WAREHOUSE_PREFIXES = (
     "picker-test",
     "stale-auth-",
 )
+GOVERNED_COLLECTIONS = {
+    "count_lines",
+    "sessions",
+    "verification_sessions",
+    "recount_requests",
+    "session_snapshots",
+    "unknown_items",
+}
 
 
 def _is_synthetic_warehouse(value: Any) -> bool:
@@ -65,6 +73,7 @@ async def cleanup_synthetic_session_data(
         "synthetic_session_ids": 0,
         "archived": 0,
         "deleted": 0,
+        "blocked_collections": [],
         "collections": {},
     }
 
@@ -97,7 +106,15 @@ async def cleanup_synthetic_session_data(
             "matched": matched,
             "archived": 0,
             "deleted": 0,
+            "blocked": collection_name in GOVERNED_COLLECTIONS,
         }
+        if collection_name in GOVERNED_COLLECTIONS:
+            stats["blocked_collections"].append(collection_name)
+            logger.warning(
+                "Skipping governed collection cleanup",
+                extra={"collection": collection_name, "matched": matched},
+            )
+            continue
 
         if dry_run or matched == 0:
             continue
@@ -178,10 +195,15 @@ def main() -> None:
     print(f"Synthetic session ids: {stats['synthetic_session_ids']}")
     print(f"Archived docs: {stats['archived']}")
     print(f"Deleted docs: {stats['deleted']}")
+    blocked = stats.get("blocked_collections") or []
+    if blocked:
+        print(f"Blocked governed collections: {', '.join(sorted(set(blocked)))}")
     for collection_name, collection_stats in stats["collections"].items():
         print(
             f"{collection_name}: matched={collection_stats['matched']}, "
-            f"archived={collection_stats['archived']}, deleted={collection_stats['deleted']}"
+            f"archived={collection_stats['archived']}, "
+            f"deleted={collection_stats['deleted']}, "
+            f"blocked={collection_stats.get('blocked', False)}"
         )
 
 

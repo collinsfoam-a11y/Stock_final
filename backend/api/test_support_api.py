@@ -29,6 +29,14 @@ TEST_SUPPORT_ALLOWED_ENVIRONMENTS = {"development", "test"}
 TEST_RUN_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_-]{7,119}$"
 FIXTURE_SOURCE = "playwright-business-e2e"
 LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost", "test", "testclient", "testserver"}
+GOVERNED_MUTATION_COLLECTIONS = {
+    "count_lines",
+    "sessions",
+    "verification_sessions",
+    "recount_requests",
+    "session_snapshots",
+    "unknown_items",
+}
 
 
 class ScopedTestSupportRequest(BaseModel):
@@ -168,6 +176,10 @@ def _with_test_run_scope(test_run_id: str, query: dict[str, Any]) -> dict[str, A
     if not query:
         return scoped_query
     return {"$or": [scoped_query, query]}
+
+
+def _is_governed_mutation_collection(collection_name: str) -> bool:
+    return collection_name in GOVERNED_MUTATION_COLLECTIONS
 
 
 def _request_is_local(request: Request) -> bool:
@@ -361,6 +373,48 @@ def _build_collection_queries(
     }
 
 
+async def _resolve_fixture_scope_context(
+    db: Any, payload: SyntheticCleanupRequest
+) -> dict[str, Any]:
+    test_run_id = _normalize_test_run_id(payload.test_run_id)
+    item_codes = [_require_synthetic_item_code(code) for code in _normalize_list(payload.item_codes)]
+    barcodes = _normalize_list(payload.barcodes)
+    warehouse_fragments = [
+        _require_synthetic_session_marker(marker) for marker in _normalize_list(payload.warehouse_fragments)
+    ]
+    explicit_session_ids = _normalize_list(payload.session_ids)
+    explicit_count_line_ids = _normalize_list(payload.count_line_ids)
+
+    session_ids = await _resolve_session_ids(
+        db,
+        explicit_session_ids=explicit_session_ids,
+        warehouse_fragments=warehouse_fragments,
+    )
+    count_line_ids = await _resolve_count_line_ids(
+        db,
+        explicit_count_line_ids=explicit_count_line_ids,
+        item_codes=item_codes,
+        barcodes=barcodes,
+        session_ids=session_ids,
+    )
+    collection_queries = _build_collection_queries(
+        item_codes=item_codes,
+        barcodes=barcodes,
+        session_ids=session_ids,
+        count_line_ids=count_line_ids,
+        warehouse_fragments=warehouse_fragments,
+    )
+
+    return {
+        "test_run_id": test_run_id,
+        "item_codes": item_codes,
+        "barcodes": barcodes,
+        "session_ids": session_ids,
+        "count_line_ids": count_line_ids,
+        "collection_queries": collection_queries,
+    }
+
+
 def _fixture_scope_metadata(current_user: dict[str, Any], test_run_id: str) -> dict[str, Any]:
     return {
         "test_run_id": test_run_id,
@@ -377,18 +431,23 @@ async def _apply_runtime_scope(
     current_user: dict[str, Any],
     test_run_id: str,
     collection_queries: dict[str, dict[str, Any]],
-) -> dict[str, int]:
+) -> tuple[dict[str, int], list[str]]:
     scoped_counts: dict[str, int] = {}
+    blocked_collections: list[str] = []
     metadata = _fixture_scope_metadata(current_user, test_run_id)
 
     for collection_name, query in collection_queries.items():
+        if _is_governed_mutation_collection(collection_name):
+            scoped_counts[collection_name] = 0
+            blocked_collections.append(collection_name)
+            continue
         if not query:
             scoped_counts[collection_name] = 0
             continue
         result = await db[collection_name].update_many(query, {"$set": metadata})
         scoped_counts[collection_name] = int(getattr(result, "modified_count", 0))
 
-    return scoped_counts
+    return scoped_counts, blocked_collections
 
 
 async def _fetch_collection_documents(
@@ -579,37 +638,15 @@ async def cleanup_synthetic_fixtures(
 ):
     _assert_test_support_access(request, current_user)
 
-    test_run_id = _normalize_test_run_id(payload.test_run_id)
-    item_codes = [_require_synthetic_item_code(code) for code in _normalize_list(payload.item_codes)]
-    barcodes = _normalize_list(payload.barcodes)
-    warehouse_fragments = [
-        _require_synthetic_session_marker(marker)
-        for marker in _normalize_list(payload.warehouse_fragments)
-    ]
-    explicit_session_ids = _normalize_list(payload.session_ids)
-    explicit_count_line_ids = _normalize_list(payload.count_line_ids)
+    scope_context = await _resolve_fixture_scope_context(db, payload)
+    test_run_id = scope_context["test_run_id"]
+    item_codes = scope_context["item_codes"]
+    barcodes = scope_context["barcodes"]
+    session_ids = scope_context["session_ids"]
+    count_line_ids = scope_context["count_line_ids"]
+    collection_queries = scope_context["collection_queries"]
 
-    session_ids = await _resolve_session_ids(
-        db,
-        explicit_session_ids=explicit_session_ids,
-        warehouse_fragments=warehouse_fragments,
-    )
-    count_line_ids = await _resolve_count_line_ids(
-        db,
-        explicit_count_line_ids=explicit_count_line_ids,
-        item_codes=item_codes,
-        barcodes=barcodes,
-        session_ids=session_ids,
-    )
-    collection_queries = _build_collection_queries(
-        item_codes=item_codes,
-        barcodes=barcodes,
-        session_ids=session_ids,
-        count_line_ids=count_line_ids,
-        warehouse_fragments=warehouse_fragments,
-    )
-
-    scoped = await _apply_runtime_scope(
+    scoped, blocked_collections = await _apply_runtime_scope(
         db,
         current_user=current_user,
         test_run_id=test_run_id,
@@ -618,6 +655,9 @@ async def cleanup_synthetic_fixtures(
 
     deleted: dict[str, int] = {}
     for collection_name, query in collection_queries.items():
+        if _is_governed_mutation_collection(collection_name):
+            deleted[collection_name] = 0
+            continue
         scoped_query = _with_test_run_scope(test_run_id, query)
         if not scoped_query:
             deleted[collection_name] = 0
@@ -635,6 +675,7 @@ async def cleanup_synthetic_fixtures(
         "test_run_id": test_run_id,
         "deleted": deleted,
         "scoped": scoped,
+        "blocked_collections": sorted(set(blocked_collections)),
         "session_ids": session_ids,
         "count_line_ids": count_line_ids,
     }
@@ -649,36 +690,12 @@ async def scope_runtime_fixtures(
 ):
     _assert_test_support_access(request, current_user)
 
-    test_run_id = _normalize_test_run_id(payload.test_run_id)
-    item_codes = [_require_synthetic_item_code(code) for code in _normalize_list(payload.item_codes)]
-    barcodes = _normalize_list(payload.barcodes)
-    warehouse_fragments = [
-        _require_synthetic_session_marker(marker)
-        for marker in _normalize_list(payload.warehouse_fragments)
-    ]
-    explicit_session_ids = _normalize_list(payload.session_ids)
-    explicit_count_line_ids = _normalize_list(payload.count_line_ids)
-
-    session_ids = await _resolve_session_ids(
-        db,
-        explicit_session_ids=explicit_session_ids,
-        warehouse_fragments=warehouse_fragments,
-    )
-    count_line_ids = await _resolve_count_line_ids(
-        db,
-        explicit_count_line_ids=explicit_count_line_ids,
-        item_codes=item_codes,
-        barcodes=barcodes,
-        session_ids=session_ids,
-    )
-    collection_queries = _build_collection_queries(
-        item_codes=item_codes,
-        barcodes=barcodes,
-        session_ids=session_ids,
-        count_line_ids=count_line_ids,
-        warehouse_fragments=warehouse_fragments,
-    )
-    scoped = await _apply_runtime_scope(
+    scope_context = await _resolve_fixture_scope_context(db, payload)
+    test_run_id = scope_context["test_run_id"]
+    session_ids = scope_context["session_ids"]
+    count_line_ids = scope_context["count_line_ids"]
+    collection_queries = scope_context["collection_queries"]
+    scoped, blocked_collections = await _apply_runtime_scope(
         db,
         current_user=current_user,
         test_run_id=test_run_id,
@@ -689,6 +706,7 @@ async def scope_runtime_fixtures(
         "success": True,
         "test_run_id": test_run_id,
         "scoped": scoped,
+        "blocked_collections": sorted(set(blocked_collections)),
         "session_ids": session_ids,
         "count_line_ids": count_line_ids,
     }
@@ -703,35 +721,11 @@ async def inspect_synthetic_fixtures(
 ):
     _assert_test_support_access(request, current_user)
 
-    test_run_id = _normalize_test_run_id(payload.test_run_id)
-    item_codes = [_require_synthetic_item_code(code) for code in _normalize_list(payload.item_codes)]
-    barcodes = _normalize_list(payload.barcodes)
-    warehouse_fragments = [
-        _require_synthetic_session_marker(marker)
-        for marker in _normalize_list(payload.warehouse_fragments)
-    ]
-    explicit_session_ids = _normalize_list(payload.session_ids)
-    explicit_count_line_ids = _normalize_list(payload.count_line_ids)
-
-    session_ids = await _resolve_session_ids(
-        db,
-        explicit_session_ids=explicit_session_ids,
-        warehouse_fragments=warehouse_fragments,
-    )
-    count_line_ids = await _resolve_count_line_ids(
-        db,
-        explicit_count_line_ids=explicit_count_line_ids,
-        item_codes=item_codes,
-        barcodes=barcodes,
-        session_ids=session_ids,
-    )
-    collection_queries = _build_collection_queries(
-        item_codes=item_codes,
-        barcodes=barcodes,
-        session_ids=session_ids,
-        count_line_ids=count_line_ids,
-        warehouse_fragments=warehouse_fragments,
-    )
+    scope_context = await _resolve_fixture_scope_context(db, payload)
+    test_run_id = scope_context["test_run_id"]
+    session_ids = scope_context["session_ids"]
+    count_line_ids = scope_context["count_line_ids"]
+    collection_queries = scope_context["collection_queries"]
     max_records = payload.max_records
 
     sessions = await _fetch_collection_documents(

@@ -16,7 +16,6 @@ from backend.db.runtime import get_db
 from backend.models.audit import AuditEventType, AuditLogStatus
 from backend.services.activity_log import ActivityLogService
 from backend.services.canonical_inventory import (
-    build_session_lookup,
     can_reuse_rejected_count_line,
     count_line_requires_supervisor_review,
     extract_document_id,
@@ -33,6 +32,8 @@ from backend.services.lock_service import LockService, ResourceLockedError
 from backend.services.logic_guard import build_request_context, enforce_session_logic
 from backend.services.notification_service import NotificationService
 from backend.services.snapshot_service import SnapshotService
+from backend.services.session_lifecycle_service import SessionLifecycleService
+from backend.services.transaction_manager import mongo_transaction
 from backend.services.variant_service import VariantService
 from backend.utils.api_utils import sanitize_for_logging
 
@@ -458,20 +459,13 @@ async def _resolve_snapshot_baseline(
     erp_item: dict[str, Any],
     username: str,
 ) -> tuple[float, str]:
-    erp_snapshot = None
-    if _snapshot_service:
-        erp_snapshot = await _snapshot_service.get_or_create_snapshot(
-            line_data.session_id, line_data.item_code, username
-        )
-
-    erp_qty_source: Any = (
-        erp_snapshot.get("erp_qty") if erp_snapshot else erp_item.get("stock_qty", 0)
+    write_service = _get_count_line_write_service(_get_db_client())
+    return await write_service.resolve_baseline(
+        session_id=line_data.session_id,
+        item_code=line_data.item_code,
+        username=username,
+        erp_item=erp_item,
     )
-    erp_qty = 0.0 if erp_qty_source is None else float(erp_qty_source or 0)
-    baseline_hash = (
-        str(erp_snapshot.get("baseline_hash") or "") if erp_snapshot else "UNHASHED_FALLBACK"
-    )
-    return erp_qty, baseline_hash
 
 
 def _apply_misplaced_stock_flags(
@@ -533,9 +527,9 @@ def _build_count_line_lock_keys(
     session_variant_lock = (
         f"session:{line_data.session_id}:{variant_lock_key}" if variant_lock_key else None
     )
-    lock_key = (
-        f"{line_data.session_id}:{line_data.item_code}:{line_data.floor_no}:{line_data.rack_no}"
-    )
+    floor_id = line_data.floor_id or line_data.floor_no or ""
+    rack_id = line_data.rack_id or line_data.rack_no or ""
+    lock_key = f"{line_data.session_id}:{line_data.item_code}:{floor_id}:{rack_id}"
     return lock_key, session_variant_lock
 
 
@@ -614,12 +608,20 @@ def _build_count_line_document(
     is_misplaced: bool,
     recount_update_target: Optional[dict[str, Any]],
 ) -> tuple[dict[str, Any], datetime]:
-    count_line_id = (
-        extract_document_id(recount_update_target) if recount_update_target else str(uuid.uuid4())
+    count_line_id = str(uuid.uuid4())
+    previous_version_id = (
+        extract_document_id(recount_update_target) if recount_update_target else None
+    )
+    recount_root_id = (
+        line_data.recount_of_id
+        or (recount_update_target or {}).get("recount_of_id")
+        or previous_version_id
+    )
+    version = int((recount_update_target or {}).get("version", 1) or 1) + (
+        1 if recount_update_target else 0
     )
     idempotency_key = (
         _normalize_idempotency_key(line_data.idempotency_key)
-        or _normalize_idempotency_key((recount_update_target or {}).get("idempotency_key"))
         or count_line_id
     )
     counted_at = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -627,8 +629,13 @@ def _build_count_line_document(
     count_line = {
         "id": count_line_id,
         "session_id": line_data.session_id,
+        "location_id": line_data.location_id,
+        "floor_id": line_data.floor_id,
+        "rack_id": line_data.rack_id,
         "idempotency_key": idempotency_key,
-        "recount_of_id": line_data.recount_of_id,
+        "recount_of_id": recount_root_id,
+        "version": version,
+        "previous_version_id": previous_version_id,
         "item_code": line_data.item_code,
         "barcode": line_data.barcode or erp_item.get("barcode"),
         "item_name": erp_item.get("item_name", "Unknown"),
@@ -642,8 +649,8 @@ def _build_count_line_document(
         "photo_base64": line_data.photo_base64,
         "damaged_qty": line_data.damaged_qty,
         "item_condition": line_data.item_condition,
-        "floor_no": line_data.floor_no,
-        "rack_no": line_data.rack_no,
+        "floor_no": line_data.floor_no or line_data.floor_id,
+        "rack_no": line_data.rack_no or line_data.rack_id,
         "mark_location": line_data.mark_location,
         "sr_no": line_data.sr_no,
         "manufacturing_date": line_data.manufacturing_date,
@@ -705,10 +712,9 @@ def _build_count_line_document(
         "recount_requested_by": None,
         "assigned_to": None,
     }
-    if recount_update_target:
-        count_line["recount_iteration"] = (
-            int(recount_update_target.get("recount_iteration", 0) or 0) + 1
-        )
+    count_line["recount_iteration"] = int((recount_update_target or {}).get("recount_iteration", 0) or 0) + (
+        1 if recount_update_target else 0
+    )
 
     return count_line, counted_at
 
@@ -724,39 +730,65 @@ async def _persist_count_line_document(
     write_service: CountLineWriteService,
     session: dict[str, Any],
 ) -> None:
-    if recount_update_target:
-        await write_service.process_write(
-            {
-                "operation": "update_one",
-                "filter": {"_id": recount_update_target["_id"]},
-                "update": {"$set": count_line},
-            },
-            context={"session": session, "username": username},
-        )
-    else:
+    async with mongo_transaction(db.client) as tx:
+        write_context = {
+            "session": session,
+            "username": username,
+            "db_session": tx,
+            "skip_session_totals_update": True,
+        }
+
         await write_service.process_write(
             {"operation": "insert_one", "document": count_line},
-            context={"session": session, "username": username},
+            context=write_context,
         )
+        if recount_update_target:
+            await write_service.process_write(
+                {
+                    "operation": "update_one",
+                    "filter": {"_id": recount_update_target["_id"]},
+                    "update": {
+                        "$set": {
+                            "status": "SUPERSEDED",
+                            "superseded_at": counted_at,
+                            "superseded_by": username,
+                            "superseded_by_version_id": count_line["id"],
+                            "location_id": count_line.get("location_id"),
+                            "floor_id": count_line.get("floor_id"),
+                            "rack_id": count_line.get("rack_id"),
+                        }
+                    },
+                },
+                context=write_context,
+            )
 
-    draft_update_result = db.count_line_drafts.update_many(
-        {
+        draft_query = {
             "$or": [
                 _build_count_line_draft_filter(line_data, username),
                 _build_legacy_count_line_draft_filter(line_data, username),
             ]
-        },
-        {
+        }
+        draft_update_doc = {
             "$set": {
                 "status": "submitted",
                 "submitted_at": counted_at,
                 "submitted_count_line_id": count_line["id"],
                 "updated_at": counted_at,
             }
-        },
-    )
-    if inspect.isawaitable(draft_update_result):
-        await draft_update_result
+        }
+        try:
+            draft_update_result = db.count_line_drafts.update_many(
+                draft_query,
+                draft_update_doc,
+                session=tx,
+            )
+        except TypeError:
+            draft_update_result = db.count_line_drafts.update_many(
+                draft_query,
+                draft_update_doc,
+            )
+        if inspect.isawaitable(draft_update_result):
+            await draft_update_result
 
 
 async def _create_and_persist_count_line(
@@ -782,7 +814,7 @@ async def _create_and_persist_count_line(
         expected_qty=erp_qty,
         variance_reason=line_data.variance_reason,
         correction_reason=line_data.correction_reason,
-        location=line_data.floor_no,
+        location=line_data.floor_id,
     )
     risk_flags, is_misplaced, financial_impact = _build_count_line_risk_context(
         session,
@@ -895,9 +927,10 @@ async def _maybe_update_session_barcode(db: Any, line_data: CountLineCreate) -> 
     try:
         session_result = await find_session(db, line_data.session_id)
         if session_result and not session_result.get("barcode"):
-            await db.sessions.update_one(
-                build_session_lookup(line_data.session_id),
-                {"$set": {"barcode": line_data.barcode}},
+            lifecycle_service = SessionLifecycleService(db)
+            await lifecycle_service.update_session_fields(
+                line_data.session_id,
+                {"barcode": line_data.barcode},
             )
             logger.info(
                 "Updated session %s with barcode %s",
@@ -1095,7 +1128,7 @@ async def create_count_line(
         expected_qty=erp_qty,
         variance_reason=line_data.variance_reason,
         correction_reason=line_data.correction_reason,
-        location=line_data.floor_no,
+        location=line_data.floor_id,
     )
     risk_flags, is_misplaced, financial_impact = _build_count_line_risk_context(
         session,
@@ -1207,7 +1240,10 @@ async def verify_stock(
                 }
             },
         },
-        context={"session_id": str(count_line.get("session_id") or "")},
+        context={
+            "session_id": str(count_line.get("session_id") or ""),
+            "governance_mode": "mutable_session",
+        },
     )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
@@ -1262,7 +1298,10 @@ async def unverify_stock(
             "filter": {"_id": count_line["_id"]},
             "update": {"$set": {"verified": False, "verified_by": None, "verified_at": None}},
         },
-        context={"session_id": str(count_line.get("session_id") or "")},
+        context={
+            "session_id": str(count_line.get("session_id") or ""),
+            "governance_mode": "mutable_session",
+        },
     )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
@@ -1468,10 +1507,10 @@ async def approve_count_line(
 
         write_service = _get_count_line_write_service(db)
         result = await write_service.process_write(
-            {
-                "operation": "update_one",
-                "filter": {"_id": count_line["_id"]},
-                "update": {
+        {
+            "operation": "update_one",
+            "filter": {"_id": count_line["_id"]},
+            "update": {
                     "$set": {
                         "status": "approved",
                         "approval_status": "APPROVED",
@@ -1480,11 +1519,14 @@ async def approve_count_line(
                         "approval_note": request.notes if request else None,
                         "rejection_reason": None,
                         "assigned_to": None,
-                    }
-                },
+                }
             },
-            context={"session_id": str(count_line.get("session_id") or "")},
-        )
+        },
+        context={
+            "session_id": str(count_line.get("session_id") or ""),
+            "governance_mode": "mutable_session",
+        },
+    )
 
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Count line not found")
@@ -1574,10 +1616,10 @@ async def reject_count_line(
 
         write_service = _get_count_line_write_service(db)
         result = await write_service.process_write(
-            {
-                "operation": "update_one",
-                "filter": {"_id": count_line["_id"]},
-                "update": {
+        {
+            "operation": "update_one",
+            "filter": {"_id": count_line["_id"]},
+            "update": {
                     "$set": {
                         "status": "rejected",
                         "approval_status": "REJECTED",
@@ -1590,11 +1632,14 @@ async def reject_count_line(
                         "recount_requested_at": rejected_at,
                         "recount_requested_by": current_user["username"],
                         "assigned_to": assigned_to,
-                    }
-                },
+                }
             },
-            context={"session_id": str(count_line.get("session_id") or "")},
-        )
+        },
+        context={
+            "session_id": str(count_line.get("session_id") or ""),
+            "governance_mode": "mutable_session",
+        },
+    )
 
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Count line not found")
@@ -2025,7 +2070,10 @@ async def delete_count_line(
         write_service = _get_count_line_write_service(db)
         result = await write_service.process_write(
             {"operation": "delete_one", "filter": {"_id": count_line["_id"]}},
-            context={"session_id": str(count_line.get("session_id") or "")},
+            context={
+                "session_id": str(count_line.get("session_id") or ""),
+                "governance_mode": "mutable_session",
+            },
         )
         if result.deleted_count == 0:
             raise HTTPException(status_code=404, detail="Count line not found")
@@ -2140,6 +2188,7 @@ async def bulk_approve_count_lines(
             context={
                 "candidate_lines": candidate_lines,
                 "session_ids": list(session_ids),
+                "governance_mode": "mutable_session",
             },
         )
 
@@ -2280,6 +2329,7 @@ async def bulk_reject_count_lines(
             context={
                 "candidate_lines": candidate_lines,
                 "session_ids": list(session_ids),
+                "governance_mode": "mutable_session",
             },
         )
 
@@ -2478,7 +2528,9 @@ async def merge_count_lines(
     )
 
     target_session = await _ensure_count_line_mutable(db, target_line)
+    target_session_id = str(target_line.get("session_id") or "")
     target_qty = float(target_line.get("counted_qty", 0) or 0)
+    merged_count = 0
 
     for source_id in payload.source_line_ids:
         if source_id == payload.target_line_id:
@@ -2495,6 +2547,15 @@ async def merge_count_lines(
             current_user=current_user,
             operation_name="merge_count_lines",
         )
+        source_session_id = str(source_line.get("session_id") or "")
+        if source_session_id != target_session_id:
+            results["failed"].append(
+                {
+                    "id": source_id,
+                    "error": "Cross-session merge is not allowed",
+                }
+            )
+            continue
 
         try:
             if payload.keep_target_qty:
@@ -2503,41 +2564,60 @@ async def merge_count_lines(
                 merged_qty = float(source_line.get("counted_qty", 0) or 0) + target_qty
 
             erp_item = await _get_erp_item_for_existing_count_line(db, target_line)
-
-            await write_service.process_write(
-                {
-                    "operation": "update_one",
-                    "filter": {"id": payload.target_line_id},
-                    "update": {
-                        "$set": {"counted_qty": merged_qty},
-                        "$push": {"merged_from": source_id},
+            async with mongo_transaction(db.client) as tx:
+                await write_service.process_write(
+                    {
+                        "operation": "update_one",
+                        "filter": {"id": payload.target_line_id},
+                        "update": {
+                            "$set": {"counted_qty": merged_qty},
+                            "$push": {"merged_from": source_id},
+                        },
                     },
-                },
-                context={
-                    "session": target_session,
-                    "erp_item": erp_item,
-                    "variance_reason": target_line.get("variance_reason"),
-                    "correction_reason": target_line.get("correction_reason"),
-                    "location": target_line.get("floor_no"),
-                    "username": current_user.get("username"),
-                },
-            )
-
-            await write_service.process_write(
-                {
-                    "operation": "update_one",
-                    "filter": {"id": source_id},
-                    "update": {
-                        "$set": {"status": "MERGED", "merged_into": payload.target_line_id},
+                    context={
+                        "session": target_session,
+                        "erp_item": erp_item,
+                        "variance_reason": target_line.get("variance_reason"),
+                        "correction_reason": target_line.get("correction_reason"),
+                        "location": target_line.get("floor_no"),
+                        "username": current_user.get("username"),
+                        "db_session": tx,
+                        "governance_mode": "mutable_session",
+                        "skip_session_totals_update": True,
                     },
-                },
-                context={"session_id": str(source_line.get("session_id") or "")},
-            )
+                )
+
+                await write_service.process_write(
+                    {
+                        "operation": "update_one",
+                        "filter": {"id": source_id},
+                        "update": {
+                            "$set": {"merged_into_id": payload.target_line_id},
+                        },
+                    },
+                    context={
+                        "session_id": source_session_id,
+                        "username": current_user.get("username"),
+                        "db_session": tx,
+                        "governance_mode": "mutable_session",
+                        "skip_session_totals_update": True,
+                    },
+                )
             results["merged"].append(source_id)
             target_qty = merged_qty
             target_line["counted_qty"] = merged_qty
+            merged_count += 1
 
         except Exception as e:
             results["failed"].append({"id": source_id, "error": str(e)})
+
+    if merged_count > 0 and target_session_id:
+        try:
+            await recompute_session_totals(db, target_session_id)
+        except Exception as exc:
+            logger.warning(
+                "Failed to recompute session totals after merge: %s",
+                _safe_log_value(exc, max_length=200),
+            )
 
     return {"success": True, "target_line_id": payload.target_line_id, **results}
