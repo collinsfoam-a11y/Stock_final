@@ -74,7 +74,7 @@ exports/
 .aider*
 .autogpt.yml
 .autopilot.json
-.agent/approval-log.jsonl
+.agent/approval-log*.jsonl
 .clinerules
 .cursorrules
 .devon.yml
@@ -91,7 +91,9 @@ cooking_agent/
 test_failures.txt
 pre_commit_output.txt
 frontend/playwright-report/
+frontend/playwright/.auth/
 frontend/test-results/
+frontend/testsprite_tests/tmp/*
 
 # Docker
 
@@ -103,8 +105,13 @@ backend/data/db/
 backend/data/db_backup_*/
 backend/data/db_failed_repair_*/
 backend/data/db_seeded_archive_*/
+backups/mongo/*.archive.gz
 *.bson
 
+# Generated evaluation artifacts (never commit)
+backend/tests/evaluation/reports/*.json
+
 # Generated frontend debug exports (never commit)
+frontend/dist/
 frontend/dist-debug/
 frontend/dist-debug2/

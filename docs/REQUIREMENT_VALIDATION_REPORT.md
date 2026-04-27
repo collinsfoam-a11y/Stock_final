@@ -73,14 +73,14 @@ The system implements the stock verification process via the following trace:
 ## 5. Pending Tasks
 
 - **TODOs:**
-  - *React Navigation Types:* `frontend/dist-debug2/_expo/static/js/web/index-9081a565c706e739c4f182429e50e266.js:131318` - Navigation types props missing.
-  - *Server Errors DOM Component:* `frontend/dist-debug2/_expo/static/js/web/index-9081a565c706e739c4f182429e50e266.js:130855` - Needs a DOM component to natively load server errors.
-  - *Image Loading Migration:* Several web bundled instances show `Handle image loading using useImage in a follow-up PR`.
+  - *React Navigation Types:* A generated web bundle audit surfaced missing navigation prop typings; keep follow-up work anchored to source modules rather than ignored build output.
+  - *Server Errors DOM Component:* A generated web bundle audit surfaced the need for a DOM component that can render server errors natively.
+  - *Image Loading Migration:* Generated web bundle output still surfaced `Handle image loading using useImage in a follow-up PR`.
   - *Mock Cleanup:* Remove `mock_items` initialization and `AUTO_SEED_MOCK_ERP_DATA` functionality when bridging production databases.
 
 - **FIXMEs:**
-  - *Event Types:* Multiple `// @ts-ignore FIXME(TS)` across web bundled files.
-  - *Layout Effects Resizing:* Workarounds for `useLayoutEffect` blocking paint in web implementations.
+  - *Event Types:* Multiple `// @ts-ignore FIXME(TS)` surfaced during the web bundle audit.
+  - *Layout Effects Resizing:* Workarounds for `useLayoutEffect` blocking paint were also surfaced during the web bundle audit.
 
 ## 6. Critical Bugs & Logic Risks
 
