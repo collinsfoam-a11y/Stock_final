@@ -8,6 +8,7 @@ const mockReplace = jest.fn();
 const mockShow = jest.fn();
 const mockGetSession = jest.fn();
 const mockGetCountLines = jest.fn();
+const mockToast = { show: mockShow };
 
 let mockOfflineMode = false;
 let mockParams: Record<string, string> = { id: "session-1" };
@@ -106,9 +107,7 @@ jest.mock("../../../src/components/ui/AnimatedPressable", () => {
 jest.mock("../../../src/components/supervisor/RecountAssignmentModal", () => () => null);
 
 jest.mock("../../../src/components/feedback/ToastProvider", () => ({
-  useToast: () => ({
-    show: mockShow,
-  }),
+  useToast: () => mockToast,
 }));
 
 jest.mock("../../../src/store/settingsStore", () => ({
