@@ -1099,14 +1099,14 @@ export const rejectCountLine = async (
  */
 export const updateSessionStatus = async (sessionId: string, status: string) => {
   const normalizedStatus = (status || "").toUpperCase();
-  if (normalizedStatus === "CLOSED" || normalizedStatus === "COMPLETED") {
-    // /finalize = supervisor-only, requires RECONCILE state, locks all count lines
-    // /complete = legacy close flow, any authorized user, sets status to CLOSED
-    const endpoint =
-      normalizedStatus === "COMPLETED"
-        ? `/api/sessions/${sessionId}/finalize`
-        : `/api/sessions/${sessionId}/complete`;
-    const response = await api.post(endpoint);
+  if (normalizedStatus === "COMPLETED" || normalizedStatus === "FINALIZED") {
+    const response = await api.post(`/api/sessions/${sessionId}/finalize`);
+    return response.data;
+  }
+
+  if (normalizedStatus === "CLOSED") {
+    // Legacy "close" now maps to the canonical review handoff.
+    const response = await api.put(`/api/sessions/${sessionId}/status?status=RECONCILE`);
     return response.data;
   }
 

@@ -104,7 +104,7 @@ export default function UnknownItemsScreen() {
 
         Alert.alert(
             "Confirm Dismiss",
-            "Are you sure you want to dismiss this report? The count data will be lost.",
+            "Are you sure you want to dismiss this report? It will be removed from the active queue.",
             [
                 { text: "Cancel", style: "cancel" },
                 {

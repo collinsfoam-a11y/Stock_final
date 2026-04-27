@@ -1,7 +1,6 @@
 import logging
 import os
 import sys
-import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional, TypeVar, cast
@@ -58,7 +57,7 @@ from backend.api.rack_api import router as rack_router  # noqa: E402
 from backend.api.realtime_dashboard_api import realtime_dashboard_router  # noqa: E402
 from backend.api.report_generation_api import report_generation_router  # noqa: E402
 from backend.api.reporting_api import router as reporting_router  # noqa: E402
-from backend.api.schemas import ApiResponse, CountLineCreate, Session, TokenResponse  # noqa: E402
+from backend.api.schemas import ApiResponse, Session, TokenResponse  # noqa: E402
 from backend.api.search_api import router as search_router  # noqa: E402
 from backend.api.security_api import security_router  # noqa: E402
 from backend.api.self_diagnosis_api import self_diagnosis_router  # noqa: E402
@@ -100,8 +99,6 @@ from backend.exceptions import StockVerifyException as DatabaseError  # noqa: E4
 from backend.exceptions import ValidationError  # noqa: E402
 from backend.services.canonical_inventory import build_session_lookup  # noqa: E402
 from backend.services.count_line_write_service import CountLineWriteService  # noqa: E402
-from backend.services.governance_guard import raise_forbidden_direct_write  # noqa: E402
-from backend.services.session_lifecycle_service import SessionLifecycleService  # noqa: E402
 
 # Utils
 from backend.utils.api_utils import result_to_response, sanitize_for_logging  # noqa: E402
@@ -701,19 +698,6 @@ async def logout(
 # NOTE: /sessions/bulk/close is handled by session_management_api.py (canonical)
 
 
-@api_router.post("/sessions/bulk/reconcile")
-async def bulk_reconcile_sessions(
-    session_ids: list[str], current_user: dict = Depends(get_current_user)
-):
-    raise HTTPException(
-        status_code=410,
-        detail=(
-            "CRITICAL: /sessions/bulk/reconcile is disabled. "
-            "Use canonical session finalization flow."
-        ),
-    )
-
-
 @api_router.post("/sessions/bulk/export")
 async def bulk_export_sessions(
     session_ids: list[str],
@@ -884,304 +868,6 @@ async def get_session_by_id(
             sanitize_for_logging(str(e), 200),
         )
         raise HTTPException(status_code=500, detail=str(e)) from e
-
-
-# ERP Item routes
-
-
-# Helper function to detect high-risk corrections
-def detect_risk_flags(erp_item: dict, line_data: CountLineCreate, variance: float) -> list[str]:
-    """Detect high-risk correction patterns"""
-    risk_flags = []
-
-    # Get values
-    erp_qty = erp_item.get("stock_qty", 0)
-    erp_mrp = erp_item.get("mrp", 0)
-    counted_mrp = line_data.mrp_counted or erp_mrp
-
-    # Calculate percentages safely
-    variance_percent = (abs(variance) / erp_qty * 100) if erp_qty > 0 else 100
-    mrp_change_percent = ((counted_mrp - erp_mrp) / erp_mrp * 100) if erp_mrp > 0 else 0
-
-    # Rule 1: Large variance
-    if abs(variance) > 100 or variance_percent > 50:
-        risk_flags.append("LARGE_VARIANCE")
-
-    # Rule 2: MRP reduced significantly
-    if mrp_change_percent < -20:
-        risk_flags.append("MRP_REDUCED_SIGNIFICANTLY")
-
-    # Rule 3: High value item with variance
-    if erp_mrp > 10000 and variance_percent > 5:
-        risk_flags.append("HIGH_VALUE_VARIANCE")
-
-    # Rule 4: Serial numbers missing for high-value item
-    if erp_mrp > 5000 and (not line_data.serial_numbers or len(line_data.serial_numbers) == 0):
-        risk_flags.append("SERIAL_MISSING_HIGH_VALUE")
-
-    # Rule 5: Correction without reason when variance exists
-    if abs(variance) > 0 and not line_data.correction_reason and not line_data.variance_reason:
-        risk_flags.append("MISSING_CORRECTION_REASON")
-
-    # Rule 6: MRP change without reason
-    if (
-        abs(mrp_change_percent) > 5
-        and not line_data.correction_reason
-        and not line_data.variance_reason
-    ):
-        risk_flags.append("MRP_CHANGE_WITHOUT_REASON")
-
-    # Rule 7: Photo required but missing
-    photo_required = (
-        abs(variance) > 100
-        or variance_percent > 50
-        or abs(mrp_change_percent) > 20
-        or erp_mrp > 10000
-    )
-    if (
-        photo_required
-        and not line_data.photo_base64
-        and (not line_data.photo_proofs or len(line_data.photo_proofs) == 0)
-    ):
-        risk_flags.append("PHOTO_PROOF_REQUIRED")
-
-    return risk_flags
-
-
-# MM3 fix: Align with updated signature in count_lines_routes.py
-def calculate_financial_impact(
-    erp_mrp: float, counted_mrp: float, counted_qty: float, erp_qty: float = 0.0
-) -> float:
-    """Calculate financial impact of quantity and MRP changes."""
-    old_value = erp_mrp * erp_qty
-    new_value = counted_mrp * counted_qty
-    return new_value - old_value
-
-
-async def _load_count_line_context(line_data: CountLineCreate) -> tuple[dict[str, Any], dict[str, Any], float]:
-    session = await db.sessions.find_one(
-        {"$or": [{"session_id": line_data.session_id}, {"id": line_data.session_id}]}
-    )
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    erp_item = await db.erp_items.find_one({"item_code": line_data.item_code})
-    if not erp_item:
-        raise HTTPException(status_code=404, detail="Item not found in ERP")
-
-    write_service = CountLineWriteService(db)
-    baseline_qty, _ = await write_service.resolve_baseline(
-        session_id=line_data.session_id,
-        item_code=line_data.item_code,
-        username="system",
-        erp_item=erp_item,
-    )
-    erp_item["stock_qty"] = baseline_qty
-    variance = line_data.counted_qty - baseline_qty
-    return session, erp_item, variance
-
-
-def _validate_variance_reason(line_data: CountLineCreate, variance: float) -> None:
-    if abs(variance) > 0 and not line_data.correction_reason and not line_data.variance_reason:
-        raise HTTPException(
-            status_code=400,
-            detail="Correction reason is mandatory when variance exists",
-        )
-
-
-async def _resolve_review_status_and_risk_flags(
-    line_data: CountLineCreate,
-    erp_item: dict[str, Any],
-    variance: float,
-    counted_by: str,
-) -> tuple[str, list[str]]:
-    risk_flags = detect_risk_flags(erp_item, line_data, variance)
-    approval_status = "NEEDS_REVIEW" if risk_flags else "PENDING"
-    duplicate_check = await db.count_lines.count_documents(
-        {
-            "session_id": line_data.session_id,
-            "item_code": line_data.item_code,
-            "counted_by": counted_by,
-        }
-    )
-    if duplicate_check > 0:
-        risk_flags.append("DUPLICATE_CORRECTION")
-        approval_status = "NEEDS_REVIEW"
-    return approval_status, risk_flags
-
-
-def _build_count_line_payload(
-    line_data: CountLineCreate,
-    erp_item: dict[str, Any],
-    variance: float,
-    financial_impact: float,
-    approval_status: str,
-    risk_flags: list[str],
-    counted_by: str,
-) -> dict[str, Any]:
-    return {
-        "id": str(uuid.uuid4()),
-        "session_id": line_data.session_id,
-        "item_code": line_data.item_code,
-        "item_name": erp_item.get("item_name", "Unknown"),
-        "barcode": erp_item.get("barcode", ""),
-        "erp_qty": erp_item.get("stock_qty", 0),
-        "counted_qty": line_data.counted_qty,
-        "variance": variance,
-        # Legacy fields
-        "variance_reason": line_data.variance_reason,
-        "variance_note": line_data.variance_note,
-        "remark": line_data.remark,
-        "photo_base64": line_data.photo_base64,
-        # Enhanced fields
-        "damaged_qty": line_data.damaged_qty,
-        "item_condition": line_data.item_condition,
-        "floor_no": line_data.floor_no,
-        "rack_no": line_data.rack_no,
-        "mark_location": line_data.mark_location,
-        "sr_no": line_data.sr_no,
-        "manufacturing_date": line_data.manufacturing_date,
-        "correction_reason": (
-            line_data.correction_reason.model_dump() if line_data.correction_reason else None
-        ),
-        "photo_proofs": (
-            [p.model_dump() for p in line_data.photo_proofs] if line_data.photo_proofs else None
-        ),
-        "correction_metadata": (
-            line_data.correction_metadata.model_dump() if line_data.correction_metadata else None
-        ),
-        "approval_status": approval_status,
-        "approval_by": None,
-        "approval_at": None,
-        "rejection_reason": None,
-        "risk_flags": risk_flags,
-        "financial_impact": financial_impact,
-        # User and timestamp
-        "counted_by": counted_by,
-        "counted_at": datetime.now(timezone.utc).replace(tzinfo=None),
-        # MRP tracking
-        "mrp_erp": erp_item["mrp"],
-        "mrp_counted": line_data.mrp_counted,
-        # Additional fields
-        "split_section": line_data.split_section,
-        "serial_numbers": line_data.serial_numbers,
-        # Legacy approval fields
-        "status": "pending",
-        "verified": False,
-        "verified_at": None,
-        "verified_by": None,
-    }
-
-
-async def _update_item_location_from_count_line(line_data: CountLineCreate) -> None:
-    update_fields = {
-        key: value
-        for key, value in {"floor_no": line_data.floor_no, "rack_no": line_data.rack_no}.items()
-        if value
-    }
-    if not update_fields:
-        return
-    try:
-        await db.erp_items.update_one({"item_code": line_data.item_code}, {"$set": update_fields})
-    except Exception as exc:
-        logger.error(
-            "Failed to update item location: %s",
-            sanitize_for_logging(str(exc), 200),
-        )
-
-
-async def _refresh_session_count_line_stats(session_id: str) -> None:
-    try:
-        pipeline = [
-            {"$match": {"session_id": session_id}},
-            {
-                "$group": {
-                    "_id": None,
-                    "total_items": {"$sum": 1},
-                    "total_variance": {"$sum": "$variance"},
-                }
-            },
-        ]
-        stats = await db.count_lines.aggregate(pipeline).to_list(1)  # type: ignore
-        if not stats:
-            return
-        lifecycle_service = SessionLifecycleService(db)
-        await lifecycle_service.update_session_totals(
-            session_id,
-            {
-                "total_items": stats[0]["total_items"],
-                "total_variance": stats[0]["total_variance"],
-            },
-        )
-    except Exception as exc:
-        logger.error(
-            "Failed to update session stats: %s",
-            sanitize_for_logging(str(exc), 200),
-        )
-
-
-# Count Line routes
-# Legacy route retained under explicit namespace to avoid duplicate /api/count-lines.
-@api_router.post("/legacy/count-lines")
-async def create_count_line(
-    request: Request,
-    line_data: CountLineCreate,
-    current_user: dict = Depends(get_current_user),
-):
-    """Create a legacy count line while preserving existing review behavior."""
-    raise HTTPException(
-        status_code=410,
-        detail=(
-            "CRITICAL: /legacy/count-lines is disabled. "
-            "Use canonical /count-lines write flow."
-        ),
-    )
-    _, erp_item, variance = await _load_count_line_context(line_data)
-    _validate_variance_reason(line_data, variance)
-
-    erp_qty = erp_item.get("stock_qty", 0)
-    counted_mrp = line_data.mrp_counted or erp_item.get("mrp", 0)
-    financial_impact = calculate_financial_impact(
-        erp_item.get("mrp", 0), counted_mrp, line_data.counted_qty, erp_qty
-    )
-
-    approval_status, risk_flags = await _resolve_review_status_and_risk_flags(
-        line_data,
-        erp_item,
-        variance,
-        current_user["username"],
-    )
-
-    count_line = _build_count_line_payload(
-        line_data,
-        erp_item,
-        variance,
-        financial_impact,
-        approval_status,
-        risk_flags,
-        current_user["username"],
-    )
-
-    raise_forbidden_direct_write("app_factory.legacy_count_lines_insert")
-    await _update_item_location_from_count_line(line_data)
-    await _refresh_session_count_line_stats(line_data.session_id)
-
-    # Log high-risk correction
-    if risk_flags:
-        await activity_log_service.log_activity(
-            user=current_user["username"],
-            role=current_user["role"],
-            action="high_risk_correction",
-            entity_type="count_line",
-            entity_id=count_line["id"],
-            details={"risk_flags": risk_flags, "item_code": line_data.item_code},
-            ip_address=request.client.host if request and request.client else None,
-            user_agent=request.headers.get("user-agent") if request else None,
-        )
-
-    # Remove the MongoDB _id field before returning
-    count_line.pop("_id", None)
-    return count_line
 
 
 def _get_db_client(db_override=None):

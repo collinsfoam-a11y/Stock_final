@@ -24,7 +24,6 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 
-from backend.api import legacy_routes_impl as legacy_routes
 from backend.api.enhanced_item_api import init_enhanced_api
 
 # API Initialization
@@ -340,12 +339,6 @@ async def lifespan(app: FastAPI):  # noqa: C901
     set_db(db)
     set_cache_service(cache_service)
     set_refresh_token_service(refresh_token_service)
-
-    # Inject globals into legacy_routes (Critical for Auth)
-    legacy_routes.db = db
-    legacy_routes.cache_service = cache_service
-    legacy_routes.refresh_token_service = refresh_token_service
-    legacy_routes.activity_log_service = activity_log_service
 
     # Phase 1: Initialize Redis and related services
     redis_service = None
@@ -849,61 +842,44 @@ async def lifespan(app: FastAPI):  # noqa: C901
 
     logger.info("OK: Application startup complete")
 
-    # Inject services into globals and legacy routes module
-    # This allows the legacy inline routes to function without the original server.py
+    # Inject services into runtime globals
 
     # Core Services
     g.db = db
-    legacy_routes.db = db
 
     g.cache_service = cache_service
-    legacy_routes.cache_service = cache_service
 
     g.rate_limiter = rate_limiter
-    legacy_routes.rate_limiter = rate_limiter
 
     g.concurrent_handler = concurrent_handler
-    legacy_routes.concurrent_handler = concurrent_handler
 
     g.activity_log_service = activity_log_service
-    legacy_routes.activity_log_service = activity_log_service
 
     g.error_log_service = error_log_service
-    legacy_routes.error_log_service = error_log_service
 
     g.refresh_token_service = refresh_token_service
-    legacy_routes.refresh_token_service = refresh_token_service
 
     g.batch_operations = batch_operations
-    legacy_routes.batch_operations = batch_operations
 
     g.migration_manager = migration_manager
-    legacy_routes.migration_manager = migration_manager
 
     # Functional Services
     g.scheduled_export_service = scheduled_export_service
-    legacy_routes.scheduled_export_service = scheduled_export_service
 
     g.sync_conflicts_service = sync_conflicts_service
-    legacy_routes.sync_conflicts_service = sync_conflicts_service
 
     g.monitoring_service = monitoring_service
-    legacy_routes.monitoring_service = monitoring_service
 
     g.database_health_service = database_health_service
-    legacy_routes.database_health_service = database_health_service
 
     g.auto_sync_manager = auto_sync_manager
-    legacy_routes.auto_sync_manager = auto_sync_manager
 
     if g.ENTERPRISE_AVAILABLE:
         g.enterprise_audit_service = getattr(app.state, "enterprise_audit", None)
-        legacy_routes.enterprise_audit_service = g.enterprise_audit_service
 
         g.enterprise_security_service = getattr(app.state, "enterprise_security", None)
-        legacy_routes.enterprise_security_service = g.enterprise_security_service
 
-    logger.info("✓ Global services injected into legacy routes")
+    logger.info("✓ Global services initialized")
 
     # Save backend port info (replaces deprecated on_event("startup"))
     try:

@@ -9,9 +9,7 @@ import type { TokenResponse } from "./models";
 import * as adminOperationsApi from "./adminOperationsApi";
 import * as inventoryWorkflowApi from "./inventoryWorkflowApi";
 import {
-  bulkCloseSessions,
   bulkExportSessions,
-  bulkReconcileSessions,
   createSession,
   getRackProgress,
   getSession,
@@ -93,8 +91,6 @@ export {
   getSession,
   getSessionStats,
   getRackProgress,
-  bulkCloseSessions,
-  bulkReconcileSessions,
   bulkExportSessions,
   getSessionsAnalytics,
 };
@@ -166,7 +162,7 @@ export const createSkuFromUnknown = async (
 };
 
 /**
- * Delete/Dismiss an unknown item report
+ * Dismiss an unknown item report
  */
 export const deleteUnknownItem = async (itemId: string) => {
   try {
@@ -585,8 +581,6 @@ export const sessionsApi = {
   createSession,
   getSessions,
   getSession,
-  bulkCloseSessions,
-  bulkReconcileSessions,
   bulkExportSessions,
   getSessionsAnalytics,
   updateSessionStatus: inventoryWorkflowApi.updateSessionStatus,

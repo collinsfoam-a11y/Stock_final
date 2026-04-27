@@ -28,10 +28,6 @@ aiohttp>=3.13.4
 memory-profiler>=0.61.0
 
 # Optional local feature packages
-# NOTE: copilotkit requires fastapi>=0.115.0,<1.0.0 which is compatible with
-# the repo's pinned FastAPI 0.135.1. Install separately if the copilot endpoint
-# pulls unwanted heavy transitive deps (torch, langchain, etc.).
-copilotkit>=0.1.79  # Used by backend/api/copilot_api.py
 numpy>=2.0.2
 Pillow>=12.2.0
 sentence-transformers>=2.2.2

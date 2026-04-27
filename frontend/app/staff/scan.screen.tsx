@@ -244,7 +244,8 @@ const ScanScreen = React.memo(function ScanScreen() {
   // Handle WebSocket Messages
   useEffect(() => {
     if (lastMessage?.type === "session_update") {
-      const { status, reason } = lastMessage.payload;
+      const status = String(lastMessage.payload?.status || "").toUpperCase();
+      const reason = lastMessage.payload?.reason;
 
       if (status === "PAUSED") {
         safeSetState(setIsScanning, false);
@@ -253,10 +254,14 @@ const ScanScreen = React.memo(function ScanScreen() {
           reason || "A supervisor has paused this session.",
           [{ text: "OK" }],
         );
-      } else if (status === "CLOSED" && !isFinishing) {
+      } else if (["REVIEW", "RECONCILE", "FINALIZED", "CLOSED"].includes(status) && !isFinishing) {
+        const message =
+          status === "FINALIZED"
+            ? reason || "This session has been finalized."
+            : reason || "This session has been submitted for supervisor review.";
         Alert.alert(
-          "Session Closed",
-          reason || "This session has been closed.",
+          status === "FINALIZED" ? "Session Finalized" : "Session Submitted",
+          message,
           [
             {
               text: "OK",
@@ -492,11 +497,11 @@ const ScanScreen = React.memo(function ScanScreen() {
     if (!sessionId) return;
     safeSetState(setIsFinishing, true);
     try {
-      await safeAsync(() => updateSessionStatus(sessionId, "closed"));
+      await safeAsync(() => updateSessionStatus(sessionId, "reconcile"));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/staff/home");
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to close session");
+      Alert.alert("Error", error.message || "Failed to submit session for review");
     } finally {
       safeSetState(setIsFinishing, false);
       safeSetState(setShowCloseSessionModal, false);

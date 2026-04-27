@@ -485,30 +485,6 @@ export const getRackProgress = async (sessionId: string) => {
   }
 };
 
-export const bulkCloseSessions = async (sessionIds: string[]) => {
-  try {
-    const response = await api.post("/api/sessions/bulk/close", sessionIds, {
-      skipOfflineQueue: true,
-    } as any);
-    return response.data;
-  } catch (error: unknown) {
-    __DEV__ && console.error("Bulk close sessions error:", error);
-    throw error;
-  }
-};
-
-export const bulkReconcileSessions = async (sessionIds: string[]) => {
-  try {
-    const response = await api.post("/api/sessions/bulk/reconcile", sessionIds, {
-      skipOfflineQueue: true,
-    } as any);
-    return response.data;
-  } catch (error: unknown) {
-    __DEV__ && console.error("Bulk reconcile sessions error:", error);
-    throw error;
-  }
-};
-
 export const bulkExportSessions = async (sessionIds: string[], format: string = "excel") => {
   try {
     const response = await api.post("/api/sessions/bulk/export", sessionIds, {
