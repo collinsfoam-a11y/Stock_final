@@ -5,16 +5,16 @@
 
 import { Platform } from "react-native";
 import Constants from "expo-constants";
-import Notifications, {
-  NotificationTriggerInput,
-  SchedulableTriggerInputTypes,
-} from "expo-notifications";
-import { errorReporter } from "./errorRecovery";
+import { errorReporter } from "../errorRecovery";
 import { useSettingsStore } from "../../store/settingsStore";
 import {
   registerNotificationDevice,
   unregisterNotificationDevice,
 } from "../api/api.notifications";
+import type {
+  NotificationTriggerInput,
+  SchedulableTriggerInputTypes,
+} from "expo-notifications";
 
 export interface NotificationOptions {
   title: string;
@@ -32,6 +32,18 @@ export class NotificationService {
   private static initialized = false;
   private static registeredPushToken: string | null = null;
 
+  private static notificationsModulePromise:
+    | Promise<typeof import("expo-notifications")>
+    | null = null;
+
+  private static async getNotificationsModule() {
+    if (!this.notificationsModulePromise) {
+      this.notificationsModulePromise = import("expo-notifications");
+    }
+
+    return this.notificationsModulePromise;
+  }
+
   /**
    * Initialize notifications
    */
@@ -40,18 +52,23 @@ export class NotificationService {
       return;
     }
 
-    try {
-      // Request permissions
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
+    if (Platform.OS === "web") {
+      return;
+    }
 
-      if (existingStatus !== "granted") {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
+    try {
+      const Notifications = await this.getNotificationsModule();
+      // Request permissions
+      const existingPermissions = await Notifications.getPermissionsAsync();
+      let hasPermission = existingPermissions.granted;
+
+      if (!hasPermission) {
+        const requestedPermissions =
+          await Notifications.requestPermissionsAsync();
+        hasPermission = requestedPermissions.granted;
       }
 
-      if (finalStatus !== "granted") {
+      if (!hasPermission) {
         __DEV__ && console.warn("Notification permissions not granted");
         return;
       }
@@ -90,12 +107,17 @@ export class NotificationService {
    */
   static async showNotification(options: NotificationOptions) {
     try {
+      if (Platform.OS === "web") {
+        return;
+      }
+
       const settings = useSettingsStore.getState().settings;
       if (!settings.notificationsEnabled) {
         return;
       }
 
       await this.initialize();
+      const Notifications = await this.getNotificationsModule();
 
       await Notifications.scheduleNotificationAsync({
         content: {
@@ -121,18 +143,28 @@ export class NotificationService {
     trigger: Date | { seconds: number; repeats?: boolean },
   ): Promise<string | null> {
     try {
+      if (Platform.OS === "web") {
+        return null;
+      }
+
       const settings = useSettingsStore.getState().settings;
       if (!settings.notificationsEnabled) {
         return null;
       }
 
       await this.initialize();
+      const Notifications = await this.getNotificationsModule();
 
       const triggerValue = (
         trigger instanceof Date
-          ? { type: SchedulableTriggerInputTypes.DATE, date: trigger }
+          ? {
+              type: (await this.getNotificationsModule())
+                .SchedulableTriggerInputTypes.DATE,
+              date: trigger,
+            }
           : {
-              type: SchedulableTriggerInputTypes.TIME_INTERVAL,
+              type: (await this.getNotificationsModule())
+                .SchedulableTriggerInputTypes.TIME_INTERVAL,
               seconds: trigger.seconds,
               repeats: trigger.repeats ?? false,
             }
@@ -158,6 +190,11 @@ export class NotificationService {
    */
   static async cancelNotification(notificationId: string) {
     try {
+      if (Platform.OS === "web") {
+        return;
+      }
+
+      const Notifications = await this.getNotificationsModule();
       await Notifications.cancelScheduledNotificationAsync(notificationId);
     } catch (error) {
       errorReporter.report(error, "NotificationService.cancelNotification");
@@ -169,6 +206,11 @@ export class NotificationService {
    */
   static async cancelAllNotifications() {
     try {
+      if (Platform.OS === "web") {
+        return;
+      }
+
+      const Notifications = await this.getNotificationsModule();
       await Notifications.cancelAllScheduledNotificationsAsync();
     } catch (error) {
       errorReporter.report(error, "NotificationService.cancelAllNotifications");
@@ -182,6 +224,7 @@ export class NotificationService {
     try {
       const settings = useSettingsStore.getState().settings;
       if (Platform.OS === "ios" && settings.notificationBadge) {
+        const Notifications = await this.getNotificationsModule();
         await Notifications.setBadgeCountAsync(count);
       }
     } catch (error) {
@@ -216,6 +259,7 @@ export class NotificationService {
       return;
     }
 
+    const Notifications = await this.getNotificationsModule();
     const projectId = this.getExpoProjectId();
     const tokenResponse = projectId
       ? await Notifications.getExpoPushTokenAsync({ projectId })

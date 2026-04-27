@@ -3,7 +3,10 @@ import {
   RecentItemsService,
   RecentItem,
 } from "@/services/enhancedFeatures";
+import { createLogger } from "@/services/logging";
 import { Item } from "@/types/scan";
+
+const log = createLogger("SmartSuggestionsService");
 
 export interface SuggestionItem {
   id: string;
@@ -37,6 +40,15 @@ export class SmartSuggestionsService {
   private static instance: SmartSuggestionsService;
   private suggestionHistory: Map<string, SuggestionItem[]> = new Map();
   private userPatterns: Map<string, UserPattern[]> = new Map();
+
+  private debugSuggestion(
+    message: string,
+    context?: Record<string, unknown>,
+  ): void {
+    if (__DEV__) {
+      log.debug(message, context);
+    }
+  }
 
   static getInstance(): SmartSuggestionsService {
     if (!SmartSuggestionsService.instance) {
@@ -79,7 +91,9 @@ export class SmartSuggestionsService {
         .sort((a, b) => b.confidence - a.confidence)
         .slice(0, 6); // Limit to top 6 suggestions
     } catch (error) {
-      console.error("Error getting suggestions:", error);
+      log.error("Error getting suggestions", {
+        error: error instanceof Error ? error.message : String(error),
+      });
       return [];
     }
   }
@@ -108,7 +122,7 @@ export class SmartSuggestionsService {
             confidence: 0.8,
             data: { suggestedQuantity: avgQuantity },
             action: () => {
-              __DEV__ && console.log(`Suggested quantity: ${avgQuantity}`);
+              this.debugSuggestion("Suggested quantity", { avgQuantity });
             },
           });
         }
@@ -124,7 +138,7 @@ export class SmartSuggestionsService {
             confidence: 0.7,
             data: { suggestedQuantities: [1, 5, 10] },
             action: () => {
-              __DEV__ && console.log("Electronics bulk count suggested");
+              this.debugSuggestion("Electronics bulk count suggested");
             },
           });
         }
@@ -142,12 +156,15 @@ export class SmartSuggestionsService {
             confidence: 0.6,
             data: { systemStock },
             action: () => {
-              __DEV__ && console.log(`System stock: ${systemStock}`);
+              this.debugSuggestion("System stock suggestion", { systemStock });
             },
           });
         }
       } catch (error) {
-        console.warn("Error getting quantity suggestions:", error);
+        log.warn("Error getting quantity suggestions", {
+          itemCode: context.itemCode,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 
@@ -178,10 +195,10 @@ export class SmartSuggestionsService {
             confidence: Math.max(0.5, 0.9 - index * 0.2),
             data: location,
             action: () => {
-              __DEV__ &&
-                console.log(
-                  `Navigate to: ${location.floor} - ${location.rack}`,
-                );
+              this.debugSuggestion("Navigate to location", {
+                floor: location.floor,
+                rack: location.rack,
+              });
             },
           });
         });
@@ -197,12 +214,17 @@ export class SmartSuggestionsService {
             confidence: 0.7,
             data: { floorNo: context.floorNo },
             action: () => {
-              __DEV__ && console.log("Suggest adjacent racks");
+              this.debugSuggestion("Suggest adjacent racks", {
+                floorNo: context.floorNo,
+              });
             },
           });
         }
       } catch (error) {
-        console.warn("Error getting location suggestions:", error);
+        log.warn("Error getting location suggestions", {
+          sessionId: context.sessionId,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 
@@ -245,7 +267,9 @@ export class SmartSuggestionsService {
             confidence: reason.confidence,
             data: reason,
             action: () => {
-              __DEV__ && console.log(`Select reason: ${reason.code}`);
+              this.debugSuggestion("Select variance reason", {
+                reasonCode: reason.code,
+              });
             },
           });
         });
@@ -273,7 +297,7 @@ export class SmartSuggestionsService {
         confidence: 0.8,
         data: {},
         action: () => {
-          __DEV__ && console.log("Switch to bulk mode");
+          this.debugSuggestion("Switch to bulk mode");
         },
       });
     }
@@ -289,7 +313,7 @@ export class SmartSuggestionsService {
         confidence: 0.9,
         data: {},
         action: () => {
-          __DEV__ && console.log("Open camera for photo");
+          this.debugSuggestion("Open camera for photo");
         },
       });
     }
@@ -305,7 +329,7 @@ export class SmartSuggestionsService {
         confidence: 0.7,
         data: {},
         action: () => {
-          __DEV__ && console.log("Enable serial tracking");
+          this.debugSuggestion("Enable serial tracking");
         },
       });
     }
@@ -331,7 +355,7 @@ export class SmartSuggestionsService {
           confidence: 0.8,
           data: { photoType: "verification" },
           action: () => {
-            __DEV__ && console.log("Take verification photo");
+            this.debugSuggestion("Take verification photo");
           },
         });
       }
@@ -347,7 +371,7 @@ export class SmartSuggestionsService {
           confidence: 0.7,
           data: { photoType: "serial" },
           action: () => {
-            __DEV__ && console.log("Capture serial photo");
+            this.debugSuggestion("Capture serial photo");
           },
         });
       }
@@ -367,7 +391,7 @@ export class SmartSuggestionsService {
           confidence: 0.6,
           data: { photoType: "condition" },
           action: () => {
-            __DEV__ && console.log("Take condition photo");
+            this.debugSuggestion("Take condition photo");
           },
         });
       }
@@ -393,7 +417,7 @@ export class SmartSuggestionsService {
         confidence: 0.8,
         data: {},
         action: () => {
-          __DEV__ && console.log("Suggest session completion");
+          this.debugSuggestion("Suggest session completion");
         },
       });
     }
@@ -410,7 +434,7 @@ export class SmartSuggestionsService {
         confidence: 0.9,
         data: {},
         action: () => {
-          __DEV__ && console.log("Suggest break");
+          this.debugSuggestion("Suggest break");
         },
       });
     }
@@ -431,7 +455,7 @@ export class SmartSuggestionsService {
           confidence: 0.8,
           data: {},
           action: () => {
-            __DEV__ && console.log("Suggest quality check");
+            this.debugSuggestion("Suggest quality check");
           },
         });
       }
@@ -490,7 +514,11 @@ export class SmartSuggestionsService {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.warn("Error tracking suggestion interaction:", error);
+      log.warn("Error tracking suggestion interaction", {
+        suggestionId,
+        action,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

@@ -3,7 +3,14 @@ import { withTimeout } from "./withTimeout";
 import { initMonitoringAndDevTools } from "./initDevTools";
 import { initAuthAndSettings } from "./initAuthAndSettings";
 import { initMobileRuntime } from "./initMobileRuntime";
+import { createLogger } from "../services/logging";
 import { useAuthStore } from "../store/authStore";
+
+const log = createLogger("initApp");
+
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 export interface InitializeAppOptions {
   fontsLoaded: boolean;
@@ -11,6 +18,7 @@ export interface InitializeAppOptions {
   loadStoredAuth: () => Promise<void>;
   loadSettings: () => Promise<void>;
   isAuthenticated?: () => boolean;
+  deferUnauthenticatedSettings?: boolean;
 }
 
 export interface InitializeAppResult {
@@ -26,12 +34,13 @@ export async function initializeApp(
     loadStoredAuth,
     loadSettings,
     isAuthenticated: isAuthenticatedOverride,
+    deferUnauthenticatedSettings = false,
   } = options;
 
   initMonitoringAndDevTools(isDev);
 
   if (!fontsLoaded && isDev) {
-    console.warn("Fonts not loaded yet; continuing bootstrap with fallback fonts");
+    log.warn("Fonts not loaded yet; continuing with fallback fonts");
   }
 
   try {
@@ -41,26 +50,56 @@ export async function initializeApp(
       "MMKV initialization timeout",
     );
   } catch (e) {
-    console.warn("MMKV initialization failed or timed out:", e);
+    log.warn("MMKV initialization failed or timed out", {
+      error: describeError(e),
+    });
   }
 
-  const [authAndSettingsResult, themeResult] = await Promise.allSettled([
-    initAuthAndSettings(loadStoredAuth, loadSettings),
-    withTimeout(
-      import("../services/themeService").then(({ ThemeService }) =>
-        ThemeService.initialize(),
-      ),
-      1000,
-      "Theme initialization timeout",
-    ),
-  ]);
+  const authAndSettingsResult = await initAuthAndSettings(
+    loadStoredAuth,
+    loadSettings,
+    { deferUnauthenticatedSettings },
+  );
 
-  let syncResult: PromiseSettledResult<void> | null = null;
+  const { authResult, settingsResult } = authAndSettingsResult;
+  if (authResult.status === "rejected" && isDev) {
+    log.warn("Auth loading failed", {
+      error: describeError(authResult.reason),
+    });
+  }
+  if (settingsResult.status === "rejected" && isDev) {
+    log.warn("Settings loading failed", {
+      error: describeError(settingsResult.reason),
+    });
+  }
 
   const isAuthenticated =
     isAuthenticatedOverride?.() ?? useAuthStore.getState().isAuthenticated;
-  if (isAuthenticated) {
-    syncResult = (await Promise.allSettled([
+
+  void (async () => {
+    const themeResult = (await Promise.allSettled([
+      withTimeout(
+        import("../services/themeService").then(({ ThemeService }) =>
+          ThemeService.initialize(),
+        ),
+        1000,
+        "Theme initialization timeout",
+      ),
+    ]))[0] as PromiseSettledResult<void>;
+
+    if (themeResult.status === "rejected" && isDev) {
+      log.warn("Theme initialization failed", {
+        error: describeError(themeResult.reason),
+      });
+    }
+  })();
+
+  void (async () => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    const syncResult = (await Promise.allSettled([
       withTimeout(
         import("../services/backgroundSync").then(
           ({ registerBackgroundSync }) => registerBackgroundSync(),
@@ -69,29 +108,36 @@ export async function initializeApp(
         "Background sync timeout",
       ),
     ]))[0] as PromiseSettledResult<void>;
-  }
 
-  if (authAndSettingsResult.status === "rejected") {
-    if (isDev) {
-      console.warn("Auth/settings initialization failed:", authAndSettingsResult.reason);
+    if (syncResult.status === "rejected" && isDev) {
+      log.warn("Background sync failed", {
+        error: describeError(syncResult.reason),
+      });
     }
-  } else {
-    const { authResult, settingsResult } = authAndSettingsResult.value;
-    if (authResult.status === "rejected" && isDev) {
-      console.warn("Auth loading failed:", authResult.reason);
-    }
-    if (settingsResult.status === "rejected" && isDev) {
-      console.warn("Settings loading failed:", settingsResult.reason);
-    }
-  }
+  })();
 
-  if (syncResult?.status === "rejected" && isDev) {
-    console.warn("Background sync failed:", syncResult.reason);
-  }
-  if (themeResult.status === "rejected" && isDev) {
-    console.warn("Theme initialization failed:", themeResult.reason);
-  }
+  let runtimeCleanup = () => {};
+  let runtimeDisposed = false;
 
-  const cleanup = await initMobileRuntime(isDev);
+  void initMobileRuntime(isDev)
+    .then((cleanup) => {
+      if (runtimeDisposed) {
+        cleanup();
+        return;
+      }
+      runtimeCleanup = cleanup;
+    })
+    .catch((error) => {
+      if (isDev) {
+        log.warn("Mobile runtime initialization failed", {
+          error: describeError(error),
+        });
+      }
+    });
+
+  const cleanup = () => {
+    runtimeDisposed = true;
+    runtimeCleanup();
+  };
   return { cleanup };
 }

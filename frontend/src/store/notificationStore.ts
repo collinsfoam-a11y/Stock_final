@@ -2,6 +2,7 @@
  * Notification Store - Manages user notifications and unread count
  * Supports FR-M-23: Recount notifications
  */
+import { AppState, AppStateStatus, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
@@ -12,6 +13,10 @@ import {
   markAllNotificationsAsRead,
   type Notification,
 } from "../services/api/api";
+import { createLogger } from "../services/logging";
+import { shouldPollNotifications } from "./notificationPolling";
+
+const log = createLogger("notificationStore");
 
 interface NotificationState {
   notifications: Notification[];
@@ -66,7 +71,7 @@ export const useNotificationStore = create<NotificationState>()(
           set({ unreadCount: count });
         } catch (error) {
           // Silent fail for badge count
-          console.error("Failed to fetch unread count:", error);
+          log.warn("Failed to fetch unread count", { error: String(error) });
         }
       },
 
@@ -130,15 +135,81 @@ export const useNotificationStore = create<NotificationState>()(
 
 // Polling hook for real-time notification updates
 let pollingInterval: NodeJS.Timeout | null = null;
+let appStateSubscription: { remove: () => void } | null = null;
+let visibilityChangeHandler: (() => void) | null = null;
+let currentAppState: AppStateStatus =
+  Platform.OS === "web" ? "active" : (AppState.currentState ?? "active");
+
+const fetchUnreadCountIfActive = () => {
+  const visibilityState =
+    typeof document !== "undefined" ? document.visibilityState : "visible";
+  if (!shouldPollNotifications(currentAppState, Platform.OS, visibilityState)) {
+    return;
+  }
+
+  void useNotificationStore.getState().fetchUnreadCount();
+};
+
+const stopNotificationPollingListeners = () => {
+  if (appStateSubscription) {
+    appStateSubscription.remove();
+    appStateSubscription = null;
+  }
+
+  if (
+    visibilityChangeHandler &&
+    typeof document !== "undefined" &&
+    typeof document.removeEventListener === "function"
+  ) {
+    document.removeEventListener("visibilitychange", visibilityChangeHandler);
+  }
+
+  visibilityChangeHandler = null;
+};
+
+const startNotificationPollingListeners = () => {
+  stopNotificationPollingListeners();
+
+  if (Platform.OS !== "web") {
+    appStateSubscription = AppState.addEventListener("change", (nextAppState) => {
+      currentAppState = nextAppState;
+      if (shouldPollNotifications(nextAppState, Platform.OS)) {
+        fetchUnreadCountIfActive();
+      }
+    });
+    return;
+  }
+
+  if (
+    typeof document === "undefined" ||
+    typeof document.addEventListener !== "function"
+  ) {
+    return;
+  }
+
+  visibilityChangeHandler = () => {
+    if (
+      shouldPollNotifications(
+        currentAppState,
+        Platform.OS,
+        document.visibilityState,
+      )
+    ) {
+      fetchUnreadCountIfActive();
+    }
+  };
+
+  document.addEventListener("visibilitychange", visibilityChangeHandler);
+};
 
 export const startNotificationPolling = (intervalMs = 30000) => {
   if (pollingInterval) return;
 
-  const store = useNotificationStore.getState();
-  store.fetchUnreadCount();
+  startNotificationPollingListeners();
+  fetchUnreadCountIfActive();
 
   pollingInterval = setInterval(() => {
-    useNotificationStore.getState().fetchUnreadCount();
+    fetchUnreadCountIfActive();
   }, intervalMs);
 };
 
@@ -147,6 +218,8 @@ export const stopNotificationPolling = () => {
     clearInterval(pollingInterval);
     pollingInterval = null;
   }
+
+  stopNotificationPollingListeners();
 };
 
 export const clearNotificationStore = async () => {

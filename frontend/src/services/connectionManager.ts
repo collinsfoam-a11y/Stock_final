@@ -8,6 +8,7 @@ import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createLogger } from "./logging";
 import { isValidBackendHealthResponse } from "./healthRequest";
+import { shouldMonitorConnectionHealth } from "./connectionMonitoring";
 
 const log = createLogger("ConnectionManager");
 
@@ -63,9 +64,6 @@ class ConnectionManager {
       // Always detect on startup to handle network changes
       await this.detectAndSetConnection();
 
-      // Start health monitoring
-      this.startHealthMonitoring();
-      
       // Mark as initialized to prevent re-initialization
       this.isInitialized = true;
     } catch (error) {
@@ -296,6 +294,7 @@ class ConnectionManager {
 
     this.currentConnection = fallback;
     this.saveConnection(fallback);
+    this.updateHealthMonitoring();
     this.notifyListeners(fallback);
 
     log.warn("Using fallback connection", fallback);
@@ -309,6 +308,7 @@ class ConnectionManager {
   ): Promise<void> {
     this.currentConnection = connection;
     await this.saveConnection(connection);
+    this.updateHealthMonitoring();
     this.notifyListeners(connection);
   }
 
@@ -339,7 +339,18 @@ class ConnectionManager {
   /**
    * Start periodic health monitoring
    */
-  private startHealthMonitoring(): void {
+  private updateHealthMonitoring(): void {
+    if (
+      !shouldMonitorConnectionHealth(
+        this.currentConnection,
+        Platform.OS,
+        this.getCurrentOrigin(),
+      )
+    ) {
+      this.stopHealthMonitoring();
+      return;
+    }
+
     if (this.healthCheckTimer) {
       clearInterval(this.healthCheckTimer);
     }

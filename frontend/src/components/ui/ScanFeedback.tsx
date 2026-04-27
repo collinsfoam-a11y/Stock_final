@@ -207,7 +207,7 @@ export const ScanFeedback: React.FC<ScanFeedbackProps> = ({
   if (!visible) return null;
 
   return (
-    <View style={styles.overlay} pointerEvents="none">
+    <View style={[styles.overlay, styles.pointerEventsNone]}>
       <Animated.View
         style={[styles.container, { width: screenWidth * 0.7 }, containerStyle]}
       >
@@ -255,6 +255,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     zIndex: 1000,
+  },
+  pointerEventsNone: {
+    pointerEvents: "none",
   },
   container: {
     maxWidth: 280,

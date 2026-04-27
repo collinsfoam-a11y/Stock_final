@@ -144,11 +144,7 @@ export const PatternBackground: React.FC<PatternBackgroundProps> = ({
 
   if (!patternContent) return null;
 
-  return (
-    <View style={styles.container} pointerEvents="none">
-      {patternContent}
-    </View>
-  );
+  return <View style={[styles.container, styles.pointerEventsNone]}>{patternContent}</View>;
 };
 
 // Dots Pattern
@@ -506,6 +502,9 @@ const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 0,
+  },
+  pointerEventsNone: {
+    pointerEvents: "none",
   },
 });
 

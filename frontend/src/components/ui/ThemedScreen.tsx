@@ -91,9 +91,9 @@ export const ThemedScreen: React.FC<ThemedScreenProps> = ({
       {/* Gradient Overlay for glass variant */}
       {variant === "glass" && (
         <View
-          pointerEvents="none"
           style={[
             StyleSheet.absoluteFillObject,
+            { pointerEvents: "none" },
             { backgroundColor: `${theme.colors.background}E6` },
           ]}
         />

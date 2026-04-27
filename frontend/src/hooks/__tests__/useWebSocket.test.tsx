@@ -110,4 +110,15 @@ describe("useWebSocket", () => {
     expect(mockHandleUnauthorized).toHaveBeenCalledTimes(1);
     expect(mockSockets).toHaveLength(1);
   });
+
+  it("does not connect when disabled", async () => {
+    renderHook(() => useWebSocket("sess-123", false));
+
+    await act(async () => {
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(mockSecureStorage.getItem).not.toHaveBeenCalled();
+    expect(mockSockets).toHaveLength(0);
+  });
 });

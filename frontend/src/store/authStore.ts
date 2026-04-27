@@ -1,12 +1,9 @@
 import { create } from "zustand";
 import { Platform } from "react-native";
 import { secureStorage } from "../services/storage/secureStorage";
-import apiClient from "../services/httpClient";
 import { useSettingsStore } from "./settingsStore";
 import { setUnauthorizedHandler } from "../services/authUnauthorizedHandler";
 import { createLogger } from "../services/logging";
-import { useNetworkStore } from "./networkStore";
-import * as LocalAuthentication from "expo-local-authentication";
 import { setUserPreferenceScope } from "../services/userPreferenceScope";
 
 interface User {
@@ -154,6 +151,41 @@ const LAST_USER_STORAGE_KEY = "last_logged_user";
 
 const log = createLogger("authStore");
 let heartbeatInterval: NodeJS.Timeout | null = null;
+const IS_TEST_ENV =
+  process.env.NODE_ENV === "test" ||
+  typeof process.env.JEST_WORKER_ID !== "undefined";
+let apiClientPromise:
+  | Promise<typeof import("../services/httpClient")["default"]>
+  | null = null;
+let localAuthenticationPromise:
+  | Promise<typeof import("expo-local-authentication")>
+  | null = null;
+
+const getApiClient = async () => {
+  if (!apiClientPromise) {
+    apiClientPromise = IS_TEST_ENV
+      ? Promise.resolve(
+          (
+            require("../services/httpClient") as typeof import("../services/httpClient")
+          ).default,
+        )
+      : import("../services/httpClient").then((module) => module.default);
+  }
+
+  return apiClientPromise;
+};
+
+const getLocalAuthentication = async () => {
+  if (!localAuthenticationPromise) {
+    localAuthenticationPromise = IS_TEST_ENV
+      ? Promise.resolve(
+          require("expo-local-authentication") as typeof import("expo-local-authentication"),
+        )
+      : import("expo-local-authentication");
+  }
+
+  return localAuthenticationPromise;
+};
 
 const parseAuthError = (
   error: any,
@@ -237,10 +269,15 @@ const buildLastLoggedUser = (
 });
 
 const syncOfflineQueueInBackground = async () => {
+  const { useNetworkStore } = IS_TEST_ENV
+    ? (require("./networkStore") as typeof import("./networkStore"))
+    : await import("./networkStore");
   const networkState = useNetworkStore.getState();
   if (!networkState.isOnline) return;
 
-  const { syncOfflineQueue } = await import("../services/syncService");
+  const { syncOfflineQueue } = IS_TEST_ENV
+    ? (require("../services/syncService") as typeof import("../services/syncService"))
+    : await import("../services/syncService");
   syncOfflineQueue({ background: true }).catch((err) => {
     log.warn("Sync after auth failed", {
       error: err instanceof Error ? err.message : String(err),
@@ -250,9 +287,9 @@ const syncOfflineQueueInBackground = async () => {
 
 const initializeNotificationsInBackground = async () => {
   try {
-    const { NotificationService } = await import(
-      "../services/utils/notificationService"
-    );
+    const { NotificationService } = IS_TEST_ENV
+      ? (require("../services/utils/notificationService") as typeof import("../services/utils/notificationService"))
+      : await import("../services/utils/notificationService");
     await NotificationService.initialize();
   } catch (error) {
     log.warn("Notification initialization failed", {
@@ -263,9 +300,9 @@ const initializeNotificationsInBackground = async () => {
 
 const unregisterNotificationsInBackground = async () => {
   try {
-    const { NotificationService } = await import(
-      "../services/utils/notificationService"
-    );
+    const { NotificationService } = IS_TEST_ENV
+      ? (require("../services/utils/notificationService") as typeof import("../services/utils/notificationService"))
+      : await import("../services/utils/notificationService");
     await NotificationService.unregisterCurrentDevice();
   } catch (error) {
     log.warn("Notification unregister failed", {
@@ -276,7 +313,9 @@ const unregisterNotificationsInBackground = async () => {
 
 const rehydrateFilterStoreForCurrentScope = async () => {
   try {
-    const { rehydrateFilterStore } = await import("./filterStore");
+    const { rehydrateFilterStore } = IS_TEST_ENV
+      ? (require("./filterStore") as typeof import("./filterStore"))
+      : await import("./filterStore");
     await rehydrateFilterStore();
   } catch (error) {
     log.warn("Filter store rehydration failed", {
@@ -287,13 +326,62 @@ const rehydrateFilterStoreForCurrentScope = async () => {
 
 const resetFilterStoreForLoggedOutUser = async () => {
   try {
-    const { resetFilterStore } = await import("./filterStore");
+    const { resetFilterStore } = IS_TEST_ENV
+      ? (require("./filterStore") as typeof import("./filterStore"))
+      : await import("./filterStore");
     await resetFilterStore();
   } catch (error) {
     log.warn("Filter store reset failed", {
       error: error instanceof Error ? error.message : String(error),
     });
   }
+};
+
+const hydrateAuthenticatedSession = async (
+  user: User,
+  options?: {
+    syncOfflineQueue?: boolean;
+  },
+) => {
+  setUserPreferenceScope(user.id);
+  await rehydrateFilterStoreForCurrentScope();
+  await useSettingsStore.getState().loadSettings();
+  useAuthStore.getState().startHeartbeat();
+
+  const postAuthTasks: Promise<unknown>[] = [
+    useSettingsStore.getState().syncFromBackend(),
+    initializeNotificationsInBackground(),
+  ];
+
+  if (options?.syncOfflineQueue !== false) {
+    postAuthTasks.push(syncOfflineQueueInBackground());
+  }
+
+  const results = await Promise.allSettled(postAuthTasks);
+  results.forEach((result) => {
+    if (result.status === "rejected") {
+      log.warn("Post-auth task failed", {
+        error:
+          result.reason instanceof Error
+            ? result.reason.message
+            : String(result.reason),
+      });
+    }
+  });
+};
+
+const hydrateAuthenticatedSessionInBackground = (
+  user: User,
+  options?: {
+    syncOfflineQueue?: boolean;
+  },
+) => {
+  void hydrateAuthenticatedSession(user, options).catch((error) => {
+    log.warn("Authenticated session hydration failed", {
+      userId: user.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
 };
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -331,6 +419,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw new Error("Invalid response format: missing access_token");
     }
 
+    const apiClient = await getApiClient();
     const authenticatedUser =
       has_pin === undefined ? user : { ...user, has_pin };
     const lastUser = buildLastLoggedUser(authenticatedUser, has_pin);
@@ -365,13 +454,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       lastLoggedUser: lastUser,
     });
 
-    setUserPreferenceScope(authenticatedUser.id);
-    await rehydrateFilterStoreForCurrentScope();
-    await useSettingsStore.getState().loadSettings();
-    get().startHeartbeat();
-    await useSettingsStore.getState().syncFromBackend();
-    await syncOfflineQueueInBackground();
-    await initializeNotificationsInBackground();
+    hydrateAuthenticatedSessionInBackground(authenticatedUser);
   },
 
   login: async (
@@ -381,6 +464,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   ): Promise<AuthResult> => {
     set({ isLoading: true });
     try {
+      const apiClient = await getApiClient();
       const response = await apiClient.post("/api/auth/login", {
         username,
         password,
@@ -420,6 +504,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   ): Promise<AuthResult> => {
     set({ isLoading: true });
     try {
+      const apiClient = await getApiClient();
       const response = await apiClient.post("/api/auth/login-pin", {
         pin,
         username,
@@ -455,6 +540,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     message?: string;
   }> => {
     try {
+      const LocalAuthentication = await getLocalAuthentication();
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
 
@@ -507,23 +593,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
+    const apiClient = await getApiClient();
+
     try {
       get().stopHeartbeat();
     } catch (_) {}
 
     try {
+      const refreshToken = await secureStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
       if (
         Platform.OS === "web" ||
-        apiClient.defaults.headers.common["Authorization"]
+        apiClient.defaults.headers.common["Authorization"] ||
+        refreshToken
       ) {
-        await apiClient.post("/api/auth/logout").catch(() => {});
+        await apiClient
+          .post("/api/auth/logout", refreshToken ? { refresh_token: refreshToken } : {})
+          .catch(() => {});
       }
     } catch (_) {}
 
     try {
       await unregisterNotificationsInBackground();
     } catch (error) {
-      console.warn("Notifications unregister failed during logout", error);
+      log.warn("Notifications unregister failed during logout", {
+        error: String(error),
+      });
     }
     
     // Clear state early to ensure synchronous UI unmounts and Auth Guards redirect properly
@@ -540,7 +634,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await secureStorage.removeItem(BIOMETRIC_PIN_KEY);
       delete apiClient.defaults.headers.common["Authorization"];
     } catch (err) {
-      console.warn("Storage cleanup failed during logout", err);
+      log.warn("Storage cleanup failed during logout", {
+        error: String(err),
+      });
     }
 
     try {
@@ -550,14 +646,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (_) {}
 
     try {
-      const { clearNotificationStore } = await import("./notificationStore");
+      const { clearNotificationStore } = IS_TEST_ENV
+        ? (require("./notificationStore") as typeof import("./notificationStore"))
+        : await import("./notificationStore");
       await clearNotificationStore();
     } catch {
       // Best-effort; never block logout.
     }
 
     try {
-      const { queryClient } = await import("../services/queryClient");
+      const { queryClient } = IS_TEST_ENV
+        ? (require("../services/queryClient") as typeof import("../services/queryClient"))
+        : await import("../services/queryClient");
       await queryClient.cancelQueries();
       queryClient.clear();
     } catch {
@@ -565,21 +665,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     try {
-      const { clearScanSessionStore } = await import("./scanSessionStore");
+      const { clearScanSessionStore } = IS_TEST_ENV
+        ? (require("./scanSessionStore") as typeof import("./scanSessionStore"))
+        : await import("./scanSessionStore");
       await clearScanSessionStore();
     } catch {
       // Best-effort; never block logout.
     }
 
     try {
-      const { RecentItemsService } = await import("../services/enhancedFeatures");
+      const { RecentItemsService } = IS_TEST_ENV
+        ? (require("../services/enhancedFeatures") as typeof import("../services/enhancedFeatures"))
+        : await import("../services/enhancedFeatures");
       await RecentItemsService.clearRecent();
     } catch {
       // Best-effort; never block logout.
     }
 
-    const { clearAllCache } = await import("../services/offline/offlineStorage");
-    await clearAllCache();
+    try {
+      const { clearAllCache } = IS_TEST_ENV
+        ? (require("../services/offline/offlineStorage") as typeof import("../services/offline/offlineStorage"))
+        : await import("../services/offline/offlineStorage");
+      await clearAllCache();
+    } catch {
+      // Best-effort; never block logout.
+    }
   },
 
   logoutAll: async (
@@ -587,6 +697,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   ): Promise<AuthResult> => {
     set({ isLoading: true });
     try {
+      const apiClient = await getApiClient();
       // Backend uses JWT current_user, no body needed
       const response = await apiClient.post("/api/sessions/logout-all");
       set({ isLoading: false });
@@ -603,6 +714,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   ): Promise<AuthResult> => {
     set({ isLoading: true });
     try {
+      const apiClient = await getApiClient();
       const response = await apiClient.post("/api/auth/pin-setup", {
         pin,
         confirm_pin: confirmPin,
@@ -679,6 +791,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     set({ isLoading: true });
     try {
+      const apiClient = await getApiClient();
       const storedUser = await secureStorage.getItem(AUTH_STORAGE_KEY);
       const storedToken = await secureStorage.getItem(TOKEN_STORAGE_KEY);
       const storedLastUser = await secureStorage.getItem(LAST_USER_STORAGE_KEY);
@@ -706,12 +819,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isLoading: false,
           isInitialized: true,
         });
-        setUserPreferenceScope(user.id);
-        await rehydrateFilterStoreForCurrentScope();
-        await useSettingsStore.getState().loadSettings();
-        get().startHeartbeat();
-        await useSettingsStore.getState().syncFromBackend();
-        await initializeNotificationsInBackground();
+        hydrateAuthenticatedSessionInBackground(user, {
+          syncOfflineQueue: false,
+        });
       } else if (Platform.OS === "web") {
         try {
           const response = await apiClient.get("/api/auth/me");
@@ -728,12 +838,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               isLoading: false,
               isInitialized: true,
             });
-            setUserPreferenceScope(payload.id);
-            await rehydrateFilterStoreForCurrentScope();
-            await useSettingsStore.getState().loadSettings();
-            get().startHeartbeat();
-            await useSettingsStore.getState().syncFromBackend();
-            await initializeNotificationsInBackground();
+            hydrateAuthenticatedSessionInBackground(payload, {
+              syncOfflineQueue: false,
+            });
             return;
           }
         } catch (_cookieAuthError) {
@@ -751,20 +858,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   startHeartbeat: () => {
     if (heartbeatInterval) return;
-    
+
     let consecutiveFailures = 0;
     const MAX_FAILURES = 3; // Allow 3 failures before logout
-    
+
     heartbeatInterval = setInterval(async () => {
       if (!get().isAuthenticated) {
         get().stopHeartbeat();
         return;
       }
-      
+
       try {
+        const apiClient = await getApiClient();
         const response = await apiClient.get("/api/auth/heartbeat");
         consecutiveFailures = 0; // Reset on success
-        
+
         if (
           response.data.success === false ||
           (response.data.data && response.data.data.session_valid === false)
@@ -773,11 +881,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
       } catch (error) {
         consecutiveFailures++;
-        log.warn("Heartbeat failed", { 
+        log.warn("Heartbeat failed", {
           failureCount: consecutiveFailures,
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         });
-        
+
         // Only logout after multiple consecutive failures
         if (consecutiveFailures >= MAX_FAILURES) {
           log.error("Heartbeat failed multiple times, logging out");

@@ -10,12 +10,15 @@ import {
   ScrollView,
   Modal,
   ActivityIndicator,
+  Image,
   StyleSheet,
   Platform,
 } from "react-native";
-import { Image } from "expo-image";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { CameraView } from "expo-camera";
+import {
+  CameraView,
+  type CameraViewRef,
+} from "@/services/device/expoCamera";
 import { PhotoProofType, PhotoProofDraft } from "@/types/scan";
 import { PHOTO_PROOF_TYPES } from "@/constants/scanConstants";
 
@@ -28,7 +31,7 @@ interface PhotoCaptureProps {
   isWeb: boolean;
   serialPhotosRequired?: boolean;
   serialPhotoShortfall?: number;
-  photoCameraRef?: React.RefObject<CameraView | null>;
+  photoCameraRef?: React.RefObject<CameraViewRef | null>;
   onPhotoTypeChange: (type: PhotoProofType) => void;
   onOpenPhotoCapture: () => void;
   onClosePhotoCapture: () => void;
@@ -134,7 +137,7 @@ export const PhotoCapture: React.FC<PhotoCaptureProps> = ({
                 <Image
                   source={{ uri: photo.previewUri }}
                   style={styles.photoPreviewImage}
-                  contentFit="cover"
+                  resizeMode="cover"
                 />
                 <View style={styles.photoPreviewMeta}>
                   <Text style={styles.photoPreviewLabel}>{photo.type}</Text>

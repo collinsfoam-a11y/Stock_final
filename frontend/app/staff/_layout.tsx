@@ -8,7 +8,7 @@
 import React from "react";
 import { Stack } from "expo-router";
 import { RoleLayoutGuard } from "@/components/auth/RoleLayoutGuard";
-import { ErrorBoundary } from "@/components/feedback/ErrorBoundary";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { StaffCrashScreen } from "@/components/feedback/StaffCrashScreen";
 
 export default function StaffLayout() {

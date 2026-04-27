@@ -1,8 +1,5 @@
 import { create } from "zustand";
 import { mmkvStorage } from "../services/mmkvStorage";
-import { syncBackupReminderPreference } from "../services/backupReminderService";
-import { ThemeService, Theme } from "../services/themeService";
-import { authApi } from "../services/api/authApi";
 import type {
   UserSettings,
   UserSettingsColumnVisibility,
@@ -53,6 +50,111 @@ const REMOTE_USER_SETTING_KEYS = new Set<keyof Settings>([
   "columnVisibility",
 ]);
 let syncTimeout: ReturnType<typeof setTimeout> | null = null;
+const IS_TEST_ENV =
+  process.env.NODE_ENV === "test" ||
+  typeof process.env.JEST_WORKER_ID !== "undefined";
+let authApiCache: typeof import("../services/api/authApi")["authApi"] | null =
+  null;
+let themeServiceCache:
+  | typeof import("../services/themeService")["ThemeService"]
+  | null = null;
+let backupReminderCache:
+  | typeof import("../services/backupReminderService")["syncBackupReminderPreference"]
+  | null = null;
+let authApiPromise:
+  | Promise<typeof import("../services/api/authApi")["authApi"]>
+  | null = null;
+let themeServicePromise:
+  | Promise<typeof import("../services/themeService")["ThemeService"]>
+  | null = null;
+let backupReminderPromise:
+  | Promise<
+      typeof import("../services/backupReminderService")["syncBackupReminderPreference"]
+    >
+  | null = null;
+
+const getAuthApi = async () => {
+  if (authApiCache) {
+    return authApiCache;
+  }
+
+  if (!authApiPromise) {
+    authApiPromise = IS_TEST_ENV
+      ? Promise.resolve(
+          getAuthApiSync(),
+        )
+      : import("../services/api/authApi").then((module) => module.authApi);
+  }
+
+  authApiCache = await authApiPromise;
+  return authApiCache;
+};
+
+const getThemeService = async () => {
+  if (themeServiceCache) {
+    return themeServiceCache;
+  }
+
+  if (!themeServicePromise) {
+    themeServicePromise = IS_TEST_ENV
+      ? Promise.resolve(
+          getThemeServiceSync(),
+        )
+      : import("../services/themeService").then((module) => module.ThemeService);
+  }
+
+  themeServiceCache = await themeServicePromise;
+  return themeServiceCache;
+};
+
+const getBackupReminderSync = async () => {
+  if (backupReminderCache) {
+    return backupReminderCache;
+  }
+
+  if (!backupReminderPromise) {
+    backupReminderPromise = IS_TEST_ENV
+      ? Promise.resolve(
+          getBackupReminderSyncImmediate(),
+        )
+      : import("../services/backupReminderService").then(
+          (module) => module.syncBackupReminderPreference,
+        );
+  }
+
+  backupReminderCache = await backupReminderPromise;
+  return backupReminderCache;
+};
+
+const getAuthApiSync = () => {
+  if (!authApiCache) {
+    authApiCache = (
+      require("../services/api/authApi") as typeof import("../services/api/authApi")
+    ).authApi;
+  }
+
+  return authApiCache;
+};
+
+const getThemeServiceSync = () => {
+  if (!themeServiceCache) {
+    themeServiceCache = (
+      require("../services/themeService") as typeof import("../services/themeService")
+    ).ThemeService;
+  }
+
+  return themeServiceCache;
+};
+
+const getBackupReminderSyncImmediate = () => {
+  if (!backupReminderCache) {
+    backupReminderCache = (
+      require("../services/backupReminderService") as typeof import("../services/backupReminderService")
+    ).syncBackupReminderPreference;
+  }
+
+  return backupReminderCache;
+};
 
 export interface Settings {
   // Theme
@@ -165,8 +267,25 @@ const persistSettings = (settings: Settings) => {
 };
 
 const applySettingsSideEffects = (settings: Settings) => {
-  ThemeService.setTheme(settings.theme as Theme);
-  void syncBackupReminderPreference(settings);
+  void getThemeService()
+    .then((ThemeService) => {
+      ThemeService.setTheme(settings.theme);
+    })
+    .catch((error) => {
+      log.warn("Failed to apply theme side effect", {
+        error: (error as { message?: string } | null)?.message || String(error),
+      });
+    });
+
+  void getBackupReminderSync()
+    .then((syncBackupReminderPreference) => {
+      void syncBackupReminderPreference(settings);
+    })
+    .catch((error) => {
+      log.warn("Failed to sync backup reminder preference", {
+        error: (error as { message?: string } | null)?.message || String(error),
+      });
+    });
 };
 
 const deriveFontSizeLabel = (value: number): Settings["fontSize"] => {
@@ -548,6 +667,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     applySettingsSideEffects(newSettings);
 
     if (REMOTE_USER_SETTING_KEYS.has(key)) {
+      void getAuthApi();
       set({ hasPendingSync: true, lastSyncError: null });
       if (syncTimeout) {
         clearTimeout(syncTimeout);
@@ -567,6 +687,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     });
     persistSettings(resetSettings);
     applySettingsSideEffects(resetSettings);
+    void getAuthApi();
     void get().syncToBackend();
   },
 
@@ -620,6 +741,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ isSyncing: true });
 
     try {
+      const authApi = IS_TEST_ENV ? getAuthApiSync() : await getAuthApi();
       const backendSettings = await authApi.getUserSettings();
       const currentSettings = get().settings;
       const mergedSettings = normalizeSettings({
@@ -653,6 +775,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ isSyncing: true });
 
     try {
+      const authApi = IS_TEST_ENV ? getAuthApiSync() : await getAuthApi();
       const currentSettings = normalizeSettings(get().settings);
       await authApi.updateUserSettings(toBackendPayload(currentSettings));
       set({

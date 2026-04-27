@@ -9,7 +9,8 @@ export const useAutoLogout = (
   enabled: boolean = true,
   timeoutMs: number = DEFAULT_INACTIVITY_TIMEOUT,
 ) => {
-  const { logout, user } = useAuthStore();
+  const logout = useAuthStore((state) => state.logout);
+  const userId = useAuthStore((state) => state.user?.id ?? null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
@@ -20,7 +21,7 @@ export const useAutoLogout = (
   );
 
   const resetTimer = useCallback(() => {
-    if (!enabled || !user) return;
+    if (!enabled || !userId) return;
 
     lastActivityRef.current = Date.now();
 
@@ -65,10 +66,10 @@ export const useAutoLogout = (
         { cancelable: false },
       );
     }, timeoutDuration);
-  }, [enabled, logout, timeoutDuration, user, warningDelay]);
+  }, [enabled, logout, timeoutDuration, userId, warningDelay]);
 
   useEffect(() => {
-    if (!enabled || !user) return;
+    if (!enabled || !userId) return;
 
     // Start timer
     resetTimer();
@@ -96,7 +97,7 @@ export const useAutoLogout = (
       }
       subscription.remove();
     };
-  }, [enabled, logout, resetTimer, timeoutDuration, user]);
+  }, [enabled, logout, resetTimer, timeoutDuration, userId]);
 
   return { resetTimer };
 };

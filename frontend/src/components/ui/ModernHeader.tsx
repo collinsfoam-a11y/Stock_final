@@ -82,7 +82,7 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
   subtitle,
   style,
 }) => {
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   const router = useRouter();
 
   const shouldShowSettings =

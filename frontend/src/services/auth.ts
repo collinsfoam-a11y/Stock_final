@@ -2,9 +2,11 @@ import apiClient from "./httpClient";
 import { useAuthStore } from "../store/authStore";
 import { secureStorage } from "./storage/secureStorage";
 import { Platform } from "react-native";
+import { createLogger } from "./logging";
 
 const TOKEN_STORAGE_KEY = "auth_token";
 const REFRESH_TOKEN_STORAGE_KEY = "refresh_token";
+const log = createLogger("authService");
 
 /**
  * Authentication service for handling token management and user state.
@@ -32,7 +34,7 @@ export const authService = {
     try {
       const refreshToken = await this.getRefreshToken();
       if (!refreshToken && Platform.OS !== "web") {
-        console.warn("[AuthService] No refresh token available");
+        log.warn("No refresh token available");
         return null;
       }
 
@@ -59,7 +61,7 @@ export const authService = {
 
       return null;
     } catch (error) {
-      console.error("[AuthService] Token refresh failed:", error);
+      log.error("Token refresh failed", { error: String(error) });
       return null;
     }
   },

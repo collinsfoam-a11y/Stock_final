@@ -18,12 +18,12 @@ function StickyFooter({ title, disabled, loading, onPress, testID }: Props) {
     <View
       style={[
         styles.container,
+        styles.pointerEventsBoxNone,
         {
           padding: theme.spacing.lg,
           backgroundColor: theme.colors.overlay || "rgba(0,0,0,0.25)",
         },
       ]}
-      pointerEvents="box-none"
     >
       <View style={[styles.inner, { borderRadius: theme.borderRadius.lg }]}>
         <PremiumButton
@@ -47,6 +47,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+  },
+  pointerEventsBoxNone: {
+    pointerEvents: "box-none",
   },
   inner: {
     overflow: "hidden",

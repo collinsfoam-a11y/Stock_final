@@ -180,7 +180,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
         </Container>
       )}
       {overlay ? (
-        <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+        <View style={[StyleSheet.absoluteFill, styles.pointerEventsBoxNone]}>
           {overlay}
         </View>
       ) : null}
@@ -253,6 +253,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+  },
+  pointerEventsBoxNone: {
+    pointerEvents: "box-none",
   },
   loadingContainer: {
     flex: 1,

@@ -126,7 +126,7 @@ export const ScanAreaOverlay: React.FC<ScanAreaOverlayProps> = ({
   });
 
   return (
-    <View style={styles.container} pointerEvents="none">
+    <View style={[styles.container, styles.pointerEventsNone]}>
       {/* Dark overlay areas */}
       <View
         style={[
@@ -264,6 +264,9 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
+  },
+  pointerEventsNone: {
+    pointerEvents: "none",
   },
   overlay: {
     backgroundColor: "rgba(0, 0, 0, 0.6)",

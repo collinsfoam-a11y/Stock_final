@@ -300,154 +300,198 @@ let lastUnauthorizedTime = 0;
 const UNAUTHORIZED_DEBOUNCE_MS = 5000; // 5 seconds
 let unauthorizedHandlerCallCount = 0;
 
-// Add response interceptor for debugging and session handling
-apiClient.interceptors.response.use(
-  (response) => {
-    if (shouldLogNetworkDebug) {
-      const fullUrl = toFullUrl(response.config.baseURL, response.config.url);
-      log.debug("API response", { status: response.status, url: fullUrl });
-    }
-    return response;
-  },
-  async (error) => {
-    const fullUrl = toFullUrl(error.config?.baseURL, error.config?.url);
-    const status = error.response?.status;
-    const data = error.response?.data as { code?: string; message?: string } | undefined;
-    const errorCode = data?.code;
+const performLogout = (fullUrl: string): void => {
+  const now = Date.now();
+  const timeSinceLastUnauthorized = now - lastUnauthorizedTime;
 
-    // Helper to perform debounced logout
-    const performLogout = () => {
-      const now = Date.now();
-      const timeSinceLastUnauthorized = now - lastUnauthorizedTime;
+  if (timeSinceLastUnauthorized < UNAUTHORIZED_DEBOUNCE_MS) {
+    unauthorizedHandlerCallCount++;
+    log.warn("401 circuit breaker active - ignoring subsequent unauthorized", {
+      url: fullUrl,
+      count: unauthorizedHandlerCallCount,
+      timeSinceLast: timeSinceLastUnauthorized,
+    });
+    return;
+  }
 
-      if (timeSinceLastUnauthorized < UNAUTHORIZED_DEBOUNCE_MS) {
-        unauthorizedHandlerCallCount++;
-        log.warn("401 circuit breaker active - ignoring subsequent unauthorized", {
-          url: fullUrl,
-          count: unauthorizedHandlerCallCount,
-          timeSinceLast: timeSinceLastUnauthorized,
-        });
-        return;
-      }
+  lastUnauthorizedTime = now;
+  unauthorizedHandlerCallCount = 1;
 
-      // Reset circuit breaker
-      lastUnauthorizedTime = now;
-      unauthorizedHandlerCallCount = 1;
+  secureStorage.removeItem("auth_token").catch(() => {});
+  secureStorage.removeItem("refresh_token").catch(() => {});
+  delete apiClient.defaults.headers.common["Authorization"];
 
-      // Clear storage immediately to prevent stale token persistence
-      secureStorage.removeItem("auth_token").catch(() => {});
-      secureStorage.removeItem("refresh_token").catch(() => {});
-      delete apiClient.defaults.headers.common["Authorization"];
+  handleUnauthorized();
+};
 
-      handleUnauthorized();
-    };
+const handleNetworkRestrictedError = (
+  status: number | undefined,
+  errorCode: string | undefined,
+  fullUrl: string,
+): boolean => {
+  if (status !== 403 || errorCode !== "NETWORK_NOT_ALLOWED") {
+    return false;
+  }
 
-    // Handle Network Restrictions (403 NETWORK_NOT_ALLOWED)
-    if (status === 403 && errorCode === "NETWORK_NOT_ALLOWED") {
-      log.warn("Network restricted: App is outside allowed LAN", {
-        url: fullUrl,
-      });
-      useNetworkStore.getState().setRestrictedMode(true);
-      // We don't reject immediately if we want the UI to handle it, but usually we reject
-      // and let the UI show the "Restricted Mode" banner based on the store state.
-      return Promise.reject(error);
-    }
+  log.warn("Network restricted: App is outside allowed LAN", {
+    url: fullUrl,
+  });
+  useNetworkStore.getState().setRestrictedMode(true);
+  return true;
+};
 
-    // Handle Session Revocation (401/403 SESSION_REVOKED)
-    if ((status === 401 || status === 403) && errorCode === "SESSION_REVOKED") {
-      log.warn("Session revoked (single device enforcement)", { url: fullUrl });
-      performLogout();
-      return Promise.reject(error);
-    }
+const handleSessionRevokedError = (
+  status: number | undefined,
+  errorCode: string | undefined,
+  fullUrl: string,
+): boolean => {
+  if ((status !== 401 && status !== 403) || errorCode !== "SESSION_REVOKED") {
+    return false;
+  }
 
-    // Handle session expiration (401 Unauthorized) - General case
-    if (status === 401) {
-      // Prevent infinite loops: If the logout call itself fails with 401,
-      // we are already logged out on the server, so just ignore it.
-      const isLogout = fullUrl.includes("/api/auth/logout");
-      if (isLogout) {
-        log.debug("Logout API call returned 401 (ignoring)", { url: fullUrl });
-        return Promise.reject(error);
-      }
+  log.warn("Session revoked (single device enforcement)", { url: fullUrl });
+  performLogout(fullUrl);
+  return true;
+};
 
-      const isRefresh = fullUrl.includes("/api/auth/refresh");
-      if (isRefresh) {
-        log.warn("Token refresh request returned 401", { url: fullUrl });
-        performLogout();
-        return Promise.reject(error);
-      }
+const isLogoutRequest = (fullUrl: string): boolean => fullUrl.includes("/api/auth/logout");
 
-      // L4 fix: Skip the stale token retry — go directly to refresh flow.
-      // The stored token is the same one that caused the 401, so retrying
-      // with it just wastes a round-trip.
-      const originalRequest = error.config;
+const isRefreshRequest = (fullUrl: string): boolean => fullUrl.includes("/api/auth/refresh");
 
-      // Attempt a refresh-token flow once.
-      if (!originalRequest._retryRefresh) {
-        originalRequest._retryRefresh = true;
-        log.debug("401 after retry; attempting refresh token flow", {
-          url: fullUrl,
-        });
+const isAuthSessionProbeRequest = (fullUrl: string): boolean =>
+  fullUrl.includes("/api/auth/me");
 
-        try {
-          if (!refreshInFlight) {
-            refreshInFlight = refreshAccessToken().finally(() => {
-              refreshInFlight = null;
-            });
-          }
+const retryUnauthorizedRequest = async (error: any, fullUrl: string): Promise<any> => {
+  const originalRequest = error.config;
 
-          return refreshInFlight.then((newToken) => {
-            if (newToken) {
-              originalRequest.headers = originalRequest.headers || {};
-              originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
-              return apiClient(originalRequest);
-            }
-
-            log.warn("Refresh token flow failed; clearing credentials", {
-              url: fullUrl,
-            });
-            performLogout();
-            return Promise.reject(error);
-          });
-        } catch (_e) {
-          performLogout();
-          return Promise.reject(error);
-        }
-      }
-
-      log.warn("API unauthorized after retry; clearing credentials", {
-        url: fullUrl,
-      });
-
-      performLogout();
-      return Promise.reject(error);
-    }
-
-    if (status) {
-      // 404 is often an expected state (e.g. item not found), so use warn instead of error
-      if (status === 404) {
-        log.warn("API resource not found (404)", {
-          url: fullUrl,
-          data: summarizeResponseData(error.response?.data),
-        });
-      } else {
-        log.error("API error response", {
-          status,
-          url: fullUrl,
-          data: summarizeResponseData(error.response?.data),
-        });
-      }
-    } else if (error.request) {
-      log.warn("API no response received (timeout/network)", { url: fullUrl });
-    } else {
-      log.error("API error", {
-        url: fullUrl,
-        error: (error as { message?: string } | null)?.message || String(error),
-      });
-    }
-
+  if (originalRequest?._retryRefresh) {
+    log.warn("API unauthorized after retry; clearing credentials", {
+      url: fullUrl,
+    });
+    performLogout(fullUrl);
     return Promise.reject(error);
   }
+
+  originalRequest._retryRefresh = true;
+  log.debug("401 after retry; attempting refresh token flow", {
+    url: fullUrl,
+  });
+
+  try {
+    if (!refreshInFlight) {
+      refreshInFlight = refreshAccessToken().finally(() => {
+        refreshInFlight = null;
+      });
+    }
+
+    return refreshInFlight.then((newToken) => {
+      if (newToken) {
+        originalRequest.headers = originalRequest.headers || {};
+        originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
+        return apiClient(originalRequest);
+      }
+
+      log.warn("Refresh token flow failed; clearing credentials", {
+        url: fullUrl,
+      });
+      performLogout(fullUrl);
+      return Promise.reject(error);
+    });
+  } catch (_refreshError) {
+    performLogout(fullUrl);
+    return Promise.reject(error);
+  }
+};
+
+const handleUnauthorizedError = async (error: any, fullUrl: string): Promise<any> => {
+  if (isLogoutRequest(fullUrl)) {
+    log.debug("Logout API call returned 401 (ignoring)", { url: fullUrl });
+    return Promise.reject(error);
+  }
+
+  if (isRefreshRequest(fullUrl)) {
+    log.warn("Token refresh request returned 401", { url: fullUrl });
+    performLogout(fullUrl);
+    return Promise.reject(error);
+  }
+
+  if (isAuthSessionProbeRequest(fullUrl)) {
+    log.debug("Auth session probe returned 401", { url: fullUrl });
+    return Promise.reject(error);
+  }
+
+  return retryUnauthorizedRequest(error, fullUrl);
+};
+
+const logResponseError = (
+  error: any,
+  fullUrl: string,
+  status: number | undefined,
+): void => {
+  if (status === 404) {
+    log.warn("API resource not found (404)", {
+      url: fullUrl,
+      data: summarizeResponseData(error.response?.data),
+    });
+    return;
+  }
+
+  if (status) {
+    log.error("API error response", {
+      status,
+      url: fullUrl,
+      data: summarizeResponseData(error.response?.data),
+    });
+    return;
+  }
+
+  if (error.request) {
+    log.warn("API no response received (timeout/network)", { url: fullUrl });
+    return;
+  }
+
+  log.error("API error", {
+    url: fullUrl,
+    error: (error as { message?: string } | null)?.message || String(error),
+  });
+};
+
+const handleResponseSuccess = (response: any) => {
+  if (shouldLogNetworkDebug) {
+    const fullUrl = toFullUrl(response.config.baseURL, response.config.url);
+    log.debug("API response", { status: response.status, url: fullUrl });
+  }
+  return response;
+};
+
+const handleResponseError = async (error: any) => {
+  const fullUrl = toFullUrl(error.config?.baseURL, error.config?.url);
+  const status = error.response?.status;
+  const data = error.response?.data as { code?: string; message?: string } | undefined;
+  const errorCode = data?.code;
+
+  if (handleNetworkRestrictedError(status, errorCode, fullUrl)) {
+    return Promise.reject(error);
+  }
+
+  if (handleSessionRevokedError(status, errorCode, fullUrl)) {
+    return Promise.reject(error);
+  }
+
+  if (status === 401) {
+    return handleUnauthorizedError(error, fullUrl);
+  }
+
+  logResponseError(error, fullUrl, status);
+  return Promise.reject(error);
+};
+
+// Add response interceptor for debugging and session handling
+apiClient.interceptors.response.use(
+  handleResponseSuccess,
+  async (error) => {
+    return handleResponseError(error);
+  },
 );
 
 export default apiClient;

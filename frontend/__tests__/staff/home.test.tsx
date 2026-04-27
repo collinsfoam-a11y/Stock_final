@@ -38,20 +38,29 @@ jest.mock("../../src/hooks/useSessionsQuery", () => ({
 
 // Mocks
 jest.mock("../../src/store/scanSessionStore", () => ({
-  useScanSessionStore: jest.fn(() => ({
-    activeSessionId: null,
-    currentFloor: null,
-    setFloor: jest.fn(),
-  })),
+  useScanSessionStore: jest.fn((selector?: any) => {
+    const state = {
+      activeSessionId: null,
+      currentFloor: null,
+      setFloor: jest.fn(),
+      setRack: jest.fn(),
+      setActiveSession: jest.fn(),
+    };
+    return selector ? selector(state) : state;
+  }),
 }));
 
 jest.mock("../../src/store/authStore", () => ({
-  useAuthStore: jest.fn(() => ({
-    user: { username: "staff1" },
-  })),
+  useAuthStore: jest.fn((selector?: any) => {
+    const state = {
+      user: { username: "staff1" },
+      logout: jest.fn(),
+    };
+    return selector ? selector(state) : state;
+  }),
 }));
 
-jest.mock("../../src/services/utils/toastService", () => ({
+jest.mock("../../src/services/toastService", () => ({
   toastService: {
     show: jest.fn(),
   },

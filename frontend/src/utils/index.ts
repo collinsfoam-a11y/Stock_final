@@ -1,6 +1,10 @@
 export * from "./scanUtils";
 export * from "./validation";
 export * from "./errorHandler";
-export * from "./backendUrl";
+export {
+  BACKEND_URL,
+  getBackendURL,
+  initializeBackendURL,
+} from "../services/backendUrl";
 export * from "./search";
 export * from "./retry";

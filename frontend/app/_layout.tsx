@@ -2,19 +2,19 @@ import React from "react";
 import { Platform } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
-import "react-native-reanimated";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "../src/store/authStore";
 import { useSettingsStore } from "../src/store/settingsStore";
-import { ErrorBoundary } from "../src/components/ErrorBoundary";
-import { ToastProvider } from "../src/components/feedback/ToastProvider";
-import { ThemeProvider } from "../src/context/ThemeContext";
-import { queryClient } from "../src/services/queryClient";
-import { AuthGuard } from "../src/components/auth/AuthGuard";
 import { fontAssets } from "../src/constants/fontAssets";
 import { initializeApp } from "../src/bootstrap/initApp";
-import { RootStack } from "../src/bootstrap/RootStack";
-import { BootErrorView, BootLoadingView } from "../src/bootstrap/BootStateViews";
+import { BootLoadingView } from "../src/bootstrap/BootStateViews";
+
+type AppShellModule = typeof import("../src/bootstrap/AppShell");
+
+const WebAppShell =
+  Platform.OS === "web"
+    ? (require("../src/bootstrap/AppShell") as AppShellModule).default
+    : null;
+const LazyAppShell = React.lazy(() => import("../src/bootstrap/AppShell"));
 
 if (Platform.OS !== "web") {
   SplashScreen.preventAutoHideAsync();
@@ -25,8 +25,10 @@ if (__DEV__) {
 }
 
 export default function RootLayout() {
-  const { isLoading, loadStoredAuth } = useAuthStore();
-  const { loadSettings } = useSettingsStore();
+  const isWeb = Platform.OS === "web";
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const loadStoredAuth = useAuthStore((state) => state.loadStoredAuth);
+  const loadSettings = useSettingsStore((state) => state.loadSettings);
   const [fontsLoaded] = useFonts(fontAssets);
 
   const [isInitialized, setIsInitialized] = React.useState(false);
@@ -50,6 +52,7 @@ export default function RootLayout() {
           isDev: __DEV__,
           loadStoredAuth,
           loadSettings,
+          deferUnauthenticatedSettings: isWeb,
         });
         cleanupRef.current.push(cleanup);
 
@@ -62,7 +65,7 @@ export default function RootLayout() {
         if (__DEV__) {
           console.log("✅ [INIT] Initialization completed successfully");
         }
-        if (Platform.OS !== "web") {
+        if (!isWeb) {
           await SplashScreen.hideAsync();
         }
       } catch (error: unknown) {
@@ -89,7 +92,7 @@ export default function RootLayout() {
         useAuthStore.getState().setLoading(false);
         setIsInitialized(true);
 
-        if (Platform.OS !== "web") {
+        if (!isWeb) {
           await SplashScreen.hideAsync();
         }
       }
@@ -112,32 +115,21 @@ export default function RootLayout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!isInitialized || isLoading) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <BootLoadingView initError={initError} />
-        </ThemeProvider>
-      </QueryClientProvider>
-    );
+  // Web protected routes already gate themselves on auth state, so the shell
+  // can mount immediately and public pages do not wait on full boot completion.
+  const shouldBlockRender = !isWeb && (!isInitialized || isLoading);
+
+  if (shouldBlockRender) {
+    return <BootLoadingView initError={initError} />;
   }
 
-  if (isInitialized && initError && Platform.OS === "web") {
-    return <BootErrorView initError={initError} />;
+  if (isWeb && WebAppShell) {
+    return <WebAppShell />;
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ErrorBoundary>
-        <ThemeProvider>
-          <ToastProvider>
-            <AuthGuard>
-              <RootStack />
-            </AuthGuard>
-          </ToastProvider>
-        </ThemeProvider>
-      </ErrorBoundary>
-    </QueryClientProvider>
+    <React.Suspense fallback={<BootLoadingView initError={initError} />}>
+      <LazyAppShell />
+    </React.Suspense>
   );
 }
-

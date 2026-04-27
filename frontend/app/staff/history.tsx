@@ -14,7 +14,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { PinEntryModal } from "../../src/components/modals/PinEntryModal";
 import { useAuthStore } from "../../src/store/authStore";
 import { deleteCountLine, getCountLines } from "../../src/services/api/api";
-import { haptics } from "../../src/services/utils/haptics";
+import { haptics } from "../../src/services/haptics";
 import { flags } from "../../src/constants/flags";
 import { PullToRefresh } from "../../src/components/PullToRefresh";
 import { BottomSheet } from "../../src/components/ui/BottomSheet";

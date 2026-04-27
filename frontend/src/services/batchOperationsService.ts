@@ -5,7 +5,7 @@
 
 import api, { createCountLine } from "./api/api";
 import { BatchProcessor } from "./monitoring/performanceService";
-import { handleErrorWithRecovery } from "./utils/errorRecovery";
+import { handleErrorWithRecovery } from "./errorRecovery";
 
 export interface BatchCountOperation {
   session_id: string;

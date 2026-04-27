@@ -7,10 +7,10 @@ import {
   StatusBar,
   FlatList,
   Dimensions,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Image } from "expo-image";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -60,7 +60,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
                 <Image
                   source={{ uri: item }}
                   style={styles.image}
-                  contentFit="contain"
+                  resizeMode="contain"
                 />
               </View>
             )}

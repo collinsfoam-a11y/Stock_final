@@ -19,6 +19,7 @@ module.exports = {
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
+    "^expo-modules-core$": "<rootDir>/node_modules/expo-modules-core",
   },
   // Coverage configuration
   collectCoverageFrom: [

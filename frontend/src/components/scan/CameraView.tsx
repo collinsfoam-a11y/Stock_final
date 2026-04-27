@@ -1,6 +1,10 @@
 import React, { forwardRef } from "react";
 import { StyleSheet, ViewStyle } from "react-native";
-import { CameraView as ExpoCameraView, CameraType } from "expo-camera";
+import {
+  CameraView as BaseCameraView,
+  type CameraType,
+  type CameraViewRef,
+} from "@/services/device/expoCamera";
 
 interface CameraViewProps {
   style?: ViewStyle;
@@ -9,10 +13,10 @@ interface CameraViewProps {
   children?: React.ReactNode;
 }
 
-export const CameraView = forwardRef<ExpoCameraView, CameraViewProps>(
+export const CameraView = forwardRef<CameraViewRef, CameraViewProps>(
   ({ style, facing = "back", ratio: _ratio = "16:9", children }, ref) => {
     return (
-      <ExpoCameraView
+      <BaseCameraView
         ref={ref}
         style={[styles.camera, style]}
         facing={facing}
@@ -24,7 +28,7 @@ export const CameraView = forwardRef<ExpoCameraView, CameraViewProps>(
         // We will keep it simple.
       >
         {children}
-      </ExpoCameraView>
+      </BaseCameraView>
     );
   },
 );

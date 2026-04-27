@@ -74,18 +74,18 @@ describe("initializeApp", () => {
     expect(typeof result.cleanup).toBe("function");
   });
 
-  it("fails startup when mobile runtime initialization fails", async () => {
+  it("continues startup when mobile runtime initialization fails", async () => {
     (initMobileRuntime as jest.Mock).mockRejectedValueOnce(new Error("mobile runtime failed"));
 
-    await expect(
-      initializeApp({
-        fontsLoaded: true,
-        isDev: true,
-        loadStoredAuth: async () => undefined,
-        loadSettings: async () => undefined,
-        isAuthenticated: () => false,
-      }),
-    ).rejects.toThrow("mobile runtime failed");
+    const result = await initializeApp({
+      fontsLoaded: true,
+      isDev: true,
+      loadStoredAuth: async () => undefined,
+      loadSettings: async () => undefined,
+      isAuthenticated: () => false,
+    });
+
+    expect(typeof result.cleanup).toBe("function");
   });
 
   it("skips background sync registration when user is not authenticated", async () => {

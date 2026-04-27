@@ -9,14 +9,8 @@ FRONTEND_DIR="$PROJECT_ROOT/frontend"
 
 cd "$FRONTEND_DIR"
 
-# ── Ensure Node 20 (required by Expo SDK 54) ─────────────────
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-if command -v nvm &>/dev/null; then
-    nvm use 20 2>/dev/null || { echo "⚠️  Node 20 not installed. Run: nvm install 20"; exit 1; }
-else
-    echo "⚠️  nvm not found — ensure Node 20.x is active (SDK 54 requirement)"
-fi
+# Validate the active Node version against the frontend's current engine range.
+npm run doctor:node
 echo "📌 Using Node $(node -v)"
 
 echo "🔍 Checking for existing frontend instances..."

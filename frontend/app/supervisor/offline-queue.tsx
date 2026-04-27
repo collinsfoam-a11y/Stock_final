@@ -26,7 +26,7 @@ import {
 } from "../../src/services/offline/offlineQueue";
 import { getOfflineQueue } from "../../src/services/offline/offlineStorage";
 import { forceSync } from "../../src/services/syncService";
-import { summarizeForceSyncResult } from "./offlineQueueFeedback";
+import { summarizeForceSyncResult } from "../../src/components/supervisor/offlineQueueFeedback";
 import {
   AuroraBackground,
   GlassCard,

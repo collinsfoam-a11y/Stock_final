@@ -9,7 +9,7 @@ jest.mock("@/services/api/api", () => ({
   createCountLine: (...args: unknown[]) => mockCreateCountLine(...args),
 }));
 
-jest.mock("@/services/utils/toastService", () => ({
+jest.mock("@/services/toastService", () => ({
   toastService: {
     show: (...args: unknown[]) => mockToastShow(...args),
   },

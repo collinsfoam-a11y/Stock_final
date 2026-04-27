@@ -10,6 +10,8 @@
  * Using distinct names to avoid conflicts
  */
 
+import { createShadow } from "./shadowUtils";
+
 // =============================================================================
 // ANIMATION TIMINGS
 // =============================================================================
@@ -198,63 +200,15 @@ export const ComponentSizes = {
 // SHADOWS (iOS & Android)
 // =============================================================================
 export const Shadows = {
-  none: {
-    shadowColor: "transparent",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
-  },
-  xs: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  sm: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  md: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  lg: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  xl: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.22,
-    shadowRadius: 16,
-    elevation: 12,
-  },
-  xxl: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 16,
-  },
+  none: createShadow({ color: "transparent" }),
+  xs: createShadow({ color: "#000", offsetY: 1, opacity: 0.1, radius: 2, elevation: 1 }),
+  sm: createShadow({ color: "#000", offsetY: 2, opacity: 0.12, radius: 3, elevation: 2 }),
+  md: createShadow({ color: "#000", offsetY: 4, opacity: 0.15, radius: 6, elevation: 4 }),
+  lg: createShadow({ color: "#000", offsetY: 8, opacity: 0.18, radius: 12, elevation: 8 }),
+  xl: createShadow({ color: "#000", offsetY: 12, opacity: 0.22, radius: 16, elevation: 12 }),
+  xxl: createShadow({ color: "#000", offsetY: 16, opacity: 0.25, radius: 24, elevation: 16 }),
   /** Floating/raised shadow */
-  raised: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 6,
-  },
+  raised: createShadow({ color: "#000", offsetY: 6, opacity: 0.2, radius: 10, elevation: 6 }),
 } as const;
 
 // =============================================================================

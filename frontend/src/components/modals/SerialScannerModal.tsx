@@ -18,7 +18,7 @@ import {
   Alert,
   Linking,
 } from "react-native";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { CameraView, useCameraPermissions } from "@/services/device/expoCamera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";

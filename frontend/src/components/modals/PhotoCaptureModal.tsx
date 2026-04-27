@@ -19,8 +19,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   CameraView,
+  type CameraViewRef,
   useCameraPermissions,
-} from "expo-camera";
+} from "@/services/device/expoCamera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   modernColors,
@@ -48,7 +49,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const [permissionState, setPermissionState] = useState(permission);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
-  const cameraRef = useRef<CameraView>(null);
+  const cameraRef = useRef<CameraViewRef>(null);
   const hasAutoRequestedPermissionRef = useRef(false);
 
   useEffect(() => {

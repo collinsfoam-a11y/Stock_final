@@ -5,7 +5,7 @@ import { useScanSessionStore } from "@/store/scanSessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { getItemByBarcode, refreshItemStock } from "@/services/api";
 import { localDb } from "@/db/localDb";
-import { toastService } from "@/services/utils/toastService";
+import { toastService } from "@/services/toastService";
 import { CountLineBatch, Item } from "@/types/scan";
 import { useItemForm } from "./useItemForm";
 import { useItemSubmission } from "./useItemSubmission";

@@ -3,7 +3,7 @@
  * Optimized for common retail/warehouse 1D barcodes
  */
 
-import { BarcodeScanningResult } from "expo-camera";
+import type { BarcodeScanningResult } from "@/services/device/expoCamera";
 
 /**
  * Supported 1D barcode types for stock verification

@@ -6,6 +6,21 @@ import { useSettingsStore } from "../../store/settingsStore";
 
 const log = createLogger("OfflineStorage");
 
+function formatStorageError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function logStorageError(
+  message: string,
+  error: unknown,
+  context?: Record<string, unknown>,
+): void {
+  log.error(message, {
+    ...context,
+    error: formatStorageError(error),
+  });
+}
+
 const STORAGE_KEYS = {
   ITEMS_CACHE: "items_cache",
   OFFLINE_QUEUE: "offline_queue",
@@ -223,7 +238,7 @@ export const getItemFromCache = async (itemCode: string): Promise<CachedItem | n
     const cache = await getItemsCache();
     return cache[itemCode] || null;
   } catch (error) {
-    __DEV__ && console.error("Error getting item from cache:", error);
+    logStorageError("Error getting item from cache", error, { itemCode });
     return null;
   }
 };
@@ -256,7 +271,7 @@ export const searchItemsInCache = async (query: string): Promise<CachedItem[]> =
       return false;
     });
   } catch (error) {
-    __DEV__ && console.error("Error searching items in cache:", error);
+    logStorageError("Error searching items in cache", error, { query });
     return [];
   }
 };
@@ -265,7 +280,7 @@ export const clearItemsCache = async () => {
   try {
     await storage.remove(STORAGE_KEYS.ITEMS_CACHE);
   } catch (error) {
-    __DEV__ && console.error("Error clearing items cache:", error);
+    logStorageError("Error clearing items cache", error);
   }
 };
 
@@ -402,7 +417,7 @@ export const addToOfflineQueue = async (
     await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, queue);
     return queueItem;
   } catch (error) {
-    __DEV__ && console.error("Error adding to offline queue:", error);
+    logStorageError("Error adding to offline queue", error, { type });
     throw error;
   }
 };
@@ -414,7 +429,7 @@ export const getOfflineQueue = async (): Promise<OfflineQueueItem[]> => {
     });
     return Array.isArray(queue) ? queue.map(normalizeQueueItem) : [];
   } catch (error) {
-    __DEV__ && console.error("Error getting offline queue:", error);
+    logStorageError("Error getting offline queue", error);
     return [];
   }
 };
@@ -425,7 +440,7 @@ export const removeFromOfflineQueue = async (id: string) => {
     const updatedQueue = queue.filter((item) => item.id !== id);
     await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, updatedQueue);
   } catch (error) {
-    __DEV__ && console.error("Error removing from offline queue:", error);
+    logStorageError("Error removing from offline queue", error, { id });
   }
 };
 
@@ -444,7 +459,9 @@ export const removeManyFromOfflineQueue = async (ids: string[]) => {
 
     await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, updatedQueue);
   } catch (error) {
-    __DEV__ && console.error("Error removing many from offline queue:", error);
+    logStorageError("Error removing many from offline queue", error, {
+      idsCount: ids.length,
+    });
   }
 };
 
@@ -472,7 +489,7 @@ export const updateQueueItemRetries = async (
     );
     await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, updatedQueue);
   } catch (error) {
-    __DEV__ && console.error("Error updating queue item retries:", error);
+    logStorageError("Error updating queue item retries", error, { id });
   }
 };
 
@@ -487,7 +504,7 @@ export const updateOfflineQueueItem = async (
     );
     await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, updatedQueue);
   } catch (error) {
-    __DEV__ && console.error("Error updating offline queue item:", error);
+    logStorageError("Error updating offline queue item", error, { id });
   }
 };
 
@@ -495,7 +512,7 @@ export const clearOfflineQueue = async () => {
   try {
     await storage.remove(STORAGE_KEYS.OFFLINE_QUEUE);
   } catch (error) {
-    __DEV__ && console.error("Error clearing offline queue:", error);
+    logStorageError("Error clearing offline queue", error);
   }
 };
 
@@ -543,7 +560,9 @@ export const cacheSession = async (
     await storage.set(STORAGE_KEYS.SESSIONS_CACHE, updatedCache);
     return normalizedSession;
   } catch (error) {
-    __DEV__ && console.error("Error caching session:", error);
+    logStorageError("Error caching session", error, {
+      sessionId: session?.id || session?.session_id,
+    });
     throw error;
   }
 };
@@ -616,7 +635,9 @@ export const getSessionsCache = async (): Promise<Record<string, CachedSession>>
 
     // Self-healing: remove undefined keys
     if (cache && (cache as any)["undefined"]) {
-      __DEV__ && console.log("🧹 Cleaning up invalid 'undefined' session cache entry");
+      if (__DEV__) {
+        log.debug("Cleaning invalid session cache entry", { key: "undefined" });
+      }
       const cleanCache = { ...cache };
       delete (cleanCache as any)["undefined"];
       await storage.set(STORAGE_KEYS.SESSIONS_CACHE, cleanCache);
@@ -625,7 +646,7 @@ export const getSessionsCache = async (): Promise<Record<string, CachedSession>>
 
     return cache ?? {};
   } catch (error) {
-    __DEV__ && console.error("Error getting sessions cache:", error);
+    logStorageError("Error getting sessions cache", error);
     return {};
   }
 };
@@ -635,7 +656,7 @@ export const getSessionFromCache = async (sessionId: string): Promise<CachedSess
     const cache = await getSessionsCache();
     return cache[sessionId] || null;
   } catch (error) {
-    __DEV__ && console.error("Error getting session from cache:", error);
+    logStorageError("Error getting session from cache", error, { sessionId });
     return null;
   }
 };
@@ -745,7 +766,7 @@ export const getCountLinesCache = async (): Promise<Record<string, CachedCountLi
     );
     return cache ?? {};
   } catch (error) {
-    __DEV__ && console.error("Error getting count lines cache:", error);
+    logStorageError("Error getting count lines cache", error);
     return {};
   }
 };
@@ -757,7 +778,9 @@ export const getCountLinesBySessionFromCache = async (
     const cache = await getCountLinesCache();
     return cache[sessionId] || [];
   } catch (error) {
-    __DEV__ && console.error("Error getting count lines by session from cache:", error);
+    logStorageError("Error getting count lines by session from cache", error, {
+      sessionId,
+    });
     return [];
   }
 };
@@ -767,7 +790,7 @@ export const updateLastSync = async () => {
   try {
     await storage.set(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
   } catch (error) {
-    __DEV__ && console.error("Error updating last sync:", error);
+    logStorageError("Error updating last sync", error);
   }
 };
 
@@ -775,7 +798,7 @@ export const getLastSync = async (): Promise<string | null> => {
   try {
     return await storage.get(STORAGE_KEYS.LAST_SYNC);
   } catch (error) {
-    __DEV__ && console.error("Error getting last sync:", error);
+    logStorageError("Error getting last sync", error);
     return null;
   }
 };
@@ -791,7 +814,7 @@ export const clearAllCache = async () => {
       STORAGE_KEYS.LAST_SYNC,
     ]);
   } catch (error) {
-    __DEV__ && console.error("Error clearing all cache:", error);
+    logStorageError("Error clearing all cache", error);
   }
 };
 
@@ -822,7 +845,7 @@ export const getCacheStats = async () => {
       ),
     };
   } catch (error) {
-    __DEV__ && console.error("Error getting cache stats:", error);
+    logStorageError("Error getting cache stats", error);
     return {
       itemsCount: 0,
       queuedOperations: 0,

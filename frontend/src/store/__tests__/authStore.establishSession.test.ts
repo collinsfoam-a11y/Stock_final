@@ -61,6 +61,14 @@ describe("authStore.establishSession", () => {
       }),
     }));
 
+    jest.doMock("../../services/utils/notificationService", () => ({
+      __esModule: true,
+      NotificationService: {
+        initialize: jest.fn(async () => undefined),
+        unregisterCurrentDevice: jest.fn(async () => undefined),
+      },
+    }));
+
     let useAuthStore: ReturnType<typeof require>;
     jest.isolateModules(() => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -80,6 +88,8 @@ describe("authStore.establishSession", () => {
         has_pin: false,
       },
     });
+
+    await new Promise((resolve) => setImmediate(resolve));
 
     const state = useAuthStore.getState();
 

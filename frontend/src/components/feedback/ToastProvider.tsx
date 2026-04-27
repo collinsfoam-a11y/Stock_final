@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet } from "react-native";
 import { Toast } from "./Toast";
-import { ToastData, toastService } from "../../services/utils/toastService";
+import { ToastData, toastService } from "../../services/toastService";
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -37,7 +37,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <>
       {children}
-      <View style={styles.container} pointerEvents="box-none">
+      <View style={[styles.container, styles.pointerEventsBoxNone]}>
         {toasts.slice(-3).map((toast) => (
           <View key={toast.id} style={styles.toastWrapper}>
             <Toast
@@ -63,6 +63,9 @@ const styles = StyleSheet.create({
     zIndex: 9999,
     alignItems: "center",
     paddingTop: 50,
+  },
+  pointerEventsBoxNone: {
+    pointerEvents: "box-none",
   },
   toastWrapper: {
     marginBottom: 8,

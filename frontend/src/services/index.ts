@@ -1,5 +1,5 @@
 // Main services export file
-export { storage } from "./asyncStorageService";
+export { storage } from "./storage/asyncStorageService";
 export { getBackendURL } from "./backendUrl";
 
 // API services - only export what's available

@@ -15,9 +15,9 @@ import {
   Alert,
   RefreshControl,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useCameraPermissions } from "expo-camera";
+import { useCameraPermissions } from "../../src/services/device/expoCamera";
 import * as Haptics from "expo-haptics";
 import {
   useAnimatedStyle,
@@ -45,7 +45,7 @@ import {
 } from "../../src/services/api/api";
 import { RecentItemsService } from "../../src/services/enhancedFeatures";
 import { playScanSound } from "../../src/services/scanSoundService";
-import { toastService } from "../../src/services/utils/toastService";
+import { toastService } from "../../src/services/toastService";
 import { localDb } from "../../src/db/localDb";
 import { validateBarcode } from "../../src/utils/validation";
 import { dedupeItemsKeepingHighestStock } from "../../src/utils/itemBatchUtils";
@@ -92,6 +92,7 @@ const ScanScreen = React.memo(function ScanScreen() {
   );
   const lazyLoading = useSettingsStore((state) => state.settings.lazyLoading);
   const debounceDelay = useSettingsStore((state) => state.settings.debounceDelay);
+  const [isScreenFocused, setIsScreenFocused] = useState<boolean>(false);
 
   const { currentFloor, currentRack } = useScanSessionStore();
   const [permission, requestPermission] = useCameraPermissions();
@@ -109,6 +110,7 @@ const ScanScreen = React.memo(function ScanScreen() {
   // WebSocket Integration
   const { lastMessage } = useWebSocket(
     sessionId ? String(sessionId) : undefined,
+    isScreenFocused,
   );
 
   // State
@@ -275,16 +277,30 @@ const ScanScreen = React.memo(function ScanScreen() {
     return () => stopMonitoring();
   }, [startMonitoring, stopMonitoring]);
 
-  // Canonical startup path: initial load + periodic stat refresh
-  useEffect(() => {
-    if (!isAuthenticated) {
-      return;
-    }
+  useFocusEffect(
+    useCallback(() => {
+      setIsScreenFocused(true);
+      return () => {
+        setIsScreenFocused(false);
+      };
+    }, []),
+  );
 
-    loadInitialData();
-    const interval = setInterval(loadSessionStats, 30000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated, loadInitialData, loadSessionStats]);
+  // Canonical startup path: initial load + periodic stat refresh
+  useFocusEffect(
+    useCallback(() => {
+      if (!isAuthenticated) {
+        return undefined;
+      }
+
+      void loadInitialData();
+      const interval = setInterval(() => {
+        void loadSessionStats();
+      }, 30000);
+
+      return () => clearInterval(interval);
+    }, [isAuthenticated, loadInitialData, loadSessionStats]),
+  );
 
   // Search effect with proper cleanup
   useEffect(() => {
@@ -615,7 +631,7 @@ const ScanScreen = React.memo(function ScanScreen() {
       />
 
       {loading && (
-        <View pointerEvents="none" style={styles.loadingOverlay}>
+        <View style={[styles.loadingOverlay, styles.pointerEventsNone]}>
           <ActivityIndicator size="large" color={colors.primary[600]} />
         </View>
       )}
@@ -671,6 +687,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1000,
+  },
+  pointerEventsNone: {
+    pointerEvents: "none",
   },
   performanceOverlay: {
     position: "absolute",

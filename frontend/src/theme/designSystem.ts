@@ -1,3 +1,5 @@
+import { createShadow } from "./shadowUtils";
+
 // Design System for Premium Theme
 export const PremiumTheme = {
   // Colors
@@ -96,27 +98,9 @@ export const PremiumTheme = {
 
   // Shadows
   shadows: {
-    sm: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.22,
-      shadowRadius: 2.22,
-      elevation: 3,
-    },
-    md: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 3.84,
-      elevation: 5,
-    },
-    lg: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4.65,
-      elevation: 8,
-    },
+    sm: createShadow({ color: "#000", offsetY: 1, opacity: 0.22, radius: 2.22, elevation: 3 }),
+    md: createShadow({ color: "#000", offsetY: 2, opacity: 0.25, radius: 3.84, elevation: 5 }),
+    lg: createShadow({ color: "#000", offsetY: 4, opacity: 0.3, radius: 4.65, elevation: 8 }),
   },
 
   // Component specific styles

@@ -3,6 +3,11 @@
  * Provides app version checking and upgrade notification functionality
  */
 import api from "./httpClient";
+import { createLogger } from "./logging";
+
+const FALLBACK_CURRENT_VERSION = "2.1.0";
+const FALLBACK_MINIMUM_VERSION = "1.0.0";
+const log = createLogger("versionService");
 
 export interface VersionCheckResult {
   is_compatible: boolean;
@@ -33,7 +38,9 @@ export const checkVersion = async (
     });
     return response.data;
   } catch (error: any) {
-    __DEV__ && console.error("Version check error:", error);
+    if (__DEV__) {
+      log.warn("Version check error", { error: String(error) });
+    }
 
     // Return a safe default that doesn't force updates on error
     return {
@@ -42,8 +49,8 @@ export const checkVersion = async (
       update_available: false,
       update_type: null,
       client_version: clientVersion,
-      minimum_version: "1.0.0",
-      current_version: clientVersion,
+      minimum_version: FALLBACK_MINIMUM_VERSION,
+      current_version: FALLBACK_CURRENT_VERSION,
       force_update: false,
       timestamp: new Date().toISOString(),
       error: error.message || "Version check failed",
@@ -64,7 +71,9 @@ export const getBackendVersion = async (): Promise<{
     const response = await api.get("/api/version");
     return response.data;
   } catch (error: any) {
-    __DEV__ && console.error("Get backend version error:", error);
+    if (__DEV__) {
+      log.warn("Get backend version error", { error: String(error) });
+    }
     throw error instanceof Error ? error : new Error(String(error));
   }
 };

@@ -47,7 +47,8 @@ export function useSessionTimeout(): UseSessionTimeoutReturn {
     timeUntilExpiry: 0,
   });
 
-  const { isAuthenticated, logout } = useAuthStore();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const logout = useAuthStore((state) => state.logout);
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const lastCheckRef = useRef<number>(0);

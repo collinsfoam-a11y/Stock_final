@@ -259,8 +259,8 @@ export const RippleButton: React.FC<RippleButtonProps> = ({
           styles.ripple,
           { backgroundColor: variantStyle.rippleColor },
           rippleStyle,
+          styles.pointerEventsNone,
         ]}
-        pointerEvents="none"
       />
     </>
   );
@@ -349,6 +349,9 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
+  },
+  pointerEventsNone: {
+    pointerEvents: "none",
   },
 });
 

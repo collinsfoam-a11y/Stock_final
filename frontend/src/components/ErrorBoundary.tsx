@@ -18,7 +18,7 @@ import { PremiumButton } from "./premium/PremiumButton";
 
 interface Props {
   children: ReactNode;
-  fallback?: (error: Error) => ReactNode;
+  fallback?: (error: Error, resetError: () => void) => ReactNode;
 }
 
 const ErrorFallback = ({
@@ -86,7 +86,8 @@ export const ErrorBoundary = ({ children, fallback }: Props) => {
     <ReactErrorBoundary
       fallbackRender={
         fallback
-          ? ({ error }) => fallback(error as Error)
+          ? ({ error, resetErrorBoundary }) =>
+              fallback(error as Error, resetErrorBoundary)
           : (props) => <ErrorFallback {...props} />
       }
     >

@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
+import { createLogger } from "./logging";
 
 export interface CaptureContext {
   context?: string;
@@ -16,9 +17,12 @@ interface SentryRuntimeConfig {
 
 let runtimeConfig: SentryRuntimeConfig | null = null;
 let initAttempted = false;
+const log = createLogger("sentry");
+
+const getAppVersion = (): string => Constants.expoConfig?.version || "0.0.0";
 
 const normalizeRelease = (): string => {
-  const appVersion = Constants.expoConfig?.version || "0.0.0";
+  const appVersion = getAppVersion();
   const runtimeCandidate = (Constants.expoConfig as Record<string, unknown> | undefined)
     ?.runtimeVersion;
   const runtimeVersion = typeof runtimeCandidate === "string" ? runtimeCandidate : "dev";
@@ -68,7 +72,7 @@ export const initSentry = (): void => {
 
   const envelopeUrl = buildEnvelopeUrl(dsn);
   if (!envelopeUrl) {
-    console.warn("Sentry disabled: invalid EXPO_PUBLIC_SENTRY_DSN format");
+    log.warn("Sentry disabled: invalid EXPO_PUBLIC_SENTRY_DSN format");
     return;
   }
 
@@ -93,7 +97,7 @@ const sendSentryEvent = async (error: Error, context?: CaptureContext): Promise<
     event_id: eventId,
     sent_at: timestamp,
     dsn: runtimeConfig.dsn,
-    sdk: { name: "stock-final-frontend", version: "1.0.0" },
+    sdk: { name: "stock-final-frontend", version: getAppVersion() },
   });
 
   const itemHeader = JSON.stringify({ type: "event" });
@@ -138,7 +142,7 @@ export const captureException = (error: Error, context?: CaptureContext): void =
 
   void sendSentryEvent(error, context).catch((sendError) => {
     if (__DEV__) {
-      console.warn("Sentry send failed", sendError);
+      log.warn("Sentry send failed", { error: String(sendError) });
     }
   });
 };

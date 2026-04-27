@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { CameraView } from "expo-camera";
+import { CameraView } from "@/services/device/expoCamera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";

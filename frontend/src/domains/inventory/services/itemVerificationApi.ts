@@ -3,6 +3,9 @@
  * Handles verification, filtering, CSV export, and variance tracking
  */
 import api from "@/services/httpClient";
+import { createLogger } from "@/services/logging";
+
+const log = createLogger("ItemVerificationAPI");
 
 export interface VerificationRequest {
   verified: boolean;
@@ -139,6 +142,36 @@ interface ApiError {
   message?: string;
 }
 
+function getApiErrorMessage(error: unknown, fallback: string): string {
+  const err = error as ApiError;
+  const detail = err.response?.data?.detail;
+
+  if (typeof detail === "object" && detail !== null) {
+    return detail.message || fallback;
+  }
+
+  if (typeof detail === "string" && detail.trim()) {
+    return detail;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+function logApiFailure(
+  action: string,
+  error: unknown,
+  context?: Record<string, unknown>,
+): void {
+  log.error(action, {
+    ...context,
+    error: error instanceof Error ? error.message : String(error),
+  });
+}
+
 export class ItemVerificationAPI {
   /**
    * Verify an item
@@ -154,10 +187,8 @@ export class ItemVerificationAPI {
       );
       return response.data;
     } catch (error: unknown) {
-      __DEV__ && console.error("Verification failed:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Verification failed";
-      throw new Error(errorMessage);
+      logApiFailure("Verification failed", error, { itemCode });
+      throw new Error(getApiErrorMessage(error, "Verification failed"));
     }
   }
 
@@ -188,14 +219,8 @@ export class ItemVerificationAPI {
       );
       return response.data;
     } catch (error: unknown) {
-      __DEV__ && console.error("Get filtered items failed:", error);
-      const err = error as ApiError;
-      const detail = err.response?.data?.detail;
-      const message =
-        typeof detail === "object" && detail !== null
-          ? detail.message
-          : (detail as string) || err.message || "Failed to get filtered items";
-      throw new Error(message);
+      logApiFailure("Get filtered items failed", error, { params });
+      throw new Error(getApiErrorMessage(error, "Failed to get filtered items"));
     }
   }
 
@@ -224,14 +249,8 @@ export class ItemVerificationAPI {
       );
       return response.data;
     } catch (error: unknown) {
-      __DEV__ && console.error("CSV export failed:", error);
-      const err = error as ApiError;
-      const detail = err.response?.data?.detail;
-      const message =
-        typeof detail === "object" && detail !== null
-          ? detail.message
-          : (detail as string) || err.message || "CSV export failed";
-      throw new Error(message);
+      logApiFailure("CSV export failed", error, { params });
+      throw new Error(getApiErrorMessage(error, "CSV export failed"));
     }
   }
 
@@ -260,14 +279,8 @@ export class ItemVerificationAPI {
       );
       return response.data as ArrayBuffer;
     } catch (error: unknown) {
-      __DEV__ && console.error("ERPNext item export failed:", error);
-      const err = error as ApiError;
-      const detail = err.response?.data?.detail;
-      const message =
-        typeof detail === "object" && detail !== null
-          ? detail.message
-          : (detail as string) || err.message || "ERPNext item export failed";
-      throw new Error(message);
+      logApiFailure("ERPNext item export failed", error, { params, format });
+      throw new Error(getApiErrorMessage(error, "ERPNext item export failed"));
     }
   }
 
@@ -308,14 +321,8 @@ export class ItemVerificationAPI {
       );
       return response.data;
     } catch (error: unknown) {
-      __DEV__ && console.error("Get variances failed:", error);
-      const err = error as ApiError;
-      const detail = err.response?.data?.detail;
-      const message =
-        typeof detail === "object" && detail !== null
-          ? detail.message
-          : (detail as string) || err.message || "Failed to get variances";
-      throw new Error(message);
+      logApiFailure("Get variances failed", error, { params });
+      throw new Error(getApiErrorMessage(error, "Failed to get variances"));
     }
   }
 
@@ -344,14 +351,13 @@ export class ItemVerificationAPI {
       );
       return response.data as ArrayBuffer;
     } catch (error: unknown) {
-      __DEV__ && console.error("ERPNext variance export failed:", error);
-      const err = error as ApiError;
-      const detail = err.response?.data?.detail;
-      const message =
-        typeof detail === "object" && detail !== null
-          ? detail.message
-          : (detail as string) || err.message || "ERPNext variance export failed";
-      throw new Error(message);
+      logApiFailure("ERPNext variance export failed", error, {
+        params,
+        format,
+      });
+      throw new Error(
+        getApiErrorMessage(error, "ERPNext variance export failed"),
+      );
     }
   }
 
@@ -363,14 +369,8 @@ export class ItemVerificationAPI {
       const response = await api.get("/api/v2/erp/items/live/users");
       return response.data;
     } catch (error: unknown) {
-      __DEV__ && console.error("Get live users failed:", error);
-      const err = error as ApiError;
-      const detail = err.response?.data?.detail;
-      const message =
-        typeof detail === "object" && detail !== null
-          ? detail.message
-          : (detail as string) || err.message || "Failed to get live users";
-      throw new Error(message);
+      logApiFailure("Get live users failed", error);
+      throw new Error(getApiErrorMessage(error, "Failed to get live users"));
     }
   }
 
@@ -386,16 +386,10 @@ export class ItemVerificationAPI {
       });
       return response.data as LiveVerificationsResponse;
     } catch (error: unknown) {
-      __DEV__ && console.error("Get live verifications failed:", error);
-      const err = error as ApiError;
-      const detail = err.response?.data?.detail;
-      const message =
-        typeof detail === "object" && detail !== null
-          ? detail.message
-          : (detail as string) ||
-            err.message ||
-            "Failed to get live verifications";
-      throw new Error(message);
+      logApiFailure("Get live verifications failed", error, { limit });
+      throw new Error(
+        getApiErrorMessage(error, "Failed to get live verifications"),
+      );
     }
   }
 
@@ -407,7 +401,7 @@ export class ItemVerificationAPI {
       const response = await api.get("/api/v2/erp/items/locations");
       return response.data;
     } catch (error: unknown) {
-      __DEV__ && console.error("Get locations failed:", error);
+      logApiFailure("Get locations failed", error);
       // Return empty lists on error to prevent UI crash
       return { floors: [], racks: [] };
     }
@@ -455,16 +449,10 @@ export class ItemVerificationAPI {
       );
       return response.data;
     } catch (error: unknown) {
-      __DEV__ && console.error("Master update failed:", error);
-      const err = error as ApiError;
-      const detail = err.response?.data?.detail;
-      const message =
-        typeof detail === "object" && detail !== null
-          ? detail.message
-          : (detail as string) ||
-            err.message ||
-            "Failed to update item details";
-      throw new Error(message);
+      logApiFailure("Master update failed", error, { itemCode });
+      throw new Error(
+        getApiErrorMessage(error, "Failed to update item details"),
+      );
     }
   }
 
@@ -511,7 +499,10 @@ export class ItemVerificationAPI {
       // This is less ideal for "approval" workflow which is based on CountLine
       return null;
     } catch (error) {
-      __DEV__ && console.error("Failed to get variance details:", error);
+      logApiFailure("Failed to get variance details", error, {
+        itemCode,
+        sessionId,
+      });
       throw error;
     }
   }
@@ -530,10 +521,11 @@ export class ItemVerificationAPI {
       });
       return response.data;
     } catch (error: unknown) {
-      __DEV__ && console.error("Bulk approve failed:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Bulk approve failed";
-      throw new Error(errorMessage);
+      logApiFailure("Bulk approve failed", error, {
+        countLineIds,
+        count: countLineIds.length,
+      });
+      throw new Error(getApiErrorMessage(error, "Bulk approve failed"));
     }
   }
 
@@ -551,10 +543,11 @@ export class ItemVerificationAPI {
       });
       return response.data;
     } catch (error: unknown) {
-      __DEV__ && console.error("Bulk reject failed:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Bulk reject failed";
-      throw new Error(errorMessage);
+      logApiFailure("Bulk reject failed", error, {
+        countLineIds,
+        count: countLineIds.length,
+      });
+      throw new Error(getApiErrorMessage(error, "Bulk reject failed"));
     }
   }
 }

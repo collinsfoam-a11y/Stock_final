@@ -8,7 +8,6 @@ import NetInfo, {
   useNetInfo,
   NetInfoChangeHandler,
 } from "@react-native-community/netinfo";
-import * as Notifications from "expo-notifications";
 import { errorReporter } from "@/services/errorRecovery";
 
 export interface WiFiStatus {
@@ -24,6 +23,9 @@ export interface WiFiStatus {
  */
 export class WiFiConnectionService {
   private static instance: WiFiConnectionService;
+  private static notificationsModulePromise:
+    | Promise<typeof import("expo-notifications")>
+    | null = null;
   private lastStatus: WiFiStatus | null = null;
   private listeners: ((status: WiFiStatus) => void)[] = [];
   private initialized = false;
@@ -37,13 +39,22 @@ export class WiFiConnectionService {
     return this.instance;
   }
 
+  private static async getNotificationsModule() {
+    if (!this.notificationsModulePromise) {
+      this.notificationsModulePromise = import("expo-notifications");
+    }
+
+    return this.notificationsModulePromise;
+  }
+
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
     try {
       // Request notification permissions if needed
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== "granted") {
+      const Notifications = await WiFiConnectionService.getNotificationsModule();
+      const permissions = await Notifications.requestPermissionsAsync();
+      if (!permissions.granted) {
         console.warn("Notification permissions not granted for WiFi service");
       }
 
@@ -139,6 +150,7 @@ export class WiFiConnectionService {
           : "Lost internet connection";
 
       // Send notification
+      const Notifications = await WiFiConnectionService.getNotificationsModule();
       await Notifications.scheduleNotificationAsync({
         content: {
           title: "⚠️ WiFi Disconnected",
@@ -165,6 +177,7 @@ export class WiFiConnectionService {
         ? `Reconnected to WiFi: ${status.ssid || "Unknown"}`
         : "Internet connection restored";
 
+      const Notifications = await WiFiConnectionService.getNotificationsModule();
       await Notifications.scheduleNotificationAsync({
         content: {
           title: "✅ Connected",

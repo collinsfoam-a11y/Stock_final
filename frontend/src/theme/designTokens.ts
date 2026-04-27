@@ -4,6 +4,8 @@
  * Based on Material Design 3 and modern design system best practices
  */
 
+import { createShadow } from "./shadowUtils";
+
 // ==========================================
 // COLOR PALETTE - Semantic Colors with Shades
 // ==========================================
@@ -177,69 +179,15 @@ export type BorderRadius = (typeof borderRadius)[keyof typeof borderRadius];
 // SHADOW/ELEVATION SYSTEM
 // ==========================================
 export const shadows = {
-  0: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
-  },
-  1: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.18,
-    shadowRadius: 1.0,
-    elevation: 1,
-  },
-  2: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
-    elevation: 2,
-  },
-  3: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
-    elevation: 3,
-  },
-  4: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 4,
-  },
-  5: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.27,
-    shadowRadius: 4.65,
-    elevation: 5,
-  },
-  6: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.29,
-    shadowRadius: 5.46,
-    elevation: 6,
-  },
-  7: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 7 },
-    shadowOpacity: 0.31,
-    shadowRadius: 6.27,
-    elevation: 7,
-  },
-  8: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.33,
-    shadowRadius: 7.08,
-    elevation: 8,
-  },
+  0: createShadow({ color: "#000", opacity: 0 }),
+  1: createShadow({ color: "#000", offsetY: 1, opacity: 0.18, radius: 1.0, elevation: 1 }),
+  2: createShadow({ color: "#000", offsetY: 2, opacity: 0.2, radius: 1.41, elevation: 2 }),
+  3: createShadow({ color: "#000", offsetY: 3, opacity: 0.22, radius: 2.22, elevation: 3 }),
+  4: createShadow({ color: "#000", offsetY: 4, opacity: 0.25, radius: 3.84, elevation: 4 }),
+  5: createShadow({ color: "#000", offsetY: 5, opacity: 0.27, radius: 4.65, elevation: 5 }),
+  6: createShadow({ color: "#000", offsetY: 6, opacity: 0.29, radius: 5.46, elevation: 6 }),
+  7: createShadow({ color: "#000", offsetY: 7, opacity: 0.31, radius: 6.27, elevation: 7 }),
+  8: createShadow({ color: "#000", offsetY: 8, opacity: 0.33, radius: 7.08, elevation: 8 }),
 } as const;
 
 export type ShadowLevel = keyof typeof shadows;

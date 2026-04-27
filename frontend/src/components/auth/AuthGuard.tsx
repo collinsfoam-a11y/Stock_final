@@ -2,30 +2,43 @@ import React, { useEffect } from "react";
 import { useRouter, useSegments } from "expo-router";
 import { useAuthStore } from "../../store/authStore";
 import {
-  startNotificationPolling,
-  stopNotificationPolling,
-} from "../../store/notificationStore";
-import {
   getRouteForRole,
   isRouteAllowedForRole,
   UserRole,
 } from "../../utils/roleNavigation";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, isInitialized, isLoading } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
+  const isLoading = useAuthStore((state) => state.isLoading);
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
+    let cancelled = false;
+    let stopPolling: (() => void) | null = null;
+
     if (!user) {
-      stopNotificationPolling();
       return;
     }
 
-    startNotificationPolling();
+    void import("../../store/notificationStore")
+      .then((module) => {
+        if (cancelled) {
+          module.stopNotificationPolling();
+          return;
+        }
+
+        module.startNotificationPolling();
+        stopPolling = module.stopNotificationPolling;
+      })
+      .catch((error) => {
+        console.warn("[AuthGuard] Notification polling unavailable", error);
+      });
 
     return () => {
-      stopNotificationPolling();
+      cancelled = true;
+      stopPolling?.();
     };
   }, [user]);
 

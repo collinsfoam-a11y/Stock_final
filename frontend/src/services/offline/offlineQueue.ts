@@ -3,7 +3,8 @@ import type { AxiosInstance, AxiosRequestConfig, AxiosError } from "axios";
 import { storage } from "../storage/asyncStorageService";
 import { useNetworkStore } from "../../store/networkStore";
 import { flags } from "../../constants/flags";
-import { toastService } from "../utils/toastService";
+import { toastService } from "../toastService";
+import { createLogger } from "../logging";
 import { onlineManager } from "@tanstack/react-query";
 
 // NOTE: This module is entirely gated by flags.enableOfflineQueue
@@ -11,6 +12,7 @@ import { onlineManager } from "@tanstack/react-query";
 
 const STORAGE_KEY = "offlineQueue:v1";
 const CONFLICTS_KEY = "offlineQueue:conflicts:v1";
+const log = createLogger("OfflineQueue");
 
 export type QueueMethod = "post" | "put" | "patch" | "delete";
 
@@ -103,9 +105,7 @@ async function _doFlush(
       // Safety check: Drop auth requests that might have been queued
       // This prevents infinite loops if a login request got stuck in the queue
       if (item.url && item.url.includes("/auth/")) {
-        if (__DEV__) {
-          console.warn("OfflineQueue: Dropping queued auth request", item.url);
-        }
+        log.warn("Dropping queued auth request", { url: item.url, id: item.id });
         queue = queue.slice(1);
         await saveQueue(queue);
         continue;
@@ -185,10 +185,10 @@ export function startOfflineQueue(client: AxiosInstance): void {
         flushOfflineQueue(client)
           .then((res) => {
             if (__DEV__ && (res.processed > 0 || res.remaining >= 0)) {
-              __DEV__ &&
-                console.log(
-                  `OfflineQueue: flushed processed=${res.processed} remaining=${res.remaining}`
-                );
+              log.debug("Flushed queued mutations", {
+                processed: res.processed,
+                remaining: res.remaining,
+              });
             }
             if (res.processed > 0) {
               try {
@@ -248,14 +248,11 @@ export function attachOfflineQueueInterceptors(client: AxiosInstance): void {
           useNetworkStore.getState().setRestrictedMode(true);
         } catch {}
         const item = await enqueueMutation(cfg);
-        if (__DEV__) {
-          __DEV__ &&
-            console.warn("OfflineQueue: queued due to restricted mode", {
-              id: item.id,
-              method: item.method,
-              url: item.url,
-            });
-        }
+        log.warn("Queued mutation due to restricted mode", {
+          id: item.id,
+          method: item.method,
+          url: item.url,
+        });
         try {
           toastService.showInfo("Restricted network. Saved offline for later sync.");
         } catch {}
@@ -269,14 +266,12 @@ export function attachOfflineQueueInterceptors(client: AxiosInstance): void {
       const isNetworkError = !error.response;
       if (!online || isNetworkError) {
         const item = await enqueueMutation(cfg);
-        if (__DEV__) {
-          __DEV__ &&
-            console.warn("OfflineQueue: queued mutation", {
-              id: item.id,
-              method: item.method,
-              url: item.url,
-            });
-        }
+        log.warn("Queued mutation", {
+          id: item.id,
+          method: item.method,
+          url: item.url,
+          isNetworkError,
+        });
         try {
           toastService.showInfo("Saved offline. Will sync when online.");
         } catch {}

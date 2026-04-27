@@ -15,7 +15,7 @@ import { View, StyleSheet, Platform, useWindowDimensions } from "react-native";
 import { auroraTheme } from "@/theme/auroraTheme";
 import { AdminSidebar } from "@/components/navigation";
 import { RoleLayoutGuard } from "@/components/auth/RoleLayoutGuard";
-import { ErrorBoundary } from "@/components/feedback/ErrorBoundary";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AdminCrashScreen } from "@/components/feedback/AdminCrashScreen";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { breakpoints } from "@/styles/globalStyles";

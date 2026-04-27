@@ -4,13 +4,16 @@ import { API_BASE_URL } from "../services/httpClient";
 import { useAuthStore } from "../store/authStore";
 import { secureStorage } from "../services/storage/secureStorage";
 import { handleUnauthorized } from "../services/authUnauthorizedHandler";
+import { createLogger } from "../services/logging";
 
 interface WebSocketMessage {
   type: string;
   [key: string]: any;
 }
 
-export const useWebSocket = (sessionId?: string) => {
+const log = createLogger("useWebSocket");
+
+export const useWebSocket = (sessionId?: string, enabled: boolean = true) => {
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
@@ -18,10 +21,10 @@ export const useWebSocket = (sessionId?: string) => {
     null,
   );
   const shouldReconnectRef = useRef(true);
-  const { isAuthenticated } = useAuthStore();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const connect = useCallback(async () => {
-    if (!isAuthenticated || !shouldReconnectRef.current) return;
+    if (!enabled || !isAuthenticated || !shouldReconnectRef.current) return;
 
     if (
       socketRef.current &&
@@ -51,13 +54,16 @@ export const useWebSocket = (sessionId?: string) => {
     }
     const urlWithParams = query.toString() ? `${wsUrl}?${query.toString()}` : wsUrl;
 
-    console.log("[WebSocket] Connecting to:", wsUrl.replace(/token=[^&]+/, "token=***"));
+    log.debug("Connecting websocket", {
+      url: wsUrl,
+      sessionId: sessionId ?? null,
+    });
 
     // Use query param auth instead of subprotocols (server doesn't support subprotocol handshake)
     const socket = new WebSocket(urlWithParams);
 
     socket.onopen = () => {
-      console.log("[WebSocket] Connected");
+      log.info("Websocket connected", { sessionId: sessionId ?? null });
       setIsConnected(true);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
@@ -70,12 +76,19 @@ export const useWebSocket = (sessionId?: string) => {
         const message = JSON.parse(event.data);
         setLastMessage(message);
       } catch (error) {
-        console.error("[WebSocket] Error parsing message:", error);
+        log.error("Failed to parse websocket message", {
+          error: String(error),
+          sessionId: sessionId ?? null,
+        });
       }
     };
 
     socket.onclose = (event) => {
-      console.log("[WebSocket] Disconnected:", event.reason);
+      log.info("Websocket disconnected", {
+        code: event.code,
+        reason: event.reason || null,
+        sessionId: sessionId ?? null,
+      });
       setIsConnected(false);
       socketRef.current = null;
 
@@ -95,20 +108,34 @@ export const useWebSocket = (sessionId?: string) => {
 
       // Reconnect logic
       if (shouldReconnectRef.current && isAuthenticated) {
-        console.log("[WebSocket] Attempting to reconnect in 5s...");
+        log.warn("Retrying websocket connection", {
+          delayMs: 5000,
+          sessionId: sessionId ?? null,
+        });
         reconnectTimeoutRef.current = setTimeout(connect, 5000);
       }
     };
 
     socket.onerror = (error) => {
-      console.error("[WebSocket] Error:", error);
+      log.error("Websocket transport error", {
+        error: String(error),
+        sessionId: sessionId ?? null,
+      });
     };
 
     socketRef.current = socket;
-  }, [isAuthenticated, sessionId]);
+  }, [enabled, isAuthenticated, sessionId]);
 
   useEffect(() => {
     shouldReconnectRef.current = true;
+    if (!enabled) {
+      setIsConnected(false);
+      setLastMessage(null);
+      return () => {
+        shouldReconnectRef.current = false;
+      };
+    }
+
     connect();
 
     return () => {
@@ -122,7 +149,7 @@ export const useWebSocket = (sessionId?: string) => {
         reconnectTimeoutRef.current = null;
       }
     };
-  }, [connect]);
+  }, [connect, enabled]);
 
   const sendMessage = (message: WebSocketMessage) => {
     if (socketRef.current && isConnected) {

@@ -1,4 +1,4 @@
-import { summarizeForceSyncResult } from "../offlineQueueFeedback";
+import { summarizeForceSyncResult } from "../../../src/components/supervisor/offlineQueueFeedback";
 
 describe("summarizeForceSyncResult", () => {
   it("reports partial failures instead of a blanket success message", () => {

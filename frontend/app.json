@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lavanya Mart Stock Verify",
     "slug": "lavanya-mart-stock-verify",
-    "version": "1.0.0",
+    "version": "2.1.0",
     "scheme": "lavanyamart",
     "userInterfaceStyle": "automatic",
     "description": "Modern stock verification system for Lavanya Mart inventory management",
@@ -47,18 +47,28 @@
     },
     "plugins": [
       "./plugins/withQuotedReactNativeBundlePhase",
-      "expo-router",
+      [
+        "expo-router",
+        {
+          "asyncRoutes": {
+            "web": true
+          }
+        }
+      ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Lavanya Mart Stock Verify to access your camera for serial scanning and damage photo capture."
+          "cameraPermission": "Allow Lavanya Mart Stock Verify to access your camera for serial scanning and damage photo capture.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
         }
       ],
-      "@react-native-community/datetimepicker",
       "expo-font",
       "expo-secure-store",
       "expo-sqlite",
-      "expo-background-task"
+      "expo-background-task",
+      "expo-image",
+      "expo-sharing"
     ],
     "web": {
       "bundler": "metro"

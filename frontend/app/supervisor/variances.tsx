@@ -35,7 +35,7 @@ import {
 } from "../../src/components/ui";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { theme } from "../../src/styles/modernDesignSystem";
-import { toastService } from "../../src/services/utils/toastService";
+import { toastService } from "../../src/services/toastService";
 import { saveArrayBufferExport } from "../../src/utils/fileExport";
 
 export default function VariancesScreen() {

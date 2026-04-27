@@ -1,6 +1,5 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Image } from "expo-image";
 import type { ReactNode } from "react";
 
 import ModernCard from "@/components/ui/ModernCard";
@@ -107,9 +106,7 @@ const ItemHeader = ({
         <Image
           source={{ uri: item.image_url }}
           style={styles.itemImage}
-          contentFit="cover"
-          cachePolicy={imageCacheEnabled ? "disk" : "none"}
-          transition={300}
+          resizeMode="cover"
         />
       ) : (
         <Ionicons name="cube-outline" size={24} color={colors.primary[600]} />

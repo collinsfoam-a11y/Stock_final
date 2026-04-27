@@ -1,4 +1,4 @@
-import type { SyncResult } from "../../src/services/syncService";
+import type { SyncResult } from "../../services/syncService";
 
 export type ForceSyncAlert = {
   title: string;

@@ -1,4 +1,4 @@
-const { withXcodeProject } = require("@expo/config-plugins");
+const { withXcodeProject } = require("expo/config-plugins");
 
 function patchBundlePhaseShellScript(shellScript) {
   if (typeof shellScript !== "string") return shellScript;

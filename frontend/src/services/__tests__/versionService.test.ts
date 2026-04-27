@@ -61,5 +61,6 @@ describe("versionService", () => {
     expect(result.force_update).toBe(false);
     expect(result.client_version).toBe("1.2.3");
     expect(result.is_compatible).toBe(true);
+    expect(result.minimum_version).toBe("1.0.0");
   });
 });

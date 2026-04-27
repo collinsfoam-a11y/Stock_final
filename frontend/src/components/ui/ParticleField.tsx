@@ -164,7 +164,7 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({
   }, [count, minSize, maxSize, screenWidth, screenHeight]);
 
   return (
-    <View style={styles.container} pointerEvents="none">
+    <View style={[styles.container, styles.pointerEventsNone]}>
       {particles.map((particle) => (
         <ParticleElement
           key={particle.id}
@@ -181,6 +181,9 @@ const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
     overflow: "hidden",
+  },
+  pointerEventsNone: {
+    pointerEvents: "none",
   },
   particle: {
     position: "absolute",

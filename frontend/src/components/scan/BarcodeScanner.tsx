@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
-import { CameraView } from "expo-camera";
+import { CameraView } from "@/services/device/expoCamera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ScannerMode } from "@/types/scan";
 import {

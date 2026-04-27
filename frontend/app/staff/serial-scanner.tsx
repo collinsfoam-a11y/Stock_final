@@ -5,7 +5,7 @@ import {
   CameraView,
   type BarcodeScanningResult,
   useCameraPermissions,
-} from "expo-camera";
+} from "@/services/device/expoCamera";
 import { useRouter } from "expo-router";
 
 // Fix 1: Use correct alias imports

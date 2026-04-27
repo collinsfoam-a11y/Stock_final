@@ -6,7 +6,7 @@ import { localDb } from "@/db/localDb";
 import apiClient from "@/services/httpClient";
 import { RecentItemsService } from "@/services/enhancedFeatures";
 import { useSettingsStore } from "@/store/settingsStore";
-import { toastService } from "@/services/utils/toastService";
+import { toastService } from "@/services/toastService";
 import { Item } from "@/types/scan";
 import { getStockQty, sortItemsByStockDesc } from "@/utils/itemBatchUtils";
 import { getReadableInventoryErrorMessage } from "./errorMessages";

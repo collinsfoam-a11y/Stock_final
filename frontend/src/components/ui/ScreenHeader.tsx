@@ -319,9 +319,9 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
       {/* Center Section (overlay-centered, avoids overlap with left/right content) */}
       {title && (
         <View
-          pointerEvents="none"
           style={[
             styles.centerOverlay,
+            styles.pointerEventsNone,
             {
               paddingLeft: leftSectionWidth + 12,
               paddingRight: rightSectionWidth + 12,
@@ -426,6 +426,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     minWidth: 0,
+  },
+  pointerEventsNone: {
+    pointerEvents: "none",
   },
   rightSection: {
     flexDirection: "row",

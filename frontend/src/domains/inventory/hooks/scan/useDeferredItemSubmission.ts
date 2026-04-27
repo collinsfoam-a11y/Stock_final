@@ -3,7 +3,7 @@ import { Alert } from "react-native";
 import * as Haptics from "expo-haptics";
 
 import { createCountLine } from "@/services/api/api";
-import { toastService } from "@/services/utils/toastService";
+import { toastService } from "@/services/toastService";
 import { CreateCountLinePayload, DateFormatType, Item, SerialEntryData } from "@/types/scan";
 import { normalizeSerialValue } from "@/utils/scanUtils";
 import { toBackendPhotoProofs } from "./submissionPayload";

@@ -19,7 +19,9 @@ export function RoleLayoutGuard({
   redirectTo,
   layoutName = "RoleLayout",
 }: RoleLayoutGuardProps) {
-  const { user, isInitialized, isLoading } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
+  const isLoading = useAuthStore((state) => state.isLoading);
 
   // Wait for auth to initialize before making any decisions
   if (!isInitialized || isLoading) {

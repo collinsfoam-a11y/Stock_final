@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import * as Haptics from "expo-haptics";
+import { haptics } from "../services/haptics";
 
 export const useHapticFeedback = () => {
   const triggerHaptic = useCallback(
@@ -14,22 +14,22 @@ export const useHapticFeedback = () => {
     ) => {
       switch (type) {
         case "impactLight":
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          void haptics.light();
           break;
         case "impactMedium":
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          void haptics.medium();
           break;
         case "impactHeavy":
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          void haptics.heavy();
           break;
         case "notificationSuccess":
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          void haptics.success();
           break;
         case "notificationWarning":
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          void haptics.warning();
           break;
         case "notificationError":
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          void haptics.error();
           break;
       }
     },

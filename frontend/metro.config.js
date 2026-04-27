@@ -1,4 +1,5 @@
 // Learn more https://docs.expo.io/guides/customizing-metro
+const path = require("path");
 const { getDefaultConfig } = require("expo/metro-config");
 const { resolve } = require("metro-resolver");
 
@@ -18,6 +19,12 @@ config.resolver = {
 };
 
 const defaultResolveRequest = config.resolver.resolveRequest || resolve;
+const zustandMiddlewareFile = path.join(
+  __dirname,
+  "node_modules",
+  "zustand",
+  "middleware.js",
+);
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   // Force Zustand middleware to CJS build: ESM variant contains import.meta.env
   // which breaks when the bundle runs as a non-module script.
@@ -26,7 +33,10 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     moduleName === "zustand/esm/middleware.mjs" ||
     moduleName === "zustand/esm/middleware"
   ) {
-    return defaultResolveRequest(context, "zustand/middleware.js", platform);
+    return {
+      type: "sourceFile",
+      filePath: zustandMiddlewareFile,
+    };
   }
   return defaultResolveRequest(context, moduleName, platform);
 };

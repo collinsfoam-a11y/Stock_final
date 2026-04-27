@@ -13,7 +13,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { KPICard, ActiveUsersPanel, ErrorLogsPanel } from "../admin";
-import { ErrorBoundary } from "../feedback/ErrorBoundary";
+import { ErrorBoundary } from "../ErrorBoundary";
 import { VarianceChart } from "./VarianceChart";
 import { colorPalette, spacing, typography } from "@/theme/designTokens";
 import {
