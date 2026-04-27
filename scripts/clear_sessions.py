@@ -1,13 +1,13 @@
 import asyncio
 import os
 import sys
-from pathlib import Path
 
 # Add project root to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.db.runtime import lifespan_db
-from backend.config import settings
+from backend.db.runtime import lifespan_db  # noqa: E402
+from backend.config import settings  # noqa: E402
+from scripts.approval_guard import enforce_high_risk_entrypoint  # noqa: E402
 
 
 async def clear_sessions():
@@ -29,4 +29,5 @@ async def clear_sessions():
 
 
 if __name__ == "__main__":
+    enforce_high_risk_entrypoint(always_require=True)
     asyncio.run(clear_sessions())

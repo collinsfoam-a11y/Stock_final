@@ -28,6 +28,31 @@ E = TypeVar("E", bound=Exception)
 F = TypeVar("F", bound=Callable[..., Coroutine[AnyType, AnyType, AnyType]])
 
 
+def _legacy_error_fields(details: Any) -> dict[str, Any]:
+    if not isinstance(details, dict):
+        return {}
+
+    fields = details.get("fields")
+    return fields if isinstance(fields, dict) else {}
+
+
+def _error_detail_payload(
+    code: str,
+    message: str,
+    *,
+    details: Any = None,
+    retry_after: Any = None,
+) -> dict[str, Any]:
+    return {
+        "error": code,
+        "code": code,
+        "message": message,
+        "details": details or {},
+        "fields": _legacy_error_fields(details),
+        "retry_after": retry_after,
+    }
+
+
 def sanitize_for_logging(user_input: str, max_length: int = 50) -> str:
     """
     Sanitize user input before logging to prevent log injection attacks.
@@ -119,51 +144,39 @@ def handle_result(result: Result[T, E], success_status: int = 200) -> dict[str, 
             )
             raise HTTPException(
                 status_code=status_code,
-                detail={
-                    "success": False,
-                    "error": {
-                        "message": str(error),
-                        "code": error_name,
-                        "details": getattr(error, "details", {}),
-                    },
-                },
+                detail=_error_detail_payload(
+                    getattr(error, "error_code", error_name),
+                    getattr(error, "message", str(error)),
+                    details=getattr(error, "details", {}),
+                ),
             )
         elif isinstance(error, ValidationError) or error_name == "ValidationError":
             raise HTTPException(
                 status_code=422,
-                detail={
-                    "success": False,
-                    "error": {
-                        "message": str(error),
-                        "code": "VALIDATION_ERROR",
-                        "details": getattr(error, "details", {}),
-                    },
-                },
+                detail=_error_detail_payload(
+                    "VALIDATION_ERROR",
+                    getattr(error, "message", str(error)),
+                    details=getattr(error, "details", {}),
+                ),
             )
         elif isinstance(error, NotFoundError) or error_name == "NotFoundError":
             raise HTTPException(
                 status_code=404,
-                detail={
-                    "success": False,
-                    "error": {
-                        "message": str(error),
-                        "code": "NOT_FOUND",
-                        "details": getattr(error, "details", {}),
-                    },
-                },
+                detail=_error_detail_payload(
+                    "NOT_FOUND",
+                    getattr(error, "message", str(error)),
+                    details=getattr(error, "details", {}),
+                ),
             )
         elif isinstance(error, RateLimitError):
             raise HTTPException(
                 status_code=429,
-                detail={
-                    "success": False,
-                    "error": {
-                        "message": str(error),
-                        "code": "RATE_LIMIT_EXCEEDED",
-                        "retry_after": getattr(error, "retry_after", None),
-                        "details": getattr(error, "details", {}),
-                    },
-                },
+                detail=_error_detail_payload(
+                    getattr(error, "error_code", "RATE_LIMIT_ERROR"),
+                    getattr(error, "message", str(error)),
+                    details=getattr(error, "details", {}),
+                    retry_after=getattr(error, "retry_after", None),
+                ),
             )
         else:
             # Log unexpected errors

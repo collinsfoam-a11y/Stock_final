@@ -361,6 +361,11 @@ const isRefreshRequest = (fullUrl: string): boolean => fullUrl.includes("/api/au
 const isAuthSessionProbeRequest = (fullUrl: string): boolean =>
   fullUrl.includes("/api/auth/me");
 
+const isPublicAuthRequest = (fullUrl: string): boolean =>
+  fullUrl.includes("/api/auth/login") ||
+  fullUrl.includes("/api/auth/login-pin") ||
+  fullUrl.includes("/api/auth/password-reset/");
+
 const retryUnauthorizedRequest = async (error: any, fullUrl: string): Promise<any> => {
   const originalRequest = error.config;
 
@@ -416,7 +421,10 @@ const handleUnauthorizedError = async (error: any, fullUrl: string): Promise<any
   }
 
   if (isAuthSessionProbeRequest(fullUrl)) {
-    log.debug("Auth session probe returned 401", { url: fullUrl });
+    return Promise.reject(error);
+  }
+
+  if (isPublicAuthRequest(fullUrl)) {
     return Promise.reject(error);
   }
 

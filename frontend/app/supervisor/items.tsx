@@ -27,12 +27,10 @@ import {
   FilterValues,
 } from "../../src/domains/inventory/components/ItemFilters";
 import { useSettingsStore } from "../../src/store/settingsStore";
-import {
-  ScreenContainer,
-  GlassCard,
-  StatsCard,
-  AnimatedPressable,
-} from "../../src/components/ui";
+import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
+import { GlassCard } from "../../src/components/ui/GlassCard";
+import { StatsCard } from "../../src/components/ui/StatsCard";
+import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
 import { theme } from "../../src/styles/modernDesignSystem";
 import { saveArrayBufferExport } from "../../src/utils/fileExport";
 
@@ -95,7 +93,7 @@ export default function ItemsScreen() {
           const localItems = await getLocalItems();
           const mappedItems = localItems.map((item) => ({
             id: item.barcode,
-            item_code: item.barcode,
+            item_code: item.item_code ?? item.barcode,
             item_name: item.name,
             barcode: item.barcode,
             category: item.category,

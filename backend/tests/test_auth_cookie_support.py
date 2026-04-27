@@ -94,3 +94,29 @@ def test_refresh_accepts_cookie_without_request_body_token(client: TestClient, m
     assert payload["data"]["access_token"] == "new-access-token"
     assert refresh_response.cookies.get("sv_access_token") == "new-access-token"
     assert refresh_response.cookies.get("sv_refresh_token") == "new-refresh-token"
+
+
+def test_logout_accepts_refresh_token_without_access_token(client: TestClient, monkeypatch):
+    import backend.app_factory as app_factory
+
+    verify_mock = AsyncMock(return_value={"sub": "staff1", "type": "refresh"})
+    revoke_mock = AsyncMock(return_value=True)
+    monkeypatch.setattr(
+        app_factory,
+        "get_refresh_token_service",
+        lambda: type(
+            "_CookieLogoutService",
+            (),
+            {
+                "verify_refresh_token": verify_mock,
+                "revoke_token": revoke_mock,
+            },
+        )(),
+    )
+
+    response = client.post("/api/auth/logout", json={"refresh_token": "refresh-token"})
+
+    assert response.status_code == 200
+    assert response.json() == {"message": "Logged out successfully"}
+    verify_mock.assert_awaited_once_with("refresh-token")
+    revoke_mock.assert_awaited_once_with("refresh-token")

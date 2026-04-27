@@ -21,6 +21,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from backend.config import settings
 from backend.db.runtime import get_db, lifespan_db
+from scripts.approval_guard import enforce_high_risk_entrypoint
 
 logger = logging.getLogger(__name__)
 
@@ -269,6 +270,7 @@ def _print_summary(stats: dict[str, Any], execute: bool) -> None:
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
     args = _build_parser().parse_args()
+    enforce_high_risk_entrypoint(trigger_flags={"--execute"})
     stats = asyncio.run(_run(args))
     _print_summary(stats, args.execute)
 

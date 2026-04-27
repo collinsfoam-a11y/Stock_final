@@ -9,6 +9,7 @@ from backend.core.websocket_manager import manager
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+ALLOWED_WEBSOCKET_ROLES = {"supervisor", "staff", "user", "admin"}
 
 
 def _parse_subprotocols(header_value: Optional[str]) -> list[str]:
@@ -53,6 +54,34 @@ def _extract_jwt_from_websocket(
     return None, None
 
 
+async def _close_policy_violation(websocket: WebSocket) -> None:
+    await websocket.accept()
+    await websocket.close(code=1008)
+
+
+def _decode_websocket_payload(jwt_token: str) -> Optional[dict]:
+    try:
+        if not settings.JWT_SECRET:
+            raise ValueError("JWT_SECRET not set")
+        return decode(jwt_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+    except Exception as exc:
+        logger.warning("WebSocket auth failed: %s", str(exc))
+        return None
+
+
+def _resolve_websocket_identity(payload: dict) -> tuple[Optional[str], str]:
+    return payload.get("sub"), str(payload.get("role", "")).lower()
+
+
+def _is_allowed_websocket_role(role: str) -> bool:
+    return role in ALLOWED_WEBSOCKET_ROLES
+
+
+async def _consume_websocket_messages(websocket: WebSocket) -> None:
+    while True:
+        await websocket.receive_text()
+
+
 @router.websocket("/ws/updates")
 async def websocket_endpoint(
     websocket: WebSocket,
@@ -71,43 +100,28 @@ async def websocket_endpoint(
     jwt_token, accept_subprotocol = _extract_jwt_from_websocket(websocket, token)
 
     if not jwt_token:
-        await websocket.accept()
-        await websocket.close(code=1008)
+        await _close_policy_violation(websocket)
         return
 
-    # Authenticate before accepting
-    payload = None
-    try:
-        if not settings.JWT_SECRET:
-            raise ValueError("JWT_SECRET not set")
-        payload = decode(jwt_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-    except Exception as e:
-        logger.warning(f"WebSocket auth failed: {str(e)}")
-
+    payload = _decode_websocket_payload(jwt_token)
     if not payload:
-        # Accept then immediately close with policy violation code
-        await websocket.accept()
-        await websocket.close(code=1008)
+        await _close_policy_violation(websocket)
         return
 
-    user_id = payload.get("sub")
+    user_id, role = _resolve_websocket_identity(payload)
     if not user_id:
-        await websocket.accept()
-        await websocket.close(code=1008)
+        await _close_policy_violation(websocket)
         return
 
-    # T076: Restrict WebSocket updates to Supervisors and Staff (User)
-    role = payload.get("role", "").lower()
-    # "user" is the default role for staff in our system (SessionCreate uses "staff", but auth might use "user" or "staff" depending on registration)
-    if role not in ["supervisor", "staff", "user", "admin"]:
+    if not _is_allowed_websocket_role(role):
         logger.warning(
-            f"WebSocket connection rejected for user {user_id}: Role '{role}' is not 'supervisor'"
+            "WebSocket connection rejected for user %s: role '%s' is not allowed",
+            user_id,
+            role,
         )
-        await websocket.accept()
-        await websocket.close(code=1008)
+        await _close_policy_violation(websocket)
         return
 
-    # Authentication successful - connect via manager (which calls accept)
     try:
         await manager.connect(
             websocket,
@@ -116,19 +130,14 @@ async def websocket_endpoint(
             role=role,
             subprotocol=accept_subprotocol,
         )
-
-        while True:
-            # Keep connection alive and listen for client messages if needed
-            await websocket.receive_text()
-            # For now, we just echo or ignore. Real logic would go here.
-            # await websocket.send_text(f"Message received: {data}")
+        await _consume_websocket_messages(websocket)
     except WebSocketDisconnect:
         manager.disconnect(websocket, user_id, session_id)
-        logger.info(f"Client disconnected: {user_id}")
-    except Exception as e:
-        logger.error(f"WebSocket error: {str(e)}")
+        logger.info("Client disconnected: %s", user_id)
+    except Exception as exc:
+        logger.error("WebSocket error: %s", str(exc))
         manager.disconnect(websocket, user_id, session_id)
         try:
-            await websocket.close(code=1011)  # Internal Error
+            await websocket.close(code=1011)
         except Exception:
             pass

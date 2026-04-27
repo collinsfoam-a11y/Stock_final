@@ -11,9 +11,9 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, NoReturn, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 
@@ -26,6 +26,13 @@ from backend.auth.dependencies import (
 from backend.core.websocket_manager import manager
 from backend.db.runtime import get_db
 from backend.services.lock_manager import get_lock_manager
+from backend.services.count_line_write_service import CountLineWriteService
+from backend.services.logic_guard import (
+    apply_pin_to_new_session,
+    build_request_context,
+    enforce_session_logic,
+)
+from backend.services.snapshot_service import SnapshotIntegrityError, SnapshotService
 from backend.services.canonical_inventory import (
     build_session_lookup,
     find_session,
@@ -50,6 +57,30 @@ ACTIVE_SESSION_STATUSES = ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]
 
 def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
     return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
+
+
+async def _enforce_session_logic_guard(
+    *,
+    request: Request | None,
+    db: AsyncIOMotorDatabase,
+    session: dict[str, Any],
+    current_user: dict[str, Any],
+    operation_name: str,
+    is_mutation: bool = True,
+) -> None:
+    await enforce_session_logic(
+        db=db,
+        session=session,
+        request_context=build_request_context(
+            request=request,
+            current_user=current_user,
+            session_id=str(session.get("id") or session.get("session_id") or ""),
+            warehouse=session.get("warehouse"),
+            endpoint_name="session_management_api",
+            operation_name=operation_name,
+        ),
+        is_mutation=is_mutation,
+    )
 
 
 # Models
@@ -587,31 +618,29 @@ def _minutes_since(value: Optional[datetime]) -> float:
     )
 
 
-def _calculate_priority_score(
+def _workflow_stage_priority_score(
     workflow_stage: WorkflowStage,
-    presence_status: WorkflowPresenceStatus,
-    session_status: Optional[CanonicalSessionStatus],
     pending_approvals: int,
     assigned_recounts: int,
-    total_variance: float,
+) -> int:
+    if workflow_stage == WorkflowStage.RECOUNT_QUEUE:
+        return 55 + min(assigned_recounts * 8, 20)
+    if workflow_stage == WorkflowStage.AWAITING_REVIEW:
+        return 45 + min(pending_approvals * 5, 20)
+    if workflow_stage == WorkflowStage.PAUSED:
+        return 25
+    if workflow_stage == WorkflowStage.RECONCILING:
+        return 15
+    if workflow_stage == WorkflowStage.COUNTING:
+        return 10
+    return 0
+
+
+def _workflow_sla_priority_score(
     pending_review_since: Optional[datetime],
     recount_assigned_at: Optional[datetime],
-    last_activity: Optional[datetime],
 ) -> int:
     score = 0
-
-    if workflow_stage == WorkflowStage.RECOUNT_QUEUE:
-        score += 55 + min(assigned_recounts * 8, 20)
-    elif workflow_stage == WorkflowStage.AWAITING_REVIEW:
-        score += 45 + min(pending_approvals * 5, 20)
-    elif workflow_stage == WorkflowStage.PAUSED:
-        score += 25
-    elif workflow_stage == WorkflowStage.RECONCILING:
-        score += 15
-    elif workflow_stage == WorkflowStage.COUNTING:
-        score += 10
-
-    score += min(int(abs(total_variance) // 10), 15)
 
     pending_age = _minutes_since(pending_review_since)
     if pending_age > PENDING_REVIEW_SLA_MINUTES:
@@ -625,23 +654,66 @@ def _calculate_priority_score(
     if recount_age > RECOUNT_SLA_MINUTES * 2:
         score += 10
 
-    if session_status in {
+    return score
+
+
+def _is_live_workflow_session(
+    session_status: Optional[CanonicalSessionStatus],
+) -> bool:
+    return session_status in {
         CanonicalSessionStatus.OPEN,
         CanonicalSessionStatus.ACTIVE,
         CanonicalSessionStatus.PAUSED,
         CanonicalSessionStatus.RECONCILE,
-    }:
-        inactive_age = _minutes_since(last_activity)
-        if presence_status == WorkflowPresenceStatus.IDLE:
-            score += 8
-        elif presence_status == WorkflowPresenceStatus.OFFLINE:
-            score += 18
+    }
 
-        if inactive_age > INACTIVE_SESSION_SLA_MINUTES:
-            score += 5
-        if inactive_age > INACTIVE_SESSION_SLA_MINUTES * 2:
-            score += 7
 
+def _inactive_session_priority_score(
+    presence_status: WorkflowPresenceStatus,
+    session_status: Optional[CanonicalSessionStatus],
+    last_activity: Optional[datetime],
+) -> int:
+    if not _is_live_workflow_session(session_status):
+        return 0
+
+    score = 0
+    inactive_age = _minutes_since(last_activity)
+    if presence_status == WorkflowPresenceStatus.IDLE:
+        score += 8
+    elif presence_status == WorkflowPresenceStatus.OFFLINE:
+        score += 18
+
+    if inactive_age > INACTIVE_SESSION_SLA_MINUTES:
+        score += 5
+    if inactive_age > INACTIVE_SESSION_SLA_MINUTES * 2:
+        score += 7
+
+    return score
+
+
+def _raise_internal_server_error(detail: str, exc: Exception) -> NoReturn:
+    raise HTTPException(status_code=500, detail=detail) from exc
+
+
+def _calculate_priority_score(
+    workflow_stage: WorkflowStage,
+    presence_status: WorkflowPresenceStatus,
+    session_status: Optional[CanonicalSessionStatus],
+    pending_approvals: int,
+    assigned_recounts: int,
+    total_variance: float,
+    pending_review_since: Optional[datetime],
+    recount_assigned_at: Optional[datetime],
+    last_activity: Optional[datetime],
+) -> int:
+    score = _workflow_stage_priority_score(
+        workflow_stage,
+        pending_approvals,
+        assigned_recounts,
+    )
+    score += min(int(abs(total_variance) // 10), 15)
+    score += _workflow_sla_priority_score(pending_review_since, recount_assigned_at)
+    score += _inactive_session_priority_score(presence_status, session_status, last_activity)
     return max(0, min(100, score))
 
 
@@ -1250,6 +1322,7 @@ async def get_sessions(
 @router.post("/", response_model=Session)
 @router.post("", response_model=Session)
 async def create_session(
+    request: Request,
     session_data: SessionCreate,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
@@ -1279,6 +1352,19 @@ async def create_session(
         location_name,
         rack_no,
     )
+    guard_context = await enforce_session_logic(
+        db=db,
+        session=None,
+        request_context=build_request_context(
+            request=request,
+            current_user=current_user,
+            warehouse=warehouse,
+            endpoint_name="session_management_api",
+            operation_name="create_session",
+        ),
+        is_mutation=True,
+    )
+    apply_pin_to_new_session(session, guard_context)
     session.config_version_id = await _get_latest_session_config_version_id(db)
     await _persist_session_snapshot(
         db,
@@ -1388,7 +1474,7 @@ async def get_sessions_analytics(
         return {"success": True, "data": await _build_sessions_analytics_payload(db)}
     except Exception as e:
         logger.error("Analytics error: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        _raise_internal_server_error("Failed to load session analytics", e)
 
 
 @router.get("/{session_id}", response_model=SessionDetail)
@@ -1477,6 +1563,7 @@ async def get_session_stats(
 @router.post("/{session_id}/heartbeat", response_model=HeartbeatResponse)
 async def session_heartbeat(
     session_id: str,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
     redis_service=Depends(get_redis),
@@ -1503,6 +1590,15 @@ async def session_heartbeat(
     # Verify ownership
     if _session_owner(session) != user_id:
         raise HTTPException(status_code=403, detail="Not your session")
+
+    await _enforce_session_logic_guard(
+        request=request,
+        db=db,
+        session=session,
+        current_user=current_user,
+        operation_name="session_heartbeat",
+        is_mutation=False,
+    )
 
     # Update user heartbeat
     await lock_manager.update_user_heartbeat(user_id, ttl=90)
@@ -1548,6 +1644,7 @@ async def session_heartbeat(
 @router.put("/{session_id}/status")
 async def update_session_status(
     session_id: str,
+    request: Request,
     status: str = Query(..., description="New status"),
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
@@ -1568,6 +1665,14 @@ async def update_session_status(
     # Verify ownership or supervisor
     if current_user["role"] not in {"supervisor", "admin"} and _session_owner(session) != user_id:
         raise HTTPException(status_code=403, detail="Not your session")
+
+    await _enforce_session_logic_guard(
+        request=request,
+        db=db,
+        session=session,
+        current_user=current_user,
+        operation_name="update_session_status",
+    )
 
     normalized_status = status.upper()
     current_status = _effective_session_status(session).value
@@ -1636,21 +1741,22 @@ async def update_session_status(
     return {"success": True, "id": session_id, "status": normalized_status}
 
 
-async def _finalize_session_canonical(
-    session_id: str,
+def _require_supervisor_access(current_user: dict[str, Any]) -> None:
+    if current_user.get("role") not in {"supervisor", "admin"}:
+        raise HTTPException(status_code=403, detail="Supervisor access required")
+
+
+async def _get_existing_session_or_404(
     db: AsyncIOMotorDatabase,
-    current_user: dict[str, Any],
-    lock_manager: Any,
-    *,
-    note: Optional[str] = None,
+    session_id: str,
 ) -> dict[str, Any]:
     session = await find_session(db, session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+    return session
 
-    if current_user.get("role") not in {"supervisor", "admin"}:
-        raise HTTPException(status_code=403, detail="Supervisor access required")
 
+def _ensure_session_ready_for_finalization(session: dict[str, Any]) -> None:
     if is_session_finalized(session):
         raise HTTPException(status_code=409, detail="Session is already finalized")
 
@@ -1660,24 +1766,35 @@ async def _finalize_session_canonical(
             detail="Session must be in RECONCILE before finalization",
         )
 
+
+def _blocking_finalization_detail(
+    blocking_lines: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "message": "Session has unresolved count lines and cannot be finalized",
+        "blocking_count": len(blocking_lines),
+        "blocking_line_ids": [
+            str(line.get("id") or line.get("_id")) for line in blocking_lines[:25]
+        ],
+    }
+
+
+async def _get_blocking_finalization_lines(
+    db: AsyncIOMotorDatabase,
+    session_id: str,
+) -> list[dict[str, Any]]:
     await recompute_session_totals(db, session_id)
     lines = await get_session_count_lines(db, session_id)
-    blocking_lines = [line for line in lines if is_blocking_finalization(line)]
-    if blocking_lines:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "message": "Session has unresolved count lines and cannot be finalized",
-                "blocking_count": len(blocking_lines),
-                "blocking_line_ids": [
-                    str(line.get("id") or line.get("_id")) for line in blocking_lines[:25]
-                ],
-            },
-        )
+    return [line for line in lines if is_blocking_finalization(line)]
 
-    finalized_at = _current_utc_naive()
-    finalized_by = current_user["username"]
-    line_update: dict[str, Any] = {
+
+def _build_line_finalization_update(
+    *,
+    finalized_at: datetime,
+    finalized_by: str,
+    note: Optional[str],
+) -> dict[str, Any]:
+    update: dict[str, Any] = {
         "status": "locked",
         "approval_status": "APPROVED",
         "verified": True,
@@ -1691,19 +1808,18 @@ async def _finalize_session_canonical(
         "updated_by": finalized_by,
     }
     if note:
-        line_update["finalization_note"] = note
+        update["finalization_note"] = note
+    return update
 
-    await db.count_lines.update_many(
-        {
-            "session_id": session_id,
-            "status": {"$ne": "locked"},
-            "approval_status": {"$nin": ["REJECTED", "NEEDS_REVIEW"]},
-        },
-        {"$set": line_update},
-    )
-    totals = await recompute_session_totals(db, session_id)
 
-    session_update: dict[str, Any] = {
+def _build_session_finalization_update(
+    *,
+    finalized_at: datetime,
+    finalized_by: str,
+    totals: dict[str, Any],
+    note: Optional[str],
+) -> dict[str, Any]:
+    update: dict[str, Any] = {
         "status": "COMPLETED",
         "finalization_status": "FINALIZED",
         "finalized_at": finalized_at,
@@ -1714,9 +1830,15 @@ async def _finalize_session_canonical(
         **totals,
     }
     if note:
-        session_update["finalization_note"] = note
+        update["finalization_note"] = note
+    return update
 
-    await db.sessions.update_one(build_session_lookup(session_id), {"$set": session_update})
+
+async def _mirror_verification_session_finalization(
+    db: AsyncIOMotorDatabase,
+    session_id: str,
+    finalized_at: datetime,
+) -> None:
     try:
         await db.verification_sessions.update_one(
             {"session_id": session_id},
@@ -1731,32 +1853,215 @@ async def _finalize_session_canonical(
     except Exception:
         logger.debug("Legacy verification_sessions finalize mirror skipped", exc_info=True)
 
-    if session.get("rack_no"):
-        await lock_manager.release_rack_lock(session["rack_no"], session.get("staff_user"))
+
+async def _release_session_rack_resources(
+    db: AsyncIOMotorDatabase,
+    lock_manager: Any,
+    *,
+    rack_id: Optional[str],
+    session_owner: Optional[str],
+    session_id: str,
+    log_context: str,
+) -> None:
+    if rack_id:
+        await lock_manager.release_rack_lock(rack_id, session_owner)
         try:
             await db.rack_registry.update_one(
-                {"rack_id": session["rack_no"]},
+                {"rack_id": rack_id},
                 {"$set": {"status": "completed", "updated_at": time.time()}},
             )
         except Exception:
-            logger.debug("Rack registry finalize mirror skipped", exc_info=True)
+            logger.debug("%s rack registry mirror skipped", log_context, exc_info=True)
 
     try:
         await lock_manager.delete_session(session_id)
     except Exception:
-        logger.debug("Session lock deletion skipped during completion", exc_info=True)
+        logger.debug("%s session lock deletion skipped", log_context, exc_info=True)
 
+
+async def _broadcast_session_completed(
+    session_id: str,
+    *,
+    completed_by: str,
+    completed_at: datetime,
+    status: str,
+) -> None:
     await manager.broadcast_to_session(
         message={
             "type": "session_completed",
             "payload": {
                 "session_id": session_id,
-                "completed_by": finalized_by,
-                "completed_at": finalized_at.timestamp(),
-                "status": "COMPLETED",
+                "completed_by": completed_by,
+                "completed_at": completed_at.timestamp(),
+                "status": status,
             },
         },
         session_id=session_id,
+    )
+
+
+async def _load_completion_sessions(
+    db: AsyncIOMotorDatabase,
+    session_id: str,
+) -> tuple[Optional[dict[str, Any]], Optional[dict[str, Any]]]:
+    canonical_session = await find_session(db, session_id)
+
+    legacy_session: Optional[dict[str, Any]] = None
+    try:
+        legacy_session = await db.verification_sessions.find_one({"session_id": session_id})
+    except Exception:
+        logger.debug("Legacy verification session lookup skipped", exc_info=True)
+
+    if not canonical_session and not legacy_session:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+
+    return canonical_session, legacy_session
+
+
+def _resolve_completion_owner(
+    canonical_session: Optional[dict[str, Any]],
+    legacy_session: Optional[dict[str, Any]],
+) -> str:
+    return _session_owner(canonical_session) or (legacy_session or {}).get("user_id") or ""
+
+
+def _ensure_session_can_be_completed(
+    *,
+    canonical_session: Optional[dict[str, Any]],
+    legacy_session: Optional[dict[str, Any]],
+    current_user: dict[str, Any],
+    user_id: str,
+) -> None:
+    session_owner = _resolve_completion_owner(canonical_session, legacy_session)
+    if current_user.get("role") not in {"supervisor", "admin"} and session_owner != user_id:
+        raise HTTPException(status_code=403, detail="Not your session")
+
+    if canonical_session and is_session_finalized(canonical_session):
+        raise HTTPException(status_code=409, detail="Session is already finalized")
+
+    current_status = (
+        _effective_session_status(canonical_session).value
+        if canonical_session
+        else str((legacy_session or {}).get("status") or "").upper()
+    )
+    if not SessionStateMachine.can_transition(current_status, "CLOSED"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Invalid session transition: {current_status} -> CLOSED",
+        )
+
+
+def _completion_rack_id(
+    canonical_session: Optional[dict[str, Any]],
+    legacy_session: Optional[dict[str, Any]],
+) -> Optional[str]:
+    return (canonical_session or {}).get("rack_no") or (legacy_session or {}).get("rack_id")
+
+
+async def _close_legacy_session_mirror(
+    db: AsyncIOMotorDatabase,
+    session_id: str,
+    legacy_session: Optional[dict[str, Any]],
+    completed_at: datetime,
+) -> None:
+    if not legacy_session:
+        return
+
+    await db.verification_sessions.update_one(
+        {"session_id": session_id},
+        {"$set": {"status": "CLOSED", "completed_at": completed_at.timestamp()}},
+    )
+
+
+async def _close_canonical_session_record(
+    db: AsyncIOMotorDatabase,
+    session_id: str,
+    canonical_session: Optional[dict[str, Any]],
+    completed_at: datetime,
+) -> None:
+    if not canonical_session:
+        return
+
+    await db.sessions.update_one(
+        build_session_lookup(session_id),
+        {
+            "$set": {
+                "status": "CLOSED",
+                "closed_at": completed_at,
+                "completed_at": completed_at,
+                "last_heartbeat": completed_at,
+            }
+        },
+    )
+
+
+async def _finalize_session_canonical(
+    session_id: str,
+    db: AsyncIOMotorDatabase,
+    current_user: dict[str, Any],
+    lock_manager: Any,
+    *,
+    note: Optional[str] = None,
+) -> dict[str, Any]:
+    session = await _get_existing_session_or_404(db, session_id)
+    _require_supervisor_access(current_user)
+    _ensure_session_ready_for_finalization(session)
+    try:
+        await SnapshotService(db).assert_session_snapshot_integrity(session, session_id=session_id)
+    except SnapshotIntegrityError as exc:
+        raise HTTPException(status_code=409, detail="Snapshot integrity violated for this session") from exc
+
+    blocking_lines = await _get_blocking_finalization_lines(db, session_id)
+    if blocking_lines:
+        raise HTTPException(
+            status_code=409,
+            detail=_blocking_finalization_detail(blocking_lines),
+        )
+
+    finalized_at = _current_utc_naive()
+    finalized_by = current_user["username"]
+    line_update = _build_line_finalization_update(
+        finalized_at=finalized_at,
+        finalized_by=finalized_by,
+        note=note,
+    )
+
+    write_service = CountLineWriteService(db)
+    await write_service.process_write(
+        {
+            "operation": "update_many",
+            "filter": {
+                "session_id": session_id,
+                "status": {"$ne": "locked"},
+                "approval_status": {"$nin": ["REJECTED", "NEEDS_REVIEW"]},
+            },
+            "update": {"$set": line_update},
+        },
+        context={"session": session},
+    )
+    totals = await recompute_session_totals(db, session_id)
+
+    session_update = _build_session_finalization_update(
+        finalized_at=finalized_at,
+        finalized_by=finalized_by,
+        totals=totals,
+        note=note,
+    )
+    await db.sessions.update_one(build_session_lookup(session_id), {"$set": session_update})
+    await _mirror_verification_session_finalization(db, session_id, finalized_at)
+    await _release_session_rack_resources(
+        db,
+        lock_manager,
+        rack_id=session.get("rack_no"),
+        session_owner=session.get("staff_user"),
+        session_id=session_id,
+        log_context="Finalization",
+    )
+    await _broadcast_session_completed(
+        session_id,
+        completed_by=finalized_by,
+        completed_at=finalized_at,
+        status="COMPLETED",
     )
 
     return {
@@ -1776,85 +2081,31 @@ async def _complete_session_legacy_compatible(
     lock_manager: Any,
 ) -> dict[str, Any]:
     user_id = current_user["username"]
-    canonical_session = await find_session(db, session_id)
-
-    legacy_session: Optional[dict[str, Any]] = None
-    try:
-        legacy_session = await db.verification_sessions.find_one({"session_id": session_id})
-    except Exception:
-        logger.debug("Legacy verification session lookup skipped", exc_info=True)
-
-    if not canonical_session and not legacy_session:
-        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
-
-    session_owner = _session_owner(canonical_session) or (legacy_session or {}).get("user_id") or ""
-    if current_user.get("role") not in {"supervisor", "admin"} and session_owner != user_id:
-        raise HTTPException(status_code=403, detail="Not your session")
-
-    if canonical_session and is_session_finalized(canonical_session):
-        raise HTTPException(status_code=409, detail="Session is already finalized")
-
-    current_status = (
-        _effective_session_status(canonical_session).value
-        if canonical_session
-        else str((legacy_session or {}).get("status") or "").upper()
+    canonical_session, legacy_session = await _load_completion_sessions(db, session_id)
+    _ensure_session_can_be_completed(
+        canonical_session=canonical_session,
+        legacy_session=legacy_session,
+        current_user=current_user,
+        user_id=user_id,
     )
-    if not SessionStateMachine.can_transition(current_status, "CLOSED"):
-        raise HTTPException(
-            status_code=409,
-            detail=f"Invalid session transition: {current_status} -> CLOSED",
-        )
 
     completed_at = _current_utc_naive()
-    rack_id = (
-        (canonical_session or {}).get("rack_no") or (legacy_session or {}).get("rack_id") or None
-    )
-
-    if rack_id:
-        await lock_manager.release_rack_lock(rack_id, session_owner or user_id)
-        try:
-            await db.rack_registry.update_one(
-                {"rack_id": rack_id},
-                {"$set": {"status": "completed", "updated_at": time.time()}},
-            )
-        except Exception:
-            logger.debug("Rack registry completion mirror skipped", exc_info=True)
-
-    if legacy_session:
-        await db.verification_sessions.update_one(
-            {"session_id": session_id},
-            {"$set": {"status": "CLOSED", "completed_at": completed_at.timestamp()}},
-        )
-
-    if canonical_session:
-        await db.sessions.update_one(
-            build_session_lookup(session_id),
-            {
-                "$set": {
-                    "status": "CLOSED",
-                    "closed_at": completed_at,
-                    "completed_at": completed_at,
-                    "last_heartbeat": completed_at,
-                }
-            },
-        )
-
-    try:
-        await lock_manager.delete_session(session_id)
-    except Exception:
-        logger.debug("Session lock deletion skipped during finalization", exc_info=True)
-
-    await manager.broadcast_to_session(
-        message={
-            "type": "session_completed",
-            "payload": {
-                "session_id": session_id,
-                "completed_by": user_id,
-                "completed_at": completed_at.timestamp(),
-                "status": "CLOSED",
-            },
-        },
+    session_owner = _resolve_completion_owner(canonical_session, legacy_session)
+    await _release_session_rack_resources(
+        db,
+        lock_manager,
+        rack_id=_completion_rack_id(canonical_session, legacy_session),
+        session_owner=session_owner or user_id,
         session_id=session_id,
+        log_context="Completion",
+    )
+    await _close_legacy_session_mirror(db, session_id, legacy_session, completed_at)
+    await _close_canonical_session_record(db, session_id, canonical_session, completed_at)
+    await _broadcast_session_completed(
+        session_id,
+        completed_by=user_id,
+        completed_at=completed_at,
+        status="CLOSED",
     )
 
     return {
@@ -1868,12 +2119,23 @@ async def _complete_session_legacy_compatible(
 @router.post("/{session_id}/finalize")
 async def finalize_session(
     session_id: str,
+    http_request: Request,
     request: Optional[SessionFinalizeRequest] = None,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
     redis_service=Depends(get_redis),
 ) -> dict[str, Any]:
     lock_manager = get_lock_manager(redis_service)
+    session = await _get_existing_session_or_404(db, session_id)
+    _require_supervisor_access(current_user)
+    _ensure_session_ready_for_finalization(session)
+    await _enforce_session_logic_guard(
+        request=http_request,
+        db=db,
+        session=session,
+        current_user=current_user,
+        operation_name="finalize_session",
+    )
     return await _finalize_session_canonical(
         session_id,
         db,
@@ -1886,6 +2148,7 @@ async def finalize_session(
 @router.post("/{session_id}/complete")
 async def complete_session(
     session_id: str,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
     redis_service=Depends(get_redis),
@@ -1896,6 +2159,22 @@ async def complete_session(
     This legacy endpoint preserves the historical owner-compatible close flow.
     """
     lock_manager = get_lock_manager(redis_service)
+    canonical_session, legacy_session = await _load_completion_sessions(db, session_id)
+    _ensure_session_can_be_completed(
+        canonical_session=canonical_session,
+        legacy_session=legacy_session,
+        current_user=current_user,
+        user_id=current_user["username"],
+    )
+    session_for_guard = canonical_session or legacy_session
+    if session_for_guard:
+        await _enforce_session_logic_guard(
+            request=request,
+            db=db,
+            session=session_for_guard,
+            current_user=current_user,
+            operation_name="complete_session",
+        )
     return await _complete_session_legacy_compatible(session_id, db, current_user, lock_manager)
 
 
@@ -1974,6 +2253,7 @@ async def check_session_integrity(
 
 @router.post("/logout-all")
 async def logout_all_sessions(
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
     refresh_token_service=Depends(get_refresh_token_service),
@@ -1984,6 +2264,18 @@ async def logout_all_sessions(
     """
     username = current_user["username"]
     logger.info("Revoking all sessions for user: %s", _safe_log_value(username))
+
+    active_sessions = await db.sessions.find(
+        {"staff_user": username, "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]}}
+    ).to_list(length=500)
+    for session in active_sessions:
+        await _enforce_session_logic_guard(
+            request=request,
+            db=db,
+            session=session,
+            current_user=current_user,
+            operation_name="logout_all_sessions",
+        )
 
     # 1. Revoke all refresh tokens
     revoked_tokens = await refresh_token_service.revoke_all_user_tokens(username)
@@ -2023,6 +2315,7 @@ class BulkSessionCloseRequest(BaseModel):
 
 @router.post("/bulk/close")
 async def bulk_close_sessions(
+    http_request: Request,
     request: BulkSessionCloseRequest,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
@@ -2056,6 +2349,14 @@ async def bulk_close_sessions(
                     )
                     failed += 1
                     continue
+
+            await _enforce_session_logic_guard(
+                request=http_request,
+                db=db,
+                session=session,
+                current_user=current_user,
+                operation_name="bulk_close_sessions",
+            )
 
             await db.sessions.update_one(
                 {"id": session_id},

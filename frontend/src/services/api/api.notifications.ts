@@ -2,11 +2,15 @@ import api from "../httpClient";
 
 export interface NotificationMetadata {
   count_line_id?: string;
+  recount_id?: string;
   item_name?: string;
   reason?: string;
   assigned_by?: string;
   approved_by?: string;
   rejected_by?: string;
+  completed_by?: string;
+  result_qty?: number;
+  due_date?: string;
   session_id?: string | null;
   item_code?: string | null;
   barcode?: string | null;

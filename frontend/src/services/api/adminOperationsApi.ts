@@ -431,12 +431,14 @@ export const getSyncConflictDetail = async (conflictId: string) => {
 export const resolveSyncConflict = async (
   conflictId: string,
   resolution: string,
-  resolutionNote?: string
+  resolutionNote?: string,
+  mergedData?: Record<string, unknown>
 ) => {
   try {
     const response = await api.post(`/api/sync/conflicts/${conflictId}/resolve`, {
       resolution,
       resolution_note: resolutionNote,
+      merged_data: mergedData,
     });
     return response.data;
   } catch (error: unknown) {

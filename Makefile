@@ -1,7 +1,7 @@
 # Makefile for STOCK_VERIFY CI and Development Tasks
 # Usage: make <target>
 
-.PHONY: help ci test lint format typecheck pre-commit install clean eval security secrets agent-ci agent-python agent-node audit-count-line-names
+.PHONY: help ci test lint format typecheck pre-commit install clean eval security secrets agent-ci agent-python agent-node audit-count-line-names approval-check
 
 PYTHON := ./scripts/python.sh
 
@@ -144,6 +144,10 @@ agent-python:
 
 agent-node:
 	@./scripts/agent_ci.sh node
+
+approval-check:
+	@echo "Validating approval log chain..."
+	$(PYTHON) scripts/agent_approval_log.py verify-chain
 
 audit-count-line-names:
 	@echo "Running read-only count line item-name audit..."

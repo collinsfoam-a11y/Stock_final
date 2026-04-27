@@ -6,13 +6,21 @@ Ensures each user has a normalized user settings document.
 
 import asyncio
 import logging
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from backend.api.user_settings_api import _build_user_settings
 from backend.core.schemas.user_settings import UserSettings
 from backend.db.runtime import get_db
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from scripts.approval_guard import enforce_high_risk_entrypoint
 
 logger = logging.getLogger(__name__)
 
@@ -145,4 +153,5 @@ async def run_migration():
 
 
 if __name__ == "__main__":
+    enforce_high_risk_entrypoint(always_require=True)
     asyncio.run(run_migration())

@@ -57,6 +57,68 @@ class SessionContextLoggingMiddleware:
         ]
         self.log_request_body = log_request_body
 
+    def _should_skip_path(self, path: str) -> bool:
+        return any(path.startswith(excluded) for excluded in self.exclude_paths)
+
+    def _set_request_context(self, request: Request, user_info: Optional[dict[str, Any]]) -> None:
+        request_id = request.headers.get("X-Request-ID")
+        if request_id:
+            current_request_id.set(request_id)
+
+        if not user_info:
+            return
+
+        current_user_id.set(user_info.get("user_id"))
+        current_username.set(user_info.get("username"))
+        if user_info.get("session_id"):
+            current_session_id.set(user_info.get("session_id"))
+
+    def _response_for_status(self, status_code: int):
+        class ResponseStatus:
+            def __init__(self, code: int):
+                self.status_code = code
+
+        return ResponseStatus(status_code)
+
+    def _duration_ms(self, start_time: float) -> float:
+        return (time.time() - start_time) * 1000
+
+    def _build_send_wrapper(
+        self,
+        request: Request,
+        send,
+        start_time: float,
+        user_info: Optional[dict[str, Any]],
+    ):
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                response = self._response_for_status(message["status"])
+                self._log_request_complete(
+                    request,
+                    response,
+                    self._duration_ms(start_time),
+                    user_info,
+                )
+                self._clear_context()
+
+            await send(message)
+
+        return send_wrapper
+
+    def _log_request_exception(
+        self,
+        request: Request,
+        start_time: float,
+        user_info: Optional[dict[str, Any]],
+    ) -> None:
+        self._log_request_complete(
+            request,
+            self._response_for_status(500),
+            self._duration_ms(start_time),
+            user_info,
+        )
+        self._clear_context()
+
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
@@ -64,61 +126,23 @@ class SessionContextLoggingMiddleware:
         request = Request(scope, receive=receive)
         path = scope["path"]
 
-        # Skip excluded paths
-        if any(path.startswith(excluded) for excluded in self.exclude_paths):
+        if self._should_skip_path(path):
             return await self.app(scope, receive, send)
 
         start_time = time.time()
 
-        # Extract request ID if available
-        # Request ID might be added by a previous middleware in scope['state']
-        # But for Starlette/FastAPI, it's often in request.state
-        # Since we are early in the chain, we might need to check headers
-        request_id = request.headers.get("X-Request-ID")
-        if request_id:
-            current_request_id.set(request_id)
-
         # Try to extract user info from JWT token
         user_info = await self._extract_user_context(request)
-        if user_info:
-            current_user_id.set(user_info.get("user_id"))
-            current_username.set(user_info.get("username"))
-            if user_info.get("session_id"):
-                current_session_id.set(user_info.get("session_id"))
+        self._set_request_context(request, user_info)
 
         # Log request start with context
         self._log_request_start(request, user_info)
 
-        async def send_wrapper(message):
-            if message["type"] == "http.response.start":
-                status_code = message["status"]
-                duration_ms = (time.time() - start_time) * 1000
-
-                # Mock a response object for logging (only needs status_code)
-                class MockResponse:
-                    def __init__(self, code):
-                        self.status_code = code
-
-                self._log_request_complete(
-                    request, MockResponse(status_code), duration_ms, user_info
-                )
-                self._clear_context()
-
-            await send(message)
-
         try:
-            await self.app(scope, receive, send_wrapper)
-        except Exception as e:
-            # Log exception and duration if it hasn't been logged yet
-            duration_ms = (time.time() - start_time) * 1000
-
-            class ErrorResponse:
-                def __init__(self):
-                    self.status_code = 500
-
-            self._log_request_complete(request, ErrorResponse(), duration_ms, user_info)
-            self._clear_context()
-            raise e
+            await self.app(scope, receive, self._build_send_wrapper(request, send, start_time, user_info))
+        except Exception:
+            self._log_request_exception(request, start_time, user_info)
+            raise
 
     async def _extract_user_context(self, request: Request) -> Optional[dict[str, Any]]:
         """Extract user context from JWT token without full validation"""

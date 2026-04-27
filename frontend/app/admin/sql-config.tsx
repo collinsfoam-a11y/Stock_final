@@ -98,10 +98,7 @@ export default function SqlConfigScreen() {
       if (response.data.connected) {
         Alert.alert("Success", "Connection test successful!");
       } else {
-        Alert.alert(
-          "Failed",
-          response.data.message || "Connection test failed",
-        );
+        Alert.alert("Failed", response.data.message || "Connection test failed");
       }
     } catch (error: any) {
       Alert.alert("Error", error.message || "Connection test failed");
@@ -120,10 +117,7 @@ export default function SqlConfigScreen() {
       setSaving(true);
       const response = await updateSqlServerConfig(config);
       if (response.success) {
-        Alert.alert(
-          "Success",
-          "Configuration saved. Restart backend to apply changes.",
-        );
+        Alert.alert("Success", "Configuration saved. Restart backend to apply changes.");
         router.back();
       }
     } catch (error: any) {
@@ -136,7 +130,7 @@ export default function SqlConfigScreen() {
   if (loading) {
     return (
       <ScreenContainer
-        backgroundType="aurora"
+        backgroundType="solid"
         header={{
           title: "SQL Server",
           subtitle: "Configuration",
@@ -144,10 +138,7 @@ export default function SqlConfigScreen() {
         }}
       >
         <View style={styles.centered}>
-          <ActivityIndicator
-            size="large"
-            color={auroraTheme.colors.primary[500]}
-          />
+          <ActivityIndicator size="large" color={auroraTheme.colors.primary[500]} />
           <Text style={styles.loadingText}>Loading configuration...</Text>
         </View>
       </ScreenContainer>
@@ -156,7 +147,7 @@ export default function SqlConfigScreen() {
 
   return (
     <ScreenContainer
-      backgroundType="aurora"
+      backgroundType="solid"
       auroraVariant="primary"
       header={{
         title: "SQL Server",
@@ -168,10 +159,7 @@ export default function SqlConfigScreen() {
     >
       <ScrollView
         style={styles.content}
-        contentContainerStyle={[
-          styles.contentContainer,
-          isWeb && styles.contentContainerWeb,
-        ]}
+        contentContainerStyle={[styles.contentContainer, isWeb && styles.contentContainerWeb]}
       >
         {offlineMode && (
           <GlassCard variant="strong" style={styles.offlineNotice}>
@@ -185,8 +173,8 @@ export default function SqlConfigScreen() {
                 SQL configuration requires a live connection
               </Text>
               <Text style={styles.offlineNoticeText}>
-                Server credentials are loaded from the backend and cannot be
-                viewed, tested, or updated while offline mode is enabled.
+                Server credentials are loaded from the backend and cannot be viewed, tested, or
+                updated while offline mode is enabled.
               </Text>
             </View>
           </GlassCard>
@@ -194,11 +182,7 @@ export default function SqlConfigScreen() {
 
         <GlassCard variant="medium" style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons
-              name="server-outline"
-              size={24}
-              color={auroraTheme.colors.primary[400]}
-            />
+            <Ionicons name="server-outline" size={24} color={auroraTheme.colors.primary[400]} />
             <Text style={styles.sectionTitle}>Connection Settings</Text>
           </View>
 
@@ -222,9 +206,7 @@ export default function SqlConfigScreen() {
               placeholder="Default: 1433"
               placeholderTextColor={auroraTheme.colors.text.muted}
               value={config.port.toString()}
-              onChangeText={(text) =>
-                setConfig({ ...config, port: parseInt(text) || 1433 })
-              }
+              onChangeText={(text) => setConfig({ ...config, port: parseInt(text) || 1433 })}
               keyboardType="numeric"
               editable={!offlineMode}
             />
@@ -306,9 +288,7 @@ export default function SqlConfigScreen() {
                   },
                 ]}
               >
-                {testResult.connected
-                  ? "Connection Successful"
-                  : "Connection Failed"}
+                {testResult.connected ? "Connection Successful" : "Connection Failed"}
               </Text>
               <Text style={styles.testResultText}>{testResult.message}</Text>
             </View>
@@ -317,11 +297,7 @@ export default function SqlConfigScreen() {
 
         <View style={styles.actions}>
           <AnimatedPressable
-            style={[
-              styles.button,
-              styles.testButton,
-              offlineMode && styles.buttonDisabled,
-            ]}
+            style={[styles.button, styles.testButton, offlineMode && styles.buttonDisabled]}
             onPress={handleTest}
             disabled={offlineMode || testing || !config.host || !config.database}
           >
@@ -336,11 +312,7 @@ export default function SqlConfigScreen() {
           </AnimatedPressable>
 
           <AnimatedPressable
-            style={[
-              styles.button,
-              styles.saveButton,
-              offlineMode && styles.buttonDisabled,
-            ]}
+            style={[styles.button, styles.saveButton, offlineMode && styles.buttonDisabled]}
             onPress={handleSave}
             disabled={offlineMode || saving || !config.host || !config.database}
           >
@@ -356,16 +328,11 @@ export default function SqlConfigScreen() {
         </View>
 
         <GlassCard variant="light" style={styles.infoBox}>
-          <Ionicons
-            name="information-circle"
-            size={24}
-            color={auroraTheme.colors.primary[400]}
-          />
+          <Ionicons name="information-circle" size={24} color={auroraTheme.colors.primary[400]} />
           <Text style={styles.infoText}>
-            SQL Server integration is used for real-time ERP synchronization.
-            The system can operate independently with local data if connectivity
-            is not available. Changes require a backend service restart to take
-            full effect.
+            SQL Server integration is used for real-time ERP synchronization. The system can operate
+            independently with local data if connectivity is not available. Changes require a
+            backend service restart to take full effect.
           </Text>
         </GlassCard>
       </ScrollView>

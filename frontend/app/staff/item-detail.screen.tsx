@@ -21,9 +21,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useScanSessionStore } from "@/store/scanSessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
 
-import ModernHeader from "@/components/ui/ModernHeader";
 import ModernButton from "@/components/ui/ModernButton";
-import { ThemedScreen } from "@/components/ui/ThemedScreen";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { BatchVariantsSection } from "@/components/scan/BatchVariantsSection";
 import { CountQuantitySection } from "@/components/scan/CountQuantitySection";
 import { EvidenceNotesSection } from "@/components/scan/EvidenceNotesSection";
@@ -41,22 +40,14 @@ import { useItemEvidenceState } from "@/domains/inventory/hooks/scan/useItemEvid
 import { useItemMetadataState } from "@/domains/inventory/hooks/scan/useItemMetadataState";
 import { useQuantityCountManager } from "@/domains/inventory/hooks/scan/useQuantityCountManager";
 import { useSerialEntryManager } from "@/domains/inventory/hooks/scan/useSerialEntryManager";
-import {
-  colors,
-  semanticColors,
-  spacing,
-  fontSize,
-  fontWeight,
-} from "@/theme/unified";
+import { colors, semanticColors, spacing, fontSize, fontWeight } from "@/theme/unified";
 
 export default function ItemDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ barcode: string; sessionId: string }>();
   const { barcode, sessionId } = params;
-  const normalizedSessionId = Array.isArray(sessionId)
-    ? sessionId[0]
-    : sessionId;
+  const normalizedSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId;
   const { currentFloor, currentRack } = useScanSessionStore();
   const { settings } = useSettingsStore();
 
@@ -256,36 +247,40 @@ export default function ItemDetailScreen() {
   // Sync quantity with serial entries count for serialized items
   if (loading) {
     return (
-      <ThemedScreen>
-        <ModernHeader
-          title="Verify Item"
-          showBackButton
-          onBackPress={handleBackPress}
-        />
+      <ScreenContainer
+        header={{
+          title: "Verify Item",
+          showBackButton: true,
+          onBackPress: handleBackPress,
+          showLogoutButton: false,
+          showUsername: false,
+          showSettingsButton: false,
+        }}
+      >
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary[600]} />
           <Text style={{ marginTop: 12, color: semanticColors.text.secondary }}>
             Loading item details...
           </Text>
         </View>
-      </ThemedScreen>
+      </ScreenContainer>
     );
   }
 
   if (!item) {
     return (
-      <ThemedScreen>
-        <ModernHeader
-          title="Verify Item"
-          showBackButton
-          onBackPress={handleBackPress}
-        />
+      <ScreenContainer
+        header={{
+          title: "Verify Item",
+          showBackButton: true,
+          onBackPress: handleBackPress,
+          showLogoutButton: false,
+          showUsername: false,
+          showSettingsButton: false,
+        }}
+      >
         <View style={styles.errorContainer}>
-          <Ionicons
-            name="alert-circle-outline"
-            size={64}
-            color={colors.error[500]}
-          />
+          <Ionicons name="alert-circle-outline" size={64} color={colors.error[500]} />
           <Text style={styles.errorTitle}>Item Not Found</Text>
           <Text style={styles.errorText}>
             We couldn't retrieve details for the scanned barcode.
@@ -296,18 +291,21 @@ export default function ItemDetailScreen() {
             style={{ marginTop: 24, width: "100%" }}
           />
         </View>
-      </ThemedScreen>
+      </ScreenContainer>
     );
   }
 
   return (
-    <ThemedScreen>
-      <ModernHeader
-        title="Verify Item"
-        showBackButton
-        onBackPress={handleBackPress}
-      />
-
+    <ScreenContainer
+      header={{
+        title: "Verify Item",
+        showBackButton: true,
+        onBackPress: handleBackPress,
+        showLogoutButton: false,
+        showUsername: false,
+        showSettingsButton: false,
+      }}
+    >
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -396,9 +394,7 @@ export default function ItemDetailScreen() {
                 onAddSerial={handleAddSerial}
                 onOpenScanner={() => setShowSerialScanner(true)}
                 onRemoveSerial={handleRemoveSerial}
-                onSerialChange={(index, text) =>
-                  handleSerialChange(index, "serial_number", text)
-                }
+                onSerialChange={(index, text) => handleSerialChange(index, "serial_number", text)}
                 onSerializedChange={setIsSerializedItem}
               />
 
@@ -467,7 +463,7 @@ export default function ItemDetailScreen() {
         onClose={closePhotoCapture}
         onCapture={handlePhotoCaptured}
       />
-    </ThemedScreen>
+    </ScreenContainer>
   );
 }
 

@@ -135,8 +135,11 @@ def test_optimized_count_line_indexes_match_runtime_fields():
         options["name"]: (fields, options) for fields, options in INDEXES["count_lines"]
     }
 
-    assert count_line_indexes["idx_session_counts"][0] == [("session_id", 1), ("counted_at", -1)]
-    assert count_line_indexes["idx_rack_counts"][0] == [("rack_no", 1), ("session_id", 1)]
+    assert count_line_indexes["idx_session_counted_at"][0] == [
+        ("session_id", 1),
+        ("counted_at", -1),
+    ]
+    assert count_line_indexes["idx_rack_no_session"][0] == [("rack_no", 1), ("session_id", 1)]
 
     idempotency_fields, idempotency_options = count_line_indexes["idx_count_line_idempotency"]
     assert idempotency_fields == [("idempotency_key", 1)]

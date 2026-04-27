@@ -133,112 +133,150 @@ def _write_xlsx_data(ws: Any, data: list[dict], headers: list[str]) -> None:
             ws.cell(row=row_idx, column=col_idx, value=_format_xlsx_cell_value(value))
 
 
+def _build_item_query(filters: ReportFilter) -> dict[str, Any]:
+    query: dict[str, Any] = {}
+    if filters.warehouse:
+        query["warehouse"] = filters.warehouse
+    if filters.floor:
+        query["floor"] = filters.floor
+    if filters.category:
+        query["category"] = filters.category
+    return query
+
+
+def _build_line_query(
+    filters: ReportFilter,
+    *,
+    item_codes: Optional[list[Any]] = None,
+    variance_only: bool = False,
+) -> dict[str, Any]:
+    query: dict[str, Any] = {"variance": {"$ne": 0}} if variance_only else {}
+    if item_codes:
+        query["item_code"] = {"$in": item_codes}
+    if filters.user_id:
+        query["counted_by"] = filters.user_id
+    if filters.status:
+        query["status"] = filters.status.lower()
+
+    date_filter = build_date_filter(filters.date_from, filters.date_to)
+    if date_filter:
+        query["counted_at"] = date_filter
+    return query
+
+
+def _new_stock_summary_bucket() -> dict[str, Any]:
+    return {
+        "verification_count": 0,
+        "finalized_count": 0,
+        "finalized_qty": 0.0,
+        "last_verified": None,
+    }
+
+
+def _update_stock_summary_bucket(summary: dict[str, Any], line: dict[str, Any]) -> None:
+    summary["verification_count"] += 1
+    if str(line.get("status", "")).lower() != "locked":
+        return
+
+    summary["finalized_count"] += 1
+    summary["finalized_qty"] += float(line.get("counted_qty") or 0.0)
+    last_verified = line.get("finalized_at") or line.get("verified_at") or line.get("counted_at")
+    if last_verified and (summary["last_verified"] is None or last_verified > summary["last_verified"]):
+        summary["last_verified"] = last_verified
+
+
+async def _build_stock_line_summary(db: Any, line_query: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    line_summary: dict[str, dict[str, Any]] = {}
+    async for line in db.count_lines.find(line_query):
+        item_code = line.get("item_code")
+        if not item_code:
+            continue
+        summary = line_summary.setdefault(item_code, _new_stock_summary_bucket())
+        _update_stock_summary_bucket(summary, line)
+    return line_summary
+
+
+def _build_stock_summary_row(item: dict[str, Any], summary: dict[str, Any]) -> dict[str, Any]:
+    item_code = item.get("item_code")
+    item_code_key = str(item_code) if item_code is not None else ""
+    price = float(item.get("price") or 0.0)
+    stock_qty = float(item.get("stock_qty") or 0.0)
+    return {
+        "item_code": item_code_key,
+        "item_name": item.get("item_name"),
+        "category": item.get("category"),
+        "warehouse": item.get("warehouse"),
+        "floor": item.get("floor"),
+        "stock_qty": stock_qty,
+        "price": price,
+        "stock_value": stock_qty * price,
+        "verification_count": int(summary.get("verification_count", 0) or 0),
+        "finalized_count": int(summary.get("finalized_count", 0) or 0),
+        "finalized_qty": float(summary.get("finalized_qty", 0.0) or 0.0),
+        "last_verified": summary.get("last_verified"),
+        "is_verified": bool(summary.get("finalized_count", 0) or summary.get("verification_count", 0)),
+    }
+
+
+def _item_matches_variance_filters(item_info: dict[str, Any], filters: ReportFilter) -> bool:
+    if filters.warehouse and item_info.get("warehouse") != filters.warehouse:
+        return False
+    if filters.floor and item_info.get("floor") != filters.floor:
+        return False
+    if filters.category and item_info.get("category") != filters.category:
+        return False
+    return True
+
+
+def _calculate_variance_percentage(expected_qty: float, variance: float) -> float:
+    if expected_qty == 0:
+        return 100.0
+    return (variance / abs(expected_qty)) * 100
+
+
+def _build_variance_report_row(line: dict[str, Any], item_info: dict[str, Any]) -> dict[str, Any]:
+    expected_qty = float(line.get("erp_qty") or 0.0)
+    variance = float(line.get("variance") or 0.0)
+    return {
+        "item_code": line.get("item_code"),
+        "item_name": line.get("item_name") or item_info.get("item_name") or "Unknown",
+        "expected_qty": expected_qty,
+        "counted_qty": float(line.get("counted_qty") or 0.0),
+        "variance": variance,
+        "variance_percentage": _calculate_variance_percentage(expected_qty, variance),
+        "status": line.get("status"),
+        "approval_status": line.get("approval_status"),
+        "counted_by": line.get("counted_by"),
+        "warehouse": item_info.get("warehouse"),
+        "location": "/".join(
+            part for part in [line.get("floor_no"), line.get("rack_no")] if isinstance(part, str) and part
+        ),
+        "counted_at": line.get("counted_at"),
+        "approved_by": line.get("approved_by"),
+        "approved_at": line.get("approved_at"),
+        "finalized_at": line.get("finalized_at"),
+        "finalized_by": line.get("finalized_by"),
+    }
+
+
 async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
     """Generate stock summary report data."""
-    item_query: dict[str, Any] = {}
-    if filters.warehouse:
-        item_query["warehouse"] = filters.warehouse
-    if filters.floor:
-        item_query["floor"] = filters.floor
-    if filters.category:
-        item_query["category"] = filters.category
-
-    items_cursor = db.erp_items.find(item_query)
-    items: list[dict[str, Any]] = [item async for item in items_cursor]
+    item_query = _build_item_query(filters)
+    items: list[dict[str, Any]] = [item async for item in db.erp_items.find(item_query)]
     item_codes = [item.get("item_code") for item in items if item.get("item_code")]
     if (filters.warehouse or filters.floor or filters.category) and not item_codes:
         return []
 
-    line_query: dict[str, Any] = {}
-    if item_codes:
-        line_query["item_code"] = {"$in": item_codes}
-    if filters.user_id:
-        line_query["counted_by"] = filters.user_id
-    if filters.status:
-        line_query["status"] = filters.status.lower()
-
-    date_filter = build_date_filter(filters.date_from, filters.date_to)
-    if date_filter:
-        line_query["counted_at"] = date_filter
-
-    line_summary: dict[str, dict[str, Any]] = {}
-    lines_cursor = db.count_lines.find(line_query)
-    async for line in lines_cursor:
-        item_code = line.get("item_code")
-        if not item_code:
-            continue
-        summary = line_summary.setdefault(
-            item_code,
-            {
-                "verification_count": 0,
-                "finalized_count": 0,
-                "finalized_qty": 0.0,
-                "last_verified": None,
-            },
-        )
-        summary["verification_count"] += 1
-        if str(line.get("status", "")).lower() == "locked":
-            summary["finalized_count"] += 1
-            summary["finalized_qty"] += float(line.get("counted_qty") or 0.0)
-            last_verified = (
-                line.get("finalized_at") or line.get("verified_at") or line.get("counted_at")
-            )
-            if last_verified and (
-                summary["last_verified"] is None or last_verified > summary["last_verified"]
-            ):
-                summary["last_verified"] = last_verified
-
-    results: list[dict[str, Any]] = []
-    for item in items:
-        item_code = item.get("item_code")
-        item_code_key = str(item_code) if item_code is not None else ""
-        summary = line_summary.get(item_code_key, {})
-        price = float(item.get("price") or 0.0)
-        stock_qty = float(item.get("stock_qty") or 0.0)
-        results.append(
-            {
-                "item_code": item_code_key,
-                "item_name": item.get("item_name"),
-                "category": item.get("category"),
-                "warehouse": item.get("warehouse"),
-                "floor": item.get("floor"),
-                "stock_qty": stock_qty,
-                "price": price,
-                "stock_value": stock_qty * price,
-                "verification_count": int(summary.get("verification_count", 0) or 0),
-                "finalized_count": int(summary.get("finalized_count", 0) or 0),
-                "finalized_qty": float(summary.get("finalized_qty", 0.0) or 0.0),
-                "last_verified": summary.get("last_verified"),
-                "is_verified": bool(
-                    summary.get("finalized_count", 0) or summary.get("verification_count", 0)
-                ),
-            }
-        )
-
+    line_summary = await _build_stock_line_summary(db, _build_line_query(filters, item_codes=item_codes))
+    results = [_build_stock_summary_row(item, line_summary.get(str(item.get("item_code") or ""), {})) for item in items]
     results.sort(key=lambda row: str(row.get("item_code") or ""))
     return results[:10000]
 
 
 async def generate_variance_report(db, filters: ReportFilter) -> list[dict]:
     """Generate variance report data."""
-    line_query: dict[str, Any] = {"variance": {"$ne": 0}}
-    if filters.status:
-        line_query["status"] = filters.status.lower()
-    if filters.user_id:
-        line_query["counted_by"] = filters.user_id
-
-    date_filter = build_date_filter(filters.date_from, filters.date_to)
-    if date_filter:
-        line_query["counted_at"] = date_filter
-
-    item_query: dict[str, Any] = {}
-    if filters.warehouse:
-        item_query["warehouse"] = filters.warehouse
-    if filters.floor:
-        item_query["floor"] = filters.floor
-    if filters.category:
-        item_query["category"] = filters.category
-
+    line_query = _build_line_query(filters, variance_only=True)
+    item_query = _build_item_query(filters)
     item_docs = {
         item.get("item_code"): item
         async for item in db.erp_items.find(item_query)
@@ -248,46 +286,11 @@ async def generate_variance_report(db, filters: ReportFilter) -> list[dict]:
         return []
 
     results: list[dict[str, Any]] = []
-    lines_cursor = db.count_lines.find(line_query)
-    async for line in lines_cursor:
+    async for line in db.count_lines.find(line_query):
         item_info = item_docs.get(line.get("item_code")) or {}
-        if filters.warehouse and item_info.get("warehouse") != filters.warehouse:
+        if not _item_matches_variance_filters(item_info, filters):
             continue
-        if filters.floor and item_info.get("floor") != filters.floor:
-            continue
-        if filters.category and item_info.get("category") != filters.category:
-            continue
-
-        expected_qty = float(line.get("erp_qty") or 0.0)
-        variance = float(line.get("variance") or 0.0)
-        variance_percentage = 100.0
-        if expected_qty != 0:
-            variance_percentage = (variance / abs(expected_qty)) * 100
-
-        results.append(
-            {
-                "item_code": line.get("item_code"),
-                "item_name": line.get("item_name") or item_info.get("item_name") or "Unknown",
-                "expected_qty": expected_qty,
-                "counted_qty": float(line.get("counted_qty") or 0.0),
-                "variance": variance,
-                "variance_percentage": variance_percentage,
-                "status": line.get("status"),
-                "approval_status": line.get("approval_status"),
-                "counted_by": line.get("counted_by"),
-                "warehouse": item_info.get("warehouse"),
-                "location": "/".join(
-                    part
-                    for part in [line.get("floor_no"), line.get("rack_no")]
-                    if isinstance(part, str) and part
-                ),
-                "counted_at": line.get("counted_at"),
-                "approved_by": line.get("approved_by"),
-                "approved_at": line.get("approved_at"),
-                "finalized_at": line.get("finalized_at"),
-                "finalized_by": line.get("finalized_by"),
-            }
-        )
+        results.append(_build_variance_report_row(line, item_info))
 
     results.sort(key=lambda row: abs(float(row.get("variance_percentage") or 0.0)), reverse=True)
     return results[:10000]

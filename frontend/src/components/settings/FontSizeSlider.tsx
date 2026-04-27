@@ -9,7 +9,7 @@ import Slider from "@react-native-community/slider";
 import { selectionAsync } from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { auroraTheme } from "../../theme/auroraTheme";
+import { useTheme } from "../../hooks/useTheme";
 
 interface FontSizeSliderProps {
   value: number;
@@ -37,6 +37,8 @@ export const FontSizeSlider: React.FC<FontSizeSliderProps> = ({
   step = 2,
   disabled = false,
 }) => {
+  const { colors, typography, spacing, borderRadius } = useTheme();
+
   const handleValueChange = (newValue: number) => {
     // Snap to step values
     const snappedValue = Math.round(newValue / step) * step;
@@ -61,23 +63,33 @@ export const FontSizeSlider: React.FC<FontSizeSliderProps> = ({
           <Ionicons
             name="text-outline"
             size={18}
-            color={
-              disabled
-                ? auroraTheme.colors.text.tertiary
-                : auroraTheme.colors.text.primary
-            }
+            color={disabled ? colors.textTertiary : colors.text}
           />
-          <Text style={[styles.label, disabled && styles.disabledLabel]}>
+          <Text
+            style={[
+              styles.label,
+              { color: colors.text, fontSize: typography.fontSize.md },
+              disabled && { color: colors.textTertiary },
+            ]}
+          >
             Font Size
           </Text>
         </View>
-        <Text style={[styles.valueLabel, disabled && styles.disabledLabel]}>
+        <Text
+          style={[
+            styles.valueLabel,
+            { color: colors.accent || colors.primary },
+            disabled && { color: colors.textTertiary },
+          ]}
+        >
           {getSizeLabel()}
         </Text>
       </View>
 
       <View style={styles.sliderContainer}>
-        <Text style={[styles.minMaxLabel, { fontSize: minValue }]}>A</Text>
+        <Text style={[styles.minMaxLabel, { color: colors.textSecondary, fontSize: minValue }]}>
+          A
+        </Text>
 
         <Slider
           style={styles.slider}
@@ -86,22 +98,38 @@ export const FontSizeSlider: React.FC<FontSizeSliderProps> = ({
           minimumValue={minValue}
           maximumValue={maxValue}
           step={step}
-          minimumTrackTintColor={auroraTheme.colors.primary[500]}
-          maximumTrackTintColor={auroraTheme.colors.neutral[600]}
-          thumbTintColor={auroraTheme.colors.primary[400]}
+          minimumTrackTintColor={colors.primary}
+          maximumTrackTintColor={colors.border}
+          thumbTintColor={colors.accent || colors.primary}
           disabled={disabled}
         />
 
-        <Text style={[styles.minMaxLabel, { fontSize: maxValue }]}>A</Text>
+        <Text style={[styles.minMaxLabel, { color: colors.textSecondary, fontSize: maxValue }]}>
+          A
+        </Text>
       </View>
 
       {/* Preview Text */}
-      <View style={styles.previewContainer}>
+      <View
+        style={[
+          styles.previewContainer,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            borderRadius: borderRadius.md,
+            padding: spacing.sm,
+          },
+        ]}
+      >
         <Text
           style={[
             styles.previewText,
-            { fontSize: value },
-            disabled && styles.disabledLabel,
+            {
+              color: colors.text,
+              fontFamily: typography.fontFamily.body,
+              fontSize: value,
+            },
+            disabled && { color: colors.textTertiary },
           ]}
         >
           Sample Text Preview
@@ -113,8 +141,8 @@ export const FontSizeSlider: React.FC<FontSizeSliderProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    padding: auroraTheme.spacing.md,
-    gap: auroraTheme.spacing.sm,
+    padding: 16,
+    gap: 8,
   },
   disabledContainer: {
     opacity: 0.5,
@@ -127,25 +155,19 @@ const styles = StyleSheet.create({
   labelRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.xs,
+    gap: 4,
   },
   label: {
-    fontSize: auroraTheme.typography.fontSize.base,
     fontWeight: "500",
-    color: auroraTheme.colors.text.primary,
-  },
-  disabledLabel: {
-    color: auroraTheme.colors.text.tertiary,
   },
   valueLabel: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.primary[400],
+    fontSize: 14,
     fontWeight: "600",
   },
   sliderContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.sm,
+    gap: 8,
   },
   slider: {
     flex: 1,
@@ -153,19 +175,15 @@ const styles = StyleSheet.create({
   },
   minMaxLabel: {
     fontWeight: "600",
-    color: auroraTheme.colors.text.secondary,
     width: 28,
     textAlign: "center",
   },
   previewContainer: {
-    backgroundColor: auroraTheme.colors.background.glass,
-    borderRadius: auroraTheme.borderRadius.md,
-    padding: auroraTheme.spacing.sm,
     alignItems: "center",
+    borderWidth: StyleSheet.hairlineWidth,
   },
   previewText: {
-    color: auroraTheme.colors.text.primary,
-    fontFamily: auroraTheme.typography.fontFamily.body,
+    textAlign: "center",
   },
 });
 

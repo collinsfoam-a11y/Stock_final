@@ -13,6 +13,8 @@
 
 import { Platform, StyleSheet } from "react-native";
 
+import { createShadow } from "../theme/shadowUtils";
+
 // ==========================================
 // MODERN COLOR PALETTE - DEEP OCEAN
 // ==========================================
@@ -542,137 +544,45 @@ export const modernBorderRadius = {
 // ==========================================
 
 export const modernShadows = {
-  none: {
-    ...Platform.select({
-      web: { boxShadow: "0px 0px 0px transparent" },
-      default: {
-        shadowColor: "transparent",
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0,
-        shadowRadius: 0,
-        elevation: 0,
-      },
-    }),
-  },
-
-  xs: {
-    ...Platform.select({
-      web: { boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.05)" },
-      default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
-      },
-    }),
-  },
-
-  sm: {
-    ...Platform.select({
-      web: { boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)" },
-      default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-      },
-    }),
-  },
-
-  md: {
-    ...Platform.select({
-      web: { boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.15)" },
-      default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 4,
-      },
-    }),
-  },
-
-  lg: {
-    ...Platform.select({
-      web: { boxShadow: "0px 8px 16px rgba(0, 0, 0, 0.2)" },
-      default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.2,
-        shadowRadius: 16,
-        elevation: 8,
-      },
-    }),
-  },
-
-  xl: {
-    ...Platform.select({
-      web: { boxShadow: "0px 12px 24px rgba(0, 0, 0, 0.25)" },
-      default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.25,
-        shadowRadius: 24,
-        elevation: 12,
-      },
-    }),
-  },
+  none: createShadow({ color: "transparent" }),
+  xs: createShadow({ color: "#000", offsetY: 1, opacity: 0.05, radius: 2, elevation: 1 }),
+  sm: createShadow({ color: "#000", offsetY: 2, opacity: 0.1, radius: 4, elevation: 2 }),
+  md: createShadow({ color: "#000", offsetY: 4, opacity: 0.15, radius: 8, elevation: 4 }),
+  lg: createShadow({ color: "#000", offsetY: 8, opacity: 0.2, radius: 16, elevation: 8 }),
+  xl: createShadow({ color: "#000", offsetY: 12, opacity: 0.25, radius: 24, elevation: 12 }),
 
   // Colored shadows for brand elements
-  primary: {
-    ...Platform.select({
-      web: { boxShadow: `0px 4px 8px rgba(59, 130, 246, 0.3)` },
-      default: {
-        shadowColor: modernColors.primary[500],
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
-      },
-    }),
-  },
+  primary: createShadow({
+    color: modernColors.primary[500],
+    offsetY: 4,
+    opacity: 0.3,
+    radius: 8,
+    elevation: 4,
+  }),
 
-  success: {
-    ...Platform.select({
-      web: { boxShadow: `0px 4px 8px rgba(16, 185, 129, 0.3)` },
-      default: {
-        shadowColor: modernColors.success.main,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
-      },
-    }),
-  },
+  success: createShadow({
+    color: modernColors.success.main,
+    offsetY: 4,
+    opacity: 0.3,
+    radius: 8,
+    elevation: 4,
+  }),
 
   // Aurora Glows
-  aurora: {
-    ...Platform.select({
-      web: { boxShadow: "0px 8px 16px rgba(6, 182, 212, 0.35)" },
-      default: {
-        shadowColor: "#06B6D4",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
-        elevation: 8,
-      },
-    }),
-  },
+  aurora: createShadow({
+    color: "#06B6D4",
+    offsetY: 8,
+    opacity: 0.35,
+    radius: 16,
+    elevation: 8,
+  }),
 
-  glow: {
-    ...Platform.select({
-      web: { boxShadow: "0px 0px 20px rgba(21, 96, 189, 0.6)" },
-      default: {
-        shadowColor: "#1560BD",
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.6,
-        shadowRadius: 20,
-        elevation: 10,
-      },
-    }),
-  },
+  glow: createShadow({
+    color: "#1560BD",
+    opacity: 0.6,
+    radius: 20,
+    elevation: 10,
+  }),
 };
 
 // ==========================================

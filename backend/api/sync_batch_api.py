@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.api.schemas import Session
@@ -28,11 +28,61 @@ from backend.services.canonical_inventory import (
     recompute_session_totals,
 )
 from backend.services.circuit_breaker import get_circuit_breaker
+from backend.services.count_line_write_service import CountLineWriteService
+from backend.services.logic_guard import (
+    RequestContext,
+    apply_pin_to_new_session,
+    build_request_context,
+    enforce_session_logic,
+)
 from backend.services.lock_manager import LockManager, get_lock_manager
 from backend.services.redis_service import get_redis
 from backend.services.sync_conflicts_service import SyncConflictsService
 
 logger = logging.getLogger(__name__)
+
+
+def _build_sync_request_context(
+    *,
+    current_user: dict[str, Any],
+    operation_name: str,
+    session_id: Optional[str] = None,
+    warehouse: Optional[str] = None,
+    request_id: Optional[str] = None,
+) -> RequestContext:
+    context = build_request_context(
+        request=None,
+        current_user=current_user,
+        session_id=session_id,
+        warehouse=warehouse,
+        endpoint_name="sync_batch_api",
+        operation_name=operation_name,
+    )
+    if request_id:
+        context = context.model_copy(update={"request_id": request_id})
+    return context
+
+
+async def _enforce_sync_session_logic(
+    *,
+    db: Any,
+    session: dict[str, Any],
+    current_user: dict[str, Any],
+    operation_name: str,
+    request_id: Optional[str],
+) -> None:
+    await enforce_session_logic(
+        db=db,
+        session=session,
+        request_context=_build_sync_request_context(
+            current_user=current_user,
+            operation_name=operation_name,
+            session_id=str(session.get("id") or session.get("session_id") or ""),
+            warehouse=session.get("warehouse"),
+            request_id=request_id,
+        ),
+        is_mutation=True,
+    )
 
 
 class LegacySyncOperation(BaseModel):
@@ -215,7 +265,12 @@ async def validate_record(
     return None
 
 
-async def sync_single_record(record: SyncRecord, db, user_id: str) -> tuple[bool, Optional[str]]:
+async def sync_single_record(
+    record: SyncRecord,
+    db,
+    current_user: dict[str, Any] | str,
+    request_id: Optional[str] = None,
+) -> tuple[bool, Optional[str]]:
     """
     Sync a single record to database
 
@@ -223,11 +278,24 @@ async def sync_single_record(record: SyncRecord, db, user_id: str) -> tuple[bool
         (success: bool, error_message: Optional[str])
     """
     try:
+        actor = (
+            current_user
+            if isinstance(current_user, dict)
+            else {"username": str(current_user), "id": str(current_user)}
+        )
         # C2+MM2 fix: Check session status before writing (allowlist approach matching legacy path)
         session = await db.sessions.find_one(
             {"$or": [{"id": record.session_id}, {"session_id": record.session_id}]}
         )
         if session:
+            await _enforce_sync_session_logic(
+                db=db,
+                session=session,
+                current_user=actor,
+                operation_name="sync_single_record",
+                request_id=request_id,
+            )
+
             session_status = str(session.get("status", "")).upper()
             if session.get("finalized_at"):
                 return (
@@ -270,25 +338,43 @@ async def sync_single_record(record: SyncRecord, db, user_id: str) -> tuple[bool
             "status": "locked" if is_finalized else "pending",
             "approval_status": "APPROVED" if is_finalized else "PENDING",
             "verified": is_finalized,
-            "verified_by": user_id if is_finalized else None,
+            "verified_by": actor.get("username") if is_finalized else None,
             "verified_at": record.updated_at if is_finalized else None,
-            "finalized_by": user_id if is_finalized else None,
+            "finalized_by": actor.get("username") if is_finalized else None,
             "finalized_at": record.updated_at if is_finalized else None,
             "counted_at": record.created_at,
             "updated_at": record.updated_at,
             "sync_status": "synced",
-            "synced_by": user_id,
+            "synced_by": actor.get("username"),
             "synced_at": time.time(),
         }
 
-        # Upsert record
-        await db.count_lines.update_one(
+        write_service = CountLineWriteService(db)
+        # Upsert record through authoritative write gate
+        await write_service.process_write(
             {
-                "session_id": record.session_id,
-                "idempotency_key": record.client_record_id,
+                "operation": "update_one",
+                "filter": {
+                    "session_id": record.session_id,
+                    "idempotency_key": record.client_record_id,
+                },
+                "update": {"$set": doc},
+                "upsert": True,
             },
-            {"$set": doc},
-            upsert=True,
+            context=(
+                {
+                    "session": session,
+                    "username": actor.get("username"),
+                    "location": record.floor,
+                }
+                if isinstance(session, dict)
+                and (session.get("id") or session.get("session_id"))
+                else {
+                    "session_id": record.session_id,
+                    "username": actor.get("username"),
+                    "location": record.floor,
+                }
+            ),
         )
         await recompute_session_totals(db, record.session_id)
 
@@ -323,6 +409,7 @@ async def sync_single_record(record: SyncRecord, db, user_id: str) -> tuple[bool
 
 @router.post("/batch", response_model=BatchSyncResponse)
 async def sync_batch(
+    http_request: Request,
     request: BatchSyncRequest,
     current_user: dict[str, Any] = Depends(get_current_user),
     redis_service=Depends(get_redis),
@@ -338,6 +425,11 @@ async def sync_batch(
     - Returns detailed success/conflict/error breakdown
     """
     start_time = time.time()
+    request_id = (
+        http_request.headers.get("x-request-id")
+        or http_request.headers.get("x-correlation-id")
+        or getattr(http_request.state, "request_id", None)
+    )
 
     # Rate limiting check
     user_id = (
@@ -365,6 +457,7 @@ async def sync_batch(
             batch_id=request.batch_id,
             current_user=current_user,
             start_time=start_time,
+            request_id=str(request_id).strip() if request_id else None,
         )
 
     if not request.records:
@@ -422,7 +515,12 @@ async def sync_batch(
                 conflicts.append(conflict)
             else:
                 # Sync valid record
-                success, error_msg = await sync_single_record(record, db, user_id)
+                success, error_msg = await sync_single_record(
+                    record,
+                    db,
+                    current_user,
+                    request_id=str(request_id).strip() if request_id else None,
+                )
 
                 if success:
                     # Record idempotency
@@ -489,7 +587,9 @@ async def sync_batch(
 @router.post("/heartbeat")
 async def session_heartbeat(
     session_id: str,
+    request: Request,
     current_user: dict[str, Any] = Depends(get_current_user),
+    db: Any = Depends(get_db),
     redis_service=Depends(get_redis),
     rack_id: Optional[str] = None,
 ) -> dict[str, Any]:
@@ -500,6 +600,21 @@ async def session_heartbeat(
     """
     lock_manager = get_lock_manager(redis_service)
     user_id = current_user["username"]
+
+    session = await find_session(db, session_id)
+    if session:
+        request_id = (
+            request.headers.get("x-request-id")
+            or request.headers.get("x-correlation-id")
+            or getattr(request.state, "request_id", None)
+        )
+        await _enforce_sync_session_logic(
+            db=db,
+            session=session,
+            current_user=current_user,
+            operation_name="sync_session_heartbeat",
+            request_id=str(request_id).strip() if request_id else None,
+        )
 
     # Update user heartbeat
     await lock_manager.update_user_heartbeat(user_id, ttl=90)
@@ -571,6 +686,7 @@ async def _apply_bulk_session_operation(
     db: Any,
     operation: str,
     now: datetime,
+    request_id: Optional[str] = None,
 ) -> str:
     if not _is_privileged_session_user(current_user):
         raise ValueError("Insufficient permissions for bulk session operation")
@@ -579,6 +695,16 @@ async def _apply_bulk_session_operation(
     update_doc = _session_status_update(operation, now)
     updated = 0
     for session_id in resolved_ids:
+        session = await db.sessions.find_one({"id": session_id})
+        if not session:
+            continue
+        await _enforce_sync_session_logic(
+            db=db,
+            session=session,
+            current_user=current_user,
+            operation_name=f"legacy_session_{operation}",
+            request_id=request_id,
+        )
         result = await db.sessions.update_one({"id": session_id}, update_doc)
         if getattr(result, "modified_count", 0) > 0:
             updated += 1
@@ -588,8 +714,8 @@ async def _apply_bulk_session_operation(
 def _extract_single_session_operation_id(
     session_data: dict[str, Any], id_mapping: dict[str, str]
 ) -> str:
-    raw_session_id = session_data.get("sessionId") or session_data.get("session_id") or session_data.get(
-        "id"
+    raw_session_id = (
+        session_data.get("sessionId") or session_data.get("session_id") or session_data.get("id")
     )
     resolved_session_id = _resolve_session_id(raw_session_id, id_mapping)
     if not resolved_session_id:
@@ -613,6 +739,7 @@ async def _apply_single_session_operation(
     db: Any,
     operation: str,
     now: datetime,
+    request_id: Optional[str] = None,
 ) -> str:
     resolved_session_id = _extract_single_session_operation_id(session_data, id_mapping)
     session = await db.sessions.find_one({"id": resolved_session_id})
@@ -620,7 +747,16 @@ async def _apply_single_session_operation(
         raise ValueError("Session not found")
 
     _assert_single_session_permission(session, current_user)
-    await db.sessions.update_one({"id": resolved_session_id}, _session_status_update(operation, now))
+    await _enforce_sync_session_logic(
+        db=db,
+        session=session,
+        current_user=current_user,
+        operation_name=f"legacy_session_{operation}",
+        request_id=request_id,
+    )
+    await db.sessions.update_one(
+        {"id": resolved_session_id}, _session_status_update(operation, now)
+    )
     return f"Session operation '{operation}' applied"
 
 
@@ -629,6 +765,7 @@ async def _process_session_mutation_operation(
     current_user: dict[str, Any],
     id_mapping: dict[str, str],
     db: Any,
+    request_id: Optional[str] = None,
 ) -> Optional[str]:
     operation = _normalize_operation_name(session_data)
     if not operation:
@@ -637,11 +774,11 @@ async def _process_session_mutation_operation(
     now = _utc_now()
     if operation in {"bulk_close", "bulk_reconcile"}:
         return await _apply_bulk_session_operation(
-            session_data, current_user, id_mapping, db, operation, now
+            session_data, current_user, id_mapping, db, operation, now, request_id
         )
     if operation in {"close", "reconcile"}:
         return await _apply_single_session_operation(
-            session_data, current_user, id_mapping, db, operation, now
+            session_data, current_user, id_mapping, db, operation, now, request_id
         )
     return None
 
@@ -660,13 +797,17 @@ def _normalize_session_type(value: Any) -> str:
     return normalized_type
 
 
-async def _find_session_by_offline_id(db: Any, offline_id: Optional[Any]) -> Optional[dict[str, Any]]:
+async def _find_session_by_offline_id(
+    db: Any, offline_id: Optional[Any]
+) -> Optional[dict[str, Any]]:
     if not offline_id:
         return None
     return await db.sessions.find_one({"offline_id": str(offline_id)})
 
 
-async def _find_existing_open_session(db: Any, staff_user: str, warehouse: str) -> Optional[dict[str, Any]]:
+async def _find_existing_open_session(
+    db: Any, staff_user: str, warehouse: str
+) -> Optional[dict[str, Any]]:
     return await db.sessions.find_one(
         {
             "staff_user": staff_user,
@@ -688,6 +829,7 @@ async def _process_session_creation(
     current_user: dict[str, Any],
     id_mapping: dict[str, str],
     db: Any,
+    request_id: Optional[str] = None,
 ) -> str:
     warehouse = _extract_warehouse(session_data)
     staff_user = current_user.get("username", "unknown_user")
@@ -704,6 +846,13 @@ async def _process_session_creation(
     if existing_session:
         session_id = existing_session.get("id") or str(existing_session.get("_id"))
         _link_offline_id_to_session(id_mapping, offline_id, session_id)
+        await _enforce_sync_session_logic(
+            db=db,
+            session=existing_session,
+            current_user=current_user,
+            operation_name="legacy_session_create_existing",
+            request_id=request_id,
+        )
         if offline_id:
             await db.sessions.update_one(
                 {"id": session_id},
@@ -718,6 +867,18 @@ async def _process_session_creation(
         status=session_data.get("status", "OPEN"),
         type=_normalize_session_type(session_data.get("type")),
     )
+    guard_context = await enforce_session_logic(
+        db=db,
+        session=None,
+        request_context=_build_sync_request_context(
+            current_user=current_user,
+            operation_name="legacy_session_create",
+            warehouse=warehouse,
+            request_id=request_id,
+        ),
+        is_mutation=True,
+    )
+    apply_pin_to_new_session(session, guard_context)
 
     session_doc = session.model_dump()
     if offline_id:
@@ -734,14 +895,15 @@ async def _process_session_op(
     current_user: dict[str, Any],
     id_mapping: dict[str, str],
     db: Any,
+    request_id: Optional[str] = None,
 ) -> str:
     """Process a session sync operation."""
     operation_result = await _process_session_mutation_operation(
-        session_data, current_user, id_mapping, db
+        session_data, current_user, id_mapping, db, request_id
     )
     if operation_result:
         return operation_result
-    return await _process_session_creation(session_data, current_user, id_mapping, db)
+    return await _process_session_creation(session_data, current_user, id_mapping, db, request_id)
 
 
 def _remap_line_session_id(line_data: dict[str, Any], id_mapping: dict[str, str]) -> None:
@@ -854,7 +1016,10 @@ def _collect_risk_flags(
         risk_flags.append("MRP_CHANGE_WITHOUT_REASON")
 
     photo_required = (
-        abs(variance) > 100 or variance_percent > 50 or abs(mrp_change_percent) > 20 or erp_mrp > 10000
+        abs(variance) > 100
+        or variance_percent > 50
+        or abs(mrp_change_percent) > 20
+        or erp_mrp > 10000
     )
     has_photo = bool(line_data.get("photo_base64")) or bool(line_data.get("photo_proofs"))
     if photo_required and not has_photo:
@@ -904,49 +1069,53 @@ def _set_approval_status(line_data: dict[str, Any]) -> None:
         line_data["approval_status"] = "PENDING"
 
 
-async def _populate_offline_count_line_stats(db: Any, line_data: dict[str, Any]) -> None:
-    # Calculate missing backend fields like variance and risk_flags for offline counts
+async def _populate_offline_count_line_stats(
+    db: Any,
+    line_data: dict[str, Any],
+    *,
+    current_user: dict[str, Any],
+    session: dict[str, Any],
+) -> None:
+    # Fill baseline and item metadata. Variance governance is applied by CountLineWriteService.
     try:
+        write_service = CountLineWriteService(db)
+        await write_service.assert_session_integrity(session=session)
         erp_item = await _find_erp_item_for_line(db, line_data)
-        erp_qty = erp_item.get("stock_qty", 0) if erp_item else 0
-        erp_mrp = erp_item.get("mrp", 0.0) if erp_item else 0.0
-        counted_qty = float(line_data.get("counted_qty", 0.0))
-        mrp_c = line_data.get("mrp_counted") or line_data.get("counted_mrp") or erp_mrp
-        counted_mrp = float(mrp_c)
-        variance = counted_qty - erp_qty
-        variance_percent = _compute_variance_percent(erp_qty, counted_qty, variance)
-        financial_impact = (counted_mrp * counted_qty) - (erp_mrp * erp_qty)
-        risk_flags = _collect_risk_flags(
-            line_data,
-            variance=variance,
-            variance_percent=variance_percent,
-            erp_mrp=erp_mrp,
-            counted_mrp=counted_mrp,
-        )
-        is_misplaced = _mark_misplacement_if_needed(line_data, erp_item, risk_flags)
-
-        line_data["variance"] = variance
+        baseline_hash = str(line_data.get("baseline_hash") or "").strip()
+        erp_qty = float(line_data.get("erp_qty") or 0.0)
+        if not baseline_hash:
+            erp_qty, baseline_hash = await write_service.resolve_baseline(
+                session_id=str(line_data.get("session_id") or ""),
+                item_code=str(line_data.get("item_code") or ""),
+                username=str(current_user.get("username") or "unknown_user"),
+                erp_item=erp_item,
+            )
         line_data["erp_qty"] = erp_qty
-        line_data["mrp_erp"] = erp_mrp
-        line_data["mrp_counted"] = counted_mrp
-        line_data["financial_impact"] = financial_impact
-        _merge_risk_flags(line_data, risk_flags)
-        line_data["is_misplaced"] = line_data.get("is_misplaced", False) or is_misplaced
-        _set_approval_status(line_data)
+        line_data["baseline_hash"] = baseline_hash
+        if erp_item:
+            line_data.setdefault("barcode", erp_item.get("barcode"))
+            line_data.setdefault("item_name", erp_item.get("item_name"))
+            line_data.setdefault("mrp_erp", erp_item.get("mrp", 0.0))
+        if "mrp_counted" not in line_data or line_data.get("mrp_counted") in (None, ""):
+            line_data["mrp_counted"] = (
+                line_data.get("counted_mrp")
+                or line_data.get("mrp")
+                or line_data.get("mrp_erp")
+                or 0.0
+            )
     except Exception as e:
         logger.error(f"Failed to calculate missing stats for offline count: {e}")
-        line_data.setdefault("approval_status", "PENDING")
 
 
 def _apply_recount_reset_fields(
     line_data: dict[str, Any], existing_duplicate: dict[str, Any]
 ) -> None:
     line_data["id"] = extract_document_id(existing_duplicate) or line_data["id"]
-    line_data["status"] = "pending"
-    line_data["approval_status"] = line_data.get("approval_status") or "PENDING"
     line_data["verified"] = False
     line_data["verified_by"] = None
     line_data["verified_at"] = None
+    line_data["approved_by"] = line_data.get("approved_by")
+    line_data["approved_at"] = line_data.get("approved_at")
     line_data["rejected_by"] = None
     line_data["rejected_at"] = None
     line_data["assigned_to"] = None
@@ -969,7 +1138,18 @@ async def _handle_duplicate_count_line(
     _apply_recount_reset_fields(line_data, existing_duplicate)
     update_payload = dict(line_data)
     update_payload.pop("_id", None)
-    await db.count_lines.update_one({"_id": existing_duplicate["_id"]}, {"$set": update_payload})
+    await CountLineWriteService(db).process_write(
+        {
+            "operation": "update_one",
+            "filter": {"_id": existing_duplicate["_id"]},
+            "update": {"$set": update_payload},
+        },
+        context={
+            "session_id": session_id,
+            "username": str(line_data.get("updated_by") or line_data.get("counted_by") or ""),
+            "location": line_data.get("floor_no"),
+        },
+    )
     await recompute_session_totals(db, session_id)
     return "Rejected count line updated through explicit recount sync"
 
@@ -979,16 +1159,31 @@ async def _process_count_line_op(
     current_user: dict[str, Any],
     id_mapping: dict[str, str],
     db: Any,
+    request_id: Optional[str] = None,
 ) -> str:
     """Process a count_line sync operation."""
     _remap_line_session_id(line_data, id_mapping)
     session_id = _require_count_line_session_id(line_data)
     await _assert_session_accepts_offline_count(db, session_id)
+    session = await find_session(db, session_id)
+    if not session:
+        raise ValueError("Session not found for count line operation")
+    await _enforce_sync_session_logic(
+        db=db,
+        session=session,
+        current_user=current_user,
+        operation_name="legacy_count_line_sync",
+        request_id=request_id,
+    )
     _set_count_line_defaults(line_data, current_user)
     if await _count_line_is_idempotent(db, session_id, line_data):
         return "Count line already synced"
-    await _populate_offline_count_line_stats(db, line_data)
-    line_data.setdefault("status", "pending")
+    await _populate_offline_count_line_stats(
+        db,
+        line_data,
+        current_user=current_user,
+        session=session,
+    )
     existing_duplicate = await find_duplicate_count_line(db, line_data)
     if existing_duplicate:
         return await _handle_duplicate_count_line(
@@ -997,7 +1192,14 @@ async def _process_count_line_op(
             line_data=line_data,
             existing_duplicate=existing_duplicate,
         )
-    await db.count_lines.insert_one(line_data)
+    await CountLineWriteService(db).process_write(
+        {"operation": "insert_one", "document": line_data},
+        context={
+            "session": session,
+            "username": current_user.get("username"),
+            "location": line_data.get("floor_no"),
+        },
+    )
     await recompute_session_totals(db, session_id)
     return "Count line synced with canonical duplicate validation"
 
@@ -1007,6 +1209,7 @@ async def _process_unknown_item_op(
     current_user: dict[str, Any],
     id_mapping: dict[str, str],
     db: Any,
+    request_id: Optional[str] = None,
 ) -> str:
     """Process an unknown_item sync operation."""
     temp_session_id = item_data.get("session_id")
@@ -1035,6 +1238,7 @@ async def _process_legacy_operations(
     batch_id: Optional[str],
     current_user: dict[str, Any],
     start_time: float,
+    request_id: Optional[str],
 ) -> BatchSyncResponse:
     """Handle legacy offline queue operations payloads."""
     db = get_db()
@@ -1060,7 +1264,7 @@ async def _process_legacy_operations(
                 handler = _LEGACY_OP_HANDLERS.get(op.type)
                 if handler:
                     data = deepcopy(op.data)
-                    message = await handler(data, current_user, id_mapping, db)
+                    message = await handler(data, current_user, id_mapping, db, request_id)
                     success = True
                     # Record idempotency
                     await db.idempotency_operations.insert_one(

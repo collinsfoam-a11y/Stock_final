@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- sync test-env module access is intentional here */
 import { create } from "zustand";
 import { Platform } from "react-native";
 import { secureStorage } from "../services/storage/secureStorage";
@@ -5,6 +6,8 @@ import { useSettingsStore } from "./settingsStore";
 import { setUnauthorizedHandler } from "../services/authUnauthorizedHandler";
 import { createLogger } from "../services/logging";
 import { setUserPreferenceScope } from "../services/userPreferenceScope";
+import { syncWebPublicSession } from "../bootstrap/useWebPublicSession";
+import { normalizeAuthApiError } from "../utils/authApiErrors";
 
 interface User {
   id: string;
@@ -86,7 +89,15 @@ type AuthResult = {
   success: boolean;
   message?: string;
   code?: string;
+  retryAfter?: number;
 };
+
+export type AuthPhase =
+  | "unauthenticated"
+  | "authenticating"
+  | "authenticated"
+  | "error"
+  | "locked";
 
 type LastLoggedUser = {
   username: string;
@@ -102,11 +113,23 @@ type AuthSessionPayload = {
   biometricPin?: string | null;
 };
 
+type PublicSessionResponse = {
+  data?: {
+    status?: "guest" | "authenticated";
+    user?: {
+      username?: string;
+      role?: User["role"];
+    } | null;
+  };
+};
+
 export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitialized: boolean;
+  isHydrated: boolean;
+  authPhase: AuthPhase;
   hasValidToken: () => boolean;
   checkTokenExpired: (token: string) => boolean;
   startHeartbeat: () => void;
@@ -127,6 +150,7 @@ export interface AuthState {
   savePinForBiometrics: (pin: string) => Promise<void>;
   getPinForBiometrics: () => Promise<string | null>;
   establishSession: (payload: AuthSessionPayload) => Promise<void>;
+  waitForHydration: (timeoutMs?: number) => Promise<boolean>;
   setUser: (user: User) => void;
   logout: () => Promise<void>;
   logoutAll: (
@@ -192,10 +216,8 @@ const parseAuthError = (
   fallbackMessage: string,
   invalidCredentialsMessage = "Incorrect username or password",
 ): AuthResult => {
-  const status = error?.response?.status;
-  const detail = error?.response?.data?.detail;
-  const code = detail?.error || error?.response?.data?.code;
-  const apiMessage = detail?.message || error?.response?.data?.message;
+  const normalizedError = normalizeAuthApiError(error);
+  const { status, code, message: apiMessage, retryAfter } = normalizedError;
 
   if (status === 409) {
     return {
@@ -215,6 +237,24 @@ const parseAuthError = (
     };
   }
 
+  if (status === 400) {
+    if (code === "USERNAME_REQUIRED_FOR_PIN_LOGIN") {
+      return {
+        success: false,
+        code: "AUTH_USERNAME_REQUIRED_FOR_PIN_LOGIN",
+        message:
+          apiMessage ||
+          "Sign in with username and password first, then use PIN login.",
+      };
+    }
+
+    return {
+      success: false,
+      code: "AUTH_BAD_REQUEST",
+      message: apiMessage || fallbackMessage,
+    };
+  }
+
   if (status === 422) {
     return {
       success: false,
@@ -228,6 +268,34 @@ const parseAuthError = (
       success: false,
       code: "NETWORK_NOT_ALLOWED",
       message: "Network not allowed. Connect to the permitted network.",
+    };
+  }
+
+  if (status === 403) {
+    if (code === "ACCOUNT_DISABLED") {
+      return {
+        success: false,
+        code: "ACCOUNT_DISABLED",
+        message: apiMessage || "Account is deactivated. Please contact support.",
+      };
+    }
+
+    return {
+      success: false,
+      code: "AUTH_ACCESS_DENIED",
+      message: apiMessage || "Access denied",
+    };
+  }
+
+  if (status === 429 || code === "RATE_LIMIT_ERROR") {
+    return {
+      success: false,
+      code: "AUTH_RATE_LIMITED",
+      message:
+        apiMessage ||
+        "Too many sign-in attempts. Please wait and try again.",
+      retryAfter:
+        typeof retryAfter === "number" ? retryAfter : undefined,
     };
   }
 
@@ -259,6 +327,23 @@ const parseAuthError = (
   return { success: false, message: apiMessage || fallbackMessage, code };
 };
 
+const hasAuthenticatedBrowserSession = (payload: unknown): boolean => {
+  const session =
+    payload && typeof payload === "object" && "data" in payload
+      ? (payload as PublicSessionResponse).data
+      : null;
+
+  if (session?.status !== "authenticated") {
+    return false;
+  }
+
+  const role = session.user?.role;
+  return (
+    typeof session.user?.username === "string" &&
+    (role === "staff" || role === "supervisor" || role === "admin")
+  );
+};
+
 const buildLastLoggedUser = (
   user: User,
   hasPinOverride?: boolean,
@@ -267,6 +352,9 @@ const buildLastLoggedUser = (
   full_name: user.full_name,
   has_pin: hasPinOverride ?? user.has_pin,
 });
+
+const resolveFailurePhase = (result: AuthResult): AuthPhase =>
+  result.code === "AUTH_RATE_LIMITED" ? "locked" : "error";
 
 const syncOfflineQueueInBackground = async () => {
   const { useNetworkStore } = IS_TEST_ENV
@@ -389,6 +477,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   isLoading: false,
   isInitialized: false,
+  isHydrated: false,
+  authPhase: "unauthenticated",
   lastLoggedUser: null,
   hasValidToken: (): boolean => {
     return !!get().user;
@@ -451,10 +541,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isAuthenticated: true,
       isLoading: false,
       isInitialized: true,
+      isHydrated: true,
+      authPhase: "authenticated",
       lastLoggedUser: lastUser,
+    });
+    syncWebPublicSession({
+      username: authenticatedUser.username,
+      role: authenticatedUser.role,
     });
 
     hydrateAuthenticatedSessionInBackground(authenticatedUser);
+  },
+
+  waitForHydration: async (timeoutMs = 2000) => {
+    if (get().isHydrated) {
+      return true;
+    }
+
+    return await new Promise<boolean>((resolve) => {
+      const timeoutId = setTimeout(() => {
+        unsubscribe();
+        resolve(useAuthStore.getState().isHydrated);
+      }, timeoutMs);
+
+      const unsubscribe = useAuthStore.subscribe((state) => {
+        if (!state.isHydrated) {
+          return;
+        }
+
+        clearTimeout(timeoutId);
+        unsubscribe();
+        resolve(true);
+      });
+    });
   },
 
   login: async (
@@ -462,7 +581,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     password: string,
     _rememberMe?: boolean,
   ): Promise<AuthResult> => {
-    set({ isLoading: true });
+    set({
+      isLoading: true,
+      isHydrated: false,
+      authPhase: "authenticating",
+    });
     try {
       const apiClient = await getApiClient();
       const response = await apiClient.post("/api/auth/login", {
@@ -479,22 +602,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           throw new Error("Invalid response format: missing access_token");
         }
         await get().establishSession({ access_token, refresh_token, user });
+        await get().waitForHydration();
 
         return { success: true };
       }
 
-      set({ isLoading: false });
-      return {
+      const failureResult = {
         success: false,
         message: response.data.message || "Login failed",
       };
+      set({
+        isLoading: false,
+        isHydrated: true,
+        authPhase: resolveFailurePhase(failureResult),
+      });
+      return failureResult;
     } catch (_error: any) {
-      set({ isLoading: false });
-      return parseAuthError(
+      const failureResult = parseAuthError(
         _error,
         "Login failed",
         "Incorrect username or password",
       );
+      set({
+        isLoading: false,
+        isHydrated: true,
+        authPhase: resolveFailurePhase(failureResult),
+      });
+      return failureResult;
     }
   },
 
@@ -502,7 +636,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     pin: string,
     username?: string,
   ): Promise<AuthResult> => {
-    set({ isLoading: true });
+    set({
+      isLoading: true,
+      isHydrated: false,
+      authPhase: "authenticating",
+    });
     try {
       const apiClient = await getApiClient();
       const response = await apiClient.post("/api/auth/login-pin", {
@@ -520,18 +658,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           has_pin: true,
           biometricPin: settings.biometricAuth ? pin : null,
         });
+        await get().waitForHydration();
 
         return { success: true };
       }
 
-      set({ isLoading: false });
-      return {
+      const failureResult = {
         success: false,
         message: response.data.message || "Invalid PIN",
       };
+      set({
+        isLoading: false,
+        isHydrated: true,
+        authPhase: resolveFailurePhase(failureResult),
+      });
+      return failureResult;
     } catch (_error: any) {
-      set({ isLoading: false });
-      return parseAuthError(_error, "PIN login failed", "Incorrect PIN");
+      const failureResult = parseAuthError(
+        _error,
+        "PIN login failed",
+        "Incorrect PIN",
+      );
+      set({
+        isLoading: false,
+        isHydrated: true,
+        authPhase: resolveFailurePhase(failureResult),
+      });
+      return failureResult;
     }
   },
 
@@ -589,7 +742,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     setUserPreferenceScope(user.id);
     void rehydrateFilterStoreForCurrentScope();
     void useSettingsStore.getState().loadSettings();
-    set({ user, isAuthenticated: true, isLoading: false });
+    syncWebPublicSession({
+      username: user.username,
+      role: user.role,
+    });
+    set({
+      user,
+      isAuthenticated: true,
+      isLoading: false,
+      isHydrated: true,
+      authPhase: "authenticated",
+    });
   },
 
   logout: async () => {
@@ -625,7 +788,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,
+      isHydrated: false,
+      authPhase: "unauthenticated",
     });
+    syncWebPublicSession(null);
 
     try {
       await secureStorage.removeItem(AUTH_STORAGE_KEY);
@@ -690,6 +856,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {
       // Best-effort; never block logout.
     }
+
+    set({
+      isHydrated: true,
+      authPhase: "unauthenticated",
+    });
   },
 
   logoutAll: async (
@@ -789,7 +960,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loadStoredAuth: async () => {
     if (get().isInitialized) return;
 
-    set({ isLoading: true });
+    set({ isLoading: true, isHydrated: false });
     try {
       const apiClient = await getApiClient();
       const storedUser = await secureStorage.getItem(AUTH_STORAGE_KEY);
@@ -806,7 +977,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (isExpired) {
           log.warn("Stored token is expired, clearing auth state");
           await get().logout();
-          set({ isLoading: false, isInitialized: true });
+          set({
+            isLoading: false,
+            isInitialized: true,
+            isHydrated: true,
+            authPhase: "unauthenticated",
+          });
           return;
         }
 
@@ -818,41 +994,75 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isAuthenticated: true,
           isLoading: false,
           isInitialized: true,
+          isHydrated: true,
+          authPhase: "authenticated",
+        });
+        syncWebPublicSession({
+          username: user.username,
+          role: user.role,
         });
         hydrateAuthenticatedSessionInBackground(user, {
           syncOfflineQueue: false,
         });
       } else if (Platform.OS === "web") {
         try {
-          const response = await apiClient.get("/api/auth/me");
-          const payload =
-            response.data && typeof response.data === "object" && "data" in response.data
-              ? (response.data as { data?: User }).data
-              : (response.data as User | null);
+          const sessionResponse = await apiClient.get("/api/auth/public-session");
+          if (hasAuthenticatedBrowserSession(sessionResponse.data)) {
+            const response = await apiClient.get("/api/auth/me");
+            const payload =
+              response.data && typeof response.data === "object" && "data" in response.data
+                ? (response.data as { data?: User }).data
+                : (response.data as User | null);
 
-          if (payload?.username) {
-            await secureStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload));
-            set({
-              user: payload,
-              isAuthenticated: true,
-              isLoading: false,
-              isInitialized: true,
-            });
-            hydrateAuthenticatedSessionInBackground(payload, {
-              syncOfflineQueue: false,
-            });
-            return;
+            if (payload?.username) {
+              await secureStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload));
+              set({
+                user: payload,
+                isAuthenticated: true,
+                isLoading: false,
+                isInitialized: true,
+                isHydrated: true,
+                authPhase: "authenticated",
+              });
+              syncWebPublicSession({
+                username: payload.username,
+                role: payload.role,
+              });
+              hydrateAuthenticatedSessionInBackground(payload, {
+                syncOfflineQueue: false,
+              });
+              return;
+            }
           }
         } catch (_cookieAuthError) {
           // No active browser session; continue to unauthenticated state.
         }
 
-        set({ isLoading: false, isInitialized: true });
+        syncWebPublicSession(null);
+        set({
+          isLoading: false,
+          isInitialized: true,
+          isHydrated: true,
+          authPhase: "unauthenticated",
+        });
       } else {
-        set({ isLoading: false, isInitialized: true });
+        set({
+          isLoading: false,
+          isInitialized: true,
+          isHydrated: true,
+          authPhase: "unauthenticated",
+        });
       }
     } catch (_error) {
-      set({ isLoading: false, isInitialized: true });
+      if (Platform.OS === "web") {
+        syncWebPublicSession(null);
+      }
+      set({
+        isLoading: false,
+        isInitialized: true,
+        isHydrated: true,
+        authPhase: "error",
+      });
     }
   },
 

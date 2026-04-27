@@ -31,9 +31,32 @@ interface NotificationState {
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   addLocalNotification: (notification: Notification) => void;
+  mergeRealtimeNotification: (notification: Notification) => void;
   clearError: () => void;
   reset: () => void;
 }
+
+export interface RealtimeNotificationMessage {
+  type: string;
+  notification?: Notification;
+}
+
+const dedupeAndSortNotifications = (
+  notifications: Notification[],
+): Notification[] => {
+  const byId = new Map<string, Notification>();
+  notifications.forEach((notification) => {
+    const key = notification._id || notification.id;
+    if (!key) {
+      return;
+    }
+    byId.set(key, notification);
+  });
+
+  return Array.from(byId.values()).sort((left, right) =>
+    String(right.created_at || "").localeCompare(String(left.created_at || "")),
+  );
+};
 
 export const useNotificationStore = create<NotificationState>()(
   persist(
@@ -107,9 +130,43 @@ export const useNotificationStore = create<NotificationState>()(
 
       addLocalNotification: (notification: Notification) => {
         set((state) => ({
-          notifications: [notification, ...state.notifications],
-          unreadCount: state.unreadCount + (notification.read ? 0 : 1),
+          notifications: dedupeAndSortNotifications([
+            notification,
+            ...state.notifications,
+          ]),
+          unreadCount:
+            state.unreadCount + (notification.read ? 0 : 1),
         }));
+      },
+
+      mergeRealtimeNotification: (notification: Notification) => {
+        set((state) => {
+          const existing = state.notifications.find(
+            (entry) =>
+              entry._id === notification._id ||
+              (entry.id && entry.id === notification.id),
+          );
+          const nextNotifications = dedupeAndSortNotifications([
+            notification,
+            ...state.notifications.filter(
+              (entry) =>
+                entry._id !== notification._id &&
+                (!notification.id || entry.id !== notification.id),
+            ),
+          ]);
+
+          const wasUnread = existing ? !existing.read : false;
+          const isUnread = !notification.read;
+          const unreadDelta = existing
+            ? Number(isUnread) - Number(wasUnread)
+            : Number(isUnread);
+
+          return {
+            notifications: nextNotifications,
+            unreadCount: Math.max(0, state.unreadCount + unreadDelta),
+            lastFetched: Date.now(),
+          };
+        });
       },
 
       clearError: () => set({ error: null }),
@@ -230,4 +287,14 @@ export const clearNotificationStore = async () => {
   } catch {
     // Best-effort; ignore storage errors.
   }
+};
+
+export const syncRealtimeNotificationMessage = (
+  message: RealtimeNotificationMessage | null | undefined,
+) => {
+  if (message?.type !== "notification" || !message.notification?._id) {
+    return;
+  }
+
+  useNotificationStore.getState().mergeRealtimeNotification(message.notification);
 };

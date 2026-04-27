@@ -1,12 +1,5 @@
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-  Alert,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -24,14 +17,13 @@ import Animated, { FadeInUp } from "react-native-reanimated";
 import { GlassCard } from "../../src/components/ui/GlassCard";
 import { theme } from "../../src/styles/modernDesignSystem";
 import { colors as unifiedColors } from "../../src/theme/unified";
-import { ScreenContainer } from "../../src/components/ui";
+import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
 
 export default function HistoryScreen() {
   const params = useLocalSearchParams();
   const sessionId = params.sessionId as string | undefined;
   const initialApproved =
-    flags.enableDeepLinks &&
-    (params.approved === "1" || params.approved === "true");
+    flags.enableDeepLinks && (params.approved === "1" || params.approved === "true");
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
 
@@ -53,13 +45,16 @@ export default function HistoryScreen() {
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
-  const [showApprovedOnly, setShowApprovedOnly] =
-    React.useState<boolean>(!!initialApproved);
+  const [showApprovedOnly, setShowApprovedOnly] = React.useState<boolean>(!!initialApproved);
 
   // Pin Entry Modal State
   const [pinModalVisible, setPinModalVisible] = React.useState(false);
-  const [selectedLineForDelete, setSelectedLineForDelete] =
-    React.useState<CountLine | null>(null);
+  const [selectedLineForDelete, setSelectedLineForDelete] = React.useState<CountLine | null>(null);
+
+  const buildCardTestId = React.useCallback((item: CountLine) => {
+    const raw = item.item_code || item.id || "unknown";
+    return `history-card-${String(raw).replace(/[^a-zA-Z0-9_-]+/g, "_")}`;
+  }, []);
 
   const normalizeStatus = React.useCallback((status?: string | null) => {
     return (status || "").toLowerCase();
@@ -81,7 +76,7 @@ export default function HistoryScreen() {
               const status = normalizeStatus(d.status);
               return status === "approved" || d.approval_status === "APPROVED";
             })
-          : safeData,
+          : safeData
       );
       if (safeData.length && flags.enableHaptics) {
         haptics.success();
@@ -146,27 +141,17 @@ export default function HistoryScreen() {
       loadCountLines(); // Refresh list
     } catch (error: any) {
       console.error("Delete error:", error);
-      Alert.alert(
-        "Error",
-        error.response?.data?.detail || "Failed to delete count line",
-      );
+      Alert.alert("Error", error.response?.data?.detail || "Failed to delete count line");
       if (flags.enableHaptics) haptics.error();
     } finally {
       setSelectedLineForDelete(null);
     }
   };
 
-  const renderCountLine = ({
-    item,
-    index,
-  }: {
-    item: CountLine;
-    index: number;
-  }) => {
+  const renderCountLine = ({ item, index }: { item: CountLine; index: number }) => {
+    const cardTestId = buildCardTestId(item);
     const varianceColor =
-      item.variance === 0
-        ? unifiedColors.success[500]
-        : unifiedColors.error[500];
+      item.variance === 0 ? unifiedColors.success[500] : unifiedColors.error[500];
     const normalizedStatus = normalizeStatus(item.status);
     const statusColor =
       normalizedStatus === "approved"
@@ -176,13 +161,12 @@ export default function HistoryScreen() {
           : unifiedColors.warning[500];
 
     const CardContent = (
-      <GlassCard variant="medium" style={styles.countCard}>
+      <View testID={cardTestId}>
+        <GlassCard variant="medium" style={styles.countCard}>
         <View style={styles.cardHeader}>
-          <Text style={styles.itemName}>
-            {item.item_name || "Unknown Item"}
-          </Text>
+          <Text style={styles.itemName}>{item.item_name || "Unknown Item"}</Text>
           <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-            <Text style={styles.statusText}>
+            <Text testID={`${cardTestId}-status`} style={styles.statusText}>
               {(normalizedStatus || "pending").toUpperCase()}
             </Text>
           </View>
@@ -200,15 +184,19 @@ export default function HistoryScreen() {
         <View style={styles.qtyRow}>
           <View style={styles.qtyItem}>
             <Text style={styles.qtyLabel}>ERP</Text>
-            <Text style={styles.qtyValue}>{item.erp_qty ?? 0}</Text>
+            <Text testID={`${cardTestId}-erp`} style={styles.qtyValue}>
+              {item.erp_qty ?? 0}
+            </Text>
           </View>
           <View style={styles.qtyItem}>
             <Text style={styles.qtyLabel}>Counted</Text>
-            <Text style={styles.qtyValue}>{item.counted_qty ?? 0}</Text>
+            <Text testID={`${cardTestId}-counted`} style={styles.qtyValue}>
+              {item.counted_qty ?? 0}
+            </Text>
           </View>
           <View style={styles.qtyItem}>
             <Text style={styles.qtyLabel}>Variance</Text>
-            <Text style={[styles.qtyValue, { color: varianceColor }]}>
+            <Text testID={`${cardTestId}-variance`} style={[styles.qtyValue, { color: varianceColor }]}>
               {item.variance ?? 0}
             </Text>
           </View>
@@ -221,14 +209,11 @@ export default function HistoryScreen() {
           </View>
         )}
 
-        {item.remark && (
-          <Text style={styles.remark}>Remark: {item.remark}</Text>
-        )}
+        {item.remark && <Text style={styles.remark}>Remark: {item.remark}</Text>}
 
-        <Text style={styles.timestamp}>
-          {new Date(item.counted_at).toLocaleString()}
-        </Text>
-      </GlassCard>
+        <Text style={styles.timestamp}>{new Date(item.counted_at).toLocaleString()}</Text>
+        </GlassCard>
+      </View>
     );
 
     const AnimatedCard = flags.enableAnimations ? (
@@ -262,7 +247,7 @@ export default function HistoryScreen() {
 
   return (
     <ScreenContainer
-      backgroundType="aurora"
+      backgroundType="solid"
       auroraVariant="primary"
       header={{
         title: "Count History",
@@ -292,11 +277,7 @@ export default function HistoryScreen() {
             contentContainerStyle={styles.list}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Ionicons
-                  name="file-tray-outline"
-                  size={64}
-                  color={theme.colors.text.tertiary}
-                />
+                <Ionicons name="file-tray-outline" size={64} color={theme.colors.text.tertiary} />
                 <Text style={styles.emptyText}>
                   {loading
                     ? "Loading..."
@@ -310,17 +291,10 @@ export default function HistoryScreen() {
         </PullToRefresh>
       )}
 
-      <BottomSheet
-        visible={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        height={260}
-      >
+      <BottomSheet visible={filtersOpen} onClose={() => setFiltersOpen(false)} height={260}>
         <Text style={styles.filterTitle}>Filters</Text>
         <TouchableOpacity
-          style={[
-            styles.filterChip,
-            showApprovedOnly && styles.filterChipActive,
-          ]}
+          style={[styles.filterChip, showApprovedOnly && styles.filterChipActive]}
           onPress={() => {
             const next = !showApprovedOnly;
             setShowApprovedOnly(next);
@@ -337,18 +311,9 @@ export default function HistoryScreen() {
           <Ionicons
             name="checkmark-done-outline"
             size={18}
-            color={
-              showApprovedOnly
-                ? unifiedColors.neutral[950]
-                : theme.colors.text.tertiary
-            }
+            color={showApprovedOnly ? unifiedColors.neutral[950] : theme.colors.text.tertiary}
           />
-          <Text
-            style={[
-              styles.filterChipText,
-              showApprovedOnly && styles.filterChipTextActive,
-            ]}
-          >
+          <Text style={[styles.filterChipText, showApprovedOnly && styles.filterChipTextActive]}>
             Approved Only
           </Text>
         </TouchableOpacity>

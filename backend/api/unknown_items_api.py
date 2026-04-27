@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
+from backend.services.count_line_write_service import CountLineWriteService
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +154,17 @@ async def map_unknown_to_sku(
         "mapped_by": current_user["username"],
     }
 
-    await db.count_lines.insert_one(new_count_line)
+    session_id = str(new_count_line.get("session_id") or "")
+    await CountLineWriteService(db).process_write(
+        {"operation": "insert_one", "document": new_count_line},
+        context={
+            "session_id": session_id,
+            "allow_missing_session": not bool(session_id),
+            "enforce_variance": True,
+            "set_status_from_governance": False,
+            "username": current_user.get("username"),
+        },
+    )
 
     # 4. Remove the unknown item report or mark as resolved
     # For now, we move it to resolved_unknown_items

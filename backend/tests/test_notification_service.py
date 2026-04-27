@@ -130,6 +130,13 @@ class MockCollection:
         return type("obj", (object,), {"deleted_count": 0})
 
 
+class BoolUnsafeCollection(MockCollection):
+    """Mock collection that raises if code relies on truthiness checks."""
+
+    def __bool__(self):
+        raise TypeError("Collection objects do not implement truth value testing or bool().")
+
+
 @pytest.mark.asyncio
 async def test_create_notification():
     """Test creating a notification"""
@@ -156,6 +163,37 @@ async def test_create_notification():
     assert notif["priority"] == "high"
     assert notif["read"] is False
     service._send_push_notification.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_create_notification_emits_websocket_message(monkeypatch):
+    """Test that new notifications are pushed to connected websocket clients."""
+    db = MockDB()
+    service = NotificationService(db)
+    service._send_push_notification = AsyncMock()
+    send_personal_message = AsyncMock()
+
+    monkeypatch.setattr(
+        "backend.services.notification_service.manager.send_personal_message",
+        send_personal_message,
+    )
+
+    notif_id = await service.create_notification(
+        user_id="user1",
+        notification_type=NotificationType.SYSTEM_ALERT,
+        title="Realtime notification",
+        message="Push to websocket clients",
+        priority=NotificationPriority.MEDIUM,
+    )
+
+    send_personal_message.assert_awaited_once()
+    payload, user_id = send_personal_message.await_args.args
+    assert user_id == "user1"
+    assert payload["type"] == "notification"
+    assert payload["notification"]["_id"] == notif_id
+    assert payload["notification"]["title"] == "Realtime notification"
+    assert payload["notification"]["read"] is False
+    assert isinstance(payload["notification"]["created_at"], str)
 
 
 @pytest.mark.asyncio
@@ -375,6 +413,26 @@ async def test_register_and_unregister_device():
 
     await service.unregister_device("user1", "ExpoPushToken[test]")
     assert db.notification_devices.data[0]["enabled"] is False
+
+
+@pytest.mark.asyncio
+async def test_notification_device_collection_does_not_require_truthiness():
+    db = MockDB()
+    db.notification_devices = BoolUnsafeCollection()
+    service = NotificationService(db)
+
+    await service.register_device("user1", "ExpoPushToken[test]", "android")
+    assert len(db.notification_devices.data) == 1
+
+    await service.unregister_device("user1", "ExpoPushToken[test]")
+    assert db.notification_devices.data[0]["enabled"] is False
+
+    await service.create_notification(
+        user_id="user1",
+        notification_type=NotificationType.SYSTEM_ALERT,
+        title="No Push Devices",
+        message="Safe bool handling",
+    )
 
 
 if __name__ == "__main__":

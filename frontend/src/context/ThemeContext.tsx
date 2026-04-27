@@ -45,6 +45,62 @@ const hexToRgba = (hex: string, alpha: number): string => {
   return `rgba(${r}, ${g}, ${b}, ${clampedAlpha})`;
 };
 
+const buildLegacyFontSizeTokens = (baseFontSize: number) => ({
+  xs: Math.max(12, Math.round(baseFontSize * 0.75)),
+  sm: Math.max(14, Math.round(baseFontSize * 0.875)),
+  base: baseFontSize,
+  md: baseFontSize,
+  lg: Math.round(baseFontSize * 1.125),
+  xl: Math.round(baseFontSize * 1.25),
+  xxl: Math.round(baseFontSize * 1.5),
+  "2xl": Math.round(baseFontSize * 1.5),
+  "3xl": Math.round(baseFontSize * 1.875),
+});
+
+const LEGACY_FONT_WEIGHT_TOKENS = {
+  light: "300" as const,
+  normal: "400" as const,
+  medium: "500" as const,
+  semibold: "600" as const,
+  bold: "700" as const,
+  extrabold: "800" as const,
+};
+
+const LEGACY_LINE_HEIGHT_TOKENS = {
+  tight: 1.2,
+  normal: 1.5,
+  relaxed: 1.75,
+  loose: 2,
+};
+
+const buildLegacyTypography = (
+  themeTypography: AppTheme["typography"],
+  fontFamilies: ReturnType<typeof resolveFontFamilies>,
+  baseFontSize: number,
+) => {
+  const resolvedTypography = themeTypography ?? ({} as AppTheme["typography"]);
+
+  return {
+    ...resolvedTypography,
+    fontFamily: {
+      ...(resolvedTypography as any)?.fontFamily,
+      ...fontFamilies,
+    },
+    fontSize: {
+      ...(resolvedTypography as any)?.fontSize,
+      ...buildLegacyFontSizeTokens(baseFontSize),
+    },
+    fontWeight: {
+      ...LEGACY_FONT_WEIGHT_TOKENS,
+      ...((resolvedTypography as any)?.fontWeight ?? {}),
+    },
+    lineHeight: {
+      ...LEGACY_LINE_HEIGHT_TOKENS,
+      ...((resolvedTypography as any)?.lineHeight ?? {}),
+    },
+  };
+};
+
 // Available theme keys
 export type ThemeKey =
   | "light"
@@ -239,16 +295,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const themeLegacy = useMemo<ThemeContextType["themeLegacy"]>(() => {
     const resolvedPrimary = theme.colors.accent;
-    const baseFontSize = fontSize;
-
-    const fontSizeTokens = {
-      xs: Math.max(12, Math.round(baseFontSize * 0.75)),
-      sm: Math.max(14, Math.round(baseFontSize * 0.875)),
-      md: baseFontSize,
-      lg: Math.round(baseFontSize * 1.125),
-      xl: Math.round(baseFontSize * 1.25),
-      xxl: Math.round(baseFontSize * 1.5),
-    };
 
     return {
       theme: isDark ? "dark" : "light",
@@ -294,15 +340,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
         xxl: 48,
       },
       typography: {
-        ...theme.typography,
-        fontFamily: {
-          ...(theme.typography as any)?.fontFamily,
-          ...fontFamilies,
-        },
-        fontSize: {
-          ...(theme.typography as any)?.fontSize,
-          ...fontSizeTokens,
-        },
+        ...buildLegacyTypography(theme.typography, fontFamilies, fontSize),
       },
       borderRadius: {
         sm: 4,
@@ -466,6 +504,7 @@ export const useThemeContext = (): ThemeContextType => {
   const context = useContext(ThemeContext);
   if (!context) {
     console.warn("useThemeContext called outside ThemeProvider - returning default theme");
+    const defaultFontFamilies = resolveFontFamilies("system");
     return {
       theme: themes.light!,
       themeLegacy: {
@@ -503,7 +542,11 @@ export const useThemeContext = (): ThemeContextType => {
         },
         gradients: { primary: ["#0EA5E9", "#0284C7"], secondary: ["#10B981", "#059669"] },
         spacing: { xs: 4, sm: 8, md: 16, base: 16, lg: 24, xl: 32, xxl: 48 },
-        typography: { fontSize: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, xxl: 24 } },
+        typography: buildLegacyTypography(
+          themes.light!.typography,
+          defaultFontFamilies,
+          16,
+        ),
         borderRadius: { sm: 4, md: 8, lg: 12, xl: 16, round: 50 },
         shadows: { sm: "0 1px 2px 0 rgba(0, 0, 0, 0.05)", md: "0 4px 6px -1px rgba(0, 0, 0, 0.1)", lg: "0 10px 15px -3px rgba(0, 0, 0, 0.1)", xl: "0 20px 25px -5px rgba(0, 0, 0, 0.1)" },
         animations: { duration: 300, easing: "ease-in-out" },

@@ -10,7 +10,7 @@ Provides comprehensive dashboard KPIs for admin/supervisor monitoring:
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, NoReturn, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -18,9 +18,18 @@ from pydantic import BaseModel, Field
 
 from backend.auth.permissions import Permission, require_permission
 from backend.db.runtime import get_db
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/analytics/dashboard", tags=["Dashboard Analytics"])
+
+
+def _safe_log_value(value: Any, *, max_length: int = 200) -> str:
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
+
+
+def _raise_dashboard_internal_error(detail: str, exc: Exception) -> NoReturn:
+    raise HTTPException(status_code=500, detail=detail) from exc
 
 
 # Response Models
@@ -215,16 +224,20 @@ async def get_dashboard_overview(
         overview = await calculate_dashboard_overview(db, valuation_basis)
 
         logger.info(
-            f"Dashboard overview requested by {current_user.get('username')}: "
-            f"qty={overview.quantity_status.completion_percentage}%, "
-            f"value={overview.value_status.completion_percentage}%"
+            "Dashboard overview requested by %s: qty=%s%%, value=%s%%",
+            _safe_log_value(current_user.get("username")),
+            overview.quantity_status.completion_percentage,
+            overview.value_status.completion_percentage,
         )
 
         return overview
 
     except Exception as e:
-        logger.error(f"Error calculating dashboard overview: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "Error calculating dashboard overview: %s",
+            _safe_log_value(e),
+        )
+        _raise_dashboard_internal_error("Failed to calculate dashboard overview", e)
 
 
 @router.get("/breakdown", response_model=DashboardBreakdown)
@@ -270,8 +283,8 @@ async def get_dashboard_breakdown(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error calculating breakdown: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error calculating breakdown: %s", _safe_log_value(e))
+        _raise_dashboard_internal_error("Failed to calculate dashboard breakdown", e)
 
 
 async def _breakdown_by_location(

@@ -1,9 +1,17 @@
 import asyncio
 import os
+import sys
+from pathlib import Path
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 
 load_dotenv()
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from scripts.approval_guard import enforce_high_risk_entrypoint
 
 
 async def reset_session():
@@ -19,4 +27,5 @@ async def reset_session():
 
 
 if __name__ == "__main__":
+    enforce_high_risk_entrypoint(always_require=True)
     asyncio.run(reset_session())

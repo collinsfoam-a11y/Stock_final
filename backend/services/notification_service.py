@@ -15,6 +15,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import httpx
+from backend.core.websocket_manager import manager
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,28 @@ class NotificationService:
         self.db = db
         self.notification_devices = getattr(db, "notification_devices", None)
         self.push_endpoint = os.getenv("EXPO_PUSH_ENDPOINT", "https://exp.host/--/api/v2/push/send")
+
+    @staticmethod
+    def _serialize_notification(
+        notification_id: str,
+        notification: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        created_at = notification.get("created_at")
+        read_at = notification.get("read_at")
+
+        return {
+            "_id": notification_id,
+            "id": notification_id,
+            "type": notification.get("type"),
+            "title": notification.get("title"),
+            "message": notification.get("message"),
+            "priority": notification.get("priority"),
+            "action_url": notification.get("action_url"),
+            "metadata": notification.get("metadata", {}),
+            "read": bool(notification.get("read", False)),
+            "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else created_at,
+            "read_at": read_at.isoformat() if hasattr(read_at, "isoformat") else read_at,
+        }
 
     async def create_notification(
         self,
@@ -94,6 +117,20 @@ class NotificationService:
         logger.info(f"Created notification {notification_id} for user {user_id}: {title}")
 
         try:
+            await manager.send_personal_message(
+                {
+                    "type": "notification",
+                    "notification": self._serialize_notification(
+                        notification_id,
+                        notification,
+                    ),
+                },
+                user_id,
+            )
+        except Exception as exc:
+            logger.warning(f"WebSocket notification delivery skipped for {user_id}: {exc}")
+
+        try:
             await self._send_push_notification(user_id, notification)
         except Exception as exc:
             logger.warning(f"Push notification delivery skipped for {user_id}: {exc}")
@@ -107,7 +144,7 @@ class NotificationService:
         platform: Optional[str] = None,
     ) -> None:
         """Register or refresh a push-capable device token."""
-        if not self.notification_devices or not token:
+        if self.notification_devices is None or not token:
             return
 
         now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -128,7 +165,7 @@ class NotificationService:
 
     async def unregister_device(self, user_id: str, token: str) -> None:
         """Disable a previously registered device token."""
-        if not self.notification_devices or not token:
+        if self.notification_devices is None or not token:
             return
 
         await self.notification_devices.update_one(
@@ -334,7 +371,7 @@ class NotificationService:
 
     async def _send_push_notification(self, user_id: str, notification: Dict[str, Any]):
         """Send push notification via Expo push service for registered devices."""
-        if not self.notification_devices:
+        if self.notification_devices is None:
             return
 
         devices = await self.notification_devices.find(

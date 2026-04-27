@@ -5,6 +5,11 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+. "$PROJECT_ROOT/scripts/approval_guard.sh"
+require_approval_context
+
 if [ $# -eq 0 ]; then
     echo "Usage: $0 <backup_file.tar.gz>"
     echo "Example: $0 /backups/stock_verify_backup_20250107_020000.tar.gz"

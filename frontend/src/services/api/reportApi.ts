@@ -3,6 +3,20 @@
  */
 
 import api from "../httpClient";
+import {
+  createExportSchedule,
+  deleteExportSchedule,
+  getExportResults,
+  getExportSchedules,
+  triggerExportSchedule,
+  updateExportSchedule,
+  type CreateExportSchedulePayload,
+  type ExportResultRecord,
+  type ExportScheduleFormat,
+  type ExportScheduleRecord,
+  type ExportScheduleType,
+  type UpdateExportSchedulePayload,
+} from "./adminOperationsApi";
 
 // Types
 export type ReportType =
@@ -72,6 +86,28 @@ export interface ReportResponse {
   summary: ReportSummary;
   data: Record<string, unknown>[];
 }
+
+const toExportScheduleType = (reportType: ReportType): ExportScheduleType => {
+  switch (reportType) {
+    case "variance_report":
+      return "variance_report";
+    case "user_activity":
+    case "audit_trail":
+      return "activity_logs";
+    case "stock_summary":
+      return "count_lines";
+    case "session_history":
+    default:
+      return "sessions";
+  }
+};
+
+const toExportScheduleFormat = (format?: ExportFormat): ExportScheduleFormat => {
+  if (format === "xlsx") {
+    return "excel";
+  }
+  return format ?? "json";
+};
 
 // API Client
 export const reportApi = {
@@ -175,42 +211,40 @@ export const reportApi = {
     throw new Error(`Unsupported export format: ${String(format)}`);
   },
 
-  // NOTE: Scheduled report management and "generate-url" endpoints are not
-  // implemented on the backend. We intentionally don't call non-existent routes.
   generateReportUrl: async (): Promise<string> => {
     throw new Error(
       "Scheduled report URLs are not supported: backend does not provide /api/reports/generate-url",
     );
   },
-  getScheduledReports: async (): Promise<never> => {
-    throw new Error(
-      "Scheduled reports are not supported: backend does not provide /api/reports/schedules",
-    );
+  getScheduledReports: async (): Promise<ExportScheduleRecord[]> => {
+    return getExportSchedules();
   },
-  createScheduledReport: async (): Promise<never> => {
-    throw new Error(
-      "Scheduled reports are not supported: backend does not provide /api/reports/schedules",
-    );
+  createScheduledReport: async (
+    payload: Omit<CreateExportSchedulePayload, "export_type" | "format"> & {
+      report_type: ReportType;
+      format?: ExportFormat;
+    },
+  ) => {
+    return createExportSchedule({
+      ...payload,
+      export_type: toExportScheduleType(payload.report_type),
+      format: toExportScheduleFormat(payload.format),
+    });
   },
-  updateScheduledReport: async (): Promise<never> => {
-    throw new Error(
-      "Scheduled reports are not supported: backend does not provide /api/reports/schedules",
-    );
+  updateScheduledReport: async (
+    scheduleId: string,
+    payload: UpdateExportSchedulePayload,
+  ) => {
+    return updateExportSchedule(scheduleId, payload);
   },
-  deleteScheduledReport: async (): Promise<never> => {
-    throw new Error(
-      "Scheduled reports are not supported: backend does not provide /api/reports/schedules",
-    );
+  deleteScheduledReport: async (scheduleId: string) => {
+    return deleteExportSchedule(scheduleId);
   },
-  runScheduledReport: async (): Promise<never> => {
-    throw new Error(
-      "Scheduled reports are not supported: backend does not provide /api/reports/schedules",
-    );
+  runScheduledReport: async (scheduleId: string) => {
+    return triggerExportSchedule(scheduleId);
   },
-  getReportHistory: async (): Promise<never> => {
-    throw new Error(
-      "Report history is not supported: backend does not provide /api/reports/history",
-    );
+  getReportHistory: async (): Promise<ExportResultRecord[]> => {
+    return getExportResults(undefined, undefined, 1, 50);
   },
 };
 

@@ -64,6 +64,56 @@ async def test_heartbeat_success(async_client: AsyncClient, test_db):
 
 
 @pytest.mark.asyncio
+async def test_public_session_guest(async_client: AsyncClient):
+    """Guest checks should not surface as unauthorized errors."""
+    response = await async_client.get("/api/auth/public-session")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["data"]["status"] == "guest"
+    assert data["data"]["user"] is None
+    assert data["data"]["public_registration_allowed"] is False
+
+
+@pytest.mark.asyncio
+async def test_public_session_authenticated(async_client: AsyncClient, test_db):
+    """Public session endpoint returns minimal auth state when signed in."""
+    await create_test_user(test_db, USER_A_ID, USER_A_NAME)
+    token = create_access_token(data={"sub": USER_A_NAME})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = await async_client.get("/api/auth/public-session", headers=headers)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["data"]["status"] == "authenticated"
+    assert data["data"]["user"] == {
+        "username": USER_A_NAME,
+        "role": "staff",
+    }
+    assert data["data"]["public_registration_allowed"] is False
+
+
+@pytest.mark.asyncio
+async def test_public_session_bootstrap_registration_enabled(
+    async_client: AsyncClient,
+    test_db,
+):
+    """Public session exposes bootstrap registration availability."""
+    await test_db.users.delete_many({})
+
+    response = await async_client.get("/api/auth/public-session")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["data"]["status"] == "guest"
+    assert data["data"]["public_registration_allowed"] is True
+
+
+@pytest.mark.asyncio
 async def test_heartbeat_unauthorized(async_client: AsyncClient):
     """Test heartbeat without token."""
     response = await async_client.get("/api/auth/heartbeat")

@@ -122,6 +122,8 @@ describe("authStore.establishSession", () => {
     expect(syncFromBackend).toHaveBeenCalled();
     expect(state.isAuthenticated).toBe(true);
     expect(state.isInitialized).toBe(true);
+    expect(state.isHydrated).toBe(true);
+    expect(state.authPhase).toBe("authenticated");
     expect(state.user?.username).toBe("staff1");
     expect(state.lastLoggedUser?.username).toBe("staff1");
 

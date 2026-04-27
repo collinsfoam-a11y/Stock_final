@@ -127,6 +127,7 @@ jest.mock("expo-router", () => ({
     canGoBack: jest.fn(() => true),
   })),
   useLocalSearchParams: jest.fn(() => ({})),
+  usePathname: jest.fn(() => "/login"),
   Stack: {
     Screen: jest.fn(() => null),
   },

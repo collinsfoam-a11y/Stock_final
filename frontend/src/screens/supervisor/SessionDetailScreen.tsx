@@ -60,6 +60,11 @@ export default function SessionDetail() {
     null,
   );
 
+  const buildLineTestId = React.useCallback((item: any) => {
+    const raw = item?.item_code || item?.id || "unknown";
+    return `session-line-${String(raw).replace(/[^a-zA-Z0-9_-]+/g, "_")}`;
+  }, []);
+
   const loadData = React.useCallback(async () => {
     if (!targetSessionId) return;
     try {
@@ -535,6 +540,7 @@ export default function SessionDetail() {
   const MAX_ANIMATED_ITEMS = 10;
 
   const renderItem = ({ item, index }: { item: any; index: number }) => {
+    const lineTestId = buildLineTestId(item);
     const normalizedStatus = String(item.status || "").toLowerCase();
     const requiresSupervisorReview = Number(item.variance ?? 0) !== 0;
     const varianceColor =
@@ -555,7 +561,8 @@ export default function SessionDetail() {
       : 0;
 
     const content = (
-      <GlassCard style={styles.lineCard}>
+      <View testID={lineTestId}>
+        <GlassCard style={styles.lineCard}>
         <View style={styles.lineHeader}>
           <Text style={styles.lineName} numberOfLines={1}>
             {item.item_name}
@@ -589,14 +596,16 @@ export default function SessionDetail() {
                 { backgroundColor: statusColor + "30" },
               ]}
             >
-              <Text style={[styles.badgeText, { color: statusColor }]}>
+              <Text testID={`${lineTestId}-status`} style={[styles.badgeText, { color: statusColor }]}>
                 {(normalizedStatus || "pending").toUpperCase()}
               </Text>
             </View>
           </View>
         </View>
 
-        <Text style={styles.lineCode}>Code: {item.item_code}</Text>
+        <Text testID={`${lineTestId}-item-code`} style={styles.lineCode}>
+          Code: {item.item_code}
+        </Text>
         {item.barcode && (
           <Text style={styles.lineCode}>Barcode: {item.barcode}</Text>
         )}
@@ -604,15 +613,19 @@ export default function SessionDetail() {
         <View style={styles.qtyRow}>
           <View style={styles.qtyItem}>
             <Text style={styles.qtyLabel}>ERP</Text>
-            <Text style={styles.qtyValue}>{item.erp_qty}</Text>
+            <Text testID={`${lineTestId}-erp`} style={styles.qtyValue}>
+              {item.erp_qty}
+            </Text>
           </View>
           <View style={styles.qtyItem}>
             <Text style={styles.qtyLabel}>Counted</Text>
-            <Text style={styles.qtyValue}>{item.counted_qty}</Text>
+            <Text testID={`${lineTestId}-counted`} style={styles.qtyValue}>
+              {item.counted_qty}
+            </Text>
           </View>
           <View style={styles.qtyItem}>
             <Text style={styles.qtyLabel}>Variance</Text>
-            <Text style={[styles.qtyValue, { color: varianceColor }]}>
+            <Text testID={`${lineTestId}-variance`} style={[styles.qtyValue, { color: varianceColor }]}>
               {item.variance}
             </Text>
           </View>
@@ -654,6 +667,7 @@ export default function SessionDetail() {
                 <AnimatedPressable
                   style={styles.approveButton}
                   onPress={() => handleApproveLine(item.id)}
+                  testID={`${lineTestId}-approve`}
                 >
                   <Ionicons
                     name="checkmark"
@@ -665,6 +679,7 @@ export default function SessionDetail() {
                 <AnimatedPressable
                   style={styles.rejectButton}
                   onPress={() => void handleRejectLine(item)}
+                  testID={`${lineTestId}-reject`}
                 >
                   <Ionicons
                     name="close"
@@ -684,6 +699,7 @@ export default function SessionDetail() {
                 ]}
                 onPress={() => handleVerifyStock(item.id)}
                 disabled={verifying === item.id}
+                testID={`${lineTestId}-verify-stock`}
               >
                 {verifying === item.id ? (
                   <ActivityIndicator
@@ -711,6 +727,7 @@ export default function SessionDetail() {
                 ]}
                 onPress={() => handleUnverifyStock(item.id)}
                 disabled={verifying === item.id}
+                testID={`${lineTestId}-unverify-stock`}
               >
                 {verifying === item.id ? (
                   <ActivityIndicator
@@ -731,7 +748,8 @@ export default function SessionDetail() {
             )}
           </View>
         )}
-      </GlassCard>
+        </GlassCard>
+      </View>
     );
 
     return content;

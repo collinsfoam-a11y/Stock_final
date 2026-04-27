@@ -137,6 +137,10 @@ export function ScanLookupPanel({
   onPressItem,
   onSubmitSearch,
 }: ScanLookupPanelProps) {
+  const hasSearchQuery = searchQuery.trim().length > 0;
+  const shouldShowNoResults = hasSearchQuery && searchQuery.trim().length > 2 && !loading
+    && searchResults.length === 0;
+
   return (
     <>
       <View style={styles.searchSection}>
@@ -185,9 +189,19 @@ export function ScanLookupPanel({
             ))}
           </View>
         )}
+
+        {shouldShowNoResults && (
+          <View style={styles.searchResultsContainer}>
+            <EmptyState
+              icon="search-outline"
+              title="No Items Found"
+              subtitle="No barcode, item code, or item name matched this search."
+            />
+          </View>
+        )}
       </View>
 
-      {searchResults.length === 0 && (
+      {searchResults.length === 0 && !hasSearchQuery && (
         <View style={styles.recentSection}>
           <Text style={styles.sectionTitle}>Recent Items</Text>
 

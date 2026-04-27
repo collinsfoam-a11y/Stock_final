@@ -2,6 +2,7 @@ import React from "react";
 import {
   ActivityIndicator,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -14,6 +15,13 @@ import { SimpleBarChart } from "@/components/charts/SimpleBarChart";
 import { SimpleLineChart } from "@/components/charts/SimpleLineChart";
 import { SimplePieChart } from "@/components/charts/SimplePieChart";
 import { DateRangePicker } from "@/components/forms/DateRangePicker";
+import type {
+  ExportResultRecord,
+  ExportScheduleFormat,
+  ExportScheduleFrequency,
+  ExportScheduleRecord,
+  ExportScheduleType,
+} from "@/services/api";
 import { auroraTheme } from "@/theme/auroraTheme";
 
 type DashboardTab = "overview" | "monitoring" | "reports" | "analytics" | "diagnosis";
@@ -368,18 +376,80 @@ export function DashboardMonitoringPanel({
 }
 
 interface DashboardReportsPanelProps {
+  editingScheduleId: string | null;
+  exportResults: ExportResultRecord[];
+  onCancelScheduleEdit: () => void;
+  onChangeScheduleDraft: (
+    next: {
+      email_recipients: string;
+      export_type: ExportScheduleType;
+      format: ExportScheduleFormat;
+      frequency: ExportScheduleFrequency;
+      name: string;
+    },
+  ) => void;
+  onDeleteSchedule: (schedule: ExportScheduleRecord) => void;
+  onDownloadExportResult: (resultId: string) => void;
+  onEditSchedule: (schedule: ExportScheduleRecord) => void;
   onOpenReport: (reportId: string) => void;
+  onPrepareSchedule: (report: any) => void;
+  onRunSchedule: (schedule: ExportScheduleRecord) => void;
+  onSaveSchedule: () => void;
+  onToggleSchedule: (schedule: ExportScheduleRecord) => void;
+  reportOpsLoading: boolean;
   reports: any[];
   reportsLoading: boolean;
+  scheduleActionLoading: string | null;
+  scheduleDraft: {
+    email_recipients: string;
+    export_type: ExportScheduleType;
+    format: ExportScheduleFormat;
+    frequency: ExportScheduleFrequency;
+    name: string;
+  };
+  schedules: ExportScheduleRecord[];
   styles: any;
 }
 
 export function DashboardReportsPanel({
+  editingScheduleId,
+  exportResults,
+  onCancelScheduleEdit,
+  onChangeScheduleDraft,
+  onDeleteSchedule,
+  onDownloadExportResult,
+  onEditSchedule,
   onOpenReport,
+  onPrepareSchedule,
+  onRunSchedule,
+  onSaveSchedule,
+  onToggleSchedule,
+  reportOpsLoading,
   reports,
   reportsLoading,
+  scheduleActionLoading,
+  scheduleDraft,
+  schedules,
   styles,
 }: DashboardReportsPanelProps) {
+  const exportTypeOptions: {
+    description: string;
+    label: string;
+    value: ExportScheduleType;
+  }[] = [
+    { value: "variance_report", label: "Variance", description: "Differences and approvals" },
+    { value: "count_lines", label: "Count lines", description: "Detailed counts" },
+    { value: "sessions", label: "Sessions", description: "Session activity" },
+    { value: "activity_logs", label: "Activity", description: "Audit trail" },
+  ];
+  const frequencyOptions: ExportScheduleFrequency[] = ["daily", "weekly", "monthly"];
+  const formatOptions: ExportScheduleFormat[] = ["csv", "json", "excel"];
+  const formatBytes = (value?: number) => {
+    if (!value || value <= 0) return "No file";
+    if (value < 1024) return `${value} B`;
+    return `${(value / 1024).toFixed(1)} KB`;
+  };
+
   return (
     <Animated.View
       entering={FadeInDown.delay(200).springify()}
@@ -433,10 +503,300 @@ export function DashboardReportsPanel({
                 <Text style={styles.generateButtonText}>Generate Report</Text>
                 <Ionicons name="download-outline" size={18} color="#FFF" />
               </AnimatedPressable>
+              <AnimatedPressable
+                style={[styles.secondaryActionButton, { marginTop: 10 }]}
+                onPress={() => onPrepareSchedule(report)}
+              >
+                <Text style={styles.secondaryActionButtonText}>
+                  Prepare Schedule
+                </Text>
+                <Ionicons
+                  name="calendar-outline"
+                  size={16}
+                  color={auroraTheme.colors.primary[400]}
+                />
+              </AnimatedPressable>
             </GlassCard>
           ))
         )}
       </View>
+
+      <GlassCard variant="medium" style={styles.sectionCard}>
+        <View style={styles.reportOpsHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Scheduled Exports</Text>
+            <Text style={styles.sectionSubtitle}>
+              Create recurring exports, enable or pause them, and run one-off
+              deliveries when operations need them now.
+            </Text>
+          </View>
+          {reportOpsLoading ? (
+            <ActivityIndicator
+              size="small"
+              color={auroraTheme.colors.primary[400]}
+            />
+          ) : null}
+        </View>
+
+        <View style={styles.scheduleEditor}>
+          <Text style={styles.scheduleLabel}>Schedule Name</Text>
+          <TextInput
+            value={scheduleDraft.name}
+            onChangeText={(name) =>
+              onChangeScheduleDraft({ ...scheduleDraft, name })
+            }
+            placeholder="Daily variance digest"
+            placeholderTextColor={auroraTheme.colors.text.tertiary}
+            style={styles.scheduleInput}
+          />
+
+          <Text style={styles.scheduleLabel}>Export Type</Text>
+          <View style={styles.scheduleChoiceRow}>
+            {exportTypeOptions.map((option) => (
+              <AnimatedPressable
+                key={option.value}
+                style={[
+                  styles.scheduleChoice,
+                  scheduleDraft.export_type === option.value &&
+                    styles.scheduleChoiceActive,
+                ]}
+                onPress={() =>
+                  onChangeScheduleDraft({
+                    ...scheduleDraft,
+                    export_type: option.value,
+                  })
+                }
+              >
+                <Text
+                  style={[
+                    styles.scheduleChoiceTitle,
+                    scheduleDraft.export_type === option.value &&
+                      styles.scheduleChoiceTitleActive,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+                <Text style={styles.scheduleChoiceBody}>{option.description}</Text>
+              </AnimatedPressable>
+            ))}
+          </View>
+
+          <View style={styles.scheduleConfigRow}>
+            <View style={styles.scheduleConfigColumn}>
+              <Text style={styles.scheduleLabel}>Frequency</Text>
+              <View style={styles.schedulePillRow}>
+                {frequencyOptions.map((option) => (
+                  <AnimatedPressable
+                    key={option}
+                    style={[
+                      styles.schedulePill,
+                      scheduleDraft.frequency === option &&
+                        styles.schedulePillActive,
+                    ]}
+                    onPress={() =>
+                      onChangeScheduleDraft({
+                        ...scheduleDraft,
+                        frequency: option,
+                      })
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.schedulePillText,
+                        scheduleDraft.frequency === option &&
+                          styles.schedulePillTextActive,
+                      ]}
+                    >
+                      {option}
+                    </Text>
+                  </AnimatedPressable>
+                ))}
+              </View>
+            </View>
+            <View style={styles.scheduleConfigColumn}>
+              <Text style={styles.scheduleLabel}>Format</Text>
+              <View style={styles.schedulePillRow}>
+                {formatOptions.map((option) => (
+                  <AnimatedPressable
+                    key={option}
+                    style={[
+                      styles.schedulePill,
+                      scheduleDraft.format === option && styles.schedulePillActive,
+                    ]}
+                    onPress={() =>
+                      onChangeScheduleDraft({
+                        ...scheduleDraft,
+                        format: option,
+                      })
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.schedulePillText,
+                        scheduleDraft.format === option &&
+                          styles.schedulePillTextActive,
+                      ]}
+                    >
+                      {option.toUpperCase()}
+                    </Text>
+                  </AnimatedPressable>
+                ))}
+              </View>
+            </View>
+          </View>
+
+          <Text style={styles.scheduleLabel}>Email Recipients</Text>
+          <TextInput
+            value={scheduleDraft.email_recipients}
+            onChangeText={(email_recipients) =>
+              onChangeScheduleDraft({ ...scheduleDraft, email_recipients })
+            }
+            placeholder="ops@example.com, audit@example.com"
+            placeholderTextColor={auroraTheme.colors.text.tertiary}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={styles.scheduleInput}
+          />
+
+          <View style={styles.scheduleActionRow}>
+            <AnimatedPressable
+              style={styles.generateButton}
+              onPress={onSaveSchedule}
+              disabled={Boolean(scheduleActionLoading)}
+            >
+              {scheduleActionLoading === "create" || editingScheduleId ? (
+                <Text style={styles.generateButtonText}>
+                  {editingScheduleId ? "Save Schedule" : "Create Schedule"}
+                </Text>
+              ) : (
+                <Text style={styles.generateButtonText}>Create Schedule</Text>
+              )}
+            </AnimatedPressable>
+            {editingScheduleId ? (
+              <AnimatedPressable
+                style={styles.secondaryActionButton}
+                onPress={onCancelScheduleEdit}
+              >
+                <Text style={styles.secondaryActionButtonText}>Cancel Edit</Text>
+              </AnimatedPressable>
+            ) : null}
+          </View>
+        </View>
+
+        <View style={styles.scheduleList}>
+          {schedules.length === 0 ? (
+            <View style={styles.noIssues}>
+              <Ionicons
+                name="calendar-clear-outline"
+                size={40}
+                color={auroraTheme.colors.neutral[300]}
+              />
+              <Text style={styles.noIssuesText}>
+                No recurring exports configured yet
+              </Text>
+            </View>
+          ) : (
+            schedules.map((schedule) => (
+              <View key={schedule.id} style={styles.scheduleRow}>
+                <View style={styles.scheduleRowInfo}>
+                  <Text style={styles.scheduleRowTitle}>{schedule.name}</Text>
+                  <Text style={styles.scheduleRowMeta}>
+                    {schedule.export_type} • {schedule.frequency} •{" "}
+                    {schedule.format.toUpperCase()} •{" "}
+                    {schedule.enabled ? "Enabled" : "Paused"}
+                  </Text>
+                  <Text style={styles.scheduleRowMeta}>
+                    Next run: {schedule.next_run || "Pending scheduler"} • Last
+                    run: {schedule.last_run || "Never"}
+                  </Text>
+                  <Text style={styles.scheduleRowMeta}>
+                    Recipients:{" "}
+                    {schedule.email_recipients.length > 0
+                      ? schedule.email_recipients.join(", ")
+                      : "None"}
+                  </Text>
+                </View>
+                <View style={styles.scheduleRowButtons}>
+                  <AnimatedPressable
+                    style={styles.secondaryActionButton}
+                    onPress={() => onRunSchedule(schedule)}
+                  >
+                    <Text style={styles.secondaryActionButtonText}>Run</Text>
+                  </AnimatedPressable>
+                  <AnimatedPressable
+                    style={styles.secondaryActionButton}
+                    onPress={() => onEditSchedule(schedule)}
+                  >
+                    <Text style={styles.secondaryActionButtonText}>Edit</Text>
+                  </AnimatedPressable>
+                  <AnimatedPressable
+                    style={styles.secondaryActionButton}
+                    onPress={() => onToggleSchedule(schedule)}
+                  >
+                    <Text style={styles.secondaryActionButtonText}>
+                      {schedule.enabled ? "Pause" : "Enable"}
+                    </Text>
+                  </AnimatedPressable>
+                  <AnimatedPressable
+                    style={styles.secondaryActionButtonDanger}
+                    onPress={() => onDeleteSchedule(schedule)}
+                  >
+                    <Text style={styles.secondaryActionButtonDangerText}>
+                      Delete
+                    </Text>
+                  </AnimatedPressable>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+      </GlassCard>
+
+      <GlassCard variant="medium" style={styles.sectionCard}>
+        <View style={styles.reportOpsHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Recent Export Runs</Text>
+            <Text style={styles.sectionSubtitle}>
+              Track delivery history and download the latest generated files.
+            </Text>
+          </View>
+        </View>
+        {exportResults.length === 0 ? (
+          <View style={styles.noIssues}>
+            <Ionicons
+              name="document-attach-outline"
+              size={40}
+              color={auroraTheme.colors.neutral[300]}
+            />
+            <Text style={styles.noIssuesText}>No scheduled export runs yet</Text>
+          </View>
+        ) : (
+          exportResults.map((result) => (
+            <View key={result.id} style={styles.resultRow}>
+              <View style={styles.resultInfo}>
+                <Text style={styles.scheduleRowTitle}>{result.schedule_name}</Text>
+                <Text style={styles.scheduleRowMeta}>
+                  {result.export_type || "export"} •{" "}
+                  {result.format.toUpperCase()} • {result.row_count ?? 0} rows •{" "}
+                  {formatBytes(result.size_bytes)}
+                </Text>
+                <Text style={styles.scheduleRowMeta}>
+                  Created {result.created_at}
+                </Text>
+              </View>
+              <AnimatedPressable
+                style={styles.secondaryActionButton}
+                onPress={() => onDownloadExportResult(result.id)}
+                disabled={!result.has_content}
+              >
+                <Text style={styles.secondaryActionButtonText}>
+                  {result.has_content ? "Download" : "Empty"}
+                </Text>
+              </AnimatedPressable>
+            </View>
+          ))
+        )}
+      </GlassCard>
     </Animated.View>
   );
 }

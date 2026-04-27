@@ -7,13 +7,112 @@ import asyncio
 import logging
 import math
 import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
-
-from backend.sql_server_connector import SQLServerConnector
+from typing import Any, Dict, Optional
+from backend.sql_server_connector import (
+    DatabaseConnectionError,
+    DatabaseQueryError,
+    ERPQueryParameterError,
+    ERPReadOnlyViolation,
+    SQLServerConnector,
+)
 from backend.core.database import db
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class SQLErrorDefinition:
+    message: str
+    status_code: int
+    box_status: str | None = None
+    status: str | None = None
+
+
+DEFAULT_SQL_ERROR = SQLErrorDefinition(
+    message="Verification failed due to an internal error.",
+    status_code=500,
+)
+
+
+SQL_ERROR_CATALOG: dict[str, SQLErrorDefinition] = {
+    "SQL_CONNECTION_ERROR": SQLErrorDefinition(
+        message="ERP system is temporarily unavailable. Please try again later.",
+        status_code=503,
+        box_status="SQL_FAILURE",
+    ),
+    "ERP_READ_ONLY_VIOLATION": SQLErrorDefinition(
+        message="Write operation blocked on ERP.",
+        status_code=400,
+    ),
+    "ERP_QUERY_PARAMETER_ERROR": SQLErrorDefinition(
+        message="ERP query blocked due to unsafe parameters.",
+        status_code=400,
+    ),
+    "ERP_NULL_RESULT": SQLErrorDefinition(
+        message="ERP returned no quantity for this item.",
+        status_code=500,
+    ),
+    "ERP_AMBIGUOUS_RESULT": SQLErrorDefinition(
+        message="ERP returned ambiguous quantity for this item.",
+        status_code=500,
+    ),
+    "ERP_INVALID_RESULT": SQLErrorDefinition(
+        message="ERP returned invalid quantity for this item.",
+        status_code=500,
+    ),
+    "ERP_QUERY_ERROR": SQLErrorDefinition(
+        message="ERP query failed. Please try again later.",
+        status_code=500,
+    ),
+    "SQL_NEGATIVE_QTY": SQLErrorDefinition(
+        message="Governance rejection: negative SQL quantity",
+        status_code=422,
+    ),
+    "MONGO_NON_NUMERIC_QTY": SQLErrorDefinition(
+        message="Governance rejection: non-numeric Mongo quantity",
+        status_code=422,
+    ),
+    "MONGO_NON_FINITE_QTY": SQLErrorDefinition(
+        message="Governance rejection: non-finite Mongo quantity",
+        status_code=422,
+    ),
+    "SQL_VARIANCE_THRESHOLD": SQLErrorDefinition(
+        message="Variance exceeds governance threshold",
+        status_code=422,
+        status="ERROR",
+    ),
+    "VERIFICATION_CONFLICT": SQLErrorDefinition(
+        message="State conflict: data changed during verification",
+        status_code=409,
+        status="conflict",
+    ),
+    "ITEM_LOST": SQLErrorDefinition(
+        message="Item lost during update",
+        status_code=404,
+    ),
+    "ITEM_NOT_FOUND": SQLErrorDefinition(
+        message="Item not found in MongoDB",
+        status_code=404,
+    ),
+    "VERIFICATION_INTERNAL_ERROR": SQLErrorDefinition(
+        message="Verification failed due to an internal error.",
+        status_code=500,
+    ),
+    "SQL_BATCH_FAILURE": SQLErrorDefinition(
+        message="Batch verification failed due to an internal error.",
+        status_code=500,
+    ),
+    "ERP_AMBIGUOUS_BATCH_RESULT": SQLErrorDefinition(
+        message="ERP batch returned incomplete results.",
+        status_code=500,
+    ),
+    "ERP_INVALID_BATCH_RESULT": SQLErrorDefinition(
+        message="ERP batch returned invalid quantity results.",
+        status_code=500,
+    ),
+}
 
 
 class SQLVerificationError(Exception):
@@ -42,28 +141,87 @@ class SQLVerificationService:
         self,
         *,
         error_code: str,
-        message: str,
-        status_code: int,
         item_code: str,
+        message: Optional[str] = None,
+        status_code: Optional[int] = None,
         context: Optional[dict[str, Any]] = None,
         box_status: Optional[str] = None,
         status: Optional[str] = None,
     ) -> Dict[str, Any]:
+        error_definition = SQL_ERROR_CATALOG.get(error_code, DEFAULT_SQL_ERROR)
+        resolved_message = (
+            message if message is not None else error_definition.message
+        )
+        resolved_status_code = (
+            status_code if status_code is not None else error_definition.status_code
+        )
+        resolved_box_status = (
+            box_status if box_status is not None else error_definition.box_status
+        )
+        resolved_status = status if status is not None else error_definition.status
+
         payload: Dict[str, Any] = {
             "success": False,
             "error_code": error_code,
-            "message": message,
-            "status_code": status_code,
+            "message": resolved_message,
+            "status_code": resolved_status_code,
             "item_code": item_code,
-            "error": message,
+            "error": resolved_message,
         }
         if context:
             payload["context"] = context
-        if box_status:
-            payload["box_status"] = box_status
-        if status:
-            payload["status"] = status
+        if resolved_box_status:
+            payload["box_status"] = resolved_box_status
+        if resolved_status:
+            payload["status"] = resolved_status
         return payload
+
+    async def _record_failed_verification(
+        self,
+        *,
+        item_code: str,
+        error_code: str,
+        latency_ms: Optional[float],
+        exc: Exception,
+        log_prefix: str,
+    ) -> Dict[str, Any]:
+        logger.error("%s for %s: %s", log_prefix, item_code, exc)
+        error_info = self._error_response(error_code=error_code, item_code=item_code)
+        await self._record_governance_event(
+            item_code=item_code,
+            sql_qty=None,
+            mongo_qty=None,
+            variance=None,
+            latency_ms=latency_ms,
+            seq=None,
+            status="FAILED",
+            error_info=error_info,
+        )
+        return error_info
+
+    @staticmethod
+    def _unexpected_verification_error_code(exc: Exception) -> str:
+        error_text = str(exc).lower()
+        if any(term in error_text for term in ["connection", "sql server", "timeout", "reconnect"]):
+            return "SQL_CONNECTION_ERROR"
+        return "VERIFICATION_INTERNAL_ERROR"
+
+    def _verification_fail_fast_details(self, exc: Exception) -> tuple[str, str]:
+        if isinstance(exc, DatabaseConnectionError):
+            return "SQL_CONNECTION_ERROR", "FAIL-FAST: SQL connection failed"
+        if isinstance(exc, ERPReadOnlyViolation):
+            return "ERP_READ_ONLY_VIOLATION", "FAIL-FAST: ERP read-only violation"
+        if isinstance(exc, ERPQueryParameterError):
+            return "ERP_QUERY_PARAMETER_ERROR", "FAIL-FAST: ERP parameterization error"
+        if isinstance(exc, SQLNullResultError):
+            return "ERP_NULL_RESULT", "ERP null result"
+        if isinstance(exc, SQLAmbiguousResultError):
+            return "ERP_AMBIGUOUS_RESULT", "ERP ambiguous result"
+        if isinstance(exc, SQLInvalidNumericError):
+            return "ERP_INVALID_RESULT", "ERP invalid numeric result"
+        if isinstance(exc, DatabaseQueryError):
+            return "ERP_QUERY_ERROR", "ERP query failed"
+        return self._unexpected_verification_error_code(exc), "Governance Error verifying"
 
     async def _record_governance_event(
         self,
@@ -99,7 +257,7 @@ class SQLVerificationService:
         try:
             await db.governance_events.insert_one(event)
         except Exception as e:
-            logger.error(f"Governance event insert failed for {item_code}: {str(e)}")
+            logger.error("Governance event insert failed for %s: %s", item_code, e)
 
     def _validate_sql_qty_or_error(self, item_code: str, sql_qty: float) -> Optional[Dict[str, Any]]:
         if isinstance(sql_qty, bool) or not isinstance(sql_qty, (int, float)):
@@ -109,24 +267,19 @@ class SQLVerificationService:
         if sql_qty >= 0:
             return None
 
-        logger.error(f"CRITICAL: Negative SQL quantity rejected: {sql_qty} for {item_code}")
-        return self._error_response(
-            error_code="SQL_NEGATIVE_QTY",
-            message="Governance rejection: negative SQL quantity",
-            status_code=422,
-            item_code=item_code,
-        )
+        logger.error("CRITICAL: Negative SQL quantity rejected: %s for %s", sql_qty, item_code)
+        return self._error_response(error_code="SQL_NEGATIVE_QTY", item_code=item_code)
 
     def _warn_high_latency_if_needed(self, item_code: str, latency_ms: float, max_latency_ms: float) -> None:
         if latency_ms <= max_latency_ms:
             return
-        logger.warning(f"PERFORMANCE: SQL Latency High ({latency_ms:.2f}ms) for {item_code}")
+        logger.warning("PERFORMANCE: SQL Latency High (%.2fms) for %s", latency_ms, item_code)
 
     async def _load_mongo_item_snapshot(self, item_code: str) -> Optional[dict[str, Any]]:
         mongo_item = await db.erp_items.find_one({"$or": [{"item_code": item_code}, {"barcode": item_code}]})
         if mongo_item:
             return mongo_item
-        logger.warning(f"Item {item_code} not found in Mongo Ledger")
+        logger.warning("Item %s not found in Mongo Ledger", item_code)
         return None
 
     def _normalize_mongo_qty_or_error(
@@ -142,8 +295,6 @@ class SQLVerificationService:
                 )
                 return None, self._error_response(
                     error_code="MONGO_NON_NUMERIC_QTY",
-                    message="Governance rejection: non-numeric Mongo quantity",
-                    status_code=422,
                     item_code=item_code,
                 )
 
@@ -153,8 +304,6 @@ class SQLVerificationService:
             )
             return None, self._error_response(
                 error_code="MONGO_NON_NUMERIC_QTY",
-                message="Governance rejection: non-numeric Mongo quantity",
-                status_code=422,
                 item_code=item_code,
             )
 
@@ -164,8 +313,6 @@ class SQLVerificationService:
             )
             return None, self._error_response(
                 error_code="MONGO_NON_FINITE_QTY",
-                message="Governance rejection: non-finite Mongo quantity",
-                status_code=422,
                 item_code=item_code,
             )
 
@@ -177,16 +324,13 @@ class SQLVerificationService:
         if abs(variance) <= max_variance:
             return None
 
-        logger.warning(f"VARIANCE: Large variance detected ({variance}) for {item_code}")
+        logger.warning("VARIANCE: Large variance detected (%s) for %s", variance, item_code)
         if not strict_mode:
             return None
 
         return self._error_response(
             error_code="SQL_VARIANCE_THRESHOLD",
-            message="Variance exceeds governance threshold",
-            status_code=422,
             item_code=item_code,
-            status="ERROR",
         )
 
     def _build_sql_update_data(
@@ -238,23 +382,94 @@ class SQLVerificationService:
             return {
                 "error": self._error_response(
                     error_code="VERIFICATION_CONFLICT",
-                    message="State conflict: data changed during verification",
-                    status_code=409,
                     item_code=item_code,
-                    status="conflict",
                 ),
                 "event_status": "CONFLICT",
             }
 
-        logger.warning(f"No document updated (Item deleted?): {item_code}")
+        logger.warning("No document updated (Item deleted?): %s", item_code)
         return {
-            "error": self._error_response(
-                error_code="ITEM_LOST",
-                message="Item lost during update",
-                status_code=404,
-                item_code=item_code,
-            ),
+            "error": self._error_response(error_code="ITEM_LOST", item_code=item_code),
             "event_status": "FAILED",
+        }
+
+    @staticmethod
+    def _verification_settings() -> tuple[bool, float, float]:
+        from backend.config_governance import (
+            SQL_VERIFY_STRICT,
+            SQL_MAX_VARIANCE,
+            SQL_MAX_LATENCY_MS,
+        )
+
+        return SQL_VERIFY_STRICT, SQL_MAX_VARIANCE, SQL_MAX_LATENCY_MS
+
+    async def _prepare_verification_context(
+        self,
+        *,
+        item_code: str,
+        sql_qty: float,
+        latency_ms: float,
+    ) -> tuple[
+        Optional[dict[str, Any]],
+        Optional[float],
+        Optional[float],
+        Optional[int],
+        Optional[Dict[str, Any]],
+    ]:
+        strict_mode, max_variance, max_latency_ms = self._verification_settings()
+
+        self._warn_high_latency_if_needed(item_code, latency_ms, max_latency_ms)
+        mongo_item = await self._load_mongo_item_snapshot(item_code)
+        if not mongo_item:
+            return (
+                None,
+                None,
+                None,
+                None,
+                self._error_response(error_code="ITEM_NOT_FOUND", item_code=item_code),
+            )
+
+        mongo_qty, mongo_qty_error = self._normalize_mongo_qty_or_error(
+            item_code,
+            mongo_item.get("stock_qty", 0),
+        )
+        if mongo_qty_error:
+            return None, None, None, None, mongo_qty_error
+
+        variance = sql_qty - mongo_qty
+        threshold_error = self._variance_threshold_error(
+            item_code=item_code,
+            variance=variance,
+            max_variance=max_variance,
+            strict_mode=strict_mode,
+        )
+        if threshold_error:
+            return None, mongo_qty, variance, None, threshold_error
+
+        current_seq = int(mongo_item.get("sql_verification_seq", 0) or 0)
+        return mongo_item, mongo_qty, variance, current_seq, None
+
+    @staticmethod
+    def _build_verification_success_response(
+        *,
+        item_code: str,
+        sql_qty: float,
+        mongo_qty: float,
+        variance: float,
+        verified_at: datetime,
+        seq: Optional[int],
+        latency_ms: float,
+    ) -> Dict[str, Any]:
+        return {
+            "success": True,
+            "item_code": item_code,
+            "sql_qty": sql_qty,
+            "mongo_qty": mongo_qty,
+            "variance": variance,
+            "verified_at": verified_at,
+            "mismatch": variance != 0,
+            "seq": seq,
+            "latency_ms": latency_ms,
         }
 
     async def _apply_sql_verification_update(
@@ -307,18 +522,11 @@ class SQLVerificationService:
     async def _verify_item_with_sql_qty(
         self, item_code: str, sql_qty: float, latency_ms: float
     ) -> Dict[str, Any]:
-        from backend.config_governance import (
-            SQL_VERIFY_STRICT,
-            SQL_MAX_VARIANCE,
-            SQL_MAX_LATENCY_MS,
-        )
-
         error_info: Optional[Dict[str, Any]] = None
         event_status = "FAILED"
         mongo_qty: Optional[float] = None
         variance: Optional[float] = None
         seq: Optional[int] = None
-        result: Dict[str, Any]
 
         try:
             validation_error = self._validate_sql_qty_or_error(item_code, sql_qty)
@@ -326,35 +534,25 @@ class SQLVerificationService:
                 error_info = validation_error
                 return validation_error
 
-            self._warn_high_latency_if_needed(item_code, latency_ms, SQL_MAX_LATENCY_MS)
-            mongo_item = await self._load_mongo_item_snapshot(item_code)
-            if not mongo_item:
-                error_info = self._error_response(
-                    error_code="ITEM_NOT_FOUND",
-                    message="Item not found in MongoDB",
-                    status_code=404,
-                    item_code=item_code,
-                )
-                return error_info
-
-            mongo_qty, mongo_qty_error = self._normalize_mongo_qty_or_error(
-                item_code, mongo_item.get("stock_qty", 0)
-            )
-            if mongo_qty_error:
-                error_info = mongo_qty_error
-                return mongo_qty_error
-
-            current_seq = int(mongo_item.get("sql_verification_seq", 0) or 0)
-            variance = sql_qty - mongo_qty
-            threshold_error = self._variance_threshold_error(
+            (
+                mongo_item,
+                mongo_qty,
+                variance,
+                current_seq,
+                preparation_error,
+            ) = await self._prepare_verification_context(
                 item_code=item_code,
-                variance=variance,
-                max_variance=SQL_MAX_VARIANCE,
-                strict_mode=SQL_VERIFY_STRICT,
+                sql_qty=sql_qty,
+                latency_ms=latency_ms,
             )
-            if threshold_error:
-                error_info = threshold_error
-                return threshold_error
+            if preparation_error:
+                error_info = preparation_error
+                return preparation_error
+
+            assert mongo_item is not None
+            assert mongo_qty is not None
+            assert variance is not None
+            assert current_seq is not None
 
             update_outcome = await self._apply_sql_verification_update(
                 item_code=item_code,
@@ -371,34 +569,27 @@ class SQLVerificationService:
                 error_info = update_outcome["error"]
                 return update_outcome["error"]
 
-            result = {
-                "success": True,
-                "item_code": item_code,
-                "sql_qty": sql_qty,
-                "mongo_qty": mongo_qty,
-                "variance": variance,
-                "verified_at": update_outcome["verified_at"],
-                "mismatch": variance != 0,
-                "seq": seq,
-                "latency_ms": latency_ms,
-            }
-            return result
+            return self._build_verification_success_response(
+                item_code=item_code,
+                sql_qty=sql_qty,
+                mongo_qty=mongo_qty,
+                variance=variance,
+                verified_at=update_outcome["verified_at"],
+                seq=seq,
+                latency_ms=latency_ms,
+            )
 
         except SQLVerificationError as e:
-            logger.error(f"Governance Error verifying {item_code}: {str(e)}")
+            logger.error("Governance Error verifying %s: %s", item_code, e)
             error_info = self._error_response(
                 error_code="ERP_INVALID_RESULT",
-                message="ERP returned invalid quantity",
-                status_code=500,
                 item_code=item_code,
             )
             return error_info
         except Exception as e:
-            logger.error(f"Governance Error verifying {item_code}: {str(e)}")
+            logger.error("Governance Error verifying %s: %s", item_code, e)
             error_info = self._error_response(
                 error_code="VERIFICATION_INTERNAL_ERROR",
-                message="Verification failed due to an internal error",
-                status_code=500,
                 item_code=item_code,
             )
             return error_info
@@ -433,190 +624,20 @@ class SQLVerificationService:
         start_time = time.perf_counter()
         latency_ms: Optional[float] = None
 
-        from backend.sql_server_connector import (
-            DatabaseConnectionError,
-            DatabaseQueryError,
-            ERPQueryParameterError,
-            ERPReadOnlyViolation,
-        )
-
         try:
             # 1. Read Authoritative Quantity from SQL Server
             sql_qty = await self._get_sql_quantity(item_code)
             latency_ms = (time.perf_counter() - start_time) * 1000
-        except DatabaseConnectionError as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"FAIL-FAST: SQL connection failed for {item_code}: {e}")
-            error_info = self._error_response(
-                error_code="SQL_CONNECTION_ERROR",
-                message="ERP system is temporarily unavailable. Please try again later.",
-                status_code=503,
-                item_code=item_code,
-                box_status="SQL_FAILURE",
-            )
-            await self._record_governance_event(
-                item_code=item_code,
-                sql_qty=None,
-                mongo_qty=None,
-                variance=None,
-                latency_ms=latency_ms,
-                seq=None,
-                status="FAILED",
-                error_info=error_info,
-            )
-            return error_info
-        except ERPReadOnlyViolation as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"FAIL-FAST: ERP read-only violation for {item_code}: {e}")
-            error_info = self._error_response(
-                error_code="ERP_READ_ONLY_VIOLATION",
-                message="Write operation blocked on ERP.",
-                status_code=400,
-                item_code=item_code,
-            )
-            await self._record_governance_event(
-                item_code=item_code,
-                sql_qty=None,
-                mongo_qty=None,
-                variance=None,
-                latency_ms=latency_ms,
-                seq=None,
-                status="FAILED",
-                error_info=error_info,
-            )
-            return error_info
-        except ERPQueryParameterError as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"FAIL-FAST: ERP parameterization error for {item_code}: {e}")
-            error_info = self._error_response(
-                error_code="ERP_QUERY_PARAMETER_ERROR",
-                message="ERP query blocked due to unsafe parameters.",
-                status_code=400,
-                item_code=item_code,
-            )
-            await self._record_governance_event(
-                item_code=item_code,
-                sql_qty=None,
-                mongo_qty=None,
-                variance=None,
-                latency_ms=latency_ms,
-                seq=None,
-                status="FAILED",
-                error_info=error_info,
-            )
-            return error_info
-        except SQLNullResultError as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"ERP null result for {item_code}: {e}")
-            error_info = self._error_response(
-                error_code="ERP_NULL_RESULT",
-                message="ERP returned no quantity for this item.",
-                status_code=500,
-                item_code=item_code,
-            )
-            await self._record_governance_event(
-                item_code=item_code,
-                sql_qty=None,
-                mongo_qty=None,
-                variance=None,
-                latency_ms=latency_ms,
-                seq=None,
-                status="FAILED",
-                error_info=error_info,
-            )
-            return error_info
-        except SQLAmbiguousResultError as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"ERP ambiguous result for {item_code}: {e}")
-            error_info = self._error_response(
-                error_code="ERP_AMBIGUOUS_RESULT",
-                message="ERP returned ambiguous quantity for this item.",
-                status_code=500,
-                item_code=item_code,
-            )
-            await self._record_governance_event(
-                item_code=item_code,
-                sql_qty=None,
-                mongo_qty=None,
-                variance=None,
-                latency_ms=latency_ms,
-                seq=None,
-                status="FAILED",
-                error_info=error_info,
-            )
-            return error_info
-        except SQLInvalidNumericError as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"ERP invalid numeric result for {item_code}: {e}")
-            error_info = self._error_response(
-                error_code="ERP_INVALID_RESULT",
-                message="ERP returned invalid quantity for this item.",
-                status_code=500,
-                item_code=item_code,
-            )
-            await self._record_governance_event(
-                item_code=item_code,
-                sql_qty=None,
-                mongo_qty=None,
-                variance=None,
-                latency_ms=latency_ms,
-                seq=None,
-                status="FAILED",
-                error_info=error_info,
-            )
-            return error_info
-        except DatabaseQueryError as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"ERP query failed for {item_code}: {e}")
-            error_info = self._error_response(
-                error_code="ERP_QUERY_ERROR",
-                message="ERP query failed. Please try again later.",
-                status_code=500,
-                item_code=item_code,
-            )
-            await self._record_governance_event(
-                item_code=item_code,
-                sql_qty=None,
-                mongo_qty=None,
-                variance=None,
-                latency_ms=latency_ms,
-                seq=None,
-                status="FAILED",
-                error_info=error_info,
-            )
-            return error_info
         except Exception as e:
             latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"Governance Error verifying {item_code}: {str(e)}")
-            error_text = str(e).lower()
-            if any(
-                term in error_text for term in ["connection", "sql server", "timeout", "reconnect"]
-            ):
-                error_info = self._error_response(
-                    error_code="SQL_CONNECTION_ERROR",
-                    message="ERP system is temporarily unavailable. Please try again later.",
-                    status_code=503,
-                    item_code=item_code,
-                    box_status="SQL_FAILURE",
-                )
-            else:
-                error_info = self._error_response(
-                    error_code="VERIFICATION_INTERNAL_ERROR",
-                    message="Verification failed due to an internal error.",
-                    status_code=500,
-                    item_code=item_code,
-                )
-            await self._record_governance_event(
+            error_code, log_prefix = self._verification_fail_fast_details(e)
+            return await self._record_failed_verification(
                 item_code=item_code,
-                sql_qty=None,
-                mongo_qty=None,
-                variance=None,
+                error_code=error_code,
                 latency_ms=latency_ms,
-                seq=None,
-                status="FAILED",
-                error_info=error_info,
+                exc=e,
+                log_prefix=log_prefix,
             )
-            return error_info
 
         return await self._verify_item_with_sql_qty(item_code, sql_qty, latency_ms)
 
@@ -648,7 +669,7 @@ class SQLVerificationService:
         except SQLVerificationError:
             raise
         except Exception as e:
-            logger.error(f"Error getting SQL quantity for {item_code}: {str(e)}")
+            logger.error("Error getting SQL quantity for %s: %s", item_code, e)
             raise
 
     @staticmethod
@@ -660,22 +681,17 @@ class SQLVerificationService:
         *,
         item_codes: list[str],
         error_code: str,
-        message: str,
-        status_code: int,
         start: datetime,
         latency_ms: Optional[float],
-        box_status: Optional[str] = None,
     ) -> Dict[str, Any]:
         errors = [
             self._error_response(
                 error_code=error_code,
-                message=message,
-                status_code=status_code,
                 item_code=code,
-                box_status=box_status,
             )
             for code in item_codes
         ]
+        template = errors[0] if errors else self._error_response(error_code=error_code, item_code="unknown")
         await asyncio.gather(
             *[
                 self._record_governance_event(
@@ -694,8 +710,8 @@ class SQLVerificationService:
         return {
             "success": False,
             "error_code": error_code,
-            "message": message,
-            "status_code": status_code,
+            "message": template["message"],
+            "status_code": template["status_code"],
             "verified_count": 0,
             "error_count": len(errors),
             "results": [],
@@ -703,70 +719,62 @@ class SQLVerificationService:
             "batch_duration_ms": self._batch_duration_ms(start),
         }
 
+    def _batch_query_failure_code(self, exc: Exception) -> str:
+        if isinstance(exc, DatabaseConnectionError):
+            return "SQL_CONNECTION_ERROR"
+        if isinstance(exc, ERPReadOnlyViolation):
+            return "ERP_READ_ONLY_VIOLATION"
+        if isinstance(exc, ERPQueryParameterError):
+            return "ERP_QUERY_PARAMETER_ERROR"
+        if isinstance(exc, DatabaseQueryError):
+            return "ERP_QUERY_ERROR"
+        return "SQL_BATCH_FAILURE"
+
+    def _batch_result_error_code(
+        self,
+        quantities: Dict[str, Any],
+        item_codes: list[str],
+    ) -> str | None:
+        if len(quantities) != len(item_codes):
+            return "ERP_AMBIGUOUS_BATCH_RESULT"
+
+        for code in item_codes:
+            if code not in quantities:
+                return "ERP_AMBIGUOUS_BATCH_RESULT"
+            quantity = quantities[code]
+            if isinstance(quantity, bool) or not isinstance(quantity, (int, float)):
+                return "ERP_INVALID_BATCH_RESULT"
+            if not math.isfinite(quantity):
+                return "ERP_INVALID_BATCH_RESULT"
+
+        return None
+
     async def _get_batch_quantities(
         self, item_codes: list[str]
-    ) -> tuple[Optional[Dict[str, float]], Optional[dict[str, Any]], Optional[float]]:
-        from backend.sql_server_connector import (
-            DatabaseConnectionError,
-            DatabaseQueryError,
-            ERPQueryParameterError,
-            ERPReadOnlyViolation,
-        )
-
+    ) -> tuple[Optional[Dict[str, float]], Optional[str], Optional[float]]:
         batch_start = time.perf_counter()
         try:
             quantities = await asyncio.to_thread(self.sql_connector.get_item_quantities_only, item_codes)
             latency_ms = (time.perf_counter() - batch_start) * 1000
             return quantities, None, latency_ms
         except DatabaseConnectionError as exc:
-            logger.error(f"Batch SQL connection failed: {exc}")
-            failure = {
-                "error_code": "SQL_CONNECTION_ERROR",
-                "message": "ERP system is temporarily unavailable. Please try again later.",
-                "status_code": 503,
-                "box_status": "SQL_FAILURE",
-            }
+            logger.error("Batch SQL connection failed: %s", exc)
+            failure_code = self._batch_query_failure_code(exc)
         except ERPReadOnlyViolation as exc:
-            logger.error(f"Batch ERP read-only violation: {exc}")
-            failure = {
-                "error_code": "ERP_READ_ONLY_VIOLATION",
-                "message": "Write operation blocked on ERP.",
-                "status_code": 400,
-                "box_status": None,
-            }
+            logger.error("Batch ERP read-only violation: %s", exc)
+            failure_code = self._batch_query_failure_code(exc)
         except ERPQueryParameterError as exc:
-            logger.error(f"Batch ERP parameterization error: {exc}")
-            failure = {
-                "error_code": "ERP_QUERY_PARAMETER_ERROR",
-                "message": "ERP query blocked due to unsafe parameters.",
-                "status_code": 400,
-                "box_status": None,
-            }
+            logger.error("Batch ERP parameterization error: %s", exc)
+            failure_code = self._batch_query_failure_code(exc)
         except DatabaseQueryError as exc:
-            logger.error(f"Batch ERP query failed: {exc}")
-            failure = {
-                "error_code": "ERP_QUERY_ERROR",
-                "message": "ERP batch query failed. Please try again later.",
-                "status_code": 500,
-                "box_status": None,
-            }
+            logger.error("Batch ERP query failed: %s", exc)
+            failure_code = self._batch_query_failure_code(exc)
         except Exception as exc:
-            logger.error(f"Batch verification failed: {exc}")
-            failure = {
-                "error_code": "SQL_BATCH_FAILURE",
-                "message": "Batch verification failed due to an internal error.",
-                "status_code": 500,
-                "box_status": None,
-            }
+            logger.error("Batch verification failed: %s", exc)
+            failure_code = self._batch_query_failure_code(exc)
 
         latency_ms = (time.perf_counter() - batch_start) * 1000
-        return None, failure, latency_ms
-
-    @staticmethod
-    def _is_incomplete_batch_result(quantities: Dict[str, float], item_codes: list[str]) -> bool:
-        if len(quantities) != len(item_codes):
-            return True
-        return any(quantities.get(code) is None for code in item_codes)
+        return None, failure_code, latency_ms
 
     def _split_batch_verification_results(
         self, results: list[Any]
@@ -778,8 +786,6 @@ class SQLVerificationService:
                 errors.append(
                     self._error_response(
                         error_code="VERIFICATION_INTERNAL_ERROR",
-                        message="Verification failed due to an internal error.",
-                        status_code=500,
                         item_code="unknown",
                     )
                 )
@@ -809,10 +815,7 @@ class SQLVerificationService:
         if batch_failure:
             return await self._build_batch_failure_response(
                 item_codes=item_codes,
-                error_code=batch_failure["error_code"],
-                message=batch_failure["message"],
-                status_code=batch_failure["status_code"],
-                box_status=batch_failure["box_status"],
+                error_code=batch_failure,
                 start=start,
                 latency_ms=batch_latency_ms,
             )
@@ -820,18 +823,15 @@ class SQLVerificationService:
             return await self._build_batch_failure_response(
                 item_codes=item_codes,
                 error_code="SQL_BATCH_FAILURE",
-                message="Batch verification failed due to an internal error.",
-                status_code=500,
                 start=start,
                 latency_ms=batch_latency_ms,
             )
 
-        if self._is_incomplete_batch_result(quantities, item_codes):
+        batch_result_error_code = self._batch_result_error_code(quantities, item_codes)
+        if batch_result_error_code:
             return await self._build_batch_failure_response(
                 item_codes=item_codes,
-                error_code="ERP_AMBIGUOUS_BATCH_RESULT",
-                message="ERP batch returned incomplete results.",
-                status_code=500,
+                error_code=batch_result_error_code,
                 start=start,
                 latency_ms=batch_latency_ms,
             )
@@ -871,9 +871,8 @@ class SQLVerificationService:
             if not item:
                 return self._error_response(
                     error_code="ITEM_NOT_FOUND",
-                    message="Item not found",
-                    status_code=404,
                     item_code=item_code,
+                    message="Item not found",
                 )
 
             return {
@@ -889,12 +888,11 @@ class SQLVerificationService:
             }
 
         except Exception as e:
-            logger.error(f"Error getting verification status for {item_code}: {str(e)}")
+            logger.error("Error getting verification status for %s: %s", item_code, e)
             return self._error_response(
                 error_code="VERIFICATION_INTERNAL_ERROR",
-                message="Failed to get verification status.",
-                status_code=500,
                 item_code=item_code,
+                message="Failed to get verification status.",
             )
 
     async def check_sql_status(self) -> Dict[str, Any]:

@@ -1,5 +1,16 @@
-import React, { useCallback, useMemo } from "react";
-import { Alert, Linking, Platform, StyleSheet, Switch, Text, View } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Modal,
+  Platform,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
 
@@ -8,6 +19,7 @@ import { useAppVersion } from "../../hooks/useAppVersion";
 import { useVersionCheck } from "../../hooks/useVersionCheck";
 import { useSettingsStore } from "../../store/settingsStore";
 import type { Settings } from "../../store/settingsStore";
+import { BackupService } from "../../services/backupService";
 import { resolveAppUpdateUrl } from "../../services/updateService";
 import { GlassCard } from "../ui/GlassCard";
 import { AnimatedPressable } from "../ui/AnimatedPressable";
@@ -24,6 +36,7 @@ type SettingRowProps = {
   value?: boolean;
   valueLabel?: string;
   disabled?: boolean;
+  testID?: string;
   type: "switch" | "select";
   onToggle?: (value: boolean) => void;
   onPress?: () => void;
@@ -109,6 +122,7 @@ function SettingRow({
   value,
   valueLabel,
   disabled = false,
+  testID,
   type,
   onToggle,
   onPress,
@@ -116,7 +130,7 @@ function SettingRow({
   const { colors, spacing, typography, borderRadius } = useTheme();
 
   const content = (
-    <View style={[styles.row, disabled && styles.rowDisabled]}>
+    <View testID={testID} style={[styles.row, disabled && styles.rowDisabled]}>
       <View style={styles.rowLeft}>
         <View
           style={[
@@ -159,6 +173,7 @@ function SettingRow({
       {type === "switch" ? (
         <Switch
           value={Boolean(value)}
+          testID={testID ? `${testID}-switch` : undefined}
           onValueChange={(nextValue) => {
             triggerToggle();
             onToggle?.(nextValue);
@@ -268,12 +283,23 @@ const openExternalUrl = async (url: string): Promise<boolean> => {
 
 export function UserSettingsSections() {
   const { settings, setSetting } = useSettingsStore();
-  const spacing = useTheme().spacing;
+  const theme = useTheme();
+  const spacing = theme.spacing;
   const { version, buildVersion } = useAppVersion();
   const { versionInfo, isChecking, checkForUpdates, dismissUpdate, isDismissed } =
     useVersionCheck({
       checkOnMount: false,
     });
+  const [backupInfo, setBackupInfo] = useState<{
+    size: number;
+    itemCount: number;
+    sessionCount: number;
+    timestamp: string | null;
+  } | null>(null);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [restoreModalVisible, setRestoreModalVisible] = useState(false);
+  const [restorePayload, setRestorePayload] = useState("");
+  const [restoreBusy, setRestoreBusy] = useState(false);
 
   const latestVersionLabel = versionInfo?.current_version
     ? `v${versionInfo.current_version}`
@@ -344,6 +370,81 @@ export function UserSettingsSections() {
     Alert.alert("App is Up to Date", `You are using the latest version (v${version}).`);
   }, [checkForUpdates, dismissUpdate, handleUpdateNow, version]);
 
+  const refreshBackupInfo = useCallback(async () => {
+    try {
+      const nextBackupInfo = await BackupService.getBackupInfo();
+      setBackupInfo(nextBackupInfo);
+    } catch {
+      setBackupInfo(null);
+    }
+  }, []);
+
+  const handleShareBackup = useCallback(async () => {
+    try {
+      setBackupBusy(true);
+      await BackupService.shareBackup();
+      await refreshBackupInfo();
+    } catch (error) {
+      Alert.alert(
+        "Backup Failed",
+        error instanceof Error
+          ? error.message
+          : "Unable to prepare the backup right now.",
+      );
+    } finally {
+      setBackupBusy(false);
+    }
+  }, [refreshBackupInfo]);
+
+  const handleShowBackupSummary = useCallback(async () => {
+    let nextBackupInfo = backupInfo;
+    if (!nextBackupInfo) {
+      nextBackupInfo = await BackupService.getBackupInfo();
+      setBackupInfo(nextBackupInfo);
+    }
+
+    const timestampLabel = nextBackupInfo?.timestamp
+      ? new Date(nextBackupInfo.timestamp).toLocaleString()
+      : "Not available";
+    const sizeLabel = nextBackupInfo
+      ? `${Math.max(1, Math.round(nextBackupInfo.size / 1024))} KB`
+      : "0 KB";
+
+    Alert.alert(
+      "Backup Summary",
+      `Last prepared: ${timestampLabel}\nEstimated size: ${sizeLabel}\nCached items: ${nextBackupInfo?.itemCount ?? 0}\nCached sessions: ${nextBackupInfo?.sessionCount ?? 0}`,
+    );
+  }, [backupInfo]);
+
+  const handleRestoreBackup = useCallback(async () => {
+    if (!restorePayload.trim()) {
+      Alert.alert(
+        "Restore Backup",
+        "Paste a backup JSON payload before restoring local data.",
+      );
+      return;
+    }
+
+    try {
+      setRestoreBusy(true);
+      await BackupService.restoreFromJSON(restorePayload.trim());
+      await refreshBackupInfo();
+      setRestorePayload("");
+      setRestoreModalVisible(false);
+      Alert.alert(
+        "Backup Restored",
+        "Local cache and analytics data were restored from the supplied backup.",
+      );
+    } catch (error) {
+      Alert.alert(
+        "Restore Failed",
+        error instanceof Error ? error.message : "Invalid backup payload.",
+      );
+    } finally {
+      setRestoreBusy(false);
+    }
+  }, [refreshBackupInfo, restorePayload]);
+
   const labels = useMemo(
     () => ({
       autoSyncInterval:
@@ -381,6 +482,15 @@ export function UserSettingsSections() {
     }),
     [settings],
   );
+
+  const backupSummaryLabel = useMemo(() => {
+    if (!backupInfo?.timestamp) {
+      return "Prepare backup";
+    }
+
+    const sizeKb = Math.max(1, Math.round(backupInfo.size / 1024));
+    return `${sizeKb} KB • ${new Date(backupInfo.timestamp).toLocaleDateString()}`;
+  }, [backupInfo]);
 
   return (
     <View style={{ gap: spacing.lg }}>
@@ -454,6 +564,7 @@ export function UserSettingsSections() {
           icon="cloud-offline-outline"
           label="Offline Mode"
           description="Favor local-first behavior when working"
+          testID="offline-mode-toggle"
           type="switch"
           value={settings.offlineMode}
           onToggle={(value) => setSetting("offlineMode", value)}
@@ -644,6 +755,39 @@ export function UserSettingsSections() {
             )
           }
         />
+        <SectionDivider />
+        <SettingRow
+          icon="cloud-upload-outline"
+          label="Backup Now"
+          description="Generate a portable JSON backup for sharing or safekeeping"
+          type="select"
+          disabled={backupBusy || restoreBusy}
+          valueLabel={backupBusy ? "Preparing..." : "Share JSON"}
+          onPress={() => {
+            void handleShareBackup();
+          }}
+        />
+        <SectionDivider />
+        <SettingRow
+          icon="document-text-outline"
+          label="Backup Summary"
+          description="View current local backup size and cache coverage"
+          type="select"
+          valueLabel={backupSummaryLabel}
+          onPress={() => {
+            void handleShowBackupSummary();
+          }}
+        />
+        <SectionDivider />
+        <SettingRow
+          icon="cloud-download-outline"
+          label="Restore Backup"
+          description="Paste a previously exported backup JSON to restore local data"
+          type="select"
+          disabled={backupBusy || restoreBusy}
+          valueLabel={restoreBusy ? "Restoring..." : "Paste JSON"}
+          onPress={() => setRestoreModalVisible(true)}
+        />
       </Section>
 
       <Section title="App Updates">
@@ -788,6 +932,97 @@ export function UserSettingsSections() {
           }
         />
       </Section>
+
+      <Modal
+        visible={restoreModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRestoreModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <GlassCard
+            variant="strong"
+            style={[
+              styles.restoreCard,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.borderLight,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.restoreTitle,
+                { color: theme.colors.text, fontSize: theme.typography.fontSize.lg },
+              ]}
+            >
+              Restore Backup
+            </Text>
+            <Text
+              style={[
+                styles.restoreDescription,
+                {
+                  color: theme.colors.textSecondary,
+                  fontSize: theme.typography.fontSize.sm,
+                },
+              ]}
+            >
+              Paste the JSON payload from a previous backup. This restores local
+              cache, sync metadata, and analytics data on this device.
+            </Text>
+            <TextInput
+              multiline
+              value={restorePayload}
+              onChangeText={setRestorePayload}
+              placeholder="Paste backup JSON here"
+              placeholderTextColor={theme.colors.textTertiary}
+              style={[
+                styles.restoreInput,
+                {
+                  color: theme.colors.text,
+                  borderColor: theme.colors.border,
+                  backgroundColor: theme.colors.overlayPrimary,
+                },
+              ]}
+            />
+            <View style={styles.restoreActions}>
+              <AnimatedPressable
+                style={[
+                  styles.restoreButton,
+                  {
+                    backgroundColor: theme.colors.overlayPrimary,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+                onPress={() => setRestoreModalVisible(false)}
+                disabled={restoreBusy}
+              >
+                <Text style={[styles.restoreButtonText, { color: theme.colors.text }]}>
+                  Cancel
+                </Text>
+              </AnimatedPressable>
+              <AnimatedPressable
+                style={[
+                  styles.restoreButton,
+                  { backgroundColor: theme.colors.accent || theme.colors.primary },
+                ]}
+                onPress={() => {
+                  void handleRestoreBackup();
+                }}
+                disabled={restoreBusy}
+              >
+                {restoreBusy ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={[styles.restoreButtonText, styles.restoreButtonTextPrimary]}>
+                    Restore
+                  </Text>
+                )}
+              </AnimatedPressable>
+            </View>
+          </GlassCard>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -843,6 +1078,50 @@ const styles = StyleSheet.create({
   divider: {
     height: StyleSheet.hairlineWidth,
     marginLeft: 64,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  restoreCard: {
+    padding: 20,
+    borderWidth: 1,
+    gap: 12,
+  },
+  restoreTitle: {
+    fontWeight: "700",
+  },
+  restoreDescription: {
+    lineHeight: 20,
+  },
+  restoreInput: {
+    minHeight: 180,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+    textAlignVertical: "top",
+  },
+  restoreActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+  },
+  restoreButton: {
+    minHeight: 44,
+    minWidth: 108,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    borderWidth: 1,
+  },
+  restoreButtonText: {
+    fontWeight: "600",
+  },
+  restoreButtonTextPrimary: {
+    color: "#fff",
   },
 });
 

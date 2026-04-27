@@ -30,6 +30,8 @@ from backend.services.canonical_inventory import (
     normalize_approval_status,
     normalize_count_line_status,
 )
+from backend.services.count_line_write_service import CountLineWriteService
+from scripts.approval_guard import enforce_high_risk_entrypoint
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +141,17 @@ async def repair_legacy_zero_variance_approvals(
                 )
                 continue
 
-            result = await db.count_lines.update_one({"_id": doc["_id"]}, {"$set": update_doc})
+            result = await CountLineWriteService(db).process_write(
+                {
+                    "operation": "update_one",
+                    "filter": {"_id": doc["_id"]},
+                    "update": {"$set": update_doc},
+                },
+                context={
+                    "session_id": str(doc.get("session_id") or ""),
+                    "allow_missing_session": not bool(doc.get("session_id")),
+                },
+            )
             if result.modified_count:
                 stats["repaired"] += 1
         except Exception:
@@ -214,6 +226,7 @@ def _print_summary(stats: dict[str, Any], execute: bool) -> None:
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
     args = _build_parser().parse_args()
+    enforce_high_risk_entrypoint(trigger_flags={"--execute"})
     stats = asyncio.run(_run(args))
     _print_summary(stats, args.execute)
 

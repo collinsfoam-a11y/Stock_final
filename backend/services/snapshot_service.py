@@ -1,10 +1,15 @@
 import hashlib
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 logger = logging.getLogger(__name__)
+
+
+class SnapshotIntegrityError(RuntimeError):
+    """Raised when stored session snapshot data fails integrity validation."""
 
 
 class SnapshotService:
@@ -20,6 +25,11 @@ class SnapshotService:
         """Generate SHA256 hash for snapshot integrity."""
         data = f"{item_code}:{qty}:{timestamp.isoformat()}"
         return hashlib.sha256(data.encode()).hexdigest()
+
+    def _generate_session_hash(self, snapshot_items: list[dict[str, Any]]) -> str:
+        normalized_items = sorted(snapshot_items, key=lambda item: str(item.get("item_code") or ""))
+        payload_str = json.dumps(normalized_items, sort_keys=True, default=str)
+        return hashlib.sha256(payload_str.encode()).hexdigest()
 
     async def get_or_create_snapshot(
         self, session_id: str, item_code: str, current_user: str
@@ -74,3 +84,50 @@ class SnapshotService:
             snapshot["item_code"], snapshot["erp_qty"], snapshot["timestamp"]
         )
         return snapshot["baseline_hash"] == expected_hash
+
+    async def assert_session_snapshot_integrity(
+        self, session: dict[str, Any] | None, *, session_id: Optional[str] = None
+    ) -> Optional[dict[str, Any]]:
+        """
+        Verify that the stored session snapshot still matches its persisted hash.
+
+        Legacy sessions without snapshot metadata are allowed through to preserve
+        compatibility, but any session with snapshot governance fields must pass.
+        """
+        if not session and not session_id:
+            raise SnapshotIntegrityError("Snapshot integrity check requires a session context")
+
+        resolved_session_id = str(
+            session_id or session.get("id") or session.get("session_id") or ""
+        ).strip()
+        if not resolved_session_id:
+            raise SnapshotIntegrityError("Session is missing an identifier")
+
+        session_snapshot_hash = str((session or {}).get("snapshot_hash") or "").strip()
+        snapshot_ref = str((session or {}).get("snapshot_items_ref") or "").strip()
+        if not session_snapshot_hash and not snapshot_ref:
+            return None
+
+        query: dict[str, Any]
+        if snapshot_ref:
+            query = {"$or": [{"id": snapshot_ref}, {"session_id": resolved_session_id}]}
+        else:
+            query = {"session_id": resolved_session_id}
+
+        session_snapshot = await self.db.session_snapshots.find_one(query)
+        if not session_snapshot:
+            raise SnapshotIntegrityError("Session snapshot record is missing")
+
+        snapshot_items = session_snapshot.get("items")
+        if not isinstance(snapshot_items, list) or not snapshot_items:
+            raise SnapshotIntegrityError("Session snapshot payload is missing or empty")
+
+        stored_snapshot_hash = str(session_snapshot.get("snapshot_hash") or "").strip()
+        recomputed_hash = self._generate_session_hash(snapshot_items)
+
+        if stored_snapshot_hash and stored_snapshot_hash != recomputed_hash:
+            raise SnapshotIntegrityError("Session snapshot payload hash mismatch detected")
+        if session_snapshot_hash and session_snapshot_hash != recomputed_hash:
+            raise SnapshotIntegrityError("Session metadata hash does not match frozen snapshot")
+
+        return session_snapshot

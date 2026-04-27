@@ -114,7 +114,7 @@ class Settings(PydanticBaseSettings):
 
     # Application
     APP_NAME: str = "Stock Count Application"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = "2.1.0"
     MIN_CLIENT_VERSION: str = Field(
         default="1.0.0",
         description="Minimum required client/app version for compatibility",
@@ -561,7 +561,7 @@ except Exception as e:
             self.RATE_LIMIT_TTL_SECONDS = int(os.getenv("RATE_LIMIT_TTL_SECONDS", 300))
             self.CORS_ALLOW_ORIGINS = _env_first("CORS_ALLOW_ORIGINS", "CORS_ORIGINS")
             self.APP_NAME = os.getenv("APP_NAME", "Stock Count API")
-            self.APP_VERSION = os.getenv("APP_VERSION", "1.0.0")
+            self.APP_VERSION = os.getenv("APP_VERSION", "2.1.0")
             # Normalize MIN_CLIENT_VERSION: use default when env var is missing or empty, and strip whitespace
             self.MIN_CLIENT_VERSION = (os.getenv("MIN_CLIENT_VERSION") or "1.0.0").strip()
             self.PI_SERVER_URL = os.getenv("PI_SERVER_URL", "http://localhost:8045/v1")

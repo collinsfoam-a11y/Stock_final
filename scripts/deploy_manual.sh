@@ -4,6 +4,8 @@ set -e
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+. "$PROJECT_ROOT/scripts/approval_guard.sh"
+require_approval_context
 MONGO_DATA_DIR="$PROJECT_ROOT/backend/data/db"
 LOG_DIR="$PROJECT_ROOT/logs"
 BACKEND_PORT=8001

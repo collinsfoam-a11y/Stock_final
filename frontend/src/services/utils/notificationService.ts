@@ -13,7 +13,6 @@ import {
 } from "../api/api.notifications";
 import type {
   NotificationTriggerInput,
-  SchedulableTriggerInputTypes,
 } from "expo-notifications";
 
 export interface NotificationOptions {

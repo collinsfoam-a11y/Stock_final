@@ -14,6 +14,19 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 
+BL_V2_GLOBAL_DISABLE = "BL_V2_GLOBAL_DISABLE"
+BL_V2_COMPARE = "BL_V2_COMPARE"
+BL_V2_SHADOW = "BL_V2_SHADOW"
+BL_V2_ENFORCE_WRITES = "BL_V2_ENFORCE_WRITES"
+
+BL_V2_FLAG_KEYS = (
+    BL_V2_GLOBAL_DISABLE,
+    BL_V2_COMPARE,
+    BL_V2_SHADOW,
+    BL_V2_ENFORCE_WRITES,
+)
+
+
 class FeatureState(str, Enum):
     """Feature flag states"""
 
@@ -37,6 +50,7 @@ class FeatureFlag(BaseModel):
     percentage: int = Field(default=0, ge=0, le=100)
     allowed_users: list[str] = Field(default_factory=list)
     allowed_roles: list[str] = Field(default_factory=list)
+    scope_overrides: dict[str, dict[str, bool]] = Field(default_factory=dict)
 
     # Metadata
     created_at: datetime = Field(

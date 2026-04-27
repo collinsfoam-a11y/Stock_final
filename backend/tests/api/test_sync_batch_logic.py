@@ -13,8 +13,14 @@ async def test_sync_single_record_scopes_upsert_by_session_id(monkeypatch):
     db.count_lines.update_one = AsyncMock(return_value=SimpleNamespace())
     db.count_lines.find_one = AsyncMock(return_value=None)
     db.item_serials.insert_many = AsyncMock(return_value=None)
-    db.erp_items.find_one = AsyncMock(return_value={"item_name": "Test Item"})
+    db.erp_items.find_one = AsyncMock(
+        return_value={"item_name": "Test Item", "stock_qty": 1.0, "mrp": 10.0}
+    )
     db.sessions.find_one = AsyncMock(return_value={"status": "OPEN"})
+    db.session_snapshots.find_one = AsyncMock(return_value=None)
+    db.stock_snapshots.find_one = AsyncMock(return_value=None)
+    db.stock_snapshots.insert_one = AsyncMock(return_value=SimpleNamespace())
+    db.variance_threshold_configs = None
     recompute = AsyncMock(return_value=None)
     monkeypatch.setattr("backend.api.sync_batch_api.recompute_session_totals", recompute)
 
@@ -43,6 +49,11 @@ async def test_process_count_line_op_accepts_non_dict_audit_metadata(monkeypatch
     db = MagicMock()
     db.count_lines.find_one = AsyncMock(return_value=None)
     db.count_lines.insert_one = AsyncMock(return_value=None)
+    db.erp_items.find_one = AsyncMock(return_value={"item_name": "Test Item", "stock_qty": 1.0, "mrp": 10.0})
+    db.session_snapshots.find_one = AsyncMock(return_value=None)
+    db.stock_snapshots.find_one = AsyncMock(return_value=None)
+    db.stock_snapshots.insert_one = AsyncMock(return_value=SimpleNamespace())
+    db.variance_threshold_configs = None
 
     monkeypatch.setattr(
         "backend.api.sync_batch_api.find_session",
@@ -80,6 +91,11 @@ async def test_process_count_line_op_drops_object_id_from_recount_update(monkeyp
     db = MagicMock()
     db.count_lines.find_one = AsyncMock(return_value=None)
     db.count_lines.update_one = AsyncMock(return_value=None)
+    db.erp_items.find_one = AsyncMock(return_value={"item_name": "Test Item", "stock_qty": 1.0, "mrp": 10.0})
+    db.session_snapshots.find_one = AsyncMock(return_value=None)
+    db.stock_snapshots.find_one = AsyncMock(return_value=None)
+    db.stock_snapshots.insert_one = AsyncMock(return_value=SimpleNamespace())
+    db.variance_threshold_configs = None
 
     monkeypatch.setattr(
         "backend.api.sync_batch_api.find_session",

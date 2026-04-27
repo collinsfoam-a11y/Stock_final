@@ -13,6 +13,7 @@ from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
 from backend.config import settings  # noqa: E402
 from backend.services.sql_sync_service import SQLSyncService  # noqa: E402
 from backend.sql_server_connector import SQLServerConnector  # noqa: E402
+from scripts.approval_guard import enforce_high_risk_entrypoint  # noqa: E402
 
 # Setup logging
 logging.basicConfig(
@@ -72,4 +73,5 @@ async def main():
 
 
 if __name__ == "__main__":
+    enforce_high_risk_entrypoint(always_require=True)
     asyncio.run(main())

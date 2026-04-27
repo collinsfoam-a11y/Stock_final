@@ -11,6 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 from backend.config import settings
 from backend.db.runtime import lifespan_db
 from backend.utils.auth_utils import get_password_hash
+from scripts.approval_guard import enforce_high_risk_entrypoint
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -48,6 +49,7 @@ async def create_users(usernames: List[str], password: str):
 if __name__ == "__main__":
     import os
 
+    enforce_high_risk_entrypoint(always_require=True)
     users_to_create = ["staff2", "staff3", "staff4", "staff5"]
     password_to_set = os.environ.get("STAFF_PASSWORD", "DEFAULT_VALUE_NOT_FOR_PRODUCTION")
 

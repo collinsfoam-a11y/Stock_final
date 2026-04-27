@@ -18,7 +18,6 @@ import {
 import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
@@ -29,12 +28,11 @@ import {
   batchResolveSyncConflicts,
   getSyncConflictStats,
 } from "../../src/services/api/api";
-import {
-  AuroraBackground,
-  GlassCard,
-  StatsCard,
-  AnimatedPressable,
-} from "../../src/components/ui";
+import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
+import { GlassCard } from "../../src/components/ui/GlassCard";
+import { StatsCard } from "../../src/components/ui/StatsCard";
+import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
+import { mergeQuantityStrategy } from "../../src/services/sync/conflictResolution";
 import { auroraTheme } from "../../src/theme/auroraTheme";
 
 interface SyncConflict {
@@ -51,6 +49,45 @@ interface SyncConflict {
   resolved_by?: string;
 }
 
+const NUMERIC_KEYS = ["quantity", "qty", "counted_qty", "result_qty"] as const;
+
+const buildMergedData = (
+  localValue: unknown,
+  serverValue: unknown
+): Record<string, unknown> | undefined => {
+  if (typeof localValue === "number" && typeof serverValue === "number") {
+    return { quantity: Math.max(localValue, serverValue) };
+  }
+
+  if (
+    localValue &&
+    typeof localValue === "object" &&
+    serverValue &&
+    typeof serverValue === "object"
+  ) {
+    const localRecord = localValue as Record<string, unknown>;
+    const serverRecord = serverValue as Record<string, unknown>;
+
+    if (typeof localRecord.quantity === "number" && typeof serverRecord.quantity === "number") {
+      return mergeQuantityStrategy.resolve(localRecord, serverRecord);
+    }
+
+    for (const key of NUMERIC_KEYS) {
+      const localNumeric = localRecord[key];
+      const serverNumeric = serverRecord[key];
+      if (typeof localNumeric === "number" && typeof serverNumeric === "number") {
+        return {
+          ...serverRecord,
+          ...localRecord,
+          [key]: Math.max(localNumeric, serverNumeric),
+        };
+      }
+    }
+  }
+
+  return undefined;
+};
+
 export default function SyncConflictsScreen() {
   const router = useRouter();
   const { hasPermission } = usePermission();
@@ -59,13 +96,9 @@ export default function SyncConflictsScreen() {
   const [conflicts, setConflicts] = useState<SyncConflict[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [filterStatus, setFilterStatus] = useState<string>("pending");
-  const [selectedConflicts, setSelectedConflicts] = useState<Set<string>>(
-    new Set(),
-  );
+  const [selectedConflicts, setSelectedConflicts] = useState<Set<string>>(new Set());
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedConflict, setSelectedConflict] = useState<SyncConflict | null>(
-    null,
-  );
+  const [selectedConflict, setSelectedConflict] = useState<SyncConflict | null>(null);
   const [resolutionNote, setResolutionNote] = useState("");
 
   const loadStats = useCallback(async () => {
@@ -83,8 +116,7 @@ export default function SyncConflictsScreen() {
       const response = await getSyncConflicts(status);
       setConflicts(response.data?.conflicts || []);
     } catch (error: any) {
-      if (Platform.OS !== "web")
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Error", error.message || "Failed to load sync conflicts");
     }
   }, [filterStatus]);
@@ -99,26 +131,27 @@ export default function SyncConflictsScreen() {
   useEffect(() => {
     // Security: Check permission before allowing conflict resolution
     if (!hasPermission("sync.resolve_conflict")) {
-      Alert.alert(
-        "Access Denied",
-        "You do not have permission to resolve sync conflicts.",
-        [{ text: "OK", onPress: () => router.back() }],
-      );
+      Alert.alert("Access Denied", "You do not have permission to resolve sync conflicts.", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
       return;
     }
     loadData();
   }, [hasPermission, router, loadData]);
 
   const handleRefresh = () => {
-    if (Platform.OS !== "web")
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     loadData();
   };
 
-  const handleResolve = async (conflictId: string, resolution: string) => {
+  const handleResolve = async (
+    conflictId: string,
+    resolution: string,
+    mergedData?: Record<string, unknown>
+  ) => {
     try {
-      await resolveSyncConflict(conflictId, resolution, resolutionNote);
+      await resolveSyncConflict(conflictId, resolution, resolutionNote, mergedData);
       if (Platform.OS !== "web")
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Success", "Conflict resolved successfully");
@@ -127,8 +160,7 @@ export default function SyncConflictsScreen() {
       setResolutionNote("");
       loadData();
     } catch (error: any) {
-      if (Platform.OS !== "web")
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Error", error.message || "Failed to resolve conflict");
     }
   };
@@ -139,8 +171,7 @@ export default function SyncConflictsScreen() {
       return;
     }
 
-    if (Platform.OS !== "web")
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
     Alert.alert(
       "Confirm Batch Resolution",
@@ -154,25 +185,20 @@ export default function SyncConflictsScreen() {
               await batchResolveSyncConflicts(
                 Array.from(selectedConflicts),
                 resolution,
-                resolutionNote,
+                resolutionNote
               );
               if (Platform.OS !== "web")
-                Haptics.notificationAsync(
-                  Haptics.NotificationFeedbackType.Success,
-                );
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               Alert.alert("Success", "Conflicts resolved successfully");
               setSelectedConflicts(new Set());
               setResolutionNote("");
               loadData();
             } catch (error: any) {
-              Alert.alert(
-                "Error",
-                error.message || "Failed to resolve conflicts",
-              );
+              Alert.alert("Error", error.message || "Failed to resolve conflicts");
             }
           },
         },
-      ],
+      ]
     );
   };
 
@@ -192,6 +218,10 @@ export default function SyncConflictsScreen() {
     setSelectedConflict(conflict);
     setModalVisible(true);
   };
+
+  const mergePreview = selectedConflict
+    ? buildMergedData(selectedConflict.local_value, selectedConflict.server_value)
+    : undefined;
 
   const renderConflictCard = ({ item }: { item: SyncConflict }) => {
     const isSelected = selectedConflicts.has(item._id);
@@ -213,12 +243,8 @@ export default function SyncConflictsScreen() {
           }
         >
           <View style={styles.cardHeader}>
-            <View
-              style={[styles.checkbox, isSelected && styles.checkboxChecked]}
-            >
-              {isSelected && (
-                <Ionicons name="checkmark" size={16} color="white" />
-              )}
+            <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+              {isSelected && <Ionicons name="checkmark" size={16} color="white" />}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.itemCode}>{item.item_code}</Text>
@@ -279,39 +305,23 @@ export default function SyncConflictsScreen() {
   };
 
   return (
-    <AuroraBackground variant="secondary" intensity="medium" animated>
-      <StatusBar style="light" />
+    <ScreenContainer backgroundType="solid" noPadding statusBarStyle="light">
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View
-          entering={FadeInDown.delay(100).springify()}
-          style={styles.header}
-        >
+        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
           <View style={styles.headerLeft}>
-            <AnimatedPressable
-              onPress={() => router.back()}
-              style={styles.backButton}
-            >
-              <Ionicons
-                name="arrow-back"
-                size={24}
-                color={auroraTheme.colors.text.primary}
-              />
+            <AnimatedPressable onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={auroraTheme.colors.text.primary} />
             </AnimatedPressable>
             <View>
               <Text style={styles.pageTitle}>Sync Conflicts</Text>
-              <Text style={styles.pageSubtitle}>
-                Resolve data discrepancies
-              </Text>
+              <Text style={styles.pageSubtitle}>Resolve data discrepancies</Text>
             </View>
           </View>
         </Animated.View>
 
         {stats && (
-          <Animated.View
-            entering={FadeInDown.delay(200).springify()}
-            style={styles.statsContainer}
-          >
+          <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.statsContainer}>
             <StatsCard
               title="Total"
               value={stats.total?.toString() || "0"}
@@ -337,10 +347,7 @@ export default function SyncConflictsScreen() {
         )}
 
         {/* Filters */}
-        <Animated.View
-          entering={FadeInDown.delay(300).springify()}
-          style={styles.filterBar}
-        >
+        <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.filterBar}>
           {["pending", "resolved", "all"].map((status) => (
             <AnimatedPressable
               key={status}
@@ -378,25 +385,17 @@ export default function SyncConflictsScreen() {
         </Animated.View>
 
         {selectedConflicts.size > 0 && (
-          <Animated.View
-            entering={FadeInDown.delay(100)}
-            style={styles.batchActions}
-          >
+          <Animated.View entering={FadeInDown.delay(100)} style={styles.batchActions}>
             <GlassCard
               variant="medium"
               padding={auroraTheme.spacing.md}
               borderRadius={auroraTheme.borderRadius.lg}
               style={styles.batchCard}
             >
-              <Text style={styles.batchText}>
-                {selectedConflicts.size} selected
-              </Text>
+              <Text style={styles.batchText}>{selectedConflicts.size} selected</Text>
               <View style={styles.batchButtons}>
                 <AnimatedPressable
-                  style={[
-                    styles.batchButton,
-                    { backgroundColor: auroraTheme.colors.success[500] },
-                  ]}
+                  style={[styles.batchButton, { backgroundColor: auroraTheme.colors.success[500] }]}
                   onPress={() => handleBatchResolve("accept_server")}
                 >
                   <Text style={styles.batchButtonText}>Accept Server</Text>
@@ -417,10 +416,7 @@ export default function SyncConflictsScreen() {
 
         {loading && !refreshing ? (
           <View style={styles.centered}>
-            <ActivityIndicator
-              size="large"
-              color={auroraTheme.colors.primary[500]}
-            />
+            <ActivityIndicator size="large" color={auroraTheme.colors.primary[500]} />
             <Text style={styles.loadingText}>Loading conflicts...</Text>
           </View>
         ) : conflicts.length === 0 ? (
@@ -460,11 +456,7 @@ export default function SyncConflictsScreen() {
           transparent={true}
           onRequestClose={() => setModalVisible(false)}
         >
-          <AuroraBackground
-            variant="primary"
-            intensity="high"
-            style={styles.modalOverlay}
-          >
+          <View style={styles.modalOverlay}>
             <GlassCard
               variant="modal"
               padding={auroraTheme.spacing.lg}
@@ -476,15 +468,10 @@ export default function SyncConflictsScreen() {
               {selectedConflict && (
                 <>
                   <Text style={styles.modalLabel}>
-                    Item:{" "}
-                    <Text style={{ color: "white" }}>
-                      {selectedConflict.item_code}
-                    </Text>
+                    Item: <Text style={{ color: "white" }}>{selectedConflict.item_code}</Text>
                   </Text>
                   <View style={styles.modalTypeBadge}>
-                    <Text style={styles.modalTypeText}>
-                      {selectedConflict.conflict_type}
-                    </Text>
+                    <Text style={styles.modalTypeText}>{selectedConflict.conflict_type}</Text>
                   </View>
 
                   <View style={styles.modalSection}>
@@ -513,6 +500,21 @@ export default function SyncConflictsScreen() {
                     </GlassCard>
                   </View>
 
+                  {mergePreview ? (
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>Merged Preview</Text>
+                      <GlassCard
+                        variant="dark"
+                        padding={auroraTheme.spacing.md}
+                        borderRadius={auroraTheme.borderRadius.md}
+                      >
+                        <Text style={styles.modalValue}>
+                          {JSON.stringify(mergePreview, null, 2)}
+                        </Text>
+                      </GlassCard>
+                    </View>
+                  ) : null}
+
                   <TextInput
                     style={[styles.modalInput, styles.modalTextArea]}
                     placeholder="Resolution note (optional)"
@@ -528,9 +530,7 @@ export default function SyncConflictsScreen() {
                         styles.modalButton,
                         { backgroundColor: auroraTheme.colors.success[500] },
                       ]}
-                      onPress={() =>
-                        handleResolve(selectedConflict._id, "accept_server")
-                      }
+                      onPress={() => handleResolve(selectedConflict._id, "accept_server")}
                     >
                       <Text style={styles.modalButtonText}>Accept Server</Text>
                     </AnimatedPressable>
@@ -540,13 +540,20 @@ export default function SyncConflictsScreen() {
                         styles.modalButton,
                         { backgroundColor: auroraTheme.colors.secondary[500] },
                       ]}
-                      onPress={() =>
-                        handleResolve(selectedConflict._id, "accept_local")
-                      }
+                      onPress={() => handleResolve(selectedConflict._id, "accept_local")}
                     >
                       <Text style={styles.modalButtonText}>Accept Local</Text>
                     </AnimatedPressable>
                   </View>
+
+                  {mergePreview ? (
+                    <AnimatedPressable
+                      style={[styles.modalButton, styles.modalButtonMerge]}
+                      onPress={() => handleResolve(selectedConflict._id, "merge", mergePreview)}
+                    >
+                      <Text style={styles.modalButtonText}>Merge Quantity</Text>
+                    </AnimatedPressable>
+                  ) : null}
 
                   <AnimatedPressable
                     style={[styles.modalButton, styles.modalButtonCancel]}
@@ -557,10 +564,10 @@ export default function SyncConflictsScreen() {
                 </>
               )}
             </GlassCard>
-          </AuroraBackground>
+          </View>
         </Modal>
       </View>
-    </AuroraBackground>
+    </ScreenContainer>
   );
 }
 
@@ -822,6 +829,10 @@ const styles = StyleSheet.create({
     backgroundColor: auroraTheme.colors.background.glass,
     borderWidth: 1,
     borderColor: auroraTheme.colors.border.light,
+  },
+  modalButtonMerge: {
+    backgroundColor: auroraTheme.colors.warning[500],
+    marginBottom: auroraTheme.spacing.md,
   },
   modalButtonText: {
     color: "#fff",

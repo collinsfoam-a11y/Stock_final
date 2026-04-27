@@ -16,12 +16,10 @@ import * as Haptics from "expo-haptics";
 
 import { ItemVerificationAPI } from "../../src/domains/inventory/services/itemVerificationApi";
 import { getAssignableStaffUsers } from "../../src/services/api/api";
-import {
-  ScreenContainer,
-  GlassCard,
-  StatsCard,
-  AnimatedPressable,
-} from "../../src/components/ui";
+import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
+import { GlassCard } from "../../src/components/ui/GlassCard";
+import { StatsCard } from "../../src/components/ui/StatsCard";
+import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import RecountAssignmentModal, {
   type AssignableStaffUser,

@@ -239,7 +239,7 @@ async def delete_variance_threshold(
         raise
     except Exception as e:
         logger.error("Error deleting config: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Failed to delete configuration")
 
     logger.info(
         "Deleted variance threshold config: %s by %s",

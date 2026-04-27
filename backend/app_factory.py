@@ -4,7 +4,7 @@ import sys
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Optional, TypeVar, cast
+from typing import Any, NoReturn, Optional, TypeVar, cast
 
 # Add the parent directory to Python path for proper imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -19,6 +19,10 @@ except ImportError:
 
 import jwt  # noqa: E402
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response  # noqa: E402
+from fastapi.encoders import jsonable_encoder  # noqa: E402
+from fastapi.exception_handlers import request_validation_exception_handler  # noqa: E402
+from fastapi.exceptions import RequestValidationError  # noqa: E402
+from fastapi.responses import JSONResponse  # noqa: E402
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer  # noqa: E402
 from starlette.requests import Request  # noqa: E402
 
@@ -50,6 +54,7 @@ from backend.api.mapping_api import router as mapping_router  # noqa: E402
 from backend.api.master_settings_api import master_settings_router  # noqa: E402
 from backend.api.metrics_api import metrics_router  # noqa: E402
 from backend.api.notifications_api import router as notifications_router  # noqa: E402
+from backend.api.test_support_api import router as test_support_router  # noqa: E402
 
 # New feature API routers
 from backend.api.permissions_api import permissions_router  # noqa: E402
@@ -86,6 +91,7 @@ from backend.api.websocket_api import router as websocket_router  # noqa: E402
 from backend.api.sql_verification_api import router as sql_verification_router  # noqa: E402
 from backend.auth.cookies import clear_auth_cookies, get_refresh_token_cookie, set_auth_cookies  # noqa: E402
 from backend.auth.dependencies import get_current_user as auth_get_current_user  # noqa: E402
+from backend.auth.dependencies import optional_get_current_user as auth_optional_get_current_user  # noqa: E402
 from backend.config import settings  # noqa: E402
 from backend.core.lifespan import (  # noqa: E402
     activity_log_service,
@@ -99,6 +105,7 @@ from backend.exceptions import RateLimitError as RateLimitExceededError  # noqa:
 from backend.exceptions import StockVerifyException as DatabaseError  # noqa: E402
 from backend.exceptions import ValidationError  # noqa: E402
 from backend.services.canonical_inventory import build_session_lookup  # noqa: E402
+from backend.services.count_line_write_service import CountLineWriteService  # noqa: E402
 
 # Utils
 from backend.utils.api_utils import result_to_response, sanitize_for_logging  # noqa: E402
@@ -187,6 +194,47 @@ SECRET_KEY: str = cast(str, settings.JWT_SECRET)
 ALGORITHM = settings.JWT_ALGORITHM
 security = HTTPBearer(auto_error=False)
 
+
+def _raise_app_factory_internal_error(
+    detail: str,
+    exc: Exception,
+    *,
+    log_message: Optional[str] = None,
+) -> NoReturn:
+    logger.error(
+        "%s: %s",
+        log_message or detail,
+        sanitize_for_logging(str(exc), 200),
+    )
+    raise HTTPException(status_code=500, detail=detail) from exc
+
+
+def _extract_auth_validation_fields(errors: list[dict[str, Any]]) -> dict[str, str]:
+    field_errors: dict[str, str] = {}
+
+    for error in errors:
+        loc = error.get("loc")
+        if not isinstance(loc, (list, tuple)):
+            continue
+
+        field_name = next(
+            (
+                segment
+                for segment in reversed(loc)
+                if isinstance(segment, str)
+                and segment not in {"body", "query", "path", "header"}
+            ),
+            None,
+        )
+        if not field_name or field_name in field_errors:
+            continue
+
+        message = error.get("msg")
+        if isinstance(message, str) and message.strip():
+            field_errors[field_name] = message
+
+    return field_errors
+
 # Initialize Sentry if DSN is provided
 sentry_dsn = getattr(settings, "SENTRY_DSN", None)
 if sentry_dsn:
@@ -216,9 +264,32 @@ else:
 app = FastAPI(
     title=getattr(settings, "APP_NAME", "Stock Count API"),
     description="Stock counting and ERP sync API",
-    version=getattr(settings, "APP_VERSION", "1.0.0"),
+    version=getattr(settings, "APP_VERSION", "2.1.0"),
     lifespan=lifespan,
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def auth_validation_exception_handler(
+    request: Request,
+    exc: RequestValidationError,
+):
+    if request.url.path.startswith("/api/auth/"):
+        encoded_errors = jsonable_encoder(exc.errors())
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": {
+                    "error": "AUTH_VALIDATION_ERROR",
+                    "code": "AUTH_VALIDATION_ERROR",
+                    "message": "Some authentication details are missing or invalid.",
+                    "fields": _extract_auth_validation_fields(encoded_errors),
+                    "details": encoded_errors,
+                }
+            },
+        )
+
+    return await request_validation_exception_handler(request, exc)
 
 # Attach OpenTelemetry tracing to the FastAPI app if enabled
 try:
@@ -245,7 +316,7 @@ async def root():
     return {
         "service": "stock-verify-backend",
         "status": "running",
-        "version": "1.0.0",
+        "version": getattr(settings, "APP_VERSION", "2.1.0"),
         "endpoints": {"health": "/health", "api": "/api", "docs": "/docs"},
     }
 
@@ -273,6 +344,14 @@ async def get_current_user(
 ) -> dict[str, Any]:
     """Resolve the authenticated user for the current request."""
     return await auth_get_current_user(request, credentials)
+
+
+async def optional_get_current_user(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> Optional[dict[str, Any]]:
+    """Resolve the authenticated user when present, otherwise return None."""
+    return await auth_optional_get_current_user(request, credentials)
 
 
 # Initialize default users
@@ -664,7 +743,7 @@ async def refresh_token(
 async def logout(
     request: Request,
     response: Response,
-    current_user: dict[str, Any] = Depends(get_current_user),
+    current_user: Optional[dict[str, Any]] = Depends(optional_get_current_user),
 ) -> dict[str, Any]:
     """
     Logout user by revoking their refresh token.
@@ -681,9 +760,6 @@ async def logout(
         if refresh_token_value:
             token_service = get_refresh_token_service()
             payload = await token_service.verify_refresh_token(refresh_token_value)
-            # M11 fix: Always revoke the token if it's valid, regardless of sub match.
-            # The user is already authenticated via get_current_user, so the logout
-            # intent is clear. Skipping revocation on sub mismatch leaves tokens active.
             if payload:
                 await token_service.revoke_token(refresh_token_value)
 
@@ -737,7 +813,12 @@ async def bulk_reconcile_sessions(
                         user_agent=None,
                     )
             except Exception as e:
-                errors.append({"session_id": session_id, "error": str(e)})
+                logger.error(
+                    "Failed to reconcile session %s: %s",
+                    sanitize_for_logging(session_id),
+                    sanitize_for_logging(str(e), 200),
+                )
+                errors.append({"session_id": session_id, "error": "Failed to reconcile session"})
 
         return {
             "success": True,
@@ -746,11 +827,11 @@ async def bulk_reconcile_sessions(
             "errors": errors,
         }
     except Exception as e:
-        logger.error(
-            "Bulk reconcile sessions error: %s",
-            sanitize_for_logging(str(e), 200),
+        _raise_app_factory_internal_error(
+            "Failed to reconcile sessions",
+            e,
+            log_message="Bulk reconcile sessions error",
         )
-        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @api_router.post("/sessions/bulk/export")
@@ -796,11 +877,11 @@ async def bulk_export_sessions(
             "format": format,
         }
     except Exception as e:
-        logger.error(
-            "Bulk export sessions error: %s",
-            sanitize_for_logging(str(e), 200),
+        _raise_app_factory_internal_error(
+            "Failed to export sessions",
+            e,
+            log_message="Bulk export sessions error",
         )
-        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @api_router.get("/legacy/sessions/analytics")
@@ -883,8 +964,11 @@ async def get_sessions_analytics(current_user: dict = Depends(get_current_user))
             },
         }
     except Exception as e:
-        logger.error("Analytics error: %s", sanitize_for_logging(str(e), 200))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        _raise_app_factory_internal_error(
+            "Failed to load session analytics",
+            e,
+            log_message="Analytics error",
+        )
 
 
 # Legacy route retained under explicit namespace to avoid duplicate /api/sessions/{session_id}.
@@ -922,7 +1006,7 @@ async def get_session_by_id(
             sanitize_for_logging(session_id),
             sanitize_for_logging(str(e), 200),
         )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Failed to fetch session") from e
 
 
 # ERP Item routes
@@ -1187,7 +1271,10 @@ async def create_count_line(
         current_user["username"],
     )
 
-    await db.count_lines.insert_one(count_line)
+    await CountLineWriteService(db).process_write(
+        {"operation": "insert_one", "document": count_line},
+        context={"session_id": line_data.session_id},
+    )
     await _update_item_location_from_count_line(line_data)
     await _refresh_session_count_line_stats(line_data.session_id)
 
@@ -1233,15 +1320,19 @@ async def verify_stock(
     _require_supervisor(current_user)
     db_client = _get_db_client(db_override)
 
-    update_result = await db_client.count_lines.update_one(
-        {"id": line_id},
-        update={
-            "$set": {
-                "verified": True,
-                "verified_by": current_user["username"],
-                "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
-            }
+    update_result = await CountLineWriteService(db_client).process_write(
+        {
+            "operation": "update_one",
+            "filter": {"id": line_id},
+            "update": {
+                "$set": {
+                    "verified": True,
+                    "verified_by": current_user["username"],
+                    "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                }
+            },
         },
+        context={"keyword_update": True},
     )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
@@ -1271,9 +1362,13 @@ async def unverify_stock(
     _require_supervisor(current_user)
     db_client = _get_db_client(db_override)
 
-    update_result = await db_client.count_lines.update_one(
-        {"id": line_id},
-        update={"$set": {"verified": False, "verified_by": None, "verified_at": None}},
+    update_result = await CountLineWriteService(db_client).process_write(
+        {
+            "operation": "update_one",
+            "filter": {"id": line_id},
+            "update": {"$set": {"verified": False, "verified_by": None, "verified_at": None}},
+        },
+        context={"keyword_update": True},
     )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
@@ -1377,6 +1472,7 @@ register_routers(
         pi_router=pi_router,
         supervisor_pin_router=supervisor_pin.router,
         notifications_router=notifications_router,
+        test_support_router=test_support_router,
         api_router=api_router,
         enterprise_router=enterprise_router,
         notes_router=notes_router,

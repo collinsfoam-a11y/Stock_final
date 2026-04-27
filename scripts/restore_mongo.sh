@@ -9,6 +9,8 @@ fi
 
 BACKUP_FILE="$1"
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+. "${ROOT_DIR}/scripts/approval_guard.sh"
+require_approval_context
 ENV_FILE="${ROOT_DIR}/.env.prod"
 
 if [ -f "$ENV_FILE" ]; then

@@ -18,6 +18,12 @@ import secrets
 import sys
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from scripts.approval_guard import enforce_high_risk_entrypoint
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -84,6 +90,7 @@ if __name__ == "__main__":
     p.add_argument("--write", action="store_true", help="Write secrets to backend/.env")
     p.add_argument("--bytes", type=int, default=DEFAULT_BYTES, help="Entropy bytes")
     args = p.parse_args()
+    enforce_high_risk_entrypoint(trigger_flags={"--write"})
 
     s1 = make_secret(args.bytes)
     s2 = make_secret(args.bytes)

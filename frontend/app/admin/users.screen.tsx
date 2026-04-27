@@ -15,12 +15,10 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { usePermission } from "../../src/hooks/usePermission";
-import {
-  LoadingSpinner,
-  AnimatedPressable,
-  GlassCard,
-  ScreenContainer,
-} from "../../src/components/ui";
+import { LoadingSpinner } from "../../src/components/ui/LoadingSpinner";
+import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
+import { GlassCard } from "../../src/components/ui/GlassCard";
+import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
 import { UserFiltersBar } from "../../src/components/admin/users/UserFiltersBar";
 import { UserFormModal } from "../../src/components/admin/users/UserFormModal";
 import { UsersTable } from "../../src/components/admin/users/UsersTable";

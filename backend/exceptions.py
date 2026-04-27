@@ -24,10 +24,17 @@ class StockVerifyException(Exception):
 
     def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary for API responses"""
+        fields = self.details.get("fields") if isinstance(self.details, dict) else None
+        retry_after = (
+            self.details.get("retry_after") if isinstance(self.details, dict) else None
+        )
         return {
             "error": self.error_code,
+            "code": self.error_code,
             "message": self.message,
             "details": self.details,
+            "fields": fields,
+            "retry_after": retry_after,
         }
 
 
@@ -154,10 +161,11 @@ class AuthenticationError(StockVerifyException):
         message: str = "Authentication failed",
         details: dict[str, Optional[Any]] = None,
         status_code: int = 401,
+        error_code: str = "AUTHENTICATION_ERROR",
     ):
         super().__init__(
             message=message,
-            error_code="AUTHENTICATION_ERROR",
+            error_code=error_code,
             details=details or {},
             status_code=status_code,
         )
@@ -186,10 +194,11 @@ class AuthorizationError(StockVerifyException):
         self,
         message: str = "Insufficient permissions",
         details: dict[str, Optional[Any]] = None,
+        error_code: str = "AUTHORIZATION_ERROR",
     ):
         super().__init__(
             message=message,
-            error_code="AUTHORIZATION_ERROR",
+            error_code=error_code,
             details=details or {},
             status_code=403,
         )

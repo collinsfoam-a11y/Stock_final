@@ -1,9 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
-import {
-  getAuthenticatedSession,
-  seedAuthState,
-} from "./helpers/auth";
+import { test, expect } from "./fixtures/authenticated";
 
 function attachPageErrorCollector(page: Page) {
   const pageErrors: string[] = [];
@@ -16,26 +13,10 @@ function attachPageErrorCollector(page: Page) {
 }
 
 test.describe("Supervisor watchtower regressions", () => {
-  test("watchtower renders without runtime crashes", async ({
-    page,
-    request,
-  }) => {
-    const session = await getAuthenticatedSession(request, "supervisor");
+  test("watchtower renders without runtime crashes", async ({ page }) => {
     const pageErrors = attachPageErrorCollector(page);
 
-    await seedAuthState(page, {
-      accessToken: session.access_token,
-      refreshToken: session.refresh_token,
-      user: session.user,
-    });
-
-    await page.goto("/");
-    await expect(page).toHaveURL(/\/supervisor\/dashboard(?:\?.*)?$/);
-    await page.evaluate(() => {
-      window.history.pushState({}, "", "/supervisor/watchtower");
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    });
-
+    await page.goto("/supervisor/watchtower");
     await expect(page).toHaveURL(/\/supervisor\/watchtower(?:\?.*)?$/);
     await expect(page.getByText("Watchtower", { exact: true })).toBeVisible();
     await expect(page.getByText("Hourly Throughput")).toBeVisible();
@@ -46,23 +27,10 @@ test.describe("Supervisor watchtower regressions", () => {
 
   test("missing supervisor sessions render recovery UI instead of crashing", async ({
     page,
-    request,
   }) => {
-    const session = await getAuthenticatedSession(request, "supervisor");
     const pageErrors = attachPageErrorCollector(page);
 
-    await seedAuthState(page, {
-      accessToken: session.access_token,
-      refreshToken: session.refresh_token,
-      user: session.user,
-    });
-
-    await page.goto("/");
-    await expect(page).toHaveURL(/\/supervisor\/dashboard(?:\?.*)?$/);
-    await page.evaluate((missingId) => {
-      window.history.pushState({}, "", `/supervisor/session/${missingId}`);
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    }, `playwright-missing-${Date.now()}`);
+    await page.goto(`/supervisor/session/playwright-missing-${Date.now()}`);
 
     await expect(
       page.getByText("This session is no longer available."),

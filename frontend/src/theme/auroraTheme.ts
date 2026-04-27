@@ -128,31 +128,31 @@ export const auroraColors = {
     warm: ["#F59E0B", "#F97316", "#06B6D4"] as const,
     // Dark aurora blend (for backgrounds)
     dark: ["#0F172A", "#1E293B", "#334155"] as const,
-    // Glass overlay
-    glass: ["rgba(255, 255, 255, 0.1)", "rgba(255, 255, 255, 0.05)"] as const,
+    // Subtle surface overlay
+    glass: ["rgba(15, 23, 42, 0.94)", "rgba(15, 23, 42, 0.88)"] as const,
   },
 
-  // Background Colors (Dark Theme)
+  // Background Colors (Operational utility surface)
   background: {
-    primary: "#0F172A", // Slate 900
-    secondary: "#1E293B", // Slate 800
-    tertiary: "#334155", // Slate 700
-    elevated: "#475569", // Slate 600
-    overlay: "rgba(15, 23, 42, 0.95)",
-    glass: "rgba(30, 41, 59, 0.7)",
-    blur: "rgba(30, 41, 59, 0.5)",
+    primary: "#0B1220",
+    secondary: "#111827",
+    tertiary: "#1F2937",
+    elevated: "#273449",
+    overlay: "rgba(2, 6, 23, 0.88)",
+    glass: "rgba(15, 23, 42, 0.96)",
+    blur: "rgba(15, 23, 42, 0.92)",
   },
 
   // Surface Colors (alias for background - for compatibility)
   surface: {
-    base: "#0F172A", // Slate 900
-    primary: "#0F172A", // Slate 900
-    secondary: "#1E293B", // Slate 800
-    tertiary: "#334155", // Slate 700
-    elevated: "#475569", // Slate 600
-    card: "#1E293B", // Slate 800
-    overlay: "rgba(15, 23, 42, 0.95)",
-    glass: "rgba(30, 41, 59, 0.7)",
+    base: "#0B1220",
+    primary: "#0B1220",
+    secondary: "#111827",
+    tertiary: "#1F2937",
+    elevated: "#273449",
+    card: "#111827",
+    overlay: "rgba(2, 6, 23, 0.88)",
+    glass: "rgba(15, 23, 42, 0.96)",
   },
 
   // Text Colors
@@ -169,10 +169,10 @@ export const auroraColors = {
 
   // Border Colors
   border: {
-    light: "rgba(255, 255, 255, 0.1)",
-    subtle: "rgba(255, 255, 255, 0.1)", // alias for light
-    medium: "rgba(255, 255, 255, 0.2)",
-    strong: "rgba(255, 255, 255, 0.3)",
+    light: "rgba(148, 163, 184, 0.18)",
+    subtle: "rgba(148, 163, 184, 0.18)",
+    medium: "rgba(148, 163, 184, 0.24)",
+    strong: "rgba(148, 163, 184, 0.32)",
     focus: "#1560BD",
     error: "#EF4444",
     success: "#10B981",
@@ -188,7 +188,7 @@ export const auroraColors = {
     warning: "#FBBF24",
   },
   // Shimmer effect colors
-  shimmer: ["#1E293B", "#334155", "#1E293B"] as const,
+  shimmer: ["#111827", "#1F2937", "#111827"] as const,
 };
 
 // ==========================================
@@ -308,13 +308,13 @@ export const auroraBorderRadius = {
 
 export const auroraShadows = {
   none: createShadow({ color: "transparent" }),
-  sm: createShadow({ color: "#000", offsetY: 2, opacity: 0.1, radius: 4, elevation: 2 }),
-  md: createShadow({ color: "#000", offsetY: 4, opacity: 0.15, radius: 8, elevation: 4 }),
-  lg: createShadow({ color: "#000", offsetY: 8, opacity: 0.2, radius: 16, elevation: 8 }),
-  xl: createShadow({ color: "#000", offsetY: 12, opacity: 0.25, radius: 24, elevation: 12 }),
+  sm: createShadow({ color: "#000", offsetY: 2, opacity: 0.08, radius: 4, elevation: 2 }),
+  md: createShadow({ color: "#000", offsetY: 4, opacity: 0.12, radius: 8, elevation: 4 }),
+  lg: createShadow({ color: "#000", offsetY: 8, opacity: 0.16, radius: 16, elevation: 8 }),
+  xl: createShadow({ color: "#000", offsetY: 12, opacity: 0.2, radius: 24, elevation: 12 }),
   // Colored shadows for aurora effects
-  aurora: createShadow({ color: "#06B6D4", offsetY: 8, opacity: 0.4, radius: 16, elevation: 8 }),
-  glow: createShadow({ color: "#1560BD", opacity: 0.6, radius: 20, elevation: 10 }),
+  aurora: createShadow({ color: "#06B6D4", offsetY: 8, opacity: 0.18, radius: 16, elevation: 8 }),
+  glow: createShadow({ color: "#1560BD", opacity: 0.22, radius: 20, elevation: 10 }),
 };
 
 // ==========================================
@@ -323,32 +323,32 @@ export const auroraShadows = {
 
 export const auroraGlass = {
   light: {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "rgba(15, 23, 42, 0.88)",
+    borderColor: "rgba(148, 163, 184, 0.16)",
     borderWidth: 1,
   } as ViewStyle,
 
   medium: {
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
-    borderColor: "rgba(255, 255, 255, 0.25)",
+    backgroundColor: "rgba(15, 23, 42, 0.94)",
+    borderColor: "rgba(148, 163, 184, 0.18)",
     borderWidth: 1,
   } as ViewStyle,
 
   strong: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    borderColor: "rgba(255, 255, 255, 0.3)",
-    borderWidth: 1.5,
+    backgroundColor: "#111827",
+    borderColor: "rgba(148, 163, 184, 0.22)",
+    borderWidth: 1,
   } as ViewStyle,
 
   dark: {
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "#0B1220",
+    borderColor: "rgba(148, 163, 184, 0.16)",
     borderWidth: 1,
   } as ViewStyle,
 
   modal: {
-    backgroundColor: "rgba(30, 41, 59, 0.8)",
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "#111827",
+    borderColor: "rgba(148, 163, 184, 0.2)",
     borderWidth: 1,
   } as ViewStyle,
 };

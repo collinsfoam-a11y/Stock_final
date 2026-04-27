@@ -10,6 +10,7 @@ from backend.api.schemas import ERPItem
 from backend.auth.dependencies import get_current_user
 from backend.error_messages import get_error_message
 from backend.services.cache_service import CacheService
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -261,6 +262,78 @@ async def get_erp_config(current_user: dict = Depends(get_current_user)):
     }
 
 
+def _resolve_batch_sql_connector() -> Any:
+    sql_connector = getattr(router, "sql_connector", None)
+    if sql_connector is not None:
+        return sql_connector
+
+    try:
+        from backend.api.count_lines_api import router as count_lines_router
+
+        return getattr(count_lines_router, "sql_connector", None)
+    except Exception:
+        return None
+
+
+def _load_sql_item_batches(sql_connector: Any, normalized_code: str) -> list[dict[str, Any]]:
+    if sql_connector is None or not getattr(sql_connector, "connection", None):
+        return []
+
+    try:
+        sql_batches = sql_connector.get_item_batches(normalized_code)
+        return sql_batches if isinstance(sql_batches, list) else []
+    except Exception as sql_err:
+        logger.warning(
+            "SQL batch fetch failed for %s: %s",
+            sanitize_for_logging(normalized_code),
+            sanitize_for_logging(str(sql_err), 200),
+        )
+        return []
+
+
+async def _load_mongo_item_batches(normalized_code: str) -> list[dict[str, Any]]:
+    regex_match = {"$regex": f"^{re.escape(normalized_code)}$", "$options": "i"}
+    query = {"$or": [{"item_code": normalized_code}, {"item_code": regex_match}]}
+    cursor = _db.erp_items.find(query)
+    mongo_batches = await cursor.to_list(length=100)
+    return mongo_batches if isinstance(mongo_batches, list) else []
+
+
+def _format_item_batch(batch: dict[str, Any]) -> dict[str, Any]:
+    barcode = batch.get("barcode") or batch.get("auto_barcode") or ""
+    return {
+        "batch_id": batch.get("batch_id"),
+        "batch_no": batch.get("batch_no", "DEFAULT"),
+        "item_code": batch.get("item_code"),
+        "barcode": barcode,
+        "item_name": batch.get("item_name"),
+        "stock_qty": batch.get("stock_qty", 0),
+        "mrp": batch.get("mrp"),
+        "manufacturing_date": batch.get("mfg_date") or batch.get("manufacturing_date"),
+        "expiry_date": batch.get("expiry_date"),
+        "warehouse_id": batch.get("warehouse_id"),
+        "warehouse_name": batch.get("warehouse_name"),
+        "warehouse": batch.get("warehouse") or batch.get("warehouse_name"),
+    }
+
+
+def _stock_value(value: Any) -> float:
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _sort_item_batches(batches: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        batches,
+        key=lambda batch: (
+            -_stock_value(batch.get("stock_qty")),
+            str(batch.get("batch_no") or ""),
+        ),
+    )
+
+
 @router.get("/item-batches/{item_code}")
 async def get_item_batches(
     item_code: str,
@@ -275,68 +348,14 @@ async def get_item_batches(
 
     normalized_code = _normalize_barcode_input(item_code, strict_numeric=False)
     source = "mongodb_offline_fallback"
-    batches: list[dict[str, Any]] = []
+    sql_connector = _resolve_batch_sql_connector()
+    batches = _load_sql_item_batches(sql_connector, normalized_code)
+    if batches:
+        source = "sql_server"
+    else:
+        batches = await _load_mongo_item_batches(normalized_code)
 
-    sql_connector = getattr(router, "sql_connector", None)
-    if sql_connector is None:
-        try:
-            from backend.api.count_lines_api import router as count_lines_router
-
-            sql_connector = getattr(count_lines_router, "sql_connector", None)
-        except Exception:
-            sql_connector = None
-
-    if sql_connector is not None:
-        try:
-            if getattr(sql_connector, "connection", None):
-                sql_batches = sql_connector.get_item_batches(normalized_code)
-                if isinstance(sql_batches, list):
-                    batches = sql_batches
-                    source = "sql_server"
-        except Exception as sql_err:
-            logger.warning(f"SQL batch fetch failed for '{normalized_code}': {sql_err}")
-
-    if not batches:
-        regex_match = {"$regex": f"^{re.escape(normalized_code)}$", "$options": "i"}
-        query = {"$or": [{"item_code": normalized_code}, {"item_code": regex_match}]}
-        cursor = _db.erp_items.find(query)
-        mongo_batches = await cursor.to_list(length=100)
-        batches = mongo_batches if isinstance(mongo_batches, list) else []
-        source = "mongodb_offline_fallback"
-
-    formatted_batches = []
-    for batch in batches:
-        barcode = batch.get("barcode") or batch.get("auto_barcode") or ""
-        formatted_batches.append(
-            {
-                "batch_id": batch.get("batch_id"),
-                "batch_no": batch.get("batch_no", "DEFAULT"),
-                "item_code": batch.get("item_code"),
-                "barcode": barcode,
-                "item_name": batch.get("item_name"),
-                "stock_qty": batch.get("stock_qty", 0),
-                "mrp": batch.get("mrp"),
-                "manufacturing_date": batch.get("mfg_date") or batch.get("manufacturing_date"),
-                "expiry_date": batch.get("expiry_date"),
-                "warehouse_id": batch.get("warehouse_id"),
-                "warehouse_name": batch.get("warehouse_name"),
-                "warehouse": batch.get("warehouse") or batch.get("warehouse_name"),
-            }
-        )
-
-    def _stock_value(value: Any) -> float:
-        try:
-            return float(value or 0)
-        except (TypeError, ValueError):
-            return 0.0
-
-    formatted_batches = sorted(
-        formatted_batches,
-        key=lambda batch: (
-            -_stock_value(batch.get("stock_qty")),
-            str(batch.get("batch_no") or ""),
-        ),
-    )
+    formatted_batches = _sort_item_batches([_format_item_batch(batch) for batch in batches])
 
     return {
         "batches": formatted_batches,

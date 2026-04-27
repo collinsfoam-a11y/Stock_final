@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Platform, Pressable } from "react-native";
 import * as Haptics from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { auroraTheme } from "../../theme/auroraTheme";
+import { useTheme } from "../../hooks/useTheme";
 import {
   FONT_STYLE_OPTIONS,
   FontStylePreference,
@@ -21,20 +21,20 @@ export const FontStylePicker: React.FC<FontStylePickerProps> = ({
   onValueChange,
   disabled = false,
 }) => {
+  const { colors, typography, spacing, borderRadius } = useTheme();
+
   return (
     <View style={[styles.container, disabled && styles.disabledContainer]}>
       <View style={styles.header}>
         <View style={styles.labelRow}>
-          <Ionicons
-            name="text"
-            size={18}
-            color={
-              disabled
-                ? auroraTheme.colors.text.tertiary
-                : auroraTheme.colors.text.primary
-            }
-          />
-          <Text style={[styles.label, disabled && styles.disabledLabel]}>
+          <Ionicons name="text" size={18} color={disabled ? colors.textTertiary : colors.text} />
+          <Text
+            style={[
+              styles.label,
+              { color: colors.text, fontSize: typography.fontSize.md },
+              disabled && { color: colors.textTertiary },
+            ]}
+          >
             Font Style
           </Text>
         </View>
@@ -48,9 +48,22 @@ export const FontStylePicker: React.FC<FontStylePickerProps> = ({
           return (
             <Pressable
               key={option.value}
-              style={[
+              accessibilityRole="radio"
+              accessibilityState={{ disabled, selected: isSelected }}
+              style={({ pressed }) => [
                 styles.option,
-                isSelected && styles.optionSelected,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: isSelected ? colors.accent || colors.primary : colors.border,
+                  borderRadius: borderRadius.lg,
+                  minHeight: 88,
+                  paddingHorizontal: spacing.sm,
+                  paddingVertical: spacing.sm,
+                },
+                isSelected && {
+                  backgroundColor: colors.overlayPrimary || colors.surface,
+                },
+                pressed && !disabled && styles.optionPressed,
                 disabled && styles.optionDisabled,
               ]}
               onPress={() => {
@@ -67,7 +80,7 @@ export const FontStylePicker: React.FC<FontStylePickerProps> = ({
                 style={[
                   styles.preview,
                   { fontFamily: families.body },
-                  isSelected && styles.previewSelected,
+                  { color: isSelected ? colors.primary : colors.text },
                 ]}
               >
                 {option.preview}
@@ -75,8 +88,11 @@ export const FontStylePicker: React.FC<FontStylePickerProps> = ({
               <Text
                 style={[
                   styles.optionLabel,
-                  isSelected && styles.optionLabelSelected,
-                  disabled && styles.disabledLabel,
+                  {
+                    color: isSelected ? colors.text : colors.textSecondary,
+                    fontSize: typography.fontSize.sm,
+                  },
+                  disabled && { color: colors.textTertiary },
                 ]}
               >
                 {option.label}
@@ -91,8 +107,8 @@ export const FontStylePicker: React.FC<FontStylePickerProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    padding: auroraTheme.spacing.md,
-    gap: auroraTheme.spacing.sm,
+    padding: 16,
+    gap: 8,
   },
   disabledContainer: {
     opacity: 0.5,
@@ -105,53 +121,33 @@ const styles = StyleSheet.create({
   labelRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.xs,
+    gap: 4,
   },
   label: {
-    fontSize: auroraTheme.typography.fontSize.base,
     fontWeight: "500",
-    color: auroraTheme.colors.text.primary,
-  },
-  disabledLabel: {
-    color: auroraTheme.colors.text.tertiary,
   },
   options: {
     flexDirection: "row",
-    gap: auroraTheme.spacing.sm,
+    gap: 8,
   },
   option: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: auroraTheme.spacing.sm,
-    paddingHorizontal: auroraTheme.spacing.sm,
-    borderRadius: auroraTheme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
-    backgroundColor: auroraTheme.colors.background.glass,
-    gap: auroraTheme.spacing.xs,
-  },
-  optionSelected: {
-    borderColor: auroraTheme.colors.primary[500],
-    backgroundColor: "rgba(14, 165, 233, 0.12)",
+    gap: 4,
   },
   optionDisabled: {
     opacity: 0.5,
   },
+  optionPressed: {
+    opacity: 0.85,
+  },
   preview: {
     fontSize: 22,
-    color: auroraTheme.colors.text.primary,
-  },
-  previewSelected: {
-    color: auroraTheme.colors.primary[500],
   },
   optionLabel: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
     fontWeight: "500",
-  },
-  optionLabelSelected: {
-    color: auroraTheme.colors.text.primary,
   },
 });
 

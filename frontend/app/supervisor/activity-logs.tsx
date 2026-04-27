@@ -1,33 +1,29 @@
 /**
  * Activity Logs Screen - View application activity and audit logs
- * Refactored to use Aurora Design System
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
   ActivityIndicator,
-  RefreshControl,
   Platform,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { FlashList } from "@shopify/flash-list";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getActivityLogs, getActivityStats } from "../../src/services/api/api";
 import { useToast } from "../../src/components/feedback/ToastProvider";
-import {
-  AuroraBackground,
-  GlassCard,
-  StatsCard,
-  AnimatedPressable,
-} from "../../src/components/ui";
-import { auroraTheme } from "../../src/theme/auroraTheme";
+import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
+import { ModernCard } from "../../src/components/ui/ModernCard";
+import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
+import { useThemeContext } from "../../src/context/ThemeContext";
 
 interface ActivityLog {
   id: string;
@@ -37,21 +33,44 @@ interface ActivityLog {
   action: string;
   entity_type?: string;
   entity_id?: string;
-  details: any;
+  details: Record<string, unknown>;
   status: string;
   error_message?: string;
 }
 
+const getActionIcon = (action: string) => {
+  const iconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
+    login: "log-in-outline",
+    logout: "log-out-outline",
+    scan_item: "barcode-outline",
+    create_session: "add-circle-outline",
+    approve_count: "checkmark-circle-outline",
+    reject_count: "close-circle-outline",
+    refresh_stock: "refresh-outline",
+    sync: "sync-outline",
+  };
+  return iconMap[action] || "ellipse-outline";
+};
+
+const formatTimestamp = (timestamp: string) => new Date(timestamp).toLocaleString();
+
 export default function ActivityLogsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { show } = useToast();
+  const { theme, themeLegacy, isDark } = useThemeContext();
 
   const [logs, setLogs] = useState<ActivityLog[]>([]);
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<Record<string, any> | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+
+  const styles = useMemo(
+    () => createStyles(theme, themeLegacy, insets.top),
+    [theme, themeLegacy, insets.top],
+  );
 
   const loadLogs = React.useCallback(
     async (pageNum: number = 1) => {
@@ -66,8 +85,9 @@ export default function ActivityLogsScreen() {
         setHasMore(response.pagination?.has_next || false);
       } catch (error: any) {
         show(`Failed to load logs: ${error.message}`, "error");
-        if (Platform.OS !== "web")
+        if (Platform.OS !== "web") {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -91,8 +111,9 @@ export default function ActivityLogsScreen() {
   }, [loadLogs, loadStats]);
 
   const handleRefresh = () => {
-    if (Platform.OS !== "web")
+    if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     setRefreshing(true);
     setPage(1);
     loadLogs(1);
@@ -101,217 +122,167 @@ export default function ActivityLogsScreen() {
 
   const loadMore = () => {
     if (hasMore && !loading) {
-      if (Platform.OS !== "web") Haptics.selectionAsync();
+      if (Platform.OS !== "web") {
+        Haptics.selectionAsync();
+      }
       const nextPage = page + 1;
       setPage(nextPage);
       loadLogs(nextPage);
     }
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString();
-  };
-
-  const getActionIcon = (action: string) => {
-    const iconMap: Record<string, string> = {
-      login: "log-in-outline",
-      logout: "log-out-outline",
-      scan_item: "barcode-outline",
-      create_session: "add-circle-outline",
-      approve_count: "checkmark-circle-outline",
-      reject_count: "close-circle-outline",
-      refresh_stock: "refresh-outline",
-      sync: "sync-outline",
-    };
-    return iconMap[action] || "ellipse-outline";
-  };
-
-  const renderLogItem = ({ item: log }: { item: ActivityLog }) => (
-    <AnimatedPressable style={{ marginBottom: auroraTheme.spacing.md }}>
-      <GlassCard
-        variant="light"
-        padding={auroraTheme.spacing.md}
-        borderRadius={auroraTheme.borderRadius.lg}
-      >
-        <View style={styles.logHeader}>
-          <View style={styles.logHeaderLeft}>
-            <View
-              style={[
-                styles.iconContainer,
-                {
-                  backgroundColor:
-                    log.status === "error"
-                      ? "rgba(239, 68, 68, 0.1)"
-                      : "rgba(59, 130, 246, 0.1)",
-                },
-              ]}
-            >
-              <Ionicons
-                name={getActionIcon(log.action) as any}
-                size={20}
-                color={
-                  log.status === "error"
-                    ? auroraTheme.colors.error[500]
-                    : auroraTheme.colors.primary[500]
-                }
-              />
-            </View>
-            <View style={styles.logInfo}>
-              <Text style={styles.logAction}>
-                {log.action.replace(/_/g, " ").toUpperCase()}
-              </Text>
-              <Text style={styles.logUser}>
-                {log.user} • {log.role}
-              </Text>
-            </View>
-          </View>
-          <Text
-            style={[
-              styles.statusText,
-              {
-                color:
-                  log.status === "success"
-                    ? auroraTheme.colors.success[500]
-                    : log.status === "error"
-                      ? auroraTheme.colors.error[500]
-                      : auroraTheme.colors.warning[500],
-              },
-            ]}
-          >
-            {log.status}
-          </Text>
+  const renderStatCard = (
+    title: string,
+    value: string,
+    icon: keyof typeof Ionicons.glyphMap,
+    color: string,
+    accentBackground: string,
+  ) => (
+    <ModernCard variant="elevated" style={styles.statCard}>
+      <View style={styles.statHeader}>
+        <View style={[styles.statIcon, { backgroundColor: accentBackground }]}>
+          <Ionicons name={icon} size={18} color={color} />
         </View>
-
-        <Text style={styles.timestamp}>{formatTimestamp(log.timestamp)}</Text>
-
-        {log.entity_type && (
-          <GlassCard
-            variant="dark"
-            padding={auroraTheme.spacing.xs}
-            borderRadius={auroraTheme.borderRadius.sm}
-            style={{
-              alignSelf: "flex-start",
-              marginVertical: auroraTheme.spacing.xs,
-            }}
-          >
-            <Text style={styles.entityText}>
-              {log.entity_type}: {log.entity_id || "N/A"}
-            </Text>
-          </GlassCard>
-        )}
-
-        {log.error_message && (
-          <GlassCard
-            variant="medium"
-            padding={auroraTheme.spacing.sm}
-            borderRadius={auroraTheme.borderRadius.md}
-            style={{
-              marginTop: auroraTheme.spacing.sm,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-              borderColor: auroraTheme.colors.error[500],
-              backgroundColor: "rgba(239, 68, 68, 0.1)",
-            }}
-          >
-            <Ionicons
-              name="alert-circle"
-              size={16}
-              color={auroraTheme.colors.error[500]}
-            />
-            <Text
-              style={[
-                styles.errorText,
-                { color: auroraTheme.colors.error[500] },
-              ]}
-            >
-              {log.error_message}
-            </Text>
-          </GlassCard>
-        )}
-
-        {Object.keys(log.details || {}).length > 0 && !log.error_message && (
-          <GlassCard
-            variant="dark"
-            padding={auroraTheme.spacing.sm}
-            borderRadius={auroraTheme.borderRadius.md}
-            style={{ marginTop: auroraTheme.spacing.sm }}
-          >
-            <Text style={styles.detailsText} numberOfLines={3}>
-              {JSON.stringify(log.details, null, 2)}
-            </Text>
-          </GlassCard>
-        )}
-      </GlassCard>
-    </AnimatedPressable>
+        <Text style={styles.statLabel}>{title}</Text>
+      </View>
+      <Text style={styles.statValue}>{value}</Text>
+    </ModernCard>
   );
 
-  return (
-    <AuroraBackground>
-      <StatusBar style="light" />
-      <View style={styles.container}>
-        {/* Header */}
-        <Animated.View
-          entering={FadeInDown.delay(100).springify()}
-          style={styles.header}
-        >
-          <View style={styles.headerLeft}>
-            <AnimatedPressable
-              onPress={() => router.back()}
-              style={styles.backButton}
+  const renderLogItem = ({ item: log }: { item: ActivityLog }) => {
+    const isError = log.status === "error";
+    const isSuccess = log.status === "success";
+    const statusColor = isSuccess
+      ? theme.colors.success.main
+      : isError
+        ? theme.colors.error.main
+        : theme.colors.warning.main;
+    const iconBackground = isError
+      ? theme.colors.error.light
+      : themeLegacy.colors.overlayPrimary;
+    const details = Object.keys(log.details || {}).length > 0
+      ? JSON.stringify(log.details, null, 2)
+      : "";
+
+    return (
+      <View style={styles.logItem}>
+        <ModernCard variant="elevated" padding={themeLegacy.spacing.md}>
+          <View style={styles.logHeader}>
+            <View style={styles.logHeaderLeft}>
+              <View style={[styles.iconContainer, { backgroundColor: iconBackground }]}>
+                <Ionicons
+                  name={getActionIcon(log.action)}
+                  size={20}
+                  color={isError ? theme.colors.error.main : theme.colors.primary[500]}
+                />
+              </View>
+              <View style={styles.logInfo}>
+                <Text style={styles.logAction}>
+                  {log.action.replace(/_/g, " ").toUpperCase()}
+                </Text>
+                <Text style={styles.logUser}>
+                  {log.user} • {log.role}
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.statusText, { color: statusColor }]}>{log.status}</Text>
+          </View>
+
+          <Text style={styles.timestamp}>{formatTimestamp(log.timestamp)}</Text>
+
+          {log.entity_type ? (
+            <ModernCard
+              variant="outlined"
+              padding={themeLegacy.spacing.xs}
+              style={styles.metaCard}
+            >
+              <Text style={styles.entityText}>
+                {log.entity_type}: {log.entity_id || "N/A"}
+              </Text>
+            </ModernCard>
+          ) : null}
+
+          {log.error_message ? (
+            <ModernCard
+              variant="outlined"
+              padding={themeLegacy.spacing.sm}
+              style={styles.errorCard}
+              contentStyle={styles.errorCardContent}
             >
               <Ionicons
-                name="arrow-back"
-                size={24}
-                color={auroraTheme.colors.text.primary}
+                name="alert-circle"
+                size={16}
+                color={theme.colors.error.main}
               />
+              <Text style={styles.errorText}>{log.error_message}</Text>
+            </ModernCard>
+          ) : null}
+
+          {details && !log.error_message ? (
+            <ModernCard
+              variant="outlined"
+              padding={themeLegacy.spacing.sm}
+              style={styles.detailsCard}
+            >
+              <Text style={styles.detailsText} numberOfLines={3}>
+                {details}
+              </Text>
+            </ModernCard>
+          ) : null}
+        </ModernCard>
+      </View>
+    );
+  };
+
+  return (
+    <ScreenContainer
+      backgroundType="solid"
+      noPadding
+      statusBarStyle={isDark ? "light-content" : "dark-content"}
+    >
+      <View style={styles.container}>
+        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
+          <View style={styles.headerLeft}>
+            <AnimatedPressable onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={22} color={theme.colors.text.primary} />
             </AnimatedPressable>
             <View>
               <Text style={styles.pageTitle}>Activity Logs</Text>
-              <Text style={styles.pageSubtitle}>
-                System audit & user actions
-              </Text>
+              <Text style={styles.pageSubtitle}>System audit and user actions</Text>
             </View>
           </View>
         </Animated.View>
 
-        {stats && (
-          <Animated.View
-            entering={FadeInDown.delay(200).springify()}
-            style={styles.statsContainer}
-          >
-            <StatsCard
-              title="Total Activities"
-              value={stats.total?.toString() || "0"}
-              icon="layers-outline"
-              variant="primary"
-              style={{ flex: 1 }}
-            />
-            <StatsCard
-              title="Success Rate"
-              value={`${stats.by_status?.success || 0}`}
-              icon="checkmark-circle-outline"
-              variant="success"
-              style={{ flex: 1 }}
-            />
-            <StatsCard
-              title="Errors"
-              value={`${stats.by_status?.error || 0}`}
-              icon="alert-circle-outline"
-              variant="error"
-              style={{ flex: 1 }}
-            />
+        {stats ? (
+          <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.statsContainer}>
+            {renderStatCard(
+              "Total Activities",
+              String(stats.total || 0),
+              "layers-outline",
+              theme.colors.primary[500],
+              themeLegacy.colors.overlayPrimary,
+            )}
+            {renderStatCard(
+              "Success Rate",
+              String(stats.by_status?.success || 0),
+              "checkmark-circle-outline",
+              theme.colors.success.main,
+              theme.colors.success.light,
+            )}
+            {renderStatCard(
+              "Errors",
+              String(stats.by_status?.error || 0),
+              "alert-circle-outline",
+              theme.colors.error.main,
+              theme.colors.error.light,
+            )}
           </Animated.View>
-        )}
+        ) : null}
 
         <View style={styles.listContainer}>
           {loading && logs.length === 0 ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator
-                size="large"
-                color={auroraTheme.colors.primary[500]}
-              />
+              <ActivityIndicator size="large" color={theme.colors.primary[500]} />
               <Text style={styles.loadingText}>Loading activity logs...</Text>
             </View>
           ) : (
@@ -325,7 +296,7 @@ export default function ActivityLogsScreen() {
                 <RefreshControl
                   refreshing={refreshing}
                   onRefresh={handleRefresh}
-                  tintColor={auroraTheme.colors.primary[500]}
+                  tintColor={theme.colors.primary[500]}
                 />
               }
               onEndReached={loadMore}
@@ -335,146 +306,211 @@ export default function ActivityLogsScreen() {
                   <Ionicons
                     name="document-text-outline"
                     size={64}
-                    color={auroraTheme.colors.text.tertiary}
+                    color={theme.colors.text.tertiary}
                   />
                   <Text style={styles.emptyText}>No activity logs found</Text>
                 </View>
               }
               ListFooterComponent={
                 loading && logs.length > 0 ? (
-                  <View style={{ padding: 20 }}>
-                    <ActivityIndicator
-                      color={auroraTheme.colors.primary[500]}
-                    />
+                  <View style={styles.footerLoader}>
+                    <ActivityIndicator color={theme.colors.primary[500]} />
                   </View>
                 ) : null
               }
-              contentContainerStyle={{ paddingBottom: auroraTheme.spacing.xl }}
+              contentContainerStyle={styles.listContent}
             />
           )}
         </View>
       </View>
-    </AuroraBackground>
+    </ScreenContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 60,
-    paddingHorizontal: auroraTheme.spacing.md,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: auroraTheme.spacing.md,
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: auroraTheme.spacing.md,
-  },
-  backButton: {
-    padding: auroraTheme.spacing.xs,
-    backgroundColor: auroraTheme.colors.background.glass,
-    borderRadius: auroraTheme.borderRadius.full,
-    borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
-  },
-  pageTitle: {
-    fontFamily: auroraTheme.typography.fontFamily.heading,
-    fontSize: auroraTheme.typography.fontSize["2xl"],
-    color: auroraTheme.colors.text.primary,
-    fontWeight: "700",
-  },
-  pageSubtitle: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    gap: auroraTheme.spacing.sm,
-    marginBottom: auroraTheme.spacing.md,
-  },
-  listContainer: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: auroraTheme.spacing.md,
-    color: auroraTheme.colors.text.secondary,
-    fontSize: auroraTheme.typography.fontSize.md,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: 100,
-  },
-  emptyText: {
-    marginTop: auroraTheme.spacing.md,
-    color: auroraTheme.colors.text.tertiary,
-    fontSize: auroraTheme.typography.fontSize.lg,
-  },
-  logHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: auroraTheme.spacing.sm,
-  },
-  logHeaderLeft: {
-    flexDirection: "row",
-    gap: auroraTheme.spacing.md,
-    flex: 1,
-  },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: auroraTheme.borderRadius.full,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  logInfo: {
-    flex: 1,
-  },
-  logAction: {
-    fontSize: auroraTheme.typography.fontSize.md,
-    fontWeight: "700",
-    color: auroraTheme.colors.text.primary,
-    marginBottom: 2,
-  },
-  logUser: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.tertiary,
-  },
-  statusText: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    fontWeight: "bold",
-    textTransform: "uppercase",
-  },
-  timestamp: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.tertiary,
-    marginBottom: auroraTheme.spacing.xs,
-    marginLeft: 52, // Align with text, skipping icon
-  },
-  entityText: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.secondary,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-  },
-  errorText: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    flex: 1,
-  },
-  detailsText: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.secondary,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-  },
-});
+const createStyles = (
+  theme: ReturnType<typeof useThemeContext>["theme"],
+  themeLegacy: ReturnType<typeof useThemeContext>["themeLegacy"],
+  topInset: number,
+) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      paddingTop: topInset + themeLegacy.spacing.md,
+      paddingHorizontal: themeLegacy.spacing.md,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: themeLegacy.spacing.md,
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: themeLegacy.spacing.md,
+    },
+    backButton: {
+      padding: themeLegacy.spacing.xs,
+      backgroundColor: theme.colors.background.elevated,
+      borderRadius: theme.borderRadius.full,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border.light,
+      minWidth: 44,
+      minHeight: 44,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    pageTitle: {
+      fontFamily: theme.typography.fontFamily.heading,
+      fontSize: themeLegacy.typography.fontSize.xxl,
+      color: theme.colors.text.primary,
+      fontWeight: "700",
+    },
+    pageSubtitle: {
+      fontSize: themeLegacy.typography.fontSize.sm,
+      color: theme.colors.text.secondary,
+    },
+    statsContainer: {
+      flexDirection: "row",
+      gap: themeLegacy.spacing.sm,
+      marginBottom: themeLegacy.spacing.md,
+    },
+    statCard: {
+      flex: 1,
+      minHeight: 108,
+    },
+    statHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: themeLegacy.spacing.sm,
+      marginBottom: themeLegacy.spacing.md,
+    },
+    statIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: theme.borderRadius.full,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    statLabel: {
+      flex: 1,
+      fontSize: themeLegacy.typography.fontSize.xs,
+      color: theme.colors.text.secondary,
+      fontWeight: "600",
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    statValue: {
+      fontSize: themeLegacy.typography.fontSize.xxl,
+      color: theme.colors.text.primary,
+      fontWeight: "700",
+      fontFamily: theme.typography.fontFamily.heading,
+    },
+    listContainer: {
+      flex: 1,
+    },
+    listContent: {
+      paddingBottom: themeLegacy.spacing.xl,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    loadingText: {
+      marginTop: themeLegacy.spacing.md,
+      color: theme.colors.text.secondary,
+      fontSize: themeLegacy.typography.fontSize.md,
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingTop: 100,
+    },
+    emptyText: {
+      marginTop: themeLegacy.spacing.md,
+      color: theme.colors.text.tertiary,
+      fontSize: themeLegacy.typography.fontSize.lg,
+    },
+    footerLoader: {
+      padding: 20,
+    },
+    logItem: {
+      marginBottom: themeLegacy.spacing.md,
+    },
+    logHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: themeLegacy.spacing.sm,
+    },
+    logHeaderLeft: {
+      flexDirection: "row",
+      gap: themeLegacy.spacing.md,
+      flex: 1,
+    },
+    iconContainer: {
+      width: 36,
+      height: 36,
+      borderRadius: theme.borderRadius.full,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    logInfo: {
+      flex: 1,
+    },
+    logAction: {
+      fontSize: themeLegacy.typography.fontSize.md,
+      fontWeight: "700",
+      color: theme.colors.text.primary,
+      marginBottom: 2,
+    },
+    logUser: {
+      fontSize: themeLegacy.typography.fontSize.xs,
+      color: theme.colors.text.tertiary,
+    },
+    statusText: {
+      fontSize: themeLegacy.typography.fontSize.xs,
+      fontWeight: "700",
+      textTransform: "uppercase",
+    },
+    timestamp: {
+      fontSize: themeLegacy.typography.fontSize.xs,
+      color: theme.colors.text.tertiary,
+      marginBottom: themeLegacy.spacing.xs,
+      marginLeft: 52,
+    },
+    metaCard: {
+      alignSelf: "flex-start",
+      marginVertical: themeLegacy.spacing.xs,
+    },
+    entityText: {
+      fontSize: themeLegacy.typography.fontSize.xs,
+      color: theme.colors.text.secondary,
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    },
+    errorCard: {
+      marginTop: themeLegacy.spacing.sm,
+      borderColor: theme.colors.error.main,
+      backgroundColor: theme.colors.error.light,
+    },
+    errorCardContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: themeLegacy.spacing.sm,
+    },
+    errorText: {
+      fontSize: themeLegacy.typography.fontSize.xs,
+      flex: 1,
+      color: theme.colors.error.main,
+    },
+    detailsCard: {
+      marginTop: themeLegacy.spacing.sm,
+    },
+    detailsText: {
+      fontSize: themeLegacy.typography.fontSize.xs,
+      color: theme.colors.text.secondary,
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    },
+  });

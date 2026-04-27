@@ -1,11 +1,20 @@
 import asyncio
-from motor.motor_asyncio import AsyncIOMotorClient
-import pyodbc
 import os
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
+
+import pyodbc
 from dotenv import load_dotenv
+from motor.motor_asyncio import AsyncIOMotorClient
 
 load_dotenv()
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from scripts.approval_guard import enforce_high_risk_entrypoint  # noqa: E402
 
 
 async def verify_item_sync(barcode):
@@ -83,4 +92,5 @@ async def verify_item_sync(barcode):
 
 
 if __name__ == "__main__":
+    enforce_high_risk_entrypoint(always_require=True)
     asyncio.run(verify_item_sync("522905"))

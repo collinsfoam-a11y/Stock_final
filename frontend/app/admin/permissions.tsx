@@ -1,16 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  Alert,
-  Platform,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView, TextInput, Alert, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { usePermission } from "../../src/hooks/usePermission";
-import { LoadingSpinner, ScreenContainer } from "../../src/components/ui";
+import { LoadingSpinner } from "../../src/components/ui/LoadingSpinner";
+import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
 import { GlassCard } from "../../src/components/ui/GlassCard";
 import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
 import {
@@ -38,11 +31,9 @@ export default function PermissionsScreen() {
   // Check if user has admin permissions
   useEffect(() => {
     if (!hasRole("admin")) {
-      Alert.alert(
-        "Access Denied",
-        "You do not have permission to access this screen.",
-        [{ text: "OK", onPress: () => router.back() }],
-      );
+      Alert.alert("Access Denied", "You do not have permission to access this screen.", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
     }
   }, [hasRole, router]);
 
@@ -79,10 +70,7 @@ export default function PermissionsScreen() {
     }
 
     if (!username.trim()) {
-      Alert.alert(
-        "Input Required",
-        "Please enter a username to load permissions.",
-      );
+      Alert.alert("Input Required", "Please enter a username to load permissions.");
       return;
     }
     try {
@@ -143,37 +131,27 @@ export default function PermissionsScreen() {
       ? categoryKeys.filter(
           (cat) =>
             cat.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            categories[cat].some((p: string) =>
-              p.toLowerCase().includes(searchQuery.toLowerCase()),
-            ),
+            categories[cat].some((p: string) => p.toLowerCase().includes(searchQuery.toLowerCase()))
         )
       : categoryKeys;
 
     return filteredCategories.map((category) => {
       const permissions = categories[category];
       const filteredPermissions = searchQuery
-        ? permissions.filter((p: string) =>
-            p.toLowerCase().includes(searchQuery.toLowerCase()),
-          )
+        ? permissions.filter((p: string) => p.toLowerCase().includes(searchQuery.toLowerCase()))
         : permissions;
 
       if (filteredPermissions.length === 0) return null;
 
       return (
-        <GlassCard
-          key={category}
-          variant="medium"
-          style={styles.categoryContainer}
-        >
+        <GlassCard key={category} variant="medium" style={styles.categoryContainer}>
           <View style={styles.categoryHeader}>
             <Ionicons
               name={getCategoryIcon(category)}
               size={20}
               color={auroraTheme.colors.primary[400]}
             />
-            <Text style={styles.categoryTitle}>
-              {category.toUpperCase().replace("_", " ")}
-            </Text>
+            <Text style={styles.categoryTitle}>{category.toUpperCase().replace("_", " ")}</Text>
           </View>
 
           <View style={styles.permissionsGrid}>
@@ -196,14 +174,8 @@ export default function PermissionsScreen() {
                       }
                       disabled={offlineMode}
                     >
-                      <Ionicons
-                        name={hasPermission ? "close" : "add"}
-                        size={16}
-                        color="#fff"
-                      />
-                      <Text style={styles.buttonText}>
-                        {hasPermission ? "Remove" : "Add"}
-                      </Text>
+                      <Ionicons name={hasPermission ? "close" : "add"} size={16} color="#fff" />
+                      <Text style={styles.buttonText}>{hasPermission ? "Remove" : "Add"}</Text>
                     </AnimatedPressable>
                   )}
                 </View>
@@ -229,7 +201,7 @@ export default function PermissionsScreen() {
   if (loading && !availablePermissions) {
     return (
       <ScreenContainer
-        backgroundType="aurora"
+        backgroundType="solid"
         header={{
           title: "Permissions",
           subtitle: "Loading system permissions...",
@@ -245,7 +217,7 @@ export default function PermissionsScreen() {
 
   return (
     <ScreenContainer
-      backgroundType="aurora"
+      backgroundType="solid"
       auroraVariant="secondary"
       header={{
         title: "Permissions",
@@ -262,12 +234,10 @@ export default function PermissionsScreen() {
               color={auroraTheme.colors.warning[500]}
             />
             <View style={styles.noticeCopy}>
-              <Text style={styles.noticeTitle}>
-                Permissions are unavailable offline
-              </Text>
+              <Text style={styles.noticeTitle}>Permissions are unavailable offline</Text>
               <Text style={styles.noticeBody}>
-                Available permission rules and user permission assignments are
-                loaded from the backend. Reconnect to view or update access.
+                Available permission rules and user permission assignments are loaded from the
+                backend. Reconnect to view or update access.
               </Text>
             </View>
           </GlassCard>
@@ -330,26 +300,16 @@ export default function PermissionsScreen() {
 
       <ScrollView
         style={styles.content}
-        contentContainerStyle={[
-          styles.contentContainer,
-          isWeb && styles.contentContainerWeb,
-        ]}
+        contentContainerStyle={[styles.contentContainer, isWeb && styles.contentContainerWeb]}
       >
         <View style={styles.statsRow}>
           <GlassCard variant="light" style={styles.statBox}>
-            <Text style={styles.statValue}>
-              {availablePermissions?.permissions?.length || 0}
-            </Text>
+            <Text style={styles.statValue}>{availablePermissions?.permissions?.length || 0}</Text>
             <Text style={styles.statLabel}>Total Perms</Text>
           </GlassCard>
           {selectedUsername && (
             <GlassCard variant="light" style={styles.statBox}>
-              <Text
-                style={[
-                  styles.statValue,
-                  { color: auroraTheme.colors.primary[400] },
-                ]}
-              >
+              <Text style={[styles.statValue, { color: auroraTheme.colors.primary[400] }]}>
                 {userPermissions.length}
               </Text>
               <Text style={styles.statLabel}>User Active</Text>

@@ -1,31 +1,11 @@
-/**
- * Modern Header Component for Lavanya Mart Stock Verify
- * Clean header with branding and navigation
- */
-
 import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  StatusBar,
-  ViewStyle,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, Text, StyleSheet, ViewStyle } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { LinearGradient } from "expo-linear-gradient";
-import { useAuthStore } from "../../store/authStore";
-import { useRouter } from "expo-router";
 
-import {
-  colors,
-  spacing,
-  typography,
-  shadows,
-  gradients,
-} from "../../theme/modernDesign";
+import { useThemeContext } from "../../context/ThemeContext";
 import { BrandLogo } from "../branding/BrandLogo";
+import { ScreenHeader } from "./ScreenHeader";
 
 interface ModernHeaderProps {
   title?: string;
@@ -42,35 +22,6 @@ interface ModernHeaderProps {
   style?: ViewStyle;
 }
 
-const LogoWithBorder = ({ size = 40 }: { size?: number }) => (
-  <LinearGradient
-    colors={gradients.primary}
-    style={{
-      width: size,
-      height: size,
-      borderRadius: size / 2,
-      padding: 2,
-      justifyContent: "center",
-      alignItems: "center",
-    }}
-    start={{ x: 0, y: 0 }}
-    end={{ x: 1, y: 1 }}
-  >
-    <View
-      style={{
-        flex: 1,
-        width: "100%",
-        backgroundColor: colors.white,
-        borderRadius: size / 2,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <BrandLogo variant="symbol" width={size * 0.6} height={size * 0.6} />
-    </View>
-  </LinearGradient>
-);
-
 export const ModernHeader: React.FC<ModernHeaderProps> = ({
   title,
   showLogo = false,
@@ -82,179 +33,111 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
   subtitle,
   style,
 }) => {
-  const user = useAuthStore((state) => state.user);
-  const router = useRouter();
+  const { theme, isDark } = useThemeContext();
+  const insets = useSafeAreaInsets();
+  const badgeShadow = isDark
+    ? "0px 6px 14px rgba(0, 0, 0, 0.28)"
+    : "0px 6px 14px rgba(15, 23, 42, 0.12)";
 
-  const shouldShowSettings =
-    !!user && showSettingsButton && rightAction?.icon !== "settings-outline";
+  const shouldUseBrandedHeader = showLogo && !showBackButton && !rightComponent && !rightAction;
 
-  const onPressSettings = () => {
-    const role = user?.role;
-    const target =
-      role === "admin" || role === "supervisor" || role === "staff"
-        ? `/${role}/settings`
-        : "/staff/settings";
-    router.push(target as any);
-  };
+  if (!shouldUseBrandedHeader) {
+    return (
+      <ScreenHeader
+        title={title}
+        subtitle={subtitle}
+        showBackButton={showBackButton}
+        onBackPress={onBackPress}
+        showLogoutButton={false}
+        showUsername={!title && !showBackButton}
+        showSettingsButton={showSettingsButton && !showBackButton && !rightComponent}
+        rightAction={rightAction}
+        customRightContent={rightComponent}
+        style={style}
+      />
+    );
+  }
 
   return (
-    <SafeAreaView style={[styles.safeArea, style]}>
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={colors.white}
-        translucent={false}
-      />
-
-      <View style={styles.header}>
-        {/* Left Section */}
-        <View style={styles.leftSection}>
-          {showBackButton ? (
-            <TouchableOpacity
-              onPress={onBackPress}
-              style={styles.backButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="arrow-back" size={24} color={colors.gray[700]} />
-            </TouchableOpacity>
-          ) : !showLogo ? (
-            <View style={styles.logoContainer}>
-              <LogoWithBorder size={36} />
-            </View>
+    <View
+      style={[
+        styles.wrapper,
+        {
+          backgroundColor: theme.colors.background.default,
+          borderBottomColor: theme.colors.border.light,
+          paddingTop: insets.top + 8,
+        },
+        style,
+      ]}
+    >
+      <View style={styles.brandRow}>
+        <View
+          style={[
+            styles.logoBadge,
+            {
+              backgroundColor: theme.colors.background.paper,
+              borderColor: theme.colors.border.light,
+              boxShadow: badgeShadow,
+            },
+          ]}
+        >
+          <View style={[styles.logoAccent, { backgroundColor: `${theme.colors.accent}18` }]}>
+            <BrandLogo variant="symbol" width={28} height={28} />
+          </View>
+        </View>
+        <View style={styles.brandCopy}>
+          <Text style={[styles.brandTitle, { color: theme.colors.text.primary }]}>
+            {title || "Lavanya Mart"}
+          </Text>
+          {subtitle ? (
+            <Text style={[styles.brandSubtitle, { color: theme.colors.text.secondary }]}>
+              {subtitle}
+            </Text>
           ) : null}
         </View>
-
-        {/* Center Section */}
-        <View style={styles.centerSection}>
-          {showLogo ? (
-            <View style={styles.logoContainer}>
-              <LogoWithBorder size={48} />
-              {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-            </View>
-          ) : title ? (
-            <View style={styles.titleContainer}>
-              <Text style={styles.title} numberOfLines={1}>
-                {title}
-              </Text>
-              {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-            </View>
-          ) : (
-            <View style={styles.titleContainer}>
-              <Text style={styles.brandName}>Lavanya Mart</Text>
-              {user?.full_name && (
-                <Text style={styles.userName} numberOfLines={1}>
-                  {user.full_name}
-                </Text>
-              )}
-            </View>
-          )}
-        </View>
-
-        {/* Right Section */}
-        <View style={styles.rightSection}>
-          {rightComponent}
-          {shouldShowSettings && (
-            <TouchableOpacity
-              onPress={onPressSettings}
-              style={styles.backButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons
-                name="settings-outline"
-                size={24}
-                color={colors.gray[700]}
-              />
-            </TouchableOpacity>
-          )}
-          {rightAction && (
-            <TouchableOpacity
-              onPress={rightAction.onPress}
-              style={styles.backButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons
-                name={rightAction.icon}
-                size={24}
-                color={colors.gray[700]}
-              />
-            </TouchableOpacity>
-          )}
-        </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: colors.white,
-    ...shadows.sm,
+  wrapper: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
-  header: {
+  brandRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    height: 60,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    gap: 12,
   },
-  leftSection: {
+  logoBadge: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  logoAccent: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  brandCopy: {
     flex: 1,
-    alignItems: "flex-start",
-    justifyContent: "center",
+    gap: 2,
   },
-  centerSection: {
-    flex: 2,
-    alignItems: "center",
-    justifyContent: "center",
+  brandTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: -0.2,
   },
-  rightSection: {
-    flex: 1,
-    alignItems: "flex-end",
-    justifyContent: "center",
-    flexDirection: "row",
-  },
-  backButton: {
-    padding: spacing.xs,
-  },
-  logoContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logo: {
-    height: 32,
-    width: 32,
-  },
-  titleContainer: {
-    alignItems: "center",
-  },
-  title: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[900],
-    textAlign: "center",
-  },
-  brandName: {
-    fontSize: typography.fontSize.base,
-    fontWeight: "800",
-    color: colors.primary[600],
-    textAlign: "center",
-    letterSpacing: 0.5,
-  },
-  userName: {
-    fontSize: typography.fontSize.xs,
-    color: colors.gray[500],
-    marginTop: 2,
-    textAlign: "center",
+  brandSubtitle: {
+    fontSize: 13,
     fontWeight: "500",
-  },
-  subtitle: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.normal,
-    color: colors.gray[500],
-    marginTop: 2,
-    textAlign: "center",
   },
 });
 

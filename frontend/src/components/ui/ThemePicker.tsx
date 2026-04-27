@@ -24,13 +24,15 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ compact = false }) => 
   return (
     <View style={styles.container}>
       <View style={styles.modeSection}>
-        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-          Appearance Mode
-        </Text>
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Appearance Mode</Text>
         <View
           style={[
             styles.modeToggle,
-            { backgroundColor: colors.surface, gap: compact ? 6 : 8 },
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              gap: compact ? 6 : 8,
+            },
           ]}
         >
           {[
@@ -39,6 +41,9 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ compact = false }) => 
           ].map((mode) => (
             <TouchableOpacity
               key={mode.value}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: theme === mode.value }}
+              activeOpacity={0.85}
               style={[
                 styles.modeButton,
                 theme === mode.value && { backgroundColor: colors.accent },
@@ -59,8 +64,7 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ compact = false }) => 
                 style={[
                   styles.modeButtonText,
                   {
-                    color:
-                      theme === mode.value ? "#FFFFFF" : colors.textSecondary,
+                    color: theme === mode.value ? "#FFFFFF" : colors.textSecondary,
                   },
                 ]}
               >
@@ -92,6 +96,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderRadius: 12,
     padding: 4,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   modeButton: {
     flex: 1,
@@ -99,6 +104,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
+    minHeight: 44,
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 8,

@@ -5,6 +5,7 @@ const DB_NAME = "stock_verify.db";
 
 export interface LocalItem {
   barcode: string;
+  item_code?: string;
   name: string;
   category: string;
   verified: number; // 0 or 1
@@ -35,6 +36,7 @@ const ensureSchema = async (db: SQLite.SQLiteDatabase) => {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS items (
       barcode TEXT PRIMARY KEY,
+      item_code TEXT,
       name TEXT,
       category TEXT,
       verified INTEGER DEFAULT 0,
@@ -65,6 +67,12 @@ const ensureSchema = async (db: SQLite.SQLiteDatabase) => {
     await db.execAsync(
       'ALTER TABLE pending_verifications ADD COLUMN status TEXT DEFAULT "pending"',
     );
+  } catch {
+    // Column likely exists or other error we can ignore for now
+  }
+
+  try {
+    await db.execAsync('ALTER TABLE items ADD COLUMN item_code TEXT');
   } catch {
     // Column likely exists or other error we can ignore for now
   }
@@ -100,8 +108,15 @@ export const saveLocalItems = async (items: LocalItem[]) => {
   await db.withTransactionAsync(async () => {
     for (const item of items) {
       await db.runAsync(
-        "INSERT OR REPLACE INTO items (barcode, name, category, verified, last_sync) VALUES (?, ?, ?, ?, ?)",
-        [item.barcode, item.name, item.category, item.verified, item.last_sync],
+        "INSERT OR REPLACE INTO items (barcode, item_code, name, category, verified, last_sync) VALUES (?, ?, ?, ?, ?, ?)",
+        [
+          item.barcode,
+          item.item_code ?? item.barcode,
+          item.name,
+          item.category,
+          item.verified,
+          item.last_sync,
+        ],
       );
     }
   });
@@ -198,7 +213,7 @@ export const clearPendingVerifications = async (ids: number[]) => {
 const mapLocalItemToAppItem = (row: LocalItem): Partial<Item> => {
   return {
     id: row.barcode,
-    item_code: row.barcode,
+    item_code: row.item_code ?? row.barcode,
     barcode: row.barcode,
     name: row.name,
     item_name: row.name,
@@ -225,10 +240,10 @@ export const localDb = {
     const normalizedQuery = `%${query.trim()}%`;
     const rows = await db.getAllAsync<LocalItem>(
       `SELECT * FROM items
-       WHERE barcode LIKE ? OR name LIKE ? OR category LIKE ?
+       WHERE barcode LIKE ? OR item_code LIKE ? OR name LIKE ? OR category LIKE ?
        ORDER BY last_sync DESC
        LIMIT 25`,
-      [normalizedQuery, normalizedQuery, normalizedQuery],
+      [normalizedQuery, normalizedQuery, normalizedQuery, normalizedQuery],
     );
 
     return rows.map(mapLocalItemToAppItem);

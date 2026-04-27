@@ -21,11 +21,9 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
 import { getSessions } from "../../src/services/api/api";
-import {
-  GlassCard,
-  AnimatedPressable,
-  ScreenContainer,
-} from "../../src/components/ui";
+import { GlassCard } from "../../src/components/ui/GlassCard";
+import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
+import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { theme } from "../../src/styles/modernDesignSystem";
 import { useToast } from "../../src/components/feedback/ToastProvider";

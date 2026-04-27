@@ -158,6 +158,8 @@ describe("authStore.logout", () => {
     expect(removeItem).toHaveBeenCalledWith("refresh_token");
     expect(httpClient.defaults.headers.common.Authorization).toBeUndefined();
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(useAuthStore.getState().isHydrated).toBe(true);
+    expect(useAuthStore.getState().authPhase).toBe("unauthenticated");
     expect(useAuthStore.getState().user).toBeNull();
   });
 });

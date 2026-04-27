@@ -1,6 +1,9 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
 
+import { AUTH_STATE_FILES, assertAuthenticated } from "./helpers/auth";
+import { resolveAppUrl } from "./helpers/authConfig";
+
 /**
  * Visual Regression Tests
  *
@@ -15,17 +18,6 @@ test.skip(
   !process.env.RUN_VISUAL,
   "Visual baselines are not enabled for this run.",
 );
-
-async function ensureCredentialsMode(page: any) {
-  const usernameField = page.getByPlaceholder(/username/i);
-  if (await usernameField.isVisible({ timeout: 750 }).catch(() => false))
-    return;
-  const credentialsTab = page
-    .getByRole("button", { name: /credentials/i })
-    .or(page.getByText(/credentials/i));
-  await credentialsTab.first().click();
-  await expect(usernameField).toBeVisible({ timeout: 5000 });
-}
 
 function skipIfMissingBaseline(testInfo: any, name: string) {
   const expected = testInfo.snapshotPath(name);
@@ -62,22 +54,11 @@ test.describe("Visual Regression - Login", () => {
 });
 
 test.describe("Visual Regression - Staff", () => {
+  test.use({ storageState: AUTH_STATE_FILES.staff });
+
   test.beforeEach(async ({ page }) => {
-    // Login as staff user
-    await page.goto("/");
-
-    const getStarted = page.getByText(/get started/i);
-    if (await getStarted.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await getStarted.click();
-    }
-
-    await ensureCredentialsMode(page);
-
-    await page.getByPlaceholder(/username/i).fill("staff1");
-    await page.getByPlaceholder(/password/i).fill("staff123");
-    await page.getByRole("button", { name: /sign in/i }).click();
-
-    // Wait for home page
+    await page.goto(resolveAppUrl("/staff/home"));
+    await assertAuthenticated(page, "staff");
     await page.waitForLoadState("networkidle");
   });
 
@@ -108,21 +89,11 @@ test.describe("Visual Regression - Staff", () => {
 });
 
 test.describe("Visual Regression - Supervisor", () => {
+  test.use({ storageState: AUTH_STATE_FILES.supervisor });
+
   test.beforeEach(async ({ page }) => {
-    // Login as supervisor
-    await page.goto("/");
-
-    const getStarted = page.getByText(/get started/i);
-    if (await getStarted.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await getStarted.click();
-    }
-
-    await ensureCredentialsMode(page);
-
-    await page.getByPlaceholder(/username/i).fill("supervisor");
-    await page.getByPlaceholder(/password/i).fill("super123");
-    await page.getByRole("button", { name: /sign in/i }).click();
-
+    await page.goto(resolveAppUrl("/supervisor/dashboard"));
+    await assertAuthenticated(page, "supervisor");
     await page.waitForLoadState("networkidle");
   });
 
@@ -150,21 +121,11 @@ test.describe("Visual Regression - Supervisor", () => {
 });
 
 test.describe("Visual Regression - Admin", () => {
+  test.use({ storageState: AUTH_STATE_FILES.admin });
+
   test.beforeEach(async ({ page }) => {
-    // Login as admin
-    await page.goto("/");
-
-    const getStarted = page.getByText(/get started/i);
-    if (await getStarted.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await getStarted.click();
-    }
-
-    await ensureCredentialsMode(page);
-
-    await page.getByPlaceholder(/username/i).fill("admin");
-    await page.getByPlaceholder(/password/i).fill("admin123");
-    await page.getByRole("button", { name: /sign in/i }).click();
-
+    await page.goto(resolveAppUrl("/admin/dashboard-web"));
+    await assertAuthenticated(page, "admin");
     await page.waitForLoadState("networkidle");
   });
 
@@ -221,22 +182,12 @@ test.describe("Visual Regression - Admin", () => {
 });
 
 test.describe("Visual Regression - Components", () => {
+  test.use({ storageState: AUTH_STATE_FILES.admin });
+
   test("modal overlay matches baseline", async ({ page }, testInfo) => {
     skipIfMissingBaseline(testInfo, "modal-user-form.png");
-    // Login first
-    await page.goto("/");
-    const getStarted = page.getByText(/get started/i);
-    if (await getStarted.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await getStarted.click();
-    }
-    await ensureCredentialsMode(page);
-    await page.getByPlaceholder(/username/i).fill("admin");
-    await page.getByPlaceholder(/password/i).fill("admin123");
-    await page.getByRole("button", { name: /sign in/i }).click();
-    await page.waitForLoadState("networkidle");
-
-    // Navigate to users and click add
-    await page.getByText(/users/i).first().click();
+    await page.goto(resolveAppUrl("/admin/users"));
+    await assertAuthenticated(page, "admin");
     await page.waitForLoadState("networkidle");
 
     // Open add user modal

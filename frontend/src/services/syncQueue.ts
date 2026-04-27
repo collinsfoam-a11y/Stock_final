@@ -85,6 +85,7 @@ export const syncQueue = {
 
       const items: LocalItem[] = response.data.items.map((item: any) => ({
         barcode: item.barcode,
+        item_code: item.item_code,
         name: item.item_name,
         category: item.category,
         verified: item.verified ? 1 : 0,

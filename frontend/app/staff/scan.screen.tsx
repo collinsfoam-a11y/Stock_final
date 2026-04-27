@@ -3,7 +3,7 @@
  * Clean, efficient scanning interface
  */
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -43,12 +43,19 @@ import {
   getSessionStats,
   SessionStatsResponse,
 } from "../../src/services/api/api";
-import { RecentItemsService } from "../../src/services/enhancedFeatures";
+import {
+  AnalyticsService,
+  RecentItemsService,
+} from "../../src/services/enhancedFeatures";
 import { playScanSound } from "../../src/services/scanSoundService";
 import { toastService } from "../../src/services/toastService";
 import { localDb } from "../../src/db/localDb";
 import { validateBarcode } from "../../src/utils/validation";
 import { dedupeItemsKeepingHighestStock } from "../../src/utils/itemBatchUtils";
+import {
+  smartSuggestionsService,
+  type SuggestionItem,
+} from "../../src/domains/inventory/services/smartSuggestionsService";
 
 import ModernHeader from "../../src/components/ui/ModernHeader";
 import ModernButton from "../../src/components/ui/ModernButton";
@@ -57,6 +64,7 @@ import { FinishRackModal } from "../../src/components/scan/FinishRackModal";
 import { ScanCameraOverlay } from "../../src/components/scan/ScanCameraOverlay";
 import { ScanLookupPanel } from "../../src/components/scan/ScanLookupPanel";
 import { ScanStatsCard } from "../../src/components/scan/ScanStatsCard";
+import { SmartSuggestionsPanel } from "../../src/components/suggestions/SmartSuggestionsPanel";
 import {
   colors,
   spacing,
@@ -70,6 +78,20 @@ import { useAuthStore } from "../../src/store/authStore";
 const SCAN_BUFFER_TIMEOUT = 2000; // 2 seconds
 const SCAN_BUFFER_MAX_SIZE = 10;
 const SCAN_CONFIDENCE_THRESHOLD = 2;
+
+const pickBestLookupMatch = (items: any[], query: string) => {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  return (
+    items.find((item) => {
+      const barcode = String(item?.barcode ?? "").toLowerCase();
+      const itemCode = String(item?.item_code ?? "").toLowerCase();
+      return barcode === normalizedQuery || itemCode === normalizedQuery;
+    }) ||
+    items[0] ||
+    null
+  );
+};
 
 const ScanScreen = React.memo(function ScanScreen() {
   const router = useRouter();
@@ -123,6 +145,9 @@ const ScanScreen = React.memo(function ScanScreen() {
   const [debouncedSearchQuery] = useDebounce(searchQuery, debounceDelay);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [recentItems, setRecentItems] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
+  const [suggestionsDismissed, setSuggestionsDismissed] =
+    useState<boolean>(false);
   const [sessionStats, setSessionStats] = useState<SessionStatsResponse>({
     id: String(sessionId ?? ""),
     scannedItems: 0,
@@ -141,6 +166,10 @@ const ScanScreen = React.memo(function ScanScreen() {
   const scanBufferRef = useRef<
     { code: string; count: number; timestamp: number }[]
   >([]);
+  const suggestionTargetItem = useMemo(
+    () => searchResults[0] || recentItems[0] || null,
+    [recentItems, searchResults],
+  );
 
   const loadRecentItems = useCallback(async () => {
     try {
@@ -204,6 +233,42 @@ const ScanScreen = React.memo(function ScanScreen() {
     await Promise.all([loadRecentItems(), loadSessionStats()]);
     safeSetState(setInitialLoading, false);
   }, [loadRecentItems, loadSessionStats, safeSetState]);
+
+  const loadSuggestions = useCallback(async () => {
+    try {
+      const suggestionContext = {
+        sessionId: sessionId ? String(sessionId) : undefined,
+        itemCode:
+          suggestionTargetItem?.item_code || suggestionTargetItem?.barcode,
+        scannedItem: suggestionTargetItem || undefined,
+        floorNo: currentFloor || undefined,
+        rackNo: currentRack || undefined,
+        recentActivity: Array.from(
+          { length: Math.min(sessionStats.scannedItems, 20) },
+          () => "counted",
+        ),
+      };
+
+      const nextSuggestions =
+        await smartSuggestionsService.getPersonalizedSuggestions(
+          suggestionContext,
+        );
+      safeSetState(setSuggestions, nextSuggestions);
+      if (nextSuggestions.length > 0) {
+        safeSetState(setSuggestionsDismissed, false);
+      }
+    } catch (error) {
+      console.error("Failed to load smart suggestions", error);
+      safeSetState(setSuggestions, []);
+    }
+  }, [
+    currentFloor,
+    currentRack,
+    safeSetState,
+    sessionId,
+    sessionStats.scannedItems,
+    suggestionTargetItem,
+  ]);
 
   const onRefresh = useCallback(async () => {
     safeSetState(setRefreshing, true);
@@ -311,6 +376,10 @@ const ScanScreen = React.memo(function ScanScreen() {
     }
   }, [debouncedSearchQuery, performSearch, safeSetState]);
 
+  useEffect(() => {
+    void loadSuggestions();
+  }, [loadSuggestions]);
+
   const handleBarcodeScan = async ({ data }: { data: string }) => {
     if (scanned) return;
 
@@ -373,7 +442,15 @@ const ScanScreen = React.memo(function ScanScreen() {
     safeSetState(setScanned, false);
   };
 
-  const handleLookup = async (barcode: string) => {
+  const navigateToDetail = useCallback((barcode: string) => {
+    safeSetState(setSearchQuery, "");
+    router.push({
+      pathname: "/staff/item-detail",
+      params: { barcode, sessionId: sessionId! },
+    } as any);
+  }, [router, safeSetState, sessionId]);
+
+  const handleLookup = useCallback(async (barcode: string) => {
     if (loading) return;
     const validation = validateBarcode(barcode);
     if (!validation.valid) {
@@ -387,32 +464,53 @@ const ScanScreen = React.memo(function ScanScreen() {
     try {
       let item: any;
 
-      // OPTIMISTIC STRATEGY: Try Local DB first for instant response
       try {
-        item = await safeAsync(() =>
-          localDb.getItemByBarcode(validation.value!),
-        );
+        item = await safeAsync(() => localDb.getItemByBarcode(validation.value!));
       } catch {
         // Ignore local db error, fall through to API
       }
 
-      // If not found locally, use the API unless offline mode is enabled.
+      if (!item) {
+        try {
+          const localMatches = await safeAsync(() =>
+            localDb.searchItems(validation.value!),
+          );
+          if (localMatches?.length) {
+            item = pickBestLookupMatch(localMatches, validation.value!);
+          }
+        } catch {
+          // Ignore local search error, fall through to API
+        }
+      }
+
       if (!item && !offlineMode) {
         try {
           item = await safeAsync(() => getItemByBarcode(validation.value!));
-        } catch (e) {
-          throw e;
+        } catch {
+          // Ignore direct lookup errors and fall back to search-based resolution
+        }
+      }
+
+      if (!item && !offlineMode) {
+        const remoteResults = await safeAsync(() => searchItems(validation.value!));
+        if (remoteResults?.items?.length) {
+          item = pickBestLookupMatch(remoteResults.items, validation.value!);
         }
       }
 
       if (item) {
+        await safeAsync(() => RecentItemsService.addRecent(item.item_code, item));
         await safeAsync(() =>
-          RecentItemsService.addRecent(item.item_code, item),
+          AnalyticsService.trackItemScan(item.item_code, item.item_name, {
+            sessionId: sessionId ?? undefined,
+            floorNo: currentFloor ?? undefined,
+            rackNo: currentRack ?? undefined,
+            barcode: item.barcode || validation.value!,
+          }),
         );
         await loadRecentItems();
 
         if (!offlineMode) {
-          // Check for duplicates only when live validation is enabled.
           try {
             const scanStatus = await safeAsync(() =>
               checkItemScanStatus(sessionId!, item.item_code),
@@ -425,6 +523,17 @@ const ScanScreen = React.memo(function ScanScreen() {
               );
 
               if (duplicateInLocation) {
+                await safeAsync(() =>
+                  AnalyticsService.trackEvent("duplicate_scan_detected", {
+                    itemCode: item.item_code,
+                    itemName: item.item_name,
+                    sessionId: sessionId ?? undefined,
+                    floorNo: currentFloor ?? undefined,
+                    rackNo: currentRack ?? undefined,
+                    quantity: duplicateInLocation.counted_qty,
+                    barcode: item.barcode || validation.value!,
+                  }),
+                );
                 Haptics.notificationAsync(
                   Haptics.NotificationFeedbackType.Warning,
                 );
@@ -447,16 +556,16 @@ const ScanScreen = React.memo(function ScanScreen() {
                   ],
                 );
                 return;
-              } else {
-                toastService.show(
-                  `Item found in ${locations.length} other location(s)`,
-                  {
-                    type: "info",
-                  },
-                );
               }
+
+              toastService.show(
+                `Item found in ${locations.length} other location(s)`,
+                {
+                  type: "info",
+                },
+              );
             }
-          } catch (_error) {
+          } catch {
             // Ignore check status error
           }
         }
@@ -478,15 +587,18 @@ const ScanScreen = React.memo(function ScanScreen() {
       safeSetState(setLoading, false);
       safeSetState(setScanned, false);
     }
-  };
-
-  const navigateToDetail = (barcode: string) => {
-    safeSetState(setSearchQuery, "");
-    router.push({
-      pathname: "/staff/item-detail",
-      params: { barcode, sessionId: sessionId! },
-    } as any);
-  };
+  }, [
+    currentFloor,
+    currentRack,
+    loadRecentItems,
+    loading,
+    navigateToDetail,
+    offlineMode,
+    safeAsync,
+    safeSetState,
+    scannerSound,
+    sessionId,
+  ]);
 
   const handleFinishRack = async () => {
     if (!sessionId) return;
@@ -527,6 +639,87 @@ const ScanScreen = React.memo(function ScanScreen() {
       ]
     );
   };
+
+  const handleSuggestionPress = useCallback(
+    async (suggestion: SuggestionItem) => {
+      await smartSuggestionsService.updateUserPattern(
+        suggestion.type,
+        suggestion.id,
+      );
+      suggestion.action?.();
+
+      if (suggestion.type === "location") {
+        const floor =
+          String(
+            suggestion.data.floor ||
+              suggestion.data.floorNo ||
+              currentFloor ||
+              "",
+          ) || "current floor";
+        const rack =
+          String(
+            suggestion.data.rack ||
+              suggestion.data.rackNo ||
+              suggestion.data.rack_id ||
+              "",
+          ) || "adjacent racks";
+        toastService.show(`Focus next on ${floor} • ${rack}`, {
+          type: "info",
+        });
+        return;
+      }
+
+      if (suggestion.type === "workflow") {
+        if (suggestion.id === "workflow-complete-session") {
+          safeSetState(setShowCloseSessionModal, true);
+          return;
+        }
+
+        if (suggestion.id === "workflow-take-break") {
+          Alert.alert(
+            "Take a Break",
+            "Pause briefly, then reopen the scanner when you're ready to continue.",
+          );
+          return;
+        }
+      }
+
+      const targetCode =
+        suggestionTargetItem?.barcode ||
+        suggestionTargetItem?.item_code ||
+        searchQuery.trim();
+
+      if (!targetCode) {
+        toastService.show("No matching item is ready for this suggestion yet.", {
+          type: "info",
+        });
+        return;
+      }
+
+      if (suggestion.type === "quantity" && suggestion.data.suggestedQuantity) {
+        toastService.show(
+          `Suggested quantity: ${String(suggestion.data.suggestedQuantity)}`,
+          { type: "info" },
+        );
+      }
+
+      if (suggestion.type === "photo") {
+        toastService.show(
+          "Open the item detail screen to capture evidence for this item.",
+          { type: "info" },
+        );
+      }
+
+      await handleLookup(String(targetCode));
+    },
+    [
+      currentFloor,
+      handleLookup,
+      safeSetState,
+      searchQuery,
+      suggestionTargetItem,
+    ],
+  );
 
   if (isScanning) {
     return (
@@ -580,6 +773,17 @@ const ScanScreen = React.memo(function ScanScreen() {
         <ScanStatsCard
           initialLoading={initialLoading}
           sessionStats={sessionStats}
+        />
+
+        <SmartSuggestionsPanel
+          inline
+          maxHeight={260}
+          visible={!suggestionsDismissed && suggestions.length > 0}
+          suggestions={suggestions}
+          onSuggestionPress={(suggestion) => {
+            void handleSuggestionPress(suggestion);
+          }}
+          onDismiss={() => safeSetState(setSuggestionsDismissed, true)}
         />
 
         <ScanLookupPanel

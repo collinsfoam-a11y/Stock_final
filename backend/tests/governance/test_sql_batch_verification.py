@@ -2,6 +2,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from backend.sql_server_connector import DatabaseConnectionError
 from backend.tests.utils.in_memory_db import setup_server_with_in_memory_db
 
 
@@ -30,3 +31,58 @@ async def test_batch_verification_rejects_incomplete_quantity_results(monkeypatc
     assert response["success"] is False
     assert response["error_code"] == "ERP_AMBIGUOUS_BATCH_RESULT"
     assert response["error_count"] == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.governance
+async def test_batch_verification_rejects_invalid_quantity_results(monkeypatch):
+    db = setup_server_with_in_memory_db(monkeypatch)
+
+    import backend.services.sql_verification_service as svs
+
+    monkeypatch.setattr(svs, "db", db)
+
+    await db.erp_items.insert_one({"item_code": "ITEM-BATCH-3", "stock_qty": 7.0})
+    await db.erp_items.insert_one({"item_code": "ITEM-BATCH-4", "stock_qty": 2.0})
+
+    from backend.services.sql_verification_service import sql_verification_service
+
+    monkeypatch.setattr(
+        sql_verification_service.sql_connector,
+        "get_item_quantities_only",
+        Mock(return_value={"ITEM-BATCH-3": 12.0, "ITEM-BATCH-4": None}),
+    )
+
+    response = await sql_verification_service.batch_verify_items(["ITEM-BATCH-3", "ITEM-BATCH-4"])
+
+    assert response["success"] is False
+    assert response["error_code"] == "ERP_INVALID_BATCH_RESULT"
+    assert response["message"] == "ERP batch returned invalid quantity results."
+    assert response["error_count"] == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.governance
+async def test_batch_verification_maps_query_failures_from_catalog(monkeypatch):
+    db = setup_server_with_in_memory_db(monkeypatch)
+
+    import backend.services.sql_verification_service as svs
+
+    monkeypatch.setattr(svs, "db", db)
+
+    await db.erp_items.insert_one({"item_code": "ITEM-BATCH-5", "stock_qty": 9.0})
+
+    from backend.services.sql_verification_service import sql_verification_service
+
+    monkeypatch.setattr(
+        sql_verification_service.sql_connector,
+        "get_item_quantities_only",
+        Mock(side_effect=DatabaseConnectionError("erp unavailable")),
+    )
+
+    response = await sql_verification_service.batch_verify_items(["ITEM-BATCH-5"])
+
+    assert response["success"] is False
+    assert response["error_code"] == "SQL_CONNECTION_ERROR"
+    assert response["message"] == "ERP system is temporarily unavailable. Please try again later."
+    assert response["status_code"] == 503

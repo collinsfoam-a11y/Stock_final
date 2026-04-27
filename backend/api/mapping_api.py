@@ -3,7 +3,7 @@ import hashlib
 import logging
 import re
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, NoReturn, Optional
 
 import pyodbc
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,9 +12,18 @@ from pydantic import BaseModel, Field
 from backend.auth.dependencies import get_current_user
 from backend.config import settings
 from backend.db.runtime import get_db
+from backend.utils.api_utils import sanitize_for_logging
 
 router = APIRouter(prefix="/api/mapping", tags=["Database Mapping"])
 logger = logging.getLogger(__name__)
+
+
+def _safe_log_value(value: Any, *, max_length: int = 200) -> str:
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
+
+
+def _raise_mapping_internal_error(detail: str, exc: Exception) -> NoReturn:
+    raise HTTPException(status_code=500, detail=detail) from exc
 
 # --- Models ---
 
@@ -133,10 +142,8 @@ def _encrypt_erp_password(password: str) -> str:
     try:
         from cryptography.fernet import Fernet
     except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Password encryption is unavailable (missing cryptography): {exc}",
-        ) from exc
+        logger.error("Password encryption is unavailable: %s", _safe_log_value(exc))
+        _raise_mapping_internal_error("Password encryption is unavailable", exc)
 
     secret = str(settings.JWT_SECRET or "")
     if not secret:
@@ -178,7 +185,7 @@ async def get_tables(
         raise
     except Exception as e:
         logger.exception("Error fetching tables")
-        raise HTTPException(status_code=500, detail=str(e))
+        _raise_mapping_internal_error("Failed to fetch ERP tables", e)
 
 
 @router.get("/columns")
@@ -223,7 +230,7 @@ async def get_columns(
         raise
     except Exception as e:
         logger.exception("Error fetching columns")
-        raise HTTPException(status_code=500, detail=str(e))
+        _raise_mapping_internal_error("Failed to fetch ERP columns", e)
 
 
 @router.post("/preview")
@@ -284,7 +291,7 @@ async def preview_mapping(
         raise
     except Exception as e:
         logger.exception("Error testing mapping")
-        raise HTTPException(status_code=500, detail=str(e))
+        _raise_mapping_internal_error("Failed to preview mapping", e)
 
 
 @router.post("/save")
@@ -340,7 +347,7 @@ async def save_mapping(
         raise
     except Exception as e:
         logger.exception("Error saving mapping")
-        raise HTTPException(status_code=500, detail=str(e))
+        _raise_mapping_internal_error("Failed to save mapping", e)
 
 
 @router.get("/current")
@@ -368,4 +375,4 @@ async def get_current_mapping(
         return result
     except Exception as e:
         logger.exception("Error fetching current mapping")
-        raise HTTPException(status_code=500, detail=str(e))
+        _raise_mapping_internal_error("Failed to fetch current mapping", e)

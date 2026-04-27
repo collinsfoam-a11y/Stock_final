@@ -12,6 +12,7 @@ type AppShellModule = typeof import("../src/bootstrap/AppShell");
 
 const WebAppShell =
   Platform.OS === "web"
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     ? (require("../src/bootstrap/AppShell") as AppShellModule).default
     : null;
 const LazyAppShell = React.lazy(() => import("../src/bootstrap/AppShell"));

@@ -9,8 +9,11 @@ import {
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
-import { useAuthStore } from "@/store/authStore";
-import { getRouteForRole, type UserRole } from "@/utils/roleNavigation";
+import { usePublicRegistrationAvailability } from "@/bootstrap/usePublicRegistrationAvailability";
+import {
+  getPublicRouteForRole,
+  useWebPublicSession,
+} from "@/bootstrap/useWebPublicSession";
 
 const FEATURE_ITEMS = [
   "Offline-first stock counts",
@@ -20,17 +23,20 @@ const FEATURE_ITEMS = [
 
 function WelcomeScreen() {
   const router = useRouter();
-  const user = useAuthStore((state) => state.user);
-  const isLoading = useAuthStore((state) => state.isLoading);
+  const { status, user } = useWebPublicSession();
+  const {
+    status: registrationStatus,
+    publicRegistrationAllowed,
+  } = usePublicRegistrationAvailability();
   const { width } = useWindowDimensions();
   const isWide = width >= 960;
 
   React.useEffect(() => {
-    if (!isLoading && user) {
-      const target = getRouteForRole(user.role as UserRole);
+    if (status === "authenticated" && user) {
+      const target = getPublicRouteForRole(user.role);
       router.replace(target as any);
     }
-  }, [isLoading, router, user]);
+  }, [router, status, user]);
 
   return (
     <View style={styles.page}>
@@ -56,8 +62,13 @@ function WelcomeScreen() {
         <View style={[styles.panel, styles.actionPanel]}>
           <Text style={styles.actionTitle}>Start a session</Text>
           <Text style={styles.actionCopy}>
-            Sign in for operational access or create a new account for setup and
-            onboarding.
+            {registrationStatus === "loading"
+              ? "Sign in for operational access."
+              : registrationStatus === "error"
+                ? "Sign in for operational access. We couldn't verify whether self-registration is available on this network."
+              : publicRegistrationAllowed
+                ? "Sign in for operational access or create the first account to finish setup."
+                : "Sign in for operational access. New accounts are created by administrators after setup."}
           </Text>
 
           <Pressable
@@ -70,15 +81,25 @@ function WelcomeScreen() {
             <Text style={styles.primaryButtonText}>Sign In</Text>
           </Pressable>
 
-          <Pressable
-            onPress={() => router.push("/register")}
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              pressed && styles.secondaryButtonPressed,
-            ]}
-          >
-            <Text style={styles.secondaryButtonText}>Create Account</Text>
-          </Pressable>
+          {publicRegistrationAllowed ? (
+            <Pressable
+              onPress={() => router.push("/register")}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                pressed && styles.secondaryButtonPressed,
+              ]}
+            >
+              <Text style={styles.secondaryButtonText}>Create Account</Text>
+            </Pressable>
+          ) : registrationStatus === "error" ? (
+            <Text style={styles.helperNote}>
+              Connect to the store network or ask an administrator to add your account.
+            </Text>
+          ) : registrationStatus === "ready" ? (
+            <Text style={styles.helperNote}>
+              Account creation is reserved for the initial setup window.
+            </Text>
+          ) : null}
 
           <Text style={styles.footer}>Lavanya Mart 2026</Text>
         </View>
@@ -214,6 +235,12 @@ const styles = StyleSheet.create({
     color: "#0f172a",
     fontSize: 16,
     fontWeight: "700",
+  },
+  helperNote: {
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 20,
+    color: "#64748b",
   },
   footer: {
     marginTop: 22,

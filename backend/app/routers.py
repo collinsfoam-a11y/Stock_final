@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Any, Optional
 
 from fastapi import APIRouter, FastAPI
+
+from backend.config import settings
 
 
 @dataclass(frozen=True)
@@ -53,6 +56,7 @@ class RouterRegistry:
     pi_router: APIRouter
     supervisor_pin_router: APIRouter
     notifications_router: APIRouter
+    test_support_router: APIRouter
     api_router: APIRouter
 
     enterprise_router: Optional[APIRouter] = None
@@ -64,6 +68,15 @@ class RouterRegistry:
     reconciliation_router: Optional[APIRouter] = None
     recount_router: Optional[APIRouter] = None
     enterprise_available: bool = False
+
+
+def _test_support_router_enabled() -> bool:
+    environment = (
+        "test"
+        if os.getenv("TESTING", "false").lower() == "true"
+        else str(getattr(settings, "ENVIRONMENT", "development")).strip().lower()
+    )
+    return environment in {"development", "test"}
 
 
 def _include_router_specs(
@@ -151,6 +164,8 @@ def _register_core_router_set(app: FastAPI, registry: RouterRegistry) -> None:
         (registry.api_router, "/api", None),
         (registry.notifications_router, None, None),
     ]
+    if _test_support_router_enabled():
+        specs.append((registry.test_support_router, None, None))
     _include_router_specs(app, specs)
 
 

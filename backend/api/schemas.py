@@ -306,6 +306,8 @@ class Session(BaseModel):
     damage_items: int = 0
     notes: Optional[str] = None
     barcode: Optional[str] = None
+    logic_version: Optional[Literal["v1", "v2"]] = None
+    logic_scope_source: Optional[Literal["global", "warehouse", "user_id", "session_id"]] = None
 
     # Governance Fields
     config_version_id: Optional[str] = None

@@ -20,11 +20,9 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
 import { useSettingsStore } from "../../src/store/settingsStore";
-import {
-  ScreenContainer,
-  GlassCard,
-  AnimatedPressable,
-} from "../../src/components/ui";
+import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
+import { GlassCard } from "../../src/components/ui/GlassCard";
+import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
 import { theme } from "../../src/styles/modernDesignSystem";
 import {
   ChangePasswordModal,

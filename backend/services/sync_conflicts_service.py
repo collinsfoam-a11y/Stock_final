@@ -12,6 +12,8 @@ from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import PyMongoError
 
+from backend.services.count_line_write_service import CountLineWriteService
+
 UTC = timezone.utc
 
 logger = logging.getLogger(__name__)
@@ -155,37 +157,75 @@ class SyncConflictsService:
         Returns the resolved data to be applied
         """
         conflict = await self.get_conflict_by_id(conflict_id)
+        self._ensure_pending_conflict(conflict_id, conflict)
+        resolved_data = self._resolve_conflict_data(conflict, resolution, merged_data)
+        await self._store_conflict_resolution(conflict_id, resolution, resolved_by, resolved_data)
 
+        forked_result = await self._fork_if_approved_count_line(conflict_id, conflict, resolved_data)
+        if forked_result:
+            return forked_result
+
+        entity_type = conflict.get("entity_type")
+        entity_id = conflict.get("entity_id")
+        if resolution != ConflictResolution.IGNORE and resolved_data and entity_type and entity_id:
+            await self._apply_resolved_data(str(entity_type), str(entity_id), resolved_data)
+
+        logger.info(
+            "Conflict %s resolved with %s by %s",
+            conflict_id,
+            resolution.value,
+            resolved_by,
+        )
+
+        return {
+            "conflict_id": conflict_id,
+            "resolution": resolution.value,
+            "resolved_data": resolved_data,
+        }
+
+    def _ensure_pending_conflict(
+        self, conflict_id: str, conflict: Optional[dict[str, Any]]
+    ) -> None:
         if not conflict:
             raise ValueError(f"Conflict {conflict_id} not found")
-
         if conflict["status"] != ConflictStatus.PENDING.value:
             raise ValueError(f"Conflict {conflict_id} already resolved")
 
-        # Determine resolved data based on resolution strategy
+    def _resolve_conflict_data(
+        self,
+        conflict: dict[str, Any],
+        resolution: ConflictResolution,
+        merged_data: Optional[dict[str, Optional[Any]]],
+    ) -> Optional[dict[str, Optional[Any]]]:
         if resolution == ConflictResolution.ACCEPT_SERVER:
-            resolved_data = conflict["server_data"]
-        elif resolution == ConflictResolution.ACCEPT_LOCAL:
-            resolved_data = conflict["local_data"]
-        elif resolution == ConflictResolution.MERGE:
+            return conflict["server_data"]
+        if resolution == ConflictResolution.ACCEPT_LOCAL:
+            return conflict["local_data"]
+        if resolution == ConflictResolution.MERGE:
             if not merged_data:
                 raise ValueError("Merged data required for MERGE resolution")
-            resolved_data = merged_data
-        elif resolution == ConflictResolution.IGNORE:
-            resolved_data = None
-        else:
-            raise ValueError(f"Unknown resolution: {resolution}")
+            return merged_data
+        if resolution == ConflictResolution.IGNORE:
+            return None
+        raise ValueError(f"Unknown resolution: {resolution}")
 
-        # Update conflict record
+    def _conflict_status_after_resolution(self, resolution: ConflictResolution) -> str:
+        if resolution == ConflictResolution.IGNORE:
+            return ConflictStatus.IGNORED.value
+        return ConflictStatus.RESOLVED.value
+
+    async def _store_conflict_resolution(
+        self,
+        conflict_id: str,
+        resolution: ConflictResolution,
+        resolved_by: str,
+        resolved_data: Optional[dict[str, Optional[Any]]],
+    ) -> None:
         await self.db.sync_conflicts.update_one(
             {"_id": ObjectId(conflict_id)},
             {
                 "$set": {
-                    "status": (
-                        ConflictStatus.RESOLVED.value
-                        if resolution != ConflictResolution.IGNORE
-                        else ConflictStatus.IGNORED.value
-                    ),
+                    "status": self._conflict_status_after_resolution(resolution),
                     "resolution": resolution.value,
                     "resolved_by": resolved_by,
                     "resolved_at": datetime.now(UTC),
@@ -194,37 +234,26 @@ class SyncConflictsService:
             },
         )
 
-        # Apply resolved data to entity if not ignored
-        if resolution != ConflictResolution.IGNORE and resolved_data:
-            entity_type = conflict.get("entity_type")
-            entity_id = conflict.get("entity_id")
+    async def _fork_if_approved_count_line(
+        self,
+        conflict_id: str,
+        conflict: dict[str, Any],
+        resolved_data: Optional[dict[str, Optional[Any]]],
+    ) -> Optional[dict[str, Any]]:
+        entity_type = conflict.get("entity_type")
+        entity_id = conflict.get("entity_id")
+        if entity_type != "count_line" or not entity_id or not resolved_data:
+            return None
 
-            # --- Rule 7 & G-04: Conflict Forking ---
-            # If the entity is already APPROVED, we must FORK instead of OVERWRITING.
-            if entity_type == "count_line":
-                target_doc = await self.db.count_lines.find_one(_entity_lookup(str(entity_id)))
-                if target_doc and str(target_doc.get("status", "")).lower() in {
-                    "approved",
-                    "locked",
-                }:
-                    logger.info(f"Rule 7: Forking approved record {entity_id}")
-                    await self._fork_approved_record(
-                        str(entity_type), str(entity_id), target_doc, resolved_data
-                    )
-                    return {
-                        "conflict_id": conflict_id,
-                        "resolution": "FORKED",
-                        "resolved_data": resolved_data,
-                    }
+        target_doc = await self.db.count_lines.find_one(_entity_lookup(str(entity_id)))
+        if not target_doc or str(target_doc.get("status", "")).lower() not in {"approved", "locked"}:
+            return None
 
-            if entity_type and entity_id:
-                await self._apply_resolved_data(str(entity_type), str(entity_id), resolved_data)
-
-        logger.info(f"Conflict {conflict_id} resolved with {resolution.value} by {resolved_by}")
-
+        logger.info("Rule 7: Forking approved record %s", entity_id)
+        await self._fork_approved_record(str(entity_type), str(entity_id), target_doc, resolved_data)
         return {
             "conflict_id": conflict_id,
-            "resolution": resolution.value,
+            "resolution": "FORKED",
             "resolved_data": resolved_data,
         }
 
@@ -258,7 +287,7 @@ class SyncConflictsService:
         if entity_type == "session":
             collection = self.db.sessions
         elif entity_type == "count_line":
-            collection = self.db.count_lines
+            collection = None
         elif entity_type == "item":
             collection = self.db.erp_items
         else:
@@ -270,7 +299,17 @@ class SyncConflictsService:
         data["conflict_resolved"] = True
 
         try:
-            await collection.update_one(_entity_lookup(entity_id), {"$set": data})
+            if entity_type == "count_line":
+                await CountLineWriteService(self.db).process_write(
+                    {
+                        "operation": "update_one",
+                        "filter": _entity_lookup(entity_id),
+                        "update": {"$set": data},
+                    },
+                    context={"allow_missing_session": True},
+                )
+            else:
+                await collection.update_one(_entity_lookup(entity_id), {"$set": data})
             logger.info(f"Applied resolved data to {entity_type} {entity_id}")
         except PyMongoError as e:
             logger.error(f"Failed to apply resolved data: {str(e)}")

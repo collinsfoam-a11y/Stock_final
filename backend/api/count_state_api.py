@@ -10,7 +10,7 @@ Provides endpoints for managing count line state transitions:
 """
 
 import logging
-from typing import Optional
+from typing import Any, NoReturn, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -19,10 +19,20 @@ from pydantic import BaseModel, Field
 from backend.auth.dependencies import get_current_user
 from backend.auth.permissions import Permission, require_permission
 from backend.db.runtime import get_db
+from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.count_state_machine import CountLineState, CountLineStateMachine
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/count-lines", tags=["Count Line State Management"])
+
+
+def _safe_log_value(value: Any, *, max_length: int = 200) -> str:
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
+
+
+def _raise_count_state_internal_error(detail: str, exc: Exception) -> NoReturn:
+    raise HTTPException(status_code=500, detail=detail) from exc
 
 
 def _get_user_id(current_user: dict) -> str:
@@ -126,8 +136,8 @@ async def submit_count_line(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error submitting count line: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error submitting count line: %s", _safe_log_value(e))
+        _raise_count_state_internal_error("Failed to submit count line", e)
 
 
 @router.post("/{count_line_id}/approve", response_model=StateTransitionResponse)
@@ -168,8 +178,8 @@ async def approve_count_line(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error approving count line: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error approving count line: %s", _safe_log_value(e))
+        _raise_count_state_internal_error("Failed to approve count line", e)
 
 
 @router.post("/{count_line_id}/reject", response_model=StateTransitionResponse)
@@ -213,8 +223,8 @@ async def reject_count_line(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error rejecting count line: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error rejecting count line: %s", _safe_log_value(e))
+        _raise_count_state_internal_error("Failed to reject count line", e)
 
 
 @router.post("/{count_line_id}/reopen", response_model=StateTransitionResponse)
@@ -250,8 +260,12 @@ async def reopen_count_line(
 
         # If assigned to specific user, update count line
         if reopen_data.assign_to:
-            await db.count_lines.update_one(
-                {"id": count_line_id}, {"$set": {"assigned_to": reopen_data.assign_to}}
+            await CountLineWriteService(db).process_write(
+                {
+                    "operation": "update_one",
+                    "filter": {"id": count_line_id},
+                    "update": {"$set": {"assigned_to": reopen_data.assign_to}},
+                },
             )
 
         return StateTransitionResponse(
@@ -266,8 +280,8 @@ async def reopen_count_line(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error reopening count line: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error reopening count line: %s", _safe_log_value(e))
+        _raise_count_state_internal_error("Failed to reopen count line", e)
 
 
 @router.post("/{count_line_id}/lock", response_model=StateTransitionResponse)
@@ -308,8 +322,8 @@ async def lock_count_line(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error locking count line: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error locking count line: %s", _safe_log_value(e))
+        _raise_count_state_internal_error("Failed to lock count line", e)
 
 
 @router.get("/{count_line_id}/permissions", response_model=EditPermissionResponse)
@@ -343,8 +357,8 @@ async def check_edit_permissions(
         )
 
     except Exception as e:
-        logger.error(f"Error checking permissions: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error checking permissions: %s", _safe_log_value(e))
+        _raise_count_state_internal_error("Failed to check count line permissions", e)
 
 
 @router.get("/{count_line_id}/state")

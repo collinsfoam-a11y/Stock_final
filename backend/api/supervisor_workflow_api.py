@@ -3,7 +3,7 @@ Enhanced Supervisor Workflow API - Batch operations and photo enforcement
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, NoReturn, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -11,11 +11,21 @@ from pydantic import BaseModel, Field
 
 from backend.auth.permissions import Permission, require_permission
 from backend.db.runtime import get_db
+from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.count_state_machine import CountLineState, CountLineStateMachine
 from backend.services.notification_service import NotificationService
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/supervisor", tags=["Supervisor Workflow"])
+
+
+def _safe_log_value(value: Any, *, max_length: int = 200) -> str:
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
+
+
+def _raise_supervisor_workflow_internal_error(detail: str, exc: Exception) -> NoReturn:
+    raise HTTPException(status_code=500, detail=detail) from exc
 
 
 def _get_user_id(current_user: dict) -> str:
@@ -178,8 +188,18 @@ async def batch_approve_count_lines(
                 succeeded += 1
 
             except Exception as e:
-                logger.error(f"Error approving count line {count_line_id}: {e}")
-                results.append({"count_line_id": count_line_id, "success": False, "error": str(e)})
+                logger.error(
+                    "Error approving count line %s: %s",
+                    _safe_log_value(count_line_id),
+                    _safe_log_value(e),
+                )
+                results.append(
+                    {
+                        "count_line_id": count_line_id,
+                        "success": False,
+                        "error": _safe_log_value(e),
+                    }
+                )
                 failed += 1
 
         return BatchOperationResponse(
@@ -192,8 +212,8 @@ async def batch_approve_count_lines(
         )
 
     except Exception as e:
-        logger.error(f"Error in batch approval: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error in batch approval: %s", _safe_log_value(e))
+        _raise_supervisor_workflow_internal_error("Failed to batch approve count lines", e)
 
 
 @router.post("/batch-reject", response_model=BatchOperationResponse)
@@ -250,8 +270,13 @@ async def batch_reject_count_lines(
 
                 # Update assignment if specified
                 if request.assign_to:
-                    await db.count_lines.update_one(
-                        {"id": count_line_id}, {"$set": {"assigned_to": request.assign_to}}
+                    await CountLineWriteService(db).process_write(
+                        {
+                            "operation": "update_one",
+                            "filter": {"id": count_line_id},
+                            "update": {"$set": {"assigned_to": request.assign_to}},
+                        },
+                        context={"session_id": str(count_line.get("session_id") or "")},
                     )
 
                 # Notify assigned user or owner
@@ -277,8 +302,18 @@ async def batch_reject_count_lines(
                 succeeded += 1
 
             except Exception as e:
-                logger.error(f"Error rejecting count line {count_line_id}: {e}")
-                results.append({"count_line_id": count_line_id, "success": False, "error": str(e)})
+                logger.error(
+                    "Error rejecting count line %s: %s",
+                    _safe_log_value(count_line_id),
+                    _safe_log_value(e),
+                )
+                results.append(
+                    {
+                        "count_line_id": count_line_id,
+                        "success": False,
+                        "error": _safe_log_value(e),
+                    }
+                )
                 failed += 1
 
         return BatchOperationResponse(
@@ -291,8 +326,8 @@ async def batch_reject_count_lines(
         )
 
     except Exception as e:
-        logger.error(f"Error in batch rejection: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error in batch rejection: %s", _safe_log_value(e))
+        _raise_supervisor_workflow_internal_error("Failed to batch reject count lines", e)
 
 
 @router.post("/check-photo-requirements")
@@ -371,8 +406,8 @@ async def check_photo_requirements(
         return {"success": True, "total": len(count_line_ids), "results": results}
 
     except Exception as e:
-        logger.error(f"Error checking photo requirements: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error checking photo requirements: %s", _safe_log_value(e))
+        _raise_supervisor_workflow_internal_error("Failed to check photo requirements", e)
 
 
 @router.get("/pending-approvals")
@@ -401,8 +436,8 @@ async def get_pending_approvals(
         return {"success": True, "total": len(count_lines), "count_lines": count_lines}
 
     except Exception as e:
-        logger.error(f"Error getting pending approvals: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error getting pending approvals: %s", _safe_log_value(e))
+        _raise_supervisor_workflow_internal_error("Failed to get pending approvals", e)
 
 
 @router.post("/quick-approve")
@@ -456,7 +491,13 @@ async def quick_approve_count_lines(
                 results.append({"count_line_id": cl_id, "success": True})
                 succeeded += 1
             except Exception as e:
-                results.append({"count_line_id": cl_id, "success": False, "error": str(e)})
+                results.append(
+                    {
+                        "count_line_id": cl_id,
+                        "success": False,
+                        "error": _safe_log_value(e),
+                    }
+                )
 
         return {
             "success": True,
@@ -469,8 +510,8 @@ async def quick_approve_count_lines(
         }
 
     except Exception as e:
-        logger.error(f"Error in quick approve: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error in quick approve: %s", _safe_log_value(e))
+        _raise_supervisor_workflow_internal_error("Failed to quick approve count lines", e)
 
 
 @router.get("/analytics")
@@ -551,5 +592,5 @@ async def get_workflow_analytics(
         }
 
     except Exception as e:
-        logger.error(f"Error getting workflow analytics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error getting workflow analytics: %s", _safe_log_value(e))
+        _raise_supervisor_workflow_internal_error("Failed to get workflow analytics", e)

@@ -1,48 +1,19 @@
 /**
- * Modern Button Component - Enhanced UI/UX
- * Features:
- * - Multiple variants (primary, secondary, outline, ghost, danger)
- * - Size options (small, medium, large)
- * - Smooth animations and micro-interactions
- * - Loading states with spinners
- * - Icon support (left/right)
- * - Full accessibility support
- * - Gradient support
- * - Glassmorphism variant
+ * ModernButton
+ *
+ * Compatibility wrapper around the shared themed button primitive.
  */
 
 import React from "react";
-import {
-  TouchableOpacity,
-  Text,
-  ActivityIndicator,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-  Platform,
-  View,
-} from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
+import { StyleProp, TextStyle, ViewStyle } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
-import {
-  modernColors,
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-  modernShadows,
-  modernAnimations,
-} from "../../styles/modernDesignSystem";
-import { useThemeContextSafe } from "../../context/ThemeContext";
 
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
+import { useThemeContextSafe } from "../../context/ThemeContext";
+import {
+  EnhancedButton,
+  type ButtonType as EnhancedButtonType,
+  type ButtonSize as EnhancedButtonSize,
+} from "./EnhancedButton";
 
 export type ButtonVariant =
   | "primary"
@@ -64,13 +35,26 @@ interface ModernButtonProps {
   icon?: keyof typeof Ionicons.glyphMap;
   iconPosition?: "left" | "right";
   fullWidth?: boolean;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
   gradientColors?: string[];
   testID?: string;
   accessibilityLabel?: string;
   accessibilityHint?: string;
 }
+
+const mapVariant = (variant: ButtonVariant): EnhancedButtonType => {
+  if (variant === "outline" || variant === "glass") return "outline";
+  if (variant === "ghost") return "text";
+  if (variant === "gradient") return "gradient";
+  return "solid";
+};
+
+const mapSize = (size: ButtonSize): EnhancedButtonSize => {
+  if (size === "small") return "sm";
+  if (size === "large") return "lg";
+  return "md";
+};
 
 export const ModernButton: React.FC<ModernButtonProps> = ({
   title,
@@ -90,305 +74,73 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   accessibilityHint,
 }) => {
   const themeContext = useThemeContextSafe();
-  const theme = themeContext?.themeLegacy;
+  const theme = themeContext?.theme;
+  const themeLegacy = themeContext?.themeLegacy;
 
-  // Animation values
-  const scale = useSharedValue(1);
-  const opacity = useSharedValue(1);
+  const primaryColor = theme?.colors.primary?.[500] ?? themeLegacy?.colors.primary ?? "#0969DA";
+  const secondaryColor =
+    theme?.colors.secondary?.[500] ?? themeLegacy?.colors.info ?? "#2DA44E";
+  const dangerColor = themeLegacy?.colors.danger ?? themeLegacy?.colors.error ?? "#D1242F";
+  const borderColor = theme?.colors.border?.medium ?? themeLegacy?.colors.border ?? "#D0D7DE";
+  const surfaceColor =
+    theme?.colors.background.elevated ?? themeLegacy?.colors.surfaceElevated ?? "#FFFFFF";
+  const textColor = theme?.colors.text.primary ?? themeLegacy?.colors.text ?? "#0D1117";
+  const accentColor = theme?.colors.accent ?? themeLegacy?.colors.accent ?? primaryColor;
 
-  // Animated styles
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: scale.value }],
-      opacity: opacity.value,
-    };
-  });
-
-  // Press handlers with animations
-  const handlePressIn = () => {
-    if (!disabled && !loading) {
-      scale.value = withSpring(modernAnimations.scale.pressed, {
-        damping: modernAnimations.easing.spring.damping,
-        stiffness: modernAnimations.easing.spring.stiffness,
-      });
-      opacity.value = withTiming(modernAnimations.opacity.pressed, {
-        duration: modernAnimations.duration.fast,
-      });
-    }
-  };
-
-  const handlePressOut = () => {
-    if (!disabled && !loading) {
-      scale.value = withSpring(1, {
-        damping: modernAnimations.easing.spring.damping,
-        stiffness: modernAnimations.easing.spring.stiffness,
-      });
-      opacity.value = withTiming(1, {
-        duration: modernAnimations.duration.fast,
-      });
-    }
-  };
-
-  // Get button styles based on variant and size
-  const getButtonStyles = (): ViewStyle => {
-    const baseStyle: ViewStyle = {
-      borderRadius: theme ? theme.borderRadius.md : modernBorderRadius.button,
-      alignItems: "center",
-      justifyContent: "center",
-      flexDirection: "row",
-      gap: theme ? theme.spacing.sm : modernSpacing.sm,
-      minHeight: getSizeConfig().height,
-      paddingHorizontal: getSizeConfig().paddingHorizontal,
-      ...(fullWidth && { width: "100%" }),
-      ...(disabled && { opacity: modernAnimations.opacity.disabled }),
-    };
-
-    // Variant-specific styles
-    const variantStyles: Record<ButtonVariant, ViewStyle> = {
-      primary: {
-        backgroundColor: theme
-          ? theme.colors.accent
-          : modernColors.primary[500],
-        ...modernShadows.sm,
-      },
-      secondary: {
-        backgroundColor: theme
-          ? theme.colors.info
-          : modernColors.secondary[500],
-        ...modernShadows.sm,
-      },
-      outline: {
-        backgroundColor: "transparent",
-        borderWidth: 2,
-        borderColor: theme ? theme.colors.accent : modernColors.primary[500],
-      },
-      ghost: {
-        backgroundColor: "transparent",
-      },
-      danger: {
-        backgroundColor: theme ? theme.colors.danger : modernColors.error.main,
-        ...modernShadows.sm,
-      },
-      glass: {
-        backgroundColor: "transparent",
-      },
-      gradient: {
-        backgroundColor: "transparent",
-      },
-    };
-
-    return {
-      ...baseStyle,
-      ...variantStyles[variant],
-    };
-  };
-
-  // Get text styles
-  const getTextStyles = (): TextStyle => {
-    const baseStyle: TextStyle = {
-      ...getSizeConfig().typography,
-      fontWeight: "600" as const,
-    };
-
-    const variantTextColors: Record<ButtonVariant, string> = {
-      primary: "#FFFFFF",
-      secondary: "#FFFFFF",
-      outline: theme ? theme.colors.accent : modernColors.primary[500],
-      ghost: theme ? theme.colors.accent : modernColors.primary[500],
-      danger: "#FFFFFF",
-      glass: theme ? theme.colors.text : modernColors.text.primary,
-      gradient: "#FFFFFF",
-    };
-
-    return {
-      ...baseStyle,
-      color: variantTextColors[variant],
-    };
-  };
-
-  // Get icon color
-  const getIconColor = (): string => {
-    if (variant === "outline" || variant === "ghost") {
-      return theme ? theme.colors.accent : modernColors.primary[500];
-    }
-    if (variant === "glass") {
-      return theme ? theme.colors.text : modernColors.text.primary;
-    }
-    return "#FFFFFF";
-  };
-
-  // Size configuration
-  function getSizeConfig() {
-    const configs = {
-      small: {
-        height: 36,
-        paddingHorizontal: modernSpacing.md,
-        typography: modernTypography.button.small,
-        iconSize: 16,
-      },
-      medium: {
-        height: 44,
-        paddingHorizontal: modernSpacing.lg,
-        typography: modernTypography.button.medium,
-        iconSize: 20,
-      },
-      large: {
-        height: 56,
-        paddingHorizontal: modernSpacing.xl,
-        typography: modernTypography.button.large,
-        iconSize: 24,
-      },
-    };
-    return configs[size];
+  let color = primaryColor;
+  if (variant === "secondary") {
+    color = secondaryColor;
+  } else if (variant === "danger") {
+    color = dangerColor;
+  } else if (variant === "glass") {
+    color = borderColor;
+  } else if (variant === "outline" || variant === "ghost") {
+    color = accentColor;
   }
 
-  const sizeConfig = getSizeConfig();
+  const resolvedTextColor =
+    variant === "glass"
+      ? textColor
+      : variant === "outline" || variant === "ghost"
+        ? color
+        : "#FFFFFF";
 
-  // Render icon
-  const renderIcon = () => {
-    if (!icon || loading) return null;
+  const resolvedGradientColors: readonly [string, string, ...string[]] =
+    gradientColors?.length && gradientColors.length >= 2
+      ? [gradientColors[0]!, gradientColors[1]!, ...gradientColors.slice(2)]
+      : [primaryColor, theme?.colors.accent ?? accentColor];
 
-    return (
-      <Ionicons name={icon} size={sizeConfig.iconSize} color={getIconColor()} />
-    );
-  };
-
-  // Render button content
-  const renderContent = () => {
-    if (loading) {
-      return (
-        <ActivityIndicator
-          size="small"
-          color={
-            variant === "outline" || variant === "ghost"
-              ? theme
-                ? theme.colors.accent
-                : modernColors.primary[500]
-              : "#FFFFFF"
-          }
-        />
-      );
-    }
-
-    return (
-      <>
-        {iconPosition === "left" && renderIcon()}
-        <Text style={[getTextStyles(), textStyle]}>{title}</Text>
-        {iconPosition === "right" && renderIcon()}
-      </>
-    );
-  };
-
-  // Render button based on variant
-  const renderButton = () => {
-    const buttonStyle = [getButtonStyles(), style];
-    const isWeb = Platform.OS === "web";
-    const Component = isWeb ? TouchableOpacity : AnimatedTouchableOpacity;
-
-    const webProps = isWeb
+  const compatibilityStyle =
+    variant === "glass"
       ? {
-          onPress,
-          onPressIn: handlePressIn,
-          onPressOut: handlePressOut,
-          disabled: disabled || loading,
-          activeOpacity: 0.8,
-          style: buttonStyle,
-          testID,
-          accessibilityLabel: accessibilityLabel || title,
-          accessibilityHint,
-          accessibilityRole: "button" as "button",
-          accessibilityState: { disabled: disabled || loading },
+          backgroundColor: surfaceColor,
+          borderColor,
+          borderWidth: 1,
         }
-      : {};
+      : undefined;
 
-    const nativeProps = !isWeb
-      ? {
-          onPress,
-          onPressIn: handlePressIn,
-          onPressOut: handlePressOut,
-          disabled: disabled || loading,
-          activeOpacity: 1,
-          style: [animatedStyle, buttonStyle],
-          testID,
-          accessibilityLabel: accessibilityLabel || title,
-          accessibilityHint,
-          accessibilityRole: "button" as "button",
-          accessibilityState: { disabled: disabled || loading },
-        }
-      : {};
-
-    const props = isWeb ? webProps : nativeProps;
-
-    if (variant === "gradient") {
-      const colors =
-        gradientColors ||
-        (theme ? theme.gradients.primary : modernColors.gradients.primary);
-      return (
-        <Component {...props}>
-          <LinearGradient
-            colors={colors as unknown as readonly [string, string, ...string[]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.gradient}
-          >
-            {renderContent()}
-          </LinearGradient>
-        </Component>
-      );
-    }
-
-    if (variant === "glass") {
-      return (
-        <Component {...props}>
-          {isWeb ? (
-            <View
-              style={[
-                styles.blur,
-                { backgroundColor: "rgba(255, 255, 255, 0.1)" },
-              ]}
-            >
-              {renderContent()}
-            </View>
-          ) : (
-            <BlurView intensity={20} tint="dark" style={styles.blur}>
-              {renderContent()}
-            </BlurView>
-          )}
-        </Component>
-      );
-    }
-
-    return <Component {...props}>{renderContent()}</Component>;
-  };
-
-  return renderButton();
+  return (
+    <EnhancedButton
+      title={title}
+      onPress={onPress}
+      type={mapVariant(variant)}
+      size={mapSize(size)}
+      disabled={disabled}
+      loading={loading}
+      icon={icon}
+      iconPosition={iconPosition}
+      fullWidth={fullWidth}
+      color={color}
+      textColor={resolvedTextColor}
+      gradientColors={resolvedGradientColors}
+      raised={variant === "primary" || variant === "secondary" || variant === "danger"}
+      style={[compatibilityStyle, style]}
+      textStyle={textStyle}
+      testID={testID}
+      accessibilityLabel={accessibilityLabel || title}
+      accessibilityHint={accessibilityHint}
+    />
+  );
 };
-
-const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-    borderRadius: modernBorderRadius.button,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: modernSpacing.sm,
-    minHeight: "100%",
-    width: "100%",
-  },
-  blur: {
-    flex: 1,
-    borderRadius: modernBorderRadius.button,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: modernSpacing.sm,
-    minHeight: "100%",
-    width: "100%",
-    paddingHorizontal: modernSpacing.lg,
-    paddingVertical: modernSpacing.md,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
-  },
-});
 
 export default ModernButton;

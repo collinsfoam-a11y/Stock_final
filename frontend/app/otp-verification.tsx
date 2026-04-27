@@ -23,16 +23,21 @@ import ModernCard from "../src/components/ui/ModernCard";
 import ModernInput from "../src/components/ui/ModernInput";
 import ModernButton from "../src/components/ui/ModernButton";
 import apiClient from "../src/services/httpClient";
-import { colors, spacing, typography } from "../src/theme/modernDesign";
+import { useThemeContext } from "../src/context/ThemeContext";
 
 export default function OtpVerificationScreen() {
   const router = useRouter();
   const { identifier } = useLocalSearchParams<{ identifier: string }>();
+  const { theme, themeLegacy, isDark } = useThemeContext();
 
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [timer, setTimer] = useState(300); // 5 minutes
+  const styles = React.useMemo(
+    () => createStyles(theme, themeLegacy),
+    [theme, themeLegacy],
+  );
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -88,7 +93,10 @@ export default function OtpVerificationScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <StatusBar style="dark" backgroundColor={colors.gray[50]} />
+      <StatusBar
+        style={isDark ? "light" : "dark"}
+        backgroundColor={theme.colors.background.default}
+      />
 
       <ModernHeader
         title="Verify OTP"
@@ -113,7 +121,7 @@ export default function OtpVerificationScreen() {
               <Ionicons
                 name="shield-checkmark"
                 size={48}
-                color={colors.primary[500]}
+                color={theme.colors.primary[500]}
               />
             </View>
 
@@ -123,7 +131,7 @@ export default function OtpVerificationScreen() {
               <Text style={{ fontWeight: "bold" }}>{identifier}</Text>.
             </Text>
 
-            <ModernCard padding={spacing.lg} style={styles.card}>
+            <ModernCard padding={themeLegacy.spacing.lg} style={styles.card}>
               <ModernInput
                 label="OTP Code"
                 placeholder="123456"
@@ -149,7 +157,7 @@ export default function OtpVerificationScreen() {
                 <Ionicons
                   name="time-outline"
                   size={16}
-                  color={colors.gray[500]}
+                  color={theme.colors.text.secondary}
                 />
                 <Text style={styles.timerText}>
                   Code expires in {formatTime(timer)}
@@ -172,66 +180,71 @@ export default function OtpVerificationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.gray[50],
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
-  },
-  contentContainer: {
-    flex: 1,
-    maxWidth: 400,
-    alignSelf: "center",
-    width: "100%",
-    justifyContent: "center",
-    paddingTop: spacing["2xl"],
-  },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.primary[50],
-    justifyContent: "center",
-    alignItems: "center",
-    alignSelf: "center",
-    marginBottom: spacing.lg,
-  },
-  title: {
-    fontSize: typography.fontSize["2xl"],
-    fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
-    textAlign: "center",
-    marginBottom: spacing.sm,
-  },
-  subtitle: {
-    fontSize: typography.fontSize.base,
-    color: colors.gray[600],
-    textAlign: "center",
-    marginBottom: spacing.xl,
-    lineHeight: 24,
-  },
-  card: {
-    backgroundColor: colors.white,
-  },
-  button: {
-    marginTop: spacing.lg,
-  },
-  timerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  timerText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
-  },
-});
+const createStyles = (
+  theme: ReturnType<typeof useThemeContext>["theme"],
+  themeLegacy: ReturnType<typeof useThemeContext>["themeLegacy"],
+) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background.default,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      paddingHorizontal: themeLegacy.spacing.lg,
+      paddingBottom: themeLegacy.spacing.xl,
+    },
+    contentContainer: {
+      flex: 1,
+      maxWidth: 400,
+      alignSelf: "center",
+      width: "100%",
+      justifyContent: "center",
+      paddingTop: themeLegacy.spacing.xxl,
+    },
+    iconContainer: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: themeLegacy.colors.overlayPrimary,
+      justifyContent: "center",
+      alignItems: "center",
+      alignSelf: "center",
+      marginBottom: themeLegacy.spacing.lg,
+    },
+    title: {
+      fontSize: themeLegacy.typography.fontSize.xxl,
+      fontWeight: themeLegacy.typography.fontWeight.bold,
+      color: theme.colors.text.primary,
+      textAlign: "center",
+      marginBottom: themeLegacy.spacing.sm,
+    },
+    subtitle: {
+      fontSize: themeLegacy.typography.fontSize.md,
+      color: theme.colors.text.secondary,
+      textAlign: "center",
+      marginBottom: themeLegacy.spacing.xl,
+      lineHeight: 24,
+    },
+    card: {
+      backgroundColor: themeLegacy.colors.surface,
+      borderColor: theme.colors.border.light,
+    },
+    button: {
+      marginTop: themeLegacy.spacing.lg,
+    },
+    timerContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: themeLegacy.spacing.xs,
+      marginTop: themeLegacy.spacing.sm,
+    },
+    timerText: {
+      fontSize: themeLegacy.typography.fontSize.sm,
+      color: theme.colors.text.secondary,
+    },
+  });

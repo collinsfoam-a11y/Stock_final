@@ -260,6 +260,7 @@ export const EnhancedButton: React.FC<EnhancedButtonProps> = ({
 
     return (
       <MyPressable
+        accessibilityRole="button"
         disabled={disabled || loading}
         feedbackType="both"
         scaleValue={0.97}
@@ -280,6 +281,7 @@ export const EnhancedButton: React.FC<EnhancedButtonProps> = ({
 
   return (
     <MyPressable
+      accessibilityRole="button"
       disabled={disabled || loading}
       feedbackType="both"
       scaleValue={0.97}

@@ -3,28 +3,28 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
-import { useAuthStore } from "@/store/authStore";
-import { getRouteForRole, UserRole } from "@/utils/roleNavigation";
+import {
+  getPublicRouteForRole,
+  useWebPublicSession,
+} from "@/bootstrap/useWebPublicSession";
 
 function IndexScreen() {
   const router = useRouter();
-  const user = useAuthStore((state) => state.user);
-  const isLoading = useAuthStore((state) => state.isLoading);
-  const isInitialized = useAuthStore((state) => state.isInitialized);
+  const { status, user } = useWebPublicSession();
 
   useEffect(() => {
-    if (isLoading || !isInitialized) {
+    if (status === "loading") {
       return;
     }
 
     if (user) {
-      const target = getRouteForRole(user.role as UserRole);
+      const target = getPublicRouteForRole(user.role);
       router.replace(target as any);
       return;
     }
 
     router.replace("/welcome");
-  }, [isInitialized, isLoading, router, user]);
+  }, [router, status, user]);
 
   return (
     <View style={styles.page}>

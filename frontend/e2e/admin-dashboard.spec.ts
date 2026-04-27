@@ -1,12 +1,10 @@
-import { test, expect } from "@playwright/test";
-import { authenticateAs } from "./helpers/auth";
+import { test, expect } from "./fixtures/authenticated";
 
 test.describe("Admin Dashboard", () => {
-  test.beforeEach(async ({ page, request }) => {
+  test.beforeEach(async ({ page }) => {
     page.on("dialog", async (dialog) => {
       await dialog.accept();
     });
-    await authenticateAs(page, request, "admin");
   });
 
   test("uses the consolidated dashboard and quick tools", async ({ page }) => {
@@ -47,7 +45,9 @@ test.describe("Admin Dashboard", () => {
         /\/api\/health$/i.test(response.url()) &&
         response.status() >= 400
       ) {
-        healthProbePreflightFailures.push(`${response.status()} ${response.url()}`);
+        healthProbePreflightFailures.push(
+          `${response.status()} ${response.url()}`,
+        );
       }
     });
 
@@ -57,7 +57,6 @@ test.describe("Admin Dashboard", () => {
     await expect(page.getByTestId("overview-panel")).toBeVisible({
       timeout: 20000,
     });
-    await page.waitForTimeout(1500);
 
     expect(healthProbeErrors).toEqual([]);
     expect(healthProbePreflightFailures).toEqual([]);

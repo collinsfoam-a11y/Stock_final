@@ -9,18 +9,14 @@
 
 import React, { useMemo, useState } from "react";
 import { Redirect, Stack, Slot, useRouter, useSegments } from "expo-router";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Platform,
-  useWindowDimensions,
-} from "react-native";
+import { View, Text, StyleSheet, Platform, useWindowDimensions } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { auroraTheme } from "@/theme/auroraTheme";
 import { RoleLayoutGuard } from "@/components/auth/RoleLayoutGuard";
 import { SupervisorSidebar } from "@/components/navigation";
-import { AnimatedPressable, GlassCard, ScreenContainer } from "@/components/ui";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { useSettingsStore } from "@/store/settingsStore";
 import { isSupervisorRouteEnabled } from "@/constants/roleFeatureFlags";
 
@@ -64,34 +60,25 @@ export default function SupervisorLayout() {
   const isLargeScreen = width >= 1024 && Platform.OS === "web";
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const currentRoute = segmentList[1];
-  const isFeatureDisabledRoute = Boolean(
-    currentRoute && !isSupervisorRouteEnabled(currentRoute),
-  );
+  const isFeatureDisabledRoute = Boolean(currentRoute && !isSupervisorRouteEnabled(currentRoute));
   const isOfflineBlockedRoute = Boolean(
-    offlineMode && currentRoute && OFFLINE_BLOCKED_ROUTES.has(currentRoute),
+    offlineMode && currentRoute && OFFLINE_BLOCKED_ROUTES.has(currentRoute)
   );
   const blockedRouteTitle = useMemo(
-    () =>
-      OFFLINE_ROUTE_LABELS[currentRoute || ""] || "Supervisor View",
-    [currentRoute],
+    () => OFFLINE_ROUTE_LABELS[currentRoute || ""] || "Supervisor View",
+    [currentRoute]
   );
 
   if (isFeatureDisabledRoute) {
     return (
-      <RoleLayoutGuard
-        allowedRoles={["supervisor", "admin"]}
-        layoutName="SupervisorLayout"
-      >
+      <RoleLayoutGuard allowedRoles={["supervisor", "admin"]} layoutName="SupervisorLayout">
         <Redirect href="/supervisor/dashboard" />
       </RoleLayoutGuard>
     );
   }
 
   return (
-    <RoleLayoutGuard
-      allowedRoles={["supervisor", "admin"]}
-      layoutName="SupervisorLayout"
-    >
+    <RoleLayoutGuard allowedRoles={["supervisor", "admin"]} layoutName="SupervisorLayout">
       {isLargeScreen ? (
         <View style={styles.webContainer}>
           <SupervisorSidebar
@@ -100,24 +87,16 @@ export default function SupervisorLayout() {
           />
           <View style={styles.mainContent}>
             {isOfflineBlockedRoute ? (
-              <SupervisorOfflineFallback
-                routeTitle={blockedRouteTitle}
-                onNavigate={router.push}
-              />
+              <SupervisorOfflineFallback routeTitle={blockedRouteTitle} onNavigate={router.push} />
             ) : (
               <Slot />
             )}
           </View>
         </View>
+      ) : isOfflineBlockedRoute ? (
+        <SupervisorOfflineFallback routeTitle={blockedRouteTitle} onNavigate={router.push} />
       ) : (
-        isOfflineBlockedRoute ? (
-          <SupervisorOfflineFallback
-            routeTitle={blockedRouteTitle}
-            onNavigate={router.push}
-          />
-        ) : (
-          <Stack screenOptions={{ headerShown: false }} />
-        )
+        <Stack screenOptions={{ headerShown: false }} />
       )}
     </RoleLayoutGuard>
   );
@@ -132,7 +111,7 @@ function SupervisorOfflineFallback({
 }) {
   return (
     <ScreenContainer
-      gradient
+      backgroundType="solid"
       header={{
         title: routeTitle,
         subtitle: "Unavailable while offline mode is enabled",
@@ -147,14 +126,12 @@ function SupervisorOfflineFallback({
               size={22}
               color={auroraTheme.colors.warning[500]}
             />
-            <Text style={styles.offlineTitle}>
-              This supervisor screen needs a live connection
-            </Text>
+            <Text style={styles.offlineTitle}>This supervisor screen needs a live connection</Text>
           </View>
           <Text style={styles.offlineBody}>
-            The selected view depends on backend data or live workflow actions
-            that are not cached locally. Turn off offline mode to reopen it, or
-            move to one of the supervisor screens that still works offline.
+            The selected view depends on backend data or live workflow actions that are not cached
+            locally. Turn off offline mode to reopen it, or move to one of the supervisor screens
+            that still works offline.
           </Text>
         </GlassCard>
 

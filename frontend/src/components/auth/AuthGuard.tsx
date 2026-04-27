@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { useRouter, useSegments } from "expo-router";
+import { useWebSocket } from "../../hooks/useWebSocket";
 import { useAuthStore } from "../../store/authStore";
 import {
   getRouteForRole,
@@ -10,7 +11,10 @@ import {
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((state) => state.user);
   const isInitialized = useAuthStore((state) => state.isInitialized);
+  const isHydrated = useAuthStore((state) => state.isHydrated);
   const isLoading = useAuthStore((state) => state.isLoading);
+  const authPhase = useAuthStore((state) => state.authPhase);
+  const { lastMessage } = useWebSocket(undefined, Boolean(user));
   const segments = useSegments();
   const router = useRouter();
 
@@ -43,7 +47,29 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    if (!isInitialized || isLoading || !segments?.length) return;
+    if (!user || !lastMessage || lastMessage.type !== "notification") {
+      return;
+    }
+
+    void import("../../store/notificationStore")
+      .then((module) => {
+        module.syncRealtimeNotificationMessage(lastMessage as any);
+      })
+      .catch((error) => {
+        console.warn("[AuthGuard] Realtime notification sync unavailable", error);
+      });
+  }, [lastMessage, user]);
+
+  useEffect(() => {
+    if (
+      !isInitialized ||
+      isLoading ||
+      !isHydrated ||
+      authPhase === "authenticating" ||
+      !segments?.length
+    ) {
+      return;
+    }
 
     const firstSegment = segments[0] as string;
     const publicSegments = new Set([
@@ -90,7 +116,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         router.replace(targetRoute as any);
       }
     }
-  }, [user, segments, isInitialized, isLoading, router]);
+  }, [authPhase, isHydrated, isInitialized, isLoading, router, segments, user]);
 
   return <>{children}</>;
 }

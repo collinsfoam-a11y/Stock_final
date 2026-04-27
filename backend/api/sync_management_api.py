@@ -3,14 +3,27 @@ Sync Management API
 Provides supervisor/admin control endpoints for configured sync services.
 """
 
+import logging
+from typing import NoReturn
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
+from backend.utils.api_utils import sanitize_for_logging
 
 sync_management_router = APIRouter(prefix="/sync", tags=["sync"])
+logger = logging.getLogger(__name__)
 
 _erp_sync_service = None
 _change_detection_service = None
+
+
+def _safe_log_value(value: object, *, max_length: int = 200) -> str:
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
+
+
+def _raise_sync_management_internal_error(detail: str, exc: Exception) -> NoReturn:
+    raise HTTPException(status_code=500, detail=detail) from exc
 
 
 def set_erp_sync_service(service) -> None:
@@ -43,7 +56,8 @@ async def trigger_erp_sync(current_user: dict = Depends(get_current_user)):
     try:
         result = await _erp_sync_service.sync_now()
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        logger.error("ERP sync trigger failed: %s", _safe_log_value(exc))
+        _raise_sync_management_internal_error("Failed to trigger ERP sync", exc)
 
     return {"success": True, "data": result}
 

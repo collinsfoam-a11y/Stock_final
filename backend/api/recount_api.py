@@ -5,24 +5,72 @@ Recount Request API - Enhanced recount workflow with notifications and staff ass
 import logging
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
+from typing import Any, NoReturn, Optional
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 
 from backend.auth.dependencies import get_current_user
 from backend.auth.permissions import Permission, require_permission
 from backend.db.runtime import get_db
+from backend.services.canonical_inventory import find_session
+from backend.services.logic_guard import build_request_context, enforce_session_logic
 from backend.services.notification_service import (
     NotificationPriority,
     NotificationService,
     NotificationType,
 )
+from backend.services.count_line_write_service import CountLineWriteService
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/recount", tags=["Recount"])
+
+
+def _safe_log_value(value: object, *, max_length: int = 200) -> str:
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
+
+
+def _raise_recount_internal_error(detail: str, exc: Exception) -> NoReturn:
+    raise HTTPException(status_code=500, detail=detail) from exc
+
+
+async def _enforce_recount_session_logic(
+    *,
+    db: AsyncIOMotorDatabase,
+    session: dict[str, Any],
+    request: Request | None,
+    current_user: dict[str, Any],
+    operation_name: str,
+) -> None:
+    await enforce_session_logic(
+        db=db,
+        session=session,
+        request_context=build_request_context(
+            request=request,
+            current_user=current_user,
+            session_id=str(session.get("id") or session.get("session_id") or ""),
+            warehouse=session.get("warehouse"),
+            endpoint_name="recount_api",
+            operation_name=operation_name,
+        ),
+        is_mutation=True,
+    )
+
+
+async def _load_recount_session_or_409(
+    db: AsyncIOMotorDatabase,
+    session_id: Optional[str],
+) -> dict[str, Any]:
+    if not session_id:
+        raise HTTPException(status_code=409, detail="Recount request is missing session context")
+
+    session = await find_session(db, str(session_id))
+    if not session:
+        raise HTTPException(status_code=409, detail="Associated session not found")
+    return session
 
 
 class RecountPriority(str, Enum):
@@ -95,15 +143,24 @@ class RecountResponse(BaseModel):
 
 @router.post("/request", response_model=RecountResponse)
 async def create_recount_request(
-    request: RecountCreateRequest,
+    request: Request,
+    payload: RecountCreateRequest,
     current_user: dict = require_permission(Permission.COUNT_LINE_APPROVE),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Create a new recount request from a rejected count line."""
     try:
-        count_line = await db.count_lines.find_one({"id": request.count_line_id})
+        count_line = await db.count_lines.find_one({"id": payload.count_line_id})
         if not count_line:
             raise HTTPException(status_code=404, detail="Count line not found")
+        session = await _load_recount_session_or_409(db, count_line.get("session_id"))
+        await _enforce_recount_session_logic(
+            db=db,
+            session=session,
+            request=request,
+            current_user=current_user,
+            operation_name="create_recount_request",
+        )
 
         if count_line.get("status") not in ["rejected", "REJECTED"]:
             raise HTTPException(
@@ -111,7 +168,7 @@ async def create_recount_request(
             )
 
         recount_doc = {
-            "count_line_id": request.count_line_id,
+            "count_line_id": payload.count_line_id,
             "item_name": count_line.get("item_name", "Unknown"),
             "item_code": count_line.get("item_code"),
             "barcode": count_line.get("barcode"),
@@ -119,13 +176,13 @@ async def create_recount_request(
             "erp_qty": count_line.get("erp_qty"),
             "counted_qty": count_line.get("counted_qty"),
             "variance": count_line.get("variance"),
-            "reason": request.reason,
-            "priority": request.priority.value,
+            "reason": payload.reason,
+            "priority": payload.priority.value,
             "status": RecountStatus.PENDING.value,
             "created_by": current_user["username"],
-            "assigned_to": request.assign_to,
-            "notes": request.notes,
-            "due_date": request.due_date,
+            "assigned_to": payload.assign_to,
+            "notes": payload.notes,
+            "due_date": payload.due_date,
             "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
             "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
             "completed_at": None,
@@ -138,18 +195,18 @@ async def create_recount_request(
         recount_doc["id"] = str(result.inserted_id)
 
         notification_service = NotificationService(db)
-        target_user = request.assign_to or count_line.get("counted_by")
+        target_user = payload.assign_to or count_line.get("counted_by")
         if target_user:
             await notification_service.notify_recount_assigned(
                 user_id=target_user,
-                count_line_id=request.count_line_id,
+                count_line_id=payload.count_line_id,
                 item_name=count_line.get("item_name", "Unknown"),
-                reason=request.reason,
+                reason=payload.reason,
                 assigned_by=current_user["username"],
                 session_id=count_line.get("session_id"),
                 item_code=count_line.get("item_code"),
                 barcode=count_line.get("barcode"),
-                assigned_to=request.assign_to,
+                assigned_to=payload.assign_to,
             )
 
         return RecountResponse(
@@ -173,8 +230,8 @@ async def create_recount_request(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error creating recount request: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error creating recount request: %s", _safe_log_value(e))
+        _raise_recount_internal_error("Failed to create recount request", e)
 
 
 @router.get("/list", response_model=dict)
@@ -250,29 +307,38 @@ async def get_recount_request(
 
 @router.post("/assign")
 async def assign_recount_request(
-    request: RecountAssignRequest,
+    http_request: Request,
+    payload: RecountAssignRequest,
     current_user: dict = require_permission(Permission.COUNT_LINE_APPROVE),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Assign recount request to a staff member."""
     try:
-        recount = await db.recount_requests.find_one({"_id": ObjectId(request.recount_id)})
+        recount = await db.recount_requests.find_one({"_id": ObjectId(payload.recount_id)})
         if not recount:
             raise HTTPException(status_code=404, detail="Recount request not found")
+        session = await _load_recount_session_or_409(db, recount.get("session_id"))
+        await _enforce_recount_session_logic(
+            db=db,
+            session=session,
+            request=http_request,
+            current_user=current_user,
+            operation_name="assign_recount_request",
+        )
 
-        user = await db.users.find_one({"username": request.assign_to})
+        user = await db.users.find_one({"username": payload.assign_to})
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
         await db.recount_requests.update_one(
-            {"_id": ObjectId(request.recount_id)},
+            {"_id": ObjectId(payload.recount_id)},
             {
                 "$set": {
-                    "assigned_to": request.assign_to,
+                    "assigned_to": payload.assign_to,
                     "status": RecountStatus.ASSIGNED.value,
                     "assigned_at": datetime.now(timezone.utc).replace(tzinfo=None),
                     "assigned_by": current_user["username"],
-                    "notes": request.notes or recount.get("notes"),
+                    "notes": payload.notes or recount.get("notes"),
                     "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
                 }
             },
@@ -280,7 +346,7 @@ async def assign_recount_request(
 
         notification_service = NotificationService(db)
         await notification_service.notify_recount_assigned(
-            user_id=request.assign_to,
+            user_id=payload.assign_to,
             count_line_id=recount["count_line_id"],
             item_name=recount["item_name"],
             reason=recount["reason"],
@@ -288,22 +354,23 @@ async def assign_recount_request(
             session_id=recount.get("session_id"),
             item_code=recount.get("item_code"),
             barcode=recount.get("barcode"),
-            assigned_to=request.assign_to,
+            assigned_to=payload.assign_to,
         )
 
-        return {"success": True, "message": f"Recount assigned to {request.assign_to}"}
+        return {"success": True, "message": f"Recount assigned to {payload.assign_to}"}
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error assigning recount: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error assigning recount: %s", _safe_log_value(e))
+        _raise_recount_internal_error("Failed to assign recount request", e)
 
 
 @router.post("/{recount_id}/complete")
 async def complete_recount_request(
     recount_id: str,
-    request: RecountUpdateRequest,
+    http_request: Request,
+    payload: RecountUpdateRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
@@ -312,6 +379,14 @@ async def complete_recount_request(
         recount = await db.recount_requests.find_one({"_id": ObjectId(recount_id)})
         if not recount:
             raise HTTPException(status_code=404, detail="Recount request not found")
+        session = await _load_recount_session_or_409(db, recount.get("session_id"))
+        await _enforce_recount_session_logic(
+            db=db,
+            session=session,
+            request=http_request,
+            current_user=current_user,
+            operation_name="complete_recount_request",
+        )
 
         update_data = {
             "status": RecountStatus.COMPLETED.value,
@@ -320,24 +395,33 @@ async def complete_recount_request(
             "completed_by": current_user["username"],
         }
 
-        if request.result_qty is not None:
-            update_data["result_qty"] = request.result_qty
+        if payload.result_qty is not None:
+            update_data["result_qty"] = payload.result_qty
 
-        if request.notes:
-            update_data["completion_notes"] = request.notes
+        if payload.notes:
+            update_data["completion_notes"] = payload.notes
 
         await db.recount_requests.update_one({"_id": ObjectId(recount_id)}, {"$set": update_data})
 
-        if request.result_qty is not None:
-            await db.count_lines.update_one(
-                {"id": recount["count_line_id"]},
+        if payload.result_qty is not None:
+            await CountLineWriteService(db).process_write(
                 {
-                    "$set": {
-                        "counted_qty": request.result_qty,
-                        "recount_completed_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                        "recount_completed_by": current_user["username"],
+                    "operation": "update_one",
+                    "filter": {"id": recount["count_line_id"]},
+                    "update": {
+                        "$set": {
+                            "counted_qty": payload.result_qty,
+                            "recount_completed_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                            "recount_completed_by": current_user["username"],
+                        },
+                        "$unset": {"recount_requested_at": "", "recount_requested_by": ""},
                     },
-                    "$unset": {"recount_requested_at": "", "recount_requested_by": ""},
+                },
+                context={
+                    "session": session,
+                    "variance_reason": payload.notes,
+                    "correction_reason": payload.notes,
+                    "username": current_user.get("username"),
                 },
             )
 
@@ -349,21 +433,22 @@ async def complete_recount_request(
             message=f"Recount for '{recount['item_name']}' has been completed",
             priority=NotificationPriority.MEDIUM,
             action_url=f"/recount/{recount_id}",
-            metadata={"recount_id": recount_id, "result_qty": request.result_qty},
+            metadata={"recount_id": recount_id, "result_qty": payload.result_qty},
         )
 
-        return {"success": True, "message": "Recount completed", "result_qty": request.result_qty}
+        return {"success": True, "message": "Recount completed", "result_qty": payload.result_qty}
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error completing recount: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error completing recount: %s", _safe_log_value(e))
+        _raise_recount_internal_error("Failed to complete recount request", e)
 
 
 @router.post("/{recount_id}/cancel")
 async def cancel_recount_request(
     recount_id: str,
+    request: Request,
     reason: Optional[str] = None,
     current_user: dict = require_permission(Permission.COUNT_LINE_APPROVE),
     db: AsyncIOMotorDatabase = Depends(get_db),
@@ -373,6 +458,14 @@ async def cancel_recount_request(
         recount = await db.recount_requests.find_one({"_id": ObjectId(recount_id)})
         if not recount:
             raise HTTPException(status_code=404, detail="Recount request not found")
+        session = await _load_recount_session_or_409(db, recount.get("session_id"))
+        await _enforce_recount_session_logic(
+            db=db,
+            session=session,
+            request=request,
+            current_user=current_user,
+            operation_name="cancel_recount_request",
+        )
 
         await db.recount_requests.update_one(
             {"_id": ObjectId(recount_id)},
@@ -392,8 +485,8 @@ async def cancel_recount_request(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error cancelling recount: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error cancelling recount: %s", _safe_log_value(e))
+        _raise_recount_internal_error("Failed to cancel recount request", e)
 
 
 @router.get("/stats/summary")

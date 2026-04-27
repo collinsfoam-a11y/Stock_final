@@ -24,6 +24,7 @@ from backend.api.session_management_api import (
 )
 from backend.config import settings
 from backend.db.runtime import get_db, lifespan_db
+from scripts.approval_guard import enforce_high_risk_entrypoint
 
 logger = logging.getLogger(__name__)
 
@@ -208,6 +209,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
     args = _build_parser().parse_args()
+    enforce_high_risk_entrypoint(trigger_flags={"--execute"})
     stats = asyncio.run(_run_backfill(args))
 
     print("\n=== Session Snapshot Backfill Results ===")

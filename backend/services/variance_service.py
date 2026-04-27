@@ -7,6 +7,7 @@ approval is required.
 """
 
 import logging
+import inspect
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
@@ -20,6 +21,17 @@ class VarianceService:
 
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
+
+    def _variance_config_collection(self):
+        return getattr(self.db, "variance_threshold_configs", None)
+
+    async def _resolve_awaitable(self, value):
+        resolved = value
+        for _ in range(3):
+            if not inspect.isawaitable(resolved):
+                break
+            resolved = await resolved
+        return resolved
 
     async def calculate_variance(
         self,
@@ -94,10 +106,16 @@ class VarianceService:
             - violated_thresholds: List of threshold violations with details
         """
         # Get applicable threshold config
-        config = await self._get_applicable_config(item_category, location)
+        config = await self._resolve_awaitable(
+            await self._get_applicable_config(item_category, location)
+        )
+        if not isinstance(config, dict):
+            config = None
         if not config:
             logger.warning("No threshold configuration found, using defaults")
-            config = await self._get_default_config()
+            config = await self._resolve_awaitable(await self._get_default_config())
+            if not isinstance(config, dict):
+                config = self._build_default_config()
 
         violated_thresholds = []
         requires_approval = False
@@ -109,42 +127,24 @@ class VarianceService:
             threshold_type = threshold["threshold_type"]
             operator = threshold["operator"]
             threshold_value = threshold["value"]
-
-            # Get the actual variance value to compare
-            if threshold_type == "quantity":
-                actual_value = abs(variance_data["quantity_variance"])
-            elif threshold_type == "value":
-                actual_value = abs(variance_data["value_variance"])
-            elif threshold_type == "percentage":
-                actual_value = abs(variance_data["percentage_variance"])
-            else:
-                logger.warning(f"Unknown threshold type: {threshold_type}")
+            actual_value = self._threshold_actual_value(threshold_type, variance_data)
+            if actual_value is None:
+                continue
+            if not self._threshold_operator_matches(operator, actual_value, threshold_value):
                 continue
 
-            # Check threshold
-            is_violated = False
-            if operator == "gte" and actual_value >= threshold_value:
-                is_violated = True
-            elif operator == "lte" and actual_value <= threshold_value:
-                is_violated = True
-            elif operator == "eq" and actual_value == threshold_value:
-                is_violated = True
-
-            if is_violated:
-                violated_thresholds.append(
-                    {
-                        "threshold_type": threshold_type,
-                        "threshold_value": threshold_value,
-                        "actual_value": actual_value,
-                        "operator": operator,
-                        "require_supervisor": threshold.get("require_supervisor", True),
-                        "require_reason": threshold.get("require_reason", False),
-                        "currency": threshold.get("currency", "INR"),
-                    }
+            violated_thresholds.append(
+                self._build_violated_threshold(
+                    threshold,
+                    threshold_type=threshold_type,
+                    threshold_value=threshold_value,
+                    actual_value=actual_value,
+                    operator=operator,
                 )
+            )
 
-                if threshold.get("require_supervisor", True):
-                    requires_approval = True
+            if threshold.get("require_supervisor", True):
+                requires_approval = True
 
         logger.info(
             f"Threshold check complete: requires_approval={requires_approval}, "
@@ -152,6 +152,49 @@ class VarianceService:
         )
 
         return requires_approval, violated_thresholds
+
+    def _threshold_actual_value(
+        self, threshold_type: str, variance_data: Dict
+    ) -> Optional[float]:
+        if threshold_type == "quantity":
+            return abs(variance_data["quantity_variance"])
+        if threshold_type == "value":
+            return abs(variance_data["value_variance"])
+        if threshold_type == "percentage":
+            return abs(variance_data["percentage_variance"])
+
+        logger.warning("Unknown threshold type: %s", threshold_type)
+        return None
+
+    def _threshold_operator_matches(
+        self, operator: str, actual_value: float, threshold_value: float
+    ) -> bool:
+        if operator == "gte":
+            return actual_value >= threshold_value
+        if operator == "lte":
+            return actual_value <= threshold_value
+        if operator == "eq":
+            return actual_value == threshold_value
+        return False
+
+    def _build_violated_threshold(
+        self,
+        threshold: Dict,
+        *,
+        threshold_type: str,
+        threshold_value: float,
+        actual_value: float,
+        operator: str,
+    ) -> Dict:
+        return {
+            "threshold_type": threshold_type,
+            "threshold_value": threshold_value,
+            "actual_value": actual_value,
+            "operator": operator,
+            "require_supervisor": threshold.get("require_supervisor", True),
+            "require_reason": threshold.get("require_reason", False),
+            "currency": threshold.get("currency", "INR"),
+        }
 
     async def _get_applicable_config(
         self, category: Optional[str], location: Optional[str]
@@ -161,87 +204,110 @@ class VarianceService:
 
         Priority: category+location > category > location > default
         """
+        collection = self._variance_config_collection()
+        if collection is None:
+            logger.warning(
+                "variance_threshold_configs collection unavailable; using in-memory defaults"
+            )
+            return self._build_default_config()
+
         # Try category + location specific
         if category and location:
-            config = await self.db.variance_threshold_configs.find_one(
-                {
-                    "apply_to_categories": category,
-                    "apply_to_locations": location,
-                }
+            config = await self._resolve_awaitable(
+                collection.find_one(
+                    {
+                        "apply_to_categories": category,
+                        "apply_to_locations": location,
+                    }
+                )
             )
-            if config:
+            if isinstance(config, dict):
                 logger.info(f"Using category+location specific config for {category}/{location}")
                 return config
 
         # Try category specific
         if category:
-            config = await self.db.variance_threshold_configs.find_one(
-                {
-                    "apply_to_categories": category,
-                    "apply_to_locations": None,
-                }
+            config = await self._resolve_awaitable(
+                collection.find_one(
+                    {
+                        "apply_to_categories": category,
+                        "apply_to_locations": None,
+                    }
+                )
             )
-            if config:
+            if isinstance(config, dict):
                 logger.info(f"Using category specific config for {category}")
                 return config
 
         # Try location specific
         if location:
-            config = await self.db.variance_threshold_configs.find_one(
-                {
-                    "apply_to_categories": None,
-                    "apply_to_locations": location,
-                }
+            config = await self._resolve_awaitable(
+                collection.find_one(
+                    {
+                        "apply_to_categories": None,
+                        "apply_to_locations": location,
+                    }
+                )
             )
-            if config:
+            if isinstance(config, dict):
                 logger.info(f"Using location specific config for {location}")
                 return config
 
         # Default config
-        config = await self.db.variance_threshold_configs.find_one(
-            {"name": "Default Variance Thresholds"}
+        config = await self._resolve_awaitable(
+            collection.find_one({"name": "Default Variance Thresholds"})
         )
-        if config:
+        if isinstance(config, dict):
             logger.info("Using default threshold config")
-        return config
+            return config
+        return None
+
+    def _build_default_config(self) -> Dict:
+        return {
+            "name": "Default Variance Thresholds",
+            "description": "Standard thresholds for all items",
+            "thresholds": [
+                {
+                    "threshold_type": "quantity",
+                    "operator": "gte",
+                    "value": 1.0,
+                    "require_supervisor": True,
+                    "require_reason": False,
+                    "enabled": True,
+                },
+                {
+                    "threshold_type": "value",
+                    "operator": "gte",
+                    "value": 500.0,
+                    "currency": "INR",
+                    "require_supervisor": True,
+                    "require_reason": True,
+                    "enabled": True,
+                },
+            ],
+            "apply_to_categories": None,
+            "apply_to_locations": None,
+            "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
+        }
 
     async def _get_default_config(self) -> Dict:
         """Get or create default threshold configuration"""
-        config = await self.db.variance_threshold_configs.find_one(
-            {"name": "Default Variance Thresholds"}
+        collection = self._variance_config_collection()
+        if collection is None:
+            return self._build_default_config()
+
+        config = await self._resolve_awaitable(
+            collection.find_one({"name": "Default Variance Thresholds"})
         )
+        if config is not None and not isinstance(config, dict):
+            config = None
 
         if not config:
             # Create default config
-            default_config = {
-                "name": "Default Variance Thresholds",
-                "description": "Standard thresholds for all items",
-                "thresholds": [
-                    {
-                        "threshold_type": "quantity",
-                        "operator": "gte",
-                        "value": 1.0,
-                        "require_supervisor": True,
-                        "require_reason": False,
-                        "enabled": True,
-                    },
-                    {
-                        "threshold_type": "value",
-                        "operator": "gte",
-                        "value": 500.0,
-                        "currency": "INR",
-                        "require_supervisor": True,
-                        "require_reason": True,
-                        "enabled": True,
-                    },
-                ],
-                "apply_to_categories": None,
-                "apply_to_locations": None,
-                "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
-            }
+            default_config = self._build_default_config()
 
-            result = await self.db.variance_threshold_configs.insert_one(default_config)
+            result = await self._resolve_awaitable(collection.insert_one(default_config))
             default_config["_id"] = result.inserted_id
             logger.info("Created default variance threshold configuration")
             return default_config

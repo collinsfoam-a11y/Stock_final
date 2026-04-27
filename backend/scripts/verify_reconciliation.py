@@ -15,6 +15,8 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from backend.config import settings
+from backend.services.count_line_write_service import CountLineWriteService
+from scripts.approval_guard import enforce_high_risk_entrypoint
 
 MONGODB_URL = settings.MONGO_URL
 DB_NAME = settings.DB_NAME
@@ -68,30 +70,39 @@ async def run_verification():
         # 3. Simulate Counts
         # Location A: 6 items (Variance -4 if calculated individually)
         print("Simulating Count: Location A (Qty: 6)", flush=True)
-        await db.count_lines.insert_one(
+        write_service = CountLineWriteService(db)
+        await write_service.process_write(
             {
-                "id": str(uuid.uuid4()),
-                "session_id": session_id,
-                "item_code": item_code,
-                "counted_qty": 6.0,
-                "floor_no": "Floor1",
-                "rack_no": "RackA",
-                "counted_at": datetime.now(timezone.utc).replace(tzinfo=None),
-            }
+                "operation": "insert_one",
+                "document": {
+                    "id": str(uuid.uuid4()),
+                    "session_id": session_id,
+                    "item_code": item_code,
+                    "counted_qty": 6.0,
+                    "floor_no": "Floor1",
+                    "rack_no": "RackA",
+                    "counted_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                },
+            },
+            context={"session_id": session_id},
         )
 
         # Location B: 4 items (Variance -6 if calculated individually)
         print("Simulating Count: Location B (Qty: 4)", flush=True)
-        await db.count_lines.insert_one(
+        await write_service.process_write(
             {
-                "id": str(uuid.uuid4()),
-                "session_id": session_id,
-                "item_code": item_code,
-                "counted_qty": 4.0,
-                "floor_no": "Floor1",
-                "rack_no": "RackB",
-                "counted_at": datetime.now(timezone.utc).replace(tzinfo=None),
-            }
+                "operation": "insert_one",
+                "document": {
+                    "id": str(uuid.uuid4()),
+                    "session_id": session_id,
+                    "item_code": item_code,
+                    "counted_qty": 4.0,
+                    "floor_no": "Floor1",
+                    "rack_no": "RackB",
+                    "counted_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                },
+            },
+            context={"session_id": session_id},
         )
 
         # 4. Run Reconciliation
@@ -150,10 +161,17 @@ async def run_verification():
     print("\nCleaning up test data...", flush=True)
     await db.sessions.delete_one({"id": session_id})
     await db.erp_items.delete_one({"item_code": item_code})
-    await db.count_lines.delete_many({"session_id": session_id})
+    await CountLineWriteService(db).process_write(
+        {
+            "operation": "delete_many",
+            "filter": {"session_id": session_id},
+        },
+        context={"session_id": session_id, "allow_missing_session": True},
+    )
 
 
 if __name__ == "__main__":
     from datetime import datetime
 
+    enforce_high_risk_entrypoint(always_require=True)
     asyncio.run(run_verification())

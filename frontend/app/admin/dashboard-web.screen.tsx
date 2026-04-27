@@ -6,21 +6,20 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Alert,
-  RefreshControl,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { Alert, RefreshControl, ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import {
   attemptAutoFixDiagnosis,
+  createExportSchedule,
+  deleteExportSchedule,
+  downloadExportResult,
   generateReport,
   getAvailableReports,
   getDiagnosisHealth,
+  getExportResults,
+  getExportSchedules,
   getMetricsHealth,
   getMetricsStats,
   getServicesStatus,
@@ -31,8 +30,17 @@ import {
   getSystemStats,
   startService,
   stopService,
+  triggerExportSchedule,
+  updateExportSchedule,
 } from "../../src/services/api";
-import { GlassCard } from "../../src/components/ui";
+import type {
+  ExportResultRecord,
+  ExportScheduleFormat,
+  ExportScheduleFrequency,
+  ExportScheduleRecord,
+  ExportScheduleType,
+} from "../../src/services/api";
+import { GlassCard } from "../../src/components/ui/GlassCard";
 import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
 import {
   DashboardAnalyticsPanel,
@@ -57,20 +65,30 @@ import {
 import { ADMIN_NAV_GROUPS } from "../../src/components/navigation/adminNavShared";
 import { useSettingsStore } from "../../src/store/settingsStore";
 
+const DEFAULT_SCHEDULE_DRAFT: {
+  email_recipients: string;
+  export_type: ExportScheduleType;
+  format: ExportScheduleFormat;
+  frequency: ExportScheduleFrequency;
+  name: string;
+} = {
+  name: "",
+  export_type: "variance_report",
+  frequency: "daily",
+  format: "csv",
+  email_recipients: "",
+};
+
 export default function DashboardWeb() {
   const router = useRouter();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
 
-  const [activeTab, setActiveTab] = useState<DashboardTab>(
-    isDashboardTab(tab) ? tab : "overview",
-  );
+  const [activeTab, setActiveTab] = useState<DashboardTab>(isDashboardTab(tab) ? tab : "overview");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [, setLastUpdate] = useState<Date>(new Date());
-  const [serviceActionLoading, setServiceActionLoading] = useState<string | null>(
-    null,
-  );
+  const [serviceActionLoading, setServiceActionLoading] = useState<string | null>(null);
 
   const [systemStats, setSystemStats] = useState<any>(null);
   const [servicesStatus, setServicesStatus] = useState<any>(null);
@@ -79,15 +97,19 @@ export default function DashboardWeb() {
   const [metrics, setMetrics] = useState<any>(null);
   const [reports, setReports] = useState<any[]>([]);
   const [reportsLoading, setReportsLoading] = useState(false);
+  const [schedules, setSchedules] = useState<ExportScheduleRecord[]>([]);
+  const [exportResults, setExportResults] = useState<ExportResultRecord[]>([]);
+  const [reportOpsLoading, setReportOpsLoading] = useState(false);
+  const [scheduleActionLoading, setScheduleActionLoading] = useState<string | null>(null);
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+  const [scheduleDraft, setScheduleDraft] = useState(DEFAULT_SCHEDULE_DRAFT);
   const [sessionsAnalytics, setSessionsAnalytics] = useState<any>(null);
   const [diagnosisHealth, setDiagnosisHealth] = useState<any>(null);
 
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
-  const [reportFormat, setReportFormat] = useState<"excel" | "csv" | "json">(
-    "excel",
-  );
+  const [reportFormat, setReportFormat] = useState<"excel" | "csv" | "json">("excel");
   const [reportDateRange, setReportDateRange] = useState({
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
     end: new Date(),
@@ -97,6 +119,11 @@ export default function DashboardWeb() {
     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     end: new Date(),
   });
+
+  const resetScheduleDraft = useCallback(() => {
+    setEditingScheduleId(null);
+    setScheduleDraft(DEFAULT_SCHEDULE_DRAFT);
+  }, []);
 
   const fetchAvailableReports = useCallback(async () => {
     if (offlineMode) {
@@ -115,6 +142,30 @@ export default function DashboardWeb() {
     }
   }, [offlineMode]);
 
+  const fetchReportOperations = useCallback(async () => {
+    if (offlineMode) {
+      setSchedules([]);
+      setExportResults([]);
+      return;
+    }
+
+    setReportOpsLoading(true);
+    try {
+      const [nextSchedules, nextResults] = await Promise.all([
+        getExportSchedules(),
+        getExportResults(undefined, undefined, 1, 10),
+      ]);
+      setSchedules(nextSchedules);
+      setExportResults(nextResults);
+    } catch (error) {
+      console.error("Failed to load export schedules/results:", error);
+      setSchedules([]);
+      setExportResults([]);
+    } finally {
+      setReportOpsLoading(false);
+    }
+  }, [offlineMode]);
+
   const loadDashboardData = useCallback(
     async (isRefresh = false) => {
       if (offlineMode) {
@@ -127,6 +178,8 @@ export default function DashboardWeb() {
         setReports([]);
         setSessionsAnalytics(null);
         setDiagnosisHealth(null);
+        setSchedules([]);
+        setExportResults([]);
         setLoading(false);
         setRefreshing(false);
         return;
@@ -189,7 +242,7 @@ export default function DashboardWeb() {
         setRefreshing(false);
       }
     },
-    [fetchAvailableReports, offlineMode],
+    [fetchAvailableReports, offlineMode]
   );
 
   useEffect(() => {
@@ -209,15 +262,29 @@ export default function DashboardWeb() {
   }, [tab]);
 
   useEffect(() => {
-    if (
-      activeTab === "reports" &&
-      reports.length === 0 &&
-      !reportsLoading &&
-      !loading
-    ) {
-      void fetchAvailableReports();
+    if (activeTab === "reports" && !loading) {
+      if (reports.length === 0 && !reportsLoading) {
+        void fetchAvailableReports();
+      }
+      if (
+        (schedules.length === 0 && exportResults.length === 0) ||
+        (!reportOpsLoading && refreshing)
+      ) {
+        void fetchReportOperations();
+      }
     }
-  }, [activeTab, fetchAvailableReports, loading, reports.length, reportsLoading]);
+  }, [
+    activeTab,
+    exportResults.length,
+    fetchAvailableReports,
+    fetchReportOperations,
+    loading,
+    refreshing,
+    reportOpsLoading,
+    reports.length,
+    reportsLoading,
+    schedules.length,
+  ]);
 
   const handleTabChange = useCallback(
     (nextTab: DashboardTab) => {
@@ -231,15 +298,15 @@ export default function DashboardWeb() {
         params: { tab: nextTab },
       } as any);
     },
-    [activeTab, router],
+    [activeTab, router]
   );
 
   const adminRouteTools = useMemo(
     () =>
       ADMIN_NAV_GROUPS.flatMap((group) => group.items).filter(
-        (item) => item.route !== "/admin/dashboard-web",
+        (item) => item.route !== "/admin/dashboard-web"
       ),
-    [],
+    []
   );
 
   const recommendedTools = useMemo(() => {
@@ -307,20 +374,14 @@ export default function DashboardWeb() {
       });
 
       if (result.kind === "json") {
-        Alert.alert(
-          "Report Ready",
-          `Report "${reportType}" generated successfully.`,
-        );
+        Alert.alert("Report Ready", `Report "${reportType}" generated successfully.`);
         setShowReportModal(false);
         return;
       }
 
       if (DASHBOARD_IS_WEB && "blob" in result) {
         if (result.blob.size === 0) {
-          Alert.alert(
-            "No Data",
-            "No records found for the selected date range.",
-          );
+          Alert.alert("No Data", "No records found for the selected date range.");
           return;
         }
 
@@ -338,7 +399,7 @@ export default function DashboardWeb() {
 
       Alert.alert(
         "Download Not Supported",
-        "Report download is currently supported in the web dashboard.",
+        "Report download is currently supported in the web dashboard."
       );
       setShowReportModal(false);
     } catch (error) {
@@ -348,6 +409,170 @@ export default function DashboardWeb() {
       setGenerating(false);
     }
   };
+
+  const handleDownloadExport = useCallback(async (resultId: string) => {
+    try {
+      const fileBlob = await downloadExportResult(resultId);
+
+      if (DASHBOARD_IS_WEB && fileBlob instanceof Blob) {
+        const url = window.URL.createObjectURL(fileBlob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `scheduled-export-${resultId}`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        return;
+      }
+
+      Alert.alert(
+        "Download Not Supported",
+        "Scheduled export download is currently supported in the web dashboard."
+      );
+    } catch (error) {
+      console.error("Failed to download export result:", error);
+      Alert.alert("Download Failed", "Unable to download this export result.");
+    }
+  }, []);
+
+  const handlePrepareSchedule = useCallback((report: any) => {
+    const normalizedId = String(report?.id ?? "");
+    const nextExportType: ExportScheduleType = normalizedId.includes("variance")
+      ? "variance_report"
+      : normalizedId.includes("activity")
+        ? "activity_logs"
+        : normalizedId.includes("count")
+          ? "count_lines"
+          : "sessions";
+
+    setEditingScheduleId(null);
+    setScheduleDraft({
+      name: report?.name ? `${report.name} schedule` : "Scheduled export",
+      export_type: nextExportType,
+      frequency: "daily",
+      format: "csv",
+      email_recipients: "",
+    });
+  }, []);
+
+  const handleEditSchedule = useCallback((schedule: ExportScheduleRecord) => {
+    setEditingScheduleId(schedule.id);
+    setScheduleDraft({
+      name: schedule.name,
+      export_type: schedule.export_type,
+      frequency: schedule.frequency,
+      format: schedule.format,
+      email_recipients: schedule.email_recipients.join(", "),
+    });
+  }, []);
+
+  const handleSaveSchedule = useCallback(async () => {
+    if (offlineMode) {
+      Alert.alert("Offline Mode", "Export schedules require a live backend connection.");
+      return;
+    }
+
+    if (!scheduleDraft.name.trim()) {
+      Alert.alert("Missing Name", "Provide a schedule name before saving.");
+      return;
+    }
+
+    const payload = {
+      name: scheduleDraft.name.trim(),
+      export_type: scheduleDraft.export_type,
+      frequency: scheduleDraft.frequency,
+      format: scheduleDraft.format,
+      email_recipients: scheduleDraft.email_recipients
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    };
+
+    try {
+      setScheduleActionLoading(editingScheduleId || "create");
+      if (editingScheduleId) {
+        await updateExportSchedule(editingScheduleId, payload);
+      } else {
+        await createExportSchedule(payload);
+      }
+
+      await fetchReportOperations();
+      resetScheduleDraft();
+      Alert.alert(
+        "Schedule Saved",
+        editingScheduleId ? "The export schedule was updated." : "The export schedule was created."
+      );
+    } catch (error) {
+      console.error("Failed to save export schedule:", error);
+      Alert.alert("Save Failed", "Unable to save the export schedule.");
+    } finally {
+      setScheduleActionLoading(null);
+    }
+  }, [editingScheduleId, fetchReportOperations, offlineMode, resetScheduleDraft, scheduleDraft]);
+
+  const handleToggleSchedule = useCallback(
+    async (schedule: ExportScheduleRecord) => {
+      try {
+        setScheduleActionLoading(schedule.id);
+        await updateExportSchedule(schedule.id, {
+          enabled: !schedule.enabled,
+        });
+        await fetchReportOperations();
+      } catch (error) {
+        console.error("Failed to toggle export schedule:", error);
+        Alert.alert("Update Failed", "Unable to update the schedule state.");
+      } finally {
+        setScheduleActionLoading(null);
+      }
+    },
+    [fetchReportOperations]
+  );
+
+  const handleRunSchedule = useCallback(
+    async (schedule: ExportScheduleRecord) => {
+      try {
+        setScheduleActionLoading(schedule.id);
+        await triggerExportSchedule(schedule.id);
+        await fetchReportOperations();
+        Alert.alert("Export Started", `"${schedule.name}" was queued successfully.`);
+      } catch (error) {
+        console.error("Failed to trigger export schedule:", error);
+        Alert.alert("Run Failed", "Unable to run the selected schedule.");
+      } finally {
+        setScheduleActionLoading(null);
+      }
+    },
+    [fetchReportOperations]
+  );
+
+  const handleDeleteSchedule = useCallback(
+    (schedule: ExportScheduleRecord) => {
+      Alert.alert("Delete Schedule", `Delete "${schedule.name}"?`, [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setScheduleActionLoading(schedule.id);
+              await deleteExportSchedule(schedule.id);
+              await fetchReportOperations();
+              if (editingScheduleId === schedule.id) {
+                resetScheduleDraft();
+              }
+            } catch (error) {
+              console.error("Failed to delete export schedule:", error);
+              Alert.alert("Delete Failed", "Unable to remove the selected schedule.");
+            } finally {
+              setScheduleActionLoading(null);
+            }
+          },
+        },
+      ]);
+    },
+    [editingScheduleId, fetchReportOperations, resetScheduleDraft]
+  );
 
   const handleAutoFix = async (issue: any) => {
     if (offlineMode) {
@@ -372,9 +597,7 @@ export default function DashboardWeb() {
       } else {
         Alert.alert(
           "Failed",
-          result.fix_result ||
-            result.message ||
-            "Could not auto-fix this issue. Please check logs.",
+          result.fix_result || result.message || "Could not auto-fix this issue. Please check logs."
         );
       }
     } catch (error) {
@@ -385,14 +608,11 @@ export default function DashboardWeb() {
     }
   };
 
-  const handleServiceToggle = async (
-    serviceKey: "backend" | "frontend",
-    service: any,
-  ) => {
+  const handleServiceToggle = async (serviceKey: "backend" | "frontend", service: any) => {
     if (offlineMode) {
       Alert.alert(
         "Offline Mode",
-        "Service controls are unavailable while offline mode is enabled.",
+        "Service controls are unavailable while offline mode is enabled."
       );
       return;
     }
@@ -405,15 +625,13 @@ export default function DashboardWeb() {
 
       Alert.alert(
         "Success",
-        response?.message ||
-          `${serviceKey} ${service?.running ? "stop" : "start"} request sent.`,
+        response?.message || `${serviceKey} ${service?.running ? "stop" : "start"} request sent.`
       );
       await loadDashboardData(true);
     } catch (error: any) {
       Alert.alert(
         "Error",
-        error?.message ||
-          `Failed to ${service?.running ? "stop" : "start"} ${serviceKey}.`,
+        error?.message || `Failed to ${service?.running ? "stop" : "start"} ${serviceKey}.`
       );
     } finally {
       setServiceActionLoading(null);
@@ -453,11 +671,10 @@ export default function DashboardWeb() {
           onPress: () => router.push(item.route as any),
         })),
       ].filter(
-        (tool, index, all) =>
-          all.findIndex((candidate) => candidate.key === tool.key) === index,
+        (tool, index, all) => all.findIndex((candidate) => candidate.key === tool.key) === index
       ),
     ],
-    [adminRouteTools, handleTabChange, recommendedTools, router],
+    [adminRouteTools, handleTabChange, recommendedTools, router]
   );
 
   const sessionChartData = prepareSessionChartData(sessionsAnalytics);
@@ -465,7 +682,7 @@ export default function DashboardWeb() {
 
   return (
     <ScreenContainer
-      backgroundType="aurora"
+      backgroundType="solid"
       auroraVariant="primary"
       auroraIntensity="medium"
       header={{
@@ -494,20 +711,15 @@ export default function DashboardWeb() {
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => loadDashboardData(true)}
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={() => loadDashboardData(true)} />
           }
         >
           {offlineMode && (
             <GlassCard style={styles.offlineNotice}>
-              <Text style={styles.offlineNoticeTitle}>
-                Admin dashboard is in offline mode
-              </Text>
+              <Text style={styles.offlineNoticeTitle}>Admin dashboard is in offline mode</Text>
               <Text style={styles.offlineNoticeBody}>
-                Monitoring, reports, diagnosis, and service controls require a
-                live backend connection. Reconnect to refresh this dashboard.
+                Monitoring, reports, diagnosis, and service controls require a live backend
+                connection. Reconnect to refresh this dashboard.
               </Text>
             </GlassCard>
           )}
@@ -537,12 +749,27 @@ export default function DashboardWeb() {
 
           {activeTab === "reports" && (
             <DashboardReportsPanel
+              editingScheduleId={editingScheduleId}
+              exportResults={exportResults}
+              onCancelScheduleEdit={resetScheduleDraft}
+              onChangeScheduleDraft={setScheduleDraft}
+              onDeleteSchedule={handleDeleteSchedule}
+              onDownloadExportResult={handleDownloadExport}
+              onEditSchedule={handleEditSchedule}
               onOpenReport={(reportId) => {
                 setSelectedReport(reportId);
                 setShowReportModal(true);
               }}
+              onPrepareSchedule={handlePrepareSchedule}
+              onRunSchedule={handleRunSchedule}
+              onSaveSchedule={handleSaveSchedule}
+              onToggleSchedule={handleToggleSchedule}
+              reportOpsLoading={reportOpsLoading}
               reports={reports}
               reportsLoading={reportsLoading}
+              scheduleActionLoading={scheduleActionLoading}
+              scheduleDraft={scheduleDraft}
+              schedules={schedules}
               styles={styles}
             />
           )}

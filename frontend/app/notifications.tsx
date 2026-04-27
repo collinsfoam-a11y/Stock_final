@@ -15,7 +15,11 @@ import {
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useNotificationStore } from "../src/store/notificationStore";
-import { getCountLineById, type Notification } from "../src/services/api/api";
+import {
+  getCountLineById,
+  getRecountRequest,
+  type Notification,
+} from "../src/services/api/api";
 import ModernHeader from "../src/components/ui/ModernHeader";
 import ModernCard from "../src/components/ui/ModernCard";
 import {
@@ -51,33 +55,65 @@ export default function NotificationsScreen() {
     const actionCountLineId =
       metadata.count_line_id ||
       notification.action_url?.match(/\/count-lines\/([^/]+)/)?.[1];
+    const actionRecountId =
+      metadata.recount_id ||
+      notification.action_url?.match(/\/recount\/([^/]+)/)?.[1];
 
-    if (!actionCountLineId) {
+    if (actionCountLineId) {
+      try {
+        const countLine =
+          metadata.session_id && metadata.barcode
+            ? {
+                session_id: metadata.session_id,
+                barcode: metadata.barcode,
+              }
+            : await getCountLineById(actionCountLineId);
+
+        const sessionId = countLine?.session_id;
+        const barcode = countLine?.barcode;
+
+        if (!sessionId || !barcode) {
+          return;
+        }
+
+        router.push({
+          pathname: "/staff/item-detail",
+          params: { sessionId, barcode },
+        } as any);
+      } catch (error) {
+        console.error("Failed to open notification target:", error);
+      }
       return;
     }
 
-    try {
-      const countLine =
-        metadata.session_id && metadata.barcode
-          ? {
-              session_id: metadata.session_id,
-              barcode: metadata.barcode,
-            }
-          : await getCountLineById(actionCountLineId);
+    if (actionRecountId || metadata.item_code) {
+      try {
+        const itemCode =
+          metadata.item_code ||
+          (actionRecountId
+            ? (await getRecountRequest(actionRecountId)).item_code
+            : null);
 
-      const sessionId = countLine?.session_id;
-      const barcode = countLine?.barcode;
-
-      if (!sessionId || !barcode) {
-        return;
+        if (itemCode) {
+          router.push({
+            pathname: "/supervisor/variance-details",
+            params: { itemCode },
+          } as any);
+          return;
+        }
+      } catch (error) {
+        console.error("Failed to resolve recount notification target:", error);
       }
 
+      router.push("/supervisor/user-workflows" as any);
+      return;
+    }
+
+    if (metadata.session_id) {
       router.push({
-        pathname: "/staff/item-detail",
-        params: { sessionId, barcode },
+        pathname: "/supervisor/session/[id]",
+        params: { id: metadata.session_id },
       } as any);
-    } catch (error) {
-      console.error("Failed to open notification target:", error);
     }
   };
 
@@ -85,6 +121,10 @@ export default function NotificationsScreen() {
     switch (type.toLowerCase()) {
       case "recount_assigned":
         return { name: "refresh-circle", color: "#F59E0B" };
+      case "recount_completed":
+        return { name: "checkmark-done-circle", color: "#10B981" };
+      case "recount_overdue":
+        return { name: "alarm", color: "#EF4444" };
       case "count_approved":
         return { name: "checkmark-circle", color: "#10B981" };
       case "count_rejected":

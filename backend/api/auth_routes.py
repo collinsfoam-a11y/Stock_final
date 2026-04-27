@@ -51,6 +51,29 @@ def _get_request_device_id(request: Request) -> Optional[str]:
     return request.headers.get("x-device-id")
 
 
+def _auth_error_detail(
+    code: str,
+    message: str,
+    *,
+    fields: Optional[dict[str, str]] = None,
+    details: Optional[dict[str, Any]] = None,
+    retry_after: Optional[int] = None,
+    category: Optional[str] = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "error": code,
+        "code": code,
+        "message": message,
+        "fields": fields or {},
+        "details": details or {},
+    }
+    if retry_after is not None:
+        payload["retry_after"] = retry_after
+    if category:
+        payload["category"] = category
+    return payload
+
+
 # Helper functions for login
 
 
@@ -386,10 +409,10 @@ async def register(
         if not current_user or current_user.get("role") != "admin":
             raise HTTPException(
                 status_code=403,
-                detail={
-                    "message": "Only administrators can register new users",
-                    "code": "ADMIN_REQUIRED",
-                },
+                detail=_auth_error_detail(
+                    "ADMIN_REQUIRED",
+                    "Only administrators can register new users",
+                ),
             )
     refresh_token_service = get_refresh_token_service()
     try:
@@ -399,12 +422,16 @@ async def register(
             error = get_error_message("AUTH_USERNAME_EXISTS", {"username": user.username})
             raise HTTPException(
                 status_code=error["status_code"],
-                detail={
-                    "message": error["message"],
-                    "detail": error["detail"],
-                    "code": error["code"],
-                    "category": error["category"],
-                },
+                detail=_auth_error_detail(
+                    "AUTH_USERNAME_EXISTS",
+                    error["message"],
+                    fields={"username": error["message"]},
+                    details={
+                        "legacy_code": error["code"],
+                        "legacy_detail": error["detail"],
+                    },
+                    category=error["category"],
+                ),
             )
 
         # Create user
@@ -472,12 +499,14 @@ async def register(
         logger.error(f"Registration error: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=error["status_code"],
-            detail={
-                "message": error["message"],
-                "detail": f"{error['detail']} Original error: {str(e)}",
-                "code": error["code"],
-                "category": error["category"],
-            },
+            detail=_auth_error_detail(
+                error["code"],
+                error["message"],
+                details={
+                    "legacy_detail": f"{error['detail']} Original error: {str(e)}"
+                },
+                category=error["category"],
+            ),
         )
 
 
@@ -584,7 +613,12 @@ async def login(
         # Check active status
         if not user.get("is_active", True):
             logger.error("User account is deactivated")
-            return Fail(AuthorizationError("Account is deactivated. Please contact support."))
+            return Fail(
+                AuthorizationError(
+                    "Account is deactivated. Please contact support.",
+                    error_code="ACCOUNT_DISABLED",
+                )
+            )
 
         # Check for active session conflict (Phase 1 Governance)
         # Strict Single Session Enforcement:
@@ -598,10 +632,10 @@ async def login(
             if session_resolution.is_err:
                 raise HTTPException(
                     status_code=409,
-                    detail={
-                        "error": "AUTH_SESSION_CONFLICT",
-                        "message": "Unable to recover the existing active session",
-                    },
+                    detail=_auth_error_detail(
+                        "AUTH_SESSION_CONFLICT",
+                        "Unable to recover the existing active session",
+                    ),
                 )
 
         # Generate tokens
@@ -695,10 +729,13 @@ def _validate_pin_login_payload(
     if not credentials.username:
         raise HTTPException(
             status_code=400,
-            detail={
-                "error": "USERNAME_REQUIRED_FOR_PIN_LOGIN",
-                "message": "Username is required for PIN login. Login with credentials first.",
-            },
+            detail=_auth_error_detail(
+                "USERNAME_REQUIRED_FOR_PIN_LOGIN",
+                "Username is required for PIN login. Login with credentials first.",
+                fields={
+                    "username": "Username is required for PIN login.",
+                },
+            ),
         )
     return None
 
@@ -719,7 +756,12 @@ async def _resolve_pin_login_user(
 
     if not found_user.get("is_active", True):
         logger.error("User account is deactivated")
-        return Fail(AuthorizationError("Account is deactivated. Please contact support."))
+        return Fail(
+            AuthorizationError(
+                "Account is deactivated. Please contact support.",
+                error_code="ACCOUNT_DISABLED",
+            )
+        )
 
     if not getattr(settings, "AUTH_SINGLE_SESSION", True):
         return Ok(found_user)
@@ -732,10 +774,10 @@ async def _resolve_pin_login_user(
     if session_resolution.is_err:
         raise HTTPException(
             status_code=409,
-            detail={
-                "error": "AUTH_SESSION_CONFLICT",
-                "message": "Unable to recover the existing active session",
-            },
+            detail=_auth_error_detail(
+                "AUTH_SESSION_CONFLICT",
+                "Unable to recover the existing active session",
+            ),
         )
     return Ok(found_user)
 
@@ -933,6 +975,37 @@ async def get_me(
         "is_active": current_user.get("is_active", True),
         "permissions": get_user_permissions(current_user),
         "has_pin": bool(current_user.get("pin_hash")),
+    }
+
+
+@router.get("/auth/public-session")
+async def get_public_session_status(
+    current_user: Optional[dict[str, Any]] = Depends(optional_get_current_user),
+) -> dict[str, Any]:
+    """Return public session state without surfacing guest traffic as 401."""
+    db = get_db()
+    public_registration_allowed = await db.users.count_documents({}) == 0
+
+    if not current_user:
+        return {
+            "success": True,
+            "data": {
+                "status": "guest",
+                "user": None,
+                "public_registration_allowed": public_registration_allowed,
+            },
+        }
+
+    return {
+        "success": True,
+        "data": {
+            "status": "authenticated",
+            "user": {
+                "username": current_user["username"],
+                "role": current_user["role"],
+            },
+            "public_registration_allowed": public_registration_allowed,
+        },
     }
 
 

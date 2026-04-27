@@ -38,3 +38,18 @@ async def test_pin_login_failure_rate_limit(async_client: AsyncClient):
     response = await async_client.post("/api/auth/login-pin", json=payload)
 
     assert response.status_code in [400, 401, 429]
+
+
+@pytest.mark.asyncio
+async def test_pin_login_requires_username_code(async_client: AsyncClient):
+    """Missing username should return a stable code the frontend can match."""
+    response = await async_client.post(
+        "/api/auth/login-pin",
+        json={"pin": "1234", "device_id": "test_device_003"},
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["detail"]["code"] == "USERNAME_REQUIRED_FOR_PIN_LOGIN"
+    assert payload["detail"]["error"] == "USERNAME_REQUIRED_FOR_PIN_LOGIN"
+    assert payload["detail"]["fields"]["username"] == "Username is required for PIN login."

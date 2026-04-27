@@ -10,6 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { auroraTheme } from "../../theme/auroraTheme";
+import apiClient from "../../services/httpClient";
 
 interface Batch {
   batch_id: string;
@@ -54,8 +55,10 @@ export const BatchDetailsModal: React.FC<BatchDetailsModalProps> = ({
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/item-batches/${item.item_code}`);
-      const data = await response.json();
+      const response = await apiClient.get(
+        `/api/item-batches/${encodeURIComponent(item.item_code)}`,
+      );
+      const data = response.data;
 
       if (data.success) {
         setBatches(data.batches || []);

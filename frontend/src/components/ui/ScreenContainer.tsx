@@ -77,48 +77,46 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
   safeArea = true,
   noPadding = false,
   overlay,
-  statusBarStyle = "light-content",
+  statusBarStyle,
   dismissKeyboardOnTap = false,
 }) => {
   const { themeLegacy: theme } = useThemeContext();
   const resolvedBackground = backgroundType || (gradient ? "aurora" : "solid");
-  const resolvedScrollable = contentMode
-    ? contentMode === "scroll"
-    : scrollable;
+  const resolvedScrollable = contentMode ? contentMode === "scroll" : scrollable;
   const resolvedStatusBarStyle =
     statusBarStyle === "light"
       ? "light-content"
       : statusBarStyle === "dark"
         ? "dark-content"
-        : statusBarStyle;
+        : statusBarStyle || (theme.isDark ? "light-content" : "dark-content");
   const isSkeletonLoading = loadingType === "skeleton";
 
   const Container = resolvedScrollable ? ScrollView : View;
   const containerProps = resolvedScrollable
     ? {
-      contentContainerStyle: [
-        styles.scrollContent,
-        !noPadding && { paddingBottom: theme.layout?.safeArea?.bottom || 34 },
-        contentContainerStyle,
-      ],
-      refreshControl: onRefresh ? (
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={theme.colors.accent}
-          colors={[theme.colors.accent]} // Android
-          progressBackgroundColor={theme.colors.surfaceElevated}
-        />
-      ) : undefined,
-      keyboardShouldPersistTaps: "handled" as const,
-      keyboardDismissMode: "on-drag" as const,
-      bounces: true,
-      alwaysBounceVertical: true,
-      nestedScrollEnabled: true,
-    }
+        contentContainerStyle: [
+          styles.scrollContent,
+          !noPadding && { paddingBottom: theme.layout?.safeArea?.bottom || 34 },
+          contentContainerStyle,
+        ],
+        refreshControl: onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.accent}
+            colors={[theme.colors.accent]} // Android
+            progressBackgroundColor={theme.colors.surfaceElevated}
+          />
+        ) : undefined,
+        keyboardShouldPersistTaps: "handled" as const,
+        keyboardDismissMode: "on-drag" as const,
+        bounces: true,
+        alwaysBounceVertical: true,
+        nestedScrollEnabled: true,
+      }
     : {
-      style: [styles.content, style],
-    };
+        style: [styles.content, style],
+      };
 
   const renderContent = () => (
     <>
@@ -135,9 +133,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
             headerTransparent: gradient,
             headerTintColor: theme.colors.text,
             headerStyle: {
-              backgroundColor: gradient
-                ? "transparent"
-                : theme.colors.background,
+              backgroundColor: gradient ? "transparent" : theme.colors.background,
             },
           }}
         />
@@ -150,9 +146,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
           ) : (
             <>
               <ActivityIndicator size="large" color={theme.colors.accent} />
-              {loadingText ? (
-                <Text style={styles.loadingText}>{loadingText}</Text>
-              ) : null}
+              {loadingText ? <Text style={styles.loadingText}>{loadingText}</Text> : null}
             </>
           )}
         </View>
@@ -162,10 +156,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
           {children}
         </Container>
       ) : dismissKeyboardOnTap ? (
-        <TouchableWithoutFeedback
-          onPress={Keyboard.dismiss}
-          accessible={false}
-        >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           {/* @ts-ignore */}
           <Container style={[styles.flex, style]} {...containerProps}>
             {children}
@@ -180,9 +171,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
         </Container>
       )}
       {overlay ? (
-        <View style={[StyleSheet.absoluteFill, styles.pointerEventsBoxNone]}>
-          {overlay}
-        </View>
+        <View style={[StyleSheet.absoluteFill, styles.pointerEventsBoxNone]}>{overlay}</View>
       ) : null}
     </>
   );
@@ -213,11 +202,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
   if (resolvedBackground === "pattern") {
     return (
       <View
-        style={[
-          styles.container,
-          { backgroundColor: theme.colors.background },
-          containerStyle,
-        ]}
+        style={[styles.container, { backgroundColor: theme.colors.background }, containerStyle]}
       >
         <PatternBackground />
         {baseContent}
@@ -226,13 +211,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
   }
 
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: theme.colors.background },
-        containerStyle,
-      ]}
-    >
+    <View style={[styles.container, { backgroundColor: theme.colors.background }, containerStyle]}>
       {baseContent}
     </View>
   );

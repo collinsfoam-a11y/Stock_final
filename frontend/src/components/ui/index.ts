@@ -14,8 +14,7 @@ export { ModernButton } from "./ModernButton";
 export { ModernInput } from "./ModernInput";
 export { ModernHeader } from "./ModernHeader";
 
-// Premium UI Components
-export { PremiumHeader } from "./PremiumHeader";
+// Shared Header Components
 export { ScreenHeader } from "./ScreenHeader";
 export type { ScreenHeaderProps } from "./ScreenHeader";
 export { StatusBadge } from "./StatusBadge";
@@ -84,7 +83,6 @@ export { Checkbox } from "./Checkbox";
 export { PatternBackground } from "./PatternBackground";
 export { ThemePicker } from "./ThemePicker";
 export { AppearanceSettings } from "./AppearanceSettings";
-export { ThemedScreen, ThemedCard, ThemedText } from "./ThemedScreen";
 
 // Unified Screen Layout
 export { ScreenContainer } from "./ScreenContainer";
@@ -98,12 +96,7 @@ export type { ResponsiveTextProps, TextVariant } from "./ResponsiveText";
 export { MyPressable, PressablePresets } from "./MyPressable";
 export type { MyPressableProps } from "./MyPressable";
 export { EnhancedButton } from "./EnhancedButton";
-export type {
-  EnhancedButtonProps,
-  ButtonType,
-  ButtonSize,
-  IconPosition,
-} from "./EnhancedButton";
+export type { EnhancedButtonProps, ButtonType, ButtonSize, IconPosition } from "./EnhancedButton";
 
 // Missing UI Components (Complete implementations found)
 export { AdminResponsiveGrid } from "./AdminResponsiveGrid";
@@ -126,11 +119,7 @@ export type { SeparatorProps, SeparatorOrientation } from "./Separator";
 export { AnimatedListItem, ListAnimationPresets } from "./AnimatedListItem";
 export type { AnimatedListItemProps } from "./AnimatedListItem";
 export { EnhancedInput } from "./EnhancedInput";
-export type {
-  EnhancedInputProps,
-  InputSize,
-  LabelPosition,
-} from "./EnhancedInput";
+export type { EnhancedInputProps, InputSize, LabelPosition } from "./EnhancedInput";
 
 // Unified Design System Components (v3.0 - Token-based)
 export { UnifiedText } from "./UnifiedText";
@@ -140,7 +129,4 @@ export type {
   TextColor as UnifiedTextColor,
 } from "./UnifiedText";
 export { UnifiedView } from "./UnifiedView";
-export type {
-  UnifiedViewProps,
-  BackgroundColor as UnifiedBackgroundColor,
-} from "./UnifiedView";
+export type { UnifiedViewProps, BackgroundColor as UnifiedBackgroundColor } from "./UnifiedView";

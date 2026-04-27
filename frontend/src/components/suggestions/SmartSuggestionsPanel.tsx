@@ -37,6 +37,7 @@ interface SmartSuggestionsPanelProps {
   visible?: boolean;
   position?: "top" | "bottom" | "center";
   maxHeight?: number;
+  inline?: boolean;
 }
 
 export const SmartSuggestionsPanel: React.FC<SmartSuggestionsPanelProps> = ({
@@ -46,6 +47,7 @@ export const SmartSuggestionsPanel: React.FC<SmartSuggestionsPanelProps> = ({
   visible = true,
   position = "top",
   maxHeight = 200,
+  inline = false,
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [showAll, setShowAll] = useState(false);
@@ -196,9 +198,10 @@ export const SmartSuggestionsPanel: React.FC<SmartSuggestionsPanelProps> = ({
         styles.container,
         {
           opacity: fadeAnimation,
-          transform: [{ translateY: slidePosition }],
-          [position === "top" ? "top" : "bottom"]: 0,
+          transform: inline ? [] : [{ translateY: slidePosition }],
+          ...(inline ? {} : { [position === "top" ? "top" : "bottom"]: 0 }),
         },
+        inline ? styles.inlineContainer : null,
       ]}
     >
       <View
@@ -405,6 +408,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1000,
+  },
+  inlineContainer: {
+    position: "relative",
+    left: undefined,
+    right: undefined,
+    zIndex: 1,
   },
   panel: {
     backgroundColor: modernColors.background.paper,

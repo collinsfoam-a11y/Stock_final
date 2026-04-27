@@ -10,6 +10,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from backend.config import settings
 from backend.utils.auth_utils import get_password_hash
 from backend.utils.crypto_utils import get_pin_lookup_hash
+from scripts.approval_guard import enforce_high_risk_entrypoint
 
 
 async def set_pin(username: str, pin: str):
@@ -42,6 +43,7 @@ if __name__ == "__main__":
         print("Usage: python set_supervisor_pin.py <username> <pin>")
         sys.exit(1)
 
+    enforce_high_risk_entrypoint(always_require=True)
     username = sys.argv[1]
     pin = sys.argv[2]
 

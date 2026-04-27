@@ -3,6 +3,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+. "${ROOT_DIR}/scripts/approval_guard.sh"
+require_approval_context
 COMPOSE_FILE="${ROOT_DIR}/docker-compose.production.yml"
 TMP_DIR="$(mktemp -d)"
 

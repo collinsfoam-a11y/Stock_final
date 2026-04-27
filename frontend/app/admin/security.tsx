@@ -12,7 +12,8 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { usePermission } from "../../src/hooks/usePermission";
-import { LoadingSpinner, ScreenContainer } from "../../src/components/ui";
+import { LoadingSpinner } from "../../src/components/ui/LoadingSpinner";
+import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
 import { GlassCard } from "../../src/components/ui/GlassCard";
 import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
 import {
@@ -38,34 +39,34 @@ export default function SecurityScreen() {
   const [failedLogins, setFailedLogins] = useState<any[]>([]);
   const [suspiciousActivity, setSuspiciousActivity] = useState<any>(null);
   const [sessions, setSessions] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<
-    "summary" | "failed" | "suspicious" | "sessions"
-  >("summary");
+  const [activeTab, setActiveTab] = useState<"summary" | "failed" | "suspicious" | "sessions">(
+    "summary"
+  );
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-  const loadData = useCallback(async (isRefresh = false) => {
-    if (offlineMode) {
-      if (isRefresh) {
-        setRefreshing(true);
-      }
-      setSummary(null);
-      setFailedLogins([]);
-      setSuspiciousActivity(null);
-      setSessions([]);
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
-
-    try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
+  const loadData = useCallback(
+    async (isRefresh = false) => {
+      if (offlineMode) {
+        if (isRefresh) {
+          setRefreshing(true);
+        }
+        setSummary(null);
+        setFailedLogins([]);
+        setSuspiciousActivity(null);
+        setSessions([]);
+        setLoading(false);
+        setRefreshing(false);
+        return;
       }
 
-      const [summaryRes, failedRes, suspiciousRes, sessionsRes] =
-        await Promise.allSettled([
+      try {
+        if (isRefresh) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
+
+        const [summaryRes, failedRes, suspiciousRes, sessionsRes] = await Promise.allSettled([
           getSecuritySummary(),
           getFailedLogins(50, 24).catch(() => ({
             success: false,
@@ -81,33 +82,33 @@ export default function SecurityScreen() {
           })),
         ]);
 
-      if (summaryRes.status === "fulfilled" && summaryRes.value.success)
-        setSummary(summaryRes.value.data);
-      if (failedRes.status === "fulfilled" && failedRes.value.success)
-        setFailedLogins(failedRes.value.data?.failed_logins || []);
-      if (suspiciousRes.status === "fulfilled" && suspiciousRes.value.success)
-        setSuspiciousActivity(suspiciousRes.value.data);
-      if (sessionsRes.status === "fulfilled" && sessionsRes.value.success)
-        setSessions(sessionsRes.value.data?.sessions || []);
+        if (summaryRes.status === "fulfilled" && summaryRes.value.success)
+          setSummary(summaryRes.value.data);
+        if (failedRes.status === "fulfilled" && failedRes.value.success)
+          setFailedLogins(failedRes.value.data?.failed_logins || []);
+        if (suspiciousRes.status === "fulfilled" && suspiciousRes.value.success)
+          setSuspiciousActivity(suspiciousRes.value.data);
+        if (sessionsRes.status === "fulfilled" && sessionsRes.value.success)
+          setSessions(sessionsRes.value.data?.sessions || []);
 
-      setLastUpdate(new Date());
-    } catch (error: any) {
-      if (!isRefresh) {
-        console.error("Security data load error:", error);
+        setLastUpdate(new Date());
+      } catch (error: any) {
+        if (!isRefresh) {
+          console.error("Security data load error:", error);
+        }
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [offlineMode]);
+    },
+    [offlineMode]
+  );
 
   useEffect(() => {
     if (!hasRole("admin")) {
-      Alert.alert(
-        "Access Denied",
-        "You do not have permission to view the security dashboard.",
-        [{ text: "OK", onPress: () => router.back() }],
-      );
+      Alert.alert("Access Denied", "You do not have permission to view the security dashboard.", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
       return;
     }
     void loadData();
@@ -131,16 +132,9 @@ export default function SecurityScreen() {
         <View style={styles.metricsGrid}>
           <GlassCard variant="medium" style={styles.metricCard}>
             <View
-              style={[
-                styles.metricIcon,
-                { backgroundColor: auroraTheme.colors.error[500] + "20" },
-              ]}
+              style={[styles.metricIcon, { backgroundColor: auroraTheme.colors.error[500] + "20" }]}
             >
-              <Ionicons
-                name="close-circle"
-                size={24}
-                color={auroraTheme.colors.error[500]}
-              />
+              <Ionicons name="close-circle" size={24} color={auroraTheme.colors.error[500]} />
             </View>
             <Text style={styles.metricValue}>{stats.failed_logins || 0}</Text>
             <Text style={styles.metricLabel}>Failed Logins (24h)</Text>
@@ -153,15 +147,9 @@ export default function SecurityScreen() {
                 { backgroundColor: auroraTheme.colors.success[500] + "20" },
               ]}
             >
-              <Ionicons
-                name="checkmark-circle"
-                size={24}
-                color={auroraTheme.colors.success[500]}
-              />
+              <Ionicons name="checkmark-circle" size={24} color={auroraTheme.colors.success[500]} />
             </View>
-            <Text style={styles.metricValue}>
-              {stats.successful_logins || 0}
-            </Text>
+            <Text style={styles.metricValue}>{stats.successful_logins || 0}</Text>
             <Text style={styles.metricLabel}>Total Logins (24h)</Text>
           </GlassCard>
 
@@ -172,11 +160,7 @@ export default function SecurityScreen() {
                 { backgroundColor: auroraTheme.colors.primary[500] + "20" },
               ]}
             >
-              <Ionicons
-                name="people"
-                size={24}
-                color={auroraTheme.colors.primary[500]}
-              />
+              <Ionicons name="people" size={24} color={auroraTheme.colors.primary[500]} />
             </View>
             <Text style={styles.metricValue}>{stats.active_sessions || 0}</Text>
             <Text style={styles.metricLabel}>Active Sessions</Text>
@@ -189,11 +173,7 @@ export default function SecurityScreen() {
                 { backgroundColor: auroraTheme.colors.warning[500] + "20" },
               ]}
             >
-              <Ionicons
-                name="globe-outline"
-                size={24}
-                color={auroraTheme.colors.warning[500]}
-              />
+              <Ionicons name="globe-outline" size={24} color={auroraTheme.colors.warning[500]} />
             </View>
             <Text style={styles.metricValue}>{stats.suspicious_ips || 0}</Text>
             <Text style={styles.metricLabel}>Flagged IPs</Text>
@@ -203,24 +183,22 @@ export default function SecurityScreen() {
         {summary.recent_events && summary.recent_events.length > 0 && (
           <GlassCard variant="strong" style={styles.eventsCard}>
             <Text style={styles.subsectionTitle}>Critical Security Events</Text>
-            {summary.recent_events
-              .slice(0, 10)
-              .map((event: any, index: number) => (
-                <View key={index} style={styles.eventRow}>
-                  <View style={styles.eventDot} />
-                  <View style={styles.eventInfo}>
-                    <View style={styles.eventHeaderRow}>
-                      <Text style={styles.eventAction}>{event.action}</Text>
-                      <Text style={styles.eventTime}>
-                        {new Date(event.timestamp).toLocaleTimeString()}
-                      </Text>
-                    </View>
-                    <Text style={styles.eventUser}>
-                      {event.user} • {event.ip_address || "internal"}
+            {summary.recent_events.slice(0, 10).map((event: any, index: number) => (
+              <View key={index} style={styles.eventRow}>
+                <View style={styles.eventDot} />
+                <View style={styles.eventInfo}>
+                  <View style={styles.eventHeaderRow}>
+                    <Text style={styles.eventAction}>{event.action}</Text>
+                    <Text style={styles.eventTime}>
+                      {new Date(event.timestamp).toLocaleTimeString()}
                     </Text>
                   </View>
+                  <Text style={styles.eventUser}>
+                    {event.user} • {event.ip_address || "internal"}
+                  </Text>
                 </View>
-              ))}
+              </View>
+            ))}
           </GlassCard>
         )}
       </View>
@@ -244,19 +222,11 @@ export default function SecurityScreen() {
                   { backgroundColor: auroraTheme.colors.error[500] + "15" },
                 ]}
               >
-                <Ionicons
-                  name="warning-outline"
-                  size={20}
-                  color={auroraTheme.colors.error[500]}
-                />
+                <Ionicons name="warning-outline" size={20} color={auroraTheme.colors.error[500]} />
               </View>
               <View style={styles.listItemContent}>
-                <Text style={styles.listItemTitle}>
-                  {login.username || "Anonymous"}
-                </Text>
-                <Text style={styles.listItemSubtitle}>
-                  IP: {login.ip_address}
-                </Text>
+                <Text style={styles.listItemTitle}>{login.username || "Anonymous"}</Text>
+                <Text style={styles.listItemSubtitle}>IP: {login.ip_address}</Text>
                 <Text style={styles.listItemReason}>
                   Error: {login.error || "Authentication failed"}
                 </Text>
@@ -276,40 +246,26 @@ export default function SecurityScreen() {
 
     return (
       <View style={styles.tabContent}>
-        {(suspiciousActivity.suspicious_ips || []).map(
-          (item: any, index: number) => (
-            <GlassCard
-              key={`ip-${index}`}
-              variant="medium"
-              style={styles.suspiciousCard}
-            >
-              <View style={styles.suspiciousHeader}>
-                <Ionicons
-                  name="globe"
-                  size={24}
-                  color={auroraTheme.colors.warning[500]}
-                />
-                <Text style={styles.suspiciousTitle}>{item.ip_address}</Text>
-                <View style={styles.riskBadge}>
-                  <Text style={styles.riskText}>RISK</Text>
-                </View>
+        {(suspiciousActivity.suspicious_ips || []).map((item: any, index: number) => (
+          <GlassCard key={`ip-${index}`} variant="medium" style={styles.suspiciousCard}>
+            <View style={styles.suspiciousHeader}>
+              <Ionicons name="globe" size={24} color={auroraTheme.colors.warning[500]} />
+              <Text style={styles.suspiciousTitle}>{item.ip_address}</Text>
+              <View style={styles.riskBadge}>
+                <Text style={styles.riskText}>RISK</Text>
               </View>
-              <Text style={styles.suspiciousDetail}>
-                {item.count} failed attempts across{" "}
-                {item.usernames?.length || 0} identifiers.
-              </Text>
-              <Text style={styles.suspiciousFooter}>
-                Last attempt: {new Date(item.last_attempt).toLocaleString()}
-              </Text>
-            </GlassCard>
-          ),
-        )}
+            </View>
+            <Text style={styles.suspiciousDetail}>
+              {item.count} failed attempts across {item.usernames?.length || 0} identifiers.
+            </Text>
+            <Text style={styles.suspiciousFooter}>
+              Last attempt: {new Date(item.last_attempt).toLocaleString()}
+            </Text>
+          </GlassCard>
+        ))}
         {!suspiciousActivity.suspicious_ips?.length &&
           !suspiciousActivity.suspicious_users?.length && (
-            <EmptyState
-              message="No suspicious activity patterns detected"
-              icon="finger-print"
-            />
+            <EmptyState message="No suspicious activity patterns detected" icon="finger-print" />
           )}
       </View>
     );
@@ -324,18 +280,14 @@ export default function SecurityScreen() {
           {sessions.map((session: any, index: number) => (
             <GlassCard key={index} variant="medium" style={styles.listItem}>
               <View style={styles.sessionAvatar}>
-                <Text style={styles.avatarText}>
-                  {session.username?.[0]?.toUpperCase()}
-                </Text>
+                <Text style={styles.avatarText}>{session.username?.[0]?.toUpperCase()}</Text>
               </View>
               <View style={styles.listItemContent}>
                 <Text style={styles.listItemTitle}>
-                  {session.username}{" "}
-                  <Text style={styles.roleTag}>({session.role})</Text>
+                  {session.username} <Text style={styles.roleTag}>({session.role})</Text>
                 </Text>
                 <Text style={styles.listItemSubtitle}>
-                  {session.ip_address} •{" "}
-                  {session.user_agent?.split(" ")[0] || "Unknown Client"}
+                  {session.ip_address} • {session.user_agent?.split(" ")[0] || "Unknown Client"}
                 </Text>
               </View>
               <View style={styles.activeTag}>
@@ -360,7 +312,7 @@ export default function SecurityScreen() {
 
   return (
     <ScreenContainer
-      backgroundType="aurora"
+      backgroundType="solid"
       auroraVariant="dark"
       loading={loading}
       header={{
@@ -406,16 +358,9 @@ export default function SecurityScreen() {
               <Ionicons
                 name={tab.icon as any}
                 size={18}
-                color={
-                  activeTab === tab.id ? "#fff" : auroraTheme.colors.text.muted
-                }
+                color={activeTab === tab.id ? "#fff" : auroraTheme.colors.text.muted}
               />
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === tab.id && styles.activeTabText,
-                ]}
-              >
+              <Text style={[styles.tabText, activeTab === tab.id && styles.activeTabText]}>
                 {tab.label}
               </Text>
             </AnimatedPressable>
@@ -425,10 +370,7 @@ export default function SecurityScreen() {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContainer,
-          isWeb && styles.scrollContainerWeb,
-        ]}
+        contentContainerStyle={[styles.scrollContainer, isWeb && styles.scrollContainerWeb]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -443,8 +385,8 @@ export default function SecurityScreen() {
               Security monitoring requires a live connection
             </Text>
             <Text style={styles.offlineNoticeBody}>
-              Failed logins, suspicious activity, and active session telemetry
-              are loaded from backend services and are not available offline.
+              Failed logins, suspicious activity, and active session telemetry are loaded from
+              backend services and are not available offline.
             </Text>
           </GlassCard>
         ) : (

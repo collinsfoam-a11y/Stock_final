@@ -116,13 +116,13 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
     # Count Lines Collection (existing)
     "count_lines": [
         # Session count lines
-        ([("session_id", 1), ("counted_at", -1)], {"name": "idx_session_counts"}),
+        ([("session_id", 1), ("counted_at", -1)], {"name": "idx_session_counted_at"}),
         # Item lookups
         ([("item_code", 1), ("session_id", 1)], {"name": "idx_item_session"}),
         # Verification status
         ([("verified", 1), ("session_id", 1)], {"name": "idx_verified"}),
         # Rack count lines
-        ([("rack_no", 1), ("session_id", 1)], {"name": "idx_rack_counts"}),
+        ([("rack_no", 1), ("session_id", 1)], {"name": "idx_rack_no_session"}),
         # Idempotent submission guard
         (
             [("idempotency_key", 1)],

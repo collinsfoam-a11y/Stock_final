@@ -191,3 +191,60 @@ async def test_legacy_sync_allows_explicit_recount_update(
     assert line["counted_qty"] == 9.0
     assert line["status"] == "pending"
     assert line["recount_iteration"] == 1
+
+
+@pytest.mark.asyncio
+async def test_legacy_sync_recomputes_governance_server_side(
+    async_client, test_db, authenticated_headers
+):
+    session_id = "sess-sync-governed"
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    await test_db.sessions.insert_one(
+        {
+            "id": session_id,
+            "session_id": session_id,
+            "warehouse": "Main Warehouse",
+            "staff_user": "staff1",
+            "staff_name": "Staff Member",
+            "status": "OPEN",
+            "type": "STANDARD",
+            "started_at": now,
+            "last_heartbeat": now,
+        }
+    )
+    await test_db.erp_items.insert_one(
+        {
+            "item_code": "ITEM-SYNC-1",
+            "barcode": "SYNC5310",
+            "item_name": "Sync Governed Item",
+            "stock_qty": 1.0,
+            "mrp": 10.0,
+            "category": "E2E",
+        }
+    )
+
+    payload = {
+        "operations": [
+            _legacy_count_line_op(
+                "offline-line-governed",
+                session_id,
+                item_code="ITEM-SYNC-1",
+                counted_qty=4.0,
+                idempotency_key="sync-governed-1",
+            )
+        ]
+    }
+    response = await async_client.post(
+        "/api/sync/batch",
+        json=payload,
+        headers=authenticated_headers,
+    )
+
+    assert response.status_code == 200, response.text
+    line = await test_db.count_lines.find_one({"id": "offline-line-governed"})
+    assert line is not None
+    assert line["variance"] == 3.0
+    assert line["approval_status"] == "NEEDS_REVIEW"
+    assert line["status"] == "pending"
+    assert line["requires_supervisor_approval"] is True

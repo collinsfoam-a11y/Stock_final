@@ -2,7 +2,6 @@ import asyncio
 import logging
 import sys
 from pathlib import Path
-from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorClient
 
 # Add project root to path
@@ -10,8 +9,9 @@ project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from backend.sql_server_connector import SQLServerConnector
-from backend.config import settings
+from backend.sql_server_connector import SQLServerConnector  # noqa: E402
+from backend.config import settings  # noqa: E402
+from scripts.approval_guard import enforce_high_risk_entrypoint  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -88,4 +88,5 @@ async def migrate_to_batch_id():
     logger.info(f"Migration complete. Total items updated: {total_updated}")
 
 if __name__ == "__main__":
+    enforce_high_risk_entrypoint(always_require=True)
     asyncio.run(migrate_to_batch_id())

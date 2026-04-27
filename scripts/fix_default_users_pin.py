@@ -10,10 +10,11 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from motor.motor_asyncio import AsyncIOMotorClient
-from backend.utils.auth_utils import get_password_hash
-from backend.utils.crypto_utils import get_pin_lookup_hash
-from backend.config import settings
+from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
+from backend.utils.auth_utils import get_password_hash  # noqa: E402
+from backend.utils.crypto_utils import get_pin_lookup_hash  # noqa: E402
+from backend.config import settings  # noqa: E402
+from scripts.approval_guard import enforce_high_risk_entrypoint  # noqa: E402
 
 
 async def fix_pins():
@@ -49,4 +50,5 @@ async def fix_pins():
 
 
 if __name__ == "__main__":
+    enforce_high_risk_entrypoint(always_require=True)
     asyncio.run(fix_pins())

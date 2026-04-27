@@ -480,7 +480,7 @@ async def update_item_master(
             _safe_log_value(barcode),
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Failed to update item master")
 
 
 @verification_router.post("/{barcode}/refresh-sql-qty")

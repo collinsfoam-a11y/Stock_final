@@ -7,13 +7,21 @@ handling, logging, and type annotations.
 
 import asyncio
 import logging
+import sys
 from datetime import date, datetime, timezone
 from decimal import Decimal
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pyodbc
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import PyMongoError
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from scripts.approval_guard import enforce_high_risk_entrypoint  # noqa: E402
 
 # Configure logging
 logging.basicConfig(
@@ -180,6 +188,7 @@ async def sync() -> None:
 
 if __name__ == "__main__":
     try:
+        enforce_high_risk_entrypoint(always_require=True)
         asyncio.run(sync())
     except KeyboardInterrupt:
         logger.info("Sync interrupted by user")

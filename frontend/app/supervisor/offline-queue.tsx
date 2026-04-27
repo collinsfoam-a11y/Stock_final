@@ -4,35 +4,22 @@
  * Refactored to use Aurora Design System
  */
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  RefreshControl,
-  Platform,
-  Alert,
-} from "react-native";
+import { View, Text, StyleSheet, RefreshControl, Platform, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { FlashList } from "@shopify/flash-list";
 
 import { flags } from "../../src/constants/flags";
-import {
-  getConflicts,
-  resolveConflict,
-} from "../../src/services/offline/offlineQueue";
+import { getConflicts, resolveConflict } from "../../src/services/offline/offlineQueue";
 import { getOfflineQueue } from "../../src/services/offline/offlineStorage";
 import { forceSync } from "../../src/services/syncService";
 import { summarizeForceSyncResult } from "../../src/components/supervisor/offlineQueueFeedback";
-import {
-  AuroraBackground,
-  GlassCard,
-  AnimatedPressable,
-  StatsCard,
-} from "../../src/components/ui";
+import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
+import { GlassCard } from "../../src/components/ui/GlassCard";
+import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
+import { StatsCard } from "../../src/components/ui/StatsCard";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { auroraTheme } from "../../src/theme/auroraTheme";
 
@@ -63,13 +50,12 @@ export default function OfflineQueueScreen() {
     if (offlineMode) {
       Alert.alert(
         "Offline Mode",
-        "Queue sync is disabled while offline mode is enabled. Turn it off before syncing.",
+        "Queue sync is disabled while offline mode is enabled. Turn it off before syncing."
       );
       return;
     }
 
-    if (Platform.OS !== "web")
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       const result = await forceSync();
       const feedback = summarizeForceSyncResult(result);
@@ -77,19 +63,18 @@ export default function OfflineQueueScreen() {
         Haptics.notificationAsync(
           result.failed > 0
             ? Haptics.NotificationFeedbackType.Warning
-            : Haptics.NotificationFeedbackType.Success,
+            : Haptics.NotificationFeedbackType.Success
         );
       Alert.alert(feedback.title, feedback.message);
       if (feedback.loadAfterAlert) {
         load();
       }
     } catch (error: any) {
-      if (Platform.OS !== "web")
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert(
         "Sync Failed",
         error?.message ||
-          "Failed to sync offline queue. Please check your connection and try again.",
+          "Failed to sync offline queue. Please check your connection and try again."
       );
     }
   };
@@ -137,14 +122,10 @@ export default function OfflineQueueScreen() {
               {String(item.type).toUpperCase()}
             </Text>
           </View>
-          <Text style={styles.timestamp}>
-            {new Date(item.timestamp).toLocaleString()}
-          </Text>
+          <Text style={styles.timestamp}>{new Date(item.timestamp).toLocaleString()}</Text>
         </View>
 
-        <Text style={styles.cardUrl}>
-          {String(item.status).replace(/_/g, " ").toUpperCase()}
-        </Text>
+        <Text style={styles.cardUrl}>{String(item.status).replace(/_/g, " ").toUpperCase()}</Text>
 
         <Text style={styles.cardCode}>
           Retries: {item.retries}
@@ -189,11 +170,7 @@ export default function OfflineQueueScreen() {
       >
         <View style={styles.cardHeader}>
           <View style={styles.errorBadge}>
-            <Ionicons
-              name="warning"
-              size={12}
-              color={auroraTheme.colors.warning[500]}
-            />
+            <Ionicons name="warning" size={12} color={auroraTheme.colors.warning[500]} />
             <Text style={styles.errorBadgeText}>Conflict</Text>
           </View>
           <Text style={styles.timestamp}>
@@ -212,17 +189,12 @@ export default function OfflineQueueScreen() {
           style={{ marginTop: auroraTheme.spacing.sm }}
         >
           <Text style={styles.cardCode} numberOfLines={4}>
-            {typeof item.detail === "string"
-              ? item.detail
-              : JSON.stringify(item.detail)}
+            {typeof item.detail === "string" ? item.detail : JSON.stringify(item.detail)}
           </Text>
         </GlassCard>
 
         <View style={styles.cardActions}>
-          <AnimatedPressable
-            onPress={() => handleDismiss(item.id)}
-            style={styles.dismissButton}
-          >
+          <AnimatedPressable onPress={() => handleDismiss(item.id)} style={styles.dismissButton}>
             <Text style={styles.dismissText}>Dismiss</Text>
           </AnimatedPressable>
         </View>
@@ -232,8 +204,7 @@ export default function OfflineQueueScreen() {
 
   if (!flags.enableOfflineQueue) {
     return (
-      <AuroraBackground>
-        <StatusBar style="light" />
+      <ScreenContainer backgroundType="solid" noPadding statusBarStyle="light">
         <View style={styles.center}>
           <GlassCard padding={auroraTheme.spacing.xl}>
             <Ionicons
@@ -245,40 +216,25 @@ export default function OfflineQueueScreen() {
                 marginBottom: auroraTheme.spacing.md,
               }}
             />
-            <Text style={styles.muted}>
-              Offline Queue is disabled in flags.
-            </Text>
+            <Text style={styles.muted}>Offline Queue is disabled in flags.</Text>
           </GlassCard>
         </View>
-      </AuroraBackground>
+      </ScreenContainer>
     );
   }
 
   return (
-    <AuroraBackground>
-      <StatusBar style="light" />
+    <ScreenContainer backgroundType="solid" noPadding statusBarStyle="light">
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View
-          entering={FadeInDown.delay(100).springify()}
-          style={styles.header}
-        >
+        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
           <View style={styles.headerLeft}>
-            <AnimatedPressable
-              onPress={() => router.back()}
-              style={styles.backButton}
-            >
-              <Ionicons
-                name="arrow-back"
-                size={24}
-                color={auroraTheme.colors.text.primary}
-              />
+            <AnimatedPressable onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={auroraTheme.colors.text.primary} />
             </AnimatedPressable>
             <View>
               <Text style={styles.pageTitle}>Offline Queue</Text>
-              <Text style={styles.pageSubtitle}>
-                Pending actions & conflicts
-              </Text>
+              <Text style={styles.pageSubtitle}>Pending actions & conflicts</Text>
             </View>
           </View>
           <AnimatedPressable
@@ -297,17 +253,14 @@ export default function OfflineQueueScreen() {
                 Queue review is available, sync is paused
               </Text>
               <Text style={styles.offlineNoticeBody}>
-                You can inspect queued actions and conflicts in offline mode, but
-                syncing them requires turning offline mode off and reconnecting.
+                You can inspect queued actions and conflicts in offline mode, but syncing them
+                requires turning offline mode off and reconnecting.
               </Text>
             </GlassCard>
           </Animated.View>
         )}
 
-        <Animated.View
-          entering={FadeInDown.delay(200).springify()}
-          style={styles.statsRow}
-        >
+        <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.statsRow}>
           <StatsCard
             title="Pending Actions"
             value={queue.length.toString()}
@@ -351,12 +304,7 @@ export default function OfflineQueueScreen() {
             />
           </View>
 
-          <View
-            style={[
-              styles.sectionHeader,
-              { marginTop: auroraTheme.spacing.lg },
-            ]}
-          >
+          <View style={[styles.sectionHeader, { marginTop: auroraTheme.spacing.lg }]}>
             <Text style={styles.sectionTitle}>Conflicts</Text>
           </View>
 
@@ -376,7 +324,7 @@ export default function OfflineQueueScreen() {
           </View>
         </View>
       </View>
-    </AuroraBackground>
+    </ScreenContainer>
   );
 }
 

@@ -9,7 +9,7 @@ import sys
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Optional, TypeVar, cast
+from typing import Any, NoReturn, Optional, TypeVar, cast
 
 import jwt
 from bson import ObjectId
@@ -39,10 +39,11 @@ from backend.config import settings  # noqa: E402
 from backend.error_messages import get_error_message  # noqa: E402
 from backend.exceptions import AuthenticationError, NotFoundError
 from backend.exceptions import RateLimitError as RateLimitExceededError
-from backend.exceptions import (  # noqa: E402; Using base class as generic database error for now
+from backend.exceptions import (  # noqa: E402
     StockVerifyException as DatabaseError,
 )
 from backend.exceptions import ValidationError
+from backend.services.count_line_write_service import CountLineWriteService
 
 # Service type imports
 # Production services
@@ -75,6 +76,10 @@ from backend.utils.auth_utils import get_password_hash  # noqa: E402
 from backend.utils.result import Fail, Ok, Result  # noqa: E402
 
 logger = logging.getLogger(__name__)
+
+
+def _raise_legacy_internal_error(detail: str, exc: Exception) -> NoReturn:
+    raise HTTPException(status_code=500, detail=detail) from exc
 
 # Import optional services
 try:
@@ -203,6 +208,16 @@ async def get_current_user(
                 "category": error["category"],
             },
         ) from None
+
+
+async def optional_get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> Optional[dict[str, Any]]:
+    """Resolve the authenticated user when present, otherwise return None."""
+    try:
+        return await get_current_user(credentials)
+    except HTTPException:
+        return None
     except jwt.InvalidTokenError:
         error = get_error_message("AUTH_TOKEN_INVALID")
         raise HTTPException(
@@ -584,7 +599,7 @@ async def refresh_token(request: Request) -> Result[dict[str, Any], Exception]:
 
 @api_router.post("/auth/logout")
 async def logout(
-    request: Request, current_user: dict[str, Any] = Depends(get_current_user)
+    request: Request, current_user: Optional[dict[str, Any]] = Depends(optional_get_current_user)
 ) -> dict[str, Any]:
     """
     Logout user by revoking their refresh token.
@@ -597,7 +612,7 @@ async def logout(
 
         if refresh_token_value:
             payload = await refresh_token_service.verify_refresh_token(refresh_token_value)
-            if payload and payload.get("sub") == current_user.get("username"):
+            if payload:
                 await refresh_token_service.revoke_token(refresh_token_value)
 
         return {"message": "Logged out successfully"}
@@ -784,7 +799,7 @@ async def bulk_close_sessions(
         }
     except Exception as e:
         logger.error("Bulk close sessions error: %s", sanitize_for_logging(str(e), max_length=200))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        _raise_legacy_internal_error("Failed to bulk close sessions", e)
 
 
 @api_router.post("/sessions/bulk/reconcile")
@@ -837,7 +852,7 @@ async def bulk_reconcile_sessions(
             "Bulk reconcile sessions error: %s",
             sanitize_for_logging(str(e), max_length=200),
         )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        _raise_legacy_internal_error("Failed to bulk reconcile sessions", e)
 
 
 @api_router.post("/sessions/bulk/export")
@@ -879,7 +894,7 @@ async def bulk_export_sessions(
         }
     except Exception as e:
         logger.error("Bulk export sessions error: %s", sanitize_for_logging(str(e), max_length=200))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        _raise_legacy_internal_error("Failed to bulk export sessions", e)
 
 
 @api_router.get("/legacy/sessions/analytics")
@@ -963,7 +978,7 @@ async def get_sessions_analytics(current_user: dict = Depends(get_current_user))
         }
     except Exception as e:
         logger.error("Analytics error: %s", sanitize_for_logging(str(e), max_length=200))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        _raise_legacy_internal_error("Failed to load legacy session analytics", e)
 
 
 @api_router.get("/sessions/{session_id}")
@@ -994,7 +1009,7 @@ async def get_session_by_id(
             sanitize_for_logging(session_id),
             sanitize_for_logging(str(e), max_length=200),
         )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        _raise_legacy_internal_error("Failed to fetch session details", e)
 
 
 # ERP Item routes
@@ -1073,55 +1088,34 @@ def calculate_financial_impact(
     return new_value - old_value
 
 
-# Count Line routes
-@api_router.post("/count-lines")
-async def create_count_line(
-    request: Request,
-    line_data: CountLineCreate,
-    current_user: dict = Depends(get_current_user),
-):
-    # Validate session exists
-    session = await db.sessions.find_one({"id": line_data.session_id})
+async def _get_legacy_session_or_404(session_id: str) -> dict[str, Any]:
+    session = await db.sessions.find_one({"id": session_id})
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    return session
 
-    # Get ERP item - prefer barcode for exact batch identification if provided
-    erp_item = None
+
+async def _get_legacy_erp_item_or_404(line_data: CountLineCreate) -> dict[str, Any]:
     if line_data.barcode:
         erp_item = await db.erp_items.find_one({"barcode": line_data.barcode})
+        if erp_item:
+            return erp_item
 
-    if not erp_item:
-        # Fallback to item_code (Legacy behavior or if barcode is not provided)
-        # Search specifically for items by item_code
-        erp_item = await db.erp_items.find_one({"item_code": line_data.item_code})
-
+    erp_item = await db.erp_items.find_one({"item_code": line_data.item_code})
     if not erp_item:
         raise HTTPException(status_code=404, detail="Item not found in ERP")
+    return erp_item
 
-    # Calculate variance
-    variance = line_data.counted_qty - erp_item["stock_qty"]
 
-    # Validate mandatory correction reason for variance
+def _validate_legacy_variance_reason(line_data: CountLineCreate, variance: float) -> None:
     if abs(variance) > 0 and not line_data.correction_reason and not line_data.variance_reason:
         raise HTTPException(
             status_code=400,
             detail="Correction reason is mandatory when variance exists",
         )
 
-    # Detect risk flags
-    risk_flags = detect_risk_flags(erp_item, line_data, variance)
 
-    # Calculate financial impact
-    counted_mrp = line_data.mrp_counted or erp_item["mrp"]
-    financial_impact = calculate_financial_impact(
-        erp_item["mrp"], counted_mrp, line_data.counted_qty
-    )
-
-    # Determine approval status based on risk
-    # High-risk corrections require supervisor review
-    approval_status = "NEEDS_REVIEW" if risk_flags else "PENDING"
-
-    # Check for duplicates - now includes barcode to allow multiple batches of the same item
+def _legacy_duplicate_filter(line_data: CountLineCreate, current_user: dict[str, Any]) -> dict[str, Any]:
     duplicate_filter = {
         "session_id": line_data.session_id,
         "item_code": line_data.item_code,
@@ -1129,14 +1123,20 @@ async def create_count_line(
     }
     if line_data.barcode:
         duplicate_filter["barcode"] = line_data.barcode
+    return duplicate_filter
 
-    duplicate_check = await db.count_lines.count_documents(duplicate_filter)
-    if duplicate_check > 0:
-        risk_flags.append("DUPLICATE_CORRECTION")
-        approval_status = "NEEDS_REVIEW"
 
-    # Create count line with enhanced fields
-    count_line = {
+def _build_legacy_count_line_payload(
+    line_data: CountLineCreate,
+    current_user: dict[str, Any],
+    erp_item: dict[str, Any],
+    *,
+    variance: float,
+    approval_status: str,
+    risk_flags: list[str],
+    financial_impact: float,
+) -> dict[str, Any]:
+    return {
         "id": str(uuid.uuid4()),
         "session_id": line_data.session_id,
         "item_code": line_data.item_code,
@@ -1145,12 +1145,10 @@ async def create_count_line(
         "erp_qty": erp_item["stock_qty"],
         "counted_qty": line_data.counted_qty,
         "variance": variance,
-        # Legacy fields
         "variance_reason": line_data.variance_reason,
         "variance_note": line_data.variance_note,
         "remark": line_data.remark,
         "photo_base64": line_data.photo_base64,
-        # Enhanced fields
         "damaged_qty": line_data.damaged_qty,
         "item_condition": line_data.item_condition,
         "floor_no": line_data.floor_no,
@@ -1179,32 +1177,26 @@ async def create_count_line(
         "rejection_reason": None,
         "risk_flags": risk_flags,
         "financial_impact": financial_impact,
-        # User and timestamp
         "counted_by": current_user["username"],
         "counted_at": datetime.now(timezone.utc).replace(tzinfo=None),
-        # MRP tracking
         "mrp_erp": erp_item["mrp"],
         "mrp_counted": line_data.mrp_counted,
-        # Additional fields
         "split_section": line_data.split_section,
         "serial_numbers": line_data.serial_numbers,
-        # Enhanced serial entries with per-serial attributes
         "serial_entries": (
             [s.model_dump() for s in line_data.serial_entries] if line_data.serial_entries else None
         ),
-        # Legacy approval fields
         "status": "pending",
         "verified": False,
         "verified_at": None,
         "verified_by": None,
     }
 
-    await db.count_lines.insert_one(count_line)
 
-    # Update session stats atomically using aggregation
+async def _update_legacy_session_stats(session_id: str) -> None:
     try:
         pipeline = [
-            {"$match": {"session_id": line_data.session_id}},
+            {"$match": {"session_id": session_id}},
             {
                 "$group": {
                     "_id": None,
@@ -1214,35 +1206,101 @@ async def create_count_line(
             },
         ]
         stats = await db.count_lines.aggregate(pipeline).to_list(1)  # type: ignore
-        if stats:
-            await db.sessions.update_one(
-                {"id": line_data.session_id},
-                {
-                    "$set": {
-                        "total_items": stats[0]["total_items"],
-                        "total_variance": stats[0]["total_variance"],
-                    }
-                },
-            )
+        if not stats:
+            return
+        await db.sessions.update_one(
+            {"id": session_id},
+            {
+                "$set": {
+                    "total_items": stats[0]["total_items"],
+                    "total_variance": stats[0]["total_variance"],
+                }
+            },
+        )
     except Exception as e:
         logger.error(
             "Failed to update session stats: %s",
             sanitize_for_logging(str(e), max_length=200),
         )
-        # Non-critical error, continue execution
 
-    # Log high-risk correction
-    if risk_flags:
-        await activity_log_service.log_activity(
-            user=current_user["username"],
-            role=current_user["role"],
-            action="high_risk_correction",
-            entity_type="count_line",
-            entity_id=count_line["id"],
-            details={"risk_flags": risk_flags, "item_code": line_data.item_code},
-            ip_address=request.client.host if request and request.client else None,
-            user_agent=request.headers.get("user-agent") if request else None,
-        )
+
+async def _log_legacy_high_risk_correction(
+    request: Request,
+    line_data: CountLineCreate,
+    current_user: dict[str, Any],
+    count_line_id: str,
+    risk_flags: list[str],
+) -> None:
+    if not risk_flags:
+        return
+
+    await activity_log_service.log_activity(
+        user=current_user["username"],
+        role=current_user["role"],
+        action="high_risk_correction",
+        entity_type="count_line",
+        entity_id=count_line_id,
+        details={"risk_flags": risk_flags, "item_code": line_data.item_code},
+        ip_address=request.client.host if request and request.client else None,
+        user_agent=request.headers.get("user-agent") if request else None,
+    )
+
+
+# Count Line routes
+@api_router.post("/count-lines")
+async def create_count_line(
+    request: Request,
+    line_data: CountLineCreate,
+    current_user: dict = Depends(get_current_user),
+):
+    await _get_legacy_session_or_404(line_data.session_id)
+    erp_item = await _get_legacy_erp_item_or_404(line_data)
+
+    # Calculate variance
+    variance = line_data.counted_qty - erp_item["stock_qty"]
+    _validate_legacy_variance_reason(line_data, variance)
+
+    # Detect risk flags
+    risk_flags = detect_risk_flags(erp_item, line_data, variance)
+
+    # Calculate financial impact
+    counted_mrp = line_data.mrp_counted or erp_item["mrp"]
+    financial_impact = calculate_financial_impact(
+        erp_item["mrp"], counted_mrp, line_data.counted_qty
+    )
+
+    # Determine approval status based on risk
+    # High-risk corrections require supervisor review
+    approval_status = "NEEDS_REVIEW" if risk_flags else "PENDING"
+
+    duplicate_check = await db.count_lines.count_documents(
+        _legacy_duplicate_filter(line_data, current_user)
+    )
+    if duplicate_check > 0:
+        risk_flags.append("DUPLICATE_CORRECTION")
+        approval_status = "NEEDS_REVIEW"
+
+    count_line = _build_legacy_count_line_payload(
+        line_data,
+        current_user,
+        erp_item,
+        variance=variance,
+        approval_status=approval_status,
+        risk_flags=risk_flags,
+        financial_impact=financial_impact,
+    )
+    await CountLineWriteService(db).process_write(
+        {"operation": "insert_one", "document": count_line},
+        context={"session_id": line_data.session_id},
+    )
+    await _update_legacy_session_stats(line_data.session_id)
+    await _log_legacy_high_risk_correction(
+        request,
+        line_data,
+        current_user,
+        count_line["id"],
+        risk_flags,
+    )
 
     # Remove the MongoDB _id field before returning
     count_line.pop("_id", None)
@@ -1273,14 +1331,17 @@ async def verify_stock(
     _require_supervisor(current_user)
     db_client = _get_db_client(db_override)
 
-    update_result = await db_client.count_lines.update_one(
-        {"id": line_id},
-        update={
-            "$set": {
-                "verified": True,
-                "verified_by": current_user["username"],
-                "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
-            }
+    update_result = await CountLineWriteService(db_client).process_write(
+        {
+            "operation": "update_one",
+            "filter": {"id": line_id},
+            "update": {
+                "$set": {
+                    "verified": True,
+                    "verified_by": current_user["username"],
+                    "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                }
+            },
         },
     )
     if update_result.modified_count == 0:
@@ -1311,9 +1372,12 @@ async def unverify_stock(
     _require_supervisor(current_user)
     db_client = _get_db_client(db_override)
 
-    update_result = await db_client.count_lines.update_one(
-        {"id": line_id},
-        update={"$set": {"verified": False, "verified_by": None, "verified_at": None}},
+    update_result = await CountLineWriteService(db_client).process_write(
+        {
+            "operation": "update_one",
+            "filter": {"id": line_id},
+            "update": {"$set": {"verified": False, "verified_by": None, "verified_at": None}},
+        },
     )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
@@ -1381,18 +1445,21 @@ async def approve_count_line(
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     try:
-        result = await db.count_lines.update_one(
-            {"_id": ObjectId(line_id)},
+        result = await CountLineWriteService(db).process_write(
             {
-                "$set": {
-                    "status": "APPROVED",
-                    "approval_status": "approved",
-                    "approved_by": current_user["username"],
-                    "approved_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                    "verified": True,
-                    "verified_by": current_user["username"],
-                    "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                }
+                "operation": "update_one",
+                "filter": {"_id": ObjectId(line_id)},
+                "update": {
+                    "$set": {
+                        "status": "APPROVED",
+                        "approval_status": "approved",
+                        "approved_by": current_user["username"],
+                        "approved_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                        "verified": True,
+                        "verified_by": current_user["username"],
+                        "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                    }
+                },
             },
         )
 
@@ -1406,7 +1473,7 @@ async def approve_count_line(
             sanitize_for_logging(line_id),
             sanitize_for_logging(str(e), max_length=200),
         )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        _raise_legacy_internal_error("Failed to approve count line", e)
 
 
 @api_router.put("/count-lines/{line_id}/reject")
@@ -1419,16 +1486,19 @@ async def reject_count_line(
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     try:
-        result = await db.count_lines.update_one(
-            {"_id": ObjectId(line_id)},
+        result = await CountLineWriteService(db).process_write(
             {
-                "$set": {
-                    "status": "REJECTED",
-                    "approval_status": "rejected",
-                    "rejected_by": current_user["username"],
-                    "rejected_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                    "verified": False,
-                }
+                "operation": "update_one",
+                "filter": {"_id": ObjectId(line_id)},
+                "update": {
+                    "$set": {
+                        "status": "REJECTED",
+                        "approval_status": "rejected",
+                        "rejected_by": current_user["username"],
+                        "rejected_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                        "verified": False,
+                    }
+                },
             },
         )
 
@@ -1442,7 +1512,7 @@ async def reject_count_line(
             sanitize_for_logging(line_id),
             sanitize_for_logging(str(e), max_length=200),
         )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        _raise_legacy_internal_error("Failed to reject count line", e)
 
 
 @api_router.get("/count-lines/check/{session_id}/{item_code}")
@@ -1464,7 +1534,7 @@ async def check_item_counted(
         return {"already_counted": len(count_lines) > 0, "count_lines": count_lines}
     except Exception as e:
         logger.error("Error checking item count: %s", sanitize_for_logging(str(e), max_length=200))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        _raise_legacy_internal_error("Failed to check item count status", e)
 
 
 @api_router.get("/count-lines/session/{session_id}")

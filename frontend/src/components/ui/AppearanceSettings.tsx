@@ -11,7 +11,6 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useTheme } from "../../hooks/useTheme";
 import { useSettingsStore } from "../../store/settingsStore";
 import { ThemePicker } from "./ThemePicker";
-import { GlassCard } from "./GlassCard";
 import { FontSizeSlider, FontStylePicker } from "../settings";
 
 interface AppearanceSettingsProps {
@@ -25,7 +24,7 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
   scrollable = true,
   compact = false,
 }) => {
-  const { colors, typography } = useTheme();
+  const { colors, typography, spacing, borderRadius } = useTheme();
   const { settings, setSetting } = useSettingsStore();
 
   const handleFontSizeChange = (value: number) => {
@@ -37,9 +36,7 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
       {showTitle && (
         <Animated.View entering={FadeInDown.delay(0).springify()}>
           <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Appearance
-            </Text>
+            <Text style={[styles.title, { color: colors.text }]}>Appearance</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               Customize the look and feel of your app
             </Text>
@@ -49,67 +46,82 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
 
       {/* Theme Mode */}
       <Animated.View entering={FadeInDown.delay(100).springify()}>
-        <GlassCard variant="medium" padding={16} style={styles.section}>
+        <View
+          style={[
+            styles.section,
+            styles.sectionPadded,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              borderRadius: borderRadius.lg,
+              padding: spacing.md,
+            },
+          ]}
+        >
           <ThemePicker compact={compact} />
-        </GlassCard>
+        </View>
       </Animated.View>
 
       {/* Font Size */}
       <Animated.View entering={FadeInDown.delay(200).springify()}>
-        <GlassCard variant="medium" padding={0} style={styles.section}>
+        <View
+          style={[
+            styles.section,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              borderRadius: borderRadius.lg,
+            },
+          ]}
+        >
           <FontSizeSlider
-            value={
-              typeof settings.fontSizeValue === "number"
-                ? settings.fontSizeValue
-                : 16
-            }
+            value={typeof settings.fontSizeValue === "number" ? settings.fontSizeValue : 16}
             onValueChange={handleFontSizeChange}
           />
-        </GlassCard>
+        </View>
       </Animated.View>
 
       {/* Font Style */}
       <Animated.View entering={FadeInDown.delay(300).springify()}>
-        <GlassCard variant="medium" padding={0} style={styles.section}>
+        <View
+          style={[
+            styles.section,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              borderRadius: borderRadius.lg,
+            },
+          ]}
+        >
           <FontStylePicker
             value={settings.fontStyle}
             onValueChange={(value) => setSetting("fontStyle", value)}
           />
-        </GlassCard>
+        </View>
       </Animated.View>
 
       {/* Preview Card */}
       <Animated.View entering={FadeInDown.delay(400).springify()}>
-        <GlassCard variant="strong" padding={20} style={styles.section}>
-          <Text style={[styles.previewTitle, { color: colors.text }]}>
-            Preview
-          </Text>
-          <View
-            style={[styles.previewBox, { backgroundColor: colors.background }]}
-          >
-            <View
-              style={[
-                styles.previewHeader,
-                { backgroundColor: colors.surface },
-              ]}
-            >
-              <View
-                style={[styles.previewDot, { backgroundColor: colors.accent }]}
-              />
-              <View
-                style={[
-                  styles.previewLine,
-                  { backgroundColor: colors.text, width: "40%" },
-                ]}
-              />
+        <View
+          style={[
+            styles.section,
+            styles.sectionPadded,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              borderRadius: borderRadius.lg,
+              padding: spacing.md,
+            },
+          ]}
+        >
+          <Text style={[styles.previewTitle, { color: colors.text }]}>Preview</Text>
+          <View style={[styles.previewBox, { backgroundColor: colors.background }]}>
+            <View style={[styles.previewHeader, { backgroundColor: colors.surface }]}>
+              <View style={[styles.previewDot, { backgroundColor: colors.accent }]} />
+              <View style={[styles.previewLine, { backgroundColor: colors.text, width: "40%" }]} />
             </View>
             <View style={styles.previewContent}>
-              <View
-                style={[
-                  styles.previewCard,
-                  { backgroundColor: colors.surface },
-                ]}
-              >
+              <View style={[styles.previewCard, { backgroundColor: colors.surface }]}>
                 <View
                   style={[
                     styles.previewLine,
@@ -131,12 +143,7 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
                   ]}
                 />
               </View>
-              <View
-                style={[
-                  styles.previewCard,
-                  { backgroundColor: colors.surface },
-                ]}
-              >
+              <View style={[styles.previewCard, { backgroundColor: colors.surface }]}>
                 <View
                   style={[
                     styles.previewLine,
@@ -171,18 +178,11 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
             >
               Sample text uses your selected font style.
             </Text>
-            <View
-              style={[styles.previewButton, { backgroundColor: colors.accent }]}
-            >
-              <View
-                style={[
-                  styles.previewLine,
-                  { backgroundColor: "#FFFFFF", width: "30%" },
-                ]}
-              />
+            <View style={[styles.previewButton, { backgroundColor: colors.accent }]}>
+              <View style={[styles.previewLine, { backgroundColor: "#FFFFFF", width: "30%" }]} />
             </View>
           </View>
-        </GlassCard>
+        </View>
       </Animated.View>
     </View>
   );
@@ -226,6 +226,11 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 0,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+  sectionPadded: {
+    padding: 16,
   },
   previewTitle: {
     fontSize: 13,

@@ -28,11 +28,9 @@ import {
   ItemFilters,
   FilterValues,
 } from "../../src/domains/inventory/components/ItemFilters";
-import {
-  ScreenContainer,
-  GlassCard,
-  AnimatedPressable,
-} from "../../src/components/ui";
+import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
+import { GlassCard } from "../../src/components/ui/GlassCard";
+import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { theme } from "../../src/styles/modernDesignSystem";
 import { toastService } from "../../src/services/toastService";
@@ -54,6 +52,12 @@ export default function VariancesScreen() {
   // Bulk Selection State
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const isSelectionMode = selectedIds.size > 0;
+
+  const buildVarianceTestId = (item: VarianceItem) =>
+    `variance-card-${String(item.item_code || item.count_line_id || "unknown").replace(
+      /[^a-zA-Z0-9_-]+/g,
+      "_",
+    )}`;
 
   const toggleSelection = (id: string) => {
     const newSet = new Set(selectedIds);
@@ -235,6 +239,7 @@ export default function VariancesScreen() {
   };
 
   const renderVarianceItem = ({ item }: { item: VarianceItem }) => {
+    const cardTestId = buildVarianceTestId(item);
     // Determine status color based on variance
     const isPositive = item.variance > 0;
     const statusColor = isPositive
@@ -271,6 +276,7 @@ export default function VariancesScreen() {
           }
         }}
         style={{ marginBottom: theme.spacing.md }}
+        testID={cardTestId}
       >
         <GlassCard
           intensity={15}
@@ -314,7 +320,9 @@ export default function VariancesScreen() {
               )}
               <View style={styles.varianceHeaderLeft}>
                 <Text style={styles.itemName}>{item.item_name}</Text>
-                <Text style={styles.itemCode}>{item.item_code}</Text>
+                <Text testID={`${cardTestId}-item-code`} style={styles.itemCode}>
+                  {item.item_code}
+                </Text>
               </View>
             </View>
             <View
@@ -323,7 +331,7 @@ export default function VariancesScreen() {
                 { backgroundColor: `${statusColor}20` }, // Low opacity background
               ]}
             >
-              <Text style={[styles.varianceBadgeText, { color: statusColor }]}>
+              <Text testID={`${cardTestId}-variance`} style={[styles.varianceBadgeText, { color: statusColor }]}>
                 {varianceSign}
                 {(item.variance ?? 0).toFixed(2)}
               </Text>
@@ -334,7 +342,7 @@ export default function VariancesScreen() {
             <View style={styles.qtyRow}>
               <View style={styles.qtyItem}>
                 <Text style={styles.qtyLabel}>System Qty</Text>
-                <Text style={styles.qtyValue}>
+                <Text testID={`${cardTestId}-system-qty`} style={styles.qtyValue}>
                   {(item.system_qty ?? 0).toFixed(2)}
                 </Text>
               </View>
@@ -342,6 +350,7 @@ export default function VariancesScreen() {
               <View style={styles.qtyItem}>
                 <Text style={styles.qtyLabel}>Verified Qty</Text>
                 <Text
+                  testID={`${cardTestId}-verified-qty`}
                   style={[
                     styles.qtyValue,
                     { color: theme.colors.text.primary },
@@ -359,7 +368,7 @@ export default function VariancesScreen() {
                   size={14}
                   color={theme.colors.text.tertiary}
                 />
-                <Text style={styles.locationText}>
+                <Text testID={`${cardTestId}-location`} style={styles.locationText}>
                   {[item.floor, item.rack].filter(Boolean).join(" / ")}
                 </Text>
               </View>
@@ -467,6 +476,7 @@ export default function VariancesScreen() {
                 ]}
                 onPress={() => void handleExport("csv")}
                 disabled={variances.length === 0}
+                testID="variances-export-csv"
               >
                 <GlassCard
                   intensity={20}
@@ -483,6 +493,7 @@ export default function VariancesScreen() {
                 ]}
                 onPress={() => void handleExport("xlsx")}
                 disabled={variances.length === 0}
+                testID="variances-export-xlsx"
               >
                 <GlassCard
                   intensity={20}

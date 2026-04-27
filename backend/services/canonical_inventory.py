@@ -64,6 +64,9 @@ def requires_supervisor_review_for_variance(variance: Any) -> bool:
 def count_line_requires_supervisor_review(count_line: Optional[dict[str, Any]]) -> bool:
     if not count_line:
         return False
+    stored_policy_decision = count_line.get("requires_supervisor_approval")
+    if isinstance(stored_policy_decision, bool):
+        return stored_policy_decision
     return requires_supervisor_review_for_variance(count_line.get("variance"))
 
 
@@ -234,59 +237,62 @@ async def get_session_count_lines(db: Any, session_id: str) -> list[dict[str, An
     return lines
 
 
+def _coerce_activity_timestamp(candidate_activity: Any) -> Optional[datetime]:
+    if candidate_activity is None:
+        return None
+    if isinstance(candidate_activity, (int, float)):
+        try:
+            return datetime.fromtimestamp(candidate_activity, tz=timezone.utc).replace(tzinfo=None)
+        except (ValueError, OSError):
+            return None
+    if isinstance(candidate_activity, str):
+        try:
+            return datetime.fromisoformat(candidate_activity.replace("Z", "+00:00")).replace(
+                tzinfo=None
+            )
+        except (ValueError, TypeError):
+            return None
+    if isinstance(candidate_activity, datetime):
+        if candidate_activity.tzinfo is not None:
+            return candidate_activity.astimezone(timezone.utc).replace(tzinfo=None)
+        return candidate_activity
+    return None
+
+
+def _apply_count_line_to_session_totals(
+    session_totals: dict[str, Any], line: dict[str, Any]
+) -> Optional[datetime]:
+    session_totals["total_items"] += 1
+    session_totals["total_variance"] += float(line.get("variance") or 0.0)
+    session_totals["damage_items"] += int(float(line.get("damaged_qty") or 0.0))
+
+    if is_count_line_effectively_reviewed(line):
+        session_totals["verified_items"] += 1
+
+    candidate_activity = line.get("updated_at") or line.get("approved_at") or line.get("counted_at")
+    return _coerce_activity_timestamp(candidate_activity)
+
+
 async def recompute_session_totals(db: Any, session_id: str) -> dict[str, Any]:
-    total_items = 0
-    total_variance = 0.0
-    verified_items = 0
-    damage_items = 0
+    session_totals: dict[str, Any] = {
+        "total_items": 0,
+        "total_variance": 0.0,
+        "verified_items": 0,
+        "damage_items": 0,
+    }
     last_activity: Optional[datetime] = None
 
     cursor = db.count_lines.find({"session_id": session_id})
     async for line in cursor:
-        total_items += 1
-        total_variance += float(line.get("variance") or 0.0)
-        damage_items += int(float(line.get("damaged_qty") or 0.0))
-
-        if is_count_line_effectively_reviewed(line):
-            verified_items += 1
-
-        # M5 fix: Handle non-datetime values (strings, floats) from sync paths
-        candidate_activity = (
-            line.get("updated_at") or line.get("approved_at") or line.get("counted_at")
-        )
-        if candidate_activity is not None:
-            if isinstance(candidate_activity, (int, float)):
-                try:
-                    candidate_activity = datetime.fromtimestamp(
-                        candidate_activity, tz=timezone.utc
-                    ).replace(tzinfo=None)
-                except (ValueError, OSError):
-                    candidate_activity = None
-            elif isinstance(candidate_activity, str):
-                try:
-                    candidate_activity = datetime.fromisoformat(
-                        candidate_activity.replace("Z", "+00:00")
-                    ).replace(tzinfo=None)
-                except (ValueError, TypeError):
-                    candidate_activity = None
-            elif isinstance(candidate_activity, datetime):
-                if candidate_activity.tzinfo is not None:
-                    candidate_activity = candidate_activity.astimezone(timezone.utc).replace(
-                        tzinfo=None
-                    )
-            else:
-                candidate_activity = None
-
-        if isinstance(candidate_activity, datetime):
-            if last_activity is None or candidate_activity > last_activity:
-                last_activity = candidate_activity
+        candidate_activity = _apply_count_line_to_session_totals(session_totals, line)
+        if candidate_activity is not None and (
+            last_activity is None or candidate_activity > last_activity
+        ):
+            last_activity = candidate_activity
 
     session_update: dict[str, Any] = {
-        "total_items": total_items,
-        "total_variance": total_variance,
-        "verified_items": verified_items,
-        "pending_items": max(total_items - verified_items, 0),
-        "damage_items": damage_items,
+        **session_totals,
+        "pending_items": max(session_totals["total_items"] - session_totals["verified_items"], 0),
     }
     if last_activity is not None:
         session_update["last_activity"] = last_activity

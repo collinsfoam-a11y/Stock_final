@@ -1,50 +1,35 @@
 /**
- * Modern Card Component - Enhanced UI/UX
- * Features:
- * - Glassmorphism support
- * - Smooth hover/press animations
- * - Multiple elevation levels
- * - Gradient backgrounds
- * - Interactive states
- * - Better shadows and borders
+ * ModernCard
+ *
+ * Theme-aware card container that preserves the existing API while using the
+ * shared app theme and simpler utility-style surfaces.
  */
 
 import React from "react";
 import {
-  View,
+  Platform,
+  StyleProp,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
+  View,
   ViewStyle,
-  StyleProp,
-  Platform,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import {
-  modernColors,
-  modernSpacing,
-  modernBorderRadius,
-  modernShadows,
-  modernTypography,
-  modernAnimations,
-} from "../../styles/modernDesignSystem";
+
 import { useThemeContextSafe } from "../../context/ThemeContext";
 
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
-const AnimatedView = Animated.createAnimatedComponent(View);
 
-/**
- * Supported visual treatments for the reusable card container.
- */
 export type CardVariant =
   | "default"
   | "elevated"
@@ -52,9 +37,6 @@ export type CardVariant =
   | "gradient"
   | "outlined";
 
-/**
- * Available shadow intensities for non-glass card variants.
- */
 export type CardElevation = "none" | "sm" | "md" | "lg";
 
 interface ModernCardProps {
@@ -78,9 +60,18 @@ interface ModernCardProps {
   intensity?: number;
 }
 
-/**
- * Renders a themed card wrapper with optional press, blur, and gradient states.
- */
+const DEFAULT_TITLE_STYLE = {
+  fontSize: 18,
+  fontWeight: "600" as const,
+  lineHeight: 24,
+};
+
+const DEFAULT_SUBTITLE_STYLE = {
+  fontSize: 14,
+  fontWeight: "400" as const,
+  lineHeight: 20,
+};
+
 export const ModernCard: React.FC<ModernCardProps> = ({
   children,
   title,
@@ -99,259 +90,244 @@ export const ModernCard: React.FC<ModernCardProps> = ({
   accessibilityLabel,
   accessibilityHint,
   contentStyle,
-  intensity = 20,
+  intensity = 18,
 }) => {
   const themeContext = useThemeContextSafe();
   const theme = themeContext?.theme;
+  const themeLegacy = themeContext?.themeLegacy;
+  const isDark = themeContext?.isDark ?? false;
 
-  const actualPadding =
-    padding !== undefined
-      ? padding
-      : theme
-        ? theme.spacing.md
-        : modernSpacing.cardPadding;
-
-  // Animation values
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
 
-  // Animated styles
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: scale.value }],
-      opacity: opacity.value,
-    };
-  });
+  const actualPadding = padding ?? theme?.spacing.md ?? themeLegacy?.spacing.md ?? 16;
+  const accentColor = theme?.colors.accent ?? themeLegacy?.colors.accent ?? "#0969DA";
+  const surfaceColor = theme?.colors.background.paper ?? themeLegacy?.colors.surface ?? "#FFFFFF";
+  const elevatedSurface =
+    theme?.colors.background.elevated ?? themeLegacy?.colors.surfaceElevated ?? surfaceColor;
+  const glassSurface =
+    theme?.colors.background.glass ?? themeLegacy?.colors.surfaceElevated ?? surfaceColor;
+  const borderColor = theme?.colors.border.light ?? themeLegacy?.colors.border ?? "#D0D7DE";
+  const strongBorder = theme?.colors.border.medium ?? borderColor;
+  const primaryText = theme?.colors.text.primary ?? themeLegacy?.colors.text ?? "#0D1117";
+  const secondaryText =
+    theme?.colors.text.secondary ?? themeLegacy?.colors.textSecondary ?? "#57606A";
 
-  // Press handlers
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: scale.value }],
+  }));
+
   const handlePressIn = () => {
-    if (onPress) {
-      scale.value = withSpring(0.98, {
-        damping: modernAnimations.easing.spring.damping,
-        stiffness: modernAnimations.easing.spring.stiffness,
-      });
-      opacity.value = withTiming(0.9, {
-        duration: modernAnimations.duration.fast,
-      });
-    }
+    if (!onPress) return;
+    scale.value = withSpring(0.98, { damping: 18, stiffness: 320 });
+    opacity.value = withTiming(0.94, { duration: 120 });
   };
 
   const handlePressOut = () => {
-    if (onPress) {
-      scale.value = withSpring(1, {
-        damping: modernAnimations.easing.spring.damping,
-        stiffness: modernAnimations.easing.spring.stiffness,
-      });
-      opacity.value = withTiming(1, {
-        duration: modernAnimations.duration.fast,
-      });
-    }
+    if (!onPress) return;
+    scale.value = withSpring(1, { damping: 18, stiffness: 320 });
+    opacity.value = withTiming(1, { duration: 120 });
   };
 
-  // Memoized dynamic styles
-  const dynamicStyles = React.useMemo(() => {
-    const spacing = theme?.spacing ?? modernSpacing;
-    const borderLight = theme?.colors.border.light ?? modernColors.border.light;
-    const borderMedium = theme?.colors.border.medium ?? modernColors.border.medium;
-    const paperBackground = theme?.colors.background.paper ?? modernColors.background.paper;
-    const primaryText = theme?.colors.text.primary ?? modernColors.text.primary;
-    const secondaryText = theme?.colors.text.secondary ?? modernColors.text.secondary;
-    const glassBackground = theme?.colors.glass ?? "rgba(255, 255, 255, 0.1)";
-    const glassBorder = theme?.colors.border.light ?? "rgba(255, 255, 255, 0.15)";
-    const shadowMap = theme
-      ? {
-          none: {},
-          sm: {
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.1,
-            shadowRadius: 2,
-            elevation: 2,
-          },
-          md: {
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 8,
-            elevation: 4,
-          },
-          lg: {
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 10 },
-            shadowOpacity: 0.2,
-            shadowRadius: 20,
-            elevation: 8,
-          },
-        }
-      : modernShadows;
+  const dynamicStyles = React.useMemo(
+    () => {
+      const shadowMap = {
+        none: undefined,
+        sm: theme?.shadows.sm,
+        md: theme?.shadows.md,
+        lg: theme?.shadows.lg,
+      } as const;
 
-    return StyleSheet.create({
-      card: {
-        borderRadius: theme?.borderRadius?.lg ?? modernBorderRadius.card,
-        overflow: "hidden",
-      },
-      content: {
-        padding: actualPadding,
-        flex: 1,
-      },
-      default: {
-        backgroundColor: paperBackground,
-        borderWidth: 1,
-        borderColor: borderLight,
-        ...shadowMap[elevation],
-      },
-      elevated: {
-        backgroundColor: paperBackground,
-        ...shadowMap[elevation],
-      },
-      glass: {
-        backgroundColor: glassBackground,
-        borderWidth: 1,
-        borderColor: glassBorder,
-      },
-      gradient: {
-        backgroundColor: "transparent",
-      },
-      outlined: {
-        backgroundColor: paperBackground,
-        borderWidth: 2,
-        borderColor: borderMedium,
-      },
-      title: {
-        ...modernTypography.h5,
-        color: primaryText,
-        marginBottom: spacing.xs,
-      },
-      subtitle: {
-        ...modernTypography.body.small,
-        color: secondaryText,
-      },
-      footer: {
-        marginTop: spacing.md,
-        paddingTop: spacing.md,
-        borderTopWidth: 1,
-        borderTopColor: borderLight,
-      },
-      header: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginBottom: spacing.md,
-      },
-      iconContainer: {
-        marginRight: spacing.sm,
-      },
-    });
-  }, [theme, elevation, actualPadding]);
+      return StyleSheet.create({
+        card: {
+          borderRadius: theme?.borderRadius.card ?? themeLegacy?.borderRadius.lg ?? 12,
+          overflow: "hidden",
+        },
+        content: {
+          padding: actualPadding,
+          flex: 1,
+        },
+        default: {
+          backgroundColor: surfaceColor,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor,
+        },
+        elevated: {
+          backgroundColor: elevatedSurface,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor,
+          ...(shadowMap[elevation] ?? {}),
+        },
+        glass: {
+          backgroundColor: glassSurface,
+          borderWidth: 1,
+          borderColor,
+        },
+        gradient: {
+          backgroundColor: "transparent",
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: strongBorder,
+        },
+        outlined: {
+          backgroundColor: surfaceColor,
+          borderWidth: 1,
+          borderColor: strongBorder,
+        },
+        header: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: theme?.spacing.sm ?? themeLegacy?.spacing.sm ?? 8,
+          marginBottom: title || subtitle || icon ? theme?.spacing.md ?? themeLegacy?.spacing.md ?? 16 : 0,
+        },
+        footer: {
+          marginTop: theme?.spacing.md ?? themeLegacy?.spacing.md ?? 16,
+          paddingTop: theme?.spacing.md ?? themeLegacy?.spacing.md ?? 16,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: borderColor,
+        },
+        title: {
+          ...(theme?.typography.h5 ?? DEFAULT_TITLE_STYLE),
+          color: primaryText,
+          fontFamily: theme?.typography.fontFamily.heading,
+        },
+        subtitle: {
+          ...(theme?.typography.body.small ?? DEFAULT_SUBTITLE_STYLE),
+          color: secondaryText,
+          fontFamily: theme?.typography.fontFamily.body,
+          marginTop: theme?.spacing.xs ?? themeLegacy?.spacing.xs ?? 4,
+        },
+      });
+    },
+    [
+      actualPadding,
+      borderColor,
+      elevation,
+      elevatedSurface,
+      glassSurface,
+      icon,
+      primaryText,
+      secondaryText,
+      strongBorder,
+      subtitle,
+      surfaceColor,
+      theme,
+      themeLegacy,
+      title,
+    ],
+  );
 
-  // Render card content
-  const renderContent = () => {
-    return (
-      <View style={[dynamicStyles.content, contentStyle]}>
-        {(title || subtitle || icon) && (
-          <View style={dynamicStyles.header}>
-            {icon && (
-              <View style={dynamicStyles.iconContainer}>
-                <Ionicons
-                  name={icon}
-                  size={24}
-                  color={
-                    theme ? theme.colors.accent : modernColors.primary[500]
-                  }
-                />
-              </View>
-            )}
-            <View style={styles.headerText}>
-              {title && <Text style={dynamicStyles.title}>{title}</Text>}
-              {subtitle && (
-                <Text style={dynamicStyles.subtitle}>{subtitle}</Text>
-              )}
-            </View>
+  const renderCardContent = () => (
+    <View style={[dynamicStyles.content, contentStyle]}>
+      {(title || subtitle || icon) && (
+        <View style={dynamicStyles.header}>
+          {icon ? <Ionicons name={icon} size={22} color={accentColor} /> : null}
+          <View style={styles.headerText}>
+            {title ? <Text style={dynamicStyles.title}>{title}</Text> : null}
+            {subtitle ? <Text style={dynamicStyles.subtitle}>{subtitle}</Text> : null}
           </View>
-        )}
+        </View>
+      )}
 
-        <View style={styles.body}>{children}</View>
+      <View style={styles.body}>{children}</View>
 
-        {footer && <View style={dynamicStyles.footer}>{footer}</View>}
-      </View>
-    );
-  };
+      {footer ? <View style={dynamicStyles.footer}>{footer}</View> : null}
+    </View>
+  );
 
-  // Render card based on variant
-  const renderCard = () => {
-    const cardStyle = [
-      dynamicStyles.card,
-      (dynamicStyles as any)[variant],
-      style,
-    ];
-
-    // Use standard components on web to avoid Reanimated issues
-    const isWeb = Platform.OS === "web";
-    let Component: React.ComponentType<any> = isWeb ? View : AnimatedView;
-    if (onPress) {
-      Component = isWeb ? TouchableOpacity : AnimatedTouchableOpacity;
-    }
-
-    const props = {
-      onPress,
-      onLongPress,
-      delayLongPress,
-      onPressIn: handlePressIn,
-      onPressOut: handlePressOut,
-      style: isWeb ? cardStyle : [animatedStyle, cardStyle],
-      testID,
-      accessible: true,
-      accessibilityRole: onPress ? ("button" as const) : ("none" as const),
-      accessibilityLabel: accessibilityLabel || title,
-      accessibilityHint,
-    };
-
+  const renderInner = () => {
     if (variant === "gradient") {
       const colors =
-        gradientColors ||
-        (theme ? theme.gradients.surface : modernColors.gradients.surface);
+        gradientColors?.length && gradientColors.length >= 2
+          ? ([gradientColors[0]!, gradientColors[1]!, ...gradientColors.slice(2)] as const)
+          : ([...(theme?.gradients.surface ?? [surfaceColor, elevatedSurface])] as const);
+
       return (
-        <Component {...props}>
-          <LinearGradient
-            colors={colors as unknown as readonly [string, string, ...string[]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.gradient}
-          >
-            {renderContent()}
-          </LinearGradient>
-        </Component>
+        <LinearGradient
+          colors={colors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.fill}
+        >
+          {renderCardContent()}
+        </LinearGradient>
       );
     }
 
     if (variant === "glass") {
-      return (
-        <Component {...props}>
-          {isWeb ? (
-            <View
-              style={[
-                styles.blur,
-                { backgroundColor: "rgba(255, 255, 255, 0.1)" },
-              ]}
-            >
-              {renderContent()}
-            </View>
-          ) : Platform.OS === "ios" ? (
-            <BlurView intensity={intensity} tint="light" style={styles.blur}>
-              {renderContent()}
-            </BlurView>
-          ) : (
-            <BlurView intensity={intensity} tint="dark" style={styles.blur}>
-              {renderContent()}
-            </BlurView>
-          )}
-        </Component>
-      );
+      if (Platform.OS !== "web") {
+        return (
+          <BlurView intensity={intensity} tint={isDark ? "dark" : "light"} style={styles.fill}>
+            {renderCardContent()}
+          </BlurView>
+        );
+      }
+
+      return <View style={styles.fill}>{renderCardContent()}</View>;
     }
 
-    return <Component {...props}>{renderContent()}</Component>;
+    return renderCardContent();
   };
 
-  return renderCard();
+  const baseStyle: StyleProp<ViewStyle> = [
+    dynamicStyles.card,
+    dynamicStyles[variant],
+    style,
+  ];
+
+  if (!onPress) {
+    return (
+      <View
+        style={baseStyle}
+        testID={testID}
+        accessible={Boolean(accessibilityLabel || title)}
+        accessibilityLabel={accessibilityLabel || title}
+        accessibilityHint={accessibilityHint}
+      >
+        {renderInner()}
+      </View>
+    );
+  }
+
+  const isWeb = Platform.OS === "web";
+
+  if (isWeb) {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        onLongPress={onLongPress}
+        delayLongPress={delayLongPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={0.92}
+        style={baseStyle}
+        testID={testID}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel || title}
+        accessibilityHint={accessibilityHint}
+      >
+        {renderInner()}
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <AnimatedTouchableOpacity
+      onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={delayLongPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={1}
+      style={[animatedStyle, baseStyle]}
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel || title}
+      accessibilityHint={accessibilityHint}
+    >
+      {renderInner()}
+    </AnimatedTouchableOpacity>
+  );
 };
 
 const styles = StyleSheet.create({
@@ -361,10 +337,7 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
   },
-  gradient: {
-    flex: 1,
-  },
-  blur: {
+  fill: {
     flex: 1,
   },
 });

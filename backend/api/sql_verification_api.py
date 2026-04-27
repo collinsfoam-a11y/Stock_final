@@ -15,6 +15,7 @@ from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v2/verification", tags=["SQL Verification"])
+GENERIC_VERIFICATION_ERROR_MESSAGE = "An unexpected error occurred while verifying this item."
 
 
 def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
@@ -66,5 +67,8 @@ async def verify_item_quantity(
         )
         raise HTTPException(
             status_code=500,
-            detail={"code": "INTERNAL_ERROR", "message": f"An unexpected error occurred: {str(e)}"},
+            detail={
+                "code": "INTERNAL_ERROR",
+                "message": GENERIC_VERIFICATION_ERROR_MESSAGE,
+            },
         )

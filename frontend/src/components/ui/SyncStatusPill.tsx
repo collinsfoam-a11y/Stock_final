@@ -104,6 +104,7 @@ export const SyncStatusPill = () => {
       onPress={handleSync}
       disabled={isOffline || isSyncing || (!hasPending && !isOffline)}
       activeOpacity={0.7}
+      testID="sync-status-pill"
     >
       <View
         style={[
@@ -114,7 +115,9 @@ export const SyncStatusPill = () => {
         <Animated.View style={isSyncing ? animatedIconStyle : undefined}>
           <Ionicons name={iconName} size={14} color={pillColor} />
         </Animated.View>
-        <Text style={[styles.label, { color: pillColor }]}>{label}</Text>
+        <Text testID="sync-status-label" style={[styles.label, { color: pillColor }]}>
+          {label}
+        </Text>
       </View>
     </TouchableOpacity>
   );

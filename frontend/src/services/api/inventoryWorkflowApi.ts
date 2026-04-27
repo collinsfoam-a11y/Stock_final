@@ -1000,6 +1000,36 @@ export const getCountLineById = async (lineId: string) => {
   return response.data;
 };
 
+export interface RecountRequestRecord {
+  id: string;
+  count_line_id: string;
+  item_name: string;
+  item_code?: string | null;
+  barcode?: string | null;
+  reason: string;
+  priority: string;
+  status: string;
+  created_by: string;
+  assigned_to?: string | null;
+  created_at: string;
+  updated_at: string;
+  due_date?: string | null;
+  completed_at?: string | null;
+  result_qty?: number | null;
+}
+
+/**
+ * Loads a single recount request for notification and workflow deep links.
+ */
+export const getRecountRequest = async (
+  recountId: string,
+): Promise<RecountRequestRecord> => {
+  const response = await api.get<RecountRequestRecord>(
+    `/api/recount/${encodeURIComponent(recountId)}`,
+  );
+  return response.data;
+};
+
 /**
  * Minimal assignable-user shape used by session assignment flows.
  */

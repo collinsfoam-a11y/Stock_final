@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { usePublicRegistrationAvailability } from "@/bootstrap/usePublicRegistrationAvailability";
 import { colors, spacing, radius, gradients } from "@/theme/unified";
 import { useAuthStore } from "@/store/authStore";
 import { getRouteForRole, type UserRole } from "@/utils/roleNavigation";
@@ -96,6 +97,10 @@ export function WelcomeScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const isLoading = useAuthStore((state) => state.isLoading);
+  const {
+    status: registrationStatus,
+    publicRegistrationAllowed,
+  } = usePublicRegistrationAvailability();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isDesktop = width >= 1024;
@@ -228,19 +233,29 @@ export function WelcomeScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => handlePress("/register")}
-            activeOpacity={0.7}
-            style={styles.registerButtonWrapper}
-          >
-            <GlassSurface
-              intensity={10}
-              tint="light"
-              style={styles.registerButton}
+          {publicRegistrationAllowed ? (
+            <TouchableOpacity
+              onPress={() => handlePress("/register")}
+              activeOpacity={0.7}
+              style={styles.registerButtonWrapper}
             >
-              <Text style={styles.registerButtonText}>Create Account</Text>
-            </GlassSurface>
-          </TouchableOpacity>
+              <GlassSurface
+                intensity={10}
+                tint="light"
+                style={styles.registerButton}
+              >
+                <Text style={styles.registerButtonText}>Create Account</Text>
+              </GlassSurface>
+            </TouchableOpacity>
+          ) : registrationStatus === "error" ? (
+            <Text style={styles.setupNote}>
+              Connect to the store network or ask an administrator to add your account.
+            </Text>
+          ) : registrationStatus === "ready" ? (
+            <Text style={styles.setupNote}>
+              New accounts are added by administrators after initial setup.
+            </Text>
+          ) : null}
         </SafeAnimatedView>
 
         <SafeAnimatedView
@@ -385,6 +400,14 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  setupNote: {
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    color: colors.neutral[400],
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: "center",
   },
   footer: {
     alignItems: "center",

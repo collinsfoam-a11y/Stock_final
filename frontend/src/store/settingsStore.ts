@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- sync test-env module access is intentional here */
 import { create } from "zustand";
 import { mmkvStorage } from "../services/mmkvStorage";
 import type {

@@ -20,20 +20,20 @@ import ModernHeader from "../src/components/ui/ModernHeader";
 import ModernCard from "../src/components/ui/ModernCard";
 import ModernInput from "../src/components/ui/ModernInput";
 import ModernButton from "../src/components/ui/ModernButton";
-import {
-  colors,
-  spacing,
-  typography,
-  borderRadius,
-} from "../src/theme/modernDesign";
+import { useThemeContext } from "../src/context/ThemeContext";
 
 export default function SecuritySettingsScreen() {
   const router = useRouter();
   const { pinSetup, isLoading } = useAuthStore();
   const { settings, setSetting } = useSettingsStore();
+  const { theme, themeLegacy, isDark } = useThemeContext();
 
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
+  const styles = React.useMemo(
+    () => createStyles(theme, themeLegacy),
+    [theme, themeLegacy],
+  );
 
   const handleSavePin = useCallback(async () => {
     if (pin.length !== 4 || !/^\d+$/.test(pin)) {
@@ -75,7 +75,10 @@ export default function SecuritySettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
+      <StatusBar
+        style={isDark ? "light" : "dark"}
+        backgroundColor={theme.colors.background.default}
+      />
       <ModernHeader
         title="Security Settings"
         showBackButton
@@ -101,7 +104,7 @@ export default function SecuritySettingsScreen() {
               icon="keypad"
             />
 
-            <View style={{ height: spacing.md }} />
+            <View style={styles.inputSpacer} />
 
             <ModernInput
               label="Confirm PIN"
@@ -133,7 +136,7 @@ export default function SecuritySettingsScreen() {
                   <Ionicons
                     name="finger-print"
                     size={20}
-                    color={colors.primary[500]}
+                    color={theme.colors.primary[500]}
                   />
                 </View>
                 <View>
@@ -147,10 +150,10 @@ export default function SecuritySettingsScreen() {
                 value={settings.biometricAuth}
                 onValueChange={toggleBiometrics}
                 trackColor={{
-                  false: colors.gray[200],
-                  true: colors.primary[500],
+                  false: theme.colors.border.medium,
+                  true: theme.colors.primary[500],
                 }}
-                thumbColor={colors.white}
+                thumbColor={theme.colors.text.inverse}
               />
             </View>
           </ModernCard>
@@ -160,7 +163,7 @@ export default function SecuritySettingsScreen() {
           <Ionicons
             name="information-circle-outline"
             size={20}
-            color={colors.gray[500]}
+            color={theme.colors.text.secondary}
           />
           <Text style={styles.infoText}>
             Your PIN is hashed using Argon2 and stored on the server. If you
@@ -173,76 +176,89 @@ export default function SecuritySettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.gray[50],
-  },
-  scrollContent: {
-    padding: spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[500],
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: spacing.sm,
-    marginLeft: spacing.xs,
-  },
-  card: {
-    marginBottom: spacing.xl,
-    padding: spacing.lg,
-  },
-  description: {
-    fontSize: typography.fontSize.sm,
-    color: colors.gray[600],
-    lineHeight: 20,
-    marginBottom: spacing.lg,
-  },
-  saveButton: {
-    marginTop: spacing.xl,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  rowLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primary[50],
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: spacing.sm,
-  },
-  rowLabel: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.gray[900],
-  },
-  rowSublabel: {
-    fontSize: typography.fontSize.xs,
-    color: colors.gray[500],
-    marginTop: 2,
-  },
-  infoBox: {
-    flexDirection: "row",
-    backgroundColor: colors.gray[100],
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    marginTop: spacing.sm,
-    gap: spacing.sm,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: typography.fontSize.xs,
-    color: colors.gray[600],
-    lineHeight: 18,
-  },
-});
+const createStyles = (
+  theme: ReturnType<typeof useThemeContext>["theme"],
+  themeLegacy: ReturnType<typeof useThemeContext>["themeLegacy"],
+) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background.default,
+    },
+    scrollContent: {
+      padding: themeLegacy.spacing.lg,
+    },
+    sectionTitle: {
+      fontSize: themeLegacy.typography.fontSize.xs,
+      fontWeight: themeLegacy.typography.fontWeight.semibold,
+      color: theme.colors.text.secondary,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+      marginBottom: themeLegacy.spacing.sm,
+      marginLeft: themeLegacy.spacing.xs,
+    },
+    card: {
+      marginBottom: themeLegacy.spacing.xl,
+      padding: themeLegacy.spacing.lg,
+      backgroundColor: themeLegacy.colors.surface,
+      borderColor: theme.colors.border.light,
+    },
+    description: {
+      fontSize: themeLegacy.typography.fontSize.sm,
+      color: theme.colors.text.secondary,
+      lineHeight: 20,
+      marginBottom: themeLegacy.spacing.lg,
+    },
+    inputSpacer: {
+      height: themeLegacy.spacing.md,
+    },
+    saveButton: {
+      marginTop: themeLegacy.spacing.xl,
+    },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    rowLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      flex: 1,
+      marginRight: themeLegacy.spacing.md,
+    },
+    iconContainer: {
+      width: 36,
+      height: 36,
+      borderRadius: theme.borderRadius.md,
+      backgroundColor: themeLegacy.colors.overlayPrimary,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: themeLegacy.spacing.sm,
+    },
+    rowLabel: {
+      fontSize: themeLegacy.typography.fontSize.md,
+      fontWeight: themeLegacy.typography.fontWeight.medium,
+      color: theme.colors.text.primary,
+    },
+    rowSublabel: {
+      fontSize: themeLegacy.typography.fontSize.xs,
+      color: theme.colors.text.secondary,
+      marginTop: 2,
+    },
+    infoBox: {
+      flexDirection: "row",
+      backgroundColor: theme.colors.background.elevated,
+      padding: themeLegacy.spacing.md,
+      borderRadius: theme.borderRadius.md,
+      marginTop: themeLegacy.spacing.sm,
+      gap: themeLegacy.spacing.sm,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border.light,
+    },
+    infoText: {
+      flex: 1,
+      fontSize: themeLegacy.typography.fontSize.xs,
+      color: theme.colors.text.secondary,
+      lineHeight: 18,
+    },
+  });

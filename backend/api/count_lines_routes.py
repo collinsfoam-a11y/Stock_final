@@ -1199,15 +1199,13 @@ async def verify_stock(
         {
             "operation": "update_one",
             "filter": {"_id": count_line["_id"]},
-            "update": {
-                "$set": {
-                    "verified": True,
-                    "verified_by": current_user["username"],
-                    "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                }
-            },
+            "update": {"$set": {}},
         },
-        context={"session_id": str(count_line.get("session_id") or "")},
+        context={
+            "session_id": str(count_line.get("session_id") or ""),
+            "transition": "verify",
+            "username": current_user.get("username"),
+        },
     )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
@@ -1260,9 +1258,13 @@ async def unverify_stock(
         {
             "operation": "update_one",
             "filter": {"_id": count_line["_id"]},
-            "update": {"$set": {"verified": False, "verified_by": None, "verified_at": None}},
+            "update": {"$set": {}},
         },
-        context={"session_id": str(count_line.get("session_id") or "")},
+        context={
+            "session_id": str(count_line.get("session_id") or ""),
+            "transition": "unverify",
+            "username": current_user.get("username"),
+        },
     )
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
@@ -1471,19 +1473,15 @@ async def approve_count_line(
             {
                 "operation": "update_one",
                 "filter": {"_id": count_line["_id"]},
-                "update": {
-                    "$set": {
-                        "status": "approved",
-                        "approval_status": "APPROVED",
-                        "approved_by": current_user["username"],
-                        "approved_at": approved_at,
-                        "approval_note": request.notes if request else None,
-                        "rejection_reason": None,
-                        "assigned_to": None,
-                    }
-                },
+                "update": {"$set": {}},
             },
-            context={"session_id": str(count_line.get("session_id") or "")},
+            context={
+                "session_id": str(count_line.get("session_id") or ""),
+                "transition": "approve",
+                "transitioned_at": approved_at,
+                "approval_note": request.notes if request else None,
+                "username": current_user.get("username"),
+            },
         )
 
         if result.matched_count == 0:
@@ -1577,23 +1575,17 @@ async def reject_count_line(
             {
                 "operation": "update_one",
                 "filter": {"_id": count_line["_id"]},
-                "update": {
-                    "$set": {
-                        "status": "rejected",
-                        "approval_status": "REJECTED",
-                        "rejected_by": current_user["username"],
-                        "rejected_at": rejected_at,
-                        "verified": False,
-                        "verified_by": None,
-                        "verified_at": None,
-                        "rejection_reason": rejection_reason,
-                        "recount_requested_at": rejected_at,
-                        "recount_requested_by": current_user["username"],
-                        "assigned_to": assigned_to,
-                    }
-                },
+                "update": {"$set": {}},
             },
-            context={"session_id": str(count_line.get("session_id") or "")},
+            context={
+                "session_id": str(count_line.get("session_id") or ""),
+                "transition": "reject",
+                "transitioned_at": rejected_at,
+                "rejection_reason": rejection_reason,
+                "assigned_to": assigned_to,
+                "mark_recount_requested": True,
+                "username": current_user.get("username"),
+            },
         )
 
         if result.matched_count == 0:
@@ -2124,22 +2116,16 @@ async def bulk_approve_count_lines(
             {
                 "operation": "update_many",
                 "filter": query,
-                "update": {
-                    "$set": {
-                        "status": "approved",
-                        "approval_status": "APPROVED",
-                        "approved_by": current_user["username"],
-                        "approved_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                        "verified": True,
-                        "verified_by": current_user["username"],
-                        "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                        "approval_note": update_data.notes,
-                    }
-                },
+                "update": {"$set": {}},
             },
             context={
                 "candidate_lines": candidate_lines,
                 "session_ids": list(session_ids),
+                "transition": "approve",
+                "transitioned_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                "approval_note": update_data.notes,
+                "mark_verified_on_approval": True,
+                "username": current_user.get("username"),
             },
         )
 
@@ -2266,20 +2252,16 @@ async def bulk_reject_count_lines(
             {
                 "operation": "update_many",
                 "filter": query,
-                "update": {
-                    "$set": {
-                        "status": "rejected",
-                        "approval_status": "REJECTED",
-                        "rejected_by": current_user["username"],
-                        "rejected_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                        "verified": False,
-                        "rejection_reason": update_data.notes,
-                    }
-                },
+                "update": {"$set": {}},
             },
             context={
                 "candidate_lines": candidate_lines,
                 "session_ids": list(session_ids),
+                "transition": "reject",
+                "transitioned_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                "rejection_reason": update_data.notes,
+                "mark_recount_requested": False,
+                "username": current_user.get("username"),
             },
         )
 

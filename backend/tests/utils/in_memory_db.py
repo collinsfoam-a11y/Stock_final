@@ -206,6 +206,9 @@ class InMemoryCollection:
     def __init__(self):
         self._documents: list[dict[str, Any]] = []
 
+    async def create_index(self, *_args, **_kwargs):
+        return None
+
     def _ensure_id(self, document: dict[str, Any]) -> None:
         # Use 24-char hex string to mimic ObjectId
         document.setdefault("_id", os.urandom(12).hex())
@@ -386,6 +389,7 @@ class InMemoryDatabase:
         self.sessions = InMemoryCollection()
         self.count_lines = InMemoryCollection()
         self.count_line_drafts = InMemoryCollection()
+        self.recount_requests = InMemoryCollection()
         self.unknown_items = InMemoryCollection()
         self.erp_items = InMemoryCollection()
         self.erp_sync_metadata = InMemoryCollection()
@@ -403,6 +407,9 @@ class InMemoryDatabase:
         self.audit_logs = InMemoryCollection()
         self.system_events = InMemoryCollection()
         self.item_serials = InMemoryCollection()
+        self.feature_flags = InMemoryCollection()
+        self.notifications = InMemoryCollection()
+        self.notification_devices = InMemoryCollection()
 
         # Governance Collections
         self.system_settings = InMemoryCollection()
