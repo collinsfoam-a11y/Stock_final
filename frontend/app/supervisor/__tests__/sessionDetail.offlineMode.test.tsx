@@ -1,5 +1,5 @@
 import React from "react";
-import { render, waitFor } from "@testing-library/react-native";
+import { act, render } from "@testing-library/react-native";
 
 import SessionDetail from "../session/[id]";
 
@@ -11,6 +11,16 @@ const mockGetCountLines = jest.fn();
 
 let mockOfflineMode = false;
 let mockParams: Record<string, string> = { id: "session-1" };
+
+async function flushSessionLoadState() {
+  for (let index = 0; index < 4; index += 1) {
+    // Flush pending microtasks from initial loadData() promise chain.
+    // This avoids dependence on timer scheduling across mixed Jest timer modes.
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+}
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({
@@ -127,6 +137,7 @@ describe("SessionDetail offline mode", () => {
   jest.setTimeout(15000);
 
   beforeEach(() => {
+    jest.useRealTimers();
     jest.clearAllMocks();
     mockOfflineMode = true;
     mockParams = { id: "session-1" };
@@ -159,15 +170,15 @@ describe("SessionDetail offline mode", () => {
     );
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("shows cached session data in read-only mode while offline", async () => {
     const { getByText, queryByText } = render(<SessionDetail />);
 
-    await waitFor(
-      () => {
-        expect(getByText("Viewing cached session data")).toBeTruthy();
-      },
-      { timeout: 12000 },
-    );
+    await flushSessionLoadState();
+    expect(getByText("Viewing cached session data")).toBeTruthy();
 
     expect(getByText("Widget A")).toBeTruthy();
     expect(queryByText("Move to Reconcile")).toBeNull();
@@ -182,10 +193,8 @@ describe("SessionDetail offline mode", () => {
     mockGetCountLines.mockResolvedValue({ items: [] });
 
     const { getByText } = render(<SessionDetail />);
-
-    await waitFor(() => {
-      expect(getByText("This session is no longer available.")).toBeTruthy();
-    });
+    await flushSessionLoadState();
+    expect(getByText("This session is no longer available.")).toBeTruthy();
 
     expect(
       getByText("It is not available in the local session cache."),
@@ -226,10 +235,8 @@ describe("SessionDetail offline mode", () => {
     );
 
     const { getByText, queryByText } = render(<SessionDetail />);
-
-    await waitFor(() => {
-      expect(getByText("Widget A")).toBeTruthy();
-    });
+    await flushSessionLoadState();
+    expect(getByText("Widget A")).toBeTruthy();
 
     expect(queryByText("Verify Stock")).toBeNull();
     expect(queryByText("Approve")).toBeNull();
