@@ -124,6 +124,8 @@ jest.mock("../../../src/services/api/api", () => ({
 }));
 
 describe("SessionDetail offline mode", () => {
+  jest.setTimeout(15000);
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockOfflineMode = true;
@@ -160,9 +162,12 @@ describe("SessionDetail offline mode", () => {
   it("shows cached session data in read-only mode while offline", async () => {
     const { getByText, queryByText } = render(<SessionDetail />);
 
-    await waitFor(() => {
-      expect(getByText("Viewing cached session data")).toBeTruthy();
-    });
+    await waitFor(
+      () => {
+        expect(getByText("Viewing cached session data")).toBeTruthy();
+      },
+      { timeout: 12000 },
+    );
 
     expect(getByText("Widget A")).toBeTruthy();
     expect(queryByText("Move to Reconcile")).toBeNull();

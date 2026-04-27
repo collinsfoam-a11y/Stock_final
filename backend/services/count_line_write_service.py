@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 from fastapi import HTTPException
 
-from backend.services.snapshot_service import SnapshotIntegrityError, SnapshotService
+from backend.services.snapshot_service import SnapshotService
 from backend.services.variance_service import VarianceService
 
 
@@ -126,6 +126,7 @@ class CountLineWriteService:
 
         ctx = context or {}
         await self._assert_snapshot_integrity_for_write(payload, ctx)
+        self._apply_state_transition_for_write(payload, ctx)
 
         if self._should_apply_governance(payload, ctx):
             await self._enforce_variance_for_write(payload, ctx)
@@ -202,6 +203,95 @@ class CountLineWriteService:
         delete_result = collection.delete_many(filter_query)
         return await self._resolve_awaitable(delete_result)
 
+    def _apply_state_transition_for_write(
+        self,
+        payload: dict[str, Any],
+        context: dict[str, Any],
+    ) -> None:
+        transition = str(context.get("transition") or "").strip().lower()
+        if not transition:
+            return
+
+        operation = str(payload.get("operation") or "").strip().lower()
+        if operation not in {"update_one", "update_many"}:
+            raise ValueError(f"State transition '{transition}' requires update_one or update_many")
+
+        update_doc = payload.setdefault("update", {})
+        if not isinstance(update_doc, dict):
+            raise ValueError("State transition writes require an update document")
+
+        set_doc = update_doc.setdefault("$set", {})
+        if not isinstance(set_doc, dict):
+            raise ValueError("State transition writes require a '$set' dictionary")
+
+        actor = str(
+            context.get("username")
+            or context.get("user_id")
+            or context.get("actor")
+            or "system"
+        ).strip() or "system"
+        occurred_at = context.get("transitioned_at")
+        if not isinstance(occurred_at, datetime):
+            occurred_at = _utc_now()
+
+        if transition == "verify":
+            set_doc["verified"] = True
+            set_doc["verified_by"] = actor
+            set_doc["verified_at"] = occurred_at
+            return
+
+        if transition == "unverify":
+            set_doc["verified"] = False
+            set_doc["verified_by"] = None
+            set_doc["verified_at"] = None
+            return
+
+        if transition == "approve":
+            set_doc["status"] = "approved"
+            set_doc["approval_status"] = "APPROVED"
+            set_doc["approved_by"] = actor
+            set_doc["approved_at"] = occurred_at
+            set_doc["approval_note"] = _normalize_reason(context.get("approval_note"))
+            set_doc["rejected_by"] = None
+            set_doc["rejected_at"] = None
+            set_doc["rejection_reason"] = None
+            set_doc["assigned_to"] = None
+            set_doc["recount_requested_at"] = None
+            set_doc["recount_requested_by"] = None
+            if bool(context.get("mark_verified_on_approval", False)):
+                set_doc["verified"] = True
+                set_doc["verified_by"] = actor
+                set_doc["verified_at"] = occurred_at
+            return
+
+        if transition == "reject":
+            set_doc["status"] = "rejected"
+            set_doc["approval_status"] = "REJECTED"
+            set_doc["approved_by"] = None
+            set_doc["approved_at"] = None
+            set_doc["approval_note"] = None
+            set_doc["verified"] = False
+            set_doc["verified_by"] = None
+            set_doc["verified_at"] = None
+            set_doc["rejected_by"] = actor
+            set_doc["rejected_at"] = occurred_at
+            set_doc["rejection_reason"] = _normalize_reason(
+                context.get("rejection_reason")
+                or context.get("approval_note")
+                or context.get("transition_note")
+            )
+            if bool(context.get("mark_recount_requested", True)):
+                set_doc["recount_requested_at"] = occurred_at
+                set_doc["recount_requested_by"] = actor
+                set_doc["assigned_to"] = _normalize_reason(context.get("assigned_to"))
+            else:
+                set_doc["recount_requested_at"] = None
+                set_doc["recount_requested_by"] = None
+                set_doc["assigned_to"] = None
+            return
+
+        raise ValueError(f"Unsupported count-line state transition: {transition}")
+
     def _should_apply_governance(
         self,
         payload: dict[str, Any],
@@ -234,7 +324,9 @@ class CountLineWriteService:
                 session, session_id=session_id
             )
             return await self._resolve_awaitable(result)
-        except SnapshotIntegrityError as exc:
+        except Exception as exc:
+            if exc.__class__.__name__ != "SnapshotIntegrityError":
+                raise
             raise HTTPException(
                 status_code=409,
                 detail="Snapshot integrity violated for this session",
