@@ -3,6 +3,7 @@ Notifications API - In-app notifications and task management
 """
 
 import logging
+from backend.utils.api_utils import sanitize_for_logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -105,7 +106,7 @@ async def get_notifications(
         )
 
     except Exception as e:
-        logger.error(f"Error fetching notifications: {e}")
+        logger.error("Error fetching notifications: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -124,7 +125,7 @@ async def get_unread_count(
         return {"unread_count": count}
 
     except Exception as e:
-        logger.error(f"Error getting unread count: {e}")
+        logger.error("Error getting unread count: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -152,7 +153,7 @@ async def mark_notification_as_read(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error marking notification as read: {e}")
+        logger.error("Error marking notification as read: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -171,7 +172,7 @@ async def mark_all_notifications_as_read(
         return {"success": True, "message": f"Marked {count} notifications as read", "count": count}
 
     except Exception as e:
-        logger.error(f"Error marking all as read: {e}")
+        logger.error("Error marking all as read: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -199,7 +200,7 @@ async def delete_notification(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting notification: {e}")
+        logger.error("Error deleting notification: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -220,7 +221,7 @@ async def register_notification_device(
         )
         return {"success": True, "message": "Notification device registered"}
     except Exception as e:
-        logger.error(f"Error registering notification device: {e}")
+        logger.error("Error registering notification device: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -240,7 +241,7 @@ async def unregister_notification_device(
         )
         return {"success": True, "message": "Notification device unregistered"}
     except Exception as e:
-        logger.error(f"Error unregistering notification device: {e}")
+        logger.error("Error unregistering notification device: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -279,5 +280,5 @@ async def send_batch_notifications(
             "results": results,
         }
     except Exception as e:
-        logger.error(f"Error sending batch notifications: {e}")
+        logger.error("Error sending batch notifications: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))

@@ -1,4 +1,5 @@
 import logging
+from backend.utils.api_utils import sanitize_for_logging
 import httpx
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -40,7 +41,7 @@ async def get_system_stats_context(db: Any) -> str:
             f"- Overall Session Accuracy: {accuracy:.1f}%\n"
         )
     except Exception as e:
-        logger.error(f"Error gathering stats for AI context: {e}")
+        logger.error("Error gathering stats for AI context: %s", sanitize_for_logging(str(e)))
         return "System Context: Stats unavailable at the moment."
 
 
@@ -87,7 +88,7 @@ async def chat_with_pi(request: Request, current_user: Dict[str, Any] = Depends(
             )
 
             if response.status_code != 200:
-                logger.error(f"pi-server returned error: {response.status_code} - {response.text}")
+                logger.error("pi-server returned error: %s - %s", response.status_code, sanitize_for_logging(response.text))
                 return {
                     "error": "AI service is currently unavailable",
                     "status_code": response.status_code,
@@ -114,7 +115,7 @@ async def chat_with_pi(request: Request, current_user: Dict[str, Any] = Depends(
                         }
                     )
             except Exception as e:
-                logger.error(f"Failed to persist chat history: {e}")
+                logger.error("Failed to persist chat history: %s", sanitize_for_logging(str(e)))
 
             return result
         except httpx.ConnectError:
@@ -126,7 +127,7 @@ async def chat_with_pi(request: Request, current_user: Dict[str, Any] = Depends(
                 detail="AI Assistant sidecar is not running. Please contact the administrator.",
             )
         except Exception as e:
-            logger.error(f"Error communicating with pi-server: {str(e)}")
+            logger.error("Error communicating with pi-server: %s", sanitize_for_logging(str(e)))
             raise HTTPException(status_code=500, detail="Internal AI error")
 
 

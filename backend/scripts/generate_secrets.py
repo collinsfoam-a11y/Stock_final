@@ -93,11 +93,13 @@ if __name__ == "__main__":
         "JWT_REFRESH_SECRET": s2,
     }
 
-    logger.info("🔐 Generated secrets:")
-    logger.info("")
-    for k, v in secrets_map.items():
-        logger.info(f"{k}={v}")
-    logger.info("")
+    logger.info("🔐 Secure secrets generated.")
+    if not args.write:
+        logger.info("")
+        for k, v in secrets_map.items():
+            logger.info(f"{k}={v}")
+        logger.info("")
+        logger.warning("⚠️  WARNING: Secrets printed above! Secure your terminal history.")
 
     if args.write:
         env_path = Path(__file__).parent.parent / ".env"

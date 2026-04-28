@@ -7,6 +7,7 @@ import csv
 import io
 import json
 import logging
+from backend.utils.api_utils import sanitize_for_logging
 from datetime import date, datetime, timezone
 from typing import Any, Optional
 
@@ -508,7 +509,7 @@ async def generate_report(
     try:
         data = await generator(db, filters)
     except Exception as e:
-        logger.error(f"Error generating report: {e}")
+        logger.error("Error generating report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate report",
@@ -547,7 +548,7 @@ async def export_report_csv(
     try:
         data = await generator(db, filters)
     except Exception as e:
-        logger.error(f"Error generating report: {e}")
+        logger.error("Error generating report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate report",
@@ -605,7 +606,7 @@ async def export_report_xlsx(
     try:
         data = await generator(db, filters)
     except Exception as e:
-        logger.error(f"Error generating report: {e}")
+        logger.error("Error generating report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate report",
@@ -685,7 +686,7 @@ async def get_report_filter_options(
         }
 
     except Exception as e:
-        logger.error(f"Error fetching filter options: {e}")
+        logger.error("Error fetching filter options: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch filter options",

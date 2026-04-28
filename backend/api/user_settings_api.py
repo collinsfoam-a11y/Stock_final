@@ -5,6 +5,7 @@ Endpoints for managing user-specific app settings.
 """
 
 import logging
+from backend.utils.api_utils import sanitize_for_logging
 from datetime import datetime, timezone
 from typing import Any
 
@@ -273,7 +274,7 @@ async def get_user_settings(
             )
 
     except Exception as e:
-        logger.error(f"Error fetching settings for user {user_id}: {e}")
+        logger.error("Error fetching settings for user {user_id}: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=500,
             detail="Error retrieving user settings",
@@ -350,7 +351,7 @@ async def update_user_settings(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating settings for user {user_id}: {e}")
+        logger.error("Error updating settings for user {user_id}: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=500,
             detail="Error updating user settings",
@@ -380,7 +381,7 @@ async def reset_user_settings(
                 details={"action": "reset_to_defaults"},
             )
 
-            logger.info(f"Settings reset to defaults for user {username}")
+            logger.info("Settings reset to defaults for user %s", sanitize_for_logging(username))
 
         return UserSettingsResponse(
             status="success",
@@ -389,7 +390,7 @@ async def reset_user_settings(
         )
 
     except Exception as e:
-        logger.error(f"Error resetting settings for user {user_id}: {e}")
+        logger.error("Error resetting settings for user {user_id}: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=500,
             detail="Error resetting user settings",

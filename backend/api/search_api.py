@@ -20,6 +20,7 @@ from backend.api.response_models import ApiResponse
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
 from backend.services.search_service import SearchResult, get_search_service
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -206,13 +207,13 @@ async def search_optimized(
         )
 
     except RuntimeError as e:
-        logger.error(f"Search service not initialized: {e}")
+        logger.error("Search service not initialized: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=503,
             detail="Search service unavailable",
         )
     except Exception as e:
-        logger.error(f"Search failed: {e}")
+        logger.error("Search failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=500,
             detail="Search failed",
@@ -274,13 +275,13 @@ async def get_suggestions(
             message=f"Found {len(suggestions)} suggestions",
         )
     except RuntimeError as e:
-        logger.error(f"Search service not initialized: {e}")
+        logger.error("Search service not initialized: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=503,
             detail="Search service unavailable",
         )
     except Exception as e:
-        logger.error(f"Suggestions failed: {e}")
+        logger.error("Suggestions failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=500,
             detail="Failed to get suggestions",
@@ -317,13 +318,13 @@ async def get_search_filters(
             message="Search filters loaded",
         )
     except RuntimeError as e:
-        logger.error(f"Database not initialized: {e}")
+        logger.error("Database not initialized: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=503,
             detail="Search filters unavailable",
         )
     except Exception as e:
-        logger.error(f"Failed to load search filters: {e}")
+        logger.error("Failed to load search filters: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=500,
             detail="Failed to load search filters",

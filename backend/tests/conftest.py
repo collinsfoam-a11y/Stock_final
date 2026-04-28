@@ -1,3 +1,4 @@
+import sys; from unittest.mock import MagicMock; sys.modules["pyodbc"] = MagicMock()
 """Comprehensive pytest configuration for backend testing suite."""
 
 import os

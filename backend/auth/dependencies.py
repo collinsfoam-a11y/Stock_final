@@ -220,9 +220,13 @@ async def get_current_user(
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
-    except Exception:
+    except Exception as e:
         # Catch any unexpected errors and convert to auth error
-        logger.exception("Unexpected authentication error")
+        # Sanitized logging to prevent potential secret leakage in tracebacks
+        logger.error(
+            "Unexpected authentication error: %s",
+            sanitize_for_logging(str(e)),
+        )
         from backend.error_messages import get_error_message
 
         error = get_error_message("AUTH_TOKEN_INVALID")

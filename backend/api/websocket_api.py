@@ -1,4 +1,5 @@
 import logging
+from backend.utils.api_utils import sanitize_for_logging
 from typing import Optional
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
@@ -82,7 +83,7 @@ async def websocket_endpoint(
             raise ValueError("JWT_SECRET not set")
         payload = decode(jwt_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
     except Exception as e:
-        logger.warning(f"WebSocket auth failed: {str(e)}")
+        logger.warning("WebSocket auth failed: %s", sanitize_for_logging(str(e)))
 
     if not payload:
         # Accept then immediately close with policy violation code
@@ -124,9 +125,9 @@ async def websocket_endpoint(
             # await websocket.send_text(f"Message received: {data}")
     except WebSocketDisconnect:
         manager.disconnect(websocket, user_id, session_id)
-        logger.info(f"Client disconnected: {user_id}")
+        logger.info("Client disconnected: %s", sanitize_for_logging(user_id))
     except Exception as e:
-        logger.error(f"WebSocket error: {str(e)}")
+        logger.error("WebSocket error: %s", sanitize_for_logging(str(e)))
         manager.disconnect(websocket, user_id, session_id)
         try:
             await websocket.close(code=1011)  # Internal Error

@@ -6,6 +6,7 @@ Server-Sent Events (SSE) and WebSocket endpoints for live data updates
 import asyncio
 import json
 import logging
+from backend.utils.api_utils import sanitize_for_logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -97,19 +98,19 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket, user_id: str):
         await websocket.accept()
         self.active_connections[user_id] = websocket
-        logger.info(f"WebSocket connected: {user_id}")
+        logger.info("WebSocket connected: %s", sanitize_for_logging(user_id))
 
     def disconnect(self, user_id: str):
         self.active_connections.pop(user_id, None)
         self.user_configs.pop(user_id, None)
-        logger.info(f"WebSocket disconnected: {user_id}")
+        logger.info("WebSocket disconnected: %s", sanitize_for_logging(user_id))
 
     async def send_personal_message(self, message: dict, user_id: str):
         if user_id in self.active_connections:
             try:
                 await self.active_connections[user_id].send_json(message)
             except Exception as e:
-                logger.error(f"Error sending to {user_id}: {e}")
+                logger.error("Error sending to {user_id}: %s", sanitize_for_logging(str(e)))
                 self.disconnect(user_id)
 
     async def broadcast(self, message: dict):
@@ -436,7 +437,7 @@ async def dashboard_stream(
                 logger.info("SSE stream cancelled")
                 break
             except Exception as e:
-                logger.error(f"SSE stream error: {e}")
+                logger.error("SSE stream error: %s", sanitize_for_logging(str(e)))
                 error_data = json.dumps(
                     {
                         "type": "error",
@@ -575,7 +576,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
     except WebSocketDisconnect:
         manager.disconnect(user_id)
     except Exception as e:
-        logger.error(f"WebSocket error for {user_id}: {e}")
+        logger.error("WebSocket error for {user_id}: %s", sanitize_for_logging(str(e)))
         manager.disconnect(user_id)
 
 
