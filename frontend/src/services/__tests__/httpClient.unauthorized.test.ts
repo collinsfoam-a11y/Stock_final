@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
+const loadHttpClientModule = () => {
+  // This module must load only after per-test jest.doMock registrations.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("../httpClient");
+};
+
 describe("httpClient unauthorized recovery", () => {
   beforeEach(() => {
     jest.resetModules();
@@ -95,7 +101,7 @@ describe("httpClient unauthorized recovery", () => {
       },
     }));
 
-    require("../httpClient");
+    loadHttpClientModule();
     const rejected =
       axiosInstance.interceptors.response.handlers[0]?.rejected;
 
@@ -213,7 +219,7 @@ describe("httpClient unauthorized recovery", () => {
       },
     }));
 
-    require("../httpClient");
+    loadHttpClientModule();
     const rejected =
       axiosInstance.interceptors.response.handlers[0]?.rejected;
 

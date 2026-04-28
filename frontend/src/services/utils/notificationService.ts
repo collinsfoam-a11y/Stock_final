@@ -11,10 +11,7 @@ import {
   registerNotificationDevice,
   unregisterNotificationDevice,
 } from "../api/api.notifications";
-import type {
-  NotificationTriggerInput,
-  SchedulableTriggerInputTypes,
-} from "expo-notifications";
+import type { NotificationTriggerInput } from "expo-notifications";
 
 export interface NotificationOptions {
   title: string;
@@ -158,13 +155,11 @@ export class NotificationService {
       const triggerValue = (
         trigger instanceof Date
           ? {
-              type: (await this.getNotificationsModule())
-                .SchedulableTriggerInputTypes.DATE,
+              type: Notifications.SchedulableTriggerInputTypes.DATE,
               date: trigger,
             }
           : {
-              type: (await this.getNotificationsModule())
-                .SchedulableTriggerInputTypes.TIME_INTERVAL,
+              type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
               seconds: trigger.seconds,
               repeats: trigger.repeats ?? false,
             }

@@ -3,7 +3,6 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import type { ReactNode } from "react";
 
 import ModernCard from "@/components/ui/ModernCard";
-import { useSettingsStore } from "@/store/settingsStore";
 import { Item } from "@/types/scan";
 import {
   colors,
@@ -92,12 +91,10 @@ const MisplacedBanner = ({ expectedLocation }: { expectedLocation?: string }) =>
 const ItemHeader = ({
   item,
   sourceBadge,
-  imageCacheEnabled,
   showItemImages,
 }: {
   item: ItemSummaryItem;
   sourceBadge: ReturnType<typeof getSourceBadgeStyle> | null;
-  imageCacheEnabled: boolean;
   showItemImages: boolean;
 }) => (
   <View style={styles.itemHeader}>
@@ -251,7 +248,6 @@ export function ItemSummarySection({
   showItemPrices,
   showItemStock,
 }: ItemSummarySectionProps) {
-  const imageCacheEnabled = useSettingsStore((state) => state.settings.imageCache);
   const { sourceBadge, bundleComponents, stockQty, stockUom, displayBarcode, salePrice } =
     resolveSummaryDisplayData(item, barcode);
 
@@ -263,7 +259,6 @@ export function ItemSummarySection({
         <ItemHeader
           item={item}
           sourceBadge={sourceBadge}
-          imageCacheEnabled={imageCacheEnabled}
           showItemImages={showItemImages}
         />
 

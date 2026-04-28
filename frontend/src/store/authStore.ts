@@ -161,12 +161,18 @@ let localAuthenticationPromise:
   | Promise<typeof import("expo-local-authentication")>
   | null = null;
 
+const requireMockableModule = <TModule,>(specifier: string): TModule => {
+  // Jest `doMock` setups need synchronous resolution after mocks are registered.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require(specifier) as TModule;
+};
+
 const getApiClient = async () => {
   if (!apiClientPromise) {
     apiClientPromise = IS_TEST_ENV
       ? Promise.resolve(
-          (
-            require("../services/httpClient") as typeof import("../services/httpClient")
+          requireMockableModule<typeof import("../services/httpClient")>(
+            "../services/httpClient",
           ).default,
         )
       : import("../services/httpClient").then((module) => module.default);
@@ -179,7 +185,9 @@ const getLocalAuthentication = async () => {
   if (!localAuthenticationPromise) {
     localAuthenticationPromise = IS_TEST_ENV
       ? Promise.resolve(
-          require("expo-local-authentication") as typeof import("expo-local-authentication"),
+          requireMockableModule<typeof import("expo-local-authentication")>(
+            "expo-local-authentication",
+          ),
         )
       : import("expo-local-authentication");
   }
@@ -270,13 +278,15 @@ const buildLastLoggedUser = (
 
 const syncOfflineQueueInBackground = async () => {
   const { useNetworkStore } = IS_TEST_ENV
-    ? (require("./networkStore") as typeof import("./networkStore"))
+    ? requireMockableModule<typeof import("./networkStore")>("./networkStore")
     : await import("./networkStore");
   const networkState = useNetworkStore.getState();
   if (!networkState.isOnline) return;
 
   const { syncOfflineQueue } = IS_TEST_ENV
-    ? (require("../services/syncService") as typeof import("../services/syncService"))
+    ? requireMockableModule<typeof import("../services/syncService")>(
+        "../services/syncService",
+      )
     : await import("../services/syncService");
   syncOfflineQueue({ background: true }).catch((err) => {
     log.warn("Sync after auth failed", {
@@ -288,7 +298,9 @@ const syncOfflineQueueInBackground = async () => {
 const initializeNotificationsInBackground = async () => {
   try {
     const { NotificationService } = IS_TEST_ENV
-      ? (require("../services/utils/notificationService") as typeof import("../services/utils/notificationService"))
+      ? requireMockableModule<typeof import("../services/utils/notificationService")>(
+          "../services/utils/notificationService",
+        )
       : await import("../services/utils/notificationService");
     await NotificationService.initialize();
   } catch (error) {
@@ -301,7 +313,9 @@ const initializeNotificationsInBackground = async () => {
 const unregisterNotificationsInBackground = async () => {
   try {
     const { NotificationService } = IS_TEST_ENV
-      ? (require("../services/utils/notificationService") as typeof import("../services/utils/notificationService"))
+      ? requireMockableModule<typeof import("../services/utils/notificationService")>(
+          "../services/utils/notificationService",
+        )
       : await import("../services/utils/notificationService");
     await NotificationService.unregisterCurrentDevice();
   } catch (error) {
@@ -314,7 +328,7 @@ const unregisterNotificationsInBackground = async () => {
 const rehydrateFilterStoreForCurrentScope = async () => {
   try {
     const { rehydrateFilterStore } = IS_TEST_ENV
-      ? (require("./filterStore") as typeof import("./filterStore"))
+      ? requireMockableModule<typeof import("./filterStore")>("./filterStore")
       : await import("./filterStore");
     await rehydrateFilterStore();
   } catch (error) {
@@ -327,7 +341,7 @@ const rehydrateFilterStoreForCurrentScope = async () => {
 const resetFilterStoreForLoggedOutUser = async () => {
   try {
     const { resetFilterStore } = IS_TEST_ENV
-      ? (require("./filterStore") as typeof import("./filterStore"))
+      ? requireMockableModule<typeof import("./filterStore")>("./filterStore")
       : await import("./filterStore");
     await resetFilterStore();
   } catch (error) {
@@ -647,7 +661,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const { clearNotificationStore } = IS_TEST_ENV
-        ? (require("./notificationStore") as typeof import("./notificationStore"))
+        ? requireMockableModule<typeof import("./notificationStore")>(
+            "./notificationStore",
+          )
         : await import("./notificationStore");
       await clearNotificationStore();
     } catch {
@@ -656,7 +672,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const { queryClient } = IS_TEST_ENV
-        ? (require("../services/queryClient") as typeof import("../services/queryClient"))
+        ? requireMockableModule<typeof import("../services/queryClient")>(
+            "../services/queryClient",
+          )
         : await import("../services/queryClient");
       await queryClient.cancelQueries();
       queryClient.clear();
@@ -666,7 +684,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const { clearScanSessionStore } = IS_TEST_ENV
-        ? (require("./scanSessionStore") as typeof import("./scanSessionStore"))
+        ? requireMockableModule<typeof import("./scanSessionStore")>(
+            "./scanSessionStore",
+          )
         : await import("./scanSessionStore");
       await clearScanSessionStore();
     } catch {
@@ -675,7 +695,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const { RecentItemsService } = IS_TEST_ENV
-        ? (require("../services/enhancedFeatures") as typeof import("../services/enhancedFeatures"))
+        ? requireMockableModule<typeof import("../services/enhancedFeatures")>(
+            "../services/enhancedFeatures",
+          )
         : await import("../services/enhancedFeatures");
       await RecentItemsService.clearRecent();
     } catch {
@@ -684,7 +706,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const { clearAllCache } = IS_TEST_ENV
-        ? (require("../services/offline/offlineStorage") as typeof import("../services/offline/offlineStorage"))
+        ? requireMockableModule<typeof import("../services/offline/offlineStorage")>(
+            "../services/offline/offlineStorage",
+          )
         : await import("../services/offline/offlineStorage");
       await clearAllCache();
     } catch {

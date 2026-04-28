@@ -73,6 +73,12 @@ let backupReminderPromise:
     >
   | null = null;
 
+const requireMockableModule = <TModule,>(specifier: string): TModule => {
+  // Jest `doMock` setups need synchronous resolution after mocks are registered.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require(specifier) as TModule;
+};
+
 const getAuthApi = async () => {
   if (authApiCache) {
     return authApiCache;
@@ -128,8 +134,8 @@ const getBackupReminderSync = async () => {
 
 const getAuthApiSync = () => {
   if (!authApiCache) {
-    authApiCache = (
-      require("../services/api/authApi") as typeof import("../services/api/authApi")
+    authApiCache = requireMockableModule<typeof import("../services/api/authApi")>(
+      "../services/api/authApi",
     ).authApi;
   }
 
@@ -138,8 +144,8 @@ const getAuthApiSync = () => {
 
 const getThemeServiceSync = () => {
   if (!themeServiceCache) {
-    themeServiceCache = (
-      require("../services/themeService") as typeof import("../services/themeService")
+    themeServiceCache = requireMockableModule<typeof import("../services/themeService")>(
+      "../services/themeService",
     ).ThemeService;
   }
 
@@ -148,9 +154,9 @@ const getThemeServiceSync = () => {
 
 const getBackupReminderSyncImmediate = () => {
   if (!backupReminderCache) {
-    backupReminderCache = (
-      require("../services/backupReminderService") as typeof import("../services/backupReminderService")
-    ).syncBackupReminderPreference;
+    backupReminderCache = requireMockableModule<
+      typeof import("../services/backupReminderService")
+    >("../services/backupReminderService").syncBackupReminderPreference;
   }
 
   return backupReminderCache;
