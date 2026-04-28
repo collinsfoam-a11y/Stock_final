@@ -168,7 +168,6 @@ pre-commit:
 install:
 	@echo "Installing Python dependencies..."
 	$(PYTHON) -m pip install -r backend/requirements.dev.txt
-	$(PYTHON) -m pip install pre-commit black ruff mypy pytest pytest-cov
 	@echo "Installing Node.js dependencies..."
 	cd frontend && npm ci
 	@echo "Installing pre-commit hooks..."
