@@ -1,11 +1,15 @@
+from __future__ import annotations
 """
 Shared database connection utilities to eliminate duplicate connection logic
 """
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
-import pyodbc
+try:
+    import pyodbc
+except ImportError:
+    pyodbc = None
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +144,7 @@ class SQLServerConnectionBuilder:
         user: Optional[str] = None,
         password: Optional[str] = None,
         timeout: int = DEFAULT_TIMEOUT,
-    ) -> pyodbc.Connection:
+    ) -> "pyodbc.Connection":
         """
         Create an optimized SQL Server connection with consistent settings
 
@@ -213,7 +217,7 @@ class SQLServerConnectionBuilder:
             return False
 
     @staticmethod
-    def is_connection_valid(conn: pyodbc.Connection) -> bool:
+    def is_connection_valid(conn: "pyodbc.Connection") -> bool:
         """
         Check if an existing connection is still valid
 

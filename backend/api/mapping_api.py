@@ -5,7 +5,10 @@ import re
 from datetime import datetime
 from typing import Any, Optional
 
-import pyodbc
+try:
+    import pyodbc
+except ImportError:
+    pyodbc = None
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 

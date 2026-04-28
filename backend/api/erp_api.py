@@ -10,21 +10,25 @@ from backend.api.schemas import ERPItem
 from backend.auth.dependencies import get_current_user
 from backend.error_messages import get_error_message
 from backend.services.cache_service import CacheService
+from backend.sql_server_connector import SQLServerConnector
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _db: Optional[AsyncIOMotorDatabase[Any]] = None
 _cache_service: Optional[CacheService] = None
+_sql_connector: Optional[SQLServerConnector] = None
 
 
 def init_erp_api(
     db: AsyncIOMotorDatabase,
     cache_service: CacheService,
+    sql_connector: Optional[SQLServerConnector] = None,
 ):
-    global _db, _cache_service
+    global _db, _cache_service, _sql_connector
     _db = db
     _cache_service = cache_service
+    _sql_connector = sql_connector
 
 
 _ALPHANUMERIC_PATTERN = re.compile(r"^[A-Z0-9_\-]+$")
@@ -277,19 +281,10 @@ async def get_item_batches(
     source = "mongodb_offline_fallback"
     batches: list[dict[str, Any]] = []
 
-    sql_connector = getattr(router, "sql_connector", None)
-    if sql_connector is None:
+    if _sql_connector is not None:
         try:
-            from backend.api.count_lines_api import router as count_lines_router
-
-            sql_connector = getattr(count_lines_router, "sql_connector", None)
-        except Exception:
-            sql_connector = None
-
-    if sql_connector is not None:
-        try:
-            if getattr(sql_connector, "connection", None):
-                sql_batches = sql_connector.get_item_batches(normalized_code)
+            if getattr(_sql_connector, "connection", None):
+                sql_batches = _sql_connector.get_item_batches(normalized_code)
                 if isinstance(sql_batches, list):
                     batches = sql_batches
                     source = "sql_server"

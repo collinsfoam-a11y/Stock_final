@@ -101,19 +101,20 @@ async def test_get_item_batches_sql_path_includes_mrp_and_sorts(
     sql_connector.connection = object()
     sql_connector.get_item_batches.return_value = sql_batches
 
-    had_existing = hasattr(erp_router, "sql_connector")
-    existing_connector = getattr(erp_router, "sql_connector", None)
-    erp_router.sql_connector = sql_connector
+    from backend.api.erp_api import _cache_service, _db, init_erp_api
+    init_erp_api(_db, _cache_service, sql_connector)
+
+
 
     try:
         response = await async_client.get(
             f"/api/item-batches/{item_code}", headers=authenticated_headers
         )
     finally:
-        if had_existing:
-            erp_router.sql_connector = existing_connector
-        else:
-            delattr(erp_router, "sql_connector")
+        init_erp_api(_db, _cache_service, None)
+
+
+
 
     assert response.status_code == 200, f"Response: {response.text}"
     data = response.json()

@@ -396,14 +396,6 @@ async def lifespan(app: FastAPI):  # noqa: C901
             sql_password and not sql_password_placeholder
         )
 
-        # Always attach SQL connector to count_lines_router so it can handle its own fallbacks
-        try:
-            from backend.api.count_lines_api import router as count_lines_router
-
-            setattr(count_lines_router, "sql_connector", sql_connector)
-            logger.info("✓ SQL connector attached to count_lines_router")
-        except Exception as e:
-            logger.warning(f"Failed to attach SQL connector to count_lines_router: {str(e)}")
 
         if sql_host and sql_database and sql_credentials_ready:
             logger.info(
@@ -731,7 +723,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
 
     try:
         # Initialize ERP API
-        init_erp_api(db, cache_service)
+        init_erp_api(db, cache_service, sql_connector)
         logger.info("✓ ERP API initialized")
     except Exception as e:
         logger.error(f"Failed to initialize ERP API: {str(e)}")
