@@ -33,12 +33,19 @@ import Animated, {
 } from "react-native-reanimated";
 import {
   modernColors,
-  modernTypography,
   modernSpacing,
   modernBorderRadius,
   modernShadows,
   modernAnimations,
 } from "../../styles/modernDesignSystem";
+import {
+  colors,
+  semanticColors,
+  radius,
+  spacing,
+  textStyles,
+  touchTargets,
+} from "../../theme/unified";
 import { useThemeContextSafe } from "../../context/ThemeContext";
 
 const AnimatedTouchableOpacity =
@@ -132,41 +139,37 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   // Get button styles based on variant and size
   const getButtonStyles = (): ViewStyle => {
     const baseStyle: ViewStyle = {
-      borderRadius: theme ? theme.borderRadius.md : modernBorderRadius.button,
+      borderRadius: radius.sm,
       alignItems: "center",
       justifyContent: "center",
       flexDirection: "row",
-      gap: theme ? theme.spacing.sm : modernSpacing.sm,
+      gap: spacing.sm,
       minHeight: getSizeConfig().height,
       paddingHorizontal: getSizeConfig().paddingHorizontal,
       ...(fullWidth && { width: "100%" }),
-      ...(disabled && { opacity: modernAnimations.opacity.disabled }),
+      ...(disabled && { opacity: 0.5 }),
     };
 
-    // Variant-specific styles
+    // Variant-specific styles using semantic tokens from DESIGN.md
     const variantStyles: Record<ButtonVariant, ViewStyle> = {
       primary: {
-        backgroundColor: theme
-          ? theme.colors.accent
-          : modernColors.primary[500],
+        backgroundColor: semanticColors.button.primary,
         ...modernShadows.sm,
       },
       secondary: {
-        backgroundColor: theme
-          ? theme.colors.info
-          : modernColors.secondary[500],
+        backgroundColor: semanticColors.button.secondary,
         ...modernShadows.sm,
       },
       outline: {
         backgroundColor: "transparent",
-        borderWidth: 2,
-        borderColor: theme ? theme.colors.accent : modernColors.primary[500],
+        borderWidth: 1,
+        borderColor: semanticColors.button.outline,
       },
       ghost: {
         backgroundColor: "transparent",
       },
       danger: {
-        backgroundColor: theme ? theme.colors.danger : modernColors.error.main,
+        backgroundColor: semanticColors.status.error,
         ...modernShadows.sm,
       },
       glass: {
@@ -183,7 +186,7 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
     };
   };
 
-  // Get text styles
+  // Get text styles using semantic tokens
   const getTextStyles = (): TextStyle => {
     const baseStyle: TextStyle = {
       ...getSizeConfig().typography,
@@ -191,13 +194,13 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
     };
 
     const variantTextColors: Record<ButtonVariant, string> = {
-      primary: "#FFFFFF",
-      secondary: "#FFFFFF",
-      outline: theme ? theme.colors.accent : modernColors.primary[500],
-      ghost: theme ? theme.colors.accent : modernColors.primary[500],
-      danger: "#FFFFFF",
-      glass: theme ? theme.colors.text : modernColors.text.primary,
-      gradient: "#FFFFFF",
+      primary: semanticColors.button.primaryText,
+      secondary: semanticColors.button.secondaryText,
+      outline: semanticColors.text.primary,
+      ghost: semanticColors.text.link,
+      danger: colors.white,
+      glass: semanticColors.text.primary,
+      gradient: colors.white,
     };
 
     return {
@@ -208,34 +211,32 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
 
   // Get icon color
   const getIconColor = (): string => {
-    if (variant === "outline" || variant === "ghost") {
-      return theme ? theme.colors.accent : modernColors.primary[500];
-    }
-    if (variant === "glass") {
-      return theme ? theme.colors.text : modernColors.text.primary;
-    }
-    return "#FFFFFF";
+    if (variant === "outline") return semanticColors.text.primary;
+    if (variant === "ghost") return semanticColors.text.link;
+    if (variant === "secondary") return semanticColors.button.secondaryText;
+    if (variant === "glass") return semanticColors.text.primary;
+    return colors.white;
   };
 
-  // Size configuration
+  // Size configuration aligned with DESIGN.md
   function getSizeConfig() {
     const configs = {
       small: {
         height: 36,
-        paddingHorizontal: modernSpacing.md,
-        typography: modernTypography.button.small,
+        paddingHorizontal: spacing.md,
+        typography: textStyles.button,
         iconSize: 16,
       },
       medium: {
-        height: 44,
-        paddingHorizontal: modernSpacing.lg,
-        typography: modernTypography.button.medium,
+        height: touchTargets.minimum,
+        paddingHorizontal: spacing.lg,
+        typography: textStyles.button,
         iconSize: 20,
       },
       large: {
-        height: 56,
-        paddingHorizontal: modernSpacing.xl,
-        typography: modernTypography.button.large,
+        height: touchTargets.large,
+        paddingHorizontal: spacing.xl,
+        typography: textStyles.button,
         iconSize: 24,
       },
     };

@@ -31,12 +31,13 @@ import ModernInput from "../src/components/ui/ModernInput";
 import ModernHeader from "../src/components/ui/ModernHeader";
 import { BrandLogo } from "../src/components/branding/BrandLogo";
 import {
-  colors,
-  spacing,
-  typography,
-  borderRadius,
+  colors as unifiedColors,
+  semanticColors,
+  spacing as unifiedSpacing,
+  radius as unifiedRadius,
+  textStyles,
   shadows,
-} from "../src/theme/modernDesign";
+} from "../src/theme/unified";
 
 // Safe Animated View for Web
 const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
@@ -138,7 +139,7 @@ export default function LoginScreen() {
     username?: string;
     password?: string;
   }>({});
-  const logoMaxWidth = Math.min(width - spacing.xl * 2, 280);
+  const logoMaxWidth = Math.min(width - unifiedSpacing.xl * 2, 280);
 
   const pinInputRef = React.useRef<TextInput>(null);
 
@@ -306,7 +307,7 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <StatusBar style="dark" backgroundColor={colors.white} />
+      <StatusBar style="dark" backgroundColor={unifiedColors.white} />
 
       <ModernHeader
         showLogo
@@ -336,7 +337,7 @@ export default function LoginScreen() {
                     <Ionicons
                       name="person"
                       size={24}
-                      color={colors.primary[500]}
+                      color={unifiedColors.primary[500]}
                     />
                   </View>
                   <Text style={styles.userBadgeName}>
@@ -369,7 +370,7 @@ export default function LoginScreen() {
               entering={FadeInDown.duration(800).springify()}
               style={styles.formContainer}
             >
-              <ModernCard style={styles.loginCard} padding={spacing.lg}>
+              <ModernCard style={styles.loginCard} padding={unifiedSpacing.lg}>
                 {/* Mode Toggle */}
                 <View style={styles.modeToggle}>
                   <TouchableOpacity
@@ -385,7 +386,9 @@ export default function LoginScreen() {
                       name="keypad"
                       size={20}
                       color={
-                        loginMode === "pin" ? colors.white : colors.gray[600]
+                        loginMode === "pin"
+                          ? unifiedColors.white
+                          : unifiedColors.neutral[600]
                       }
                     />
                     <Text
@@ -414,8 +417,8 @@ export default function LoginScreen() {
                       size={20}
                       color={
                         loginMode === "credentials"
-                          ? colors.white
-                          : colors.gray[600]
+                          ? unifiedColors.white
+                          : unifiedColors.neutral[600]
                       }
                     />
                     <Text
@@ -490,7 +493,7 @@ export default function LoginScreen() {
                           <Ionicons
                             name="finger-print"
                             size={44}
-                            color={colors.primary[500]}
+                            color={unifiedColors.primary[500]}
                           />
                           <Text style={styles.biometricText}>
                             Unlock with Biometrics
@@ -586,15 +589,15 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.gray[50],
+    backgroundColor: unifiedColors.neutral[50],
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
+    paddingHorizontal: unifiedSpacing.lg,
+    paddingBottom: unifiedSpacing.xl,
   },
   contentContainer: {
     flex: 1,
@@ -605,75 +608,72 @@ const styles = StyleSheet.create({
   },
   welcomeSection: {
     alignItems: "center",
-    marginBottom: spacing["2xl"],
+    marginBottom: unifiedSpacing["2xl"],
   },
   welcomeTitle: {
-    fontSize: typography.fontSize["3xl"],
-    fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    ...textStyles.h3,
+    color: unifiedColors.neutral[900],
     textAlign: "center",
-    marginBottom: spacing.xs,
+    marginBottom: unifiedSpacing.xs,
   },
   welcomeSubtitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.regular,
-    color: colors.gray[600],
+    ...textStyles.body,
+    color: unifiedColors.neutral[600],
     textAlign: "center",
     lineHeight: 24,
   },
   formContainer: {
-    marginBottom: spacing.xl,
+    marginBottom: unifiedSpacing.xl,
   },
   loginCard: {
-    backgroundColor: colors.white,
+    backgroundColor: unifiedColors.white,
   },
   modeToggle: {
     flexDirection: "row",
-    marginBottom: spacing.lg,
-    backgroundColor: colors.gray[100],
-    borderRadius: borderRadius.md,
-    padding: spacing.xs,
+    marginBottom: unifiedSpacing.lg,
+    backgroundColor: unifiedColors.neutral[100],
+    borderRadius: unifiedRadius.md,
+    padding: unifiedSpacing.xs,
   },
   modeButton: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.sm,
-    gap: spacing.xs,
+    paddingVertical: unifiedSpacing.sm,
+    paddingHorizontal: unifiedSpacing.md,
+    borderRadius: unifiedRadius.sm,
+    gap: unifiedSpacing.xs,
   },
   modeButtonActive: {
-    backgroundColor: colors.primary[500],
+    backgroundColor: semanticColors.interactive.default,
     ...shadows.sm,
   },
   modeButtonInactive: {
-    backgroundColor: colors.transparent,
+    backgroundColor: unifiedColors.transparent,
   },
   modeButtonText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
+    ...textStyles.caption,
+    fontWeight: "500",
   },
   modeButtonTextActive: {
-    color: colors.white,
+    color: unifiedColors.white,
   },
   modeButtonTextInactive: {
-    color: colors.gray[600],
+    color: unifiedColors.neutral[600],
   },
   formTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[900],
+    ...textStyles.h5,
+    color: unifiedColors.neutral[900],
     textAlign: "center",
-    marginBottom: spacing.lg,
+    marginBottom: unifiedSpacing.lg,
   },
   pinDisplay: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    gap: spacing.md,
-    marginBottom: spacing["2xl"],
+    gap: unifiedSpacing.md,
+    marginBottom: unifiedSpacing["2xl"],
   },
   pinDot: {
     width: 16,
@@ -682,15 +682,15 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   pinDotEmpty: {
-    borderColor: colors.gray[300],
-    backgroundColor: colors.transparent,
+    borderColor: unifiedColors.neutral[300],
+    backgroundColor: unifiedColors.transparent,
   },
   pinDotFilled: {
-    borderColor: colors.primary[500],
-    backgroundColor: colors.primary[500],
+    borderColor: unifiedColors.primary[500],
+    backgroundColor: unifiedColors.primary[500],
   },
   pinDotActive: {
-    borderColor: colors.primary[400],
+    borderColor: unifiedColors.primary[400],
     borderWidth: 2,
     transform: [{ scale: 1.1 }],
   },
@@ -698,15 +698,14 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.primary[500],
+    backgroundColor: unifiedColors.primary[500],
   },
   formSubtitle: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.regular,
-    color: colors.gray[500],
+    ...textStyles.caption,
+    color: unifiedColors.neutral[500],
     textAlign: "center",
-    marginTop: -spacing.sm,
-    marginBottom: spacing.lg,
+    marginTop: -unifiedSpacing.sm,
+    marginBottom: unifiedSpacing.lg,
   },
   hiddenInput: {
     position: "absolute",
@@ -716,97 +715,97 @@ const styles = StyleSheet.create({
   },
   pinActions: {
     alignItems: "center",
-    gap: spacing.xl,
-    marginTop: spacing.lg,
+    gap: unifiedSpacing.xl,
+    marginTop: unifiedSpacing.lg,
   },
   biometricButton: {
     alignItems: "center",
-    padding: spacing.md,
+    padding: unifiedSpacing.md,
   },
   biometricText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
-    fontWeight: typography.fontWeight.medium,
-    marginTop: spacing.sm,
+    ...textStyles.caption,
+    color: unifiedColors.primary[600],
+    fontWeight: "500",
+    marginTop: unifiedSpacing.sm,
   },
   pinBottomActions: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.md,
+    gap: unifiedSpacing.md,
   },
   actionDivider: {
     width: 1,
     height: 14,
-    backgroundColor: colors.gray[300],
+    backgroundColor: unifiedColors.neutral[300],
   },
   switchAccountLink: {
-    fontSize: typography.fontSize.sm,
-    color: colors.primary[500],
-    fontWeight: typography.fontWeight.medium,
+    ...textStyles.caption,
+    color: unifiedColors.primary[500],
+    fontWeight: "500",
   },
   userBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
+    backgroundColor: unifiedColors.white,
+    paddingHorizontal: unifiedSpacing.md,
+    paddingVertical: unifiedSpacing.sm,
+    borderRadius: unifiedRadius.full,
     borderWidth: 1,
-    borderColor: colors.gray[200],
-    marginBottom: spacing.md,
+    borderColor: unifiedColors.neutral[200],
+    marginBottom: unifiedSpacing.md,
     ...shadows.sm,
   },
   userBadgeAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.primary[50],
+    backgroundColor: unifiedColors.primary[50],
     justifyContent: "center",
     alignItems: "center",
-    marginRight: spacing.sm,
+    marginRight: unifiedSpacing.sm,
   },
   userBadgeName: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[800],
+    ...textStyles.caption,
+    fontWeight: "600",
+    color: unifiedColors.neutral[800],
   },
   logoContainer: {
     width: "100%",
     minHeight: 112,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: spacing.lg,
+    marginBottom: unifiedSpacing.lg,
   },
   forgotLink: {
-    fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    ...textStyles.caption,
+    color: unifiedColors.neutral[500],
     textDecorationLine: "underline",
   },
   forgotPasswordContainer: {
     alignItems: "center",
-    marginTop: spacing.md,
+    marginTop: unifiedSpacing.md,
   },
   loginButton: {
-    marginTop: spacing.lg,
+    marginTop: unifiedSpacing.lg,
   },
   errorText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.error[600],
+    ...textStyles.caption,
+    color: semanticColors.status.error,
     textAlign: "center",
-    marginTop: spacing.sm,
+    marginTop: unifiedSpacing.sm,
   },
   footer: {
     alignItems: "center",
-    gap: spacing.xs,
+    gap: unifiedSpacing.xs,
   },
   versionText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.gray[500],
+    ...textStyles.caption,
+    fontWeight: "500",
+    color: unifiedColors.neutral[500],
   },
   footerText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.gray[400],
+    ...textStyles.captionSmall,
+    color: unifiedColors.neutral[400],
   },
 });

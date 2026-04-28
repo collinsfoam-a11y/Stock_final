@@ -166,6 +166,31 @@ export const semanticColors = {
     error: colors.error[500],
     info: colors.info[500],
   },
+
+  // Component-specific semantic colors
+  button: {
+    primary: colors.primary[500],
+    primaryText: colors.white,
+    secondary: colors.neutral[100],
+    secondaryText: colors.neutral[900],
+    outline: colors.neutral[200],
+    disabled: colors.neutral[200],
+    disabledText: colors.neutral[400],
+  },
+
+  card: {
+    background: colors.white,
+    border: colors.neutral[200],
+    shadow: "rgba(15, 23, 42, 0.08)",
+  },
+
+  input: {
+    background: colors.white,
+    border: colors.neutral[300],
+    focus: colors.primary[500],
+    placeholder: colors.neutral[400],
+    text: colors.neutral[900],
+  },
 } as const;
 
 // ==========================================
