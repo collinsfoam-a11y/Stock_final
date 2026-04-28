@@ -647,7 +647,13 @@ async def lifespan(app: FastAPI):  # noqa: C901
 
         # Use global activity_log_service
 
-        init_count_lines_api(activity_log_service, lock_service, snapshot_service, variant_service)
+        init_count_lines_api(
+            activity_log_service,
+            lock_service,
+            snapshot_service,
+            variant_service,
+            sql_connector,
+        )
         logger.info("✓ CountLines API initialized with dependencies (including VariantService)")
     except Exception as e:
         logger.error(f"Failed to initialize CountLines API: {str(e)}")
