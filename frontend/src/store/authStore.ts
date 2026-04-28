@@ -161,19 +161,13 @@ let localAuthenticationPromise:
   | Promise<typeof import("expo-local-authentication")>
   | null = null;
 
-const requireMockableModule = <TModule,>(specifier: string): TModule => {
-  // Jest `doMock` setups need synchronous resolution after mocks are registered.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require(specifier) as TModule;
-};
-
 const getApiClient = async () => {
   if (!apiClientPromise) {
     apiClientPromise = IS_TEST_ENV
       ? Promise.resolve(
-          requireMockableModule<typeof import("../services/httpClient")>(
-            "../services/httpClient",
-          ).default,
+          // Jest `doMock` setups need synchronous resolution after mocks are registered.
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          require("../services/httpClient").default as typeof import("../services/httpClient")["default"],
         )
       : import("../services/httpClient").then((module) => module.default);
   }
@@ -185,9 +179,9 @@ const getLocalAuthentication = async () => {
   if (!localAuthenticationPromise) {
     localAuthenticationPromise = IS_TEST_ENV
       ? Promise.resolve(
-          requireMockableModule<typeof import("expo-local-authentication")>(
-            "expo-local-authentication",
-          ),
+          // Jest `doMock` setups need synchronous resolution after mocks are registered.
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          require("expo-local-authentication") as typeof import("expo-local-authentication"),
         )
       : import("expo-local-authentication");
   }
@@ -278,17 +272,25 @@ const buildLastLoggedUser = (
 
 const syncOfflineQueueInBackground = async () => {
   const { useNetworkStore } = IS_TEST_ENV
-    ? requireMockableModule<typeof import("./networkStore")>("./networkStore")
+    ? {
+        // Jest `doMock` setups need synchronous resolution after mocks are registered.
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        useNetworkStore: require("./networkStore")
+          .useNetworkStore as typeof import("./networkStore")["useNetworkStore"],
+      }
     : await import("./networkStore");
   const networkState = useNetworkStore.getState();
   if (!networkState.isOnline) return;
 
   const { syncOfflineQueue } = IS_TEST_ENV
-    ? requireMockableModule<typeof import("../services/syncService")>(
-        "../services/syncService",
-      )
+    ? {
+        // Jest `doMock` setups need synchronous resolution after mocks are registered.
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        syncOfflineQueue: require("../services/syncService")
+          .syncOfflineQueue as typeof import("../services/syncService")["syncOfflineQueue"],
+      }
     : await import("../services/syncService");
-  syncOfflineQueue({ background: true }).catch((err) => {
+  syncOfflineQueue({ background: true }).catch((err: unknown) => {
     log.warn("Sync after auth failed", {
       error: err instanceof Error ? err.message : String(err),
     });
@@ -298,9 +300,12 @@ const syncOfflineQueueInBackground = async () => {
 const initializeNotificationsInBackground = async () => {
   try {
     const { NotificationService } = IS_TEST_ENV
-      ? requireMockableModule<typeof import("../services/utils/notificationService")>(
-          "../services/utils/notificationService",
-        )
+      ? {
+          // Jest `doMock` setups need synchronous resolution after mocks are registered.
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          NotificationService: require("../services/utils/notificationService")
+            .NotificationService as typeof import("../services/utils/notificationService")["NotificationService"],
+        }
       : await import("../services/utils/notificationService");
     await NotificationService.initialize();
   } catch (error) {
@@ -313,9 +318,12 @@ const initializeNotificationsInBackground = async () => {
 const unregisterNotificationsInBackground = async () => {
   try {
     const { NotificationService } = IS_TEST_ENV
-      ? requireMockableModule<typeof import("../services/utils/notificationService")>(
-          "../services/utils/notificationService",
-        )
+      ? {
+          // Jest `doMock` setups need synchronous resolution after mocks are registered.
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          NotificationService: require("../services/utils/notificationService")
+            .NotificationService as typeof import("../services/utils/notificationService")["NotificationService"],
+        }
       : await import("../services/utils/notificationService");
     await NotificationService.unregisterCurrentDevice();
   } catch (error) {
@@ -328,7 +336,12 @@ const unregisterNotificationsInBackground = async () => {
 const rehydrateFilterStoreForCurrentScope = async () => {
   try {
     const { rehydrateFilterStore } = IS_TEST_ENV
-      ? requireMockableModule<typeof import("./filterStore")>("./filterStore")
+      ? {
+          // Jest `doMock` setups need synchronous resolution after mocks are registered.
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          rehydrateFilterStore: require("./filterStore")
+            .rehydrateFilterStore as typeof import("./filterStore")["rehydrateFilterStore"],
+        }
       : await import("./filterStore");
     await rehydrateFilterStore();
   } catch (error) {
@@ -341,7 +354,12 @@ const rehydrateFilterStoreForCurrentScope = async () => {
 const resetFilterStoreForLoggedOutUser = async () => {
   try {
     const { resetFilterStore } = IS_TEST_ENV
-      ? requireMockableModule<typeof import("./filterStore")>("./filterStore")
+      ? {
+          // Jest `doMock` setups need synchronous resolution after mocks are registered.
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          resetFilterStore: require("./filterStore")
+            .resetFilterStore as typeof import("./filterStore")["resetFilterStore"],
+        }
       : await import("./filterStore");
     await resetFilterStore();
   } catch (error) {
@@ -661,9 +679,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const { clearNotificationStore } = IS_TEST_ENV
-        ? requireMockableModule<typeof import("./notificationStore")>(
-            "./notificationStore",
-          )
+        ? {
+            // Jest `doMock` setups need synchronous resolution after mocks are registered.
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            clearNotificationStore: require("./notificationStore")
+              .clearNotificationStore as typeof import("./notificationStore")["clearNotificationStore"],
+          }
         : await import("./notificationStore");
       await clearNotificationStore();
     } catch {
@@ -672,9 +693,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const { queryClient } = IS_TEST_ENV
-        ? requireMockableModule<typeof import("../services/queryClient")>(
-            "../services/queryClient",
-          )
+        ? {
+            // Jest `doMock` setups need synchronous resolution after mocks are registered.
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            queryClient: require("../services/queryClient")
+              .queryClient as typeof import("../services/queryClient")["queryClient"],
+          }
         : await import("../services/queryClient");
       await queryClient.cancelQueries();
       queryClient.clear();
@@ -684,9 +708,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const { clearScanSessionStore } = IS_TEST_ENV
-        ? requireMockableModule<typeof import("./scanSessionStore")>(
-            "./scanSessionStore",
-          )
+        ? {
+            // Jest `doMock` setups need synchronous resolution after mocks are registered.
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            clearScanSessionStore: require("./scanSessionStore")
+              .clearScanSessionStore as typeof import("./scanSessionStore")["clearScanSessionStore"],
+          }
         : await import("./scanSessionStore");
       await clearScanSessionStore();
     } catch {
@@ -695,9 +722,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const { RecentItemsService } = IS_TEST_ENV
-        ? requireMockableModule<typeof import("../services/enhancedFeatures")>(
-            "../services/enhancedFeatures",
-          )
+        ? {
+            // Jest `doMock` setups need synchronous resolution after mocks are registered.
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            RecentItemsService: require("../services/enhancedFeatures")
+              .RecentItemsService as typeof import("../services/enhancedFeatures")["RecentItemsService"],
+          }
         : await import("../services/enhancedFeatures");
       await RecentItemsService.clearRecent();
     } catch {
@@ -706,9 +736,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const { clearAllCache } = IS_TEST_ENV
-        ? requireMockableModule<typeof import("../services/offline/offlineStorage")>(
-            "../services/offline/offlineStorage",
-          )
+        ? {
+            // Jest `doMock` setups need synchronous resolution after mocks are registered.
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            clearAllCache: require("../services/offline/offlineStorage")
+              .clearAllCache as typeof import("../services/offline/offlineStorage")["clearAllCache"],
+          }
         : await import("../services/offline/offlineStorage");
       await clearAllCache();
     } catch {
