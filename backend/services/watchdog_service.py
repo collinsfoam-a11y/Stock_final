@@ -50,7 +50,7 @@ class WatchdogService:
                 )
 
         except Exception as e:
-            logger.error(f"Watchdog velocity check failed: {e}")
+            logger.exception(f"Watchdog velocity check failed unexpectedly: {e}")
 
     async def check_brute_force_aggregation(
         self, time_window_seconds: int = 300, max_failures: int = 20
@@ -77,7 +77,7 @@ class WatchdogService:
                 )
 
         except Exception as e:
-            logger.error(f"Watchdog brute force check failed: {e}")
+            logger.exception(f"Watchdog brute force check failed unexpectedly: {e}")
 
     async def check_system_health(self):
         """
@@ -95,7 +95,8 @@ class WatchdogService:
                     f"High DB Latency: {latency:.2f}ms", details={"latency_ms": latency}
                 )
         except Exception as e:
-            await self._raise_alert(f"DB Health Check Failed: {e}")
+            logger.exception("DB Health Check Failed")
+            await self._raise_alert(f"DB Health Check Failed: {type(e).__name__}: {e}")
 
     async def _raise_alert(self, message: str, details: Dict[str, Any] = None):
         """
@@ -109,7 +110,7 @@ class WatchdogService:
                 details={"message": message, "data": details or {}},
             )
         except Exception as e:
-            logger.error(f"Failed to log watchdog alert: {e}")
+            logger.error(f"Failed to log watchdog alert to audit service: {e}", exc_info=True)
 
     async def run_all_checks(self):
         """Run all monitoring checks."""

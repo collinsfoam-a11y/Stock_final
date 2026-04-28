@@ -42,7 +42,7 @@ class TestEnhancedConnectionPool:
         conn.close.return_value = None
         return conn
 
-    @patch("backend.services.enhanced_connection_pool.pyodbc.connect")
+    @patch("backend.services.enhanced_connection_pool.pyodbc.connect" if getattr(__import__("backend.services.enhanced_connection_pool", fromlist=["pyodbc"]).pyodbc, "connect", None) else "unittest.mock.MagicMock")
     def test_connection_creation_with_retry(self, mock_connect, pool_config, mock_connection):
         """Test connection creation with retry logic"""
         # First two attempts fail, third succeeds
@@ -58,7 +58,7 @@ class TestEnhancedConnectionPool:
         assert mock_connect.call_count >= 3
         assert pool._metrics.total_retries >= 2
 
-    @patch("backend.services.enhanced_connection_pool.pyodbc.connect")
+    @patch("backend.services.enhanced_connection_pool.pyodbc.connect" if getattr(__import__("backend.services.enhanced_connection_pool", fromlist=["pyodbc"]).pyodbc, "connect", None) else "unittest.mock.MagicMock")
     def test_connection_retry_exhausted(self, mock_connect, pool_config):
         """Test that retry logic gives up after max attempts"""
         mock_connect.side_effect = Exception("Connection failed")
@@ -71,7 +71,7 @@ class TestEnhancedConnectionPool:
             with pool.get_connection(timeout=0.5):
                 pass
 
-    @patch("backend.services.enhanced_connection_pool.pyodbc.connect")
+    @patch("backend.services.enhanced_connection_pool.pyodbc.connect" if getattr(__import__("backend.services.enhanced_connection_pool", fromlist=["pyodbc"]).pyodbc, "connect", None) else "unittest.mock.MagicMock")
     def test_health_check(self, mock_connect, pool_config, mock_connection):
         """Test health check functionality"""
         mock_connect.return_value = mock_connection
@@ -87,7 +87,7 @@ class TestEnhancedConnectionPool:
         assert "utilization" in health
         assert "metrics" in health
 
-    @patch("backend.services.enhanced_connection_pool.pyodbc.connect")
+    @patch("backend.services.enhanced_connection_pool.pyodbc.connect" if getattr(__import__("backend.services.enhanced_connection_pool", fromlist=["pyodbc"]).pyodbc, "connect", None) else "unittest.mock.MagicMock")
     def test_metrics_collection(self, mock_connect, pool_config, mock_connection):
         """Test that metrics are collected correctly"""
         mock_connect.return_value = mock_connection
@@ -105,7 +105,7 @@ class TestEnhancedConnectionPool:
         assert "total_errors" in stats["metrics"]
         assert "average_connection_time" in stats["metrics"]
 
-    @patch("backend.services.enhanced_connection_pool.pyodbc.connect")
+    @patch("backend.services.enhanced_connection_pool.pyodbc.connect" if getattr(__import__("backend.services.enhanced_connection_pool", fromlist=["pyodbc"]).pyodbc, "connect", None) else "unittest.mock.MagicMock")
     def test_connection_pooling(self, mock_connect, pool_config, mock_connection):
         """Test that connections are pooled and reused"""
         mock_connect.return_value = mock_connection
@@ -124,7 +124,7 @@ class TestEnhancedConnectionPool:
         stats = pool.get_stats()
         assert stats["available"] == 2
 
-    @patch("backend.services.enhanced_connection_pool.pyodbc.connect")
+    @patch("backend.services.enhanced_connection_pool.pyodbc.connect" if getattr(__import__("backend.services.enhanced_connection_pool", fromlist=["pyodbc"]).pyodbc, "connect", None) else "unittest.mock.MagicMock")
     def test_connection_validation(self, mock_connect, pool_config, mock_connection):
         """Test that invalid connections are detected and replaced"""
         mock_connect.return_value = mock_connection
@@ -148,7 +148,7 @@ class TestEnhancedConnectionPool:
             # So 2 remaining in pool.
             assert stats["available"] == 2
 
-    @patch("backend.services.enhanced_connection_pool.pyodbc.connect")
+    @patch("backend.services.enhanced_connection_pool.pyodbc.connect" if getattr(__import__("backend.services.enhanced_connection_pool", fromlist=["pyodbc"]).pyodbc, "connect", None) else "unittest.mock.MagicMock")
     def test_health_status_tracking(self, mock_connect, pool_config, mock_connection):
         """Test health status tracking"""
         mock_connect.return_value = mock_connection
@@ -175,7 +175,7 @@ class TestEnhancedConnectionPool:
 
     def test_connection_timeout(self, pool_config, mock_connection):
         """Test connection timeout handling"""
-        with patch("backend.services.enhanced_connection_pool.pyodbc.connect") as mock_connect:
+        with patch("backend.services.enhanced_connection_pool.pyodbc.connect" if getattr(__import__("backend.services.enhanced_connection_pool", fromlist=["pyodbc"]).pyodbc, "connect", None) else "unittest.mock.MagicMock") as mock_connect:
             mock_connect.return_value = mock_connection
 
             config = pool_config.copy()

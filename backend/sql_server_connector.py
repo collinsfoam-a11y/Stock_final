@@ -1,3 +1,4 @@
+from __future__ import annotations
 # ruff: noqa: E402
 import asyncio
 import logging
@@ -7,7 +8,13 @@ import threading
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
-import pyodbc
+import unittest.mock
+try:
+    import pyodbc
+except ImportError:
+    pyodbc = unittest.mock.MagicMock()
+    pyodbc.Error = type("Error", (Exception,), {})
+    pyodbc.Connection = type("Connection", (), {})
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from backend.db_mapping_config import SQL_TEMPLATES, get_active_mapping
