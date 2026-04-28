@@ -250,9 +250,9 @@ async def get_recount_request(
         created_at=recount["created_at"].isoformat() if recount.get("created_at") else "",
         updated_at=recount["updated_at"].isoformat() if recount.get("updated_at") else "",
         due_date=recount.get("due_date"),
-        completed_at=recount.get("completed_at").isoformat()
-        if recount.get("completed_at")
-        else None,
+        completed_at=(
+            recount.get("completed_at").isoformat() if recount.get("completed_at") else None
+        ),
         result_qty=recount.get("result_qty"),
     )
 
@@ -333,9 +333,13 @@ async def complete_recount_request(
         created_by = str(recount.get("created_by") or "").strip()
         if not is_privileged:
             if assigned_to and assigned_to != username:
-                raise HTTPException(status_code=403, detail="Only assigned staff can complete recount")
+                raise HTTPException(
+                    status_code=403, detail="Only assigned staff can complete recount"
+                )
             if not assigned_to and created_by and created_by != username:
-                raise HTTPException(status_code=403, detail="Not authorized to complete this recount")
+                raise HTTPException(
+                    status_code=403, detail="Not authorized to complete this recount"
+                )
 
         now_dt = datetime.now(timezone.utc).replace(tzinfo=None)
         update_data: dict[str, object] = {
@@ -424,7 +428,9 @@ async def complete_recount_request(
                     or existing_line.get("id")
                     or previous_line_id
                 )
-                new_line["recount_iteration"] = int(existing_line.get("recount_iteration", 0) or 0) + 1
+                new_line["recount_iteration"] = (
+                    int(existing_line.get("recount_iteration", 0) or 0) + 1
+                )
 
                 write_service = CountLineWriteService(db)
                 tx_context = {

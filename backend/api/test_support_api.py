@@ -121,7 +121,11 @@ def _serialize_document(document: Optional[dict[str, Any]]) -> Optional[dict[str
 
 
 def _serialize_documents(documents: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [serialized for serialized in (_serialize_document(document) for document in documents) if serialized]
+    return [
+        serialized
+        for serialized in (_serialize_document(document) for document in documents)
+        if serialized
+    ]
 
 
 def _require_synthetic_item_code(item_code: str) -> str:
@@ -377,10 +381,13 @@ async def _resolve_fixture_scope_context(
     db: Any, payload: SyntheticCleanupRequest
 ) -> dict[str, Any]:
     test_run_id = _normalize_test_run_id(payload.test_run_id)
-    item_codes = [_require_synthetic_item_code(code) for code in _normalize_list(payload.item_codes)]
+    item_codes = [
+        _require_synthetic_item_code(code) for code in _normalize_list(payload.item_codes)
+    ]
     barcodes = _normalize_list(payload.barcodes)
     warehouse_fragments = [
-        _require_synthetic_session_marker(marker) for marker in _normalize_list(payload.warehouse_fragments)
+        _require_synthetic_session_marker(marker)
+        for marker in _normalize_list(payload.warehouse_fragments)
     ]
     explicit_session_ids = _normalize_list(payload.session_ids)
     explicit_count_line_ids = _normalize_list(payload.count_line_ids)
@@ -493,7 +500,9 @@ async def upsert_synthetic_erp_item(
         "floor": payload.floor,
         "rack": payload.rack,
         "uom_name": payload.uom_name,
-        "sales_price": float(payload.sales_price) if payload.sales_price is not None else payload.mrp,
+        "sales_price": (
+            float(payload.sales_price) if payload.sales_price is not None else payload.mrp
+        ),
         "manual_barcode": payload.manual_barcode,
         "verified": False,
         "verified_qty": None,
@@ -545,7 +554,9 @@ async def patch_synthetic_erp_item(
     if not existing:
         raise HTTPException(status_code=404, detail="Synthetic ERP item not found")
     if str(existing.get("test_run_id") or "") != test_run_id:
-        raise HTTPException(status_code=409, detail="Synthetic ERP item belongs to a different test run")
+        raise HTTPException(
+            status_code=409, detail="Synthetic ERP item belongs to a different test run"
+        )
 
     update_data = payload.model_dump(exclude_unset=True)
     update_data.pop("test_run_id", None)

@@ -532,9 +532,7 @@ class TestCreateCountLine:
         assert result["baseline_hash"] == "snapshot-hash"
 
     @pytest.mark.asyncio
-    async def test_create_count_line_reuses_rejected_count_line(
-        self, mock_db, line_data, erp_item
-    ):
+    async def test_create_count_line_reuses_rejected_count_line(self, mock_db, line_data, erp_item):
         mock_db.sessions.find_one.return_value = {
             "id": "session123",
             "session_id": "session123",

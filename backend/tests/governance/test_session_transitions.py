@@ -57,10 +57,7 @@ async def test_update_session_status_rejects_invalid_transition():
             response = await client.put("/api/sessions/sess_123/status?status=COMPLETED")
             assert response.status_code == 409
             detail = response.json()["detail"]
-            assert (
-                "Invalid session transition" in detail
-                or "finalize endpoint" in detail
-            )
+            assert "Invalid session transition" in detail or "finalize endpoint" in detail
         mock_db.verification_sessions.update_one.assert_not_called()
     finally:
         app.dependency_overrides.clear()

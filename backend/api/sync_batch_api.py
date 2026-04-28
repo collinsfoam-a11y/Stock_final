@@ -614,8 +614,8 @@ async def _apply_bulk_session_operation(
 def _extract_single_session_operation_id(
     session_data: dict[str, Any], id_mapping: dict[str, str]
 ) -> str:
-    raw_session_id = session_data.get("sessionId") or session_data.get("session_id") or session_data.get(
-        "id"
+    raw_session_id = (
+        session_data.get("sessionId") or session_data.get("session_id") or session_data.get("id")
     )
     resolved_session_id = _resolve_session_id(raw_session_id, id_mapping)
     if not resolved_session_id:
@@ -679,13 +679,17 @@ def _normalize_session_type(value: Any) -> str:
     return normalized_type
 
 
-async def _find_session_by_offline_id(db: Any, offline_id: Optional[Any]) -> Optional[dict[str, Any]]:
+async def _find_session_by_offline_id(
+    db: Any, offline_id: Optional[Any]
+) -> Optional[dict[str, Any]]:
     if not offline_id:
         return None
     return await db.sessions.find_one({"offline_id": str(offline_id)})
 
 
-async def _find_existing_open_session(db: Any, staff_user: str, warehouse: str) -> Optional[dict[str, Any]]:
+async def _find_existing_open_session(
+    db: Any, staff_user: str, warehouse: str
+) -> Optional[dict[str, Any]]:
     return await db.sessions.find_one(
         {
             "staff_user": staff_user,
@@ -751,14 +755,13 @@ async def _assert_session_accepts_offline_count(db: Any, session_id: str) -> dic
 def _enforce_required_count_line_context(line_data: dict[str, Any]) -> None:
     location_id = str(line_data.get("location_id") or "").strip()
     floor_id = str(
-        line_data.get("floor_id")
-        or line_data.get("floor_no")
-        or line_data.get("floor")
-        or ""
+        line_data.get("floor_id") or line_data.get("floor_no") or line_data.get("floor") or ""
     ).strip()
     rack_id = str(line_data.get("rack_id") or line_data.get("rack_no") or "").strip()
     if not location_id or not floor_id or not rack_id:
-        raise ValueError("CRITICAL: location_id, floor_id, rack_id are mandatory for count-line sync")
+        raise ValueError(
+            "CRITICAL: location_id, floor_id, rack_id are mandatory for count-line sync"
+        )
     line_data["location_id"] = location_id
     line_data["floor_id"] = floor_id
     line_data["rack_id"] = rack_id
@@ -848,7 +851,10 @@ def _collect_risk_flags(
         risk_flags.append("MRP_CHANGE_WITHOUT_REASON")
 
     photo_required = (
-        abs(variance) > 100 or variance_percent > 50 or abs(mrp_change_percent) > 20 or erp_mrp > 10000
+        abs(variance) > 100
+        or variance_percent > 50
+        or abs(mrp_change_percent) > 20
+        or erp_mrp > 10000
     )
     has_photo = bool(line_data.get("photo_base64")) or bool(line_data.get("photo_proofs"))
     if photo_required and not has_photo:
@@ -958,9 +964,7 @@ async def _handle_duplicate_count_line(
 
     previous_line_id = extract_document_id(existing_duplicate) or str(existing_duplicate.get("_id"))
     root_recount_id = (
-        existing_duplicate.get("recount_of_id")
-        or existing_duplicate.get("id")
-        or previous_line_id
+        existing_duplicate.get("recount_of_id") or existing_duplicate.get("id") or previous_line_id
     )
     new_line_data = dict(line_data)
     # Never carry legacy Mongo _id into new version inserts.
@@ -976,7 +980,9 @@ async def _handle_duplicate_count_line(
     new_line_data["assigned_to"] = None
     new_line_data["recount_requested_at"] = None
     new_line_data["recount_requested_by"] = None
-    new_line_data["recount_iteration"] = int(existing_duplicate.get("recount_iteration", 0) or 0) + 1
+    new_line_data["recount_iteration"] = (
+        int(existing_duplicate.get("recount_iteration", 0) or 0) + 1
+    )
     new_line_data["version"] = int(existing_duplicate.get("version", 1) or 1) + 1
     new_line_data["previous_version_id"] = previous_line_id
     new_line_data["recount_of_id"] = root_recount_id
@@ -1076,8 +1082,5 @@ async def _process_legacy_operations(
 ) -> BatchSyncResponse:
     raise HTTPException(
         status_code=410,
-        detail=(
-            "CRITICAL: Legacy operations-based sync is disabled. "
-            "Use records-based sync only."
-        ),
+        detail=("CRITICAL: Legacy operations-based sync is disabled. Use records-based sync only."),
     )

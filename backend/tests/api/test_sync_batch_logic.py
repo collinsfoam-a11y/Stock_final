@@ -79,7 +79,9 @@ async def test_process_count_line_op_accepts_non_dict_audit_metadata(monkeypatch
             return dict(fake_session)
 
     monkeypatch.setattr("backend.api.sync_batch_api.SessionLifecycleService", _LifecycleService)
-    monkeypatch.setattr("backend.api.sync_batch_api.CountLineWriteService", lambda _db: write_service)
+    monkeypatch.setattr(
+        "backend.api.sync_batch_api.CountLineWriteService", lambda _db: write_service
+    )
 
     monkeypatch.setattr(
         "backend.api.sync_batch_api.find_duplicate_count_line",
@@ -130,7 +132,9 @@ async def test_process_count_line_op_drops_object_id_from_recount_update(monkeyp
             return dict(fake_session)
 
     monkeypatch.setattr("backend.api.sync_batch_api.SessionLifecycleService", _LifecycleService)
-    monkeypatch.setattr("backend.api.sync_batch_api.CountLineWriteService", lambda _db: write_service)
+    monkeypatch.setattr(
+        "backend.api.sync_batch_api.CountLineWriteService", lambda _db: write_service
+    )
 
     monkeypatch.setattr(
         "backend.api.sync_batch_api.find_duplicate_count_line",

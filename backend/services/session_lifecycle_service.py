@@ -255,7 +255,9 @@ class SessionLifecycleService:
 
         await self.validation_service.validate_session(created_doc)
         kwargs = self._kwargs(db_session)
-        await self._execute_authorized_write(lambda: self.db.sessions.insert_one(created_doc, **kwargs))
+        await self._execute_authorized_write(
+            lambda: self.db.sessions.insert_one(created_doc, **kwargs)
+        )
 
         mirror_doc = {
             "session_id": created_doc["id"],
@@ -519,8 +521,8 @@ class SessionLifecycleService:
             lambda: self.db.recount_requests.insert_one(created_doc, **kwargs)
         )
         created_doc["_id"] = getattr(result, "inserted_id", None)
-        created_doc["id"] = str(created_doc["_id"]) if created_doc.get("_id") else str(
-            recount_doc.get("id") or ""
+        created_doc["id"] = (
+            str(created_doc["_id"]) if created_doc.get("_id") else str(recount_doc.get("id") or "")
         )
 
         await self.audit_service.log_write_event(
@@ -544,9 +546,7 @@ class SessionLifecycleService:
         if allowed_targets is None:
             raise GovernanceViolation(f"CRITICAL: Unknown recount status '{current}'")
         if target not in allowed_targets and target != current:
-            raise GovernanceViolation(
-                f"CRITICAL: Invalid recount transition {current} -> {target}"
-            )
+            raise GovernanceViolation(f"CRITICAL: Invalid recount transition {current} -> {target}")
 
     async def transition_recount_request(
         self,
@@ -584,8 +584,10 @@ class SessionLifecycleService:
         update_fields["status"] = normalized_target
         update_fields.setdefault("updated_at", now_dt)
         kwargs = self._kwargs(db_session)
-        lookup = {"_id": recount["_id"]} if recount.get("_id") is not None else self._recount_lookup(
-            recount_id
+        lookup = (
+            {"_id": recount["_id"]}
+            if recount.get("_id") is not None
+            else self._recount_lookup(recount_id)
         )
 
         await self._execute_authorized_write(
@@ -629,7 +631,10 @@ class SessionLifecycleService:
 
         kwargs = self._kwargs(db_session)
         session = await self.ensure_session_exists(session_id, db_session=db_session)
-        if session.get("finalized_at") or normalize_session_status(session.get("status")) == "FINALIZED":
+        if (
+            session.get("finalized_at")
+            or normalize_session_status(session.get("status")) == "FINALIZED"
+        ):
             raise GovernanceViolation("Session is finalized. Mutation blocked.")
 
         current = normalize_session_status(session.get("status"))
@@ -650,7 +655,9 @@ class SessionLifecycleService:
             }
         )
 
-        lines = await self.db.count_lines.find({"session_id": session_id}, **kwargs).to_list(length=50000)
+        lines = await self.db.count_lines.find({"session_id": session_id}, **kwargs).to_list(
+            length=50000
+        )
         blocking_lines = [line for line in lines if is_blocking_finalization(line)]
         if blocking_lines:
             raise GovernanceViolation(

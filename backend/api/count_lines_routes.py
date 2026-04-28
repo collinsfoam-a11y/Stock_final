@@ -27,7 +27,10 @@ from backend.services.canonical_inventory import (
     materialize_count_line_review_state,
     recompute_session_totals,
 )
-from backend.services.count_line_write_service import CountLineGovernanceDecision, CountLineWriteService
+from backend.services.count_line_write_service import (
+    CountLineGovernanceDecision,
+    CountLineWriteService,
+)
 from backend.services.lock_service import LockService, ResourceLockedError
 from backend.services.logic_guard import build_request_context, enforce_session_logic
 from backend.services.notification_service import NotificationService
@@ -429,7 +432,9 @@ async def _get_erp_item_for_count_line(db: Any, line_data: CountLineCreate) -> d
     return erp_item
 
 
-async def _get_erp_item_for_existing_count_line(db: Any, count_line: dict[str, Any]) -> dict[str, Any]:
+async def _get_erp_item_for_existing_count_line(
+    db: Any, count_line: dict[str, Any]
+) -> dict[str, Any]:
     barcode = count_line.get("barcode")
     if barcode:
         result_item = db.erp_items.find_one({"barcode": barcode})
@@ -620,10 +625,7 @@ def _build_count_line_document(
     version = int((recount_update_target or {}).get("version", 1) or 1) + (
         1 if recount_update_target else 0
     )
-    idempotency_key = (
-        _normalize_idempotency_key(line_data.idempotency_key)
-        or count_line_id
-    )
+    idempotency_key = _normalize_idempotency_key(line_data.idempotency_key) or count_line_id
     counted_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
     count_line = {
@@ -656,9 +658,9 @@ def _build_count_line_document(
         "manufacturing_date": line_data.manufacturing_date,
         "mfg_date_format": line_data.mfg_date_format.value if line_data.mfg_date_format else None,
         "expiry_date": line_data.expiry_date,
-        "expiry_date_format": line_data.expiry_date_format.value
-        if line_data.expiry_date_format
-        else None,
+        "expiry_date_format": (
+            line_data.expiry_date_format.value if line_data.expiry_date_format else None
+        ),
         "non_returnable_damaged_qty": line_data.non_returnable_damaged_qty,
         "correction_reason": (
             line_data.correction_reason.model_dump() if line_data.correction_reason else None
@@ -712,9 +714,9 @@ def _build_count_line_document(
         "recount_requested_by": None,
         "assigned_to": None,
     }
-    count_line["recount_iteration"] = int((recount_update_target or {}).get("recount_iteration", 0) or 0) + (
-        1 if recount_update_target else 0
-    )
+    count_line["recount_iteration"] = int(
+        (recount_update_target or {}).get("recount_iteration", 0) or 0
+    ) + (1 if recount_update_target else 0)
 
     return count_line, counted_at
 
@@ -1507,10 +1509,10 @@ async def approve_count_line(
 
         write_service = _get_count_line_write_service(db)
         result = await write_service.process_write(
-        {
-            "operation": "update_one",
-            "filter": {"_id": count_line["_id"]},
-            "update": {
+            {
+                "operation": "update_one",
+                "filter": {"_id": count_line["_id"]},
+                "update": {
                     "$set": {
                         "status": "approved",
                         "approval_status": "APPROVED",
@@ -1519,14 +1521,14 @@ async def approve_count_line(
                         "approval_note": request.notes if request else None,
                         "rejection_reason": None,
                         "assigned_to": None,
-                }
+                    }
+                },
             },
-        },
-        context={
-            "session_id": str(count_line.get("session_id") or ""),
-            "governance_mode": "mutable_session",
-        },
-    )
+            context={
+                "session_id": str(count_line.get("session_id") or ""),
+                "governance_mode": "mutable_session",
+            },
+        )
 
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Count line not found")
@@ -1616,10 +1618,10 @@ async def reject_count_line(
 
         write_service = _get_count_line_write_service(db)
         result = await write_service.process_write(
-        {
-            "operation": "update_one",
-            "filter": {"_id": count_line["_id"]},
-            "update": {
+            {
+                "operation": "update_one",
+                "filter": {"_id": count_line["_id"]},
+                "update": {
                     "$set": {
                         "status": "rejected",
                         "approval_status": "REJECTED",
@@ -1632,14 +1634,14 @@ async def reject_count_line(
                         "recount_requested_at": rejected_at,
                         "recount_requested_by": current_user["username"],
                         "assigned_to": assigned_to,
-                }
+                    }
+                },
             },
-        },
-        context={
-            "session_id": str(count_line.get("session_id") or ""),
-            "governance_mode": "mutable_session",
-        },
-    )
+            context={
+                "session_id": str(count_line.get("session_id") or ""),
+                "governance_mode": "mutable_session",
+            },
+        )
 
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Count line not found")
@@ -2252,14 +2254,18 @@ async def create_count_lines_batch(
                     ),
                 }
             )
-            count_line, _counted_at, _governance, _risk_flags, _financial_impact = (
-                await _create_and_persist_count_line(
-                    db,
-                    session=session,
-                    line_data=enriched_line,
-                    current_user=current_user,
-                    write_service=write_service,
-                )
+            (
+                count_line,
+                _counted_at,
+                _governance,
+                _risk_flags,
+                _financial_impact,
+            ) = await _create_and_persist_count_line(
+                db,
+                session=session,
+                line_data=enriched_line,
+                current_user=current_user,
+                write_service=write_service,
             )
             results.append({"index": idx, "id": str(count_line.get("id") or ""), "success": True})
         except Exception as e:

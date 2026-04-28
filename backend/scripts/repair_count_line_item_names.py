@@ -101,7 +101,12 @@ async def _session_is_finalized(db: AsyncIOMotorDatabase, session_id: str) -> bo
     if not session:
         return False
     status = str(session.get("status") or "").strip().upper()
-    return bool(session.get("finalized_at")) or status in {"FINALIZED", "COMPLETED", "CLOSED", "CANCELLED"}
+    return bool(session.get("finalized_at")) or status in {
+        "FINALIZED",
+        "COMPLETED",
+        "CLOSED",
+        "CANCELLED",
+    }
 
 
 async def repair_item_names(

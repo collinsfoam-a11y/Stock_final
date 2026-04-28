@@ -345,7 +345,9 @@ class SyncConflictsService:
                     logger.warning("Session conflict target not found: %s", entity_id)
                     return
 
-                session_id = str(session_doc.get("id") or session_doc.get("session_id") or entity_id)
+                session_id = str(
+                    session_doc.get("id") or session_doc.get("session_id") or entity_id
+                )
                 fields = self._sanitize_session_resolution_fields(dict(data))
                 status = fields.pop("status", None)
                 if isinstance(status, str) and status.strip():

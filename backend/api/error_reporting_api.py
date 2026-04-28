@@ -112,7 +112,9 @@ async def report_error(
             extra={
                 "error_message": _safe_log_value(error.message, max_length=200),
                 "severity": _safe_log_value(error.severity),
-                "context_keys": sorted(error.context.keys()) if isinstance(error.context, dict) else [],
+                "context_keys": (
+                    sorted(error.context.keys()) if isinstance(error.context, dict) else []
+                ),
                 "user_id": _safe_log_value(error.user_id),
             },
         )
@@ -400,7 +402,11 @@ async def notify_admin_critical_error(error: ErrorReport):
             "CRITICAL ERROR: %s - %s",
             _safe_log_value(error.type),
             _safe_log_value(error.message, max_length=200),
-            extra={"context_keys": sorted(error.context.keys()) if isinstance(error.context, dict) else []},
+            extra={
+                "context_keys": (
+                    sorted(error.context.keys()) if isinstance(error.context, dict) else []
+                )
+            },
         )
 
         # Persist a notification record for admin dashboards (best-effort).

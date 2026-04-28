@@ -101,7 +101,9 @@ class SQLVerificationService:
         except Exception as e:
             logger.error(f"Governance event insert failed for {item_code}: {str(e)}")
 
-    def _validate_sql_qty_or_error(self, item_code: str, sql_qty: float) -> Optional[Dict[str, Any]]:
+    def _validate_sql_qty_or_error(
+        self, item_code: str, sql_qty: float
+    ) -> Optional[Dict[str, Any]]:
         if isinstance(sql_qty, bool) or not isinstance(sql_qty, (int, float)):
             raise SQLInvalidNumericError("Non-numeric SQL result")
         if not math.isfinite(sql_qty):
@@ -117,13 +119,17 @@ class SQLVerificationService:
             item_code=item_code,
         )
 
-    def _warn_high_latency_if_needed(self, item_code: str, latency_ms: float, max_latency_ms: float) -> None:
+    def _warn_high_latency_if_needed(
+        self, item_code: str, latency_ms: float, max_latency_ms: float
+    ) -> None:
         if latency_ms <= max_latency_ms:
             return
         logger.warning(f"PERFORMANCE: SQL Latency High ({latency_ms:.2f}ms) for {item_code}")
 
     async def _load_mongo_item_snapshot(self, item_code: str) -> Optional[dict[str, Any]]:
-        mongo_item = await db.erp_items.find_one({"$or": [{"item_code": item_code}, {"barcode": item_code}]})
+        mongo_item = await db.erp_items.find_one(
+            {"$or": [{"item_code": item_code}, {"barcode": item_code}]}
+        )
         if mongo_item:
             return mongo_item
         logger.warning(f"Item {item_code} not found in Mongo Ledger")
@@ -715,7 +721,9 @@ class SQLVerificationService:
 
         batch_start = time.perf_counter()
         try:
-            quantities = await asyncio.to_thread(self.sql_connector.get_item_quantities_only, item_codes)
+            quantities = await asyncio.to_thread(
+                self.sql_connector.get_item_quantities_only, item_codes
+            )
             latency_ms = (time.perf_counter() - batch_start) * 1000
             return quantities, None, latency_ms
         except DatabaseConnectionError as exc:

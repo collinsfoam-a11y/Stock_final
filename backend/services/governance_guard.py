@@ -102,7 +102,9 @@ def _extract_session_id(context: dict[str, Any]) -> str:
     return ""
 
 
-def _extract_context_fields(context: dict[str, Any]) -> tuple[Optional[str], Optional[str], Optional[str]]:
+def _extract_context_fields(
+    context: dict[str, Any],
+) -> tuple[Optional[str], Optional[str], Optional[str]]:
     source = context.get("document")
     if not isinstance(source, dict):
         source = context.get("count_line")

@@ -65,7 +65,9 @@ class UnknownItemService:
             raise HTTPException(status_code=400, detail="Target item_code is required")
 
         session_id = str(unknown.get("session_id") or "").strip()
-        session = await self.lifecycle_service.ensure_session_active(session_id, db_session=db_session)
+        session = await self.lifecycle_service.ensure_session_active(
+            session_id, db_session=db_session
+        )
 
         location_id = str(unknown.get("location_id") or "").strip()
         floor_id = str(unknown.get("floor_id") or unknown.get("floor_no") or "").strip()
@@ -201,7 +203,9 @@ class UnknownItemService:
         async with mongo_transaction(self.db.client) as tx:
             await self.lifecycle_service.ensure_session_active(session_id, db_session=tx)
             kwargs = self._kwargs(tx)
-            await self._execute_authorized_write(lambda: self.db.unknown_items.insert_one(doc, **kwargs))
+            await self._execute_authorized_write(
+                lambda: self.db.unknown_items.insert_one(doc, **kwargs)
+            )
             await self.audit_service.log_write_event(
                 event="UNKNOWN_ITEM_WRITE",
                 operation="REGISTER",
@@ -258,9 +262,13 @@ class UnknownItemService:
                 )
             )
             if result.modified_count == 0:
-                raise HTTPException(status_code=409, detail="Unknown item concurrent update conflict")
+                raise HTTPException(
+                    status_code=409, detail="Unknown item concurrent update conflict"
+                )
 
-            refreshed = await self.db.unknown_items.find_one(self._resolve_filter(item_id), **kwargs)
+            refreshed = await self.db.unknown_items.find_one(
+                self._resolve_filter(item_id), **kwargs
+            )
             await self.audit_service.log_write_event(
                 event="UNKNOWN_ITEM_WRITE",
                 operation="ATTACH_TO_SESSION",
@@ -317,9 +325,13 @@ class UnknownItemService:
                 )
             )
             if result.modified_count == 0:
-                raise HTTPException(status_code=409, detail="Unknown item concurrent update conflict")
+                raise HTTPException(
+                    status_code=409, detail="Unknown item concurrent update conflict"
+                )
 
-            refreshed = await self.db.unknown_items.find_one(self._resolve_filter(item_id), **kwargs)
+            refreshed = await self.db.unknown_items.find_one(
+                self._resolve_filter(item_id), **kwargs
+            )
             await self.audit_service.log_write_event(
                 event="UNKNOWN_ITEM_WRITE",
                 operation="ESCALATE",
@@ -349,7 +361,9 @@ class UnknownItemService:
 
             target = await self.db.erp_items.find_one({"item_code": item_code}, **kwargs)
             if not target:
-                raise HTTPException(status_code=404, detail=f"Target SKU {item_code} not found in ERP")
+                raise HTTPException(
+                    status_code=404, detail=f"Target SKU {item_code} not found in ERP"
+                )
             return await self._map_unknown_to_known_item(
                 unknown=unknown,
                 target=target,
@@ -446,10 +460,18 @@ class UnknownItemService:
                 )
             )
             if result.modified_count == 0:
-                raise HTTPException(status_code=409, detail="Unknown item concurrent update conflict")
+                raise HTTPException(
+                    status_code=409, detail="Unknown item concurrent update conflict"
+                )
 
-            refreshed = await self.db.unknown_items.find_one(self._resolve_filter(item_id), **kwargs)
-            resolved_doc = refreshed or {**existing, **update_fields, "version": expected_version + 1}
+            refreshed = await self.db.unknown_items.find_one(
+                self._resolve_filter(item_id), **kwargs
+            )
+            resolved_doc = refreshed or {
+                **existing,
+                **update_fields,
+                "version": expected_version + 1,
+            }
             await self.audit_service.log_write_event(
                 event="UNKNOWN_ITEM_WRITE",
                 operation="DISMISS",

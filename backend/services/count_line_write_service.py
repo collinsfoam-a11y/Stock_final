@@ -12,7 +12,11 @@ from fastapi import HTTPException
 
 from backend.services.concurrency import ConcurrencyError, coerce_version
 from backend.services.governance_audit_service import GovernanceAuditService
-from backend.services.governance_guard import GovernanceViolation, assert_valid_write, write_authority
+from backend.services.governance_guard import (
+    GovernanceViolation,
+    assert_valid_write,
+    write_authority,
+)
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.snapshot_service import SnapshotService
 from backend.services.transaction_manager import mongo_transaction
@@ -229,16 +233,13 @@ class CountLineWriteService:
     ) -> CountLineGovernanceModeProfile:
         if "require_active_session" in context or "require_full_context" in context:
             raise GovernanceViolation(
-                "CRITICAL: free-form governance flags have been removed. "
-                "Use governance_mode."
+                "CRITICAL: free-form governance flags have been removed. Use governance_mode."
             )
 
         mode_name = str(context.get("governance_mode") or DEFAULT_GOVERNANCE_MODE).strip().lower()
         profile = GOVERNANCE_MODE_PROFILES.get(mode_name)
         if profile is None:
-            raise GovernanceViolation(
-                f"CRITICAL: Unsupported governance_mode '{mode_name}'"
-            )
+            raise GovernanceViolation(f"CRITICAL: Unsupported governance_mode '{mode_name}'")
         return profile
 
     @staticmethod
@@ -248,13 +249,11 @@ class CountLineWriteService:
                 "CRITICAL: skip_runtime_validation has been removed. Use validation_mode."
             )
 
-        validation_mode = str(
-            context.get("validation_mode") or DEFAULT_VALIDATION_MODE
-        ).strip().lower()
+        validation_mode = (
+            str(context.get("validation_mode") or DEFAULT_VALIDATION_MODE).strip().lower()
+        )
         if validation_mode not in VALIDATION_MODES:
-            raise GovernanceViolation(
-                f"CRITICAL: Unsupported validation_mode '{validation_mode}'"
-            )
+            raise GovernanceViolation(f"CRITICAL: Unsupported validation_mode '{validation_mode}'")
         if validation_mode == "repair_skip":
             governance_mode = str(context.get("governance_mode") or "").strip().lower()
             if governance_mode != "repair":
@@ -454,7 +453,9 @@ class CountLineWriteService:
                 except TypeError:
                     if upsert:
                         return await self._execute_authorized_write(
-                            lambda: collection.update_one(filter_query, update_doc, upsert, **kwargs)
+                            lambda: collection.update_one(
+                                filter_query, update_doc, upsert, **kwargs
+                            )
                         )
                     return await self._execute_authorized_write(
                         lambda: collection.update_one(filter_query, update_doc, **kwargs)
@@ -525,7 +526,13 @@ class CountLineWriteService:
         db_session: Optional[Any],
     ) -> Any:
         operation = str(payload.get("operation") or "").strip().lower()
-        if operation not in {"insert_one", "update_one", "update_many", "delete_one", "delete_many"}:
+        if operation not in {
+            "insert_one",
+            "update_one",
+            "update_many",
+            "delete_one",
+            "delete_many",
+        }:
             raise ValueError(f"Unsupported count-line write operation: {operation}")
 
         ctx = dict(context)
@@ -743,7 +750,9 @@ class CountLineWriteService:
                     _apply_update_document_to_merged(merged_document, update_doc)
                 if "counted_qty" in merged_document:
                     semantic_hash = _build_semantic_hash(merged_document)
-                    set_doc = update_doc.setdefault("$set", {}) if isinstance(update_doc, dict) else {}
+                    set_doc = (
+                        update_doc.setdefault("$set", {}) if isinstance(update_doc, dict) else {}
+                    )
                     if isinstance(set_doc, dict):
                         set_doc["semantic_hash"] = semantic_hash
                     existing_collision = await self._resolve_awaitable(
@@ -819,12 +828,15 @@ class CountLineWriteService:
         if not isinstance(set_doc, dict):
             raise ValueError("State transition writes require a '$set' dictionary")
 
-        actor = str(
-            context.get("username")
-            or context.get("user_id")
-            or context.get("actor")
+        actor = (
+            str(
+                context.get("username")
+                or context.get("user_id")
+                or context.get("actor")
+                or "system"
+            ).strip()
             or "system"
-        ).strip() or "system"
+        )
         occurred_at = context.get("transitioned_at")
         if not isinstance(occurred_at, datetime):
             occurred_at = _utc_now()
@@ -1020,7 +1032,10 @@ class CountLineWriteService:
             location=location,
         )
 
-        if any(threshold.get("require_reason") for threshold in violated_thresholds) and not reason_present:
+        if (
+            any(threshold.get("require_reason") for threshold in violated_thresholds)
+            and not reason_present
+        ):
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -1283,7 +1298,9 @@ class CountLineWriteService:
             location=context.get("location") or document.get("floor_no"),
             variance_reason=context.get("variance_reason") or document.get("variance_reason"),
             correction_reason=(
-                context.get("correction_reason") if "correction_reason" in context else document.get("correction_reason")
+                context.get("correction_reason")
+                if "correction_reason" in context
+                else document.get("correction_reason")
             ),
             require_correction_reason_for_variance=bool(
                 context.get("require_correction_reason_for_variance", False)
@@ -1373,20 +1390,28 @@ class CountLineWriteService:
         if photo_required and not document.get("photo_base64") and not photo_proofs:
             risk_flags.append("PHOTO_PROOF_REQUIRED")
 
-        expected_floor = str(
-            erp_item.get("floor")
-            or erp_item.get("floor_no")
-            or (erp_item.get("source_data") or {}).get("floor")
-            or (erp_item.get("source_data") or {}).get("floor_no")
-            or ""
-        ).strip().upper()
-        expected_rack = str(
-            erp_item.get("rack")
-            or erp_item.get("rack_no")
-            or (erp_item.get("source_data") or {}).get("rack")
-            or (erp_item.get("source_data") or {}).get("rack_no")
-            or ""
-        ).strip().upper()
+        expected_floor = (
+            str(
+                erp_item.get("floor")
+                or erp_item.get("floor_no")
+                or (erp_item.get("source_data") or {}).get("floor")
+                or (erp_item.get("source_data") or {}).get("floor_no")
+                or ""
+            )
+            .strip()
+            .upper()
+        )
+        expected_rack = (
+            str(
+                erp_item.get("rack")
+                or erp_item.get("rack_no")
+                or (erp_item.get("source_data") or {}).get("rack")
+                or (erp_item.get("source_data") or {}).get("rack_no")
+                or ""
+            )
+            .strip()
+            .upper()
+        )
         found_floor = str(document.get("floor_no") or "").strip().upper()
         found_rack = str(document.get("rack_no") or "").strip().upper()
         floor_mismatch = found_floor and expected_floor and found_floor != expected_floor
@@ -1435,10 +1460,7 @@ class CountLineWriteService:
             or erp_item.get("sales_price")
         )
         mrp_counted = _as_float(
-            target.get("mrp_counted")
-            or target.get("counted_mrp")
-            or target.get("mrp")
-            or mrp_erp
+            target.get("mrp_counted") or target.get("counted_mrp") or target.get("mrp") or mrp_erp
         )
         target["item_name"] = target.get("item_name") or erp_item.get("item_name") or "Unknown"
         if not target.get("barcode") and erp_item.get("barcode"):

@@ -34,7 +34,9 @@ from backend.services.canonical_inventory import (
     is_session_finalized,
     normalize_session_status as normalize_canonical_session_status,
 )
-from backend.services.governance_guard import normalize_session_status as normalize_session_status_canonical
+from backend.services.governance_guard import (
+    normalize_session_status as normalize_session_status_canonical,
+)
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.redis_service import get_redis
 from backend.services.runtime import get_refresh_token_service
@@ -1551,7 +1553,12 @@ async def update_session_status(
     if requested in {"COMPLETED", "CLOSED", "FINALIZED"}:
         requested_canonical = "FINALIZED"
 
-    if requested_canonical not in {"CREATED", "ACTIVE", "REVIEW", "FINALIZED"} and requested not in {
+    if requested_canonical not in {
+        "CREATED",
+        "ACTIVE",
+        "REVIEW",
+        "FINALIZED",
+    } and requested not in {
         "PAUSED",
         "RECONCILE",
     }:
@@ -1701,10 +1708,7 @@ async def _complete_session_legacy_compatible(
 ) -> dict[str, Any]:
     raise HTTPException(
         status_code=410,
-        detail=(
-            "CRITICAL: /complete path is disabled. "
-            "Use canonical /finalize flow only."
-        ),
+        detail=("CRITICAL: /complete path is disabled. Use canonical /finalize flow only."),
     )
 
 
@@ -1861,7 +1865,6 @@ async def bulk_close_sessions(
     raise HTTPException(
         status_code=410,
         detail=(
-            "CRITICAL: bulk_close_sessions is disabled. "
-            "Use per-session canonical /finalize flow."
+            "CRITICAL: bulk_close_sessions is disabled. Use per-session canonical /finalize flow."
         ),
     )

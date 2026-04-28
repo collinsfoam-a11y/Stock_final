@@ -74,7 +74,9 @@ def _sanitize_warehouse_docs(docs: list[dict[str, Any]]) -> list[dict[str, Any]]
     return sanitized
 
 
-def _filter_sql_warehouses(warehouses: list[dict[str, Any]], zone: Optional[str]) -> list[dict[str, Any]]:
+def _filter_sql_warehouses(
+    warehouses: list[dict[str, Any]], zone: Optional[str]
+) -> list[dict[str, Any]]:
     if not zone:
         return warehouses
 

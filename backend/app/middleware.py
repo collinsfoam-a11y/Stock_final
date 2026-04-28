@@ -99,9 +99,7 @@ def _register_trusted_host_middleware(
         )
 
 
-def _register_security_headers(
-    app: FastAPI, security_headers_middleware: Any, logger: Any
-) -> None:
+def _register_security_headers(app: FastAPI, security_headers_middleware: Any, logger: Any) -> None:
     if security_headers_middleware is None:
         logger.warning("Security headers middleware not available")
         return
