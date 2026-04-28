@@ -8,6 +8,7 @@ from backend.utils.auth_utils import create_access_token
 def test_access_token_claims():
     # Test data
     data = {"sub": "testuser", "role": "staff"}
+    # Use a secure secret
     secret_key = secrets.token_urlsafe(32)
     algorithm = "HS256"
 
@@ -15,6 +16,7 @@ def test_access_token_claims():
     token = create_access_token(data=data, secret_key=secret_key, algorithm=algorithm)
 
     # Decode token with verification to inspect payload
+    # This explicitly verifies the signature using the secret and algorithm
     payload = jwt.decode(token, secret_key, algorithms=[algorithm])
 
     # Verify claims
@@ -25,8 +27,9 @@ def test_access_token_claims():
 
     # Verify expiration is in the future
     exp = payload["exp"]
-    exp_timestamp = exp.timestamp() if hasattr(exp, "timestamp") else float(exp)
-    assert exp_timestamp > datetime.now(timezone.utc).replace(tzinfo=None).timestamp()
+    # Handle both timestamp and datetime-like objects if necessary
+    exp_timestamp = exp if isinstance(exp, (int, float)) else exp.timestamp()
+    assert exp_timestamp > datetime.now(timezone.utc).timestamp()
 
 
 if __name__ == "__main__":

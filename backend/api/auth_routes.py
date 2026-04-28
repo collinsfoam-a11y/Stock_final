@@ -66,7 +66,7 @@ async def check_rate_limit(ip_address: str) -> Result[bool, Exception]:
     rate_limit_enabled = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
 
     if not rate_limit_enabled:
-        logger.debug(f"Rate limiting disabled for IP: {ip_address}")
+        logger.debug("Rate limiting disabled for IP: %s", sanitize_for_logging(ip_address))
         return Ok(True)
 
     namespace = "login_attempts"
@@ -86,7 +86,9 @@ async def check_rate_limit(ip_address: str) -> Result[bool, Exception]:
     if attempts >= max_attempts:
         # Block for configured TTL period
         await cache_service.set(namespace, key, attempts, ttl=ttl_seconds)
-        logger.warning(f"Rate limit exceeded for IP {ip_address}: {attempts} attempts")
+        logger.warning(
+            f"Rate limit exceeded for IP {sanitize_for_logging(ip_address)}: {attempts} attempts"
+        )
         return Fail(
             RateLimitError(
                 f"Too many login attempts. Please try again in {ttl_seconds // 60} minutes.",
@@ -97,7 +99,7 @@ async def check_rate_limit(ip_address: str) -> Result[bool, Exception]:
     # Increment attempt counter with TTL
     await cache_service.set(namespace, key, attempts + 1, ttl=ttl_seconds)
     logger.debug(
-        f"Rate limit check passed for IP {ip_address}: {attempts + 1}/{max_attempts} attempts"
+        f"Rate limit check passed for IP {sanitize_for_logging(ip_address)}: {attempts + 1}/{max_attempts} attempts"
     )
     return Ok(True)
 
@@ -108,7 +110,9 @@ async def reset_rate_limit(ip_address: str) -> None:
     try:
         await cache_service.delete("login_attempts", ip_address)
     except Exception as exc:
-        logger.debug(f"Failed to reset rate limit for {ip_address}: {exc}")
+        logger.debug(
+            f"Failed to reset rate limit for {sanitize_for_logging(ip_address)}: {sanitize_for_logging(str(exc))}"
+        )
 
 
 async def find_user_by_username(username: str) -> Result[dict[str, Any], Exception]:
@@ -120,7 +124,9 @@ async def find_user_by_username(username: str) -> Result[dict[str, Any], Excepti
             return Fail(NotFoundError("User not found"))
         return Ok(user)
     except Exception as e:
-        logger.error(f"Error finding user {sanitize_for_logging(username)}: {str(e)}")
+        logger.error(
+            f"Error finding user {sanitize_for_logging(username)}: {sanitize_for_logging(str(e))}"
+        )
         return Fail(DatabaseConnectionError("Error accessing user data"))
 
 
@@ -176,7 +182,7 @@ async def generate_auth_tokens(
             }
         )
     except Exception as e:
-        logger.error(f"Error generating auth tokens: {str(e)}")
+        logger.error("Error generating auth tokens: %s", sanitize_for_logging(str(e)))
         return Fail(DatabaseConnectionError("Error generating authentication tokens"))
 
 
@@ -307,7 +313,7 @@ async def log_failed_login_attempt(
             }
         )
     except Exception as e:
-        logger.error(f"Failed to log login attempt: {str(e)}")
+        logger.error("Failed to log login attempt: %s", sanitize_for_logging(str(e)))
 
     # Audit Log
     try:
@@ -322,7 +328,7 @@ async def log_failed_login_attempt(
             details={"error": error, "user_agent": user_agent},
         )
     except Exception as e:
-        logger.error(f"Failed to write audit log: {e}")
+        logger.error("Failed to write audit log: %s", sanitize_for_logging(str(e)))
 
 
 async def log_successful_login(user: dict[str, Any], ip_address: str, request: Request) -> None:
@@ -345,7 +351,7 @@ async def log_successful_login(user: dict[str, Any], ip_address: str, request: R
             {"_id": user["_id"]}, {"$set": {"last_login_at": datetime.now(timezone.utc)}}
         )
     except Exception as e:
-        logger.error(f"Failed to log successful login: {str(e)}")
+        logger.error("Failed to log successful login: %s", sanitize_for_logging(str(e)))
 
     # Audit Log
     try:
@@ -361,7 +367,7 @@ async def log_successful_login(user: dict[str, Any], ip_address: str, request: R
             details={"user_agent": request.headers.get("user-agent")},
         )
     except Exception as e:
-        logger.error(f"Failed to write audit log: {e}")
+        logger.error("Failed to write audit log: %s", sanitize_for_logging(str(e)))
 
 
 @router.post("/auth/register", response_model=TokenResponse, status_code=201)
@@ -469,7 +475,7 @@ async def register(
         raise
     except Exception as e:
         error = get_error_message("UNKNOWN_ERROR", {"operation": "register", "error": str(e)})
-        logger.error(f"Registration error: {str(e)}", exc_info=True)
+        logger.error("Registration error: %s", sanitize_for_logging(str(e)), exc_info=True)
         raise HTTPException(
             status_code=error["status_code"],
             detail={
@@ -482,7 +488,7 @@ async def register(
 
 
 async def _check_login_rate_limit(client_ip: str) -> Optional[Result[Any, Exception]]:
-    logger.debug(f"Checking rate limit for IP: {client_ip}")
+    logger.debug("Checking rate limit for IP: %s", sanitize_for_logging(client_ip))
     rate_limit_result = await check_rate_limit(client_ip)
     if rate_limit_result.is_err:
         # Extract error from Result type
@@ -491,7 +497,7 @@ async def _check_login_rate_limit(client_ip: str) -> Optional[Result[Any, Except
             try:
                 err = rate_limit_result.unwrap_err()
             except Exception as e:
-                logger.error(f"Failed to unwrap rate limit error: {e}")
+                logger.error("Failed to unwrap rate limit error: %s", sanitize_for_logging(str(e)))
         if err is None:
             err = getattr(rate_limit_result, "err", None)
         if err is None:
@@ -518,7 +524,7 @@ def _validate_user_password(
         if verify_password(credentials.password, hashed_pwd):
             return Ok(True)
     except Exception as e:
-        logger.error(f"Password verification exception: {e}")
+        logger.error("Password verification exception: %s", sanitize_for_logging(str(e)))
 
     return Fail(AuthenticationError("Incorrect username or password"))
 
@@ -638,7 +644,9 @@ async def _find_user_by_fast_lookup(
         return None
     # Verify secure hash to protect against SHA-256 collision
     if not verify_password(pin, found_user.get("pin_hash", "")):
-        logger.warning(f"Hash collision or data corruption for user {found_user.get('username')}")
+        logger.warning(
+            f"Hash collision or data corruption for user {sanitize_for_logging(found_user.get('username'))}"
+        )
         return None
     return found_user
 
@@ -655,9 +663,13 @@ async def _find_user_by_legacy_scan(
                 await db.users.update_one(
                     {"_id": user["_id"]}, {"$set": {"pin_lookup_hash": lookup_hash}}
                 )
-                logger.info(f"Migrated user {user['username']} to fast PIN lookup")
+                logger.info(
+                    f"Migrated user {sanitize_for_logging(user['username'])} to fast PIN lookup"
+                )
             except Exception as e:
-                logger.warning(f"Failed to migrate user to fast PIN lookup: {e}")
+                logger.warning(
+                    f"Failed to migrate user to fast PIN lookup: {sanitize_for_logging(str(e))}"
+                )
             return user
     return None
 
@@ -815,7 +827,7 @@ async def pin_setup(
     username = current_user["username"]
     pin = setup_data.pin
 
-    logger.info(f"PIN setup started for user: {username}")
+    logger.info("PIN setup started for user: %s", sanitize_for_logging(username))
 
     try:
         # Securely hash the PIN
@@ -836,7 +848,9 @@ async def pin_setup(
         )
 
         if result.modified_count == 0:
-            logger.warning(f"PIN setup failed: User {username} not found for update")
+            logger.warning(
+                f"PIN setup failed: User {sanitize_for_logging(username)} not found for update"
+            )
             return Fail(NotFoundError("User not found"))
 
         # Audit Log
@@ -852,13 +866,15 @@ async def pin_setup(
                 details={"action": "pin_setup"},
             )
         except Exception as e:
-            logger.error(f"Failed to write audit log: {e}")
+            logger.error("Failed to write audit log: %s", sanitize_for_logging(str(e)))
 
-        logger.info(f"PIN setup successful for user: {username}")
+        logger.info("PIN setup successful for user: %s", sanitize_for_logging(username))
         return Ok({"message": "PIN setup successful"})
 
     except Exception as e:
-        logger.error(f"Error during PIN setup for {username}: {str(e)}")
+        logger.error(
+            f"Error during PIN setup for {sanitize_for_logging(username)}: {sanitize_for_logging(str(e))}"
+        )
         return Fail(e)
 
 
@@ -897,7 +913,9 @@ async def _migrate_legacy_password(db: Any, user: dict[str, Any], password: str)
                 },
             )
         except Exception as e:
-            logger.error(f"Failed to migrate legacy password for user {user.get('_id')}: {e}")
+            logger.error(
+                f"Failed to migrate legacy password for user {sanitize_for_logging(str(user.get('_id')))}: {sanitize_for_logging(str(e))}"
+            )
 
 
 def _build_login_response(tokens: dict[str, Any], user: dict[str, Any]) -> dict[str, Any]:
@@ -1093,7 +1111,7 @@ async def change_pin(
     _validate_pin_change_identity(user, current_pin, current_password)
     await _persist_user_pin(current_user["username"], new_pin)
 
-    logger.info(f"PIN changed for user: {current_user['username']}")
+    logger.info("PIN changed for user: %s", sanitize_for_logging(current_user["username"]))
 
     # Audit Log
     try:
@@ -1108,7 +1126,7 @@ async def change_pin(
             details={"action": "response_change_pin"},
         )
     except Exception as e:
-        logger.error(f"Failed to write audit log: {e}")
+        logger.error("Failed to write audit log: %s", sanitize_for_logging(str(e)))
 
     return {
         "success": True,
@@ -1178,7 +1196,7 @@ async def change_password(
         {"$set": {"hashed_password": new_password_hash, "updated_at": datetime.now(timezone.utc)}},
     )
 
-    logger.info(f"Password changed for user: {current_user['username']}")
+    logger.info("Password changed for user: %s", sanitize_for_logging(current_user["username"]))
 
     return {
         "success": True,
@@ -1251,20 +1269,20 @@ async def password_reset_request(request: PasswordResetRequest):
                 details={"phone_number": user["phone_number"]},
             )
         except Exception as e:
-            logger.error(f"Failed to write audit log: {e}")
+            logger.error("Failed to write audit log: %s", sanitize_for_logging(str(e)))
 
         return ApiResponse.success_response(
             {"message": "If an account exists, an OTP has been sent."}
         )
     except WhatsAppDeliveryError as e:
         await otp_service.otp_collection.delete_many({"user_id": str(user["_id"])})
-        logger.error(f"Password reset request delivery failed: {e}")
+        logger.error("Password reset request delivery failed: %s", sanitize_for_logging(str(e)))
         return ApiResponse.error_response(
             {"message": "Password reset is temporarily unavailable. Please try again later."}
         )
     except Exception as e:
         await otp_service.otp_collection.delete_many({"user_id": str(user["_id"])})
-        logger.error(f"Password reset request failed: {e}")
+        logger.error("Password reset request failed: %s", sanitize_for_logging(str(e)))
         return ApiResponse.error_response({"message": "Failed to process request"})
 
 
@@ -1307,7 +1325,7 @@ async def password_reset_verify(data: PasswordResetVerify):
             details={"otp_verified": True},
         )
     except Exception as e:
-        logger.error(f"Failed to write audit log: {e}")
+        logger.error("Failed to write audit log: %s", sanitize_for_logging(str(e)))
 
     return ApiResponse.success_response({"reset_token": reset_token, "message": "OTP verified"})
 
@@ -1352,7 +1370,9 @@ async def password_reset_confirm(data: PasswordResetConfirm):
                     "after password reset"
                 )
         except Exception as revoke_err:
-            logger.error(f"Failed to revoke tokens after password reset: {revoke_err}")
+            logger.error(
+                f"Failed to revoke tokens after password reset: {sanitize_for_logging(str(revoke_err))}"
+            )
 
         # Optional: confirmation should not block a successful password reset
         user = await db.users.find_one({"_id": ObjectId(user_id)})
@@ -1361,7 +1381,9 @@ async def password_reset_confirm(data: PasswordResetConfirm):
                 if whatsapp_service.is_delivery_configured():
                     await whatsapp_service.send_password_reset_confirmation(user["phone_number"])
             except WhatsAppDeliveryError as delivery_error:
-                logger.warning(f"Password reset confirmation delivery skipped: {delivery_error}")
+                logger.warning(
+                    f"Password reset confirmation delivery skipped: {sanitize_for_logging(str(delivery_error))}"
+                )
 
         # Audit Log
         try:
@@ -1375,10 +1397,10 @@ async def password_reset_confirm(data: PasswordResetConfirm):
                 details={"action": "password_changed"},
             )
         except Exception as e:
-            logger.error(f"Failed to write audit log: {e}")
+            logger.error("Failed to write audit log: %s", sanitize_for_logging(str(e)))
 
         return ApiResponse.success_response({"message": "Password reset successful"})
 
     except Exception as e:
-        logger.error(f"Password reset confirm failed: {e}")
+        logger.error("Password reset confirm failed: %s", sanitize_for_logging(str(e)))
         return ApiResponse.error_response({"message": "Failed to reset password"})

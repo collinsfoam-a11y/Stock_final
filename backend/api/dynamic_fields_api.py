@@ -4,6 +4,7 @@ Endpoints for managing custom dynamic fields for items
 """
 
 import logging
+from backend.utils.api_utils import sanitize_for_logging
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -135,7 +136,7 @@ async def create_field_definition(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error creating field definition: {str(e)}")
+        logger.error("Error creating field definition: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -161,7 +162,7 @@ async def get_field_definitions(
         return {"success": True, "count": len(fields), "fields": fields}
 
     except Exception as e:
-        logger.error(f"Error getting field definitions: {str(e)}")
+        logger.error("Error getting field definitions: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -195,7 +196,7 @@ async def update_field_definition(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        logger.error(f"Error updating field definition: {str(e)}")
+        logger.error("Error updating field definition: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -219,7 +220,7 @@ async def delete_field_definition(
             raise HTTPException(status_code=404, detail="Field definition not found")
 
     except Exception as e:
-        logger.error(f"Error deleting field definition: {str(e)}")
+        logger.error("Error deleting field definition: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -258,7 +259,7 @@ async def set_field_value(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error setting field value: {str(e)}")
+        logger.error("Error setting field value: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -316,7 +317,7 @@ async def set_field_values_bulk(
         }
 
     except Exception as e:
-        logger.error(f"Error setting bulk field values: {str(e)}")
+        logger.error("Error setting bulk field values: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -356,7 +357,7 @@ async def get_item_field_values(
         }
 
     except Exception as e:
-        logger.error(f"Error getting item field values: {str(e)}")
+        logger.error("Error getting item field values: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -392,7 +393,7 @@ async def get_items_with_fields(
         return {"success": True, "count": len(items), "items": items}
 
     except Exception as e:
-        logger.error(f"Error getting items with fields: {str(e)}")
+        logger.error("Error getting items with fields: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -418,5 +419,5 @@ async def get_field_statistics(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        logger.error(f"Error getting field statistics: {str(e)}")
+        logger.error("Error getting field statistics: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")

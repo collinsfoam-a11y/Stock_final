@@ -3,6 +3,7 @@ Master Settings API - Centralized system configuration
 """
 
 import logging
+from backend.utils.api_utils import sanitize_for_logging
 from datetime import datetime
 from typing import Optional
 
@@ -86,7 +87,7 @@ async def get_system_parameters(current_user: dict = Depends(require_admin)):
                 "data": default_params.model_dump(),
             }
     except Exception as e:
-        logger.error(f"Error getting system parameters: {e}")
+        logger.error("Error getting system parameters: %s", sanitize_for_logging(str(e)))
         # Return defaults on error
         default_params = SystemParameters()
         return {
@@ -149,7 +150,7 @@ async def update_system_parameters(
             "note": "Some changes may require backend restart to take effect",
         }
     except Exception as e:
-        logger.error(f"Error updating system parameters: {e}")
+        logger.error("Error updating system parameters: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update system parameters: {str(e)}",
@@ -262,7 +263,7 @@ async def reset_to_defaults(
             "message": f"Settings reset to defaults{' for ' + category if category else ''}",
         }
     except Exception as e:
-        logger.error(f"Error resetting settings: {e}")
+        logger.error("Error resetting settings: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to reset settings: {str(e)}",

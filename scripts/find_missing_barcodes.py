@@ -282,9 +282,15 @@ Examples:
 
     args = parser.parse_args()
 
+    # Use explicitly provided password, then env var, then fallback to secure prompt.
+    # No hardcoded default password allowed.
     password = args.password or os.environ.get("ADMIN_PASSWORD")
     if not password:
-        password = getpass.getpass("API password: ")
+        try:
+            password = getpass.getpass("API password: ")
+        except EOFError:
+            print("❌ Error: Password required but no terminal/input available.")
+            return 1
 
     print("\n" + "=" * 80)
     print("BARCODE GAP ANALYSIS TOOL")

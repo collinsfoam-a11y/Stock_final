@@ -5,6 +5,7 @@ and preserves backward compatibility with legacy offline payloads.
 """
 
 import logging
+from backend.utils.api_utils import sanitize_for_logging
 import re
 import time
 import uuid
@@ -341,10 +342,10 @@ async def sync_single_record(
         return True, None
 
     except GovernanceViolation as e:
-        logger.error(f"Governance violation syncing record {record.client_record_id}: {str(e)}")
+        logger.error("Governance violation syncing record {record.client_record_id}: %s", sanitize_for_logging(str(e)))
         return False, str(e)
     except Exception as e:
-        logger.error(f"Error syncing record {record.client_record_id}: {str(e)}")
+        logger.error("Error syncing record {record.client_record_id}: %s", sanitize_for_logging(str(e)))
         return False, str(e)
 
 
@@ -484,7 +485,7 @@ async def sync_batch(
     except Exception as e:
         # Record failure in circuit breaker
         await circuit_breaker.record_failure()
-        logger.error(f"Batch sync failed: {str(e)}")
+        logger.error("Batch sync failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=f"Batch sync failed: {str(e)}")
 
     processing_time = (time.time() - start_time) * 1000

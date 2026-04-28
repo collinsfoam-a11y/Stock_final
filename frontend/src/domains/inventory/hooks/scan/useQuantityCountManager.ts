@@ -91,7 +91,9 @@ export const useQuantityCountManager = ({
       if (value === "" || value === "." || value === "0.") return true;
 
       if (uomInfo.precision > 0) {
-        const decimalRegex = new RegExp(`^\\d*\\.?\\d{0,${uomInfo.precision}}$`);
+        // Limit precision to avoid ReDoS and keep it reasonable
+        const safePrecision = Math.min(Math.max(0, uomInfo.precision), 10);
+        const decimalRegex = new RegExp(`^\\d*\\.?\\d{0,${safePrecision}}$`);
         return decimalRegex.test(value);
       }
 

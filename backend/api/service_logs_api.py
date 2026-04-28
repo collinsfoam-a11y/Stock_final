@@ -12,6 +12,7 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from backend.auth.dependencies import require_admin
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +102,7 @@ async def get_backend_logs(
             "data": {"logs": logs, "count": len(logs), "service": "backend"},
         }
     except Exception as e:
-        logger.error(f"Error getting backend logs: {e}")
+        logger.error("Error getting backend logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get backend logs: {str(e)}",
@@ -134,7 +135,7 @@ async def get_frontend_logs(
             },
         }
     except Exception as e:
-        logger.error(f"Error getting frontend logs: {e}")
+        logger.error("Error getting frontend logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get frontend logs: {str(e)}",
@@ -182,7 +183,7 @@ async def get_mongodb_logs(
             },
         }
     except Exception as e:
-        logger.error(f"Error getting MongoDB logs: {e}")
+        logger.error("Error getting MongoDB logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get MongoDB logs: {str(e)}",
@@ -210,7 +211,7 @@ async def get_system_logs(
             "data": {"logs": logs, "count": len(logs), "service": "system"},
         }
     except Exception as e:
-        logger.error(f"Error getting system logs: {e}")
+        logger.error("Error getting system logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get system logs: {str(e)}",
@@ -244,7 +245,7 @@ async def clear_logs(
             "cleared": cleared,
         }
     except Exception as e:
-        logger.error(f"Error clearing logs: {e}")
+        logger.error("Error clearing logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to clear logs: {str(e)}",

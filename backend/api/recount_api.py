@@ -24,6 +24,7 @@ from backend.services.notification_service import (
 )
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.transaction_manager import mongo_transaction
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/recount", tags=["Recount"])
@@ -182,7 +183,7 @@ async def create_recount_request(
     except GovernanceViolation as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Error creating recount request: {e}")
+        logger.error("Error creating recount request: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -308,7 +309,7 @@ async def assign_recount_request(
     except GovernanceViolation as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Error assigning recount: {e}")
+        logger.error("Error assigning recount: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -487,7 +488,7 @@ async def complete_recount_request(
     except GovernanceViolation as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Error completing recount: {e}")
+        logger.error("Error completing recount: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -525,7 +526,7 @@ async def cancel_recount_request(
     except GovernanceViolation as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Error cancelling recount: {e}")
+        logger.error("Error cancelling recount: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
 

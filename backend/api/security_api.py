@@ -4,6 +4,7 @@ Provides endpoints for security monitoring, failed login tracking, and audit log
 """
 
 import logging
+from backend.utils.api_utils import sanitize_for_logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -96,7 +97,7 @@ async def get_failed_logins(
             },
         }
     except Exception as e:
-        logger.error(f"Error getting failed logins: {e}")
+        logger.error("Error getting failed logins: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve failed logins: {str(e)}",
@@ -168,7 +169,7 @@ async def get_suspicious_activity(
             },
         }
     except Exception as e:
-        logger.error(f"Error getting suspicious activity: {e}")
+        logger.error("Error getting suspicious activity: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve suspicious activity: {str(e)}",
@@ -252,7 +253,7 @@ async def get_security_sessions(
             },
         }
     except Exception as e:
-        logger.error(f"Error getting sessions: {e}")
+        logger.error("Error getting sessions: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve sessions: {str(e)}",
@@ -324,7 +325,7 @@ async def get_audit_log(
             },
         }
     except Exception as e:
-        logger.error(f"Error getting audit log: {e}")
+        logger.error("Error getting audit log: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve audit log: {str(e)}",
@@ -389,7 +390,7 @@ async def get_ip_tracking(
             },
         }
     except Exception as e:
-        logger.error(f"Error getting IP tracking: {e}")
+        logger.error("Error getting IP tracking: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve IP tracking: {str(e)}",
@@ -475,7 +476,7 @@ async def get_security_summary(
             },
         }
     except Exception as e:
-        logger.error(f"Error getting security summary: {e}")
+        logger.error("Error getting security summary: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve security summary: {str(e)}",

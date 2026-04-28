@@ -1507,7 +1507,10 @@ async def session_heartbeat(
     )
 
     logger.debug(
-        f"Heartbeat: session={session_id}, user={user_id}, rack_renewed={rack_lock_renewed}"
+        "Heartbeat: session=%s, user=%s, rack_renewed=%s",
+        _safe_log_value(session_id),
+        _safe_log_value(user_id),
+        rack_lock_renewed,
     )
 
     return HeartbeatResponse(

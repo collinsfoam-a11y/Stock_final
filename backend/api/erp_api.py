@@ -10,6 +10,7 @@ from backend.api.schemas import ERPItem
 from backend.auth.dependencies import get_current_user
 from backend.error_messages import get_error_message
 from backend.services.cache_service import CacheService
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -44,7 +45,10 @@ def _normalize_barcode_input(
     """
 
     logger.info(
-        f"Normalizing barcode: {barcode}, allow_alphanumeric={allow_alphanumeric}, strict_numeric={strict_numeric}"
+        "Normalizing barcode: %s, allow_alphanumeric=%s, strict_numeric=%s",
+        sanitize_for_logging(barcode),
+        allow_alphanumeric,
+        strict_numeric,
     )
     if not barcode or not barcode.strip():
         raise HTTPException(
@@ -140,7 +144,7 @@ async def get_item_by_barcode(barcode: str, current_user: dict = Depends(get_cur
     # Check cache first
     cached_item = await _cache_service.get("items", normalized_barcode)
     if cached_item:
-        logger.debug(f"Item found in cache: {barcode}")
+        logger.debug("Item found in cache: %s", sanitize_for_logging(barcode))
         return ERPItem(**cached_item)
 
     # Fallback to MongoDB
@@ -158,7 +162,7 @@ async def get_item_by_barcode(barcode: str, current_user: dict = Depends(get_cur
     )
     if not item:
         error = get_error_message("DB_ITEM_NOT_FOUND", {"barcode": barcode})
-        logger.warning(f"Item not found in MongoDB: barcode={normalized_barcode}")
+        logger.warning("Item not found in MongoDB: barcode=%s", sanitize_for_logging(normalized_barcode))
         raise HTTPException(
             status_code=error["status_code"],
             detail={
@@ -173,7 +177,7 @@ async def get_item_by_barcode(barcode: str, current_user: dict = Depends(get_cur
 
     # Cache for 1 hour
     await _cache_service.set("items", normalized_barcode, item, ttl=3600)
-    logger.debug(f"Item fetched from MongoDB: barcode={normalized_barcode}")
+    logger.debug("Item fetched from MongoDB: barcode=%s", sanitize_for_logging(normalized_barcode))
 
     return ERPItem(**item)
 
@@ -294,7 +298,7 @@ async def get_item_batches(
                     batches = sql_batches
                     source = "sql_server"
         except Exception as sql_err:
-            logger.warning(f"SQL batch fetch failed for '{normalized_code}': {sql_err}")
+            logger.warning("SQL batch fetch failed for '%s': %s", sanitize_for_logging(normalized_code), sanitize_for_logging(str(sql_err)))
 
     if not batches:
         regex_match = {"$regex": f"^{re.escape(normalized_code)}$", "$options": "i"}
