@@ -73,12 +73,6 @@ let backupReminderPromise:
     >
   | null = null;
 
-const requireMockableModule = <TModule,>(specifier: string): TModule => {
-  // Jest `doMock` setups need synchronous resolution after mocks are registered.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require(specifier) as TModule;
-};
-
 const getAuthApi = async () => {
   if (authApiCache) {
     return authApiCache;
@@ -134,9 +128,9 @@ const getBackupReminderSync = async () => {
 
 const getAuthApiSync = () => {
   if (!authApiCache) {
-    authApiCache = requireMockableModule<typeof import("../services/api/authApi")>(
-      "../services/api/authApi",
-    ).authApi;
+    // Jest `doMock` setups need synchronous resolution after mocks are registered.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    authApiCache = require("../services/api/authApi").authApi as typeof import("../services/api/authApi")["authApi"];
   }
 
   return authApiCache;
@@ -144,9 +138,9 @@ const getAuthApiSync = () => {
 
 const getThemeServiceSync = () => {
   if (!themeServiceCache) {
-    themeServiceCache = requireMockableModule<typeof import("../services/themeService")>(
-      "../services/themeService",
-    ).ThemeService;
+    // Jest `doMock` setups need synchronous resolution after mocks are registered.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    themeServiceCache = require("../services/themeService").ThemeService as typeof import("../services/themeService")["ThemeService"];
   }
 
   return themeServiceCache;
@@ -154,9 +148,9 @@ const getThemeServiceSync = () => {
 
 const getBackupReminderSyncImmediate = () => {
   if (!backupReminderCache) {
-    backupReminderCache = requireMockableModule<
-      typeof import("../services/backupReminderService")
-    >("../services/backupReminderService").syncBackupReminderPreference;
+    // Jest `doMock` setups need synchronous resolution after mocks are registered.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    backupReminderCache = require("../services/backupReminderService").syncBackupReminderPreference as typeof import("../services/backupReminderService")["syncBackupReminderPreference"];
   }
 
   return backupReminderCache;
