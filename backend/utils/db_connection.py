@@ -4,7 +4,7 @@ Shared database connection utilities to eliminate duplicate connection logic
 """
 
 import logging
-from typing import Any, Optional
+from typing import Optional
 
 try:
     import pyodbc

@@ -2,8 +2,6 @@ import pytest
 from httpx import AsyncClient
 from unittest.mock import MagicMock
 
-from backend.api.erp_api import router as erp_router
-
 
 @pytest.mark.asyncio
 async def test_get_item_batches_offline_fallback(
