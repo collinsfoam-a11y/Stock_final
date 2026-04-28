@@ -146,7 +146,7 @@ async def get_warehouses(
         return _sanitize_warehouse_docs(mongo_warehouses)
 
     except Exception as e:
-        logger.error(f"Error fetching warehouses: {str(e)}")
+        logger.error("Error fetching warehouses: %s", sanitize_for_logging(str(e)))
         return defaults
 
 
@@ -167,7 +167,7 @@ def get_zones(current_user: dict = Depends(get_current_user)):
         ]
 
     except Exception as e:
-        logger.error(f"Error fetching zones: {str(e)}")
+        logger.error("Error fetching zones: %s", sanitize_for_logging(str(e)))
         # In case of any error (even unexpected), fallback for development
         return [
             {"zone_name": "Showroom", "id": "zone_showroom"},

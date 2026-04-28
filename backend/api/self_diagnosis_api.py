@@ -4,6 +4,7 @@ Provide real-time error diagnosis and health monitoring
 """
 
 import logging
+from backend.utils.api_utils import sanitize_for_logging
 from datetime import timedelta
 from typing import Any
 
@@ -40,7 +41,7 @@ async def get_health_with_diagnosis(current_user: dict = Depends(get_current_use
         health_report = await diagnosis_service.health_check()
         return health_report
     except Exception as e:
-        logger.error(f"Health check failed: {str(e)}")
+        logger.error("Health check failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
 
@@ -57,7 +58,7 @@ async def get_error_statistics(
         stats = await diagnosis_service.get_error_statistics(time_window)
         return stats
     except Exception as e:
-        logger.error(f"Statistics retrieval failed: {str(e)}")
+        logger.error("Statistics retrieval failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=f"Statistics failed: {str(e)}")
 
 
@@ -100,7 +101,7 @@ async def diagnose_error_endpoint(
 
         return diagnosis.to_dict()
     except Exception as e:
-        logger.error(f"Error diagnosis failed: {str(e)}")
+        logger.error("Error diagnosis failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=f"Diagnosis failed: {str(e)}")
 
 
@@ -165,7 +166,7 @@ async def attempt_auto_fix(
             "diagnosis": diagnosis.to_dict(),
         }
     except Exception as e:
-        logger.error(f"Auto-fix attempt failed: {str(e)}")
+        logger.error("Auto-fix attempt failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=f"Auto-fix failed: {str(e)}")
 
 
@@ -182,5 +183,5 @@ async def get_error_patterns(current_user: dict = Depends(get_current_user)):
             "pattern_count": len(diagnosis_service._error_patterns),
         }
     except Exception as e:
-        logger.error(f"Pattern retrieval failed: {str(e)}")
+        logger.error("Pattern retrieval failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=f"Pattern retrieval failed: {str(e)}")

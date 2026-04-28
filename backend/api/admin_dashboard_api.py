@@ -4,6 +4,7 @@ PC-based web dashboard endpoints for administrators
 """
 
 import logging
+from backend.utils.api_utils import sanitize_for_logging
 import os
 import time
 from datetime import datetime, timedelta, timezone
@@ -92,7 +93,7 @@ async def calculate_total_stock_value(db) -> float:
         result = await db.erp_items.aggregate(pipeline).to_list(1)
         return result[0]["total_value"] if result else 0.0
     except Exception as e:
-        logger.error(f"Error calculating total stock value: {e}")
+        logger.error("Error calculating total stock value: %s", sanitize_for_logging(str(e)))
         return 0.0
 
 
@@ -107,7 +108,7 @@ async def calculate_verified_value(db) -> float:
             total_value += qty * unit_value
         return total_value
     except Exception as e:
-        logger.error(f"Error calculating verified value: {e}")
+        logger.error("Error calculating verified value: %s", sanitize_for_logging(str(e)))
         return 0.0
 
 
@@ -128,7 +129,7 @@ async def calculate_completion_percentage(db) -> float:
         verified_items = verified_items_result[0]["count"] if verified_items_result else 0
         return round((verified_items / total_items) * 100, 2)
     except Exception as e:
-        logger.error(f"Error calculating completion: {e}")
+        logger.error("Error calculating completion: %s", sanitize_for_logging(str(e)))
         return 0.0
 
 
@@ -155,7 +156,7 @@ async def count_active_sessions(db) -> int:
             }
         )
     except Exception as e:
-        logger.error(f"Error counting sessions: {e}")
+        logger.error("Error counting sessions: %s", sanitize_for_logging(str(e)))
         return 0
 
 
@@ -165,7 +166,7 @@ async def count_active_users(db) -> int:
         cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=30)
         return await db.user_presence.count_documents({"last_seen": {"$gte": cutoff}})
     except Exception as e:
-        logger.error(f"Error counting active users: {e}")
+        logger.error("Error counting active users: %s", sanitize_for_logging(str(e)))
         return 0
 
 
@@ -182,7 +183,7 @@ async def count_pending_variances(db) -> int:
             }
         )
     except Exception as e:
-        logger.error(f"Error counting variances: {e}")
+        logger.error("Error counting variances: %s", sanitize_for_logging(str(e)))
         return 0
 
 
@@ -201,7 +202,7 @@ async def count_items_verified_today(db) -> int:
             }
         )
     except Exception as e:
-        logger.error(f"Error counting today's verifications: {e}")
+        logger.error("Error counting today's verifications: %s", sanitize_for_logging(str(e)))
         return 0
 
 
@@ -211,7 +212,7 @@ async def check_mongodb_connection(db) -> str:
         await db.command("ping")
         return "connected"
     except Exception as e:
-        logger.error(f"MongoDB connection error: {e}")
+        logger.error("MongoDB connection error: %s", sanitize_for_logging(str(e)))
         return "disconnected"
 
 
@@ -225,7 +226,7 @@ async def check_sqlserver_connection() -> str:
             return "connected"
         return "disconnected"
     except Exception as e:
-        logger.error(f"SQL Server connection error: {e}")
+        logger.error("SQL Server connection error: %s", sanitize_for_logging(str(e)))
         return "disconnected"
 
 
@@ -304,7 +305,7 @@ async def get_system_status(current_user: dict = Depends(require_admin)):
             errors = result[0].get("error_count", 0)
             error_rate = round((errors / total) * 100, 2) if total > 0 else 0.0
     except Exception as e:
-        logger.warning(f"Could not fetch API metrics: {e}")
+        logger.warning("Could not fetch API metrics: %s", sanitize_for_logging(str(e)))
 
     return SystemStatusResponse(
         api_health="healthy",
@@ -386,7 +387,7 @@ async def get_active_users(current_user: dict = Depends(require_admin)):
         return active_users
 
     except Exception as e:
-        logger.error(f"Error fetching active users: {e}")
+        logger.error("Error fetching active users: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch active users",
@@ -431,7 +432,7 @@ async def get_error_logs(
         ]
 
     except Exception as e:
-        logger.error(f"Error fetching error logs: {e}")
+        logger.error("Error fetching error logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch error logs",
@@ -498,7 +499,7 @@ async def get_performance_metrics(
         return metrics
 
     except Exception as e:
-        logger.error(f"Error fetching performance metrics: {e}")
+        logger.error("Error fetching performance metrics: %s", sanitize_for_logging(str(e)))
         # Return empty list on error rather than failing
         return []
 

@@ -3,6 +3,7 @@ Sync Status API - Provides endpoints for sync status and control
 """
 
 import logging
+from backend.utils.api_utils import sanitize_for_logging
 from typing import Any, cast
 
 from fastapi import APIRouter, HTTPException, status
@@ -34,7 +35,7 @@ async def get_sync_status() -> dict[str, Any]:
         status_data = _auto_sync_manager.get_status()
         return {"success": True, "data": status_data}
     except Exception as e:
-        logger.error(f"Error getting sync status: {e}")
+        logger.error("Error getting sync status: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
@@ -51,7 +52,7 @@ async def get_sync_stats() -> dict[str, Any]:
         stats = _auto_sync_manager.get_stats()
         return {"success": True, "data": stats}
     except Exception as e:
-        logger.error(f"Error getting sync stats: {e}")
+        logger.error("Error getting sync stats: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
@@ -68,5 +69,5 @@ async def trigger_manual_sync() -> dict[str, Any]:
         result = await _auto_sync_manager.trigger_manual_sync()
         return cast(dict[str, Any], result)
     except Exception as e:
-        logger.error(f"Error triggering manual sync: {e}")
+        logger.error("Error triggering manual sync: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

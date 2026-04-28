@@ -11,6 +11,8 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from backend.utils.api_utils import sanitize_for_logging
+
 logger = logging.getLogger(__name__)
 
 health_router = APIRouter(prefix="/health", tags=["health"])
@@ -52,7 +54,7 @@ def get_mongodb_status() -> dict[str, Any]:
             "url": mongo_status["url"],
         }
     except Exception as e:
-        logger.error(f"Error checking MongoDB status: {e}")
+        logger.error("Error checking MongoDB status: %s", sanitize_for_logging(str(e)))
         return {"status": "error", "port": 27017, "is_running": False, "error": str(e)}
 
 
@@ -87,7 +89,7 @@ async def _check_mongodb_health(checks: dict[str, Any]) -> None:
         if not checks["mongodb"]:
             checks["mongodb_error"] = mongo_result.get("error")
     except Exception as exc:
-        logger.error(f"MongoDB health check failed: {exc}")
+        logger.error("MongoDB health check failed: %s", sanitize_for_logging(str(exc)))
         checks["mongodb_error"] = str(exc)
 
 
@@ -105,7 +107,7 @@ async def _check_sql_server_health(checks: dict[str, Any]) -> None:
         if sql_result.get("status") != "healthy":
             checks["sql_server_error"] = sql_result.get("error")
     except Exception as exc:
-        logger.error(f"SQL Server health check failed: {exc}")
+        logger.error("SQL Server health check failed: %s", sanitize_for_logging(str(exc)))
         checks["sql_server_error"] = str(exc)
 
 
@@ -127,7 +129,7 @@ async def _check_redis_health(checks: dict[str, Any]) -> None:
         else:
             checks["redis"] = True  # In-memory fallback is always "available"
     except Exception as exc:
-        logger.warning(f"Redis health check failed: {exc}")
+        logger.warning("Redis health check failed: %s", sanitize_for_logging(str(exc)))
         checks["redis"] = False
         checks["redis_error"] = str(exc)
 
@@ -144,7 +146,7 @@ def _check_system_resources_health(checks: dict[str, Any]) -> None:
         else:
             checks["disk_space"] = True
     except Exception as exc:
-        logger.warning(f"System resource check failed: {exc}")
+        logger.warning("System resource check failed: %s", sanitize_for_logging(str(exc)))
         checks["system_resources_error"] = str(exc)
 
 
@@ -165,13 +167,13 @@ async def _build_startup_checks() -> dict[str, Any]:
         mongo_result = await database_health_service.check_mongo_health()
         checks["mongodb"] = mongo_result.get("status") == "healthy"
     except Exception as exc:
-        logger.error(f"MongoDB startup check failed: {exc}")
+        logger.error("MongoDB startup check failed: %s", sanitize_for_logging(str(exc)))
 
     try:
         sql_result = await database_health_service.check_sql_server_health()
         checks["sql_server"] = sql_result.get("status") == "healthy"
     except Exception as exc:
-        logger.error(f"SQL Server startup check failed: {exc}")
+        logger.error("SQL Server startup check failed: %s", sanitize_for_logging(str(exc)))
 
     return checks
 
@@ -193,7 +195,7 @@ def _gather_system_resources() -> dict[str, Any]:
     try:
         uptime_seconds = max(0.0, time.time() - process.create_time())
     except Exception as exc:
-        logger.warning(f"Uptime calculation failed: {exc}")
+        logger.warning("Uptime calculation failed: %s", sanitize_for_logging(str(exc)))
         uptime_seconds = 0.0
 
     try:
@@ -202,7 +204,7 @@ def _gather_system_resources() -> dict[str, Any]:
         disk_total_gb = disk_usage.total / (1024**3)
         disk_percent = disk_usage.percent
     except Exception as exc:
-        logger.warning(f"Disk usage check failed: {exc}")
+        logger.warning("Disk usage check failed: %s", sanitize_for_logging(str(exc)))
         disk_free_gb = 0
         disk_total_gb = 0
         disk_percent = 0
@@ -264,7 +266,7 @@ async def get_version() -> dict[str, Any]:
 
         return version_info
     except Exception as e:
-        logger.error(f"Error getting version: {e}")
+        logger.error("Error getting version: %s", sanitize_for_logging(str(e)))
         return {
             "version": "unknown",
             "name": "Stock Count API",
@@ -572,7 +574,7 @@ async def check_version(
 
         return result
     except Exception as e:
-        logger.error(f"Error checking version: {e}")
+        logger.error("Error checking version: %s", sanitize_for_logging(str(e)))
         # Return a safe default that doesn't force updates on error
         return {
             "is_compatible": True,
