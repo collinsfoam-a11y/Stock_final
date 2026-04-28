@@ -36,6 +36,13 @@ import {
   modernTypography,
   modernAnimations,
 } from "../../styles/modernDesignSystem";
+import {
+  colors as unifiedColors,
+  semanticColors,
+  radius as unifiedRadius,
+  spacing as unifiedSpacing,
+  textStyles,
+} from "../../theme/unified";
 import { useThemeContextSafe } from "../../context/ThemeContext";
 
 const AnimatedTouchableOpacity =
@@ -148,46 +155,14 @@ export const ModernCard: React.FC<ModernCardProps> = ({
     }
   };
 
-  // Memoized dynamic styles
+  // Memoized dynamic styles aligned with DESIGN.md
   const dynamicStyles = React.useMemo(() => {
-    const spacing = theme?.spacing ?? modernSpacing;
-    const borderLight = theme?.colors.border.light ?? modernColors.border.light;
-    const borderMedium = theme?.colors.border.medium ?? modernColors.border.medium;
-    const paperBackground = theme?.colors.background.paper ?? modernColors.background.paper;
-    const primaryText = theme?.colors.text.primary ?? modernColors.text.primary;
-    const secondaryText = theme?.colors.text.secondary ?? modernColors.text.secondary;
-    const glassBackground = theme?.colors.glass ?? "rgba(255, 255, 255, 0.1)";
-    const glassBorder = theme?.colors.border.light ?? "rgba(255, 255, 255, 0.15)";
-    const shadowMap = theme
-      ? {
-          none: {},
-          sm: {
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.1,
-            shadowRadius: 2,
-            elevation: 2,
-          },
-          md: {
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 8,
-            elevation: 4,
-          },
-          lg: {
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 10 },
-            shadowOpacity: 0.2,
-            shadowRadius: 20,
-            elevation: 8,
-          },
-        }
-      : modernShadows;
+    const spacing = unifiedSpacing;
+    const shadowMap = modernShadows;
 
     return StyleSheet.create({
       card: {
-        borderRadius: theme?.borderRadius?.lg ?? modernBorderRadius.card,
+        borderRadius: unifiedRadius.md,
         overflow: "hidden",
       },
       content: {
@@ -195,42 +170,42 @@ export const ModernCard: React.FC<ModernCardProps> = ({
         flex: 1,
       },
       default: {
-        backgroundColor: paperBackground,
+        backgroundColor: semanticColors.card.background,
         borderWidth: 1,
-        borderColor: borderLight,
+        borderColor: semanticColors.card.border,
         ...shadowMap[elevation],
       },
       elevated: {
-        backgroundColor: paperBackground,
+        backgroundColor: semanticColors.card.background,
         ...shadowMap[elevation],
       },
       glass: {
-        backgroundColor: glassBackground,
+        backgroundColor: "rgba(255, 255, 255, 0.1)",
         borderWidth: 1,
-        borderColor: glassBorder,
+        borderColor: "rgba(255, 255, 255, 0.15)",
       },
       gradient: {
         backgroundColor: "transparent",
       },
       outlined: {
-        backgroundColor: paperBackground,
-        borderWidth: 2,
-        borderColor: borderMedium,
+        backgroundColor: semanticColors.card.background,
+        borderWidth: 1,
+        borderColor: semanticColors.card.border,
       },
       title: {
-        ...modernTypography.h5,
-        color: primaryText,
+        ...textStyles.h5,
+        color: semanticColors.text.primary,
         marginBottom: spacing.xs,
       },
       subtitle: {
-        ...modernTypography.body.small,
-        color: secondaryText,
+        ...textStyles.bodySmall,
+        color: semanticColors.text.secondary,
       },
       footer: {
         marginTop: spacing.md,
         paddingTop: spacing.md,
         borderTopWidth: 1,
-        borderTopColor: borderLight,
+        borderTopColor: semanticColors.card.border,
       },
       header: {
         flexDirection: "row",
@@ -241,7 +216,7 @@ export const ModernCard: React.FC<ModernCardProps> = ({
         marginRight: spacing.sm,
       },
     });
-  }, [theme, elevation, actualPadding]);
+  }, [elevation, actualPadding]);
 
   // Render card content
   const renderContent = () => {
@@ -254,9 +229,7 @@ export const ModernCard: React.FC<ModernCardProps> = ({
                 <Ionicons
                   name={icon}
                   size={24}
-                  color={
-                    theme ? theme.colors.accent : modernColors.primary[500]
-                  }
+                  color={semanticColors.interactive.default}
                 />
               </View>
             )}

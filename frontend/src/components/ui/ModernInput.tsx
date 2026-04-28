@@ -17,12 +17,14 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import {
-  colors,
-  spacing,
-  typography,
-  borderRadius,
-  shadows,
-} from "../../theme/modernDesign";
+  colors as unifiedColors,
+  semanticColors,
+  spacing as unifiedSpacing,
+  radius as unifiedRadius,
+  fontSize,
+  fontWeight,
+  textStyles,
+} from "../../theme/unified";
 
 interface ModernInputProps {
   label?: string;
@@ -86,30 +88,26 @@ export const ModernInput: React.FC<ModernInputProps> = ({
 
   const getInputContainerStyles = (): ViewStyle => {
     const baseStyles: ViewStyle = {
-      borderRadius: borderRadius.md,
-      borderWidth: 1.5,
-      backgroundColor: disabled ? colors.gray[50] : colors.white,
+      borderRadius: unifiedRadius.sm,
+      borderWidth: 1,
+      backgroundColor: disabled
+        ? unifiedColors.neutral[50]
+        : semanticColors.input.background,
       flexDirection: "row",
       alignItems: multiline ? "flex-start" : "center",
-      paddingHorizontal: spacing.md,
-      paddingVertical: multiline ? spacing.md : spacing.sm,
-      minHeight: multiline ? 80 : 50,
+      paddingHorizontal: unifiedSpacing.md,
+      paddingVertical: multiline ? unifiedSpacing.md : unifiedSpacing.sm,
+      minHeight: multiline ? 80 : 44,
+      borderColor: semanticColors.input.border,
     };
 
-    // Border color logic
+    // Border color logic aligned with DESIGN.md
     if (error) {
-      baseStyles.borderColor = colors.error[500];
-      baseStyles.backgroundColor = colors.error[50];
+      baseStyles.borderColor = semanticColors.status.error;
+      baseStyles.backgroundColor = unifiedColors.error[50];
     } else if (isFocused) {
-      baseStyles.borderColor = colors.primary[500];
-      baseStyles.backgroundColor = colors.primary[50];
-    } else {
-      baseStyles.borderColor = colors.gray[300];
-    }
-
-    // Shadow for focused state
-    if (isFocused && !error) {
-      Object.assign(baseStyles, shadows.sm);
+      baseStyles.borderColor = semanticColors.input.focus;
+      baseStyles.borderWidth = 2;
     }
 
     return baseStyles;
@@ -118,20 +116,19 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   const getInputStyles = (): TextStyle => {
     return {
       flex: 1,
-      fontSize: typography.fontSize.base,
-      fontWeight: typography.fontWeight.normal,
-      color: disabled ? colors.gray[500] : colors.gray[900],
-      paddingTop: multiline ? spacing.xs : 0,
+      fontSize: fontSize.lg,
+      fontWeight: fontWeight.regular,
+      color: disabled ? unifiedColors.neutral[400] : semanticColors.input.text,
+      paddingTop: multiline ? unifiedSpacing.xs : 0,
       textAlignVertical: multiline ? "top" : "center",
     };
   };
 
   const getLabelStyles = (): TextStyle => {
     return {
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.medium,
-      color: error ? colors.error[600] : colors.gray[700],
-      marginBottom: spacing.xs,
+      ...textStyles.label,
+      color: error ? semanticColors.status.error : semanticColors.text.primary,
+      marginBottom: unifiedSpacing.xs,
     };
   };
 
@@ -157,7 +154,11 @@ export const ModernInput: React.FC<ModernInputProps> = ({
             <Ionicons
               name={icon}
               size={20}
-              color={error ? colors.error[500] : colors.gray[500]}
+              color={
+                error
+                  ? semanticColors.status.error
+                  : semanticColors.input.placeholder
+              }
             />
           </TouchableOpacity>
         )}
@@ -166,7 +167,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           ref={inputRef}
           style={[getInputStyles(), inputStyle]}
           placeholder={placeholder}
-          placeholderTextColor={colors.gray[400]}
+          placeholderTextColor={semanticColors.input.placeholder}
           value={value}
           onChangeText={onChangeText}
           editable={!disabled}
@@ -190,7 +191,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
             <Ionicons
               name={isPasswordVisible ? "eye-off" : "eye"}
               size={20}
-              color={colors.gray[500]}
+              color={semanticColors.input.placeholder}
             />
           </TouchableOpacity>
         )}
@@ -201,7 +202,11 @@ export const ModernInput: React.FC<ModernInputProps> = ({
             style={styles.iconContainer}
             disabled={!onRightIconPress}
           >
-            <Ionicons name={rightIcon} size={20} color={colors.gray[500]} />
+            <Ionicons
+              name={rightIcon}
+              size={20}
+              color={semanticColors.input.placeholder}
+            />
           </TouchableOpacity>
         )}
       </Pressable>
@@ -213,18 +218,18 @@ export const ModernInput: React.FC<ModernInputProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: spacing.md,
+    marginBottom: unifiedSpacing.md,
   },
   iconContainer: {
-    padding: spacing.xs,
+    padding: unifiedSpacing.xs,
   },
   required: {
-    color: colors.error[500],
+    color: semanticColors.status.error,
   },
   errorText: {
-    fontSize: typography.fontSize.xs,
-    color: colors.error[500],
-    marginTop: spacing.xs,
+    fontSize: fontSize.xs,
+    color: semanticColors.status.error,
+    marginTop: unifiedSpacing.xs,
   },
 });
 export default ModernInput;
