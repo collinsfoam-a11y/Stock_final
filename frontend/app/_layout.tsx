@@ -2,23 +2,17 @@ import React from "react";
 import { Platform } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
+import AppShell from "../src/bootstrap/AppShell";
 import { useAuthStore } from "../src/store/authStore";
 import { useSettingsStore } from "../src/store/settingsStore";
 import { fontAssets } from "../src/constants/fontAssets";
 import { initializeApp } from "../src/bootstrap/initApp";
 import { BootLoadingView } from "../src/bootstrap/BootStateViews";
 
-type AppShellModule = typeof import("../src/bootstrap/AppShell");
-
-const requireModule = <TModule,>(specifier: string): TModule => {
-  // Web boot needs a synchronous shell reference while native keeps lazy loading.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require(specifier) as TModule;
-};
 
 const WebAppShell =
   Platform.OS === "web"
-    ? requireModule<AppShellModule>("../src/bootstrap/AppShell").default
+    ? AppShell
     : null;
 const LazyAppShell = React.lazy(() => import("../src/bootstrap/AppShell"));
 
