@@ -16,39 +16,67 @@ def _make_auth_headers(username: str, role: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+async def _seed_session_and_line_for_variance_recalc(
+    test_db,
+    *,
+    session_id: str,
+    line_id: str,
+    line_overrides: dict | None = None,
+) -> None:
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    await test_db.sessions.insert_one(
+        {
+            "id": session_id,
+            "session_id": session_id,
+            "warehouse": "Main",
+            "staff_user": "staff1",
+            "staff_name": "Staff Member",
+            "status": "ACTIVE",
+            "type": "STANDARD",
+            "started_at": now,
+            "total_variance": 0.0,
+        }
+    )
+    await test_db.session_snapshots.insert_one(
+        {
+            "id": f"snap-{session_id}",
+            "session_id": session_id,
+            "warehouse": "Main",
+            "snapshot_hash": f"hash-{session_id}",
+            "item_count": 1,
+            "items": [{"item_code": "ITEM001", "stock_qty": 1.0}],
+            "created_at": now,
+        }
+    )
+    line_doc = {
+        "id": line_id,
+        "session_id": session_id,
+        "location_id": "LOC-1",
+        "floor_id": "F1",
+        "rack_id": "R1",
+        "item_code": "ITEM001",
+        "item_name": "Test Item",
+        "counted_qty": 2.0,
+        "erp_qty": 1.0,
+        "variance": 1.0,
+        "mrp_erp": 10.0,
+        "mrp_counted": 10.0,
+        "financial_impact": 0.0,
+        "counted_by": "staff1",
+        "counted_at": now,
+    }
+    if line_overrides:
+        line_doc.update(line_overrides)
+    await test_db.count_lines.insert_one(line_doc)
+
+
 @pytest.mark.asyncio
 async def test_add_quantity_updates_count_line_and_session_totals(async_client, test_db):
     session_id = "sess_add_qty"
     line_id = "line_add_qty"
 
-    await test_db.sessions.insert_one(
-        {
-            "id": session_id,
-            "warehouse": "Main",
-            "staff_user": "staff1",
-            "staff_name": "Staff Member",
-            "status": "OPEN",
-            "type": "STANDARD",
-            "started_at": datetime.now(timezone.utc).replace(tzinfo=None),
-            "total_variance": 0.0,
-        }
-    )
-
-    await test_db.count_lines.insert_one(
-        {
-            "id": line_id,
-            "session_id": session_id,
-            "item_code": "ITEM001",
-            "item_name": "Test Item",
-            "counted_qty": 2.0,
-            "erp_qty": 1.0,
-            "variance": 1.0,
-            "mrp_erp": 10.0,
-            "mrp_counted": 10.0,
-            "financial_impact": 0.0,
-            "counted_by": "staff1",
-            "counted_at": datetime.now(timezone.utc).replace(tzinfo=None),
-        }
+    await _seed_session_and_line_for_variance_recalc(
+        test_db, session_id=session_id, line_id=line_id
     )
 
     headers = _make_auth_headers("staff1", "staff")
@@ -75,33 +103,15 @@ async def test_verify_and_unverify_persist_flags(async_client, test_db):
     session_id = "sess_verify"
     line_id = "line_verify"
 
-    await test_db.sessions.insert_one(
-        {
-            "id": session_id,
-            "warehouse": "Main",
-            "staff_user": "staff1",
-            "staff_name": "Staff Member",
-            "status": "OPEN",
-            "type": "STANDARD",
-            "started_at": datetime.now(timezone.utc).replace(tzinfo=None),
-        }
-    )
-
-    await test_db.count_lines.insert_one(
-        {
-            "id": line_id,
-            "session_id": session_id,
-            "item_code": "ITEM001",
-            "item_name": "Test Item",
-            "counted_qty": 2.0,
-            "erp_qty": 1.0,
-            "variance": 1.0,
-            "counted_by": "staff1",
-            "counted_at": datetime.now(timezone.utc).replace(tzinfo=None),
+    await _seed_session_and_line_for_variance_recalc(
+        test_db,
+        session_id=session_id,
+        line_id=line_id,
+        line_overrides={
             "verified": False,
             "verified_by": None,
             "verified_at": None,
-        }
+        },
     )
 
     supervisor_headers = _make_auth_headers("supervisor", "supervisor")
@@ -239,34 +249,8 @@ async def test_put_update_count_line_recalculates_variance(async_client, test_db
     session_id = "sess_put_update"
     line_id = "line_put_update"
 
-    await test_db.sessions.insert_one(
-        {
-            "id": session_id,
-            "warehouse": "Main",
-            "staff_user": "staff1",
-            "staff_name": "Staff Member",
-            "status": "OPEN",
-            "type": "STANDARD",
-            "started_at": datetime.now(timezone.utc).replace(tzinfo=None),
-            "total_variance": 0.0,
-        }
-    )
-
-    await test_db.count_lines.insert_one(
-        {
-            "id": line_id,
-            "session_id": session_id,
-            "item_code": "ITEM001",
-            "item_name": "Test Item",
-            "counted_qty": 2.0,
-            "erp_qty": 1.0,
-            "variance": 1.0,
-            "mrp_erp": 10.0,
-            "mrp_counted": 10.0,
-            "financial_impact": 0.0,
-            "counted_by": "staff1",
-            "counted_at": datetime.now(timezone.utc).replace(tzinfo=None),
-        }
+    await _seed_session_and_line_for_variance_recalc(
+        test_db, session_id=session_id, line_id=line_id
     )
 
     headers = _make_auth_headers("staff1", "staff")

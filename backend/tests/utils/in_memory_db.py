@@ -663,12 +663,14 @@ def _setup_cache_and_redis(monkeypatch, server_module) -> Any:
     from unittest.mock import AsyncMock
 
     from backend.services.cache_service import CacheService
+    from backend.services import lock_manager as lock_manager_module
     from backend.services.runtime import set_cache_service
 
     mock_cache = CacheService(redis_url=None)  # Force in-memory
     mock_cache.initialize = AsyncMock()  # type: ignore
     monkeypatch.setattr(server_module, "cache_service", mock_cache)
     set_cache_service(mock_cache)
+    monkeypatch.setattr(lock_manager_module, "_lock_manager", None)
 
     # Setup fake Redis service
     from backend.services import redis_service as redis_module
