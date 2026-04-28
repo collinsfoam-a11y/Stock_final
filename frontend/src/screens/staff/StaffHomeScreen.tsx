@@ -40,6 +40,7 @@ import ModernHeader from "@/components/ui/ModernHeader";
 import ModernCard from "@/components/ui/ModernCard";
 import ModernButton from "@/components/ui/ModernButton";
 import ModernInput from "@/components/ui/ModernInput";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import {
   colors,
   spacing,
@@ -143,6 +144,7 @@ const normalizeWarehouse = (value: unknown): string => {
 const StaffHome = React.memo(function StaffHome() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const prefersReducedMotion = useReducedMotion();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const unreadCount = useNotificationStore((state) => state.unreadCount);
@@ -529,7 +531,11 @@ const StaffHome = React.memo(function StaffHome() {
   const renderContent = () => {
     if (activeTab === "active") {
       return (
-        <Animated.View entering={FadeInDown.duration(500)}>
+        <Animated.View
+          entering={
+            prefersReducedMotion ? undefined : FadeInDown.duration(500)
+          }
+        >
           <ModernButton
             title="Start New Session"
             icon="add-circle-outline"
@@ -560,7 +566,11 @@ const StaffHome = React.memo(function StaffHome() {
 
     if (activeTab === "history") {
       return (
-        <Animated.View entering={FadeInDown.duration(500)}>
+        <Animated.View
+          entering={
+            prefersReducedMotion ? undefined : FadeInDown.duration(500)
+          }
+        >
           {finishedSessions.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons
@@ -641,6 +651,7 @@ const StaffHome = React.memo(function StaffHome() {
         <TouchableOpacity
           style={[styles.tab, activeTab === "active" && styles.activeTab]}
           onPress={() => setActiveTab("active")}
+          accessibilityRole="button"
         >
           <Text
             style={[
@@ -654,6 +665,7 @@ const StaffHome = React.memo(function StaffHome() {
         <TouchableOpacity
           style={[styles.tab, activeTab === "history" && styles.activeTab]}
           onPress={() => setActiveTab("history")}
+          accessibilityRole="button"
         >
           <Text
             style={[
@@ -683,7 +695,7 @@ const StaffHome = React.memo(function StaffHome() {
       {/* Create Session Modal */}
       <Modal
         visible={showCreateModal}
-        animationType="slide"
+        animationType={prefersReducedMotion ? "none" : "slide"}
         presentationStyle="pageSheet"
         onRequestClose={() => setShowCreateModal(false)}
       >
@@ -693,7 +705,12 @@ const StaffHome = React.memo(function StaffHome() {
         >
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>New Session</Text>
-            <TouchableOpacity onPress={() => setShowCreateModal(false)}>
+            <TouchableOpacity
+              onPress={() => setShowCreateModal(false)}
+              style={styles.modalCloseButton}
+              accessibilityRole="button"
+              accessibilityLabel="Close new session modal"
+            >
               <Ionicons name="close" size={24} color={colors.gray[500]} />
             </TouchableOpacity>
           </View>
@@ -728,7 +745,11 @@ const StaffHome = React.memo(function StaffHome() {
             </View>
 
             {locationType && (
-              <Animated.View entering={FadeInUp}>
+              <Animated.View
+                entering={
+                  prefersReducedMotion ? undefined : FadeInUp.duration(250)
+                }
+              >
                 <Text style={styles.sectionLabel}>Select Floor / Area</Text>
                 <View style={styles.chipContainer}>
                   {warehouses.map((wh) => (
@@ -757,7 +778,11 @@ const StaffHome = React.memo(function StaffHome() {
             )}
 
             {selectedFloor && (
-              <Animated.View entering={FadeInUp}>
+              <Animated.View
+                entering={
+                  prefersReducedMotion ? undefined : FadeInUp.duration(250)
+                }
+              >
                 <ModernInput
                   label="Rack / Shelf Number"
                   placeholder="e.g. A-123"
@@ -793,13 +818,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   tab: {
+    flex: 1,
+    minHeight: 44,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.full,
     backgroundColor: colors.gray[200],
+    alignItems: "center",
+    justifyContent: "center",
   },
   activeTab: {
     backgroundColor: colors.primary[600],
@@ -853,12 +882,13 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
   headerIconButton: {
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     borderRadius: borderRadius.full,
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.xs,
+    backgroundColor: colors.gray[100],
   },
   notificationBadge: {
     position: "absolute",
@@ -936,6 +966,13 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.bold,
     color: colors.gray[900],
   },
+  modalCloseButton: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   modalContent: {
     padding: spacing.lg,
   },
@@ -953,12 +990,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   chip: {
+    minHeight: 44,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.full,
     backgroundColor: colors.gray[100],
     borderWidth: 1,
     borderColor: colors.gray[200],
+    alignItems: "center",
+    justifyContent: "center",
   },
   chipActive: {
     backgroundColor: colors.primary[50],

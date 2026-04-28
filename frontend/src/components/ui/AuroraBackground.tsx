@@ -30,6 +30,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useThemeContext } from "../../context/ThemeContext";
 import { ParticleField } from "./ParticleField";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 export type AuroraVariant =
   | "primary"
@@ -59,6 +60,8 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
 }) => {
   const { width, height } = useWindowDimensions();
   const { theme } = useThemeContext();
+  const prefersReducedMotion = useReducedMotion();
+  const shouldAnimate = animated && !prefersReducedMotion;
 
   // Use theme colors for aurora variants with a safe fallback for mocks.
   const fallbackColor = theme.colors.accent || "#0EA5E9";
@@ -77,7 +80,7 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
   const blob3Y = useSharedValue(0);
 
   useEffect(() => {
-    if (animated && Platform.OS !== "web") {
+    if (shouldAnimate && Platform.OS !== "web") {
       // Blob 1 animation
       blob1X.value = withRepeat(
         withSequence(
@@ -152,8 +155,16 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
         -1,
         true,
       );
+      return;
     }
-  }, [animated, blob1X, blob1Y, blob2X, blob2Y, blob3X, blob3Y]);
+
+    blob1X.value = 0;
+    blob1Y.value = 0;
+    blob2X.value = 0;
+    blob2Y.value = 0;
+    blob3X.value = 0;
+    blob3Y.value = 0;
+  }, [blob1X, blob1Y, blob2X, blob2Y, blob3X, blob3Y, shouldAnimate]);
 
   const blob1Style = useAnimatedStyle(() => ({
     transform: [{ translateX: blob1X.value }, { translateY: blob1Y.value }],
@@ -257,7 +268,7 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
         <ParticleField
           count={particleCount}
           color={colors[1]}
-          animated={animated}
+          animated={shouldAnimate}
         />
       )}
 

@@ -13,10 +13,22 @@ import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
-import { AuroraBackground } from "@/components/ui/AuroraBackground";
-import { GlassCard } from "@/components/ui/GlassCard";
+import { Screen } from "@/components/layout/Screen";
+import ModernCard from "@/components/ui/ModernCard";
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
-import { auroraTheme } from "@/theme/auroraTheme";
+import RecountAssignmentModal, {
+  type AssignableStaffUser,
+} from "@/components/supervisor/RecountAssignmentModal";
+import { useToast } from "@/components/feedback/ToastProvider";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { useSettingsStore } from "@/store/settingsStore";
+import {
+  colors,
+  spacing,
+  typography,
+  borderRadius,
+  shadows,
+} from "@/theme/modernDesign";
 import {
   getSession,
   getCountLines,
@@ -28,19 +40,78 @@ import {
   verifyStock,
   unverifyStock,
 } from "@/services/api/api";
-import RecountAssignmentModal, {
-  type AssignableStaffUser,
-} from "@/components/supervisor/RecountAssignmentModal";
-import { useToast } from "@/components/feedback/ToastProvider";
-import { useSettingsStore } from "@/store/settingsStore";
+
+type BadgeTone = "neutral" | "success" | "warning" | "error" | "info";
+
+const badgeToneStyles = {
+  neutral: {
+    backgroundColor: colors.gray[100],
+    borderColor: colors.gray[200],
+    textColor: colors.gray[700],
+  },
+  success: {
+    backgroundColor: colors.success[50],
+    borderColor: "#A7F3D0",
+    textColor: colors.success[600],
+  },
+  warning: {
+    backgroundColor: colors.warning[50],
+    borderColor: "#FDE68A",
+    textColor: colors.warning[600],
+  },
+  error: {
+    backgroundColor: colors.error[50],
+    borderColor: "#FECACA",
+    textColor: colors.error[600],
+  },
+  info: {
+    backgroundColor: colors.primary[50],
+    borderColor: colors.primary[200],
+    textColor: colors.primary[700],
+  },
+} as const;
+
+const getSessionStatusTone = (status: string): BadgeTone => {
+  switch (status.trim().toUpperCase()) {
+    case "OPEN":
+    case "ACTIVE":
+      return "info";
+    case "RECONCILE":
+    case "PENDING":
+      return "warning";
+    case "COMPLETED":
+    case "FINALIZED":
+    case "APPROVED":
+      return "success";
+    case "REJECTED":
+    case "FAILED":
+      return "error";
+    default:
+      return "neutral";
+  }
+};
+
+const getLineStatusTone = (status: string): BadgeTone => {
+  switch (status.trim().toUpperCase()) {
+    case "APPROVED":
+    case "VERIFIED":
+      return "success";
+    case "REJECTED":
+      return "error";
+    case "PENDING":
+      return "warning";
+    default:
+      return "neutral";
+  }
+};
 
 export default function SessionDetail() {
-  // Support both "id" (from route) and "sessionId" (legacy or explicit) parameter
   const { id, sessionId } = useLocalSearchParams();
   const targetSessionId = (id || sessionId) as string;
 
   const router = useRouter();
   const { show } = useToast();
+  const prefersReducedMotion = useReducedMotion();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [session, setSession] = React.useState<any>(null);
   const [toVerifyLines, setToVerifyLines] = React.useState<any[]>([]);
@@ -60,15 +131,49 @@ export default function SessionDetail() {
     null,
   );
 
+  const getFadeInDown = React.useCallback(
+    (delay = 0) =>
+      prefersReducedMotion ? undefined : FadeInDown.delay(delay).springify(),
+    [prefersReducedMotion],
+  );
+
+  const renderBadge = React.useCallback(
+    (label: string, tone: BadgeTone, icon?: keyof typeof Ionicons.glyphMap) => {
+      const toneStyle = badgeToneStyles[tone];
+
+      return (
+        <View
+          style={[
+            styles.badge,
+            {
+              backgroundColor: toneStyle.backgroundColor,
+              borderColor: toneStyle.borderColor,
+            },
+          ]}
+        >
+          {icon ? (
+            <Ionicons name={icon} size={12} color={toneStyle.textColor} />
+          ) : null}
+          <Text style={[styles.badgeText, { color: toneStyle.textColor }]}>
+            {label}
+          </Text>
+        </View>
+      );
+    },
+    [],
+  );
+
   const loadData = React.useCallback(async () => {
     if (!targetSessionId) return;
+
     try {
       setLoading(true);
       const [sessionData, toVerifyData, verifiedData] = await Promise.all([
         getSession(targetSessionId),
-        getCountLines(targetSessionId, 1, 100, false), // Not verified
-        getCountLines(targetSessionId, 1, 100, true), // Verified
+        getCountLines(targetSessionId, 1, 100, false),
+        getCountLines(targetSessionId, 1, 100, true),
       ]);
+
       if (!sessionData) {
         setSession(null);
         setToVerifyLines([]);
@@ -84,12 +189,13 @@ export default function SessionDetail() {
       setVerifiedLines(verifiedData?.items || []);
     } catch {
       show("Failed to load session data", "error");
-      if (Platform.OS !== "web")
+      if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
     } finally {
       setLoading(false);
     }
-  }, [targetSessionId, show]);
+  }, [show, targetSessionId]);
 
   React.useEffect(() => {
     loadData();
@@ -117,47 +223,6 @@ export default function SessionDetail() {
     }
   }, [assignableStaff, offlineMode, show]);
 
-  if (!loading && sessionMissing) {
-    return (
-      <AuroraBackground>
-        <StatusBar style="light" />
-        <View style={styles.header}>
-          <AnimatedPressable
-            onPress={() => router.replace("/supervisor/sessions")}
-            style={styles.backButton}
-          >
-            <Ionicons
-              name="arrow-back"
-              size={24}
-              color={auroraTheme.colors.text.primary}
-            />
-          </AnimatedPressable>
-          <Text style={styles.headerTitle}>Session Details</Text>
-          <View style={{ width: 40 }} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <Ionicons
-            name="alert-circle-outline"
-            size={56}
-            color={auroraTheme.colors.warning[500]}
-          />
-          <Text style={styles.loadingText}>This session is no longer available.</Text>
-          {offlineMode && (
-            <Text style={styles.offlineMissingText}>
-              It is not available in the local session cache.
-            </Text>
-          )}
-          <AnimatedPressable
-            onPress={() => router.replace("/supervisor/sessions")}
-            style={styles.closeButton}
-          >
-            <Text style={styles.buttonText}>Back to Sessions</Text>
-          </AnimatedPressable>
-        </View>
-      </AuroraBackground>
-    );
-  }
-
   const handleApproveLine = async (lineId: string) => {
     if (offlineMode) {
       show("Approvals require a live connection", "warning");
@@ -165,15 +230,17 @@ export default function SessionDetail() {
     }
 
     try {
-      if (Platform.OS !== "web")
+      if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
       await approveCountLine(lineId);
       await loadData();
       show("Count line approved", "success");
     } catch {
       show("Failed to approve", "error");
-      if (Platform.OS !== "web")
+      if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
     }
   };
 
@@ -184,14 +251,16 @@ export default function SessionDetail() {
     }
 
     try {
-      if (Platform.OS !== "web")
+      if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
       await loadAssignableStaff();
       setPendingRejectLine(line);
       setRecountModalVisible(true);
     } catch {
-      if (Platform.OS !== "web")
+      if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
     }
   };
 
@@ -213,8 +282,9 @@ export default function SessionDetail() {
     }
 
     try {
-      if (Platform.OS !== "web")
+      if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
       setVerifying(pendingRejectLine.id);
       await rejectCountLine(pendingRejectLine.id, {
         notes: notes || undefined,
@@ -229,8 +299,9 @@ export default function SessionDetail() {
       );
     } catch {
       show("Failed to reject", "error");
-      if (Platform.OS !== "web")
+      if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
     } finally {
       setVerifying(null);
     }
@@ -243,16 +314,18 @@ export default function SessionDetail() {
     }
 
     try {
-      if (Platform.OS !== "web")
+      if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      }
       setVerifying(lineId);
       await verifyStock(lineId);
       await loadData();
       show("Stock verified", "success");
     } catch {
       show("Failed to verify stock", "error");
-      if (Platform.OS !== "web")
+      if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
     } finally {
       setVerifying(null);
     }
@@ -265,16 +338,18 @@ export default function SessionDetail() {
     }
 
     try {
-      if (Platform.OS !== "web")
+      if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
       setVerifying(lineId);
       await unverifyStock(lineId);
       await loadData();
       show("Verification removed", "success");
     } catch {
       show("Failed to remove verification", "error");
-      if (Platform.OS !== "web")
+      if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
     } finally {
       setVerifying(null);
     }
@@ -287,15 +362,17 @@ export default function SessionDetail() {
     }
 
     try {
-      if (Platform.OS !== "web")
+      if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
       await updateSessionStatus(targetSessionId, newStatus);
       await loadData();
-      show(`Session status updated to ${newStatus} `, "success");
+      show(`Session status updated to ${newStatus}`, "success");
     } catch {
       show("Failed to update status", "error");
-      if (Platform.OS !== "web")
+      if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
     }
   };
 
@@ -306,8 +383,9 @@ export default function SessionDetail() {
     }
 
     try {
-      if (Platform.OS !== "web")
+      if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
       await finalizeSession(targetSessionId);
       await loadData();
       show("Session finalized", "success");
@@ -317,184 +395,215 @@ export default function SessionDetail() {
         error?.response?.data?.detail ||
         "Failed to finalize session";
       show(String(detail), "error");
-      if (Platform.OS !== "web")
+      if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
     }
   };
 
   const switchTab = (tab: "toVerify" | "verified") => {
     if (activeTab === tab) return;
-    if (Platform.OS !== "web") Haptics.selectionAsync();
+    if (Platform.OS !== "web") {
+      Haptics.selectionAsync();
+    }
     setActiveTab(tab);
   };
 
+  if (!loading && sessionMissing) {
+    return (
+      <Screen padding={0} backgroundColor={colors.gray[50]}>
+        <StatusBar style="dark" />
+        <View style={styles.header}>
+          <AnimatedPressable
+            onPress={() => router.replace("/supervisor/sessions")}
+            style={styles.backButton}
+            accessibilityRole="button"
+            accessibilityLabel="Back to sessions"
+          >
+            <Ionicons name="arrow-back" size={22} color={colors.gray[700]} />
+          </AnimatedPressable>
+          <Text style={styles.headerTitle}>Session Details</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        <View style={styles.loadingContainer}>
+          <Ionicons
+            name="alert-circle-outline"
+            size={56}
+            color={colors.warning[500]}
+          />
+          <Text style={styles.loadingText}>
+            This session is no longer available.
+          </Text>
+          {offlineMode ? (
+            <Text style={styles.offlineMissingText}>
+              It is not available in the local session cache.
+            </Text>
+          ) : null}
+          <AnimatedPressable
+            onPress={() => router.replace("/supervisor/sessions")}
+            style={[styles.primaryActionButton, styles.successActionButton]}
+            accessibilityRole="button"
+            accessibilityLabel="Back to sessions"
+          >
+            <Text style={styles.buttonText}>Back to Sessions</Text>
+          </AnimatedPressable>
+        </View>
+      </Screen>
+    );
+  }
+
   if (loading || !session) {
     return (
-      <AuroraBackground>
-        <StatusBar style="light" />
+      <Screen padding={0} backgroundColor={colors.gray[50]}>
+        <StatusBar style="dark" />
         <View style={styles.header}>
           <AnimatedPressable
             onPress={() => router.back()}
             style={styles.backButton}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
-            <Ionicons
-              name="arrow-back"
-              size={24}
-              color={auroraTheme.colors.text.primary}
-            />
+            <Ionicons name="arrow-back" size={22} color={colors.gray[700]} />
           </AnimatedPressable>
           <Text style={styles.headerTitle}>Session Details</Text>
-          <View style={{ width: 40 }} />
+          <View style={styles.headerSpacer} />
         </View>
+
         <View style={styles.loadingContainer}>
-          <ActivityIndicator
-            size="large"
-            color={auroraTheme.colors.primary[500]}
-          />
+          <ActivityIndicator size="large" color={colors.primary[500]} />
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
-      </AuroraBackground>
+      </Screen>
     );
   }
 
   const currentLines = activeTab === "toVerify" ? toVerifyLines : verifiedLines;
   const totalVariance = Number(session?.total_variance ?? 0);
   const sessionFinalized =
-    session?.status === "COMPLETED" || session?.finalization_status === "FINALIZED";
+    session?.status === "COMPLETED" ||
+    session?.finalization_status === "FINALIZED";
 
-  // Header Component for FlashList
   const ListHeader = () => (
     <View>
-      <Animated.View entering={FadeInDown.delay(100).springify()}>
-        <GlassCard
-          variant="medium"
-          withGradientBorder
-          style={styles.sessionInfo}
-        >
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Warehouse:</Text>
-            <Text style={styles.infoValue}>{session.warehouse}</Text>
+      <Animated.View entering={getFadeInDown(100)}>
+        <ModernCard variant="elevated" style={styles.sessionInfoCard}>
+          <View style={styles.sessionInfoHeader}>
+            <View style={styles.sessionIdentity}>
+              <Text style={styles.sectionLabel}>Warehouse</Text>
+              <Text style={styles.sessionTitle} numberOfLines={2}>
+                {session.warehouse || "Unknown warehouse"}
+              </Text>
+              <Text style={styles.sessionSubtitle}>
+                Counted by {session.staff_name || "Unassigned staff"}
+              </Text>
+            </View>
+            {renderBadge(
+              String(session.status || "Unknown"),
+              getSessionStatusTone(String(session.status || "")),
+            )}
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Staff:</Text>
-            <Text style={styles.infoValue}>{session.staff_name}</Text>
+
+          <View style={styles.metricRow}>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricLabel}>Items</Text>
+              <Text style={styles.metricValue}>{session.total_items ?? 0}</Text>
+            </View>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricLabel}>Total Variance</Text>
+              <Text
+                style={[
+                  styles.metricValue,
+                  totalVariance !== 0 && styles.metricValueDanger,
+                ]}
+              >
+                {totalVariance.toFixed(2)}
+              </Text>
+            </View>
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Status:</Text>
-            <Text style={[styles.infoValue, styles.statusValue]}>
-              {session.status}
-            </Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Items:</Text>
-            <Text style={styles.infoValue}>{session.total_items}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Total Variance:</Text>
-            <Text
-              style={[
-                styles.infoValue,
-                totalVariance !== 0 && styles.varianceValue,
-              ]}
-            >
-              {totalVariance.toFixed(2)}
-            </Text>
-          </View>
-        </GlassCard>
+        </ModernCard>
       </Animated.View>
 
-      {session.status === "OPEN" && !offlineMode && (
-        <Animated.View
-          entering={FadeInDown.delay(200).springify()}
-          style={styles.actionButtons}
-        >
+      {session.status === "OPEN" && !offlineMode ? (
+        <Animated.View entering={getFadeInDown(200)} style={styles.actionButtons}>
           <AnimatedPressable
-            style={styles.reconcileButton}
+            style={[styles.primaryActionButton, styles.warningActionButton]}
             onPress={() => handleUpdateStatus("RECONCILE")}
+            accessibilityRole="button"
+            accessibilityLabel="Move session to reconcile"
           >
             <Text style={styles.buttonText}>Move to Reconcile</Text>
           </AnimatedPressable>
         </Animated.View>
-      )}
+      ) : null}
 
-      {session.status === "RECONCILE" && !offlineMode && (
-        <Animated.View
-          entering={FadeInDown.delay(200).springify()}
-          style={styles.actionButtons}
-        >
+      {session.status === "RECONCILE" && !offlineMode ? (
+        <Animated.View entering={getFadeInDown(200)} style={styles.actionButtons}>
           <AnimatedPressable
-            style={styles.closeButton}
+            style={[styles.primaryActionButton, styles.successActionButton]}
             onPress={() => void handleFinalizeSession()}
+            accessibilityRole="button"
+            accessibilityLabel="Finalize session"
           >
             <Text style={styles.buttonText}>Finalize Session</Text>
           </AnimatedPressable>
         </Animated.View>
-      )}
+      ) : null}
 
-      {sessionFinalized && (
-        <Animated.View entering={FadeInDown.delay(220).springify()}>
-          <GlassCard variant="medium" style={styles.offlineNotice}>
-            <View style={styles.offlineNoticeRow}>
+      {sessionFinalized ? (
+        <Animated.View entering={getFadeInDown(220)}>
+          <View style={[styles.noticeCard, styles.noticeSuccess]}>
+            <View style={styles.noticeRow}>
               <Ionicons
                 name="lock-closed-outline"
                 size={18}
-                color={auroraTheme.colors.success[500]}
+                color={colors.success[600]}
               />
-              <View style={styles.offlineNoticeCopy}>
-                <Text style={styles.offlineNoticeTitle}>
-                  Session finalized
-                </Text>
-                <Text style={styles.offlineNoticeBody}>
+              <View style={styles.noticeCopy}>
+                <Text style={styles.noticeTitle}>Session finalized</Text>
+                <Text style={styles.noticeBody}>
                   Finalized sessions are locked for audit integrity. Count lines
                   can be reviewed, but approvals and edits are disabled.
                 </Text>
               </View>
             </View>
-          </GlassCard>
+          </View>
         </Animated.View>
-      )}
+      ) : null}
 
-      {offlineMode && (
-        <Animated.View entering={FadeInDown.delay(220).springify()}>
-          <GlassCard variant="medium" style={styles.offlineNotice}>
-            <View style={styles.offlineNoticeRow}>
+      {offlineMode ? (
+        <Animated.View entering={getFadeInDown(220)}>
+          <View style={[styles.noticeCard, styles.noticeWarning]}>
+            <View style={styles.noticeRow}>
               <Ionicons
                 name="cloud-offline-outline"
                 size={18}
-                color={auroraTheme.colors.warning[500]}
+                color={colors.warning[600]}
               />
-              <View style={styles.offlineNoticeCopy}>
-                <Text style={styles.offlineNoticeTitle}>
-                  Viewing cached session data
-                </Text>
-                <Text style={styles.offlineNoticeBody}>
+              <View style={styles.noticeCopy}>
+                <Text style={styles.noticeTitle}>Viewing cached session data</Text>
+                <Text style={styles.noticeBody}>
                   Count lines and session details can be reviewed offline, but
                   approvals, recounts, verification changes, and status updates
                   require a live connection.
                 </Text>
               </View>
             </View>
-          </GlassCard>
+          </View>
         </Animated.View>
-      )}
+      ) : null}
 
-      {/* Tab Selection */}
-      <Animated.View
-        entering={FadeInDown.delay(300).springify()}
-        style={styles.tabContainer}
-      >
+      <Animated.View entering={getFadeInDown(300)} style={styles.tabContainer}>
         <AnimatedPressable
           style={[styles.tab, activeTab === "toVerify" && styles.tabActive]}
           onPress={() => switchTab("toVerify")}
+          accessibilityRole="button"
+          accessibilityLabel={`To verify tab, ${toVerifyLines.length} items`}
         >
           <Ionicons
             name="list-outline"
-            size={20}
-            color={
-              activeTab === "toVerify"
-                ? auroraTheme.colors.text.primary
-                : auroraTheme.colors.text.secondary
-            }
+            size={18}
+            color={activeTab === "toVerify" ? colors.white : colors.gray[600]}
           />
           <Text
             style={[
@@ -505,18 +614,17 @@ export default function SessionDetail() {
             To Verify ({toVerifyLines.length})
           </Text>
         </AnimatedPressable>
+
         <AnimatedPressable
           style={[styles.tab, activeTab === "verified" && styles.tabActive]}
           onPress={() => switchTab("verified")}
+          accessibilityRole="button"
+          accessibilityLabel={`Verified tab, ${verifiedLines.length} items`}
         >
           <Ionicons
             name="checkmark-circle-outline"
-            size={20}
-            color={
-              activeTab === "verified"
-                ? auroraTheme.colors.text.primary
-                : auroraTheme.colors.text.secondary
-            }
+            size={18}
+            color={activeTab === "verified" ? colors.white : colors.gray[600]}
           />
           <Text
             style={[
@@ -531,75 +639,36 @@ export default function SessionDetail() {
     </View>
   );
 
-  // Limit animation delay for performance on large lists
-  const MAX_ANIMATED_ITEMS = 10;
-
-  const renderItem = ({ item, index }: { item: any; index: number }) => {
+  const renderItem = ({ item }: { item: any }) => {
     const normalizedStatus = String(item.status || "").toLowerCase();
     const requiresSupervisorReview = Number(item.variance ?? 0) !== 0;
     const varianceColor =
-      item.variance === 0
-        ? auroraTheme.colors.success[500]
-        : auroraTheme.colors.error[500];
-    const statusColor =
-      normalizedStatus === "approved"
-        ? auroraTheme.colors.success[500]
-        : normalizedStatus === "rejected"
-          ? auroraTheme.colors.error[500]
-          : auroraTheme.colors.warning[500];
+      item.variance === 0 ? colors.success[600] : colors.error[600];
+    const verifiedAtLabel = item.verified_at
+      ? new Date(item.verified_at).toLocaleString()
+      : "Unknown time";
 
-    // Only animate first N items to prevent performance issues on large lists
-    const shouldAnimate = index < MAX_ANIMATED_ITEMS;
-    const _animationDelay = shouldAnimate
-      ? Math.min(index * 50 + 400, 1000)
-      : 0;
-
-    const content = (
-      <GlassCard style={styles.lineCard}>
+    return (
+      <ModernCard variant="elevated" style={styles.lineCard}>
         <View style={styles.lineHeader}>
-          <Text style={styles.lineName} numberOfLines={1}>
+          <Text style={styles.lineName} numberOfLines={2}>
             {item.item_name}
           </Text>
           <View style={styles.badgeContainer}>
-            {item.verified && (
-              <View
-                style={[
-                  styles.verifiedBadge,
-                  { backgroundColor: auroraTheme.colors.success[500] + "30" },
-                ]}
-              >
-                <Ionicons
-                  name="checkmark-circle"
-                  size={12}
-                  color={auroraTheme.colors.success[500]}
-                />
-                <Text
-                  style={[
-                    styles.badgeText,
-                    { color: auroraTheme.colors.success[500] },
-                  ]}
-                >
-                  Verified
-                </Text>
-              </View>
+            {item.verified
+              ? renderBadge("Verified", "success", "checkmark-circle")
+              : null}
+            {renderBadge(
+              (normalizedStatus || "pending").toUpperCase(),
+              getLineStatusTone(normalizedStatus),
             )}
-            <View
-              style={[
-                styles.lineBadge,
-                { backgroundColor: statusColor + "30" },
-              ]}
-            >
-              <Text style={[styles.badgeText, { color: statusColor }]}>
-                {(normalizedStatus || "pending").toUpperCase()}
-              </Text>
-            </View>
           </View>
         </View>
 
         <Text style={styles.lineCode}>Code: {item.item_code}</Text>
-        {item.barcode && (
+        {item.barcode ? (
           <Text style={styles.lineCode}>Barcode: {item.barcode}</Text>
-        )}
+        ) : null}
 
         <View style={styles.qtyRow}>
           <View style={styles.qtyItem}>
@@ -618,157 +687,151 @@ export default function SessionDetail() {
           </View>
         </View>
 
-        {item.variance_reason && (
+        {item.variance_reason ? (
           <View style={styles.reasonBox}>
             <Text style={styles.reasonLabel}>
               Reason: {item.variance_reason}
             </Text>
-            {item.variance_note && (
+            {item.variance_note ? (
               <Text style={styles.reasonNote}>{item.variance_note}</Text>
-            )}
+            ) : null}
           </View>
-        )}
+        ) : null}
 
-        {item.remark && (
-          <Text style={styles.remark}>Remark: {item.remark}</Text>
-        )}
+        {item.remark ? <Text style={styles.remark}>Remark: {item.remark}</Text> : null}
 
-        {item.verified && item.verified_by && (
+        {item.verified && item.verified_by ? (
           <View style={styles.verifiedInfo}>
             <Ionicons
               name="checkmark-circle"
               size={16}
-              color={auroraTheme.colors.success[500]}
+              color={colors.success[600]}
             />
             <Text style={styles.verifiedInfoText}>
-              Verified by {item.verified_by} on{" "}
-              {new Date(item.verified_at).toLocaleString()}
+              Verified by {item.verified_by} on {verifiedAtLabel}
             </Text>
           </View>
-        )}
+        ) : null}
 
-        {!offlineMode && !sessionFinalized && (
+        {!offlineMode && !sessionFinalized ? (
           <View style={styles.lineActions}>
-            {requiresSupervisorReview && normalizedStatus === "pending" && (
+            {requiresSupervisorReview && normalizedStatus === "pending" ? (
               <>
                 <AnimatedPressable
-                  style={styles.approveButton}
+                  style={[styles.inlineActionButton, styles.successActionButton]}
                   onPress={() => handleApproveLine(item.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Approve ${item.item_name}`}
                 >
-                  <Ionicons
-                    name="checkmark"
-                    size={20}
-                    color={auroraTheme.colors.text.primary}
-                  />
+                  <Ionicons name="checkmark" size={20} color={colors.white} />
                   <Text style={styles.actionButtonText}>Approve</Text>
                 </AnimatedPressable>
+
                 <AnimatedPressable
-                  style={styles.rejectButton}
+                  style={[styles.inlineActionButton, styles.dangerActionButton]}
                   onPress={() => void handleRejectLine(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Reject ${item.item_name}`}
                 >
-                  <Ionicons
-                    name="close"
-                    size={20}
-                    color={auroraTheme.colors.text.primary}
-                  />
+                  <Ionicons name="close" size={20} color={colors.white} />
                   <Text style={styles.actionButtonText}>Reject</Text>
                 </AnimatedPressable>
               </>
-            )}
+            ) : null}
 
-            {requiresSupervisorReview && activeTab === "toVerify" && !item.verified && (
+            {requiresSupervisorReview &&
+            activeTab === "toVerify" &&
+            !item.verified ? (
               <AnimatedPressable
                 style={[
-                  styles.verifyButton,
+                  styles.inlineActionButton,
+                  styles.primaryActionFill,
                   verifying === item.id && styles.buttonDisabled,
                 ]}
                 onPress={() => handleVerifyStock(item.id)}
                 disabled={verifying === item.id}
+                accessibilityRole="button"
+                accessibilityLabel={`Verify stock for ${item.item_name}`}
               >
                 {verifying === item.id ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={auroraTheme.colors.text.primary}
-                  />
+                  <ActivityIndicator size="small" color={colors.white} />
                 ) : (
                   <>
                     <Ionicons
                       name="checkmark-circle-outline"
                       size={20}
-                      color={auroraTheme.colors.text.primary}
+                      color={colors.white}
                     />
                     <Text style={styles.actionButtonText}>Verify Stock</Text>
                   </>
                 )}
               </AnimatedPressable>
-            )}
+            ) : null}
 
-            {activeTab === "verified" && item.verified && (
+            {activeTab === "verified" && item.verified ? (
               <AnimatedPressable
                 style={[
-                  styles.unverifyButton,
+                  styles.inlineActionButton,
+                  styles.warningActionButton,
                   verifying === item.id && styles.buttonDisabled,
                 ]}
                 onPress={() => handleUnverifyStock(item.id)}
                 disabled={verifying === item.id}
+                accessibilityRole="button"
+                accessibilityLabel={`Remove verification for ${item.item_name}`}
               >
                 {verifying === item.id ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={auroraTheme.colors.text.primary}
-                  />
+                  <ActivityIndicator size="small" color={colors.white} />
                 ) : (
                   <>
                     <Ionicons
                       name="close-circle-outline"
                       size={20}
-                      color={auroraTheme.colors.text.primary}
+                      color={colors.white}
                     />
                     <Text style={styles.actionButtonText}>Unverify</Text>
                   </>
                 )}
               </AnimatedPressable>
-            )}
+            ) : null}
           </View>
-        )}
-      </GlassCard>
+        ) : null}
+      </ModernCard>
     );
-
-    return content;
   };
 
   const renderEmpty = () => (
-    <GlassCard variant="medium" style={styles.emptyContainer}>
+    <ModernCard
+      variant="elevated"
+      style={styles.emptyContainer}
+      contentStyle={styles.emptyCardContent}
+    >
       <Ionicons
         name={activeTab === "toVerify" ? "list-outline" : "checkmark-circle"}
         size={64}
-        color={auroraTheme.colors.text.disabled}
+        color={colors.gray[300]}
       />
       <Text style={styles.emptyText}>
         {activeTab === "toVerify" ? "No items to verify" : "No verified items"}
       </Text>
-    </GlassCard>
+    </ModernCard>
   );
 
   return (
-    <AuroraBackground>
-      <StatusBar style="light" />
-      <Animated.View
-        entering={FadeInDown.delay(50).springify()}
-        style={styles.header}
-      >
+    <Screen padding={0} backgroundColor={colors.gray[50]}>
+      <StatusBar style="dark" />
+
+      <Animated.View entering={getFadeInDown(50)} style={styles.header}>
         <AnimatedPressable
           onPress={() => router.back()}
           style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
-          <Ionicons
-            name="arrow-back"
-            size={24}
-            color={auroraTheme.colors.text.primary}
-          />
+          <Ionicons name="arrow-back" size={22} color={colors.gray[700]} />
         </AnimatedPressable>
         <Text style={styles.headerTitle}>Session Details</Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerSpacer} />
       </Animated.View>
 
       <View style={styles.listContainer}>
@@ -776,7 +839,7 @@ export default function SessionDetail() {
           data={currentLines}
           renderItem={renderItem}
           // @ts-ignore
-          estimatedItemSize={250}
+          estimatedItemSize={260}
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={renderEmpty}
           contentContainerStyle={styles.listContent}
@@ -799,7 +862,7 @@ export default function SessionDetail() {
         onSubmit={handleSubmitReject}
         description="Reassign this count line to a staff member for recount and add optional instructions."
       />
-    </AuroraBackground>
+    </Screen>
   );
 }
 
@@ -808,314 +871,353 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: auroraTheme.spacing.md,
-    paddingTop: 60,
-    paddingBottom: auroraTheme.spacing.md,
-    backgroundColor: "transparent",
-    zIndex: 10,
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    backgroundColor: colors.gray[50],
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[200],
   },
   backButton: {
-    padding: auroraTheme.spacing.xs,
-    backgroundColor: auroraTheme.colors.background.glass,
-    borderRadius: auroraTheme.borderRadius.full,
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
+    borderColor: colors.gray[200],
+    alignItems: "center",
+    justifyContent: "center",
+    ...shadows.sm,
+  },
+  headerSpacer: {
+    width: 44,
+    height: 44,
   },
   headerTitle: {
-    fontSize: auroraTheme.typography.fontSize.xl,
-    fontWeight: auroraTheme.typography.fontWeight.bold,
-    color: auroraTheme.colors.text.primary,
+    flex: 1,
+    textAlign: "center",
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.gray[900],
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: spacing.xl,
   },
   loadingText: {
-    fontSize: auroraTheme.typography.fontSize.md,
-    marginTop: auroraTheme.spacing.md,
-    color: auroraTheme.colors.text.secondary,
+    fontSize: typography.fontSize.base,
+    marginTop: spacing.md,
+    color: colors.gray[700],
+    textAlign: "center",
   },
   offlineMissingText: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.tertiary,
-    marginTop: auroraTheme.spacing.sm,
-    marginBottom: auroraTheme.spacing.md,
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[500],
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
+    textAlign: "center",
   },
   listContainer: {
     flex: 1,
-    paddingHorizontal: auroraTheme.spacing.md,
   },
   listContent: {
-    paddingBottom: 40,
+    flexGrow: 1,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing["2xl"],
   },
-  sessionInfo: {
-    marginBottom: auroraTheme.spacing.lg,
-    padding: auroraTheme.spacing.md,
+  sessionInfoCard: {
+    marginBottom: spacing.lg,
   },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: auroraTheme.spacing.sm,
-  },
-  infoLabel: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
-  },
-  infoValue: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    fontWeight: auroraTheme.typography.fontWeight.bold,
-    color: auroraTheme.colors.text.primary,
-  },
-  statusValue: {
-    color: auroraTheme.colors.warning[500],
-  },
-  varianceValue: {
-    color: auroraTheme.colors.error[500],
-  },
-  actionButtons: {
-    marginBottom: auroraTheme.spacing.lg,
-  },
-  offlineNotice: {
-    marginBottom: auroraTheme.spacing.lg,
-    padding: auroraTheme.spacing.md,
-  },
-  offlineNoticeRow: {
+  sessionInfoHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: auroraTheme.spacing.sm,
+    justifyContent: "space-between",
+    gap: spacing.md,
+    marginBottom: spacing.md,
   },
-  offlineNoticeCopy: {
+  sessionIdentity: {
     flex: 1,
     gap: 4,
   },
-  offlineNoticeTitle: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    fontWeight: auroraTheme.typography.fontWeight.bold,
-    color: auroraTheme.colors.text.primary,
+  sectionLabel: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.gray[500],
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
   },
-  offlineNoticeBody: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: auroraTheme.colors.text.secondary,
+  sessionTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.gray[900],
   },
-  reconcileButton: {
-    backgroundColor: auroraTheme.colors.warning[500],
-    borderRadius: 12,
-    padding: auroraTheme.spacing.md,
+  sessionSubtitle: {
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[600],
+  },
+  metricRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  metricCard: {
+    flex: 1,
+    backgroundColor: colors.gray[50],
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    padding: spacing.md,
+  },
+  metricLabel: {
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[500],
+    marginBottom: 4,
+  },
+  metricValue: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.gray[900],
+  },
+  metricValueDanger: {
+    color: colors.error[600],
+  },
+  actionButtons: {
+    marginBottom: spacing.lg,
+  },
+  primaryActionButton: {
+    minHeight: 48,
+    borderRadius: borderRadius.lg,
     alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    ...shadows.sm,
   },
-  closeButton: {
-    backgroundColor: auroraTheme.colors.success[500],
-    borderRadius: 12,
-    padding: auroraTheme.spacing.md,
-    alignItems: "center",
+  primaryActionFill: {
+    backgroundColor: colors.primary[600],
+  },
+  successActionButton: {
+    backgroundColor: colors.success[600],
+  },
+  warningActionButton: {
+    backgroundColor: colors.warning[600],
+  },
+  dangerActionButton: {
+    backgroundColor: colors.error[600],
   },
   buttonText: {
-    color: auroraTheme.colors.text.primary,
-    fontSize: auroraTheme.typography.fontSize.md,
-    fontWeight: auroraTheme.typography.fontWeight.bold,
+    color: colors.white,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+  },
+  noticeCard: {
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+  },
+  noticeSuccess: {
+    backgroundColor: colors.success[50],
+    borderColor: "#A7F3D0",
+  },
+  noticeWarning: {
+    backgroundColor: colors.warning[50],
+    borderColor: "#FDE68A",
+  },
+  noticeRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+  },
+  noticeCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  noticeTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.gray[900],
+  },
+  noticeBody: {
+    fontSize: typography.fontSize.sm,
+    lineHeight: 18,
+    color: colors.gray[700],
   },
   tabContainer: {
     flexDirection: "row",
-    backgroundColor: auroraTheme.colors.background.glass,
-    borderRadius: 16,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
     padding: 4,
-    marginBottom: auroraTheme.spacing.lg,
+    marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
+    borderColor: colors.gray[200],
   },
   tab: {
     flex: 1,
+    minHeight: 44,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    padding: auroraTheme.spacing.md,
-    borderRadius: 8,
     gap: 8,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
   },
   tabActive: {
-    backgroundColor: auroraTheme.colors.primary[500],
+    backgroundColor: colors.primary[600],
   },
   tabText: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
-    fontWeight: auroraTheme.typography.fontWeight.semibold,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.gray[600],
   },
   tabTextActive: {
-    color: auroraTheme.colors.text.primary,
-    fontWeight: "700",
+    color: colors.white,
+    fontWeight: typography.fontWeight.bold,
+  },
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: typography.fontWeight.bold,
   },
   emptyContainer: {
-    padding: 64,
+    marginTop: spacing.xl,
+  },
+  emptyCardContent: {
+    paddingVertical: spacing["2xl"],
     alignItems: "center",
     justifyContent: "center",
-    marginTop: auroraTheme.spacing.xl,
   },
   emptyText: {
-    color: auroraTheme.colors.text.secondary,
-    fontSize: auroraTheme.typography.fontSize.md,
-    marginTop: auroraTheme.spacing.md,
+    marginTop: spacing.md,
+    textAlign: "center",
+    fontSize: typography.fontSize.base,
+    color: colors.gray[600],
   },
   lineCard: {
-    marginBottom: auroraTheme.spacing.md,
-    padding: auroraTheme.spacing.md,
+    marginBottom: spacing.md,
   },
   lineHeader: {
     flexDirection: "row",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: auroraTheme.spacing.sm,
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   lineName: {
-    fontSize: auroraTheme.typography.fontSize.lg,
-    fontWeight: auroraTheme.typography.fontWeight.bold,
     flex: 1,
-    color: auroraTheme.colors.text.primary,
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.gray[900],
   },
   badgeContainer: {
     flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
     gap: 8,
-    alignItems: "center",
-  },
-  verifiedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
-  },
-  lineBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  badgeText: {
-    color: auroraTheme.colors.text.primary,
-    fontSize: 10,
-    fontWeight: auroraTheme.typography.fontWeight.bold,
   },
   lineCode: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
-    marginBottom: auroraTheme.spacing.md,
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[600],
+    marginBottom: spacing.md,
   },
   qtyRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: auroraTheme.spacing.md,
-    backgroundColor: auroraTheme.colors.background.tertiary,
-    padding: auroraTheme.spacing.sm,
-    borderRadius: 8,
+    marginBottom: spacing.md,
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.gray[50],
+    borderWidth: 1,
+    borderColor: colors.gray[200],
   },
   qtyItem: {
     flex: 1,
     alignItems: "center",
   },
   qtyLabel: {
-    fontSize: 12,
-    color: auroraTheme.colors.text.tertiary,
+    fontSize: typography.fontSize.xs,
+    color: colors.gray[500],
     marginBottom: 4,
   },
   qtyValue: {
-    fontSize: auroraTheme.typography.fontSize.lg,
-    fontWeight: auroraTheme.typography.fontWeight.bold,
-    color: auroraTheme.colors.text.primary,
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.gray[900],
   },
   reasonBox: {
-    backgroundColor: "rgba(255, 152, 0, 0.1)",
-    borderRadius: 8,
+    backgroundColor: colors.warning[50],
+    borderRadius: borderRadius.md,
     padding: 12,
     marginBottom: 8,
     borderLeftWidth: 3,
-    borderLeftColor: auroraTheme.colors.warning[500],
+    borderLeftColor: colors.warning[600],
   },
   reasonLabel: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.warning[500],
-    fontWeight: auroraTheme.typography.fontWeight.bold,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.warning[600],
     marginBottom: 4,
   },
   reasonNote: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[700],
   },
   remark: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[700],
     fontStyle: "italic",
-    marginBottom: auroraTheme.spacing.sm,
+    marginBottom: spacing.sm,
   },
   verifiedInfo: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: auroraTheme.spacing.sm,
-    padding: 8,
-    backgroundColor: "rgba(0, 230, 118, 0.1)",
-    borderRadius: 8,
     gap: 8,
+    marginBottom: spacing.sm,
+    padding: 8,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.success[50],
   },
   verifiedInfoText: {
-    fontSize: 12,
-    color: auroraTheme.colors.success[500],
+    flex: 1,
+    fontSize: typography.fontSize.xs,
+    color: colors.success[600],
   },
   lineActions: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: auroraTheme.spacing.md,
     flexWrap: "wrap",
+    gap: 12,
+    marginTop: spacing.md,
   },
-  approveButton: {
+  inlineActionButton: {
     flex: 1,
-    flexDirection: "row",
-    backgroundColor: auroraTheme.colors.success[500],
-    borderRadius: 8,
-    padding: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    minWidth: 100,
-  },
-  rejectButton: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: auroraTheme.colors.error[500],
-    borderRadius: 8,
-    padding: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    minWidth: 100,
-  },
-  verifyButton: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: auroraTheme.colors.primary[500],
-    borderRadius: 8,
-    padding: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
     minWidth: 120,
-  },
-  unverifyButton: {
-    flex: 1,
+    minHeight: 44,
     flexDirection: "row",
-    backgroundColor: auroraTheme.colors.warning[500],
-    borderRadius: 8,
-    padding: 12,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    minWidth: 120,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    borderRadius: borderRadius.md,
+    ...shadows.sm,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   actionButtonText: {
-    color: auroraTheme.colors.text.primary,
-    fontSize: auroraTheme.typography.fontSize.sm,
-    fontWeight: auroraTheme.typography.fontWeight.bold,
+    color: colors.white,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.bold,
   },
 });
