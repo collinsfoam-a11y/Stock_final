@@ -3,47 +3,22 @@
  */
 
 import api from "../httpClient";
+import type {
+  GenerateReportParams,
+  ReportFilters,
+  ReportPreviewData,
+  ReportType,
+  ReportTypeInfo,
+} from "../../domains/reports/types";
 
-// Types
-export type ReportType =
-  | "stock_summary"
-  | "variance_report"
-  | "user_activity"
-  | "session_history"
-  | "audit_trail";
-
-export type ExportFormat = "json" | "csv" | "xlsx";
-
-export interface ReportFilters {
-  date_from?: string;
-  date_to?: string;
-  warehouse?: string;
-  user_id?: string;
-  status?: string;
-  floor?: string;
-  category?: string;
-}
-
-export interface ReportTypeInfo {
-  id: ReportType;
-  name: string;
-  description: string;
-}
-
-export interface ReportPreviewData {
-  columns: string[];
-  rows: Record<string, unknown>[];
-  total_rows: number;
-  preview_rows: number;
-  generated_at: string;
-}
-
-export interface GenerateReportParams {
-  report_type: ReportType;
-  format?: ExportFormat;
-  filters?: ReportFilters;
-  include_summary?: boolean;
-}
+export type {
+  ExportFormat,
+  GenerateReportParams,
+  ReportFilters,
+  ReportPreviewData,
+  ReportType,
+  ReportTypeInfo,
+} from "../../domains/reports/types";
 
 export interface ReportFilterOptionsResponse {
   report_type: ReportType;
