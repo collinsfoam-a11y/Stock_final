@@ -647,11 +647,17 @@ const StaffHome = React.memo(function StaffHome() {
         }}
       />
 
-      <View style={styles.tabs}>
+      <View
+        style={styles.tabs}
+        accessibilityRole="tablist"
+        accessibilityLabel="Session dashboard sections"
+      >
         <TouchableOpacity
           style={[styles.tab, activeTab === "active" && styles.activeTab]}
           onPress={() => setActiveTab("active")}
-          accessibilityRole="button"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === "active" }}
+          accessibilityLabel={`Active sessions, ${uniqueActiveSessions.length} items`}
         >
           <Text
             style={[
@@ -665,7 +671,9 @@ const StaffHome = React.memo(function StaffHome() {
         <TouchableOpacity
           style={[styles.tab, activeTab === "history" && styles.activeTab]}
           onPress={() => setActiveTab("history")}
-          accessibilityRole="button"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === "history" }}
+          accessibilityLabel={`Session history, ${finishedSessions.length} items`}
         >
           <Text
             style={[
@@ -722,7 +730,11 @@ const StaffHome = React.memo(function StaffHome() {
             nestedScrollEnabled
           >
             <Text style={styles.sectionLabel}>Select Location</Text>
-            <View style={styles.chipContainer}>
+            <View
+              style={styles.chipContainer}
+              accessibilityRole="radiogroup"
+              accessibilityLabel="Select location"
+            >
               {zones.map((zone) => (
                 <TouchableOpacity
                   key={zone.id}
@@ -731,6 +743,11 @@ const StaffHome = React.memo(function StaffHome() {
                     locationType === zone.zone_name && styles.chipActive,
                   ]}
                   onPress={() => setLocationType(zone.zone_name)}
+                  accessibilityRole="radio"
+                  accessibilityState={{
+                    selected: locationType === zone.zone_name,
+                  }}
+                  accessibilityLabel={`Location ${zone.zone_name}`}
                 >
                   <Text
                     style={[
@@ -751,7 +768,11 @@ const StaffHome = React.memo(function StaffHome() {
                 }
               >
                 <Text style={styles.sectionLabel}>Select Floor / Area</Text>
-                <View style={styles.chipContainer}>
+                <View
+                  style={styles.chipContainer}
+                  accessibilityRole="radiogroup"
+                  accessibilityLabel="Select floor or area"
+                >
                   {warehouses.map((wh) => (
                     <TouchableOpacity
                       key={wh.id}
@@ -761,6 +782,11 @@ const StaffHome = React.memo(function StaffHome() {
                         styles.chipActive,
                       ]}
                       onPress={() => setSelectedFloor(wh.warehouse_name)}
+                      accessibilityRole="radio"
+                      accessibilityState={{
+                        selected: selectedFloor === wh.warehouse_name,
+                      }}
+                      accessibilityLabel={`Floor or area ${wh.warehouse_name}`}
                     >
                       <Text
                         style={[

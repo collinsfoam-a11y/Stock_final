@@ -593,11 +593,17 @@ export default function SessionDetail() {
         </Animated.View>
       ) : null}
 
-      <Animated.View entering={getFadeInDown(300)} style={styles.tabContainer}>
+      <Animated.View
+        entering={getFadeInDown(300)}
+        style={styles.tabContainer}
+        accessibilityRole="tablist"
+        accessibilityLabel="Session detail sections"
+      >
         <AnimatedPressable
           style={[styles.tab, activeTab === "toVerify" && styles.tabActive]}
           onPress={() => switchTab("toVerify")}
-          accessibilityRole="button"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === "toVerify" }}
           accessibilityLabel={`To verify tab, ${toVerifyLines.length} items`}
         >
           <Ionicons
@@ -618,7 +624,8 @@ export default function SessionDetail() {
         <AnimatedPressable
           style={[styles.tab, activeTab === "verified" && styles.tabActive]}
           onPress={() => switchTab("verified")}
-          accessibilityRole="button"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === "verified" }}
           accessibilityLabel={`Verified tab, ${verifiedLines.length} items`}
         >
           <Ionicons
