@@ -47,18 +47,24 @@ async def test_cleanup_synthetic_session_data_archives_and_deletes_synthetic_rec
     assert stats["scanned_empty_snapshots"] == 2
     assert stats["synthetic_snapshots"] == 1
     assert stats["synthetic_session_ids"] == 1
-    assert stats["archived"] == 4
-    assert stats["deleted"] == 4
+    assert stats["archived"] == 0
+    assert stats["deleted"] == 0
+    assert set(stats["blocked_collections"]) == {
+        "session_snapshots",
+        "sessions",
+        "verification_sessions",
+        "count_lines",
+    }
 
-    assert await db.session_snapshots.count_documents({"session_id": "synthetic-1"}) == 0
-    assert await db.sessions.count_documents({"id": "synthetic-1"}) == 0
-    assert await db.verification_sessions.count_documents({"session_id": "synthetic-1"}) == 0
-    assert await db.count_lines.count_documents({"session_id": "synthetic-1"}) == 0
+    assert await db.session_snapshots.count_documents({"session_id": "synthetic-1"}) == 1
+    assert await db.sessions.count_documents({"id": "synthetic-1"}) == 1
+    assert await db.verification_sessions.count_documents({"session_id": "synthetic-1"}) == 1
+    assert await db.count_lines.count_documents({"session_id": "synthetic-1"}) == 1
 
     assert await db.session_snapshots.count_documents({"session_id": "real-1"}) == 1
     assert await db.sessions.count_documents({"id": "real-1"}) == 1
     assert await db.session_snapshots.count_documents({"session_id": "synthetic-2"}) == 1
-    assert await db.data_archive.count_documents({}) == 4
+    assert await db.data_archive.count_documents({}) == 0
 
 
 @pytest.mark.asyncio
@@ -82,6 +88,12 @@ async def test_cleanup_synthetic_session_data_dry_run_does_not_modify_data():
     assert stats["synthetic_session_ids"] == 1
     assert stats["archived"] == 0
     assert stats["deleted"] == 0
+    assert set(stats["blocked_collections"]) == {
+        "session_snapshots",
+        "sessions",
+        "verification_sessions",
+        "count_lines",
+    }
 
     assert await db.session_snapshots.count_documents({"session_id": "synthetic-1"}) == 1
     assert await db.sessions.count_documents({"id": "synthetic-1"}) == 1

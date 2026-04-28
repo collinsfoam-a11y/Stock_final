@@ -8,11 +8,14 @@ from backend.services.sync_conflicts_service import ConflictResolution, SyncConf
 @pytest.mark.asyncio
 async def test_resolve_conflict_handles_non_object_id_entity_ids():
     db = MagicMock()
+    db.client = None
     db.sync_conflicts.update_one = AsyncMock(return_value=None)
-    db.count_lines.find_one = AsyncMock(return_value=None)
-    db.count_lines.update_one = AsyncMock(return_value=None)
+    db.count_lines.find_one = AsyncMock(
+        return_value={"id": "offline-line-1", "session_id": "sess-1"}
+    )
 
     service = SyncConflictsService(db)
+    service.count_line_write_service.process_write = AsyncMock(return_value=None)
     service.get_conflict_by_id = AsyncMock(
         return_value={
             "id": "507f1f77bcf86cd799439011",
@@ -32,4 +35,5 @@ async def test_resolve_conflict_handles_non_object_id_entity_ids():
 
     assert result["resolution"] == ConflictResolution.ACCEPT_SERVER.value
     assert db.count_lines.find_one.await_args.args[0] == {"id": "offline-line-1"}
-    assert db.count_lines.update_one.await_args.args[0] == {"id": "offline-line-1"}
+    process_write_call = service.count_line_write_service.process_write.await_args
+    assert process_write_call.args[0]["filter"] == {"id": "offline-line-1"}

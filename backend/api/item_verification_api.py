@@ -261,6 +261,7 @@ class VerificationRequest(BaseModel):
     non_returnable_damaged_qty: Optional[float] = 0.0
     item_condition: Optional[str] = "Good"
     serial_number: Optional[str] = None
+    # Deprecated for writes: serialization policy is master-data controlled.
     is_serialized: Optional[bool] = None
     notes: Optional[str] = None
     floor: Optional[str] = None
@@ -305,7 +306,9 @@ def _resolve_item_identity(
     return actual_barcode, actual_item_code, {"barcode": fallback_barcode}
 
 
-def _build_master_update_doc(request: ItemUpdateRequest, current_user: dict[str, Any]) -> dict[str, Any]:
+def _build_master_update_doc(
+    request: ItemUpdateRequest, current_user: dict[str, Any]
+) -> dict[str, Any]:
     update_fields: dict[str, Any] = {
         "last_updated_by": current_user["username"],
         "last_updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
@@ -435,7 +438,9 @@ async def _create_conflict_fork_response(
     }
 
 
-async def _fetch_updated_item(update_filter: dict[str, Any], actual_barcode: Optional[str]) -> dict[str, Any]:
+async def _fetch_updated_item(
+    update_filter: dict[str, Any], actual_barcode: Optional[str]
+) -> dict[str, Any]:
     updated_item = await db.erp_items.find_one(update_filter)
     if not updated_item and actual_barcode:
         updated_item = await db.erp_items.find_one({"barcode": actual_barcode})
@@ -457,7 +462,9 @@ async def update_item_master(
     try:
         item = await _find_item_by_barcode_or_code(barcode)
         actual_barcode, actual_item_code, update_filter = _resolve_item_identity(item, barcode)
-        await db.erp_items.update_one(update_filter, _build_master_update_doc(request, current_user))
+        await db.erp_items.update_one(
+            update_filter, _build_master_update_doc(request, current_user)
+        )
         await _invalidate_item_cache(
             actual_barcode=actual_barcode,
             actual_item_code=actual_item_code,
@@ -574,7 +581,6 @@ def _build_item_update_doc(
         "non_returnable_damaged_qty": "non_returnable_damaged_qty",
         "item_condition": "item_condition",
         "serial_number": "serial_number",
-        "is_serialized": "is_serialized",
         "notes": "verification_notes",
         "session_id": "session_id",
     }
@@ -584,19 +590,11 @@ def _build_item_update_doc(
         if req_value is not None:  # Check for None explicitly, as 0.0 or False are valid
             update_fields[doc_field] = req_value
 
-    # Special handling for serial_number to set is_serialized
-    if request.serial_number:
-        update_fields["is_serialized"] = True
-
-    # Special handling for floor and rack
+    # Store observed floor/rack without mutating master location fields.
     if request.floor:
         update_fields["verified_floor"] = request.floor
-        if existing_item.get("floor") in (None, ""):
-            update_fields["floor"] = request.floor
     if request.rack:
         update_fields["verified_rack"] = request.rack
-        if existing_item.get("rack") in (None, ""):
-            update_fields["rack"] = request.rack
 
     return {"$set": update_fields}
 
@@ -642,6 +640,14 @@ async def verify_item(
     Mark an item as verified/unverified with user tracking and timestamp
     """
     try:
+        if request.is_serialized is not None:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "CRITICAL: is_serialized is master-data controlled and cannot be set by users."
+                ),
+            )
+
         item = await _fetch_item_with_optional_sql_refresh(barcode)
         actual_barcode, actual_item_code, base_filter = _resolve_item_identity(item, barcode)
         expected_stock_qty = item.get("stock_qty")
@@ -666,7 +672,7 @@ async def verify_item(
                 expected_stock_qty,
             )
             raise HTTPException(
-                    status_code=409,
+                status_code=409,
                 detail=(
                     "Data changed during verification (Optimistic Lock). "
                     "Please refresh and try again."

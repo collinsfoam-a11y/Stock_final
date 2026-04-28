@@ -3,6 +3,7 @@ Unit tests for CountLineStateMachine
 """
 
 import pytest
+from unittest.mock import AsyncMock
 from backend.services.count_state_machine import (
     CountLineStateMachine,
     StateTransition,
@@ -163,8 +164,13 @@ def test_cannot_view_staff_not_owner():
 
 
 @pytest.mark.asyncio
-async def test_transition_draft_to_submitted():
+async def test_transition_draft_to_submitted(monkeypatch):
     """Test transitioning from draft to submitted"""
+    write_service = type("WriteService", (), {"process_write": AsyncMock(return_value=None)})()
+    monkeypatch.setattr(
+        "backend.services.count_state_machine.CountLineWriteService",
+        lambda _db: write_service,
+    )
     db = MockDB()
     state_machine = CountLineStateMachine(db)
 
@@ -254,8 +260,13 @@ async def test_get_allowed_actions():
 
 
 @pytest.mark.asyncio
-async def test_transition_with_reason():
+async def test_transition_with_reason(monkeypatch):
     """Test transition with reason is stored"""
+    write_service = type("WriteService", (), {"process_write": AsyncMock(return_value=None)})()
+    monkeypatch.setattr(
+        "backend.services.count_state_machine.CountLineWriteService",
+        lambda _db: write_service,
+    )
     db = MockDB()
     state_machine = CountLineStateMachine(db)
 
@@ -274,8 +285,8 @@ async def test_transition_with_reason():
     )
 
     assert result["success"] is True
-    updated_line = db.count_lines.data["count_005"]
-    assert updated_line.get("rejection_reason") == "Quantity seems incorrect"
+    write_payload = write_service.process_write.await_args.args[0]
+    assert write_payload["update"]["$set"].get("rejection_reason") == "Quantity seems incorrect"
 
 
 if __name__ == "__main__":

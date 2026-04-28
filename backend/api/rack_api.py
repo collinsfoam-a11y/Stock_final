@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
+from backend.services.governance_guard import raise_forbidden_direct_write
 from backend.services.lock_manager import get_lock_manager
 from backend.services.pubsub_service import get_pubsub_service
 from backend.services.session_state_machine import SessionStateMachine
@@ -248,18 +249,7 @@ async def claim_rack(
         # Create session
         session_id = f"session_{user_id}_{rack_id}_{int(time.time())}"
 
-        session_doc = {
-            "session_id": session_id,
-            "user_id": user_id,
-            "rack_id": rack_id,
-            "floor": request.floor,
-            "status": "active",
-            "started_at": time.time(),
-            "last_heartbeat": time.time(),
-            "completed_at": None,
-        }
-
-        await db.verification_sessions.insert_one(session_doc)
+        raise_forbidden_direct_write("rack_api.claim_rack.verification_sessions_insert")
 
         # Create session lock in Redis
         await lock_manager.create_session_lock(session_id, user_id, rack_id, ttl=3600)
@@ -366,15 +356,7 @@ async def release_rack(
                 status_code=409,
                 detail=(f"Invalid session transition: {session.get('status')} -> completed"),
             )
-        await db.verification_sessions.update_one(
-            {"session_id": rack["session_id"]},
-            {
-                "$set": {
-                    "status": "COMPLETED",
-                    "completed_at": time.time(),
-                }
-            },
-        )
+        raise_forbidden_direct_write("rack_api.release_rack.verification_sessions_update")
 
     # Broadcast update
     await pubsub_service.publish_rack_update(rack_id, "released", {"user_id": user_id})
@@ -430,9 +412,7 @@ async def pause_rack(
                 status_code=409,
                 detail=f"Invalid session transition: {session.get('status')} -> paused",
             )
-        await db.verification_sessions.update_one(
-            {"session_id": rack["session_id"]}, {"$set": {"status": "PAUSED"}}
-        )
+        raise_forbidden_direct_write("rack_api.pause_rack.verification_sessions_update")
 
     # Broadcast update
     await pubsub_service.publish_rack_update(rack_id, "paused", {"user_id": user_id})
@@ -489,15 +469,7 @@ async def resume_rack(
                 status_code=409,
                 detail=f"Invalid session transition: {session.get('status')} -> active",
             )
-        await db.verification_sessions.update_one(
-            {"session_id": rack["session_id"]},
-            {
-                "$set": {
-                    "status": "ACTIVE",
-                    "last_heartbeat": time.time(),
-                }
-            },
-        )
+        raise_forbidden_direct_write("rack_api.resume_rack.verification_sessions_update")
 
     # Broadcast update
     await pubsub_service.publish_rack_update(rack_id, "resumed", {"user_id": user_id})

@@ -12,6 +12,14 @@ from backend.tests.utils.in_memory_db import InMemoryDatabase
 async def test_repair_legacy_zero_variance_approvals_updates_pending_exact_matches():
     db = InMemoryDatabase()
     counted_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    await db.sessions.insert_one(
+        {
+            "id": "sess-1",
+            "session_id": "sess-1",
+            "warehouse": "Main",
+            "status": "ACTIVE",
+        }
+    )
 
     await db.count_lines.insert_one(
         {
@@ -58,6 +66,14 @@ async def test_repair_legacy_zero_variance_approvals_updates_pending_exact_match
 async def test_repair_legacy_zero_variance_approvals_dry_run_leaves_rows_unchanged():
     db = InMemoryDatabase()
     counted_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    await db.sessions.insert_one(
+        {
+            "id": "sess-1",
+            "session_id": "sess-1",
+            "warehouse": "Main",
+            "status": "ACTIVE",
+        }
+    )
 
     await db.count_lines.insert_one(
         {

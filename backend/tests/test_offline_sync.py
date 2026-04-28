@@ -3,17 +3,45 @@ from httpx import AsyncClient
 import uuid
 
 
+async def _seed_active_session_with_snapshot(test_db, *, session_id: str, item_code: str) -> None:
+    await test_db.sessions.insert_one(
+        {
+            "id": session_id,
+            "session_id": session_id,
+            "warehouse": "Main Warehouse",
+            "staff_user": "staff1",
+            "staff_name": "Staff Member",
+            "status": "ACTIVE",
+            "type": "STANDARD",
+        }
+    )
+    await test_db.session_snapshots.insert_one(
+        {
+            "id": f"snap-{session_id}",
+            "session_id": session_id,
+            "warehouse": "Main Warehouse",
+            "snapshot_hash": f"hash-{session_id}",
+            "item_count": 1,
+            "items": [{"item_code": item_code, "stock_qty": 0.0}],
+        }
+    )
+
+
 @pytest.mark.asyncio
-async def test_modern_batch_sync_success(async_client: AsyncClient, authenticated_headers):
+async def test_modern_batch_sync_success(async_client: AsyncClient, authenticated_headers, test_db):
     """Test modern batch sync with valid records"""
     session_id = str(uuid.uuid4())
     client_record_id = "rec_" + str(uuid.uuid4())
+    await _seed_active_session_with_snapshot(test_db, session_id=session_id, item_code="ITEM-100")
 
     payload = {
         "records": [
             {
                 "client_record_id": client_record_id,
                 "session_id": session_id,
+                "location_id": "LOC-1",
+                "floor_id": "F1",
+                "rack_id": "R1",
                 "item_code": "ITEM-100",
                 "verified_qty": 10.0,
                 "damaged_qty": 2.0,
@@ -38,12 +66,14 @@ async def test_modern_batch_sync_success(async_client: AsyncClient, authenticate
 
 @pytest.mark.asyncio
 async def test_modern_batch_sync_duplicate_serial_conflict(
-    async_client: AsyncClient, authenticated_headers
+    async_client: AsyncClient, authenticated_headers, test_db
 ):
     """Test batch sync detects duplicate serial conflict across different sessions"""
     serial = "SN-DUP-999"
     session_1 = str(uuid.uuid4())
     session_2 = str(uuid.uuid4())
+    await _seed_active_session_with_snapshot(test_db, session_id=session_1, item_code="ITEM-A")
+    await _seed_active_session_with_snapshot(test_db, session_id=session_2, item_code="ITEM-B")
 
     # 1. Sync first record with serial
     payload1 = {
@@ -51,6 +81,9 @@ async def test_modern_batch_sync_duplicate_serial_conflict(
             {
                 "client_record_id": "rec-1",
                 "session_id": session_1,
+                "location_id": "LOC-1",
+                "floor_id": "F1",
+                "rack_id": "R1",
                 "item_code": "ITEM-A",
                 "verified_qty": 1.0,
                 "serial_numbers": [serial],
@@ -68,6 +101,9 @@ async def test_modern_batch_sync_duplicate_serial_conflict(
             {
                 "client_record_id": "rec-2",
                 "session_id": session_2,
+                "location_id": "LOC-2",
+                "floor_id": "F2",
+                "rack_id": "R2",
                 "item_code": "ITEM-B",
                 "verified_qty": 1.0,
                 "serial_numbers": [serial],

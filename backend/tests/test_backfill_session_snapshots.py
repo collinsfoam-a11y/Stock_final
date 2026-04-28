@@ -7,7 +7,7 @@ from backend.tests.utils.in_memory_db import InMemoryDatabase
 
 
 @pytest.mark.asyncio
-async def test_backfill_empty_session_snapshots_repairs_snapshot_and_session_hash():
+async def test_backfill_empty_session_snapshots_execute_mode_is_blocked_by_immutability():
     db = InMemoryDatabase()
     started_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -46,16 +46,16 @@ async def test_backfill_empty_session_snapshots_repairs_snapshot_and_session_has
 
     assert stats["scanned"] == 1
     assert stats["repairable"] == 1
-    assert stats["repaired"] == 1
-    assert stats["updated_sessions"] == 1
+    assert stats["repaired"] == 0
+    assert stats["updated_sessions"] == 0
+    assert stats["errors"] == 1
 
     snapshot_doc = await db.session_snapshots.find_one({"session_id": "sess-1"})
-    assert snapshot_doc["item_count"] == 1
-    assert snapshot_doc["items"][0]["item_code"] == "ITEM-001"
-    assert snapshot_doc["snapshot_hash"] != "stale-hash"
+    assert snapshot_doc["item_count"] == 0
+    assert snapshot_doc["snapshot_hash"] == "stale-hash"
 
     session_doc = await db.sessions.find_one({"id": "sess-1"})
-    assert session_doc["snapshot_hash"] == snapshot_doc["snapshot_hash"]
+    assert session_doc["snapshot_hash"] == "stale-hash"
 
 
 @pytest.mark.asyncio

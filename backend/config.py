@@ -379,6 +379,10 @@ class Settings(PydanticBaseSettings):
 
     # Security
     FORCE_HTTPS: bool = False  # Enable HSTS
+    STRICT_VALIDATION: bool = Field(
+        default=False,
+        description="When true, runtime validation raises governance violations on invariant errors.",
+    )
     BLOCK_SANITIZATION_VIOLATIONS: bool = True
     ALLOWED_HOSTS: Optional[str] = Field(
         None,
@@ -431,6 +435,12 @@ class Settings(PydanticBaseSettings):
         if normalized not in {"lax", "strict", "none"}:
             raise ValueError("AUTH_COOKIE_SAMESITE must be one of: lax, strict, none")
         return normalized
+
+    @field_validator("STRICT_VALIDATION", mode="before")
+    @classmethod
+    def resolve_strict_validation(cls, v: object) -> bool:
+        env_value = _env_first("STRICT_VALIDATION")
+        return _parse_bool(env_value if env_value is not None else v, default=False)
 
     # Server
     CORS_ALLOW_ORIGINS: Optional[str] = None
@@ -585,6 +595,10 @@ except Exception as e:
             self.AUTH_COOKIE_DOMAIN = os.getenv("AUTH_COOKIE_DOMAIN")
             self.AUTH_COOKIE_SAMESITE = os.getenv("AUTH_COOKIE_SAMESITE", "lax")
             self.FORCE_HTTPS = os.getenv("FORCE_HTTPS", "false").lower() == "true"
+            self.STRICT_VALIDATION = _parse_bool(
+                os.getenv("STRICT_VALIDATION"),
+                default=False,
+            )
 
     settings = FallbackSettings()  # type: ignore[assignment]
 

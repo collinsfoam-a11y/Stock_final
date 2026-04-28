@@ -9,12 +9,28 @@ from backend.api.schemas import CountLineCreate
 def mock_db():
     """Mock MongoDB database"""
     db = MagicMock()
+    db.client = None
     db.sessions = MagicMock()
+    db.session_snapshots = MagicMock()
     db.erp_items = MagicMock()
     db.count_lines = MagicMock()
 
     db.sessions.find_one = AsyncMock()
     db.sessions.update_one = AsyncMock()
+    db.session_snapshots.find_one = AsyncMock(
+        return_value={
+            "session_id": "test-session",
+            "snapshot_hash": "snapshot-hash",
+            "items": [{"item_code": "ITEM001", "stock_qty": 10.0}],
+        }
+    )
+    db.variance_threshold_configs = MagicMock()
+    db.variance_threshold_configs.find_one = AsyncMock(
+        return_value={"name": "Default Variance Thresholds", "thresholds": []}
+    )
+    db.variance_threshold_configs.insert_one = AsyncMock(
+        return_value=MagicMock(inserted_id="cfg-1")
+    )
     db.erp_items.find_one = AsyncMock()
     db.count_lines.find_one = AsyncMock(return_value=None)
     db.count_lines.count_documents = AsyncMock()
@@ -51,7 +67,7 @@ async def test_create_count_line_saves_floor_no(mock_db, mock_current_user):
     from backend.api.count_lines_routes import create_count_line
 
     # Setup mocks
-    mock_db.sessions.find_one.return_value = {"session_id": "test-session", "status": "OPEN"}
+    mock_db.sessions.find_one.return_value = {"session_id": "test-session", "status": "ACTIVE"}
     mock_db.erp_items.find_one.return_value = {
         "item_code": "ITEM001",
         "item_name": "Test Item",
@@ -64,6 +80,9 @@ async def test_create_count_line_saves_floor_no(mock_db, mock_current_user):
     # Input data with floor_no
     line_data = CountLineCreate(
         session_id="test-session",
+        location_id="LOC-1",
+        floor_id="First Floor",
+        rack_id="R1",
         item_code="ITEM001",
         counted_qty=10,
         floor_no="First Floor",

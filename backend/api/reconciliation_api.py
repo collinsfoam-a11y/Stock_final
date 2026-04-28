@@ -23,6 +23,18 @@ def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
     return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
 
 
+def _user_can_view_session(session: dict[str, Any], current_user: dict[str, Any]) -> bool:
+    role = str(current_user.get("role") or "").strip().lower()
+    if role in {"admin", "supervisor"}:
+        return True
+
+    username = str(current_user.get("username") or "").strip()
+    if not username:
+        return False
+    session_owner = str(session.get("staff_user") or session.get("user_id") or "").strip()
+    return bool(session_owner) and session_owner == username
+
+
 def _get_db() -> AsyncIOMotorDatabase:
     """Helper to get DB, useful for mocking."""
     return get_db()
@@ -35,7 +47,10 @@ async def get_session_reconciliation_summary(
 ):
     """
     Get aggregated reconciliation summary for a session.
-    Aggregates all counts for each item to calculate TRUE variance against ERP stock.
+    Aggregates all non-superseded count lines and reports:
+    - count_variance = physical - baseline
+    - erp_drift = current_sql - baseline
+    - final_gap = physical - current_sql
     """
     db = _get_db()
 
@@ -44,11 +59,22 @@ async def get_session_reconciliation_summary(
         session = await db.sessions.find_one(build_session_lookup(session_id))
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
+        if not _user_can_view_session(session, current_user):
+            raise HTTPException(status_code=403, detail="Not authorized to view this session")
 
         # 2. Aggregation Pipeline
         pipeline: list[dict[str, Any]] = [
-            # Match counts for this session
-            {"$match": {"session_id": session_id}},
+            # Match active (non-superseded) counts for this session
+            {
+                "$match": {
+                    "session_id": session_id,
+                    "status": {"$nin": ["SUPERSEDED", "superseded"]},
+                    "$or": [
+                        {"superseded_by_version_id": {"$exists": False}},
+                        {"superseded_by_version_id": {"$in": [None, ""]}},
+                    ],
+                }
+            },
             # Group by item_code to aggregate total counted qty
             {
                 "$group": {
@@ -56,6 +82,9 @@ async def get_session_reconciliation_summary(
                     "item_name": {"$first": "$item_name"},
                     "barcode": {"$first": "$barcode"},
                     "total_counted": {"$sum": "$counted_qty"},
+                    "baseline_qty": {"$max": {"$ifNull": ["$erp_qty", 0]}},
+                    "baseline_values": {"$addToSet": {"$ifNull": ["$erp_qty", 0]}},
+                    "baseline_hash": {"$first": "$baseline_hash"},
                     "last_counted_at": {"$max": "$counted_at"},
                     # Collect location details for drill-down
                     "locations": {
@@ -80,15 +109,23 @@ async def get_session_reconciliation_summary(
             },
             # Unwind the ERP data (should be 1-to-1 usually)
             {"$unwind": {"path": "$erp_data", "preserveNullAndEmptyArrays": True}},
-            # Project final shape and calculate TRURE VARIANCE
+            # Project canonical reconciliation metrics.
             {
                 "$project": {
                     "item_code": "$_id",
                     "item_name": {"$ifNull": ["$item_name", "$erp_data.item_name"]},
                     "barcode": {"$ifNull": ["$barcode", "$erp_data.barcode"]},
                     "total_counted": 1,
+                    "baseline_qty": 1,
+                    "baseline_values": 1,
+                    "baseline_conflict": {"$gt": [{"$size": "$baseline_values"}, 1]},
+                    "baseline_hash": 1,
                     "system_stock": {"$ifNull": ["$erp_data.stock_qty", 0]},
-                    "variance": {
+                    "count_variance": {"$subtract": ["$total_counted", "$baseline_qty"]},
+                    "erp_drift": {
+                        "$subtract": [{"$ifNull": ["$erp_data.stock_qty", 0]}, "$baseline_qty"]
+                    },
+                    "final_gap": {
                         "$subtract": ["$total_counted", {"$ifNull": ["$erp_data.stock_qty", 0]}]
                     },
                     "locations": 1,
@@ -96,8 +133,9 @@ async def get_session_reconciliation_summary(
                     "mrp": "$erp_data.mrp",
                 }
             },
-            # Sort by variance (most discrepancy first)
-            {"$sort": {"variance": 1}},
+            {"$addFields": {"abs_count_variance": {"$abs": "$count_variance"}}},
+            # Sort by count variance severity (largest discrepancy first)
+            {"$sort": {"abs_count_variance": -1, "item_code": 1}},
         ]
 
         results = await db.count_lines.aggregate(pipeline).to_list(length=None)
@@ -107,18 +145,28 @@ async def get_session_reconciliation_summary(
             "total_items_counted": len(results),
             "items_with_variance": 0,
             "items_matched": 0,
-            "total_variance_qty": 0,
+            "total_variance_qty": 0.0,
+            "total_erp_drift_qty": 0.0,
+            "total_final_gap_qty": 0.0,
+            "items_with_baseline_conflict": 0,
         }
 
         formatted_results = []
 
         for item in results:
-            variance = item["variance"]
+            count_variance = float(item.get("count_variance") or 0.0)
+            erp_drift = float(item.get("erp_drift") or 0.0)
+            final_gap = float(item.get("final_gap") or 0.0)
+            item["count_variance"] = count_variance
+            item["erp_drift"] = erp_drift
+            item["final_gap"] = final_gap
+            # Backward compatibility for callers expecting `variance`.
+            item["variance"] = count_variance
 
             status = "MATCH"
-            if variance > 0:
+            if count_variance > 0:
                 status = "SURPLUS"
-            elif variance < 0:
+            elif count_variance < 0:
                 status = "MISSING"
 
             item["status"] = status
@@ -128,11 +176,15 @@ async def get_session_reconciliation_summary(
                 item["last_counted_at"] = item["last_counted_at"].isoformat()
 
             # Stats updates
-            if variance != 0:
+            if count_variance != 0:
                 summary_stats["items_with_variance"] += 1
-                summary_stats["total_variance_qty"] += variance
+                summary_stats["total_variance_qty"] += count_variance
             else:
                 summary_stats["items_matched"] += 1
+            summary_stats["total_erp_drift_qty"] += erp_drift
+            summary_stats["total_final_gap_qty"] += final_gap
+            if bool(item.get("baseline_conflict")):
+                summary_stats["items_with_baseline_conflict"] += 1
 
             formatted_results.append(item)
 

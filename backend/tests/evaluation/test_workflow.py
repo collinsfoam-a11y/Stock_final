@@ -36,6 +36,43 @@ def workflow_evaluator(collector):
     return WorkflowEvaluator(collector)
 
 
+async def _create_authenticated_headers(
+    async_client: AsyncClient,
+    *,
+    username_prefix: str,
+    password: str,
+    full_name: str,
+    role: str,
+) -> dict[str, str]:
+    user_data = {
+        "username": f"{username_prefix}_{random.randint(10000, 99999)}",
+        "password": password,
+        "full_name": full_name,
+        "role": role,
+    }
+
+    admin_login = await async_client.post(
+        "/api/auth/login", json={"username": "admin", "password": "admin123"}
+    )
+    admin_token = admin_login.json().get("data", {}).get("access_token") or admin_login.json().get(
+        "access_token"
+    )
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    await async_client.post("/api/auth/register", json=user_data, headers=headers)
+
+    response = await async_client.post(
+        "/api/auth/login",
+        json={"username": user_data["username"], "password": user_data["password"]},
+    )
+
+    if response.status_code == 200:
+        token = response.json().get("data", {}).get("access_token")
+        if token:
+            return {"Authorization": f"Bearer {token}"}
+
+    return {}
+
+
 class TestAuthenticationWorkflow:
     """Tests for authentication workflow."""
 
@@ -157,34 +194,13 @@ class TestSessionWorkflow:
 
     @pytest_asyncio.fixture
     async def auth_headers(self, async_client: AsyncClient) -> dict[str, str]:
-        """Create authenticated user and return headers."""
-        user_data = {
-            "username": f"session_user_{random.randint(10000, 99999)}",
-            "password": "SessionTest123!",
-            "full_name": "Session Test User",
-            "role": "staff",
-        }
-
-        admin_login = await async_client.post(
-            "/api/auth/login", json={"username": "admin", "password": "admin123"}
+        return await _create_authenticated_headers(
+            async_client,
+            username_prefix="session_user",
+            password="SessionTest123!",
+            full_name="Session Test User",
+            role="staff",
         )
-        admin_token = admin_login.json().get("data", {}).get(
-            "access_token"
-        ) or admin_login.json().get("access_token")
-        headers = {"Authorization": f"Bearer {admin_token}"}
-        await async_client.post("/api/auth/register", json=user_data, headers=headers)
-
-        response = await async_client.post(
-            "/api/auth/login",
-            json={"username": user_data["username"], "password": user_data["password"]},
-        )
-
-        if response.status_code == 200:
-            token = response.json().get("data", {}).get("access_token")
-            if token:
-                return {"Authorization": f"Bearer {token}"}
-
-        return {}
 
     @pytest.mark.asyncio
     @pytest.mark.workflow
@@ -261,34 +277,13 @@ class TestVerificationWorkflow:
 
     @pytest_asyncio.fixture
     async def auth_headers(self, async_client: AsyncClient) -> dict[str, str]:
-        """Create authenticated user and return headers."""
-        user_data = {
-            "username": f"verify_user_{random.randint(10000, 99999)}",
-            "password": "VerifyTest123!",
-            "full_name": "Verify Test User",
-            "role": "staff",
-        }
-
-        admin_login = await async_client.post(
-            "/api/auth/login", json={"username": "admin", "password": "admin123"}
+        return await _create_authenticated_headers(
+            async_client,
+            username_prefix="verify_user",
+            password="VerifyTest123!",
+            full_name="Verify Test User",
+            role="staff",
         )
-        admin_token = admin_login.json().get("data", {}).get(
-            "access_token"
-        ) or admin_login.json().get("access_token")
-        headers = {"Authorization": f"Bearer {admin_token}"}
-        await async_client.post("/api/auth/register", json=user_data, headers=headers)
-
-        response = await async_client.post(
-            "/api/auth/login",
-            json={"username": user_data["username"], "password": user_data["password"]},
-        )
-
-        if response.status_code == 200:
-            token = response.json().get("data", {}).get("access_token")
-            if token:
-                return {"Authorization": f"Bearer {token}"}
-
-        return {}
 
     @pytest.mark.asyncio
     @pytest.mark.workflow
@@ -371,34 +366,13 @@ class TestAdminWorkflow:
 
     @pytest_asyncio.fixture
     async def admin_headers(self, async_client: AsyncClient) -> dict[str, str]:
-        """Create admin user and return headers."""
-        user_data = {
-            "username": f"admin_user_{random.randint(10000, 99999)}",
-            "password": "AdminTest123!",
-            "full_name": "Admin Test User",
-            "role": "admin",
-        }
-
-        admin_login = await async_client.post(
-            "/api/auth/login", json={"username": "admin", "password": "admin123"}
+        return await _create_authenticated_headers(
+            async_client,
+            username_prefix="admin_user",
+            password="AdminTest123!",
+            full_name="Admin Test User",
+            role="admin",
         )
-        admin_token = admin_login.json().get("data", {}).get(
-            "access_token"
-        ) or admin_login.json().get("access_token")
-        headers = {"Authorization": f"Bearer {admin_token}"}
-        await async_client.post("/api/auth/register", json=user_data, headers=headers)
-
-        response = await async_client.post(
-            "/api/auth/login",
-            json={"username": user_data["username"], "password": user_data["password"]},
-        )
-
-        if response.status_code == 200:
-            token = response.json().get("data", {}).get("access_token")
-            if token:
-                return {"Authorization": f"Bearer {token}"}
-
-        return {}
 
     @pytest.mark.asyncio
     @pytest.mark.workflow

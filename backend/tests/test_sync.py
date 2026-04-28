@@ -85,7 +85,7 @@ class TestSyncEndpoints:
         supervisor_token,
         fake_environment,
     ) -> None:
-        """Legacy offline queue payloads should still sync successfully."""
+        """Legacy operations payloads are disabled in canonical sync."""
 
         if not supervisor_token:
             pytest.skip("Supervisor token not available")
@@ -123,23 +123,9 @@ class TestSyncEndpoints:
             headers={"Authorization": f"Bearer {supervisor_token}"},
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 410
         data = response.json()
-        assert data.get("processed_count") == 2
-        assert data.get("success_count") == 2
-        assert len(data.get("results", [])) == 2
-        assert {result["id"] for result in data["results"]} == {
-            "op_session",
-            "op_count_line",
-        }
-
-        # Ensure session and count line persisted with mapped server session id
-        assert len(fake_environment.sessions._documents) == 1
-        assert len(fake_environment.count_lines._documents) == 1
-
-        stored_session = fake_environment.sessions._documents[0]
-        stored_line = fake_environment.count_lines._documents[0]
-        assert stored_line["session_id"] == stored_session["id"]
+        assert "operations-based sync is disabled" in str(data.get("detail", "")).lower()
 
     def test_legacy_batch_sync_session_bulk_operations(
         self,
@@ -147,7 +133,7 @@ class TestSyncEndpoints:
         supervisor_token,
         fake_environment,
     ) -> None:
-        """Legacy offline queue session operations (bulk_close/bulk_reconcile) should apply."""
+        """Legacy offline queue session operations are disabled in canonical sync."""
 
         if not supervisor_token:
             pytest.skip("Supervisor token not available")
@@ -205,23 +191,6 @@ class TestSyncEndpoints:
             headers={"Authorization": f"Bearer {supervisor_token}"},
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 410
         data = response.json()
-        assert data.get("processed_count") == 4
-        assert data.get("success_count") == 4
-
-        assert len(fake_environment.sessions._documents) == 2
-
-        by_offline_id = {
-            session.get("offline_id"): session for session in fake_environment.sessions._documents
-        }
-
-        closed = by_offline_id.get(offline_close_session_id)
-        assert closed is not None
-        assert closed.get("status") == "CLOSED"
-        assert closed.get("closed_at") is not None
-
-        reconciled = by_offline_id.get(offline_reconcile_session_id)
-        assert reconciled is not None
-        assert reconciled.get("status") == "RECONCILE"
-        assert reconciled.get("reconciled_at") is not None
+        assert "operations-based sync is disabled" in str(data.get("detail", "")).lower()

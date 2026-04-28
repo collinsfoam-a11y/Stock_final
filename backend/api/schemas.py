@@ -225,6 +225,9 @@ class RelocationStatus(str, Enum):
 
 class CountLineCreate(BaseModel):
     session_id: str
+    location_id: Optional[str] = None
+    floor_id: Optional[str] = None
+    rack_id: Optional[str] = None
     item_code: str
     item_name: Optional[str] = None
     idempotency_key: Optional[str] = None
@@ -272,6 +275,26 @@ class CountLineCreate(BaseModel):
     # Lineage / Conflict Governance Fields
     version: int = 1
     previous_version_id: Optional[str] = None
+
+    @model_validator(mode="after")
+    def normalize_location_context(self) -> "CountLineCreate":
+        """Keep backward compatibility while preferring canonical location IDs."""
+        if self.location_id:
+            self.location_id = str(self.location_id).strip() or None
+        if self.floor_id:
+            self.floor_id = str(self.floor_id).strip() or None
+        if self.rack_id:
+            self.rack_id = str(self.rack_id).strip() or None
+        if self.floor_no:
+            self.floor_no = str(self.floor_no).strip() or None
+        if self.rack_no:
+            self.rack_no = str(self.rack_no).strip() or None
+
+        if not self.floor_id and self.floor_no:
+            self.floor_id = self.floor_no
+        if not self.rack_id and self.rack_no:
+            self.rack_id = self.rack_no
+        return self
 
 
 class BulkCountLineUpdate(BaseModel):

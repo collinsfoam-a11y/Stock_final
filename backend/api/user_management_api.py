@@ -280,6 +280,21 @@ async def _build_update_payload(
     return update
 
 
+async def _resolve_user_or_raise(db: Any, user_id: str) -> tuple[Any, dict[str, Any]]:
+    from bson import ObjectId
+
+    try:
+        oid = ObjectId(user_id)
+    except Exception:
+        _raise_http_error(status.HTTP_400_BAD_REQUEST, "Invalid user ID", "INVALID_ID")
+
+    user = await db.users.find_one({"_id": oid})
+    if not user:
+        _raise_http_error(status.HTTP_404_NOT_FOUND, "User not found", "NOT_FOUND")
+
+    return oid, cast(dict[str, Any], user)
+
+
 # ============================================================================
 # API Endpoints
 # ============================================================================
@@ -774,36 +789,8 @@ async def reset_user_password(
     Reset a user's password.
     Requires admin role.
     """
-    from bson import ObjectId
-
     db = get_db()
-
-    try:
-        oid = ObjectId(user_id)
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "success": False,
-                "error": {
-                    "message": "Invalid user ID",
-                    "code": "INVALID_ID",
-                },
-            },
-        )
-
-    user = await db.users.find_one({"_id": oid})
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "success": False,
-                "error": {
-                    "message": "User not found",
-                    "code": "NOT_FOUND",
-                },
-            },
-        )
+    oid, user = await _resolve_user_or_raise(db, user_id)
 
     await db.users.update_one(
         {"_id": oid},
@@ -834,36 +821,8 @@ async def reset_user_pin(
     Reset a user's PIN.
     Requires admin role.
     """
-    from bson import ObjectId
-
     db = get_db()
-
-    try:
-        oid = ObjectId(user_id)
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "success": False,
-                "error": {
-                    "message": "Invalid user ID",
-                    "code": "INVALID_ID",
-                },
-            },
-        )
-
-    user = await db.users.find_one({"_id": oid})
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "success": False,
-                "error": {
-                    "message": "User not found",
-                    "code": "NOT_FOUND",
-                },
-            },
-        )
+    oid, user = await _resolve_user_or_raise(db, user_id)
 
     await db.users.update_one(
         {"_id": oid},

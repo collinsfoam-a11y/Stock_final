@@ -132,16 +132,17 @@ async def test_manual_verification_optimistic_lock():
     mock_update_result.matched_count = 0
     mock_db.erp_items.update_one.return_value = mock_update_result
 
-    # Mock Request
-    request = MagicMock()
-    request.verified = True
-    request.verified_qty = 100.0
-    request.session_id = "sess1"
-    request.model_dump.return_value = {}  # For logging
-
     # Patch the module's DB reference
     with patch("backend.api.item_verification_api.db", mock_db):
         from backend.api import item_verification_api
+        from backend.api.item_verification_api import VerificationRequest
+
+        request = VerificationRequest(
+            verified=True,
+            verified_qty=100.0,
+            session_id="sess1",
+            is_serialized=None,
+        )
 
         # We also need to mock build_item_update_doc and calculate_variance since we are unit testing verify_item
         # But actually verify_item logic is complex. Easier to expect the exception.
