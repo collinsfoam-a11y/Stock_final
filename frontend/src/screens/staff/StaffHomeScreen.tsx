@@ -46,7 +46,7 @@ import {
   spacing,
   typography,
   borderRadius,
-} from "@/theme/modernDesign";
+} from "@/theme/unified";
 
 interface Zone {
   id: string;

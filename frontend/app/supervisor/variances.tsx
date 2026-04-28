@@ -34,7 +34,7 @@ import {
   AnimatedPressable,
 } from "../../src/components/ui";
 import { useSettingsStore } from "../../src/store/settingsStore";
-import { theme } from "../../src/styles/modernDesignSystem";
+import { theme } from "../../src/styles/unifiedSystem";
 import { toastService } from "../../src/services/toastService";
 import { saveArrayBufferExport } from "../../src/utils/fileExport";
 

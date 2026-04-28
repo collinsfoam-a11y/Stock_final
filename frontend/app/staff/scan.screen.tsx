@@ -63,7 +63,7 @@ import {
   typography,
   borderRadius,
   shadows,
-} from "../../src/theme/modernDesign";
+} from "../../src/theme/unified";
 
 import { useAuthStore } from "../../src/store/authStore";
 

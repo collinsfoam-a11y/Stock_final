@@ -8,7 +8,7 @@ import React, { useEffect, useRef } from "react";
 import { Text, StyleSheet, Animated } from "react-native";
 import * as Haptics from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { modernColors } from "../../styles/modernDesignSystem";
+import { modernColors } from "../../styles/unifiedSystem";
 
 interface SuccessFeedbackProps {
   visible: boolean;

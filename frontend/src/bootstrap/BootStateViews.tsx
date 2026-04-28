@@ -3,7 +3,7 @@ import { ActivityIndicator, Platform, Text, View } from "react-native";
 import {
   modernColors,
   modernTypography,
-} from "../styles/modernDesignSystem";
+} from "../styles/unifiedSystem";
 import { BrandLogo } from "../components/branding/BrandLogo";
 
 interface BootLoadingViewProps {

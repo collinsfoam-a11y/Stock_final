@@ -26,7 +26,7 @@ import { useSettingsStore } from "../../src/store/settingsStore";
 import RecountAssignmentModal, {
   type AssignableStaffUser,
 } from "../../src/components/supervisor/RecountAssignmentModal";
-import { theme } from "../../src/styles/modernDesignSystem";
+import { theme } from "../../src/styles/unifiedSystem";
 import { useToast } from "../../src/components/feedback/ToastProvider";
 
 export default function VarianceDetailsScreen() {

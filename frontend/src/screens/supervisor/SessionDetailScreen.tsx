@@ -28,7 +28,7 @@ import {
   typography,
   borderRadius,
   shadows,
-} from "@/theme/modernDesign";
+} from "@/theme/unified";
 import {
   getSession,
   getCountLines,

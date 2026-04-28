@@ -34,7 +34,7 @@ import {
   spacing,
   typography,
   borderRadius,
-} from "../../src/theme/modernDesign";
+} from "../../src/theme/unified";
 
 // Reusable Setting Row Component
 interface SettingRowProps {

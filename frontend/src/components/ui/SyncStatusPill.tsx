@@ -16,7 +16,7 @@ import { getSyncStatus, forceSync } from "../../services/syncService";
 import {
   modernColors,
   modernBorderRadius,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 
 interface SyncStatus {
   isOnline: boolean;

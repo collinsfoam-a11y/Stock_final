@@ -1,6 +1,6 @@
 import React from "react";
 import { View, useWindowDimensions, StyleSheet, ViewStyle } from "react-native";
-import { modernSpacing } from "../../styles/modernDesignSystem";
+import { modernSpacing } from "../../styles/unifiedSystem";
 
 interface AdminResponsiveGridProps {
   children: React.ReactNode[] | React.ReactNode;

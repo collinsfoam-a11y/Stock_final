@@ -25,7 +25,7 @@ import {
   GlassCard,
   AnimatedPressable,
 } from "../../src/components/ui";
-import { theme } from "../../src/styles/modernDesignSystem";
+import { theme } from "../../src/styles/unifiedSystem";
 import {
   ChangePasswordModal,
   SettingsSyncStatus,

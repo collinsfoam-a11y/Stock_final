@@ -23,7 +23,7 @@ import ModernCard from "../src/components/ui/ModernCard";
 import ModernInput from "../src/components/ui/ModernInput";
 import ModernButton from "../src/components/ui/ModernButton";
 import apiClient from "../src/services/httpClient";
-import { colors, spacing, typography } from "../src/theme/modernDesign";
+import { colors, spacing, typography } from "../src/theme/unified";
 
 export default function OtpVerificationScreen() {
   const router = useRouter();

@@ -37,7 +37,7 @@ import {
   modernBorderRadius,
   modernShadows,
   modernAnimations,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 import {
   colors,
   semanticColors,

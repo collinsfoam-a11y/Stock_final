@@ -27,7 +27,7 @@ import Animated, {
   withTiming,
   useSharedValue,
 } from "react-native-reanimated";
-import { modernColors } from "../../styles/modernDesignSystem";
+import { modernColors } from "../../styles/unifiedSystem";
 
 interface PinKeypadProps {
   pin: string;

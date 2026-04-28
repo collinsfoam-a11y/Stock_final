@@ -24,7 +24,7 @@ import {
   typography,
   shadows,
   gradients,
-} from "../../theme/modernDesign";
+} from "../../theme/unified";
 import { BrandLogo } from "../branding/BrandLogo";
 
 interface ModernHeaderProps {

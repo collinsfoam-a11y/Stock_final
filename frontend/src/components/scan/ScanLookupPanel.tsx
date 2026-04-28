@@ -17,7 +17,7 @@ import {
   shadows,
   spacing,
   typography,
-} from "@/theme/modernDesign";
+} from "@/theme/unified";
 
 type ScanLookupItem = {
   _id?: string | number;

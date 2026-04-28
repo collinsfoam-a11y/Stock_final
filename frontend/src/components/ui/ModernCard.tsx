@@ -35,7 +35,7 @@ import {
   modernShadows,
   modernTypography,
   modernAnimations,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 import {
   colors as unifiedColors,
   semanticColors,

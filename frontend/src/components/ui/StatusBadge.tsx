@@ -21,7 +21,7 @@ import Animated, {
 import {
   modernColors,
   modernBorderRadius,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 
 type BadgeVariant =
   | "success"
