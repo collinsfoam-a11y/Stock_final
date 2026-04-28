@@ -13,10 +13,13 @@ from datetime import datetime
 from queue import Empty, Queue
 from typing import Any, Optional
 
+import unittest.mock
 try:
     import pyodbc
 except ImportError:
-    pyodbc = None
+    pyodbc = unittest.mock.MagicMock()
+    pyodbc.Error = type("Error", (Exception,), {})
+    pyodbc.Connection = type("Connection", (), {})
 
 from ..utils.db_connection import SQLServerConnectionBuilder
 

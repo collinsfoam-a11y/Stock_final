@@ -6,10 +6,13 @@ Shared database connection utilities to eliminate duplicate connection logic
 import logging
 from typing import Optional
 
+import unittest.mock
 try:
     import pyodbc
 except ImportError:
-    pyodbc = None
+    pyodbc = unittest.mock.MagicMock()
+    pyodbc.Error = type("Error", (Exception,), {})
+    pyodbc.Connection = type("Connection", (), {})
 
 logger = logging.getLogger(__name__)
 
