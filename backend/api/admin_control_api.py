@@ -224,7 +224,10 @@ async def _get_mongodb_status() -> ServiceStatus:
                 "status": "connected",
             }
     except Exception as e:
-        logger.warning("Direct MongoDB check failed, falling back to PortDetector: %s", sanitize_for_logging(str(e)))
+        logger.warning(
+            "Direct MongoDB check failed, falling back to PortDetector: %s",
+            sanitize_for_logging(str(e)),
+        )
 
     mongo_status = PortDetector.get_mongo_status()
     running_flag = mongo_status.get("is_running")

@@ -5,7 +5,10 @@ import re
 from datetime import datetime
 from typing import Any, Optional
 
-import pyodbc
+try:
+    import pyodbc
+except ImportError:
+    pyodbc = None
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
@@ -82,6 +85,11 @@ def get_connection_string(host, port, database, user, password):
 
 
 def get_connection(conn_string):
+    if pyodbc is None:
+        raise HTTPException(
+            status_code=503,
+            detail="SQL mapping service is unavailable because pyodbc is not installed.",
+        )
     try:
         return pyodbc.connect(conn_string, timeout=5)
     except Exception as exc:

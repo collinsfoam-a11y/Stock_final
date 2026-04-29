@@ -82,10 +82,16 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
     ],
     # Item Serials Collection
     "item_serials": [
-        # Unique serial number
-        ([("serial_number", 1)], {"unique": True, "name": "idx_serial_unique"}),
+        # Unique serial per item identity
+        (
+            [("item_id", 1), ("serial_number", 1)],
+            {"unique": True, "sparse": True, "name": "idx_serial_item_unique"},
+        ),
+        # Serial lookups
+        ([("serial_number", 1)], {"name": "idx_serial_lookup"}),
         # Item code lookups
         ([("item_code", 1)], {"name": "idx_serial_item"}),
+        ([("item_id", 1)], {"name": "idx_serial_item_id"}),
         # Session serials
         ([("session_id", 1), ("created_at", -1)], {"name": "idx_session_serials"}),
         # Rack serials
@@ -140,6 +146,92 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ),
         # Session + id lookup (used by find_session and $or queries)
         ([("id", 1)], {"name": "idx_count_line_id", "sparse": True}),
+        # Item-scoped serial validation
+        (
+            [("item_code", 1), ("serial_numbers", 1)],
+            {"name": "idx_count_line_item_serial", "sparse": True},
+        ),
+    ],
+    # Append-only event store
+    "event_log": [
+        ([("aggregate_id", 1), ("timestamp", 1)], {"name": "idx_event_aggregate_time"}),
+        ([("event_type", 1), ("timestamp", -1)], {"name": "idx_event_type_time"}),
+        (
+            [("idempotency_key", 1)],
+            {"unique": True, "sparse": True, "name": "idx_event_idempotency"},
+        ),
+        (
+            [("metadata.idempotency_key", 1)],
+            {"unique": True, "sparse": True, "name": "idx_event_metadata_idempotency"},
+        ),
+        ([("metadata.request_idempotency_key", 1)], {"name": "idx_event_request_idempotency"}),
+        (
+            [("scan_fingerprint", 1)],
+            {"unique": True, "sparse": True, "name": "idx_event_scan_fingerprint"},
+        ),
+        ([("payload.session_id", 1), ("timestamp", -1)], {"name": "idx_event_session_time"}),
+    ],
+    "event_applied": [
+        ([("event_id", 1)], {"unique": True, "name": "idx_event_applied_event_id"}),
+        ([("session_id", 1), ("applied_at", -1)], {"name": "idx_event_applied_session_time"}),
+        ([("item_id", 1), ("applied_at", -1)], {"name": "idx_event_applied_item_time"}),
+    ],
+    "items_snapshot": [
+        (
+            [("session_id", 1), ("item_code", 1)],
+            {"unique": True, "name": "idx_items_snapshot_session_item"},
+        ),
+        ([("session_id", 1), ("updated_at", -1)], {"name": "idx_items_snapshot_session_time"}),
+    ],
+    "batch_records": [
+        (
+            [("session_id", 1), ("item_code", 1), ("batch_id", 1)],
+            {"unique": True, "name": "idx_batch_records_unique"},
+        ),
+        ([("item_code", 1), ("updated_at", -1)], {"name": "idx_batch_records_item_time"}),
+    ],
+    "serial_records": [
+        (
+            [("item_id", 1), ("serial_no", 1)],
+            {"unique": True, "sparse": True, "name": "idx_serial_records_item_serial"},
+        ),
+        ([("serial_no", 1)], {"name": "idx_serial_records_serial_lookup"}),
+        (
+            [("session_id", 1), ("item_code", 1), ("batch_id", 1), ("serial_no", 1)],
+            {"unique": True, "name": "idx_serial_records_composite"},
+        ),
+    ],
+    "serial_registry": [
+        (
+            [("item_id", 1), ("serial_no", 1)],
+            {"unique": True, "sparse": True, "name": "idx_serial_registry_item_serial"},
+        ),
+        ([("serial_no", 1)], {"name": "idx_serial_registry_serial_lookup"}),
+        ([("item_code", 1), ("updated_at", -1)], {"name": "idx_serial_registry_item_time"}),
+        ([("item_id", 1), ("updated_at", -1)], {"name": "idx_serial_registry_item_id_time"}),
+    ],
+    "damage_logs": [
+        ([("event_id", 1)], {"unique": True, "name": "idx_damage_event"}),
+        ([("session_id", 1), ("timestamp", -1)], {"name": "idx_damage_session_time"}),
+    ],
+    "variance_logs": [
+        ([("event_id", 1)], {"unique": True, "name": "idx_variance_event"}),
+        ([("session_id", 1), ("timestamp", -1)], {"name": "idx_variance_session_time"}),
+    ],
+    "approvals": [
+        ([("approval_id", 1)], {"unique": True, "name": "idx_approvals_id"}),
+        ([("session_id", 1), ("approved_at", -1)], {"name": "idx_approvals_session_time"}),
+    ],
+    "sync_queue": [
+        ([("queue_id", 1)], {"unique": True, "name": "idx_sync_queue_id"}),
+        ([("status", 1), ("updated_at", -1)], {"name": "idx_sync_queue_status_time"}),
+    ],
+    "erp_snapshot": [
+        (
+            [("session_id", 1), ("item_code", 1)],
+            {"unique": True, "name": "idx_erp_snapshot_session_item"},
+        ),
+        ([("updated_at", -1)], {"name": "idx_erp_snapshot_time"}),
     ],
     # Sessions Collection (existing)
     "sessions": [
@@ -155,6 +247,17 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("status", 1), ("created_at", -1)], {"name": "idx_status"}),
         # Warehouse
         ([("warehouse", 1), ("status", 1)], {"name": "idx_warehouse_status"}),
+        (
+            [("location_key", 1)],
+            {
+                "name": "idx_sessions_active_location_key",
+                "unique": True,
+                "partialFilterExpression": {
+                    "status": {"$in": ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]},
+                    "location_key": {"$exists": True, "$gt": ""},
+                },
+            },
+        ),
     ],
     # ERP Items Collection (existing)
     "erp_items": [

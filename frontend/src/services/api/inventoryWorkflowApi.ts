@@ -361,7 +361,8 @@ export const getItemByBarcode = async (
  */
 export const checkSerialUniqueness = async (
   sessionId: string,
-  serialNumber: string
+  serialNumber: string,
+  itemCode?: string,
 ): Promise<{
   exists: boolean;
   item_code?: string;
@@ -372,8 +373,11 @@ export const checkSerialUniqueness = async (
   status?: string;
   }> => {
   try {
+    const params = itemCode
+      ? `?item_code=${encodeURIComponent(itemCode)}`
+      : "";
     const response = await api.get(
-      `/api/count-lines/check-serial/${sessionId}/${serialNumber}`,
+      `/api/count-lines/check-serial/${sessionId}/${serialNumber}${params}`,
     );
     return response.data;
   } catch (error) {

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Enhanced Connection Pool Service
 Upgraded SQL Server connection pooling with retry logic, health monitoring, and metrics
@@ -12,7 +14,10 @@ from datetime import datetime
 from queue import Empty, Queue
 from typing import Any, Optional
 
-import pyodbc
+try:
+    import pyodbc
+except ImportError:
+    pyodbc = None
 
 from ..utils.db_connection import SQLServerConnectionBuilder
 
@@ -62,6 +67,10 @@ class EnhancedSQLServerConnectionPool:
         retry_delay: float = 1.0,
         health_check_interval: int = 60,
     ):
+        if pyodbc is None:
+            raise RuntimeError(
+                "Enhanced SQL connection pool is unavailable because pyodbc is not installed."
+            )
         self.host = host
         self.port = port
         self.database = database

@@ -215,7 +215,7 @@ export const getAvailableTables = async (
     const response = await api.get(`/api/mapping/tables?${params.toString()}`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get tables error:", error);
+    log.error("Get tables error:", error);
     throw error;
   }
 };
@@ -243,7 +243,7 @@ export const getTableColumns = async (
     const response = await api.get(`/api/mapping/columns?${params.toString()}`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get columns error:", error);
+    log.error("Get columns error:", error);
     throw error;
   }
 };
@@ -253,7 +253,7 @@ export const getCurrentMapping = async () => {
     const response = await api.get("/api/mapping/current");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get current mapping error:", error);
+    log.error("Get current mapping error:", error);
     throw error;
   }
 };
@@ -278,7 +278,7 @@ export const testMapping = async (
     const response = await api.post(`/api/mapping/preview?${params.toString()}`, config);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Test mapping error:", error);
+    log.error("Test mapping error:", error);
     throw error;
   }
 };
@@ -288,7 +288,7 @@ export const saveMapping = async (config: Record<string, unknown>) => {
     const response = await api.post("/api/mapping/save", config);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Save mapping error:", error);
+    log.error("Save mapping error:", error);
     throw error;
   }
 };
@@ -321,32 +321,29 @@ export const getActivityLogs = async (
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
 
-    __DEV__ &&
-      console.log("🔍 [Activity Logs] Fetching activity logs:", {
-        page,
-        pageSize,
-        filters: { user, action, status, startDate, endDate },
-        url: `/api/activity-logs?${params.toString()}`,
-      });
+    log.debug("🔍 [Activity Logs] Fetching activity logs:", {
+      page,
+      pageSize,
+      filters: { user, action, status, startDate, endDate },
+      url: `/api/activity-logs?${params.toString()}`,
+    });
 
     const response = await api.get(`/api/activity-logs?${params.toString()}`);
 
-    __DEV__ &&
-      console.log("✅ [Activity Logs] Success:", {
-        activitiesReturned: response.data?.activities?.length || 0,
-      });
+    log.debug("✅ [Activity Logs] Success:", {
+      activitiesReturned: response.data?.activities?.length || 0,
+    });
 
     return response.data;
   } catch (error: any) {
-    __DEV__ &&
-      console.error("❌ [Activity Logs] Error fetching activity logs:", {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        url: error.config?.url,
-        data: error.response?.data,
-        filters: { page, pageSize, user, action, status, startDate, endDate },
-      });
+    log.error("❌ [Activity Logs] Error fetching activity logs:", {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      data: error.response?.data,
+      filters: { page, pageSize, user, action, status, startDate, endDate },
+    });
     throw error;
   }
 };
@@ -364,7 +361,7 @@ export const verifyPin = async (data: {
     const response = await api.post("/api/supervisor/verify-pin", data);
     return response.data;
   } catch (error: any) {
-    __DEV__ && console.error("Verify PIN error:", error);
+    log.error("Verify PIN error:", error);
     throw error;
   }
 };
@@ -375,33 +372,30 @@ export const getActivityStats = async (startDate?: string, endDate?: string) => 
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
 
-    __DEV__ &&
-      console.log("📊 [Activity Stats] Fetching statistics:", {
-        filters: { startDate, endDate },
-        url: `/api/activity-logs/stats?${params.toString()}`,
-      });
+    log.debug("📊 [Activity Stats] Fetching statistics:", {
+      filters: { startDate, endDate },
+      url: `/api/activity-logs/stats?${params.toString()}`,
+    });
 
     const response = await api.get(`/api/activity-logs/stats?${params.toString()}`);
 
-    __DEV__ &&
-      console.log("✅ [Activity Stats] Success:", {
-        total: response.data?.total || 0,
-        successCount: response.data?.by_status?.success || 0,
-        errorCount: response.data?.by_status?.error || 0,
-        warningCount: response.data?.by_status?.warning || 0,
-      });
+    log.debug("✅ [Activity Stats] Success:", {
+      total: response.data?.total || 0,
+      successCount: response.data?.by_status?.success || 0,
+      errorCount: response.data?.by_status?.error || 0,
+      warningCount: response.data?.by_status?.warning || 0,
+    });
 
     return response.data;
   } catch (error: any) {
-    __DEV__ &&
-      console.error("❌ [Activity Stats] Error fetching statistics:", {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        url: error.config?.url,
-        data: error.response?.data,
-        filters: { startDate, endDate },
-      });
+    log.error("❌ [Activity Stats] Error fetching statistics:", {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      data: error.response?.data,
+      filters: { startDate, endDate },
+    });
     throw error;
   }
 };
@@ -429,50 +423,47 @@ export const getErrorLogs = async (
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
 
-    __DEV__ &&
-      console.log("🔍 [Error Logs] Fetching error logs:", {
-        page,
-        pageSize,
-        filters: {
-          severity,
-          errorType,
-          endpoint,
-          resolved,
-          startDate,
-          endDate,
-        },
-        url: `/api/error-logs?${params.toString()}`,
-      });
+    log.debug("🔍 [Error Logs] Fetching error logs:", {
+      page,
+      pageSize,
+      filters: {
+        severity,
+        errorType,
+        endpoint,
+        resolved,
+        startDate,
+        endDate,
+      },
+      url: `/api/error-logs?${params.toString()}`,
+    });
 
     const response = await api.get(`/api/error-logs?${params.toString()}`);
 
-    __DEV__ &&
-      console.log("✅ [Error Logs] Success:", {
-        totalErrors: response.data?.pagination?.total || 0,
-        page: response.data?.pagination?.page || page,
-        errorsReturned: response.data?.errors?.length || 0,
-      });
+    log.debug("✅ [Error Logs] Success:", {
+      totalErrors: response.data?.pagination?.total || 0,
+      page: response.data?.pagination?.page || page,
+      errorsReturned: response.data?.errors?.length || 0,
+    });
 
     return response.data;
   } catch (error: any) {
-    __DEV__ &&
-      console.error("❌ [Error Logs] Error fetching error logs:", {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        url: error.config?.url,
-        data: error.response?.data,
-        filters: {
-          page,
-          pageSize,
-          severity,
-          errorType,
-          endpoint,
-          resolved,
-          startDate,
-          endDate,
-        },
-      });
+    log.error("❌ [Error Logs] Error fetching error logs:", {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      data: error.response?.data,
+      filters: {
+        page,
+        pageSize,
+        severity,
+        errorType,
+        endpoint,
+        resolved,
+        startDate,
+        endDate,
+      },
+    });
     throw error;
   }
 };
@@ -483,62 +474,57 @@ export const getErrorStats = async (startDate?: string, endDate?: string) => {
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
 
-    __DEV__ &&
-      console.log("📊 [Error Stats] Fetching statistics:", {
-        filters: { startDate, endDate },
-        url: `/api/error-logs/stats?${params.toString()}`,
-      });
+    log.debug("📊 [Error Stats] Fetching statistics:", {
+      filters: { startDate, endDate },
+      url: `/api/error-logs/stats?${params.toString()}`,
+    });
 
     const response = await api.get(`/api/error-logs/stats?${params.toString()}`);
 
-    __DEV__ &&
-      console.log("✅ [Error Stats] Success:", {
-        total: response.data?.total || 0,
-        criticalCount: response.data?.by_severity?.critical || 0,
-        errorCount: response.data?.by_severity?.error || 0,
-        warningCount: response.data?.by_severity?.warning || 0,
-      });
+    log.debug("✅ [Error Stats] Success:", {
+      total: response.data?.total || 0,
+      criticalCount: response.data?.by_severity?.critical || 0,
+      errorCount: response.data?.by_severity?.error || 0,
+      warningCount: response.data?.by_severity?.warning || 0,
+    });
 
     return response.data;
   } catch (error: any) {
-    __DEV__ &&
-      console.error("❌ [Error Stats] Error fetching statistics:", {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        url: error.config?.url,
-        data: error.response?.data,
-        filters: { startDate, endDate },
-      });
+    log.error("❌ [Error Stats] Error fetching statistics:", {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      data: error.response?.data,
+      filters: { startDate, endDate },
+    });
     throw error;
   }
 };
 
 export const getErrorDetail = async (errorId: string) => {
   try {
-    __DEV__ && console.log("🔍 [Error Detail] Fetching error details:", { errorId });
+    log.debug("🔍 [Error Detail] Fetching error details:", { errorId });
 
     const response = await api.get(`/api/error-logs/${errorId}`);
 
-    __DEV__ &&
-      console.log("✅ [Error Detail] Success:", {
-        errorId,
-        severity: response.data?.severity,
-        errorType: response.data?.error_type,
-        timestamp: response.data?.timestamp,
-      });
+    log.debug("✅ [Error Detail] Success:", {
+      errorId,
+      severity: response.data?.severity,
+      errorType: response.data?.error_type,
+      timestamp: response.data?.timestamp,
+    });
 
     return response.data;
   } catch (error: any) {
-    __DEV__ &&
-      console.error("❌ [Error Detail] Error fetching error details:", {
-        errorId,
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        url: error.config?.url,
-        data: error.response?.data,
-      });
+    log.error("❌ [Error Detail] Error fetching error details:", {
+      errorId,
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      data: error.response?.data,
+    });
     throw error;
   }
 };
@@ -550,7 +536,7 @@ export const resolveError = async (errorId: string, resolutionNote?: string) => 
     });
     return response.data;
   } catch (error: any) {
-    __DEV__ && console.error("Resolve error error:", error);
+    log.error("Resolve error error:", error);
     throw error;
   }
 };
@@ -560,7 +546,7 @@ export const clearErrorLogs = async () => {
     const response = await api.delete("/api/error-logs");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Clear error logs error:", error);
+    log.error("Clear error logs error:", error);
     throw error;
   }
 };
@@ -571,7 +557,7 @@ export const getERPConfig = async () => {
     const response = await api.get("/api/erp/config");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get ERP config error:", error);
+    log.error("Get ERP config error:", error);
     throw error;
   }
 };

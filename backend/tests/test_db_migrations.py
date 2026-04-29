@@ -63,3 +63,24 @@ async def test_create_index_safe_creates_sparse_unique_index_when_missing():
         sparse=True,
         name="refresh_tokens.token_hash",
     )
+
+
+@pytest.mark.asyncio
+async def test_ensure_sessions_indexes_ignores_blank_location_keys_in_partial_unique_index():
+    db = MagicMock()
+    db.sessions = MagicMock()
+    manager = MigrationManager(db)
+    manager._create_index_safe = AsyncMock()
+
+    await manager._ensure_sessions_indexes()
+
+    manager._create_index_safe.assert_any_await(
+        db.sessions,
+        [("location_key", 1)],
+        unique=True,
+        name="sessions.active_location_key",
+        partialFilterExpression={
+            "status": {"$in": ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]},
+            "location_key": {"$exists": True, "$gt": ""},
+        },
+    )

@@ -88,7 +88,11 @@ async def chat_with_pi(request: Request, current_user: Dict[str, Any] = Depends(
             )
 
             if response.status_code != 200:
-                logger.error("pi-server returned error: %s - %s", response.status_code, sanitize_for_logging(response.text))
+                logger.error(
+                    "pi-server returned error: %s - %s",
+                    response.status_code,
+                    sanitize_for_logging(response.text),
+                )
                 return {
                     "error": "AI service is currently unavailable",
                     "status_code": response.status_code,

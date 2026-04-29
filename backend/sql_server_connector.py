@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # ruff: noqa: E402
 import asyncio
 import logging
@@ -7,7 +9,10 @@ import threading
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
-import pyodbc
+try:
+    import pyodbc
+except ImportError:
+    pyodbc = None
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from backend.db_mapping_config import SQL_TEMPLATES, get_active_mapping
@@ -393,6 +398,11 @@ class SQLServerConnector:
         Supports both Windows Authentication and SQL Server Authentication
         Automatically tries multiple connection methods if initial attempt fails
         """
+        if pyodbc is None:
+            raise DatabaseConnectionError(
+                "SQL Server connectivity is unavailable because pyodbc is not installed."
+            )
+
         # Cache provided configuration so background services can retry later if needed
         self.config = {
             "host": host,
@@ -520,7 +530,7 @@ class SQLServerConnector:
 
             # Verify connection using shared utility
             if not SQLServerConnectionBuilder.is_connection_valid(self.connection):
-                raise pyodbc.Error("Connection validation failed")
+                raise DatabaseConnectionError("Connection validation failed")
 
             # Success - store config and log
             self._reset_dynamic_metadata()

@@ -58,3 +58,58 @@ async def test_check_finalization_violations_filters_by_session_id():
     violations = await service.check_finalization_violations(session_id="sess-a")
     assert len(violations) == 1
     assert violations[0]["session_id"] == "sess-a"
+
+
+@pytest.mark.asyncio
+async def test_enforce_count_line_business_rules_blocks_fraction_for_nos():
+    db = InMemoryDatabase()
+    service = ValidationService(db, strict_mode=False, write_logs=False)
+    await db.erp_items.insert_one(
+        {
+            "item_code": "ITEM-NOS",
+            "uom_code": "NOS",
+            "uom_name": "Numbers",
+            "allow_fraction": False,
+        }
+    )
+
+    with pytest.raises(GovernanceViolation, match="FRACTION_NOT_ALLOWED"):
+        await service.enforce_count_line_business_rules(
+            {
+                "session_id": "sess-1",
+                "item_code": "ITEM-NOS",
+                "counted_qty": 1.5,
+            }
+        )
+
+
+@pytest.mark.asyncio
+async def test_enforce_count_line_business_rules_rejects_global_duplicate_serial():
+    db = InMemoryDatabase()
+    service = ValidationService(db, strict_mode=False, write_logs=False)
+    await db.erp_items.insert_one(
+        {
+            "item_code": "ITEM-SERIAL",
+            "uom_code": "NOS",
+            "allow_fraction": False,
+            "is_serialized": True,
+        }
+    )
+    await db.serial_registry.insert_one(
+        {
+            "serial_no": "SN-DUP-1",
+            "item_code": "ITEM-SERIAL",
+            "session_id": "sess-a",
+            "count_line_id": "line-a",
+        }
+    )
+
+    with pytest.raises(GovernanceViolation, match="SERIAL_DUPLICATE"):
+        await service.enforce_count_line_business_rules(
+            {
+                "session_id": "sess-b",
+                "item_code": "ITEM-SERIAL",
+                "counted_qty": 1,
+                "serial_numbers": ["sn-dup-1"],
+            }
+        )

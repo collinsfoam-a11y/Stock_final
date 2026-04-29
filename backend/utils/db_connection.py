@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Shared database connection utilities to eliminate duplicate connection logic
 """
@@ -5,7 +7,10 @@ Shared database connection utilities to eliminate duplicate connection logic
 import logging
 from typing import Optional
 
-import pyodbc
+try:
+    import pyodbc
+except ImportError:
+    pyodbc = None
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +28,23 @@ class SQLServerConnectionBuilder:
     DEFAULT_TIMEOUT = 30
     _detected_driver: Optional[str] = None
 
+    @staticmethod
+    def _require_pyodbc():
+        if pyodbc is None:
+            raise RuntimeError(
+                "SQL Server ODBC support is unavailable because pyodbc is not installed."
+            )
+        return pyodbc
+
     @classmethod
     def get_available_driver(cls) -> Optional[str]:
         """Detect and cache the best available ODBC driver"""
         if cls._detected_driver:
             return cls._detected_driver
+
+        if pyodbc is None:
+            logger.error("pyodbc is not installed; SQL Server ODBC drivers cannot be detected")
+            return None
 
         # Get list of installed drivers
         try:
@@ -150,6 +167,7 @@ class SQLServerConnectionBuilder:
         Raises:
             pyodbc.Error: If connection fails
         """
+        pyodbc_module = SQLServerConnectionBuilder._require_pyodbc()
         conn_str = SQLServerConnectionBuilder.build_connection_string(
             host=host,
             database=database,
@@ -159,7 +177,7 @@ class SQLServerConnectionBuilder:
             timeout=timeout,
         )
 
-        conn = pyodbc.connect(conn_str, timeout=timeout)
+        conn = pyodbc_module.connect(conn_str, timeout=timeout)
 
         # Set connection attributes for performance
         conn.timeout = timeout

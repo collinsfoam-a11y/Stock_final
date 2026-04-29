@@ -246,6 +246,34 @@ const StaffHome = React.memo(function StaffHome() {
       });
   }, [sessions]);
 
+  const isSessionLocationComplete = Boolean(
+    locationType && selectedFloor && rackName.trim(),
+  );
+
+  const readinessItems = useMemo(
+    () => [
+      {
+        id: "zone",
+        done: Boolean(locationType),
+        label: "Location type",
+        value: locationType || "Choose a zone",
+      },
+      {
+        id: "floor",
+        done: Boolean(selectedFloor),
+        label: "Floor or area",
+        value: selectedFloor || "Choose a floor",
+      },
+      {
+        id: "rack",
+        done: Boolean(rackName.trim()),
+        label: "Rack or shelf",
+        value: rackName.trim() || "Enter rack code",
+      },
+    ],
+    [locationType, rackName, selectedFloor],
+  );
+
   const uniqueActiveSessions = useMemo(() => {
     const seen = new Set<string>();
     const unique: any[] = [];
@@ -704,130 +732,217 @@ const StaffHome = React.memo(function StaffHome() {
       <Modal
         visible={showCreateModal}
         animationType={prefersReducedMotion ? "none" : "slide"}
-        presentationStyle="pageSheet"
+        transparent
         onRequestClose={() => setShowCreateModal(false)}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.modalContainer}
         >
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>New Session</Text>
-            <TouchableOpacity
-              onPress={() => setShowCreateModal(false)}
-              style={styles.modalCloseButton}
-              accessibilityRole="button"
-              accessibilityLabel="Close new session modal"
-            >
-              <Ionicons name="close" size={24} color={colors.gray[500]} />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowCreateModal(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Close new session modal"
+          />
 
-          <ScrollView
-            contentContainerStyle={styles.modalContent}
-            keyboardShouldPersistTaps="always"
-            keyboardDismissMode="none"
-            nestedScrollEnabled
-          >
-            <Text style={styles.sectionLabel}>Select Location</Text>
-            <View
-              style={styles.chipContainer}
-              accessibilityRole="radiogroup"
-              accessibilityLabel="Select location"
-            >
-              {zones.map((zone) => (
-                <TouchableOpacity
-                  key={zone.id}
-                  style={[
-                    styles.chip,
-                    locationType === zone.zone_name && styles.chipActive,
-                  ]}
-                  onPress={() => setLocationType(zone.zone_name)}
-                  accessibilityRole="radio"
-                  accessibilityState={{
-                    selected: locationType === zone.zone_name,
-                  }}
-                  accessibilityLabel={`Location ${zone.zone_name}`}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      locationType === zone.zone_name && styles.chipTextActive,
-                    ]}
-                  >
-                    {zone.zone_name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+          <View style={styles.modalSheet}>
+            <View style={styles.sheetHandle} />
+
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderText}>
+                <Text style={styles.modalEyebrow}>Start Verification</Text>
+                <Text style={styles.modalTitle}>New Session</Text>
+                <Text style={styles.modalSubtitle}>
+                  Select the location, confirm the count area, and then begin scanning.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowCreateModal(false)}
+                style={styles.modalCloseButton}
+                accessibilityRole="button"
+                accessibilityLabel="Close new session modal"
+              >
+                <Ionicons name="close" size={22} color={colors.gray[600]} />
+              </TouchableOpacity>
             </View>
 
-            {locationType && (
-              <Animated.View
-                entering={
-                  prefersReducedMotion ? undefined : FadeInUp.duration(250)
-                }
+            <View
+              style={[
+                styles.statusPill,
+                isSessionLocationComplete
+                  ? styles.statusPillReady
+                  : styles.statusPillPending,
+              ]}
+            >
+              <View
+                style={[
+                  styles.statusDot,
+                  isSessionLocationComplete
+                    ? styles.statusDotReady
+                    : styles.statusDotPending,
+                ]}
+              />
+              <Text
+                style={[
+                  styles.statusPillText,
+                  isSessionLocationComplete
+                    ? styles.statusPillTextReady
+                    : styles.statusPillTextPending,
+                ]}
               >
-                <Text style={styles.sectionLabel}>Select Floor / Area</Text>
-                <View
-                  style={styles.chipContainer}
-                  accessibilityRole="radiogroup"
-                  accessibilityLabel="Select floor or area"
-                >
-                  {warehouses.map((wh) => (
-                    <TouchableOpacity
-                      key={wh.id}
+                {isSessionLocationComplete ? "Ready to start" : "Setup required"}
+              </Text>
+            </View>
+
+            <ScrollView
+              contentContainerStyle={styles.modalContent}
+              keyboardShouldPersistTaps="always"
+              keyboardDismissMode="none"
+              nestedScrollEnabled
+            >
+              <View style={styles.readinessCard}>
+                <Text style={styles.readinessTitle}>Session setup</Text>
+                <Text style={styles.readinessSubtitle}>
+                  Keep the location details explicit so the session opens in the correct zone.
+                </Text>
+
+                {readinessItems.map((item) => (
+                  <View key={item.id} style={styles.readinessRow}>
+                    <View
                       style={[
-                        styles.chip,
-                        selectedFloor === wh.warehouse_name &&
-                        styles.chipActive,
+                        styles.readinessIcon,
+                        item.done
+                          ? styles.readinessIconDone
+                          : styles.readinessIconPending,
                       ]}
-                      onPress={() => setSelectedFloor(wh.warehouse_name)}
-                      accessibilityRole="radio"
-                      accessibilityState={{
-                        selected: selectedFloor === wh.warehouse_name,
-                      }}
-                      accessibilityLabel={`Floor or area ${wh.warehouse_name}`}
                     >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          selectedFloor === wh.warehouse_name &&
-                          styles.chipTextActive,
-                        ]}
-                      >
-                        {wh.warehouse_name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </Animated.View>
-            )}
+                      <Ionicons
+                        name={item.done ? "checkmark" : "ellipse-outline"}
+                        size={14}
+                        color={item.done ? colors.success[600] : colors.gray[500]}
+                      />
+                    </View>
 
-            {selectedFloor && (
-              <Animated.View
-                entering={
-                  prefersReducedMotion ? undefined : FadeInUp.duration(250)
-                }
+                    <View style={styles.readinessTextGroup}>
+                      <Text style={styles.readinessLabel}>{item.label}</Text>
+                      <Text style={styles.readinessValue}>{item.value}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              <Text style={styles.sectionLabel}>Select Location</Text>
+              <Text style={styles.sectionHelper}>
+                Choose the zone or location type for this count session.
+              </Text>
+              <View
+                style={styles.chipContainer}
+                accessibilityRole="radiogroup"
+                accessibilityLabel="Select location"
               >
-                <ModernInput
-                  label="Rack / Shelf Number"
-                  placeholder="e.g. A-123"
-                  value={rackName}
-                  onChangeText={setRackName}
-                  autoCapitalize="characters"
-                />
-              </Animated.View>
-            )}
-          </ScrollView>
+                {zones.map((zone) => (
+                  <TouchableOpacity
+                    key={zone.id}
+                    style={[
+                      styles.chip,
+                      locationType === zone.zone_name && styles.chipActive,
+                    ]}
+                    onPress={() => setLocationType(zone.zone_name)}
+                    accessibilityRole="radio"
+                    accessibilityState={{
+                      selected: locationType === zone.zone_name,
+                    }}
+                    accessibilityLabel={`Location ${zone.zone_name}`}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        locationType === zone.zone_name && styles.chipTextActive,
+                      ]}
+                    >
+                      {zone.zone_name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-          <View style={styles.modalFooter}>
-            <ModernButton
-              title="Start Session"
-              onPress={handleStartSession}
-              loading={isCreating}
-              disabled={!locationType || !selectedFloor || !rackName.trim()}
-              fullWidth
-            />
+              {locationType && (
+                <Animated.View
+                  entering={
+                    prefersReducedMotion ? undefined : FadeInUp.duration(250)
+                  }
+                >
+                  <Text style={styles.sectionLabel}>Select Floor / Area</Text>
+                  <Text style={styles.sectionHelper}>
+                    Narrow the session to the correct floor or operational area.
+                  </Text>
+                  <View
+                    style={styles.chipContainer}
+                    accessibilityRole="radiogroup"
+                    accessibilityLabel="Select floor or area"
+                  >
+                    {warehouses.map((wh) => (
+                      <TouchableOpacity
+                        key={wh.id}
+                        style={[
+                          styles.chip,
+                          selectedFloor === wh.warehouse_name &&
+                          styles.chipActive,
+                        ]}
+                        onPress={() => setSelectedFloor(wh.warehouse_name)}
+                        accessibilityRole="radio"
+                        accessibilityState={{
+                          selected: selectedFloor === wh.warehouse_name,
+                        }}
+                        accessibilityLabel={`Floor or area ${wh.warehouse_name}`}
+                      >
+                        <Text
+                          style={[
+                            styles.chipText,
+                            selectedFloor === wh.warehouse_name &&
+                            styles.chipTextActive,
+                          ]}
+                        >
+                          {wh.warehouse_name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </Animated.View>
+              )}
+
+              {selectedFloor && (
+                <Animated.View
+                  entering={
+                    prefersReducedMotion ? undefined : FadeInUp.duration(250)
+                  }
+                >
+                  <Text style={styles.sectionLabel}>Rack / Shelf Number</Text>
+                  <Text style={styles.sectionHelper}>
+                    Use the exact rack code visible to staff on the floor.
+                  </Text>
+                  <ModernInput
+                    placeholder="e.g. A-123"
+                    value={rackName}
+                    onChangeText={setRackName}
+                    autoCapitalize="characters"
+                  />
+                </Animated.View>
+              )}
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <ModernButton
+                title="Start Session"
+                onPress={handleStartSession}
+                loading={isCreating}
+                disabled={!locationType || !selectedFloor || !rackName.trim()}
+                icon="play"
+                fullWidth
+              />
+            </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -977,20 +1092,55 @@ const styles = StyleSheet.create({
   // Modal Styles
   modalContainer: {
     flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(15, 23, 42, 0.28)",
+  },
+  modalSheet: {
+    maxHeight: "88%",
     backgroundColor: colors.white,
+    borderTopLeftRadius: borderRadius["3xl"],
+    borderTopRightRadius: borderRadius["3xl"],
+    paddingTop: spacing.sm,
+  },
+  sheetHandle: {
+    alignSelf: "center",
+    width: 56,
+    height: 5,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.gray[200],
+    marginBottom: spacing.sm,
   },
   modalHeader: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[100],
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
+  },
+  modalHeaderText: {
+    flex: 1,
+  },
+  modalEyebrow: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[700],
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: spacing.xs,
   },
   modalTitle: {
-    fontSize: typography.fontSize.xl,
+    fontSize: typography.fontSize["2xl"],
     fontWeight: typography.fontWeight.bold,
     color: colors.gray[900],
+  },
+  modalSubtitle: {
+    marginTop: spacing.xs,
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[500],
+    lineHeight: 20,
   },
   modalCloseButton: {
     width: 44,
@@ -998,9 +1148,100 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: colors.gray[100],
+  },
+  statusPill: {
+    marginTop: spacing.md,
+    marginHorizontal: spacing.lg,
+    minHeight: 40,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.full,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    alignSelf: "flex-start",
+  },
+  statusPillReady: {
+    backgroundColor: colors.success[50],
+  },
+  statusPillPending: {
+    backgroundColor: colors.warning[50],
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: borderRadius.full,
+  },
+  statusDotReady: {
+    backgroundColor: colors.success[600],
+  },
+  statusDotPending: {
+    backgroundColor: colors.warning[600],
+  },
+  statusPillText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  statusPillTextReady: {
+    color: colors.success[600],
+  },
+  statusPillTextPending: {
+    color: colors.warning[600],
   },
   modalContent: {
     padding: spacing.lg,
+  },
+  readinessCard: {
+    padding: spacing.lg,
+    borderRadius: borderRadius.xl,
+    backgroundColor: colors.gray[50],
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    marginBottom: spacing.lg,
+  },
+  readinessTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.gray[900],
+  },
+  readinessSubtitle: {
+    marginTop: spacing.xs,
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[500],
+    lineHeight: 20,
+    marginBottom: spacing.md,
+  },
+  readinessRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  readinessIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: borderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  readinessIconDone: {
+    backgroundColor: colors.success[50],
+  },
+  readinessIconPending: {
+    backgroundColor: colors.gray[100],
+  },
+  readinessTextGroup: {
+    flex: 1,
+  },
+  readinessLabel: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.gray[700],
+  },
+  readinessValue: {
+    marginTop: 2,
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[500],
   },
   sectionLabel: {
     fontSize: typography.fontSize.sm,
@@ -1008,6 +1249,12 @@ const styles = StyleSheet.create({
     color: colors.gray[700],
     marginBottom: spacing.sm,
     marginTop: spacing.md,
+  },
+  sectionHelper: {
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[500],
+    marginBottom: spacing.sm,
+    lineHeight: 20,
   },
   chipContainer: {
     flexDirection: "row",
@@ -1019,8 +1266,8 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.gray[100],
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.gray[200],
     alignItems: "center",
@@ -1028,21 +1275,23 @@ const styles = StyleSheet.create({
   },
   chipActive: {
     backgroundColor: colors.primary[50],
-    borderColor: colors.primary[500],
+    borderColor: colors.primary[600],
   },
   chipText: {
     fontSize: typography.fontSize.sm,
     color: colors.gray[700],
+    fontWeight: typography.fontWeight.medium,
   },
   chipTextActive: {
     color: colors.primary[700],
-    fontWeight: typography.fontWeight.medium,
+    fontWeight: typography.fontWeight.semibold,
   },
   modalFooter: {
     padding: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: colors.gray[100],
+    borderTopColor: colors.gray[200],
     paddingBottom: Platform.OS === "ios" ? spacing["2xl"] : spacing.lg,
+    backgroundColor: colors.white,
   },
 });
 
