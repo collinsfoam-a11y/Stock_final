@@ -27,8 +27,8 @@ importers:
         specifier: 5.1.2
         version: 5.1.2
       '@shopify/flash-list':
-        specifier: ^2.0.2
-        version: 2.3.1(@babel/runtime@7.29.2)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
+        specifier: 2.0.2
+        version: 2.0.2(@babel/runtime@7.29.2)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
       '@tanstack/react-query':
         specifier: ^5.100.5
         version: 5.100.6(react@19.2.0)
@@ -116,6 +116,9 @@ importers:
       lottie-react-native:
         specifier: ^7.1.0
         version: 7.3.6(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
+      metro-resolver:
+        specifier: ^0.84.3
+        version: 0.84.3
       react:
         specifier: 19.2.0
         version: 19.2.0
@@ -144,8 +147,8 @@ importers:
         specifier: ~4.23.0
         version: 4.23.0(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
       react-native-svg:
-        specifier: ^15.15.3
-        version: 15.15.4(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
+        specifier: 15.15.3
+        version: 15.15.3(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
       react-native-web:
         specifier: ^0.21.0
         version: 0.21.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -1741,8 +1744,8 @@ packages:
   '@rtsao/scc@1.1.0':
     resolution: {integrity: sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g==}
 
-  '@shopify/flash-list@2.3.1':
-    resolution: {integrity: sha512-7oktg2NQR7KAODjFoDaWe8/OBzyYbdTE3zQTrUBMxjIbxHTHN7UXRX1hX3DHk8KvtkgQdRfZOV8Gjj2l4fGrXw==}
+  '@shopify/flash-list@2.0.2':
+    resolution: {integrity: sha512-zhlrhA9eiuEzja4wxVvotgXHtqd3qsYbXkQ3rsBfOgbFA9BVeErpDE/yEwtlIviRGEqpuFj/oU5owD6ByaNX+w==}
     peerDependencies:
       '@babel/runtime': '*'
       react: '*'
@@ -4484,6 +4487,10 @@ packages:
     resolution: {integrity: sha512-lAwR/FsT1uJ5iCt4AIsN3boKfJ88aN8bjvDT5FwBS0tKeKw4/sbdSTWlFxc7W/MUTN5RekJ3nQkJRIWsvs28tA==}
     engines: {node: '>=20.19.4'}
 
+  metro-resolver@0.84.3:
+    resolution: {integrity: sha512-pjEzGDtoM8DTHAIPK/9u9ZxszEiuRohYUVImWvgbnB91V4gqYJpQcoEYUugf2NIm1lrX5HNu0OvNqWmPBnGYjA==}
+    engines: {node: ^20.19.4 || ^22.13.0 || ^24.3.0 || >= 25.0.0}
+
   metro-runtime@0.83.6:
     resolution: {integrity: sha512-WQPua1G2VgYbwRn6vSKxOhTX7CFbSf/JdUu6Nd8bZnPXckOf7HQ2y51NXNQHoEsiuawathrkzL8pBhv+zgZFmg==}
     engines: {node: '>=20.19.4'}
@@ -5045,8 +5052,8 @@ packages:
       react: '*'
       react-native: '*'
 
-  react-native-svg@15.15.4:
-    resolution: {integrity: sha512-boT/vIRgj6zZKBpfTPJJiYWMbZE9duBMOwPK6kCSTgxsS947IFMOq9OgIFkpWZTB7t229H24pDRkh3W9ZK/J1A==}
+  react-native-svg@15.15.3:
+    resolution: {integrity: sha512-/k4KYwPBLGcx2f5d4FjE+vCScK7QOX14cl2lIASJ28u4slHHtIhL0SZKU7u9qmRBHxTCKPoPBtN6haT1NENJNA==}
     peerDependencies:
       react: '*'
       react-native: '*'
@@ -7910,11 +7917,12 @@ snapshots:
 
   '@rtsao/scc@1.1.0': {}
 
-  '@shopify/flash-list@2.3.1(@babel/runtime@7.29.2)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)':
+  '@shopify/flash-list@2.0.2(@babel/runtime@7.29.2)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)':
     dependencies:
       '@babel/runtime': 7.29.2
       react: 19.2.0
       react-native: 0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0)
+      tslib: 2.8.1
 
   '@sinclair/typebox@0.27.10': {}
 
@@ -11250,6 +11258,10 @@ snapshots:
     dependencies:
       flow-enums-runtime: 0.0.6
 
+  metro-resolver@0.84.3:
+    dependencies:
+      flow-enums-runtime: 0.0.6
+
   metro-runtime@0.83.6:
     dependencies:
       '@babel/runtime': 7.29.2
@@ -11862,7 +11874,7 @@ snapshots:
       react-native: 0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0)
       warn-once: 0.1.1
 
-  react-native-svg@15.15.4(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0):
+  react-native-svg@15.15.3(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0):
     dependencies:
       css-select: 5.2.2
       css-tree: 1.1.3

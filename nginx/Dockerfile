@@ -2,8 +2,10 @@ FROM node:22-bookworm-slim AS frontend-build
 
 WORKDIR /app
 
-COPY frontend/package.json frontend/package-lock.json ./frontend/
-RUN npm --prefix frontend ci --legacy-peer-deps
+RUN npm install -g pnpm@10
+
+COPY frontend/package.json frontend/pnpm-lock.yaml ./frontend/
+RUN pnpm --prefix frontend install --frozen-lockfile
 
 COPY frontend ./frontend
 
@@ -12,7 +14,7 @@ ARG EXPO_PUBLIC_API_TIMEOUT
 ENV EXPO_PUBLIC_BACKEND_URL=${EXPO_PUBLIC_BACKEND_URL}
 ENV EXPO_PUBLIC_API_TIMEOUT=${EXPO_PUBLIC_API_TIMEOUT}
 
-RUN npm --prefix frontend run build:web
+RUN pnpm --prefix frontend run build:web
 
 
 FROM nginx:1.25-alpine
