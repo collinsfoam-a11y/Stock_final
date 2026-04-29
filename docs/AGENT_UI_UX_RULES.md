@@ -2,6 +2,8 @@
 
 This document distills the useful UI/UX agent patterns from external skill catalogs into rules that fit Stock Verify's mobile app.
 
+For product-specific screen coverage and warehouse workflow requirements, also use [docs/STOCK_VERIFICATION_V3_UI_UX_GUIDE.md](/Users/noufi1/stk_final/Stock_final/docs/STOCK_VERIFICATION_V3_UI_UX_GUIDE.md).
+
 ## When To Use
 
 Use these rules whenever a task changes:

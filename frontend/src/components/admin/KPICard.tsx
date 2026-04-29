@@ -17,7 +17,7 @@ import {
   modernColors,
   modernShadows,
   modernBorderRadius,
-} from "@/styles/modernDesignSystem";
+} from "@/styles/unifiedSystem";
 
 export type KPIStatus = "normal" | "warning" | "critical" | "success";
 export type TrendIntent = "good" | "bad" | "neutral";

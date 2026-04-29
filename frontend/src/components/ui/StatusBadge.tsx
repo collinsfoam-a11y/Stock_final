@@ -19,9 +19,10 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import {
-  modernColors,
-  modernBorderRadius,
-} from "../../styles/modernDesignSystem";
+  borderRadius,
+  colors,
+  semanticColors,
+} from "../../theme/unified";
 
 type BadgeVariant =
   | "success"
@@ -47,37 +48,37 @@ const variantColors: Record<
 > = {
   success: {
     bg: "rgba(16, 185, 129, 0.15)",
-    text: modernColors.success.light,
+    text: colors.success[50],
     glow: "rgba(16, 185, 129, 0.25)",
     border: "rgba(16, 185, 129, 0.35)",
   },
   warning: {
     bg: "rgba(245, 158, 11, 0.15)",
-    text: modernColors.warning.light,
+    text: colors.warning[50],
     glow: "rgba(245, 158, 11, 0.25)",
     border: "rgba(245, 158, 11, 0.35)",
   },
   error: {
     bg: "rgba(239, 68, 68, 0.15)",
-    text: modernColors.error.light,
+    text: colors.error[50],
     glow: "rgba(239, 68, 68, 0.25)",
     border: "rgba(239, 68, 68, 0.35)",
   },
   info: {
     bg: "rgba(59, 130, 246, 0.15)",
-    text: modernColors.info.light,
+    text: colors.info[50],
     glow: "rgba(59, 130, 246, 0.25)",
     border: "rgba(59, 130, 246, 0.35)",
   },
   neutral: {
     bg: "rgba(148, 163, 184, 0.15)",
-    text: modernColors.text.secondary,
+    text: semanticColors.text.secondary,
     glow: "rgba(148, 163, 184, 0.25)",
     border: "rgba(148, 163, 184, 0.35)",
   },
   primary: {
     bg: "rgba(99, 102, 241, 0.15)",
-    text: modernColors.primary[400],
+    text: colors.primary[400],
     glow: "rgba(99, 102, 241, 0.25)",
     border: "rgba(99, 102, 241, 0.35)",
   },
@@ -139,7 +140,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     gap: sizeConfig.paddingH / 2,
     paddingHorizontal: sizeConfig.paddingH,
     paddingVertical: sizeConfig.paddingV,
-    borderRadius: modernBorderRadius.full,
+    borderRadius: borderRadius.full,
     backgroundColor: colors.bg,
     borderWidth: 1,
     borderColor: colors.border,

@@ -487,6 +487,10 @@ class InMemoryDatabase:
         self.variance_logs = InMemoryCollection()
         self.approvals = InMemoryCollection()
         self.erp_snapshot = InMemoryCollection()
+        self.session_dashboard_projection = InMemoryCollection()
+        self.verified_items_projection = InMemoryCollection()
+        self.variance_summary_projection = InMemoryCollection()
+        self.financial_projection = InMemoryCollection()
         self.feature_flags = InMemoryCollection()
         self.variance_threshold_configs = InMemoryCollection()
 

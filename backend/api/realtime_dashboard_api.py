@@ -23,6 +23,7 @@ from backend.services.advanced_report_service import (
     ReportFilters,
     SortOrder,
 )
+from backend.services.projection_read_service import ProjectionReadService
 from backend.utils.tracing import trace_dashboard_query, trace_span
 
 logger = logging.getLogger(__name__)
@@ -225,6 +226,13 @@ async def get_item_details(
 ):
     """Get detailed information for a specific item."""
     db = get_db()
+    projection_reads = ProjectionReadService(db)
+
+    if await projection_reads.dashboard_reads_enabled():
+        result = await projection_reads.get_dashboard_item_details(item_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="Item not found")
+        return result
 
     with trace_span("mongodb.count_lines.find_one", {"item_id": item_id}):
         item = await db.count_lines.find_one({"id": item_id})
@@ -262,6 +270,10 @@ async def get_dashboard_stats(
 ):
     """Get real-time dashboard statistics."""
     db = get_db()
+    projection_reads = ProjectionReadService(db)
+
+    if await projection_reads.dashboard_reads_enabled():
+        return await projection_reads.get_dashboard_stats()
 
     with trace_span("calculate_dashboard_stats"):
         # Run aggregations in parallel
@@ -371,6 +383,10 @@ async def get_filter_options(
 ):
     """Get available filter options (distinct values)."""
     db = get_db()
+    projection_reads = ProjectionReadService(db)
+
+    if await projection_reads.dashboard_reads_enabled():
+        return await projection_reads.get_dashboard_filter_options()
 
     with trace_span("fetch_filter_options"):
         warehouses = await db.count_lines.distinct("warehouse")
@@ -505,6 +521,16 @@ async def _ws_handle_get_item_details(data: dict, user_id: str, db) -> None:
     """Handle get_item_details message."""
     item_id = data.get("item_id")
     if item_id:
+        projection_reads = ProjectionReadService(db)
+        if await projection_reads.dashboard_reads_enabled():
+            result = await projection_reads.get_dashboard_item_details(item_id)
+            if result:
+                await manager.send_personal_message(
+                    {"type": "item_details", "payload": result.get("item")},
+                    user_id,
+                )
+            return
+
         item = await db.count_lines.find_one({"id": item_id})
         if item:
             item.pop("_id", None)

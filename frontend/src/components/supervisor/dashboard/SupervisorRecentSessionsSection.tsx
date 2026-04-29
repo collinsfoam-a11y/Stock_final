@@ -7,7 +7,7 @@ import {
   AnimatedPressable,
   GlassCard,
 } from "@/components/ui";
-import { theme } from "@/styles/modernDesignSystem";
+import { theme } from "@/styles/unifiedSystem";
 import { colors as unifiedColors } from "@/theme/unified";
 import { Session } from "@/types";
 

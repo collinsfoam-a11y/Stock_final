@@ -223,7 +223,7 @@ class EventService:
             payload={"session_id": session_id, **payload},
             metadata=safe_metadata,
             db_session=db_session,
-            apply_projection=False,
+            apply_projection=True,
             enforce_writes=required,
         )
 

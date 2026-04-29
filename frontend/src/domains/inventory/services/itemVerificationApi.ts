@@ -4,6 +4,8 @@
  */
 import api from "@/services/httpClient";
 import { createLogger } from "@/services/logging";
+import { approveCountLine, rejectCountLine } from "@/services/api/inventoryWorkflowApi";
+import { overlayCountLineReviewState } from "@/services/control-plane/countLineReviewControlPlane";
 
 const log = createLogger("ItemVerificationAPI");
 
@@ -161,11 +163,7 @@ function getApiErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-function logApiFailure(
-  action: string,
-  error: unknown,
-  context?: Record<string, unknown>,
-): void {
+function logApiFailure(action: string, error: unknown, context?: Record<string, unknown>): void {
   log.error(action, {
     ...context,
     error: error instanceof Error ? error.message : String(error),
@@ -178,12 +176,12 @@ export class ItemVerificationAPI {
    */
   static async verifyItem(
     itemCode: string,
-    request: VerificationRequest,
+    request: VerificationRequest
   ): Promise<VerificationResponse> {
     try {
       const response = await api.patch(
         `/v2/erp/items/${encodeURIComponent(itemCode)}/verify`,
-        request,
+        request
       );
       return response.data;
     } catch (error: unknown) {
@@ -195,28 +193,22 @@ export class ItemVerificationAPI {
   /**
    * Get filtered items
    */
-  static async getFilteredItems(
-    params: FilteredItemsParams,
-  ): Promise<FilteredItemsResponse> {
+  static async getFilteredItems(params: FilteredItemsParams): Promise<FilteredItemsResponse> {
     try {
       const queryParams = new URLSearchParams();
 
       if (params.category) queryParams.append("category", params.category);
-      if (params.subcategory)
-        queryParams.append("subcategory", params.subcategory);
+      if (params.subcategory) queryParams.append("subcategory", params.subcategory);
       if (params.floor) queryParams.append("floor", params.floor);
       if (params.rack) queryParams.append("rack", params.rack);
       if (params.warehouse) queryParams.append("warehouse", params.warehouse);
       if (params.uom_code) queryParams.append("uom_code", params.uom_code);
-      if (params.verified !== undefined)
-        queryParams.append("verified", params.verified.toString());
+      if (params.verified !== undefined) queryParams.append("verified", params.verified.toString());
       if (params.search) queryParams.append("search", params.search);
       if (params.limit) queryParams.append("limit", params.limit.toString());
       if (params.skip) queryParams.append("skip", params.skip.toString());
 
-      const response = await api.get(
-        `/api/v2/erp/items/filtered?${queryParams.toString()}`,
-      );
+      const response = await api.get(`/api/v2/erp/items/filtered?${queryParams.toString()}`);
       return response.data;
     } catch (error: unknown) {
       logApiFailure("Get filtered items failed", error, { params });
@@ -232,21 +224,16 @@ export class ItemVerificationAPI {
       const queryParams = new URLSearchParams();
 
       if (params.category) queryParams.append("category", params.category);
-      if (params.subcategory)
-        queryParams.append("subcategory", params.subcategory);
+      if (params.subcategory) queryParams.append("subcategory", params.subcategory);
       if (params.floor) queryParams.append("floor", params.floor);
       if (params.rack) queryParams.append("rack", params.rack);
       if (params.warehouse) queryParams.append("warehouse", params.warehouse);
-      if (params.verified !== undefined)
-        queryParams.append("verified", params.verified.toString());
+      if (params.verified !== undefined) queryParams.append("verified", params.verified.toString());
       if (params.search) queryParams.append("search", params.search);
 
-      const response = await api.get(
-        `/api/v2/erp/items/export/csv?${queryParams.toString()}`,
-        {
-          responseType: "blob",
-        },
-      );
+      const response = await api.get(`/api/v2/erp/items/export/csv?${queryParams.toString()}`, {
+        responseType: "blob",
+      });
       return response.data;
     } catch (error: unknown) {
       logApiFailure("CSV export failed", error, { params });
@@ -256,26 +243,24 @@ export class ItemVerificationAPI {
 
   static async exportItemsToERPNext(
     params: FilteredItemsParams,
-    format: ERPNextExportFormat,
+    format: ERPNextExportFormat
   ): Promise<ArrayBuffer> {
     try {
       const queryParams = new URLSearchParams();
 
       if (params.category) queryParams.append("category", params.category);
-      if (params.subcategory)
-        queryParams.append("subcategory", params.subcategory);
+      if (params.subcategory) queryParams.append("subcategory", params.subcategory);
       if (params.floor) queryParams.append("floor", params.floor);
       if (params.rack) queryParams.append("rack", params.rack);
       if (params.warehouse) queryParams.append("warehouse", params.warehouse);
-      if (params.verified !== undefined)
-        queryParams.append("verified", params.verified.toString());
+      if (params.verified !== undefined) queryParams.append("verified", params.verified.toString());
       if (params.search) queryParams.append("search", params.search);
 
       const response = await api.get(
         `/api/v2/erp/items/export/${format}?${queryParams.toString()}`,
         {
           responseType: "arraybuffer",
-        },
+        }
       );
       return response.data as ArrayBuffer;
     } catch (error: unknown) {
@@ -316,10 +301,11 @@ export class ItemVerificationAPI {
       if (params.limit) queryParams.append("limit", params.limit.toString());
       if (params.skip) queryParams.append("skip", params.skip.toString());
 
-      const response = await api.get(
-        `/api/v2/erp/items/variances?${queryParams.toString()}`,
-      );
-      return response.data;
+      const response = await api.get(`/api/v2/erp/items/variances?${queryParams.toString()}`);
+      return {
+        ...response.data,
+        variances: await overlayCountLineReviewState(response.data?.variances || []),
+      };
     } catch (error: unknown) {
       logApiFailure("Get variances failed", error, { params });
       throw new Error(getApiErrorMessage(error, "Failed to get variances"));
@@ -333,7 +319,7 @@ export class ItemVerificationAPI {
       rack?: string;
       warehouse?: string;
     },
-    format: ERPNextExportFormat,
+    format: ERPNextExportFormat
   ): Promise<ArrayBuffer> {
     try {
       const queryParams = new URLSearchParams();
@@ -347,7 +333,7 @@ export class ItemVerificationAPI {
         `/api/v2/erp/items/variances/export/${format}?${queryParams.toString()}`,
         {
           responseType: "arraybuffer",
-        },
+        }
       );
       return response.data as ArrayBuffer;
     } catch (error: unknown) {
@@ -355,9 +341,7 @@ export class ItemVerificationAPI {
         params,
         format,
       });
-      throw new Error(
-        getApiErrorMessage(error, "ERPNext variance export failed"),
-      );
+      throw new Error(getApiErrorMessage(error, "ERPNext variance export failed"));
     }
   }
 
@@ -377,9 +361,7 @@ export class ItemVerificationAPI {
   /**
    * Get live verifications
    */
-  static async getLiveVerifications(
-    limit: number = 10,
-  ): Promise<LiveVerificationsResponse> {
+  static async getLiveVerifications(limit: number = 10): Promise<LiveVerificationsResponse> {
     try {
       const response = await api.get("/api/v2/erp/items/live/verifications", {
         params: { limit },
@@ -387,9 +369,7 @@ export class ItemVerificationAPI {
       return response.data as LiveVerificationsResponse;
     } catch (error: unknown) {
       logApiFailure("Get live verifications failed", error, { limit });
-      throw new Error(
-        getApiErrorMessage(error, "Failed to get live verifications"),
-      );
+      throw new Error(getApiErrorMessage(error, "Failed to get live verifications"));
     }
   }
 
@@ -412,12 +392,9 @@ export class ItemVerificationAPI {
    */
   static async approveVariance(
     countLineId: string,
-    notes?: string,
+    notes?: string
   ): Promise<Record<string, unknown>> {
-    const response = await api.put(`/api/count-lines/${countLineId}/approve`, {
-      notes,
-    });
-    return response.data;
+    return approveCountLine(countLineId, { notes });
   }
 
   /**
@@ -426,13 +403,12 @@ export class ItemVerificationAPI {
   static async requestRecount(
     countLineId: string,
     notes?: string,
-    assignTo?: string,
+    assignTo?: string
   ): Promise<Record<string, unknown>> {
-    const response = await api.put(`/api/count-lines/${countLineId}/reject`, {
+    return rejectCountLine(countLineId, {
       notes,
       assign_to: assignTo,
     });
-    return response.data;
   }
 
   /**
@@ -440,19 +416,17 @@ export class ItemVerificationAPI {
    */
   static async updateItemMaster(
     itemCode: string,
-    request: ItemUpdateRequest,
+    request: ItemUpdateRequest
   ): Promise<{ success: boolean; message: string }> {
     try {
       const response = await api.patch(
         `/api/v2/erp/items/${encodeURIComponent(itemCode)}/update-master`,
-        request,
+        request
       );
       return response.data;
     } catch (error: unknown) {
       logApiFailure("Master update failed", error, { itemCode });
-      throw new Error(
-        getApiErrorMessage(error, "Failed to update item details"),
-      );
+      throw new Error(getApiErrorMessage(error, "Failed to update item details"));
     }
   }
 
@@ -461,7 +435,7 @@ export class ItemVerificationAPI {
    */
   static async getVarianceDetails(
     itemCode: string,
-    sessionId: string,
+    sessionId: string
   ): Promise<VarianceItem | null> {
     try {
       // First try to find the count line
@@ -473,11 +447,7 @@ export class ItemVerificationAPI {
         },
       });
 
-      if (
-        response.data &&
-        response.data.items &&
-        response.data.items.length > 0
-      ) {
+      if (response.data && response.data.items && response.data.items.length > 0) {
         const countLine = response.data.items[0];
         // Map to expected format if needed, or return as is
         // The UI expects: item_code, item_name, system_qty, verified_qty, variance, etc.
@@ -486,12 +456,18 @@ export class ItemVerificationAPI {
         // We might need to fetch item details for system_qty if not in count line
         // But let's assume count line has enough info or we fetch item separately
 
+        const reviewed = await overlayCountLineReviewState([
+          {
+            ...countLine,
+            verified_qty: countLine.counted_qty,
+            verified_by: countLine.username,
+            verified_at: countLine.counted_at,
+            count_line_id: countLine.id,
+          },
+        ]);
+
         return {
-          ...countLine,
-          verified_qty: countLine.counted_qty,
-          verified_by: countLine.username,
-          verified_at: countLine.counted_at,
-          count_line_id: countLine.id,
+          ...reviewed[0],
         } as VarianceItem;
       }
 
@@ -512,7 +488,7 @@ export class ItemVerificationAPI {
    */
   static async bulkApproveVariances(
     countLineIds: string[],
-    notes?: string,
+    notes?: string
   ): Promise<{ success: boolean; modified_count: number }> {
     try {
       const response = await api.post(`/api/count-lines/bulk/approve`, {
@@ -534,7 +510,7 @@ export class ItemVerificationAPI {
    */
   static async bulkRejectVariances(
     countLineIds: string[],
-    notes?: string,
+    notes?: string
   ): Promise<{ success: boolean; modified_count: number }> {
     try {
       const response = await api.post(`/api/count-lines/bulk/reject`, {

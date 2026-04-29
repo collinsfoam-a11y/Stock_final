@@ -22,7 +22,7 @@ import { SkeletonList } from "../../src/components/LoadingSkeleton";
 import { SwipeableRow } from "../../src/components/SwipeableRow";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { GlassCard } from "../../src/components/ui/GlassCard";
-import { theme } from "../../src/styles/modernDesignSystem";
+import { theme } from "../../src/styles/unifiedSystem";
 import { colors as unifiedColors } from "../../src/theme/unified";
 import { ScreenContainer } from "../../src/components/ui";
 

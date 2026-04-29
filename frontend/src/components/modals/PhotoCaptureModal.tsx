@@ -28,7 +28,7 @@ import {
   modernTypography,
   modernSpacing,
   modernBorderRadius,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 
 interface PhotoCaptureModalProps {
   visible: boolean;

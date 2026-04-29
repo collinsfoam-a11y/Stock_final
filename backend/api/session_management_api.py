@@ -39,6 +39,7 @@ from backend.services.event_service import EventService
 from backend.services.governance_guard import (
     normalize_session_status as normalize_session_status_canonical,
 )
+from backend.services.projection_read_service import ProjectionReadService
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.transaction_manager import mongo_transaction
 from backend.services.redis_service import get_redis
@@ -1242,6 +1243,22 @@ async def get_sessions(
     """
     Get all sessions with pagination
     """
+    projection_reads = ProjectionReadService(db)
+    if await projection_reads.dashboard_reads_enabled():
+        projection_page = await projection_reads.get_sessions_page(
+            page=page,
+            page_size=page_size,
+            status=status,
+            user_id=user_id,
+            current_user=current_user,
+        )
+        return PaginatedResponse.create(
+            items=[Session(**item) for item in projection_page["items"]],
+            total=int(projection_page["total"]),
+            page=page,
+            page_size=page_size,
+        )
+
     # Build query
     query = {}
     if status:
@@ -1480,6 +1497,9 @@ async def get_sessions_analytics(
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     try:
+        projection_reads = ProjectionReadService(db)
+        if await projection_reads.dashboard_reads_enabled():
+            return {"success": True, "data": await projection_reads.get_sessions_analytics()}
         return {"success": True, "data": await _build_sessions_analytics_payload(db)}
     except Exception as e:
         logger.error("Analytics error: %s", _safe_log_value(e, max_length=200))
@@ -1523,6 +1543,12 @@ async def get_session_stats(
             duration_seconds=0,
             items_per_minute=0,
         )
+
+    projection_reads = ProjectionReadService(db)
+    if await projection_reads.dashboard_reads_enabled():
+        projected = await projection_reads.get_session_stats(session_id)
+        if projected is not None:
+            return SessionStats(**projected)
 
     session = await find_session(db, session_id)
 

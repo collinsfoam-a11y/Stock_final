@@ -38,6 +38,9 @@ interface UseDeferredItemSubmissionParams {
   hasExpiryDate: boolean;
   itemExpiryDate: string;
   itemExpiryDateFormat: DateFormatType;
+  recountTargetId?: string | null;
+  blindRecountRequired?: boolean;
+  recountBlockedReason?: string | null;
   onSuccess: () => void;
   countdownSeconds?: number;
 }
@@ -51,10 +54,7 @@ const getValidSerialNumbers = (isSerializedItem: boolean, serialNumbers: string[
         .map((serial) => normalizeSerialValue(serial))
     : [];
 
-const getValidSerialEntries = (
-  isSerializedItem: boolean,
-  serialEntries: SerialEntryData[],
-) =>
+const getValidSerialEntries = (isSerializedItem: boolean, serialEntries: SerialEntryData[]) =>
   isSerializedItem
     ? serialEntries
         .filter((entry) => entry.serial_number.trim().length > 0)
@@ -121,6 +121,7 @@ type SubmissionPayloadContext = {
   itemExpiryDateFormat: DateFormatType;
   itemPhotos: string[];
   damagePhoto: string | null;
+  recountTargetId?: string | null;
 };
 
 const resolveItemCode = (item: Item, barcode?: string) => {
@@ -143,23 +144,17 @@ const resolveMrpCountedValue = (mrp: string, item: Item) => {
   return item.mrp || 0;
 };
 
-const resolveManufacturingDateValue = (
-  hasMfgDate: boolean,
-  itemMfgDate: string,
-  item: Item
-) => (hasMfgDate && itemMfgDate ? itemMfgDate : item.manufacturing_date);
+const resolveManufacturingDateValue = (hasMfgDate: boolean, itemMfgDate: string, item: Item) =>
+  hasMfgDate && itemMfgDate ? itemMfgDate : item.manufacturing_date;
 
-const resolveExpiryDateValue = (
-  hasExpiryDate: boolean,
-  itemExpiryDate: string,
-  item: Item
-) => (hasExpiryDate && itemExpiryDate ? itemExpiryDate : item.expiry_date);
+const resolveExpiryDateValue = (hasExpiryDate: boolean, itemExpiryDate: string, item: Item) =>
+  hasExpiryDate && itemExpiryDate ? itemExpiryDate : item.expiry_date;
 
 const resolvePhotoProofs = (damagePhoto: string | null, itemPhotos: string[]) => {
   const nowIso = new Date().toISOString();
   const backendPhotoProofs = toBackendPhotoProofs(
     [...(damagePhoto ? [damagePhoto] : []), ...itemPhotos],
-    nowIso,
+    nowIso
   );
   return backendPhotoProofs.length > 0 ? backendPhotoProofs : undefined;
 };
@@ -199,6 +194,7 @@ const buildCountLinePayload = (context: SubmissionPayloadContext): CreateCountLi
 
   return {
     session_id: sessionId,
+    recount_of_id: context.recountTargetId || undefined,
     item_code: resolveItemCode(item, barcode),
     item_name: resolveItemName(item, barcode),
     counted_qty: parseFloat(quantity),
@@ -268,6 +264,9 @@ export const useDeferredItemSubmission = ({
   hasExpiryDate,
   itemExpiryDate,
   itemExpiryDateFormat,
+  recountTargetId,
+  blindRecountRequired,
+  recountBlockedReason,
   onSuccess,
   countdownSeconds = 5,
 }: UseDeferredItemSubmissionParams) => {
@@ -277,6 +276,19 @@ export const useDeferredItemSubmission = ({
 
   const validateBeforeSubmit = useCallback(() => {
     if (!item || !sessionId) return false;
+
+    if (recountBlockedReason) {
+      Alert.alert("Recount Locked", recountBlockedReason);
+      return false;
+    }
+
+    if (blindRecountRequired && !recountTargetId) {
+      Alert.alert(
+        "Blind Recount Unavailable",
+        "This item requires a blind recount, but the recount target could not be resolved. Refresh the item and try again."
+      );
+      return false;
+    }
 
     const qty = parseFloat(quantity);
     if (Number.isNaN(qty) || qty <= 0) {
@@ -312,10 +324,13 @@ export const useDeferredItemSubmission = ({
   }, [
     damagePhoto,
     damageQty,
+    blindRecountRequired,
     isDamageEnabled,
     isSerializedItem,
     item,
     quantity,
+    recountBlockedReason,
+    recountTargetId,
     serialEntries,
     serialValidationErrors,
     sessionId,
@@ -354,6 +369,7 @@ export const useDeferredItemSubmission = ({
         itemExpiryDateFormat,
         itemPhotos,
         damagePhoto,
+        recountTargetId,
       });
       const result = await createCountLine(payload);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -384,6 +400,7 @@ export const useDeferredItemSubmission = ({
     mrp,
     onSuccess,
     quantity,
+    recountTargetId,
     remark,
     serialEntries,
     serialNumbers,

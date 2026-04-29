@@ -22,7 +22,7 @@ import {
   modernColors,
   modernTypography,
   modernSpacing,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 
 const CHART_HEIGHT = 200;
 const PADDING = 20;

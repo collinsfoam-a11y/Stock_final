@@ -5,7 +5,7 @@ import {
   modernColors,
   modernTypography,
   modernSpacing,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 
 interface QuickStatsProps {
   metrics?: any;

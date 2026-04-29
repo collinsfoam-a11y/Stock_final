@@ -27,7 +27,7 @@ import {
   modernSpacing,
   modernBorderRadius,
   modernAnimations,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 import { useThemeContextSafe } from "@/context/ThemeContext";
 
 type InputVariant = "default" | "outlined" | "filled" | "underlined";

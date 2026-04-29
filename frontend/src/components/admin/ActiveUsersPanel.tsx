@@ -21,7 +21,7 @@ import {
   modernColors,
   modernBorderRadius,
   modernShadows,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 
 // --- Domain Types ---
 

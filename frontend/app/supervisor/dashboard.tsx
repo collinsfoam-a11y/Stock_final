@@ -50,7 +50,7 @@ import {
   getWarehouses,
   getZones,
 } from "../../src/services/api/api";
-import { theme } from "../../src/styles/modernDesignSystem";
+import { theme } from "../../src/styles/unifiedSystem";
 import { Session } from "../../src/types";
 
 export default function SupervisorDashboard() {

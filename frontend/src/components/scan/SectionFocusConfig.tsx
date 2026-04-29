@@ -19,7 +19,7 @@ import {
   modernSpacing,
   modernBorderRadius,
   modernCommonStyles,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 import { useScanSessionStore } from "../../store/scanSessionStore";
 
 export const SectionFocusConfig: React.FC = () => {

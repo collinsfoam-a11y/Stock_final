@@ -10,7 +10,7 @@ import {
   modernColors,
   modernTypography,
   modernSpacing,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 
 const CHART_SIZE = 200;
 const RADIUS = 80;

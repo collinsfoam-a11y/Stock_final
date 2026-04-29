@@ -19,6 +19,8 @@ import {
   fontSize as fs,
   fontWeight as fw,
   fontFamily as ff,
+  lineHeight as lh,
+  letterSpacing as ls,
   textStyles as ts,
 } from "./typography";
 import {
@@ -34,6 +36,10 @@ import {
   opacity as o,
   zIndex as z,
 } from "./animations";
+import {
+  modernBorderRadius as legacyBorderRadius,
+  modernTypography as legacyTypography,
+} from "../../styles/modernDesignSystem";
 
 // Core design tokens - export everything from each module
 export {
@@ -90,6 +96,11 @@ export {
   type SpringConfig,
 } from "./animations";
 
+// Legacy compatibility aliases used by screens that have not fully
+// normalized onto the lower-level token exports yet.
+export const typography = legacyTypography;
+export const borderRadius = legacyBorderRadius;
+
 /**
  * Complete unified theme object
  * For passing to ThemeProvider or accessing all tokens at once
@@ -104,10 +115,14 @@ export const unifiedTheme = {
   touchTargets: tt,
   hitSlop: hs,
   radius: r,
+  borderRadius: legacyBorderRadius,
   componentRadius: cr,
   fontSize: fs,
   fontWeight: fw,
   fontFamily: ff,
+  lineHeight: lh,
+  letterSpacing: ls,
+  typography: legacyTypography,
   textStyles: ts,
   shadows: sh,
   coloredShadows: csh,

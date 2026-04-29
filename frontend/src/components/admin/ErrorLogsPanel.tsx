@@ -24,7 +24,7 @@ import {
   modernColors,
   modernShadows,
   modernBorderRadius,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 import { copyToClipboard } from "../../utils/clipboard";
 
 // --- Domain Types ---

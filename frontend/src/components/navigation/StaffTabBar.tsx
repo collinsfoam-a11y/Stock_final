@@ -4,17 +4,11 @@
  */
 
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-  ViewStyle,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ViewStyle } from "react-native";
 import { useRouter, useSegments } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@/hooks/useTheme";
+import { operationalTheme } from "@/theme/operationalTheme";
 import { layout, spacing, typography } from "../../styles/globalStyles";
 
 interface TabItem {
@@ -66,9 +60,7 @@ export const StaffTabBar: React.FC<StaffTabBarProps> = ({ style, testID }) => {
   const activeTab =
     STAFF_TABS.find((tab) => {
       const tabRoute = tab.route.replace(/^\//, ""); // Remove leading slash
-      return (
-        currentRoute === tabRoute || currentRoute.startsWith(tabRoute + "/")
-      );
+      return currentRoute === tabRoute || currentRoute.startsWith(tabRoute + "/");
     })?.key || "sessions";
 
   const handleTabPress = (tab: TabItem) => {
@@ -82,8 +74,8 @@ export const StaffTabBar: React.FC<StaffTabBarProps> = ({ style, testID }) => {
       style={[
         styles.container,
         {
-          backgroundColor: theme.colors.surface,
-          borderTopColor: theme.colors.border,
+          backgroundColor: theme.isDark ? theme.colors.surface : operationalTheme.surface,
+          borderTopColor: theme.isDark ? theme.colors.border : operationalTheme.border,
         },
         style,
       ]}
@@ -92,11 +84,19 @@ export const StaffTabBar: React.FC<StaffTabBarProps> = ({ style, testID }) => {
       {STAFF_TABS.map((tab) => {
         const isActive = activeTab === tab.key;
         const iconColor = isActive
-          ? theme.colors.primary
-          : theme.colors.textSecondary;
+          ? theme.isDark
+            ? theme.colors.primary
+            : operationalTheme.primaryStrong
+          : theme.isDark
+            ? theme.colors.textSecondary
+            : operationalTheme.textSecondary;
         const labelColor = isActive
-          ? theme.colors.primary
-          : theme.colors.textSecondary;
+          ? theme.isDark
+            ? theme.colors.primary
+            : operationalTheme.primaryStrong
+          : theme.isDark
+            ? theme.colors.textSecondary
+            : operationalTheme.textSecondary;
 
         return (
           <TouchableOpacity
@@ -108,30 +108,30 @@ export const StaffTabBar: React.FC<StaffTabBarProps> = ({ style, testID }) => {
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={tab.label}
           >
-            <View style={styles.tabContent}>
+            <View
+              style={[
+                styles.tabContent,
+                isActive && !theme.isDark ? styles.tabContentActive : null,
+              ]}
+            >
               <View style={styles.iconContainer}>
                 <Ionicons name={tab.icon} size={24} color={iconColor} />
                 {tab.badge !== undefined && tab.badge > 0 && (
-                  <View
-                    style={[
-                      styles.badge,
-                      { backgroundColor: theme.colors.error },
-                    ]}
-                  >
-                    <Text style={styles.badgeText}>
-                      {tab.badge > 99 ? "99+" : tab.badge}
-                    </Text>
+                  <View style={[styles.badge, { backgroundColor: theme.colors.error }]}>
+                    <Text style={styles.badgeText}>{tab.badge > 99 ? "99+" : tab.badge}</Text>
                   </View>
                 )}
               </View>
-              <Text style={[styles.label, { color: labelColor }]}>
-                {tab.label}
-              </Text>
+              <Text style={[styles.label, { color: labelColor }]}>{tab.label}</Text>
               {isActive && (
                 <View
                   style={[
                     styles.indicator,
-                    { backgroundColor: theme.colors.primary },
+                    {
+                      backgroundColor: theme.isDark
+                        ? theme.colors.primary
+                        : operationalTheme.primary,
+                    },
                   ]}
                 />
               )}
@@ -145,12 +145,13 @@ export const StaffTabBar: React.FC<StaffTabBarProps> = ({ style, testID }) => {
 
 const styles = StyleSheet.create({
   container: {
-    height: layout.tabBarHeight,
+    height: layout.tabBarHeight + (Platform.OS === "ios" ? spacing.sm : 0),
     flexDirection: "row",
     borderTopWidth: 1,
+    paddingHorizontal: spacing.sm,
     ...Platform.select({
       ios: {
-        paddingBottom: spacing.sm, // Account for safe area
+        paddingBottom: spacing.sm,
       },
     }),
   },
@@ -164,6 +165,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
+    width: "100%",
+    paddingVertical: spacing.xs,
+    borderRadius: 16,
+  },
+  tabContentActive: {
+    backgroundColor: operationalTheme.primarySoft,
   },
   iconContainer: {
     position: "relative",
