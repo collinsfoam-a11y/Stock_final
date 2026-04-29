@@ -1,4 +1,7 @@
-import type { ActivityItem, DashboardStats } from "@/components/supervisor/dashboard/supervisorDashboardShared";
+import type {
+  ActivityItem,
+  DashboardStats,
+} from "@/components/supervisor/dashboard/supervisorDashboardShared";
 import type { Session } from "@/types";
 import { getSessions, getSessionsAnalytics, getSystemStats } from "@/services/api/api";
 import { getProjectedSessionStatsRead } from "@/services/control-plane/countLineControlPlane";
@@ -57,16 +60,13 @@ const toActivity = (session: Session): ActivityItem => ({
   title: `Session ${String(session.status || "").toLowerCase()}`,
   description: `${session.warehouse} - ${session.staff_name || "Unknown"} - ${session.total_items || 0} items`,
   timestamp: new Date(session.started_at),
-  status:
-    session.status === "OPEN"
-      ? "info"
-      : session.status === "CLOSED"
-        ? "success"
-        : "warning",
+  status: session.status === "OPEN" ? "info" : session.status === "CLOSED" ? "success" : "warning",
 });
 
 const isUnsyncedProjectedSession = (session: Session) =>
-  Boolean((session as any)?._projection) && (session as any)?._sync_status !== "synced";
+  Boolean((session as any)?._projection) &&
+  (session as any)?._sync_status !== "synced" &&
+  !(session as any)?._server_session_id;
 
 const buildBaseStats = (analytics: SessionsAnalyticsPayload | null | undefined): DashboardStats => {
   const overall = analytics?.overall || {};
@@ -103,9 +103,13 @@ const applyLocalOverlay = async (base: DashboardStats, sessions: Session[]) => {
       overlaid.reconciledSessions += 1;
     }
 
-    const projectedStats = await getProjectedSessionStatsRead(session.id);
-    if (projectedStats) {
-      overlaid.totalItems += projectedStats.scannedItems;
+    try {
+      const projectedStats = await getProjectedSessionStatsRead(session.id);
+      if (projectedStats) {
+        overlaid.totalItems += projectedStats.scannedItems;
+      }
+    } catch {
+      // Best-effort local overlay only; backend projection remains authoritative.
     }
 
     const variance = Number(session.total_variance || 0);

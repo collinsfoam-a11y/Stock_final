@@ -672,6 +672,7 @@ class ProjectionReadService:
 
     async def get_system_stats_business(self) -> dict[str, Any]:
         rows = await self._get_session_projection_docs()
+        await self._record_hit("admin/system-stats")
         total_sessions = len(rows)
         active_sessions = sum(
             1
@@ -685,6 +686,7 @@ class ProjectionReadService:
 
     async def generate_stock_summary(self, filters: Any) -> list[dict[str, Any]]:
         rows = await self._filtered_verified_items(filters)
+        await self._record_hit("reports/stock-summary")
         by_item: dict[tuple[str, str, str], dict[str, Any]] = {}
         for row in rows:
             item_code = str(row.get("item_code") or "")
@@ -729,6 +731,7 @@ class ProjectionReadService:
 
     async def generate_variance_report(self, filters: Any) -> list[dict[str, Any]]:
         rows = await self._list_documents("variance_summary_projection")
+        await self._record_hit("reports/variance-report")
         results: list[dict[str, Any]] = []
         for row in rows:
             variance = _as_float(row.get("variance"))
@@ -787,6 +790,7 @@ class ProjectionReadService:
             user_id=getattr(filters, "user_id", None),
             current_user={"role": "admin"},
         )
+        await self._record_hit("reports/session-history")
         results: list[dict[str, Any]] = []
         for row in rows:
             started_at = _coerce_datetime(row.get("started_at"))

@@ -196,7 +196,7 @@ const recordAndMaybeSync = async (
   await recordCountLineReviewEvent(event);
   controlPlaneEventBus.publish("review.changed", {
     lineId: event.aggregateId,
-    sessionId: event.payload.session_id,
+    sessionId: event.payload.session_id ?? undefined,
     localEventId: event.id,
     reason: "recorded",
   });
@@ -215,7 +215,7 @@ const recordAndMaybeSync = async (
     incrementControlPlaneMetric("sync_success_count");
     controlPlaneEventBus.publish("review.changed", {
       lineId: event.aggregateId,
-      sessionId: event.payload.session_id,
+      sessionId: event.payload.session_id ?? undefined,
       localEventId: event.id,
       reason: "synced",
     });
@@ -232,7 +232,7 @@ const recordAndMaybeSync = async (
       incrementControlPlaneMetric("sync_failure_count");
       controlPlaneEventBus.publish("review.changed", {
         lineId: event.aggregateId,
-        sessionId: event.payload.session_id,
+        sessionId: event.payload.session_id ?? undefined,
         localEventId: event.id,
         reason: "failed",
       });
@@ -243,7 +243,7 @@ const recordAndMaybeSync = async (
     incrementControlPlaneMetric("sync_retry_count");
     controlPlaneEventBus.publish("review.changed", {
       lineId: event.aggregateId,
-      sessionId: event.payload.session_id,
+      sessionId: event.payload.session_id ?? undefined,
       localEventId: event.id,
       reason: "retry",
     });
@@ -388,7 +388,7 @@ export const syncPendingCountLineReviewEvents = async (): Promise<{
       incrementControlPlaneMetric("sync_success_count");
       controlPlaneEventBus.publish("review.changed", {
         lineId: event.aggregateId,
-        sessionId: event.payload.session_id,
+        sessionId: event.payload.session_id ?? undefined,
         localEventId: event.id,
         reason: "synced",
       });
@@ -402,7 +402,7 @@ export const syncPendingCountLineReviewEvents = async (): Promise<{
         incrementControlPlaneMetric("sync_failure_count");
         controlPlaneEventBus.publish("review.changed", {
           lineId: event.aggregateId,
-          sessionId: event.payload.session_id,
+          sessionId: event.payload.session_id ?? undefined,
           localEventId: event.id,
           reason: "failed",
         });
@@ -415,7 +415,7 @@ export const syncPendingCountLineReviewEvents = async (): Promise<{
       incrementControlPlaneMetric("sync_retry_count");
       controlPlaneEventBus.publish("review.changed", {
         lineId: event.aggregateId,
-        sessionId: event.payload.session_id,
+        sessionId: event.payload.session_id ?? undefined,
         localEventId: event.id,
         reason: "retry",
       });

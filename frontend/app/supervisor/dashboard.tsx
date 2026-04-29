@@ -6,15 +6,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  Alert,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -37,19 +29,14 @@ import {
   ZoneOption,
 } from "../../src/components/supervisor/dashboard/supervisorDashboardShared";
 import {
-  ActivityType,
   AnimatedPressable,
   GlassCard,
   ScreenContainer,
   SpeedDialAction,
   SpeedDialMenu,
 } from "../../src/components/ui";
-import {
-  createSession,
-  getSessions,
-  getWarehouses,
-  getZones,
-} from "../../src/services/api/api";
+import { createSession, getWarehouses, getZones } from "../../src/services/api/api";
+import { dashboardReadService } from "../../src/services/dashboardReadService";
 import { theme } from "../../src/styles/unifiedSystem";
 import { Session } from "../../src/types";
 
@@ -127,70 +114,10 @@ export default function SupervisorDashboard() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const sessionsRes = await getSessions(1, 100);
-      const sessionData = sessionsRes.items || [];
-      setSessions(sessionData);
-
-      const nextStats = sessionData.reduce(
-        (acc: DashboardStats, session: Session) => {
-          acc.totalSessions++;
-          if (session.status === "OPEN") acc.openSessions++;
-          if (session.status === "CLOSED") acc.closedSessions++;
-          if (session.status === "RECONCILE") acc.reconciledSessions++;
-
-          acc.totalItems += session.total_items || 0;
-          acc.totalVariance += session.total_variance || 0;
-
-          if ((session.total_variance || 0) > 0) {
-            acc.positiveVariance += session.total_variance;
-          }
-          if ((session.total_variance || 0) < 0) {
-            acc.negativeVariance += session.total_variance;
-          }
-          if (Math.abs(session.total_variance ?? 0) > 1000) {
-            acc.highRiskSessions++;
-          }
-
-          return acc;
-        },
-        {
-          totalSessions: 0,
-          openSessions: 0,
-          closedSessions: 0,
-          reconciledSessions: 0,
-          totalItems: 0,
-          totalVariance: 0,
-          positiveVariance: 0,
-          negativeVariance: 0,
-          avgVariancePerSession: 0,
-          highRiskSessions: 0,
-        },
-      );
-
-      nextStats.avgVariancePerSession =
-        nextStats.totalSessions > 0
-          ? nextStats.totalVariance / nextStats.totalSessions
-          : 0;
-
-      setStats(nextStats);
-
-      const recentActivities: ActivityItem[] = sessionData
-        .slice(0, 10)
-        .map((session: Session) => ({
-          id: session.id,
-          type: "session" as ActivityType,
-          title: `Session ${session.status.toLowerCase()}`,
-          description: `${session.warehouse} - ${session.staff_name || "Unknown"} - ${session.total_items} items`,
-          timestamp: new Date(session.started_at),
-          status:
-            session.status === "OPEN"
-              ? "info"
-              : session.status === "CLOSED"
-                ? "success"
-                : "warning",
-        }));
-
-      setActivities(recentActivities);
+      const dashboardData = await dashboardReadService.getSupervisorDashboardData();
+      setSessions(dashboardData.sessions);
+      setStats(dashboardData.stats);
+      setActivities(dashboardData.activities);
     } catch (error) {
       console.error("Error loading dashboard data:", error);
       Alert.alert("Error", "Failed to load dashboard data");
@@ -202,6 +129,12 @@ export default function SupervisorDashboard() {
 
   useEffect(() => {
     loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    return dashboardReadService.subscribeToDashboardInvalidation(() => {
+      loadData();
+    });
   }, [loadData]);
 
   const handleCreateSession = async () => {
@@ -233,8 +166,7 @@ export default function SupervisorDashboard() {
       router.push(`/supervisor/session/${session.id}` as any);
     } catch (error) {
       console.error("Failed to create session:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to create session";
+      const errorMessage = error instanceof Error ? error.message : "Failed to create session";
       show(errorMessage, "error");
     } finally {
       setIsCreatingSession(false);
@@ -337,9 +269,7 @@ export default function SupervisorDashboard() {
 
   const completionPercentage =
     stats.totalSessions > 0
-      ? ((stats.closedSessions + stats.reconciledSessions) /
-          stats.totalSessions) *
-        100
+      ? ((stats.closedSessions + stats.reconciledSessions) / stats.totalSessions) * 100
       : 0;
   const recommendedActions = buildRecommendedActions({
     completionPercentage,
@@ -413,11 +343,7 @@ export default function SupervisorDashboard() {
 
           <GlassCard style={styles.recommendationsCard} variant="strong">
             <View style={styles.recommendationsHeader}>
-              <Ionicons
-                name="bulb-outline"
-                size={18}
-                color={theme.colors.primary[400]}
-              />
+              <Ionicons name="bulb-outline" size={18} color={theme.colors.primary[400]} />
               <Text style={styles.recommendationsTitle}>Suggested next steps</Text>
             </View>
             <View style={styles.recommendationsList}>
@@ -428,23 +354,13 @@ export default function SupervisorDashboard() {
                   onPress={action.onPress}
                 >
                   <View style={styles.recommendationIcon}>
-                    <Ionicons
-                      name={action.icon}
-                      size={16}
-                      color={theme.colors.primary[400]}
-                    />
+                    <Ionicons name={action.icon} size={16} color={theme.colors.primary[400]} />
                   </View>
                   <View style={styles.recommendationCopy}>
                     <Text style={styles.recommendationTitle}>{action.title}</Text>
-                    <Text style={styles.recommendationDescription}>
-                      {action.description}
-                    </Text>
+                    <Text style={styles.recommendationDescription}>{action.description}</Text>
                   </View>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={16}
-                    color={theme.colors.text.tertiary}
-                  />
+                  <Ionicons name="chevron-forward" size={16} color={theme.colors.text.tertiary} />
                 </AnimatedPressable>
               ))}
             </View>
@@ -452,16 +368,12 @@ export default function SupervisorDashboard() {
 
           <SupervisorActivitySection
             activities={activities}
-            onOpenActivity={(activityId) =>
-              router.push(`/supervisor/session/${activityId}` as any)
-            }
+            onOpenActivity={(activityId) => router.push(`/supervisor/session/${activityId}` as any)}
             onViewAll={() => router.push("/supervisor/activity-logs" as any)}
           />
 
           <SupervisorRecentSessionsSection
-            onOpenSession={(sessionId) =>
-              router.push(`/supervisor/session/${sessionId}` as any)
-            }
+            onOpenSession={(sessionId) => router.push(`/supervisor/session/${sessionId}` as any)}
             onViewAll={() => router.push("/supervisor/sessions" as any)}
             sessions={sessions}
           />
@@ -551,8 +463,7 @@ function buildRecommendedActions({
     actions.push({
       key: "advance-open-sessions",
       title: "Move sessions to completion",
-      description:
-        "Completion is below 70%. Review open sessions and clear pending items.",
+      description: "Completion is below 70%. Review open sessions and clear pending items.",
       icon: "albums-outline",
       onPress: onOpenSessions,
     });

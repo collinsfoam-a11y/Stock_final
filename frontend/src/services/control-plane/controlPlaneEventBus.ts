@@ -43,10 +43,7 @@ class ControlPlaneEventBus {
     eventEmitter.emit(event, payload);
   }
 
-  subscribe<K extends ControlPlaneEventName>(
-    event: K,
-    callback: EventCallback<K>
-  ): () => void {
+  subscribe<K extends ControlPlaneEventName>(event: K, callback: EventCallback<K>): () => void {
     return eventEmitter.on(event, callback as (...args: any[]) => void);
   }
 }

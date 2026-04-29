@@ -5,7 +5,10 @@
  * Types are defined in ./types.ts to avoid conflicts.
  */
 
-export { reportApi } from "../../services/api/reportApi";
+export {
+  reportReadService as reportApi,
+  reportReadService,
+} from "../../services/reportReadService";
 
 // Activity and error logs (from main api.ts)
 export {
