@@ -19,6 +19,7 @@ from backend.auth.dependencies import get_current_user, require_role
 from backend.config import settings
 from backend.db.runtime import get_db
 from backend.services.projection_read_service import ProjectionReadService
+from backend.services.query_utils import build_mongo_date_filter
 from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
@@ -92,15 +93,7 @@ def build_date_filter(
     date_from: Optional[date], date_to: Optional[date]
 ) -> Optional[dict[str, Any]]:
     """Build MongoDB date range filter."""
-    date_filter: dict[str, Any] = {}
-
-    if date_from:
-        date_filter["$gte"] = datetime.combine(date_from, datetime.min.time())
-
-    if date_to:
-        date_filter["$lte"] = datetime.combine(date_to, datetime.max.time())
-
-    return date_filter if date_filter else None
+    return build_mongo_date_filter(date_from, date_to, end_of_day=True)
 
 
 def sanitize_for_csv(value: Any) -> str:

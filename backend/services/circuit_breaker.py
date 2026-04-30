@@ -9,14 +9,11 @@ import time
 from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional, TypeVar
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
-
-T = TypeVar("T")
-
 
 class CircuitState(str, Enum):
     """Circuit breaker states"""
@@ -95,7 +92,7 @@ class CircuitBreaker:
             if self.on_state_change:
                 try:
                     self.on_state_change(old_state.value, new_state.value)
-                except Exception as e:
+                except (RuntimeError, TypeError, ValueError) as e:
                     logger.error(f"State change callback error: {e}")
 
     async def record_success(self):
@@ -204,44 +201,6 @@ class CircuitBreakerRegistry:
     def get_all_status(self) -> dict[str, dict[str, Any]]:
         """Get status of all circuit breakers"""
         return {name: breaker.get_status() for name, breaker in self._breakers.items()}
-
-
-# Decorator for circuit breaker protection
-def with_circuit_breaker(breaker: CircuitBreaker, fallback: Optional[Callable] = None):
-    """
-    Decorator to protect a function with circuit breaker
-
-    Args:
-        breaker: Circuit breaker instance
-        fallback: Optional fallback function when circuit is open
-    """
-
-    def decorator(func):
-        async def wrapper(*args, **kwargs):
-            if not await breaker.acquire():
-                if fallback:
-                    return (
-                        await fallback(*args, **kwargs)
-                        if asyncio.iscoroutinefunction(fallback)
-                        else fallback(*args, **kwargs)
-                    )
-                raise CircuitOpenError(f"Circuit breaker '{breaker.name}' is open")
-
-            try:
-                result = (
-                    await func(*args, **kwargs)
-                    if asyncio.iscoroutinefunction(func)
-                    else func(*args, **kwargs)
-                )
-                await breaker.record_success()
-                return result
-            except Exception:
-                await breaker.record_failure()
-                raise
-
-        return wrapper
-
-    return decorator
 
 
 class CircuitOpenError(Exception):

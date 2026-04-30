@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from backend.config import settings
 from backend.services.projection_read_service import ProjectionReadService
+from backend.services.query_utils import build_mongo_date_filter
 from backend.utils.tracing import trace_report_generation, trace_span
 
 logger = logging.getLogger(__name__)
@@ -205,7 +206,7 @@ class AdvancedReportService:
         fields: tuple[str, ...],
         value: Any,
     ) -> None:
-        """Match a value across one or more legacy/current field aliases."""
+        """Match a value across one or more source field aliases."""
         if value is None:
             return
         if len(fields) == 1:
@@ -279,12 +280,8 @@ class AdvancedReportService:
         date_to: Optional[datetime],
     ) -> None:
         """Add date range filter to query."""
-        if date_from or date_to:
-            date_filter: dict[str, Any] = {}
-            if date_from:
-                date_filter["$gte"] = date_from
-            if date_to:
-                date_filter["$lte"] = date_to
+        date_filter = build_mongo_date_filter(date_from, date_to)
+        if date_filter:
             query["counted_at"] = date_filter
 
     def _add_variance_filter(

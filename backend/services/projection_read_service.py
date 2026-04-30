@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from datetime import date, datetime, time, timezone
 from typing import Any, Optional
 
@@ -11,6 +10,12 @@ from fastapi import HTTPException
 from backend.services.projection_readiness_gate import (
     ProjectionGateCache,
     get_projection_gate_cache,
+)
+from backend.services.query_utils import (
+    date_match,
+    escaped_regex_filter,
+    normalize_datetime,
+    normalize_sort_key,
 )
 
 _VERIFIED_QTY_FIELD = "verified" + "_qty"
@@ -69,74 +74,9 @@ class ProjectionReadService:
         except (TypeError, ValueError):
             return default
 
-    @staticmethod
-    def _normalize_datetime(value: Any) -> Optional[datetime]:
-        if value in (None, ""):
-            return None
-        if isinstance(value, datetime):
-            return (
-                value.astimezone(timezone.utc).replace(tzinfo=None)
-                if value.tzinfo
-                else value
-            )
-        if isinstance(value, date):
-            return datetime.combine(value, time.min)
-        if isinstance(value, (int, float)):
-            try:
-                return datetime.fromtimestamp(float(value), tz=timezone.utc).replace(
-                    tzinfo=None
-                )
-            except (OSError, ValueError):
-                return None
-        if isinstance(value, str):
-            normalized = value.strip()
-            if not normalized:
-                return None
-            if normalized.endswith("Z"):
-                normalized = normalized[:-1] + "+00:00"
-            try:
-                parsed = datetime.fromisoformat(normalized)
-            except ValueError:
-                return None
-            return (
-                parsed.astimezone(timezone.utc).replace(tzinfo=None)
-                if parsed.tzinfo
-                else parsed
-            )
-        return None
-
-    @classmethod
-    def _normalize_sort_key(cls, value: Any) -> tuple[int, int, Any]:
-        """Normalize mixed projection values into a stable, comparable key."""
-
-        if value in (None, ""):
-            return (1, 3, "")
-        parsed_datetime = cls._normalize_datetime(value)
-        if parsed_datetime is not None:
-            return (0, 0, parsed_datetime.timestamp())
-        if isinstance(value, bool):
-            return (0, 1, int(value))
-        if isinstance(value, (int, float)):
-            return (0, 1, float(value))
-        if isinstance(value, str):
-            try:
-                return (0, 1, float(value))
-            except ValueError:
-                return (0, 2, value.lower())
-        return (0, 2, str(value).lower())
-
-    @classmethod
-    def _date_match(cls, value: Any, start: Optional[Any], end: Optional[Any]) -> bool:
-        parsed = cls._normalize_datetime(value)
-        if parsed is None:
-            return False
-        start_dt = cls._normalize_datetime(start)
-        end_dt = cls._normalize_datetime(end)
-        if start_dt and parsed < start_dt:
-            return False
-        if end_dt and parsed > end_dt:
-            return False
-        return True
+    _normalize_datetime = staticmethod(normalize_datetime)
+    _normalize_sort_key = staticmethod(normalize_sort_key)
+    _date_match = staticmethod(date_match)
 
     @classmethod
     def _projection_item_is_verified(cls, row: dict[str, Any]) -> bool:
@@ -206,7 +146,7 @@ class ProjectionReadService:
 
     @staticmethod
     def _regex(value: str) -> dict[str, Any]:
-        return {"$regex": re.escape(value), "$options": "i"}
+        return escaped_regex_filter(value)
 
     @classmethod
     def _map_session(cls, row: dict[str, Any]) -> dict[str, Any]:
