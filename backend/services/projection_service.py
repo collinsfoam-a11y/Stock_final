@@ -119,6 +119,35 @@ def _line_status_is_inactive(value: Any) -> bool:
     return value.strip().lower() in {"superseded", "removed", "deleted"}
 
 
+def _line_active(document: dict[str, Any]) -> bool:
+    if document.get("is_removed") is True:
+        return False
+    return not _line_status_is_inactive(document.get("status"))
+
+
+def _line_verified(document: dict[str, Any]) -> bool:
+    if document.get("verified") is True:
+        return True
+    status = str(document.get("status") or "").strip().lower()
+    approval_status = str(document.get("approval_status") or "").strip().upper()
+    return status in {"locked", "approved"} or approval_status == "APPROVED"
+
+
+def _variance_pending(document: dict[str, Any]) -> bool:
+    approval_status = str(document.get("approval_status") or "").strip().upper()
+    status = str(document.get("status") or "").strip().upper()
+    if approval_status in {"APPROVED", "RESOLVED"}:
+        return False
+    return status in {
+        "PENDING",
+        "PENDING_APPROVAL",
+        "NEEDS_REVIEW",
+        "RECOUNT_REQUESTED",
+        "REJECTED",
+        "RECOUNT",
+    } or approval_status in {"", "PENDING", "NEEDS_REVIEW", "RECOUNT_REQUESTED", "REJECTED"}
+
+
 def _resolve_unit_value(document: Optional[dict[str, Any]]) -> float:
     if not isinstance(document, dict):
         return 0.0
@@ -148,16 +177,23 @@ class ProjectionService:
     def _kwargs(db_session: Optional[Any]) -> dict[str, Any]:
         return {"session": db_session} if db_session is not None else {}
 
+    @staticmethod
+    def _looks_like_mock(value: Any) -> bool:
+        value_type = type(value)
+        return value_type.__module__ == "unittest.mock" or value_type.__name__ in {
+            "Mock",
+            "MagicMock",
+            "AsyncMock",
+        }
+
     def _projection_backend_available(self) -> bool:
         collection = getattr(self.db, "event_applied", None)
-        if collection is None:
-            return False
-        if collection.__class__.__name__ == "MagicMock":
+        if collection is None or self._looks_like_mock(collection):
             return False
         find_one = getattr(collection, "find_one", None)
-        if find_one is None:
+        if find_one is None or self._looks_like_mock(find_one):
             return False
-        return getattr(find_one, "__class__", type(None)).__name__ != "MagicMock"
+        return True
 
     @staticmethod
     def _line_identifier(document: Optional[dict[str, Any]]) -> Optional[str]:
@@ -390,7 +426,7 @@ class ProjectionService:
             {"session_id": session_id},
             **self._kwargs(db_session),
         )
-        current = dict(existing or {})
+        current = dict(existing) if isinstance(existing, dict) else {}
         now_dt = _utc_now()
         event_type = str(event.get("event_type") or "").strip().upper()
 

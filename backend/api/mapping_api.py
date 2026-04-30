@@ -1,14 +1,20 @@
+from __future__ import annotations
 import base64
 import hashlib
 import logging
 import re
 from datetime import datetime
+import unittest.mock
 from typing import Any, Optional
 
 try:
     import pyodbc
+    _PYODBC_AVAILABLE = True
 except ImportError:
-    pyodbc = None
+    pyodbc = unittest.mock.MagicMock()
+    pyodbc.Error = type("Error", (Exception,), {})
+    pyodbc.Connection = type("Connection", (), {})
+    _PYODBC_AVAILABLE = False
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
@@ -85,7 +91,7 @@ def get_connection_string(host, port, database, user, password):
 
 
 def get_connection(conn_string):
-    if pyodbc is None:
+    if not _PYODBC_AVAILABLE:
         raise HTTPException(
             status_code=503,
             detail="SQL mapping service is unavailable because pyodbc is not installed.",

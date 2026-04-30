@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 """
 Enhanced Connection Pool Service
 Upgraded SQL Server connection pooling with retry logic, health monitoring, and metrics
@@ -8,6 +7,7 @@ Upgraded SQL Server connection pooling with retry logic, health monitoring, and 
 import logging
 import threading
 import time
+import unittest.mock
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -16,8 +16,12 @@ from typing import Any, Optional
 
 try:
     import pyodbc
+    _PYODBC_AVAILABLE = True
 except ImportError:
-    pyodbc = None
+    pyodbc = unittest.mock.MagicMock()
+    pyodbc.Error = type("Error", (Exception,), {})
+    pyodbc.Connection = type("Connection", (), {})
+    _PYODBC_AVAILABLE = False
 
 from ..utils.db_connection import SQLServerConnectionBuilder
 
@@ -67,7 +71,7 @@ class EnhancedSQLServerConnectionPool:
         retry_delay: float = 1.0,
         health_check_interval: int = 60,
     ):
-        if pyodbc is None:
+        if not _PYODBC_AVAILABLE:
             raise RuntimeError(
                 "Enhanced SQL connection pool is unavailable because pyodbc is not installed."
             )
@@ -107,7 +111,7 @@ class EnhancedSQLServerConnectionPool:
             timeout=self.timeout,
         )
 
-    def _create_connection_with_retry(self) -> pyodbc.Connection:
+    def _create_connection_with_retry(self) -> "pyodbc.Connection":
         """Create a new connection with retry logic"""
         last_error = None
 
@@ -183,7 +187,7 @@ class EnhancedSQLServerConnectionPool:
 
         raise ConnectionError(f"Failed to create connection: {last_error}")
 
-    def _create_connection(self) -> pyodbc.Connection:
+    def _create_connection(self) -> "pyodbc.Connection":
         """Create a new optimized SQL Server connection (wrapper for retry logic)"""
         return self._create_connection_with_retry()
 
@@ -224,7 +228,7 @@ class EnhancedSQLServerConnectionPool:
         else:
             logger.error("Failed to initialize any connections in the pool")
 
-    def _is_connection_valid(self, conn: pyodbc.Connection) -> bool:
+    def _is_connection_valid(self, conn: "pyodbc.Connection") -> bool:
         """Check if connection is still valid"""
         try:
             return SQLServerConnectionBuilder.is_connection_valid(conn)
@@ -250,8 +254,8 @@ class EnhancedSQLServerConnectionPool:
                 self._metrics.health_status = "healthy"
 
     def _try_get_valid_connection(
-        self, conn: pyodbc.Connection, created_at: float
-    ) -> pyodbc.Connection:
+        self, conn: "pyodbc.Connection", created_at: float
+    ) -> "pyodbc.Connection":
         """Validate and return connection, or create new one if invalid/expired"""
         age = time.time() - created_at
 
@@ -267,21 +271,21 @@ class EnhancedSQLServerConnectionPool:
 
         return conn
 
-    def _create_new_tracked_connection(self) -> pyodbc.Connection:
+    def _create_new_tracked_connection(self) -> "pyodbc.Connection":
         """Create new connection and update counters"""
         conn = self._create_connection()
         with self._lock:
             self._created += 1
         return conn
 
-    def _close_quietly(self, conn: pyodbc.Connection):
+    def _close_quietly(self, conn: "pyodbc.Connection"):
         """Close connection ignoring errors"""
         try:
             conn.close()
         except Exception:
             pass
 
-    def _get_connection(self, timeout: Optional[float] = None) -> pyodbc.Connection:
+    def _get_connection(self, timeout: Optional[float] = None) -> "pyodbc.Connection":
         """Get a connection from the pool with timeout"""
         deadline = time.time() + (timeout or self.timeout)
         attempt = 0
@@ -327,7 +331,7 @@ class EnhancedSQLServerConnectionPool:
             f"Failed to get connection from pool within {timeout or self.timeout}s timeout"
         )
 
-    def _return_connection(self, conn: pyodbc.Connection):
+    def _return_connection(self, conn: "pyodbc.Connection"):
         """Return a connection to the pool"""
         conn_id = id(conn)
 

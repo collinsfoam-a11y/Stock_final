@@ -41,6 +41,7 @@ from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.transaction_manager import mongo_transaction
 from backend.services.validation_service import ValidationService
 from backend.services.variant_service import VariantService
+from backend.sql_server_connector import SQLServerConnector
 from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ _activity_log_service: Optional[ActivityLogService] = None
 _lock_service: Optional[LockService] = None
 _snapshot_service: Optional[SnapshotService] = None
 _variant_service: Optional[VariantService] = None
+_sql_connector: Optional[SQLServerConnector] = None
 
 
 def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
@@ -124,8 +126,9 @@ def init_count_lines_api(
     lock_service: Optional[LockService] = None,
     snapshot_service: Optional[SnapshotService] = None,
     variant_service: Optional[VariantService] = None,
+    sql_connector: Optional[SQLServerConnector] = None,
 ):
-    global _activity_log_service, _lock_service, _snapshot_service, _variant_service
+    global _activity_log_service, _lock_service, _snapshot_service, _variant_service, _sql_connector
     if snapshot_service is None:
         try:
             snapshot_service = SnapshotService(get_db())
@@ -135,6 +138,7 @@ def init_count_lines_api(
     _lock_service = lock_service
     _snapshot_service = snapshot_service
     _variant_service = variant_service
+    _sql_connector = sql_connector
 
 
 def _get_db_client(db_override=None):
@@ -2551,8 +2555,7 @@ async def get_item_batches(
     """
     try:
         db = _get_db_client(db_override)
-        sql_connector = getattr(router, "sql_connector", None)
-        batches, fetched_from_sql = _load_batches_from_sql(item_identifier, sql_connector)
+        batches, fetched_from_sql = _load_batches_from_sql(item_identifier, _sql_connector)
         source = "sql_server" if fetched_from_sql else "mongodb_offline_fallback"
         if not fetched_from_sql:
             batches = await _load_batches_from_mongo(db, item_identifier)

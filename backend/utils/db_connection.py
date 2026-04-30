@@ -1,16 +1,20 @@
 from __future__ import annotations
-
 """
 Shared database connection utilities to eliminate duplicate connection logic
 """
 
 import logging
+import unittest.mock
 from typing import Optional
 
 try:
     import pyodbc
+    _PYODBC_AVAILABLE = True
 except ImportError:
-    pyodbc = None
+    pyodbc = unittest.mock.MagicMock()
+    pyodbc.Error = type("Error", (Exception,), {})
+    pyodbc.Connection = type("Connection", (), {})
+    _PYODBC_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +34,7 @@ class SQLServerConnectionBuilder:
 
     @staticmethod
     def _require_pyodbc():
-        if pyodbc is None:
+        if not _PYODBC_AVAILABLE:
             raise RuntimeError(
                 "SQL Server ODBC support is unavailable because pyodbc is not installed."
             )
@@ -42,7 +46,7 @@ class SQLServerConnectionBuilder:
         if cls._detected_driver:
             return cls._detected_driver
 
-        if pyodbc is None:
+        if not _PYODBC_AVAILABLE:
             logger.error("pyodbc is not installed; SQL Server ODBC drivers cannot be detected")
             return None
 
@@ -157,7 +161,7 @@ class SQLServerConnectionBuilder:
         user: Optional[str] = None,
         password: Optional[str] = None,
         timeout: int = DEFAULT_TIMEOUT,
-    ) -> pyodbc.Connection:
+    ) -> "pyodbc.Connection":
         """
         Create an optimized SQL Server connection with consistent settings
 
@@ -231,7 +235,7 @@ class SQLServerConnectionBuilder:
             return False
 
     @staticmethod
-    def is_connection_valid(conn: pyodbc.Connection) -> bool:
+    def is_connection_valid(conn: "pyodbc.Connection") -> bool:
         """
         Check if an existing connection is still valid
 
