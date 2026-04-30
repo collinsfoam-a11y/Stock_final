@@ -1,4 +1,5 @@
 import pytest
+from uuid import uuid4
 
 
 @pytest.fixture
@@ -32,7 +33,11 @@ async def test_get_sessions_endpoint(async_client, authenticated_headers, test_u
 @pytest.mark.asyncio
 async def test_create_session_endpoint(async_client, authenticated_headers, test_user):
     """Test POST /api/sessions creates a session"""
-    payload = {"warehouse": "Test Warehouse", "type": "STANDARD"}
+    payload = {
+        "warehouse": "Test Warehouse",
+        "type": "STANDARD",
+        "client_session_id": str(uuid4()),
+    }
 
     response = await async_client.post(
         "/api/sessions/", json=payload, headers=authenticated_headers
@@ -64,7 +69,11 @@ async def test_get_sessions_pagination(async_client, authenticated_headers):
 async def test_get_single_session(async_client, authenticated_headers):
     """Test getting a single session by ID"""
     # First create a session
-    payload = {"warehouse": "Test Warehouse 2", "type": "STANDARD"}
+    payload = {
+        "warehouse": "Test Warehouse 2",
+        "type": "STANDARD",
+        "client_session_id": str(uuid4()),
+    }
     create_response = await async_client.post(
         "/api/sessions/", json=payload, headers=authenticated_headers
     )
@@ -93,7 +102,11 @@ async def test_session_not_found(async_client, authenticated_headers):
 async def test_create_session_with_different_types(async_client, authenticated_headers):
     """Test creating sessions with different types"""
     for session_type in ["STANDARD", "SPOT_CHECK", "CYCLE_COUNT"]:
-        payload = {"warehouse": f"Test Warehouse {session_type}", "type": session_type}
+        payload = {
+            "warehouse": f"Test Warehouse {session_type}",
+            "type": session_type,
+            "client_session_id": str(uuid4()),
+        }
         response = await async_client.post(
             "/api/sessions/", json=payload, headers=authenticated_headers
         )

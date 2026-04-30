@@ -5,6 +5,7 @@ Tests health checks, authentication, and session CRUD operations.
 
 import pytest
 from httpx import AsyncClient
+from uuid import uuid4
 
 
 class TestHealthEndpoints:
@@ -154,6 +155,7 @@ class TestSessionCRUD:
             "location_name": "Floor 1",
             "rack_no": "A1",
             "type": "STANDARD",
+            "client_session_id": str(uuid4()),
         }
         response = await async_client.post(
             "/api/sessions",
@@ -186,6 +188,7 @@ class TestSessionCRUD:
             "location_name": "Floor 2",
             "rack_no": "B2",
             "type": "STANDARD",
+            "client_session_id": str(uuid4()),
         }
         create_response = await async_client.post(
             "/api/sessions",
@@ -215,6 +218,7 @@ class TestSessionCRUD:
             "location_name": "Floor 3",
             "rack_no": "C3",
             "type": "STANDARD",
+            "client_session_id": str(uuid4()),
         }
         create_response = await async_client.post(
             "/api/sessions",
@@ -249,6 +253,7 @@ class TestCountLines:
             "location_name": "Floor 4",
             "rack_no": "D4",
             "type": "STANDARD",
+            "client_session_id": str(uuid4()),
         }
         session_response = await async_client.post(
             "/api/sessions",

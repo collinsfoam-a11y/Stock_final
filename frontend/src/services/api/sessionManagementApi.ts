@@ -60,6 +60,56 @@ type SessionPage = {
   };
 };
 
+const CLIENT_SESSION_ID_STORAGE_KEY = "client_session_id";
+let memoryClientSessionId: string | null = null;
+
+const getSessionIdentityStorage = () => {
+  if (typeof globalThis === "undefined" || !("localStorage" in globalThis)) {
+    return null;
+  }
+  return globalThis.localStorage;
+};
+
+const generateClientSessionId = () => {
+  const runtimeCrypto = globalThis.crypto as Crypto | undefined;
+  if (typeof runtimeCrypto?.randomUUID === "function") {
+    return runtimeCrypto.randomUUID();
+  }
+  return generateUUID();
+};
+
+export const ensureSessionIdentity = (requestedId?: string): string => {
+  const explicitId = requestedId?.trim();
+  const storage = getSessionIdentityStorage();
+
+  if (explicitId) {
+    storage?.setItem(CLIENT_SESSION_ID_STORAGE_KEY, explicitId);
+    memoryClientSessionId = explicitId;
+    return explicitId;
+  }
+
+  const storedId = storage?.getItem(CLIENT_SESSION_ID_STORAGE_KEY)?.trim();
+  if (storedId) {
+    memoryClientSessionId = storedId;
+    return storedId;
+  }
+
+  if (memoryClientSessionId) {
+    return memoryClientSessionId;
+  }
+
+  const generatedId = generateClientSessionId();
+  storage?.setItem(CLIENT_SESSION_ID_STORAGE_KEY, generatedId);
+  memoryClientSessionId = generatedId;
+  return generatedId;
+};
+
+const clearSessionIdentity = () => {
+  const storage = getSessionIdentityStorage();
+  storage?.removeItem(CLIENT_SESSION_ID_STORAGE_KEY);
+  memoryClientSessionId = null;
+};
+
 const normalizeCreateSessionParams = (
   params: string | CreateSessionParams
 ): SessionCreateConfig => ({
@@ -72,8 +122,8 @@ const normalizeCreateSessionParams = (
   offlineId: typeof params !== "string" ? params.offline_id : undefined,
 });
 
-const ensureSessionIdentity = (config: SessionCreateConfig): SessionCreateConfig => {
-  const clientSessionId = config.clientSessionId || config.offlineId || generateUUID();
+const ensureSessionCreateIdentity = (config: SessionCreateConfig): SessionCreateConfig => {
+  const clientSessionId = ensureSessionIdentity(config.clientSessionId || config.offlineId);
   return {
     ...config,
     clientSessionId,
@@ -233,7 +283,7 @@ export const shouldAttemptReadApi = () => {
  * Creates a session online when possible and falls back to an offline placeholder otherwise.
  */
 export const createSession = async (params: string | CreateSessionParams) => {
-  const config = ensureSessionIdentity(normalizeCreateSessionParams(params));
+  const config = ensureSessionCreateIdentity(normalizeCreateSessionParams(params));
   const networkStatus = getNetworkStatus();
 
   log.debug("Create session requested", {
@@ -267,6 +317,7 @@ export const createSession = async (params: string | CreateSessionParams) => {
       await removeSessionFromCache(pendingSession.id);
     }
     await cacheSession(response.data);
+    clearSessionIdentity();
     log.debug("Created session via API", {
       id: response.data?.id,
       status: response.data?.status,

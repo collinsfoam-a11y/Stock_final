@@ -104,10 +104,18 @@ class MigrationManager:
         for field in simple_indexes:
             await self._create_index_safe(self.db.sessions, field, name=f"sessions.{field}")
 
+        await self._create_index_safe(
+            self.db.sessions,
+            "client_session_identity_key",
+            unique=True,
+            sparse=True,
+            name="sessions.client_session_identity_key",
+        )
         compound_indexes = [
             [("started_at", -1)],
             [("warehouse", 1), ("status", 1)],
             [("staff_user", 1), ("status", 1)],
+            [("staff_user", 1), ("client_session_id", 1), ("created_at", -1)],
             [("status", 1), ("started_at", -1)],
             [("created_at", -1)],
             [("status", 1), ("created_at", -1)],

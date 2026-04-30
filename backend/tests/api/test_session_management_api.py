@@ -68,8 +68,8 @@ def test_session_client_identity_filter_enforces_ttl_window(monkeypatch):
 
     assert identity_filter is not None
     assert identity_filter["staff_user"] == "staff1"
-    freshness_clause = identity_filter["$and"][1]["$or"]
-    cutoff = freshness_clause[0]["started_at"]["$gte"]
+    assert identity_filter["client_session_id"] == "11111111-1111-4111-8111-111111111111"
+    cutoff = identity_filter["created_at"]["$gte"]
     assert datetime.now(timezone.utc).replace(tzinfo=None) - cutoff < timedelta(hours=25)
 
 
@@ -310,7 +310,11 @@ class TestCreateSessionEndpoint:
                 ) as client:
                     response = await client.post(
                         "/api/sessions/",
-                        json={"warehouse": "WH001", "type": "STANDARD"},
+                        json={
+                            "warehouse": "WH001",
+                            "type": "STANDARD",
+                            "client_session_id": "11111111-1111-4111-8111-111111111111",
+                        },
                     )
                     assert response.status_code == 200
                     data = response.json()
@@ -326,10 +330,12 @@ class TestCreateSessionEndpoint:
             "_id": "mongo_1",
             "id": "sess_existing",
             "warehouse": "WH001",
+            "client_session_id": "22222222-2222-4222-8222-222222222222",
             "staff_user": "staff1",
             "staff_name": "Staff User",
             "status": "OPEN",
             "type": "STANDARD",
+            "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
             "started_at": datetime.now(timezone.utc).replace(tzinfo=None),
             "last_heartbeat": datetime.now(timezone.utc).replace(tzinfo=None),
         }
@@ -362,7 +368,11 @@ class TestCreateSessionEndpoint:
             ) as client:
                 response = await client.post(
                     "/api/sessions/",
-                    json={"warehouse": "WH001", "type": "STANDARD"},
+                    json={
+                        "warehouse": "WH001",
+                        "type": "STANDARD",
+                        "client_session_id": "22222222-2222-4222-8222-222222222222",
+                    },
                 )
                 assert response.status_code == 200
                 assert response.json()["id"] == "sess_existing"
@@ -370,6 +380,187 @@ class TestCreateSessionEndpoint:
                 mock_db.sessions.insert_one.assert_not_awaited()
         finally:
             app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_create_session_requires_client_session_id(self, mock_user_staff):
+        mock_db = MagicMock()
+
+        async def override_get_db():
+            return mock_db
+
+        async def override_get_current_user():
+            return mock_user_staff
+
+        from backend.auth.dependencies import get_current_user_async
+        from backend.db.runtime import get_db
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user_async] = override_get_current_user
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://localhost",
+            ) as client:
+                response = await client.post(
+                    "/api/sessions/",
+                    json={"warehouse": "WH001", "type": "STANDARD"},
+                )
+                assert response.status_code == 400
+                assert response.json()["detail"]["code"] == "CLIENT_SESSION_ID_REQUIRED"
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_create_session_rejects_invalid_client_session_id(self, mock_user_staff):
+        mock_db = MagicMock()
+
+        async def override_get_db():
+            return mock_db
+
+        async def override_get_current_user():
+            return mock_user_staff
+
+        from backend.auth.dependencies import get_current_user_async
+        from backend.db.runtime import get_db
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user_async] = override_get_current_user
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://localhost",
+            ) as client:
+                response = await client.post(
+                    "/api/sessions/",
+                    json={
+                        "warehouse": "WH001",
+                        "type": "STANDARD",
+                        "client_session_id": "offline-session-1",
+                    },
+                )
+                assert response.status_code == 400
+                assert response.json()["detail"]["code"] == "INVALID_CLIENT_SESSION_ID"
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_create_session_rejects_client_identity_collision(self, mock_user_staff):
+        existing_session = {
+            "id": "sess_existing",
+            "warehouse": "WH001",
+            "client_session_id": "33333333-3333-4333-8333-333333333333",
+            "staff_user": "staff1",
+            "staff_name": "Staff User",
+            "status": "OPEN",
+            "type": "STANDARD",
+            "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            "started_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            "last_heartbeat": datetime.now(timezone.utc).replace(tzinfo=None),
+        }
+        mock_db = AsyncMock()
+        mock_db.sessions = AsyncMock()
+        mock_db.sessions.find_one = AsyncMock(return_value=existing_session)
+        mock_db.sessions.insert_one = AsyncMock()
+
+        async def override_get_db():
+            return mock_db
+
+        async def override_get_current_user():
+            return mock_user_staff
+
+        from backend.auth.dependencies import get_current_user_async
+        from backend.db.runtime import get_db
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user_async] = override_get_current_user
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://localhost",
+            ) as client:
+                response = await client.post(
+                    "/api/sessions/",
+                    json={
+                        "warehouse": "WH002",
+                        "type": "STANDARD",
+                        "client_session_id": "33333333-3333-4333-8333-333333333333",
+                    },
+                )
+                assert response.status_code == 409
+                assert response.json()["detail"]["code"] == "SESSION_ID_COLLISION"
+                mock_db.sessions.insert_one.assert_not_awaited()
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_create_session_retry_returns_same_session(
+        self, async_client, authenticated_headers, test_db
+    ):
+        payload = {
+            "warehouse": "WH-IDEMPOTENT",
+            "type": "STANDARD",
+            "client_session_id": "44444444-4444-4444-8444-444444444444",
+        }
+
+        first = await async_client.post(
+            "/api/sessions/", json=payload, headers=authenticated_headers
+        )
+        second = await async_client.post(
+            "/api/sessions/", json=payload, headers=authenticated_headers
+        )
+
+        assert first.status_code == 200
+        assert second.status_code == 200
+        assert second.json()["id"] == first.json()["id"]
+        assert (
+            await test_db.sessions.count_documents(
+                {"client_session_id": "44444444-4444-4444-8444-444444444444"}
+            )
+            == 1
+        )
+
+    @pytest.mark.asyncio
+    async def test_create_session_expired_client_id_creates_new_session(
+        self, async_client, authenticated_headers, test_db
+    ):
+        old_created_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=49)
+        await test_db.sessions.insert_one(
+            {
+                "id": "expired-session",
+                "session_id": "expired-session",
+                "warehouse": "WH-EXPIRED",
+                "client_session_id": "55555555-5555-4555-8555-555555555555",
+                "staff_user": "staff1",
+                "staff_name": "Staff User",
+                "status": "CLOSED",
+                "type": "STANDARD",
+                "created_at": old_created_at,
+                "started_at": old_created_at,
+                "last_heartbeat": old_created_at,
+            }
+        )
+
+        response = await async_client.post(
+            "/api/sessions/",
+            json={
+                "warehouse": "WH-EXPIRED",
+                "type": "STANDARD",
+                "client_session_id": "55555555-5555-4555-8555-555555555555",
+            },
+            headers=authenticated_headers,
+        )
+
+        assert response.status_code == 200
+        assert response.json()["id"] != "expired-session"
+        assert (
+            await test_db.sessions.count_documents(
+                {"client_session_id": "55555555-5555-4555-8555-555555555555"}
+            )
+            == 2
+        )
 
     @pytest.mark.asyncio
     async def test_create_session_empty_warehouse(self, mock_user_staff):

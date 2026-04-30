@@ -161,6 +161,16 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("created_by", 1), ("created_at", -1)], {"name": "idx_user_time"}),
         # Staff user + status for active session lookup
         ([("staff_user", 1), ("status", 1), ("warehouse", 1)], {"name": "idx_staff_active"}),
+        # Idempotent client session identity guard
+        (
+            [("client_session_identity_key", 1)],
+            {"name": "idx_client_session_identity_key", "unique": True, "sparse": True},
+        ),
+        # Staff/client identity lookup within the application TTL window
+        (
+            [("staff_user", 1), ("client_session_id", 1), ("created_at", -1)],
+            {"name": "idx_staff_client_session_ttl", "sparse": True},
+        ),
         # Status
         ([("status", 1), ("created_at", -1)], {"name": "idx_status"}),
         # Warehouse

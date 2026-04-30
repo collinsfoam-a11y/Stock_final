@@ -12,10 +12,12 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
+from pymongo.errors import DuplicateKeyError, PyMongoError
 
 from backend.api.response_models import PaginatedResponse
 from backend.api.schemas import Session, SessionCreate
@@ -49,6 +51,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/sessions", tags=["Session Management"])
 
 ACTIVE_SESSION_STATUSES = ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]
+SESSION_IDENTITY_TTL_HOURS_DEFAULT = 48
+
+
+class SessionConflictError(RuntimeError):
+    """Raised when a client session identity conflicts with an existing payload."""
 
 
 def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
@@ -781,6 +788,37 @@ def _validate_session_create_request(
     if not warehouse:
         raise HTTPException(status_code=400, detail="Warehouse name cannot be empty")
 
+    raw_client_session_id = str(session_data.client_session_id or "").strip()
+    if not raw_client_session_id:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "CLIENT_SESSION_ID_REQUIRED",
+                "message": "client_session_id is required for session creation",
+            },
+        )
+    try:
+        parsed_client_session_id = UUID(raw_client_session_id)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_CLIENT_SESSION_ID",
+                "message": "client_session_id must be a UUIDv4 value",
+            },
+        ) from exc
+    if parsed_client_session_id.version != 4:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_CLIENT_SESSION_ID",
+                "message": "client_session_id must be a UUIDv4 value",
+            },
+        )
+    session_data.client_session_id = str(parsed_client_session_id)
+    if session_data.offline_id:
+        session_data.offline_id = str(session_data.offline_id).strip() or None
+
     return (
         warehouse,
         *_parse_session_location_parts(
@@ -792,38 +830,65 @@ def _validate_session_create_request(
     )
 
 
+def _session_identity_ttl_hours() -> int:
+    try:
+        value = int(
+            getattr(settings, "SESSION_CLIENT_ID_TTL_HOURS", SESSION_IDENTITY_TTL_HOURS_DEFAULT)
+            or SESSION_IDENTITY_TTL_HOURS_DEFAULT
+        )
+    except (TypeError, ValueError):
+        return SESSION_IDENTITY_TTL_HOURS_DEFAULT
+    return max(1, min(value, SESSION_IDENTITY_TTL_HOURS_DEFAULT))
+
+
+def _session_identity_payload(
+    *,
+    warehouse: Optional[str],
+    session_type: Optional[str],
+    location_type: Optional[str],
+    location_name: Optional[str],
+    rack_no: Optional[str],
+) -> dict[str, Optional[str]]:
+    return {
+        "warehouse": str(warehouse or "").strip() or None,
+        "type": str(session_type or "STANDARD").strip().upper() or "STANDARD",
+        "location_type": _normalize_location_value(location_type),
+        "location_name": _normalize_location_value(location_name),
+        "rack_no": _normalize_location_value(rack_no),
+    }
+
+
+def _session_identity_payload_from_doc(session: dict[str, Any]) -> dict[str, Optional[str]]:
+    return _session_identity_payload(
+        warehouse=session.get("warehouse"),
+        session_type=session.get("type"),
+        location_type=session.get("location_type"),
+        location_name=session.get("location_name"),
+        rack_no=session.get("rack_no"),
+    )
+
+
+def _session_identity_key(username: str, client_session_id: str, now: datetime) -> str:
+    ttl_seconds = _session_identity_ttl_hours() * 3600
+    bucket = int(now.timestamp() // ttl_seconds)
+    return f"{username}:{client_session_id}:{bucket}"
+
+
 def _session_client_identity_filter(
     session_data: SessionCreate,
     username: str,
 ) -> Optional[dict[str, Any]]:
-    client_ids = {
-        value.strip()
-        for value in (session_data.client_session_id, session_data.offline_id)
-        if isinstance(value, str) and value.strip()
-    }
-    if not client_ids:
+    client_session_id = str(session_data.client_session_id or "").strip()
+    if not client_session_id:
         return None
 
-    ttl_hours = int(getattr(settings, "SESSION_CLIENT_ID_TTL_HOURS", 48) or 48)
+    ttl_hours = _session_identity_ttl_hours()
     cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=ttl_hours)
 
     return {
         "staff_user": username,
-        "$and": [
-            {
-                "$or": [
-                    {"client_session_id": {"$in": sorted(client_ids)}},
-                    {"offline_id": {"$in": sorted(client_ids)}},
-                ]
-            },
-            {
-                "$or": [
-                    {"started_at": {"$gte": cutoff}},
-                    {"created_at": {"$gte": cutoff}},
-                    {"last_heartbeat": {"$gte": cutoff}},
-                ]
-            },
-        ],
+        "client_session_id": client_session_id,
+        "created_at": {"$gte": cutoff},
     }
 
 
@@ -831,6 +896,7 @@ async def _find_existing_session_for_client_identity(
     db: AsyncIOMotorDatabase,
     session_data: SessionCreate,
     username: str,
+    expected_payload: dict[str, Optional[str]],
 ) -> Optional[dict[str, Any]]:
     identity_filter = _session_client_identity_filter(session_data, username)
     if not identity_filter:
@@ -842,8 +908,12 @@ async def _find_existing_session_for_client_identity(
 
     try:
         await metrics.increment("session_duplicate_attempts")
-    except Exception:
+    except (RuntimeError, TypeError, ValueError):
         logger.debug("Failed to publish session duplicate metric", exc_info=True)
+
+    existing_payload = _session_identity_payload_from_doc(existing_session)
+    if existing_payload != expected_payload:
+        raise SessionConflictError("SESSION_ID_COLLISION")
 
     if "_id" in existing_session and "id" not in existing_session:
         existing_session["id"] = str(existing_session["_id"])
@@ -965,6 +1035,17 @@ async def _insert_session_documents(
     lifecycle_service = SessionLifecycleService(db)
     session_doc = session.model_dump()
     session_doc["session_id"] = session.id
+    created_at = (
+        session.started_at.replace(tzinfo=None)
+        if session.started_at.tzinfo
+        else session.started_at
+    )
+    session_doc["created_at"] = created_at
+    session_doc["client_session_identity_key"] = _session_identity_key(
+        username,
+        str(session.client_session_id),
+        created_at,
+    )
     await lifecycle_service.create_session(session_doc=session_doc, username=username)
     await lifecycle_service.transition_session(
         session_id=session.id,
@@ -1357,9 +1438,26 @@ async def create_session(
     warehouse, location_type, location_name, rack_no = _validate_session_create_request(
         session_data
     )
-    existing_client_session = await _find_existing_session_for_client_identity(
-        db, session_data, current_user["username"]
+    expected_payload = _session_identity_payload(
+        warehouse=warehouse,
+        session_type=session_data.type,
+        location_type=location_type,
+        location_name=location_name,
+        rack_no=rack_no,
     )
+    try:
+        existing_client_session = await _find_existing_session_for_client_identity(
+            db, session_data, current_user["username"], expected_payload
+        )
+    except SessionConflictError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "SESSION_ID_COLLISION",
+                "message": "client_session_id is already bound to a different session payload",
+            },
+        ) from exc
+
     if existing_client_session:
         logger.info(
             "Existing session found for client session id; returning existing session",
@@ -1371,11 +1469,14 @@ async def create_session(
         db, current_user["username"], warehouse
     )
     if existing_session:
-        logger.info(
-            "Existing open session found for warehouse; returning existing session",
-            extra={"warehouse": warehouse, "session_id": existing_session.get("id")},
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "ACTIVE_SESSION_EXISTS",
+                "message": "An active session already exists for this warehouse",
+                "session_id": existing_session.get("id"),
+            },
         )
-        return Session(**existing_session)
 
     await _close_existing_user_sessions(db, current_user["username"])
     await _revoke_existing_refresh_tokens(current_user["username"])
@@ -1398,7 +1499,21 @@ async def create_session(
         rack_no,
         current_user["username"],
     )
-    await _insert_session_documents(db, session, current_user["username"])
+    try:
+        await _insert_session_documents(db, session, current_user["username"])
+    except DuplicateKeyError as exc:
+        existing_after_duplicate = await _find_existing_session_for_client_identity(
+            db, session_data, current_user["username"], expected_payload
+        )
+        if existing_after_duplicate:
+            return Session(**existing_after_duplicate)
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "SESSION_ID_COLLISION",
+                "message": "client_session_id collided with an existing session",
+            },
+        ) from exc
 
     return session
 
@@ -1506,7 +1621,7 @@ async def get_sessions_analytics(
 
     try:
         return {"success": True, "data": await _build_sessions_analytics_payload(db)}
-    except Exception as e:
+    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
         logger.error("Analytics error: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -1811,7 +1926,7 @@ async def _finalize_session_canonical(
             actor=finalized_by,
             note=note,
         )
-    except Exception as exc:
+    except (RuntimeError, TypeError, ValueError) as exc:
         message = str(exc)
         if (
             "cannot be finalized" in message.lower()
@@ -1833,12 +1948,12 @@ async def _finalize_session_canonical(
                 {"rack_id": session["rack_no"]},
                 {"$set": {"status": "completed", "updated_at": time.time()}},
             )
-        except Exception:
+        except PyMongoError:
             logger.debug("Rack registry finalize mirror skipped", exc_info=True)
 
     try:
         await lock_manager.delete_session(session_id)
-    except Exception:
+    except (RuntimeError, TypeError, ValueError):
         logger.debug("Session lock deletion skipped during completion", exc_info=True)
 
     await manager.broadcast_to_session(

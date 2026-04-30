@@ -47,6 +47,27 @@ jest.mock("../../utils/uuid", () => ({
   generateUUID: jest.fn(() => "00000000-0000-4000-8000-000000000001"),
 }));
 
+const installLocalStorageMock = () => {
+  const store = new Map<string, string>();
+  const localStorageMock = {
+    getItem: jest.fn((key: string) => store.get(key) ?? null),
+    setItem: jest.fn((key: string, value: string) => {
+      store.set(key, value);
+    }),
+    removeItem: jest.fn((key: string) => {
+      store.delete(key);
+    }),
+    clear: jest.fn(() => {
+      store.clear();
+    }),
+  };
+  Object.defineProperty(globalThis, "localStorage", {
+    value: localStorageMock,
+    configurable: true,
+  });
+  return localStorageMock;
+};
+
 describe("sessionManagementApi.getSession", () => {
   beforeEach(() => {
     jest.resetModules();
@@ -193,15 +214,72 @@ describe("sessionManagementApi.getSession", () => {
 
     const result = await createSession("WH-OFFLINE");
 
-    expect(result.id).toBe("00000000-0000-4000-8000-000000000001");
+    expect(result.id).toBeTruthy();
+    expect(result.client_session_id).toBe(result.id);
     expect(result._createdOffline).toBe(true);
     expect(offlineStorage.cacheSession).toHaveBeenCalledWith(
       expect.objectContaining({ warehouse: "WH-OFFLINE" }),
     );
     expect(offlineStorage.addToOfflineQueue).toHaveBeenCalledWith(
       "session",
-      expect.objectContaining({ warehouse: "WH-OFFLINE" }),
+      expect.objectContaining({
+        client_session_id: result.id,
+        warehouse: "WH-OFFLINE",
+      }),
     );
+  });
+
+  it("persists client session identity before API request and reuses it after timeout", async () => {
+    const localStorageMock = installLocalStorageMock();
+    let httpClient: any;
+    let offlineStorage: any;
+    let network: any;
+    let createSession: any;
+
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      httpClient = require("../httpClient").default;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      offlineStorage = require("../offline/offlineStorage");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      network = require("../../utils/network");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ({ createSession } = require("../api/sessionManagementApi"));
+    });
+
+    network.getNetworkStatus.mockReturnValue({
+      status: "ONLINE",
+      isOnline: true,
+      isInternetReachable: true,
+      connectionType: "wifi",
+    });
+    offlineStorage.cacheSession.mockResolvedValue(undefined);
+    offlineStorage.addToOfflineQueue.mockResolvedValue(undefined);
+    httpClient.post
+      .mockRejectedValueOnce(new Error("timeout"))
+      .mockResolvedValueOnce({
+        data: {
+          id: "server-session",
+          warehouse: "WH-ONLINE",
+          staff_user: "staff1",
+          staff_name: "Staff User",
+          status: "OPEN",
+          type: "STANDARD",
+          started_at: "2026-04-30T00:00:00Z",
+        },
+      });
+
+    await createSession("WH-ONLINE");
+    await createSession("WH-ONLINE");
+
+    const storedClientSessionId = localStorageMock.setItem.mock.calls[0]?.[1];
+    expect(storedClientSessionId).toBeTruthy();
+    expect(localStorageMock.setItem.mock.invocationCallOrder[0]).toBeLessThan(
+      httpClient.post.mock.invocationCallOrder[0],
+    );
+    expect(httpClient.post.mock.calls[0][1].client_session_id).toBe(storedClientSessionId);
+    expect(httpClient.post.mock.calls[1][1].client_session_id).toBe(storedClientSessionId);
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith("client_session_id");
   });
 
   it("merges visible cached sessions into API results", async () => {
