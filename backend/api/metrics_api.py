@@ -150,7 +150,7 @@ async def get_staff_performance():
         {"$sort": {"items_scanned": -1}},
     ]
 
-    items_stats = await db.items.aggregate(pipeline).to_list(length=100)
+    items_stats = await db.erp_items.aggregate(pipeline).to_list(length=100)
 
     # Aggregate variances found per user
     variance_pipeline = [

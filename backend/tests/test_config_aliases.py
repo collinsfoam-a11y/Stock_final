@@ -13,3 +13,13 @@ def test_settings_accept_legacy_env_aliases(monkeypatch):
 
     assert settings.CORS_ALLOW_ORIGINS == "https://app.example.com"
     assert settings.METRICS_ENABLED is False
+
+
+def test_settings_treats_release_debug_env_as_false(monkeypatch):
+    monkeypatch.setenv("JWT_SECRET", "a" * 40)
+    monkeypatch.setenv("JWT_REFRESH_SECRET", "b" * 40)
+    monkeypatch.setenv("DEBUG", "release")
+
+    settings = Settings()
+
+    assert settings.DEBUG is False

@@ -1,4 +1,5 @@
 import pytest
+import httpx
 from fastapi.testclient import TestClient
 from backend.server import app
 from backend.auth.dependencies import get_current_user
@@ -24,7 +25,12 @@ client = TestClient(app)
 async def test_pi_status_online():
     """Test the status endpoint when pi-server is reachable."""
     app.dependency_overrides[get_current_user] = get_mock_admin
-    respx.get(f"{settings.PI_SERVER_URL}/models").respond(status_code=200, json={"models": []})
+
+    def handler(request):
+        assert request.headers["authorization"] == f"Bearer {settings.PI_SERVER_API_KEY}"
+        return httpx.Response(status_code=200, json={"models": []})
+
+    respx.get(f"{settings.PI_SERVER_URL}/models").mock(side_effect=handler)
 
     response = client.get("/api/pi/status")
     assert response.status_code == 200
@@ -57,14 +63,23 @@ async def test_pi_chat_permission_denied():
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_pi_chat_success():
+async def test_pi_chat_success(test_db):
     """Test successful proxying of chat requests."""
     app.dependency_overrides[get_current_user] = get_mock_admin
-    respx.post(f"{settings.PI_SERVER_URL}/chat/completions").respond(
-        status_code=200, json={"choices": [{"message": {"content": "Hello world"}}]}
-    )
+
+    def handler(request):
+        assert request.headers["authorization"] == f"Bearer {settings.PI_SERVER_API_KEY}"
+        return httpx.Response(
+            status_code=200,
+            json={"choices": [{"message": {"content": "Hello world"}}]},
+        )
+
+    respx.post(f"{settings.PI_SERVER_URL}/chat/completions").mock(side_effect=handler)
 
     response = client.post("/api/pi/chat", json={"messages": [{"role": "user", "content": "hi"}]})
     assert response.status_code == 200
     assert "choices" in response.json()
+    history = await test_db.chat_history.find_one({"username": "admin"})
+    assert history["user_message"] == "hi"
+    assert history["assistant_response"] == "Hello world"
     app.dependency_overrides.clear()

@@ -1,14 +1,12 @@
 import React from "react";
 import { View, Text, StyleSheet, Alert } from "react-native";
-import { BlurView } from "expo-blur";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { PremiumButton } from "../premium/PremiumButton";
+import { OperationalButton } from "../ui/OperationalSurface";
 import {
   modernColors,
   modernTypography,
   modernSpacing,
   modernBorderRadius,
-  modernShadows,
 } from "../../styles/modernDesignSystem";
 import { useScanSessionStore } from "../../store/scanSessionStore";
 
@@ -26,21 +24,17 @@ export const ActiveSectionHeader: React.FC = () => {
           style: "destructive",
           onPress: closeSection,
         },
-      ],
+      ]
     );
   };
 
   return (
     <View style={styles.container}>
-      <BlurView intensity={20} tint="dark" style={styles.glassContent}>
+      <View style={styles.content}>
         <View style={styles.infoContainer}>
           <View style={styles.locationRow}>
             <View style={styles.locationItem}>
-              <Ionicons
-                name="layers-outline"
-                size={16}
-                color={modernColors.primary[400]}
-              />
+              <Ionicons name="layers-outline" size={16} color={modernColors.primary[400]} />
               <Text style={styles.locationLabel}>Floor:</Text>
               <Text style={styles.locationValue} numberOfLines={1}>
                 {currentFloor}
@@ -48,11 +42,7 @@ export const ActiveSectionHeader: React.FC = () => {
             </View>
             <View style={styles.divider} />
             <View style={styles.locationItem}>
-              <Ionicons
-                name="grid-outline"
-                size={16}
-                color={modernColors.primary[400]}
-              />
+              <Ionicons name="grid-outline" size={16} color={modernColors.primary[400]} />
               <Text style={styles.locationLabel}>Rack:</Text>
               <Text style={styles.locationValue} numberOfLines={1}>
                 {currentRack}
@@ -62,7 +52,7 @@ export const ActiveSectionHeader: React.FC = () => {
         </View>
 
         <View style={styles.actionContainer}>
-          <PremiumButton
+          <OperationalButton
             title="Close"
             onPress={handleCloseSection}
             variant="secondary"
@@ -70,7 +60,7 @@ export const ActiveSectionHeader: React.FC = () => {
             icon="close-circle-outline"
           />
         </View>
-      </BlurView>
+      </View>
     </View>
   );
 };
@@ -79,19 +69,18 @@ const styles = StyleSheet.create({
   container: {
     width: "100%",
     marginBottom: modernSpacing.md,
-    ...modernShadows.lg,
     zIndex: 100,
   },
-  glassContent: {
+  content: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: modernSpacing.md,
     paddingVertical: modernSpacing.sm,
-    backgroundColor: "rgba(30, 41, 59, 0.85)",
-    borderRadius: modernBorderRadius.lg,
+    backgroundColor: modernColors.background.paper,
+    borderRadius: modernBorderRadius.md,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderColor: modernColors.border.light,
     overflow: "hidden",
   },
   infoContainer: {
@@ -111,7 +100,7 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: 16,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: modernColors.border.light,
     marginHorizontal: modernSpacing.md,
   },
   locationLabel: {

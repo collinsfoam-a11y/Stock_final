@@ -15,6 +15,7 @@ from pymongo.errors import PyMongoError
 from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.transaction_manager import mongo_transaction
+from backend.services.governance_guard import write_authority
 
 UTC = timezone.utc
 
@@ -402,11 +403,12 @@ class SyncConflictsService:
                 payload = dict(data)
                 payload["updated_at"] = datetime.now(UTC)
                 payload["conflict_resolved"] = True
-                await self.db.erp_items.update_one(
-                    _entity_lookup(entity_id),
-                    {"$set": payload},
-                    **kwargs,
-                )
+                with write_authority("SyncConflictsService"):
+                    await self.db.erp_items.update_one(
+                        _entity_lookup(entity_id),
+                        {"$set": payload},
+                        **kwargs,
+                    )
                 logger.info("Applied resolved data to item %s", entity_id)
                 return
 

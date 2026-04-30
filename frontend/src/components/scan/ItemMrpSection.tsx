@@ -8,15 +8,22 @@ import {
   View,
 } from "react-native";
 
+import ModernCard from "@/components/ui/ModernCard";
 import ModernInput from "@/components/ui/ModernInput";
 import {
   colors,
   fontSize,
   fontWeight,
-  radius as borderRadius,
-  semanticColors,
   spacing,
 } from "@/theme/unified";
+
+const SURFACE_CARD = "#ffffff";
+const SURFACE_BORDER = "#d9e5e2";
+const SURFACE_MUTED = "#f8fafc";
+const ACCENT = "#0f766e";
+const ACCENT_SOFT = "#e6f4f1";
+const TEXT_STRONG = "#0f172a";
+const TEXT_MUTED = "#475569";
 
 type MrpVariant = Record<string, any> & {
   id?: string | number;
@@ -49,23 +56,24 @@ export function ItemMrpSection({
   if (!showMrp) return null;
 
   return (
-    <View style={styles.section}>
+    <ModernCard style={styles.sectionCard} contentStyle={styles.sectionCardContent}>
+      <Text style={styles.sectionKicker}>Pricing</Text>
+      <Text style={styles.sectionHeading}>Verify the active MRP</Text>
       <View style={styles.sectionHeader}>
-        <Text
-          style={[
-            styles.sectionTitle,
-            { color: semanticColors.text.primary },
-          ]}
-        >
-          MRP
-        </Text>
+        <View style={styles.sectionTitleWrap}>
+          <Text style={styles.sectionTitle}>MRP</Text>
+          <Text style={styles.sectionSubtitle}>
+            Use the system value or unlock manual entry if the pack differs.
+          </Text>
+        </View>
         <Switch
           value={mrpEditable}
           onValueChange={onToggleMrpEditable}
           trackColor={{
             false: colors.neutral[200],
-            true: colors.primary[600],
+            true: ACCENT,
           }}
+          thumbColor={mrpEditable ? colors.white : colors.neutral[50]}
         />
       </View>
 
@@ -84,23 +92,19 @@ export function ItemMrpSection({
                 key={`mrp-${variantKey}-${index}`}
                 style={[
                   styles.chip,
-                  {
-                    backgroundColor: semanticColors.background.paper,
-                    borderColor: semanticColors.border.default,
-                  },
                   isSelected && {
-                    backgroundColor: colors.primary[50],
-                    borderColor: colors.primary[600],
+                    backgroundColor: ACCENT_SOFT,
+                    borderColor: ACCENT,
                   },
                 ]}
                 onPress={() => onSelectMrpVariant(variant)}
+                activeOpacity={0.85}
               >
                 <Text
                   style={[
                     styles.chipText,
-                    { color: semanticColors.text.secondary },
                     isSelected && {
-                      color: colors.primary[700],
+                      color: ACCENT,
                       fontWeight: fontWeight.medium,
                     },
                   ]}
@@ -118,46 +122,104 @@ export function ItemMrpSection({
           keyboardType="numeric"
           placeholder="Enter new MRP"
           icon="pricetag"
+          containerStyle={styles.mrpInputContainer}
         />
       ) : (
-        <Text style={styles.readOnlyValue}>₹{mrp || systemMrp || 0}</Text>
+        <View style={styles.readOnlyValueCard}>
+          <Text style={styles.readOnlyLabel}>System MRP</Text>
+          <Text style={styles.readOnlyValue}>₹{mrp || systemMrp || 0}</Text>
+        </View>
       )}
-    </View>
+    </ModernCard>
   );
 }
 
 const styles = StyleSheet.create({
   chip: {
-    borderRadius: borderRadius.full,
+    borderRadius: 999,
     borderWidth: 1,
+    borderColor: SURFACE_BORDER,
     marginRight: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    backgroundColor: colors.white,
   },
   chipText: {
     fontSize: fontSize.sm,
+    color: TEXT_MUTED,
   },
   chipsScroll: {
+    marginTop: spacing.sm,
     marginHorizontal: -spacing.lg,
     paddingHorizontal: spacing.lg,
   },
-  readOnlyValue: {
-    color: semanticColors.text.primary,
-    fontSize: 18,
-    fontWeight: fontWeight.bold,
+  mrpInputContainer: {
+    marginTop: spacing.sm,
+    marginBottom: 0,
   },
-  section: {
+  readOnlyLabel: {
+    color: TEXT_MUTED,
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.medium,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  readOnlyValue: {
+    color: TEXT_STRONG,
+    fontSize: 28,
+    fontWeight: "700",
+  },
+  readOnlyValueCard: {
+    marginTop: spacing.sm,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
+    backgroundColor: SURFACE_MUTED,
+    padding: spacing.md,
+  },
+  sectionCard: {
     marginBottom: spacing.xl,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
+    backgroundColor: SURFACE_CARD,
+  },
+  sectionCardContent: {
+    padding: spacing.lg,
+  },
+  sectionHeading: {
+    color: TEXT_STRONG,
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: spacing.md,
   },
   sectionHeader: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: spacing.sm,
+    gap: spacing.md,
+  },
+  sectionKicker: {
+    color: ACCENT,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.1,
+    textTransform: "uppercase",
+    marginBottom: spacing.xs,
+  },
+  sectionSubtitle: {
+    color: TEXT_MUTED,
+    fontSize: fontSize.sm,
+    lineHeight: 20,
+  },
+  sectionTitleWrap: {
+    flex: 1,
   },
   sectionTitle: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.sm,
+    color: TEXT_STRONG,
+    marginBottom: 2,
   },
 });

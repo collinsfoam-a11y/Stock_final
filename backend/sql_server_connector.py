@@ -8,7 +8,20 @@ from pathlib import Path
 from typing import Any, Optional, Sequence
 
 import pyodbc
-from tenacity import retry, stop_after_attempt, wait_exponential
+try:
+    from tenacity import retry, stop_after_attempt, wait_exponential
+except ImportError:
+    # Dummy decorators if tenacity is not installed
+    def retry(*args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator
+
+    def stop_after_attempt(*args, **kwargs):
+        pass
+
+    def wait_exponential(*args, **kwargs):
+        pass
 
 from backend.db_mapping_config import SQL_TEMPLATES, get_active_mapping
 from backend.utils.db_connection import SQLServerConnectionBuilder

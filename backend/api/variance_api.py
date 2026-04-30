@@ -52,7 +52,7 @@ async def get_variance_trend(
         {"$sort": {"_id": 1}},
     ]
 
-    results = await db.variances.aggregate(pipeline).to_list(length=days)
+    results = await db.count_lines.aggregate(pipeline).to_list(length=days)
 
     # Fill in missing dates
     data = []

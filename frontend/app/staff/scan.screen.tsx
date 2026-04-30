@@ -70,6 +70,14 @@ import { useAuthStore } from "../../src/store/authStore";
 const SCAN_BUFFER_TIMEOUT = 2000; // 2 seconds
 const SCAN_BUFFER_MAX_SIZE = 10;
 const SCAN_CONFIDENCE_THRESHOLD = 2;
+const SURFACE_BG = "#f4f7f6";
+const SURFACE_CARD = "#ffffff";
+const SURFACE_BORDER = "#d9e5e2";
+const SURFACE_MUTED = "#f8fafc";
+const ACCENT = "#0f766e";
+const ACCENT_SOFT = "#ecf7f4";
+const TEXT_STRONG = "#0f172a";
+const TEXT_MUTED = "#475569";
 
 const ScanScreen = React.memo(function ScanScreen() {
   const router = useRouter();
@@ -533,6 +541,11 @@ const ScanScreen = React.memo(function ScanScreen() {
     );
   };
 
+  const locationLabel = [currentFloor, currentRack].filter(Boolean).join(" • ");
+  const sessionLabel = sessionId
+    ? String(sessionId).slice(0, 8).toUpperCase()
+    : "LOCAL";
+
   if (isScanning) {
     return (
       <ScanCameraOverlay
@@ -551,20 +564,21 @@ const ScanScreen = React.memo(function ScanScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ModernHeader
-        title={`Welcome, ${user?.full_name?.split(" ")[0] || "Staff"}`}
-        subtitle={`${currentFloor || ""} ${currentRack ? `• ${currentRack}` : ""}`}
+        title="Scan items"
+        subtitle={locationLabel || "Active session"}
         showBackButton={false}
         onBackPress={() => router.back()}
+        showSettingsButton={false}
+        style={styles.headerShell}
         rightComponent={
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <SyncStatusPill />
             <TouchableOpacity onPress={handleLogout} style={{ padding: 4 }}>
-              <Ionicons name="log-out-outline" size={24} color={colors.primary[500]} />
+              <Ionicons name="log-out-outline" size={24} color={ACCENT} />
             </TouchableOpacity>
           </View>
         }
       />
-
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -582,6 +596,48 @@ const ScanScreen = React.memo(function ScanScreen() {
           />
         }
       >
+        <View style={styles.sessionHero}>
+          <View style={styles.sessionHeroHeader}>
+            <View style={styles.sessionHeroCopy}>
+              <Text style={styles.sessionHeroKicker}>Active session</Text>
+              <Text style={styles.sessionHeroTitle}>Ready to capture counts</Text>
+              <Text style={styles.sessionHeroText}>
+                Use the scanner for fast capture or search manually when a label
+                is unclear. All counts stay tied to the current floor and rack.
+              </Text>
+            </View>
+            <View style={styles.sessionBadge}>
+              <Ionicons name="radio-outline" size={14} color={ACCENT} />
+              <Text style={styles.sessionBadgeText}>{sessionLabel}</Text>
+            </View>
+          </View>
+
+          <View style={styles.sessionMetaRow}>
+            <View style={styles.sessionMetaChip}>
+              <Ionicons name="layers-outline" size={16} color={ACCENT} />
+              <Text style={styles.sessionMetaText}>
+                {currentFloor || "Floor pending"}
+              </Text>
+            </View>
+            <View style={styles.sessionMetaChip}>
+              <Ionicons name="grid-outline" size={16} color={ACCENT} />
+              <Text style={styles.sessionMetaText}>
+                {currentRack || "Rack pending"}
+              </Text>
+            </View>
+            <View style={styles.sessionMetaChip}>
+              <Ionicons
+                name={offlineMode ? "cloud-offline-outline" : "sync-outline"}
+                size={16}
+                color={offlineMode ? colors.warning[600] : ACCENT}
+              />
+              <Text style={styles.sessionMetaText}>
+                {offlineMode ? "Offline capture" : "Live validation"}
+              </Text>
+            </View>
+          </View>
+        </View>
+
         <ScanStatsCard
           initialLoading={initialLoading}
           sessionStats={sessionStats}
@@ -622,6 +678,7 @@ const ScanScreen = React.memo(function ScanScreen() {
           variant="primary"
           icon="checkmark-circle"
           fullWidth
+          style={styles.finishRackButton}
         />
       </View>
 
@@ -665,11 +722,96 @@ export default ScanScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.gray[50],
+    backgroundColor: SURFACE_BG,
+  },
+  headerShell: {
+    backgroundColor: SURFACE_BG,
   },
   scrollContent: {
     padding: spacing.lg,
     paddingBottom: 100,
+    width: "100%",
+    maxWidth: 1040,
+    alignSelf: "center",
+  },
+  sessionHero: {
+    marginBottom: spacing.lg,
+    padding: spacing.lg,
+    backgroundColor: SURFACE_CARD,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
+    ...shadows.md,
+  },
+  sessionHeroHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  sessionHeroCopy: {
+    flex: 1,
+  },
+  sessionHeroKicker: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    color: ACCENT,
+    marginBottom: spacing.sm,
+  },
+  sessionHeroTitle: {
+    fontSize: typography.fontSize["2xl"],
+    lineHeight: typography.lineHeight["2xl"],
+    fontWeight: "700",
+    color: TEXT_STRONG,
+    marginBottom: spacing.sm,
+  },
+  sessionHeroText: {
+    fontSize: typography.fontSize.sm,
+    lineHeight: 22,
+    color: TEXT_MUTED,
+    maxWidth: 620,
+  },
+  sessionBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    backgroundColor: ACCENT_SOFT,
+    borderWidth: 1,
+    borderColor: "#cae8df",
+  },
+  sessionBadgeText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: "700",
+    color: ACCENT,
+    letterSpacing: 0.8,
+  },
+  sessionMetaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  sessionMetaChip: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 14,
+    backgroundColor: SURFACE_MUTED,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  sessionMetaText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: "600",
+    color: TEXT_STRONG,
   },
   footerSpacer: {
     height: 20,
@@ -681,10 +823,14 @@ const styles = StyleSheet.create({
     right: 0,
     padding: spacing.lg,
     paddingBottom: Platform.OS === "ios" ? 34 : spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: SURFACE_BG,
     borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
+    borderTopColor: SURFACE_BORDER,
     ...shadows.lg,
+  },
+  finishRackButton: {
+    backgroundColor: ACCENT,
+    borderRadius: 14,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -698,7 +844,7 @@ const styles = StyleSheet.create({
   },
   performanceOverlay: {
     position: "absolute",
-    top: 60,
+    top: 96,
     right: 20,
     backgroundColor: "rgba(0,0,0,0.7)",
     paddingHorizontal: 12,

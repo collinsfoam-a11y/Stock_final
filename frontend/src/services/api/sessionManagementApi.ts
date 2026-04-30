@@ -23,6 +23,8 @@ export interface CreateSessionParams {
   location_type?: string;
   location_name?: string;
   rack_no?: string;
+  client_session_id?: string;
+  offline_id?: string;
 }
 
 export interface SessionStatsResponse {
@@ -42,6 +44,8 @@ type SessionCreateConfig = {
   locationType?: string;
   locationName?: string;
   rackNo?: string;
+  clientSessionId?: string;
+  offlineId?: string;
 };
 
 type SessionPage = {
@@ -64,6 +68,8 @@ const normalizeCreateSessionParams = (
   locationType: typeof params !== "string" ? params.location_type : undefined,
   locationName: typeof params !== "string" ? params.location_name : undefined,
   rackNo: typeof params !== "string" ? params.rack_no : undefined,
+  clientSessionId: typeof params !== "string" ? params.client_session_id : undefined,
+  offlineId: typeof params !== "string" ? params.offline_id : undefined,
 });
 
 const buildOfflineSession = ({
@@ -72,22 +78,29 @@ const buildOfflineSession = ({
   locationType,
   locationName,
   rackNo,
-}: SessionCreateConfig) => ({
-  id: generateOfflineId(),
-  warehouse,
-  location_type: locationType,
-  location_name: locationName,
-  rack_no: rackNo,
-  status: "OPEN",
-  type: sessionType || "STANDARD",
-  staff_user: "offline_user",
-  staff_name: "Offline User",
-  started_at: new Date().toISOString(),
-  total_items: 0,
-  total_variance: 0,
-  _source: "offline" as DataSource,
-  _createdOffline: true,
-});
+  clientSessionId,
+  offlineId,
+}: SessionCreateConfig) => {
+  const generatedId = clientSessionId || offlineId || generateOfflineId();
+  return {
+    id: generatedId,
+    client_session_id: generatedId,
+    offline_id: generatedId,
+    warehouse,
+    location_type: locationType,
+    location_name: locationName,
+    rack_no: rackNo,
+    status: "OPEN",
+    type: sessionType || "STANDARD",
+    staff_user: "offline_user",
+    staff_name: "Offline User",
+    started_at: new Date().toISOString(),
+    total_items: 0,
+    total_variance: 0,
+    _source: "offline" as DataSource,
+    _createdOffline: true,
+  };
+};
 
 const persistOfflineSession = async (offlineSession: ReturnType<typeof buildOfflineSession>) => {
   await cacheSession(offlineSession);
@@ -101,12 +114,16 @@ const buildSessionCreatePayload = ({
   locationType,
   locationName,
   rackNo,
+  clientSessionId,
+  offlineId,
 }: SessionCreateConfig) => ({
   warehouse,
   location_type: locationType,
   location_name: locationName,
   rack_no: rackNo,
   ...(sessionType && { type: sessionType }),
+  ...(clientSessionId && { client_session_id: clientSessionId }),
+  ...(offlineId && { offline_id: offlineId }),
 });
 
 const paginateSessions = (sessions: Session[], page: number, pageSize: number): SessionPage => {
@@ -144,15 +161,14 @@ const normalizeSessionsResponse = (
       : [];
   return {
     items: sessions,
-    pagination:
-      responseData?.pagination || {
-        page,
-        page_size: pageSize,
-        total: sessions.length,
-        total_pages: 1,
-        has_next: false,
-        has_prev: false,
-      },
+    pagination: responseData?.pagination || {
+      page,
+      page_size: pageSize,
+      total: sessions.length,
+      total_pages: 1,
+      has_next: false,
+      has_prev: false,
+    },
   };
 };
 
@@ -170,9 +186,7 @@ const mergeSessionsWithVisibleCache = async (sessions: Session[]): Promise<Sessi
   }
 
   const seenIds = new Set(
-    sessions
-      .map((session) => session?.id || session?.session_id || session?._id)
-      .filter(Boolean)
+    sessions.map((session) => session?.id || session?.session_id || session?._id).filter(Boolean)
   );
   const missingCached = visibleCached.filter((session) => !seenIds.has(session.id));
   return missingCached.length > 0 ? [...sessions, ...missingCached] : sessions;

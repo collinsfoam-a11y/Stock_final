@@ -17,6 +17,7 @@ from backend.auth.dependencies import get_current_user
 from backend.config import settings
 from backend.db.runtime import get_db
 from backend.services.runtime import get_cache_service
+from backend.services.governance_guard import write_authority
 
 router = APIRouter(prefix="/api/test-support", tags=["test-support"])
 
@@ -515,18 +516,19 @@ async def upsert_synthetic_erp_item(
         "fixture_source": FIXTURE_SOURCE,
     }
 
-    await db.erp_items.update_one(
-        {"item_code": item_code},
-        {
-            "$set": document,
-            "$setOnInsert": {
-                "created_at": now,
-                "created_by": current_user.get("username"),
-                "synced_from_erp": False,
+    with write_authority("TestSupportAPI"):
+        await db.erp_items.update_one(
+            {"item_code": item_code},
+            {
+                "$set": document,
+                "$setOnInsert": {
+                    "created_at": now,
+                    "created_by": current_user.get("username"),
+                    "synced_from_erp": False,
+                },
             },
-        },
-        upsert=True,
-    )
+            upsert=True,
+        )
 
     await _invalidate_fixture_item_cache(
         barcode=payload.barcode,
@@ -574,7 +576,8 @@ async def patch_synthetic_erp_item(
     update_data["updated_at"] = _utc_now()
     update_data["updated_by"] = current_user.get("username")
 
-    await db.erp_items.update_one({"item_code": normalized_item_code}, {"$set": update_data})
+    with write_authority("TestSupportAPI"):
+        await db.erp_items.update_one({"item_code": normalized_item_code}, {"$set": update_data})
 
     await _invalidate_fixture_item_cache(
         barcode=existing.get("barcode"),

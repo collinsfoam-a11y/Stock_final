@@ -21,9 +21,14 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response  # noqa
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer  # noqa: E402
 from starlette.requests import Request  # noqa: E402
 
-import sentry_sdk  # noqa: E402
-from sentry_sdk.integrations.fastapi import FastApiIntegration  # noqa: E402
-from sentry_sdk.integrations.starlette import StarletteIntegration  # noqa: E402
+try:
+    import sentry_sdk  # noqa: E402
+    from sentry_sdk.integrations.fastapi import FastApiIntegration  # noqa: E402
+    from sentry_sdk.integrations.starlette import StarletteIntegration  # noqa: E402
+except ImportError:
+    sentry_sdk = None
+    FastApiIntegration = None
+    StarletteIntegration = None
 
 from backend.app.middleware import register_middleware  # noqa: E402
 from backend.app.routers import RouterRegistry, register_routers  # noqa: E402
@@ -187,9 +192,9 @@ SECRET_KEY: str = cast(str, settings.JWT_SECRET)
 ALGORITHM = settings.JWT_ALGORITHM
 security = HTTPBearer(auto_error=False)
 
-# Initialize Sentry if DSN is provided
+# Initialize Sentry if DSN is configured and SDK is installed
 sentry_dsn = getattr(settings, "SENTRY_DSN", None)
-if sentry_dsn:
+if sentry_dsn and sentry_sdk:
     try:
         sentry_sdk.init(
             dsn=sentry_dsn,

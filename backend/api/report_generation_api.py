@@ -16,7 +16,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.auth.dependencies import get_current_user, require_role
+from backend.config import settings
 from backend.db.runtime import get_db
+from backend.services.projection_read_service import ProjectionReadService
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +138,9 @@ def _write_xlsx_data(ws: Any, data: list[dict], headers: list[str]) -> None:
 
 async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
     """Generate stock summary report data."""
+    if settings.V3_PROJECTION_REPORT_READS:
+        return await ProjectionReadService(db).generate_stock_summary(filters)
+
     item_query: dict[str, Any] = {}
     if filters.warehouse:
         item_query["warehouse"] = filters.warehouse
@@ -182,10 +187,13 @@ async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
             summary["finalized_count"] += 1
             summary["finalized_qty"] += float(line.get("counted_qty") or 0.0)
             last_verified = (
-                line.get("finalized_at") or line.get("verified_at") or line.get("counted_at")
+                line.get("finalized_at")
+                or line.get("verified_at")
+                or line.get("counted_at")
             )
             if last_verified and (
-                summary["last_verified"] is None or last_verified > summary["last_verified"]
+                summary["last_verified"] is None
+                or last_verified > summary["last_verified"]
             ):
                 summary["last_verified"] = last_verified
 
@@ -211,7 +219,8 @@ async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
                 "finalized_qty": float(summary.get("finalized_qty", 0.0) or 0.0),
                 "last_verified": summary.get("last_verified"),
                 "is_verified": bool(
-                    summary.get("finalized_count", 0) or summary.get("verification_count", 0)
+                    summary.get("finalized_count", 0)
+                    or summary.get("verification_count", 0)
                 ),
             }
         )
@@ -222,6 +231,9 @@ async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
 
 async def generate_variance_report(db, filters: ReportFilter) -> list[dict]:
     """Generate variance report data."""
+    if settings.V3_PROJECTION_REPORT_READS:
+        return await ProjectionReadService(db).generate_variance_report(filters)
+
     line_query: dict[str, Any] = {"variance": {"$ne": 0}}
     if filters.status:
         line_query["status"] = filters.status.lower()
@@ -268,7 +280,9 @@ async def generate_variance_report(db, filters: ReportFilter) -> list[dict]:
         results.append(
             {
                 "item_code": line.get("item_code"),
-                "item_name": line.get("item_name") or item_info.get("item_name") or "Unknown",
+                "item_name": line.get("item_name")
+                or item_info.get("item_name")
+                or "Unknown",
                 "expected_qty": expected_qty,
                 "counted_qty": float(line.get("counted_qty") or 0.0),
                 "variance": variance,
@@ -290,7 +304,9 @@ async def generate_variance_report(db, filters: ReportFilter) -> list[dict]:
             }
         )
 
-    results.sort(key=lambda row: abs(float(row.get("variance_percentage") or 0.0)), reverse=True)
+    results.sort(
+        key=lambda row: abs(float(row.get("variance_percentage") or 0.0)), reverse=True
+    )
     return results[:10000]
 
 
@@ -312,8 +328,12 @@ async def generate_user_activity_report(db, filters: ReportFilter) -> list[dict]
                 "_id": "$user_id",
                 "total_actions": {"$sum": 1},
                 "scans": {"$sum": {"$cond": [{"$eq": ["$action", "scan"]}, 1, 0]}},
-                "verifications": {"$sum": {"$cond": [{"$eq": ["$action", "verify"]}, 1, 0]}},
-                "approvals": {"$sum": {"$cond": [{"$eq": ["$action", "approve"]}, 1, 0]}},
+                "verifications": {
+                    "$sum": {"$cond": [{"$eq": ["$action", "verify"]}, 1, 0]}
+                },
+                "approvals": {
+                    "$sum": {"$cond": [{"$eq": ["$action", "approve"]}, 1, 0]}
+                },
                 "first_action": {"$min": "$timestamp"},
                 "last_action": {"$max": "$timestamp"},
             }
@@ -350,6 +370,9 @@ async def generate_user_activity_report(db, filters: ReportFilter) -> list[dict]
 
 async def generate_session_history_report(db, filters: ReportFilter) -> list[dict]:
     """Generate session history report data."""
+    if settings.V3_PROJECTION_REPORT_READS:
+        return await ProjectionReadService(db).generate_session_history(filters)
+
     query: dict[str, Any] = {}
 
     if filters.status:
@@ -362,7 +385,8 @@ async def generate_session_history_report(db, filters: ReportFilter) -> list[dic
         query["started_at"] = date_filter
 
     sessions = [
-        session async for session in db.sessions.find(query).sort("started_at", -1).limit(5000)
+        session
+        async for session in db.sessions.find(query).sort("started_at", -1).limit(5000)
     ]
     session_ids = [
         str(session.get("id") or session.get("session_id"))
@@ -387,7 +411,9 @@ async def generate_session_history_report(db, filters: ReportFilter) -> list[dic
         lines = lines_by_session.get(session_id, [])
         started_at = session.get("started_at")
         completed_at = (
-            session.get("finalized_at") or session.get("completed_at") or session.get("closed_at")
+            session.get("finalized_at")
+            or session.get("completed_at")
+            or session.get("closed_at")
         )
         duration_minutes = None
         if isinstance(started_at, datetime) and isinstance(completed_at, datetime):
@@ -410,7 +436,8 @@ async def generate_session_history_report(db, filters: ReportFilter) -> list[dic
                 "items_verified": sum(
                     1
                     for line in lines
-                    if bool(line.get("verified")) or str(line.get("status", "")).lower() == "locked"
+                    if bool(line.get("verified"))
+                    or str(line.get("status", "")).lower() == "locked"
                 ),
                 "total_variance": float(session.get("total_variance") or 0.0),
                 "finalized_by": session.get("finalized_by"),
@@ -538,7 +565,9 @@ async def export_report_csv(
     Export report as CSV file.
     """
     if request.report_type not in REPORT_TYPES:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid report type")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid report type"
+        )
 
     db = get_db()
     filters = request.filters or ReportFilter()
@@ -597,7 +626,9 @@ async def export_report_xlsx(
         )
 
     if request.report_type not in REPORT_TYPES:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid report type")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid report type"
+        )
 
     db = get_db()
     filters = request.filters or ReportFilter()
@@ -648,11 +679,30 @@ async def get_report_filter_options(
     Returns distinct values for filterable fields.
     """
     if report_type not in REPORT_TYPES:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid report type")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid report type"
+        )
 
     db = get_db()
 
     try:
+        if settings.V3_PROJECTION_REPORT_READS:
+            projection_options = await ProjectionReadService(db).get_filter_options()
+            options = projection_options["options"]
+            return {
+                "report_type": report_type,
+                "filters": {
+                    "warehouses": options["warehouses"],
+                    "floors": options["floors"],
+                    "categories": options["categories"],
+                    "statuses": options["statuses"],
+                    "users": [
+                        {"id": str(user), "username": str(user), "role": "staff"}
+                        for user in options["users"]
+                    ],
+                },
+            }
+
         # Get distinct values for common filters
         warehouses = await db.erp_items.distinct("warehouse")
         floors = await db.erp_items.distinct("floor")

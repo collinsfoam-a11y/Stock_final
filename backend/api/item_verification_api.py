@@ -18,6 +18,7 @@ from pydantic import BaseModel
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.utils.api_utils import sanitize_for_logging
+from backend.services.governance_guard import write_authority
 
 logger = logging.getLogger(__name__)
 
@@ -462,9 +463,10 @@ async def update_item_master(
     try:
         item = await _find_item_by_barcode_or_code(barcode)
         actual_barcode, actual_item_code, update_filter = _resolve_item_identity(item, barcode)
-        await db.erp_items.update_one(
-            update_filter, _build_master_update_doc(request, current_user)
-        )
+        with write_authority("ItemVerificationAPI"):
+            await db.erp_items.update_one(
+                update_filter, _build_master_update_doc(request, current_user)
+            )
         await _invalidate_item_cache(
             actual_barcode=actual_barcode,
             actual_item_code=actual_item_code,
@@ -664,7 +666,8 @@ async def verify_item(
 
         variance = _calculate_variance(request, item.get("stock_qty", 0.0))
         update_doc = _build_item_update_doc(request, current_user, item)
-        result = await db.erp_items.update_one(update_filter, update_doc)
+        with write_authority("ItemVerificationAPI"):
+            result = await db.erp_items.update_one(update_filter, update_doc)
         if result.matched_count == 0:
             logger.warning(
                 "Optimistic Lock Failed for %s. Expected qty: %s",

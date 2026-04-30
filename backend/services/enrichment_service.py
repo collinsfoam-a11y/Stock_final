@@ -10,6 +10,8 @@ from typing import Any, Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from backend.services.governance_guard import write_authority
+
 logger = logging.getLogger(__name__)
 
 
@@ -183,10 +185,11 @@ class EnrichmentService:
             }
 
             # Update item in MongoDB
-            await self.db.erp_items.update_one(
-                {"item_code": item_code},
-                {"$set": update_fields, "$push": {"enrichment_history": history_entry}},
-            )
+            with write_authority("EnrichmentService"):
+                await self.db.erp_items.update_one(
+                    {"item_code": item_code},
+                    {"$set": update_fields, "$push": {"enrichment_history": history_entry}},
+                )
 
             # Create enrichment record for tracking
             enrichment_record = {

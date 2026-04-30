@@ -434,6 +434,7 @@ class InMemoryDatabase:
         self.verification_conflicts = InMemoryCollection()
         self.idempotency_operations = InMemoryCollection()
         self.user_settings = InMemoryCollection()
+        self.chat_history = InMemoryCollection()
         self.audit_logs = InMemoryCollection()
         self.system_events = InMemoryCollection()
         self.item_serials = InMemoryCollection()
@@ -446,6 +447,8 @@ class InMemoryDatabase:
         self.stock_snapshots = InMemoryCollection()
         self.conflict_forks = InMemoryCollection()
         self.governance_events = InMemoryCollection()
+        self.dynamic_field_definitions = InMemoryCollection()
+        self.dynamic_field_values = InMemoryCollection()
 
     async def command(self, *_args, **_kwargs):
         """Simulate db.command('ping')."""

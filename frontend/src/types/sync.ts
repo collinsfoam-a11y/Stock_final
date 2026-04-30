@@ -6,7 +6,9 @@
 export interface SyncRecord {
   client_record_id: string;
   session_id: string;
-  rack_id?: string | null;
+  location_id: string;
+  floor_id: string;
+  rack_id: string;
   floor?: string | null;
   item_code: string;
   verified_qty: number;

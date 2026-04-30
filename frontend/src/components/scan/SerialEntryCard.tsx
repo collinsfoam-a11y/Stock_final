@@ -6,10 +6,14 @@ import {
   colors,
   fontSize,
   fontWeight,
-  radius as borderRadius,
-  semanticColors,
   spacing,
 } from "@/theme/unified";
+
+const SURFACE_BORDER = "#d9e5e2";
+const SURFACE_MUTED = "#f8fafc";
+const ACCENT = "#0f766e";
+const TEXT_STRONG = "#0f172a";
+const TEXT_MUTED = "#475569";
 
 interface SerialEntryCardProps {
   entry: SerialEntryData;
@@ -32,7 +36,7 @@ export const SerialEntryCard: React.FC<SerialEntryCardProps> = ({
     <View style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.label}>Unit #{index + 1}</Text>
-        <TouchableOpacity style={styles.removeButton} onPress={onRemove}>
+        <TouchableOpacity style={styles.removeButton} onPress={onRemove} activeOpacity={0.8}>
           <Ionicons name="trash-outline" size={18} color={colors.error[500]} />
         </TouchableOpacity>
       </View>
@@ -51,7 +55,7 @@ export const SerialEntryCard: React.FC<SerialEntryCardProps> = ({
         value={entry.serial_number}
         onChangeText={onChangeText}
         placeholder="Serial number"
-        placeholderTextColor={semanticColors.text.disabled}
+        placeholderTextColor={TEXT_MUTED}
         autoCapitalize="characters"
         autoCorrect={false}
       />
@@ -63,11 +67,11 @@ export const SerialEntryCard: React.FC<SerialEntryCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: borderRadius.lg,
+    borderRadius: 18,
     padding: spacing.md,
-    backgroundColor: semanticColors.background.card,
+    backgroundColor: SURFACE_MUTED,
     borderWidth: 1,
-    borderColor: semanticColors.border.default,
+    borderColor: SURFACE_BORDER,
   },
   header: {
     flexDirection: "row",
@@ -78,23 +82,28 @@ const styles = StyleSheet.create({
   label: {
     fontSize: fontSize.sm,
     fontWeight: fontWeight.medium,
-    color: semanticColors.text.secondary,
+    color: TEXT_MUTED,
   },
   removeButton: {
-    padding: spacing.xs,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.error[50],
   },
   input: {
-    minHeight: 48,
-    borderRadius: borderRadius.md,
+    minHeight: 52,
+    borderRadius: 14,
     borderWidth: 1,
     paddingHorizontal: spacing.md,
-    backgroundColor: semanticColors.background.paper,
-    color: semanticColors.text.primary,
+    backgroundColor: colors.white,
+    color: TEXT_STRONG,
     fontSize: fontSize.md,
   },
   errorText: {
     marginTop: spacing.xs,
     fontSize: fontSize.xs,
-    color: colors.error[600],
+    color: colors.error[700],
   },
 });

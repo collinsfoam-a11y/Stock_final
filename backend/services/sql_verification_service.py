@@ -12,6 +12,7 @@ from typing import Dict, Any, Optional
 
 from backend.sql_server_connector import SQLServerConnector
 from backend.core.database import db
+from backend.services.governance_guard import write_authority
 
 logger = logging.getLogger(__name__)
 
@@ -284,10 +285,11 @@ class SQLVerificationService:
             new_seq=new_seq,
             status=status,
         )
-        update_result = await db.erp_items.update_one(
-            {"_id": mongo_item["_id"], "stock_qty": mongo_qty},
-            {"$set": update_data},
-        )
+        with write_authority("SQLVerificationService"):
+            update_result = await db.erp_items.update_one(
+                {"_id": mongo_item["_id"], "stock_qty": mongo_qty},
+                {"$set": update_data},
+            )
         if update_result.modified_count == 0:
             conflict_outcome = await self._handle_update_conflict_or_loss(
                 item_code=item_code,

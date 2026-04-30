@@ -1,7 +1,7 @@
 /**
  * Variance List Screen
  * Displays all items with variances (verified qty != system qty)
- * Refactored to use Aurora Design System
+ * Uses functional operational surfaces for variance review.
  */
 import React, { useState, useEffect } from "react";
 import {
@@ -24,15 +24,8 @@ import {
   ItemVerificationAPI,
   VarianceItem,
 } from "../../src/domains/inventory/services/itemVerificationApi";
-import {
-  ItemFilters,
-  FilterValues,
-} from "../../src/domains/inventory/components/ItemFilters";
-import {
-  ScreenContainer,
-  GlassCard,
-  AnimatedPressable,
-} from "../../src/components/ui";
+import { ItemFilters, FilterValues } from "../../src/domains/inventory/components/ItemFilters";
+import { ScreenContainer, OperationalCard, AnimatedPressable } from "../../src/components/ui";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { theme } from "../../src/styles/modernDesignSystem";
 import { toastService } from "../../src/services/toastService";
@@ -70,9 +63,7 @@ export default function VariancesScreen() {
     if (selectedIds.size === variances.length) {
       setSelectedIds(new Set());
     } else {
-      const allIds = variances
-        .map((v) => v.count_line_id)
-        .filter((id): id is string => !!id);
+      const allIds = variances.map((v) => v.count_line_id).filter((id): id is string => !!id);
       setSelectedIds(new Set(allIds));
     }
     if (Platform.OS !== "web") Haptics.selectionAsync();
@@ -91,10 +82,7 @@ export default function VariancesScreen() {
           style: action === "reject" ? "destructive" : "default",
           onPress: async () => {
             if (offlineMode) {
-              Alert.alert(
-                "Offline Mode",
-                "Bulk variance actions require a live connection.",
-              );
+              Alert.alert("Offline Mode", "Bulk variance actions require a live connection.");
               return;
             }
             try {
@@ -108,9 +96,7 @@ export default function VariancesScreen() {
                 result = await ItemVerificationAPI.bulkRejectVariances(ids);
               }
 
-              toastService.showSuccess(
-                `Successfully ${action}d ${result.modified_count} items`,
-              );
+              toastService.showSuccess(`Successfully ${action}d ${result.modified_count} items`);
               setSelectedIds(new Set());
               loadVariances(true);
             } catch (error: any) {
@@ -120,7 +106,7 @@ export default function VariancesScreen() {
             }
           },
         },
-      ],
+      ]
     );
   };
 
@@ -166,7 +152,7 @@ export default function VariancesScreen() {
         setRefreshing(false);
       }
     },
-    [filters, offlineMode, pagination.limit, pagination.skip],
+    [filters, offlineMode, pagination.limit, pagination.skip]
   );
 
   useEffect(() => {
@@ -174,8 +160,7 @@ export default function VariancesScreen() {
   }, [loadVariances]);
 
   const handleRefresh = () => {
-    if (Platform.OS !== "web")
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     loadVariances(true);
   };
@@ -197,10 +182,7 @@ export default function VariancesScreen() {
   const handleExport = async (format: "csv" | "xlsx") => {
     try {
       if (offlineMode) {
-        Alert.alert(
-          "Offline Mode",
-          "Variance exports require a live connection.",
-        );
+        Alert.alert("Offline Mode", "Variance exports require a live connection.");
         return;
       }
 
@@ -218,7 +200,7 @@ export default function VariancesScreen() {
           rack: filters.rack,
           warehouse: filters.warehouse,
         },
-        format,
+        format
       );
       const filename = `variances_erpnext_import_${new Date().toISOString().split("T")[0]}.${format}`;
 
@@ -227,7 +209,7 @@ export default function VariancesScreen() {
         filename,
         format === "csv"
           ? "text/csv"
-          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
     } catch (error: any) {
       Alert.alert("Error", error.message || `Failed to export ${format.toUpperCase()}`);
@@ -237,23 +219,18 @@ export default function VariancesScreen() {
   const renderVarianceItem = ({ item }: { item: VarianceItem }) => {
     // Determine status color based on variance
     const isPositive = item.variance > 0;
-    const statusColor = isPositive
-      ? theme.colors.success[500]
-      : theme.colors.error[500];
+    const statusColor = isPositive ? theme.colors.success[500] : theme.colors.error[500];
 
     const varianceSign = isPositive ? "+" : "";
 
-    const isSelected = item.count_line_id
-      ? selectedIds.has(item.count_line_id)
-      : false;
+    const isSelected = item.count_line_id ? selectedIds.has(item.count_line_id) : false;
 
     return (
       <AnimatedPressable
         onLongPress={() => {
           if (item.count_line_id) {
             toggleSelection(item.count_line_id);
-            if (Platform.OS !== "web")
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           }
         }}
         onPress={() => {
@@ -272,22 +249,18 @@ export default function VariancesScreen() {
         }}
         style={{ marginBottom: theme.spacing.md }}
       >
-        <GlassCard
+        <OperationalCard
           intensity={15}
           padding={theme.spacing.md}
           borderRadius={theme.borderRadius.lg}
           style={{
-            borderColor: isSelected
-              ? theme.colors.primary[500]
-              : `${statusColor}40`,
+            borderColor: isSelected ? theme.colors.primary[500] : `${statusColor}40`,
             borderWidth: isSelected ? 2 : 1,
             backgroundColor: isSelected ? "rgba(79, 70, 229, 0.1)" : undefined,
           }}
         >
           <View style={styles.varianceHeader}>
-            <View
-              style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
-            >
+            <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
               {/* Selection Circle */}
               {isSelectionMode && (
                 <View
@@ -300,16 +273,12 @@ export default function VariancesScreen() {
                     borderColor: isSelected
                       ? theme.colors.primary[500]
                       : theme.colors.text.tertiary,
-                    backgroundColor: isSelected
-                      ? theme.colors.primary[500]
-                      : "transparent",
+                    backgroundColor: isSelected ? theme.colors.primary[500] : "transparent",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  {isSelected && (
-                    <Ionicons name="checkmark" size={16} color="white" />
-                  )}
+                  {isSelected && <Ionicons name="checkmark" size={16} color="white" />}
                 </View>
               )}
               <View style={styles.varianceHeaderLeft}>
@@ -334,19 +303,12 @@ export default function VariancesScreen() {
             <View style={styles.qtyRow}>
               <View style={styles.qtyItem}>
                 <Text style={styles.qtyLabel}>System Qty</Text>
-                <Text style={styles.qtyValue}>
-                  {(item.system_qty ?? 0).toFixed(2)}
-                </Text>
+                <Text style={styles.qtyValue}>{(item.system_qty ?? 0).toFixed(2)}</Text>
               </View>
               <View style={styles.divider} />
               <View style={styles.qtyItem}>
                 <Text style={styles.qtyLabel}>Verified Qty</Text>
-                <Text
-                  style={[
-                    styles.qtyValue,
-                    { color: theme.colors.text.primary },
-                  ]}
-                >
+                <Text style={[styles.qtyValue, { color: theme.colors.text.primary }]}>
                   {(item.verified_qty ?? 0).toFixed(2)}
                 </Text>
               </View>
@@ -354,11 +316,7 @@ export default function VariancesScreen() {
 
             {(item.floor || item.rack) && (
               <View style={styles.locationRow}>
-                <Ionicons
-                  name="location-outline"
-                  size={14}
-                  color={theme.colors.text.tertiary}
-                />
+                <Ionicons name="location-outline" size={14} color={theme.colors.text.tertiary} />
                 <Text style={styles.locationText}>
                   {[item.floor, item.rack].filter(Boolean).join(" / ")}
                 </Text>
@@ -373,19 +331,14 @@ export default function VariancesScreen() {
             )}
 
             <View style={styles.verificationInfo}>
-              <Ionicons
-                name="person-outline"
-                size={12}
-                color={theme.colors.text.tertiary}
-              />
+              <Ionicons name="person-outline" size={12} color={theme.colors.text.tertiary} />
               <Text style={styles.verificationInfoText}>
                 Verified by {item.verified_by}
-                {item.verified_at &&
-                  ` • ${new Date(item.verified_at).toLocaleDateString()}`}
+                {item.verified_at && ` • ${new Date(item.verified_at).toLocaleDateString()}`}
               </Text>
             </View>
           </View>
-        </GlassCard>
+        </OperationalCard>
       </AnimatedPressable>
     );
   };
@@ -395,32 +348,18 @@ export default function VariancesScreen() {
       <StatusBar style="light" />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View
-          entering={FadeInDown.delay(100).springify()}
-          style={styles.header}
-        >
+        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
           <View style={styles.headerLeft}>
             {isSelectionMode ? (
               <AnimatedPressable
                 onPress={() => setSelectedIds(new Set())}
                 style={styles.backButton}
               >
-                <Ionicons
-                  name="close"
-                  size={24}
-                  color={theme.colors.text.primary}
-                />
+                <Ionicons name="close" size={24} color={theme.colors.text.primary} />
               </AnimatedPressable>
             ) : (
-              <AnimatedPressable
-                onPress={() => router.back()}
-                style={styles.backButton}
-              >
-                <Ionicons
-                  name="arrow-back"
-                  size={24}
-                  color={theme.colors.text.primary}
-                />
+              <AnimatedPressable onPress={() => router.back()} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
               </AnimatedPressable>
             )}
             <View>
@@ -437,15 +376,8 @@ export default function VariancesScreen() {
 
           <View style={{ flexDirection: "row", gap: 8 }}>
             {isSelectionMode && (
-              <AnimatedPressable
-                style={styles.exportButton}
-                onPress={handleSelectAll}
-              >
-                <GlassCard
-                  intensity={20}
-                  padding={8}
-                  borderRadius={theme.borderRadius.full}
-                >
+              <AnimatedPressable style={styles.exportButton} onPress={handleSelectAll}>
+                <OperationalCard intensity={20} padding={8} borderRadius={theme.borderRadius.full}>
                   <Ionicons
                     name={
                       selectedIds.size === variances.length
@@ -455,42 +387,28 @@ export default function VariancesScreen() {
                     size={20}
                     color={theme.colors.text.primary}
                   />
-                </GlassCard>
+                </OperationalCard>
               </AnimatedPressable>
             )}
 
             <View style={styles.exportActions}>
               <AnimatedPressable
-                style={[
-                  styles.exportFormatButton,
-                  variances.length === 0 && { opacity: 0.5 },
-                ]}
+                style={[styles.exportFormatButton, variances.length === 0 && { opacity: 0.5 }]}
                 onPress={() => void handleExport("csv")}
                 disabled={variances.length === 0}
               >
-                <GlassCard
-                  intensity={20}
-                  padding={8}
-                  borderRadius={theme.borderRadius.full}
-                >
+                <OperationalCard intensity={20} padding={8} borderRadius={theme.borderRadius.full}>
                   <Text style={styles.exportFormatLabel}>CSV</Text>
-                </GlassCard>
+                </OperationalCard>
               </AnimatedPressable>
               <AnimatedPressable
-                style={[
-                  styles.exportFormatButton,
-                  variances.length === 0 && { opacity: 0.5 },
-                ]}
+                style={[styles.exportFormatButton, variances.length === 0 && { opacity: 0.5 }]}
                 onPress={() => void handleExport("xlsx")}
                 disabled={variances.length === 0}
               >
-                <GlassCard
-                  intensity={20}
-                  padding={8}
-                  borderRadius={theme.borderRadius.full}
-                >
+                <OperationalCard intensity={20} padding={8} borderRadius={theme.borderRadius.full}>
                   <Text style={styles.exportFormatLabel}>XLSX</Text>
-                </GlassCard>
+                </OperationalCard>
               </AnimatedPressable>
             </View>
           </View>
@@ -498,7 +416,7 @@ export default function VariancesScreen() {
 
         {/* Filters */}
         <Animated.View entering={FadeInDown.delay(200).springify()}>
-          <GlassCard
+          <OperationalCard
             intensity={10}
             padding={theme.spacing.sm}
             style={{ marginBottom: theme.spacing.md }}
@@ -508,51 +426,42 @@ export default function VariancesScreen() {
               showVerifiedFilter={false} // Verified filter irrelevant here as all are filtered by variance
               showSearch={false}
             />
-          </GlassCard>
+          </OperationalCard>
         </Animated.View>
 
         {offlineMode && (
-          <GlassCard
+          <OperationalCard
             intensity={10}
             padding={theme.spacing.sm}
             style={{ marginBottom: theme.spacing.md }}
           >
             <Text style={styles.offlineNoticeTitle}>Offline mode enabled</Text>
             <Text style={styles.offlineNoticeBody}>
-              Variance review, bulk approve/reject, and exports require a live
-              connection because discrepancy data is not cached locally.
+              Variance review, bulk approve/reject, and exports require a live connection because
+              discrepancy data is not cached locally.
             </Text>
-          </GlassCard>
+          </OperationalCard>
         )}
 
         {!offlineMode && (
-          <GlassCard
+          <OperationalCard
             intensity={8}
             padding={theme.spacing.sm}
             style={{ marginBottom: theme.spacing.md }}
           >
             <Text style={styles.exportHintTitle}>ERPNext import format</Text>
             <Text style={styles.exportHintBody}>
-              Blank ID inserts new rows. Keep ID to update existing ERPNext
-              records.
+              Blank ID inserts new rows. Keep ID to update existing ERPNext records.
             </Text>
-          </GlassCard>
+          </OperationalCard>
         )}
 
         {variances.length === 0 && !loading ? (
           <View style={styles.centered}>
             <Ionicons
-              name={
-                offlineMode
-                  ? "cloud-offline-outline"
-                  : "checkmark-done-circle-outline"
-              }
+              name={offlineMode ? "cloud-offline-outline" : "checkmark-done-circle-outline"}
               size={64}
-              color={
-                offlineMode
-                  ? theme.colors.text.tertiary
-                  : theme.colors.success.main
-              }
+              color={offlineMode ? theme.colors.text.tertiary : theme.colors.success.main}
             />
             <Text style={styles.emptyText}>
               {offlineMode ? "Variance list unavailable offline" : "No variances found"}
@@ -570,9 +479,7 @@ export default function VariancesScreen() {
               renderItem={renderVarianceItem}
               // @ts-ignore
               estimatedItemSize={180}
-              keyExtractor={(item, index) =>
-                `${item.item_code}-${item.verified_at}-${index}`
-              }
+              keyExtractor={(item, index) => `${item.item_code}-${item.verified_at}-${index}`}
               contentContainerStyle={styles.listContent}
               refreshControl={
                 <RefreshControl
@@ -587,10 +494,7 @@ export default function VariancesScreen() {
               ListFooterComponent={
                 loading && variances.length > 0 ? (
                   <View style={{ paddingVertical: 20 }}>
-                    <ActivityIndicator
-                      size="small"
-                      color={theme.colors.primary[500]}
-                    />
+                    <ActivityIndicator size="small" color={theme.colors.primary[500]} />
                   </View>
                 ) : (
                   <View style={{ height: 20 }} />
@@ -603,42 +507,29 @@ export default function VariancesScreen() {
 
       {/* Bulk Action Bar */}
       {isSelectionMode && (
-        <Animated.View
-          entering={FadeInDown.duration(300)}
-          style={styles.bulkActionBar}
-        >
-          <GlassCard
+        <Animated.View entering={FadeInDown.duration(300)} style={styles.bulkActionBar}>
+          <OperationalCard
             intensity={80}
             padding={16}
             borderRadius={theme.borderRadius.xl}
             style={{ flexDirection: "row", gap: 12, width: "100%" }}
           >
             <AnimatedPressable
-              style={[
-                styles.bulkButton,
-                { backgroundColor: theme.colors.error[500] },
-              ]}
+              style={[styles.bulkButton, { backgroundColor: theme.colors.error[500] }]}
               onPress={() => handleBulkAction("reject")}
             >
               <Ionicons name="close-circle" size={20} color="white" />
-              <Text style={styles.bulkButtonText}>
-                Reject ({selectedIds.size})
-              </Text>
+              <Text style={styles.bulkButtonText}>Reject ({selectedIds.size})</Text>
             </AnimatedPressable>
 
             <AnimatedPressable
-              style={[
-                styles.bulkButton,
-                { backgroundColor: theme.colors.success[500] },
-              ]}
+              style={[styles.bulkButton, { backgroundColor: theme.colors.success[500] }]}
               onPress={() => handleBulkAction("approve")}
             >
               <Ionicons name="checkmark-circle" size={20} color="white" />
-              <Text style={styles.bulkButtonText}>
-                Approve ({selectedIds.size})
-              </Text>
+              <Text style={styles.bulkButtonText}>Approve ({selectedIds.size})</Text>
             </AnimatedPressable>
-          </GlassCard>
+          </OperationalCard>
         </Animated.View>
       )}
     </ScreenContainer>

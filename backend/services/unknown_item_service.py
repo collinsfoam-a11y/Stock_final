@@ -408,7 +408,9 @@ class UnknownItemService:
                 "created_by": actor_id,
                 "is_manually_created": True,
             }
-            result = await self.db.erp_items.insert_one(new_item, **kwargs)
+            result = await self._execute_authorized_write(
+                lambda: self.db.erp_items.insert_one(new_item, **kwargs)
+            )
             new_item["_id"] = getattr(result, "inserted_id", None)
 
             return await self._map_unknown_to_known_item(

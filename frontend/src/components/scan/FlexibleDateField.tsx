@@ -7,10 +7,16 @@ import {
   fontSize,
   fontWeight,
   radius as borderRadius,
-  semanticColors,
   spacing,
 } from "@/theme/unified";
 import type { DatePickerPart, DateParts } from "@/domains/inventory/hooks/scan/useFlexibleDateField";
+
+const SURFACE_BORDER = "#d9e5e2";
+const SURFACE_MUTED = "#f8fafc";
+const ACCENT = "#0f766e";
+const ACCENT_SOFT = "#e6f4f1";
+const TEXT_STRONG = "#0f172a";
+const TEXT_MUTED = "#475569";
 
 const DATE_FORMAT_OPTIONS: {
   value: DateFormatType;
@@ -53,6 +59,7 @@ const PickerButton = ({
     <TouchableOpacity
       style={[styles.smallPicker, fullWidth && styles.smallPickerFull]}
       onPress={onPress}
+      activeOpacity={0.85}
     >
       <Text style={[styles.smallPickerText, !value && styles.placeholderText]}>
         {value || placeholder}
@@ -177,35 +184,42 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    minHeight: 44,
   },
   toggleLabelContainer: {
     flexDirection: "row",
     alignItems: "center",
+    gap: spacing.sm,
   },
   toggleLabel: {
-    marginLeft: spacing.sm,
     fontSize: fontSize.md,
     fontWeight: fontWeight.medium,
-    color: semanticColors.text.primary,
+    color: TEXT_STRONG,
   },
   section: {
     marginTop: spacing.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
+    borderRadius: 20,
+    backgroundColor: SURFACE_MUTED,
   },
   labelRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
     gap: spacing.md,
+    flexWrap: "wrap",
   },
   fieldLabel: {
     fontSize: fontSize.sm,
     fontWeight: fontWeight.semiBold,
-    color: semanticColors.text.primary,
+    color: TEXT_STRONG,
   },
   formatPicker: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "flex-end",
+    justifyContent: "flex-start",
     gap: spacing.xs,
     flex: 1,
   },
@@ -214,27 +228,30 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
     borderWidth: 1,
-    borderColor: semanticColors.border.default,
-    backgroundColor: semanticColors.background.paper,
+    borderColor: SURFACE_BORDER,
+    backgroundColor: colors.white,
+    minHeight: 36,
+    alignItems: "center",
+    justifyContent: "center",
   },
   formatOptionActive: {
-    backgroundColor: colors.primary[50],
-    borderColor: colors.primary[600],
+    backgroundColor: ACCENT_SOFT,
+    borderColor: ACCENT,
   },
   formatOptionText: {
     fontSize: fontSize.xs,
-    color: semanticColors.text.secondary,
+    color: TEXT_MUTED,
   },
   formatOptionTextActive: {
-    color: colors.primary[700],
+    color: ACCENT,
     fontWeight: fontWeight.medium,
   },
   inputShell: {
     marginTop: spacing.sm,
     borderWidth: 1,
-    borderRadius: borderRadius.md,
+    borderRadius: 18,
     padding: spacing.sm,
-    backgroundColor: semanticColors.background.paper,
+    backgroundColor: colors.white,
   },
   partsRow: {
     flexDirection: "row",
@@ -244,21 +261,22 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 44,
     borderWidth: 1,
-    borderColor: semanticColors.border.default,
-    borderRadius: borderRadius.md,
+    borderColor: SURFACE_BORDER,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacing.sm,
-    backgroundColor: semanticColors.background.paper,
+    backgroundColor: colors.white,
   },
   smallPickerFull: {
     width: "100%",
   },
   smallPickerText: {
     fontSize: fontSize.md,
-    color: semanticColors.text.primary,
+    color: TEXT_STRONG,
+    fontWeight: fontWeight.medium,
   },
   placeholderText: {
-    color: semanticColors.text.disabled,
+    color: TEXT_MUTED,
   },
 });

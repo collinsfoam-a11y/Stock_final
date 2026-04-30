@@ -10,11 +10,19 @@ from backend.utils.api_utils import sanitize_for_logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.auth.dependencies import get_current_user, require_role
+from backend.config import settings
 from backend.db.runtime import get_db
 from backend.services.advanced_report_service import (
     AdvancedReportService,
@@ -23,6 +31,7 @@ from backend.services.advanced_report_service import (
     ReportFilters,
     SortOrder,
 )
+from backend.services.projection_read_service import ProjectionReadService
 from backend.utils.tracing import trace_dashboard_query, trace_span
 
 logger = logging.getLogger(__name__)
@@ -110,7 +119,9 @@ class ConnectionManager:
             try:
                 await self.active_connections[user_id].send_json(message)
             except Exception as e:
-                logger.error("Error sending to {user_id}: %s", sanitize_for_logging(str(e)))
+                logger.error(
+                    "Error sending to {user_id}: %s", sanitize_for_logging(str(e))
+                )
                 self.disconnect(user_id)
 
     async def broadcast(self, message: dict):
@@ -205,7 +216,9 @@ async def get_dashboard_data(
         filters=parse_filters(config.filters),
         columns=default_columns,
         sort_by=config.sort_by,
-        sort_order=SortOrder(config.sort_order) if config.sort_order else SortOrder.DESC,
+        sort_order=(
+            SortOrder(config.sort_order) if config.sort_order else SortOrder.DESC
+        ),
         page=config.page,
         page_size=config.page_size,
         include_aggregations=True,
@@ -225,6 +238,8 @@ async def get_item_details(
 ):
     """Get detailed information for a specific item."""
     db = get_db()
+    if settings.V3_PROJECTION_DASHBOARD_READS:
+        return await ProjectionReadService(db).get_item_details(item_id)
 
     with trace_span("mongodb.count_lines.find_one", {"item_id": item_id}):
         item = await db.count_lines.find_one({"id": item_id})
@@ -262,6 +277,8 @@ async def get_dashboard_stats(
 ):
     """Get real-time dashboard statistics."""
     db = get_db()
+    if settings.V3_PROJECTION_DASHBOARD_READS:
+        return await ProjectionReadService(db).get_dashboard_stats()
 
     with trace_span("calculate_dashboard_stats"):
         # Run aggregations in parallel
@@ -336,7 +353,9 @@ async def get_dashboard_stats(
         data = stats.get(key, [])
         return data[0]["count"] if data else 0
 
-    variance_stats = stats.get("variance_stats", [{}])[0] if stats.get("variance_stats") else {}
+    variance_stats = (
+        stats.get("variance_stats", [{}])[0] if stats.get("variance_stats") else {}
+    )
 
     return {
         "success": True,
@@ -350,7 +369,9 @@ async def get_dashboard_stats(
             "negative_variance": variance_stats.get("negative", 0),
             "avg_variance": variance_stats.get("avg_variance", 0),
             "verification_rate": (
-                (get_count("verified") / get_count("total") * 100) if get_count("total") > 0 else 0
+                (get_count("verified") / get_count("total") * 100)
+                if get_count("total") > 0
+                else 0
             ),
         },
         "by_warehouse": [
@@ -371,6 +392,8 @@ async def get_filter_options(
 ):
     """Get available filter options (distinct values)."""
     db = get_db()
+    if settings.V3_PROJECTION_DASHBOARD_READS:
+        return await ProjectionReadService(db).get_filter_options()
 
     with trace_span("fetch_filter_options"):
         warehouses = await db.count_lines.distinct("warehouse")
@@ -426,7 +449,9 @@ async def dashboard_stream(
                     {
                         "type": "data",
                         "payload": result,
-                        "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+                        "timestamp": datetime.now(timezone.utc)
+                        .replace(tzinfo=None)
+                        .isoformat(),
                     }
                 )
                 yield f"data: {data}\n\n"
@@ -442,7 +467,9 @@ async def dashboard_stream(
                     {
                         "type": "error",
                         "message": str(e),
-                        "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+                        "timestamp": datetime.now(timezone.utc)
+                        .replace(tzinfo=None)
+                        .isoformat(),
                     }
                 )
                 yield f"data: {error_data}\n\n"
@@ -464,7 +491,9 @@ async def dashboard_stream(
 # ==========================================
 
 
-async def _ws_get_report(service: AdvancedReportService, config: DashboardConfig) -> dict:
+async def _ws_get_report(
+    service: AdvancedReportService, config: DashboardConfig
+) -> dict:
     """Generate report for WebSocket response."""
     return await service.generate_verified_items_report(
         ReportConfig(
@@ -473,7 +502,9 @@ async def _ws_get_report(service: AdvancedReportService, config: DashboardConfig
             page=config.page,
             page_size=config.page_size,
             sort_by=config.sort_by,
-            sort_order=SortOrder(config.sort_order) if config.sort_order else SortOrder.DESC,
+            sort_order=(
+                SortOrder(config.sort_order) if config.sort_order else SortOrder.DESC
+            ),
         )
     )
 
@@ -487,7 +518,9 @@ async def _ws_handle_config_update(
     new_config = DashboardConfig(**data.get("config", {}))
     manager.set_config(user_id, new_config)
     result = await _ws_get_report(service, new_config)
-    await manager.send_personal_message({"type": "data_update", "payload": result}, user_id)
+    await manager.send_personal_message(
+        {"type": "data_update", "payload": result}, user_id
+    )
     return new_config
 
 
@@ -498,17 +531,28 @@ async def _ws_handle_refresh(
 ) -> None:
     """Handle refresh message."""
     result = await _ws_get_report(service, config)
-    await manager.send_personal_message({"type": "data_update", "payload": result}, user_id)
+    await manager.send_personal_message(
+        {"type": "data_update", "payload": result}, user_id
+    )
 
 
 async def _ws_handle_get_item_details(data: dict, user_id: str, db) -> None:
     """Handle get_item_details message."""
     item_id = data.get("item_id")
     if item_id:
+        if settings.V3_PROJECTION_DASHBOARD_READS:
+            result = await ProjectionReadService(db).get_item_details(item_id)
+            await manager.send_personal_message(
+                {"type": "item_details", "payload": result["item"]},
+                user_id,
+            )
+            return
         item = await db.count_lines.find_one({"id": item_id})
         if item:
             item.pop("_id", None)
-            await manager.send_personal_message({"type": "item_details", "payload": item}, user_id)
+            await manager.send_personal_message(
+                {"type": "item_details", "payload": item}, user_id
+            )
 
 
 # ==========================================
@@ -519,7 +563,9 @@ async def _ws_handle_auto_refresh(
     """Handle auto-refresh on timeout."""
     if config.auto_refresh:
         result = await _ws_get_report(service, config)
-        await manager.send_personal_message({"type": "auto_refresh", "payload": result}, user_id)
+        await manager.send_personal_message(
+            {"type": "auto_refresh", "payload": result}, user_id
+        )
 
 
 async def _ws_process_message(
@@ -561,7 +607,9 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
 
         # Send initial data
         result = await _ws_get_report(service, config)
-        await manager.send_personal_message({"type": "initial_data", "payload": result}, user_id)
+        await manager.send_personal_message(
+            {"type": "initial_data", "payload": result}, user_id
+        )
 
         # Listen for client messages
         while True:
@@ -601,7 +649,9 @@ async def export_dashboard_csv(
         page=1,
         page_size=10000,  # Max export
         sort_by=config.sort_by,
-        sort_order=SortOrder(config.sort_order) if config.sort_order else SortOrder.DESC,
+        sort_order=(
+            SortOrder(config.sort_order) if config.sort_order else SortOrder.DESC
+        ),
     )
 
     result = await service.generate_verified_items_report(report_config)
@@ -614,7 +664,9 @@ async def export_dashboard_csv(
             if col.field in visibility_map:
                 col.visible = visibility_map[col.field]
 
-    csv_content = await service.export_to_csv(result["data"], columns, erpnext_import=True)
+    csv_content = await service.export_to_csv(
+        result["data"], columns, erpnext_import=True
+    )
 
     return StreamingResponse(
         iter([csv_content]),
@@ -643,7 +695,9 @@ async def export_dashboard_xlsx(
         page=1,
         page_size=10000,
         sort_by=config.sort_by,
-        sort_order=SortOrder(config.sort_order) if config.sort_order else SortOrder.DESC,
+        sort_order=(
+            SortOrder(config.sort_order) if config.sort_order else SortOrder.DESC
+        ),
     )
 
     result = await service.generate_verified_items_report(report_config)
@@ -655,7 +709,9 @@ async def export_dashboard_xlsx(
             if col.field in visibility_map:
                 col.visible = visibility_map[col.field]
 
-    xlsx_content = await service.export_to_xlsx(result["data"], columns, erpnext_import=True)
+    xlsx_content = await service.export_to_xlsx(
+        result["data"], columns, erpnext_import=True
+    )
 
     return StreamingResponse(
         iter([xlsx_content]),

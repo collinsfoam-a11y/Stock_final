@@ -12,6 +12,13 @@ logger = logging.getLogger("stock-verify")
 router = APIRouter(prefix="/api/pi", tags=["AI Assistant"])
 
 
+def _pi_server_headers() -> Dict[str, str]:
+    headers = {"Content-Type": "application/json"}
+    if settings.PI_SERVER_API_KEY:
+        headers["Authorization"] = f"Bearer {settings.PI_SERVER_API_KEY}"
+    return headers
+
+
 async def get_system_stats_context(db: Any) -> str:
     """Gather real-time stats for the AI Assistant context."""
     try:
@@ -46,7 +53,10 @@ async def get_system_stats_context(db: Any) -> str:
 
 
 @router.post("/chat")
-async def chat_with_pi(request: Request, current_user: Dict[str, Any] = Depends(get_current_user)):
+async def chat_with_pi(
+    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
     """
     Proxy a chat completion request to the pi-server.
     Requires Admin or Supervisor role.
@@ -81,14 +91,15 @@ async def chat_with_pi(request: Request, current_user: Dict[str, Any] = Depends(
             response = await client.post(
                 f"{settings.PI_SERVER_URL}/chat/completions",
                 json=body,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer sk-antigravity",
-                },
+                headers=_pi_server_headers(),
             )
 
             if response.status_code != 200:
-                logger.error("pi-server returned error: %s - %s", response.status_code, sanitize_for_logging(response.text))
+                logger.error(
+                    "pi-server returned error: %s - %s",
+                    response.status_code,
+                    sanitize_for_logging(response.text),
+                )
                 return {
                     "error": "AI service is currently unavailable",
                     "status_code": response.status_code,
@@ -120,7 +131,8 @@ async def chat_with_pi(request: Request, current_user: Dict[str, Any] = Depends(
             return result
         except httpx.ConnectError:
             logger.error(
-                "Could not connect to pi-server sidecar. Ensure it is running on localhost:3000"
+                "Could not connect to pi-server sidecar at %s",
+                settings.PI_SERVER_URL,
             )
             raise HTTPException(
                 status_code=503,
@@ -133,10 +145,11 @@ async def chat_with_pi(request: Request, current_user: Dict[str, Any] = Depends(
 
 @router.get("/history")
 async def get_chat_history(
-    limit: int = Query(20, ge=1, le=100), current_user: Dict[str, Any] = Depends(get_current_user)
+    limit: int = Query(20, ge=1, le=100),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db: Any = Depends(get_db),
 ):
     """Retrieve chat history for the current user."""
-    db = get_db()
     cursor = (
         db.chat_history.find({"username": current_user["username"]}, {"_id": 0})
         .sort("timestamp", -1)
@@ -152,7 +165,10 @@ async def get_pi_status(current_user: Dict[str, Any] = Depends(get_current_user)
     """Check if the pi-server sidecar is reachable."""
     async with httpx.AsyncClient(timeout=5.0) as client:
         try:
-            response = await client.get(f"{settings.PI_SERVER_URL}/models")
+            response = await client.get(
+                f"{settings.PI_SERVER_URL}/models",
+                headers=_pi_server_headers(),
+            )
             return {
                 "active": response.status_code == 200,
                 "msg": (

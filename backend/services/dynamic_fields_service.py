@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from bson import ObjectId
+from backend.services.governance_guard import write_authority
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +19,19 @@ class DynamicFieldsService:
     Supports field definitions, database mapping, and value storage
     """
 
+    AUTHORITY_NAME = "DynamicFieldsService"
+
     def __init__(self, db):
         self.db = db
         self.field_definitions = db.dynamic_field_definitions
         self.field_values = db.dynamic_field_values
+
+    async def _execute_authorized_write(self, write_call: Any) -> Any:
+        with write_authority(self.AUTHORITY_NAME):
+            result = write_call()
+            if hasattr(result, "__await__"):
+                return await result
+            return result
 
     async def create_field_definition(
         self,
@@ -107,7 +117,9 @@ class DynamicFieldsService:
                 "enabled": True,
             }
 
-            result = await self.field_definitions.insert_one(field_def)
+            result = await self._execute_authorized_write(
+                lambda: self.field_definitions.insert_one(field_def)
+            )
             field_def["_id"] = result.inserted_id
 
             logger.info(f"Created dynamic field: {field_name} ({field_type})")
@@ -146,8 +158,10 @@ class DynamicFieldsService:
             if updated_by:
                 updates["updated_by"] = updated_by
 
-            result = await self.field_definitions.find_one_and_update(
-                {"_id": ObjectId(field_id)}, {"$set": updates}, return_document=True
+            result = await self._execute_authorized_write(
+                lambda: self.field_definitions.find_one_and_update(
+                    {"_id": ObjectId(field_id)}, {"$set": updates}, return_document=True
+                )
             )
 
             if not result:
@@ -163,14 +177,16 @@ class DynamicFieldsService:
     async def delete_field_definition(self, field_id: str) -> bool:
         """Delete a field definition (soft delete)"""
         try:
-            result = await self.field_definitions.update_one(
-                {"_id": ObjectId(field_id)},
-                {
-                    "$set": {
-                        "enabled": False,
-                        "deleted_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                    }
-                },
+            result = await self._execute_authorized_write(
+                lambda: self.field_definitions.update_one(
+                    {"_id": ObjectId(field_id)},
+                    {
+                        "$set": {
+                            "enabled": False,
+                            "deleted_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                        }
+                    },
+                )
             )
 
             return result.modified_count > 0
@@ -210,23 +226,25 @@ class DynamicFieldsService:
 
             if existing:
                 # Update existing value
-                result = await self.field_values.find_one_and_update(
-                    {"_id": existing["_id"]},
-                    {
-                        "$set": {
-                            "value": validated_value,
-                            "updated_by": set_by,
-                            "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                        },
-                        "$push": {
-                            "history": {
-                                "value": existing.get("value"),
+                result = await self._execute_authorized_write(
+                    lambda: self.field_values.find_one_and_update(
+                        {"_id": existing["_id"]},
+                        {
+                            "$set": {
+                                "value": validated_value,
                                 "updated_by": set_by,
                                 "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                            }
+                            },
+                            "$push": {
+                                "history": {
+                                    "value": existing.get("value"),
+                                    "updated_by": set_by,
+                                    "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                                }
+                            },
                         },
-                    },
-                    return_document=True,
+                        return_document=True,
+                    )
                 )
                 return result
             else:
@@ -242,7 +260,9 @@ class DynamicFieldsService:
                     "history": [],
                 }
 
-                result = await self.field_values.insert_one(field_value)
+                result = await self._execute_authorized_write(
+                    lambda: self.field_values.insert_one(field_value)
+                )
                 field_value["_id"] = result.inserted_id
 
                 # If DB mapping exists, update the main items collection
@@ -336,7 +356,7 @@ class DynamicFieldsService:
             items = []
             for result in results:
                 item_code = result["_id"]
-                item = await self.db.items.find_one({"item_code": item_code})
+                item = await self.db.erp_items.find_one({"item_code": item_code})
 
                 if item:
                     item["dynamic_fields"] = {
@@ -405,11 +425,10 @@ class DynamicFieldsService:
 
     async def _update_db_mapping(self, item_code: str, db_field: str, value: Any):
         """Update mapped database field in items collection"""
-        try:
-            await self.db.items.update_one({"item_code": item_code}, {"$set": {db_field: value}})
-            logger.info(f"Updated DB mapping {db_field} for item {item_code}")
-        except Exception as e:
-            logger.warning(f"Failed to update DB mapping: {str(e)}")
+        await self._execute_authorized_write(
+            lambda: self.db.erp_items.update_one({"item_code": item_code}, {"$set": {db_field: value}})
+        )
+        logger.info(f"Updated DB mapping {db_field} for item {item_code}")
 
     async def get_field_statistics(self, field_name: str) -> dict[str, Any]:
         """Get statistics for a specific field"""

@@ -5,9 +5,19 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="${1:-ci}"
 TMP_DIR="${TMPDIR:-/tmp}"
+
+# Disable Expo telemetry to prevent EPERM errors when writing to ~/.expo
+export EXPO_NO_TELEMETRY=1
+
+# Use a local home for node steps if needed to avoid permission issues in the user's home
+export HOME_ORIG="$HOME"
+export HOME="$(mktemp -d "${TMP_DIR%/}/agent-home.XXXXXX")"
 declare -a LOG_FILES=()
 
 cleanup() {
+    if [[ -d "$HOME" ]]; then
+        rm -rf "$HOME"
+    fi
     if [[ ${#LOG_FILES[@]} -gt 0 ]]; then
         rm -f "${LOG_FILES[@]}"
     fi

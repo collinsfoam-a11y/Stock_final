@@ -50,7 +50,9 @@ ACTIVE_SESSION_STATUSES = ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]
 
 
 def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
-    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
+    return sanitize_for_logging(
+        "" if value is None else str(value), max_length=max_length
+    )
 
 
 # Models
@@ -338,7 +340,9 @@ def _build_snapshot_queries(
     return unique_queries
 
 
-def _build_snapshot_payload_and_hash(snapshot_items: list[Any]) -> tuple[list[dict[str, Any]], str]:
+def _build_snapshot_payload_and_hash(
+    snapshot_items: list[Any],
+) -> tuple[list[dict[str, Any]], str]:
     snapshot_items.sort(key=lambda item: item.item_code)
     items_payload = [item.model_dump(mode="json") for item in snapshot_items]
     payload_str = json.dumps(items_payload, sort_keys=True, default=str)
@@ -362,7 +366,9 @@ def _build_snapshot_source_data(item: dict[str, Any]) -> dict[str, Any]:
         "uom_code",
     )
     return {
-        field: item[field] for field in fields if field in item and item[field] not in (None, "")
+        field: item[field]
+        for field in fields
+        if field in item and item[field] not in (None, "")
     }
 
 
@@ -412,7 +418,9 @@ def _coerce_datetime(value: Any) -> Optional[datetime]:
 
     if isinstance(value, (int, float)):
         try:
-            return datetime.fromtimestamp(float(value), tz=timezone.utc).replace(tzinfo=None)
+            return datetime.fromtimestamp(float(value), tz=timezone.utc).replace(
+                tzinfo=None
+            )
         except (OverflowError, OSError, ValueError):
             return None
 
@@ -432,7 +440,9 @@ def _coerce_datetime(value: Any) -> Optional[datetime]:
 
 
 def _max_datetime(*values: Any) -> Optional[datetime]:
-    candidates = [candidate for candidate in (_coerce_datetime(v) for v in values) if candidate]
+    candidates = [
+        candidate for candidate in (_coerce_datetime(v) for v in values) if candidate
+    ]
     return max(candidates) if candidates else None
 
 
@@ -483,7 +493,9 @@ def _session_identifier(session: Optional[dict[str, Any]]) -> str:
 
 
 def _session_owner(session: Optional[dict[str, Any]]) -> str:
-    return str((session or {}).get("staff_user") or (session or {}).get("user_id") or "")
+    return str(
+        (session or {}).get("staff_user") or (session or {}).get("user_id") or ""
+    )
 
 
 async def _get_session_line_summary(
@@ -493,9 +505,13 @@ async def _get_session_line_summary(
     lines = await get_session_count_lines(db, session_id)
     active_lines = [line for line in lines if not is_superseded_count_line(line)]
     item_count = len(active_lines)
-    verified_count = sum(1 for line in active_lines if is_count_line_effectively_reviewed(line))
+    verified_count = sum(
+        1 for line in active_lines if is_count_line_effectively_reviewed(line)
+    )
     total_variance = sum(float(line.get("variance") or 0.0) for line in active_lines)
-    damage_items = int(sum(float(line.get("damaged_qty") or 0.0) for line in active_lines))
+    damage_items = int(
+        sum(float(line.get("damaged_qty") or 0.0) for line in active_lines)
+    )
     return {
         "lines": active_lines,
         "item_count": item_count,
@@ -540,7 +556,8 @@ def _build_session_detail_from_doc(
         verified_count=int(line_summary.get("verified_count", 0) or 0),
         total_items=int(line_summary.get("item_count", 0) or 0),
         total_variance=float(
-            session.get("total_variance", line_summary.get("total_variance", 0.0)) or 0.0
+            session.get("total_variance", line_summary.get("total_variance", 0.0))
+            or 0.0
         ),
         finalization_status=session.get("finalization_status"),
         finalized_at=finalized_at,
@@ -680,7 +697,10 @@ def _derive_next_action(
         return WorkflowNextAction.FOLLOW_UP_INACTIVE_SESSION
     if workflow_stage in {WorkflowStage.COUNTING, WorkflowStage.RECONCILING}:
         return WorkflowNextAction.MONITOR_ACTIVE_COUNT
-    if session_status in {CanonicalSessionStatus.CLOSED, CanonicalSessionStatus.COMPLETED}:
+    if session_status in {
+        CanonicalSessionStatus.CLOSED,
+        CanonicalSessionStatus.COMPLETED,
+    }:
         return WorkflowNextAction.CLOSE_SESSION
     return WorkflowNextAction.NONE
 
@@ -744,7 +764,9 @@ async def _build_sessions_analytics_payload(db: AsyncIOMotorDatabase) -> dict[st
     return {
         "overall": overall_summary,
         "sessions_by_date": {item["_id"]: item["count"] for item in by_date},
-        "variance_by_warehouse": {item["_id"]: item["total_variance"] for item in by_warehouse},
+        "variance_by_warehouse": {
+            item["_id"]: item["total_variance"] for item in by_warehouse
+        },
         "items_by_staff": {item["_id"]: item["total_items"] for item in by_staff},
         "total_sessions": overall_summary.get("total_sessions", 0),
     }
@@ -768,6 +790,46 @@ def _validate_session_create_request(
     )
 
 
+def _session_client_identity_filter(
+    session_data: SessionCreate,
+    username: str,
+) -> Optional[dict[str, Any]]:
+    client_ids = {
+        value.strip()
+        for value in (session_data.client_session_id, session_data.offline_id)
+        if isinstance(value, str) and value.strip()
+    }
+    if not client_ids:
+        return None
+
+    return {
+        "staff_user": username,
+        "$or": [
+            {"client_session_id": {"$in": sorted(client_ids)}},
+            {"offline_id": {"$in": sorted(client_ids)}},
+        ],
+    }
+
+
+async def _find_existing_session_for_client_identity(
+    db: AsyncIOMotorDatabase,
+    session_data: SessionCreate,
+    username: str,
+) -> Optional[dict[str, Any]]:
+    identity_filter = _session_client_identity_filter(session_data, username)
+    if not identity_filter:
+        return None
+
+    existing_session = await db.sessions.find_one(identity_filter)
+    if not existing_session:
+        return None
+
+    if "_id" in existing_session and "id" not in existing_session:
+        existing_session["id"] = str(existing_session["_id"])
+        del existing_session["_id"]
+    return existing_session
+
+
 async def _find_existing_session_for_warehouse(
     db: AsyncIOMotorDatabase,
     username: str,
@@ -789,9 +851,13 @@ async def _find_existing_session_for_warehouse(
     return existing_session
 
 
-async def _close_existing_user_sessions(db: AsyncIOMotorDatabase, username: str) -> None:
+async def _close_existing_user_sessions(
+    db: AsyncIOMotorDatabase, username: str
+) -> None:
     # Governance: auto-close is forbidden outside canonical finalize path.
-    logger.info("Skipping auto-close for existing sessions (user=%s)", _safe_log_value(username))
+    logger.info(
+        "Skipping auto-close for existing sessions (user=%s)", _safe_log_value(username)
+    )
 
 
 async def _revoke_existing_refresh_tokens(username: str) -> None:
@@ -812,6 +878,8 @@ def _build_new_session(
     return Session(
         id=str(uuid.uuid4()),
         warehouse=warehouse,
+        client_session_id=session_data.client_session_id,
+        offline_id=session_data.offline_id or session_data.client_session_id,
         location_type=location_type,
         location_name=location_name,
         rack_no=rack_no,
@@ -889,7 +957,12 @@ def _active_workflow_session_query() -> dict[str, Any]:
     return {
         "status": {"$in": ACTIVE_SESSION_STATUSES},
         "$and": [
-            {"$or": [{"closed_at": {"$exists": False}}, {"closed_at": {"$in": [None, ""]}}]},
+            {
+                "$or": [
+                    {"closed_at": {"$exists": False}},
+                    {"closed_at": {"$in": [None, ""]}},
+                ]
+            },
             {
                 "$or": [
                     {"finalized_at": {"$exists": False}},
@@ -903,7 +976,9 @@ def _active_workflow_session_query() -> dict[str, Any]:
 async def _fetch_active_workflow_sessions(
     db: AsyncIOMotorDatabase,
 ) -> list[dict[str, Any]]:
-    cursor = db.sessions.find(_active_workflow_session_query()).sort("last_heartbeat", -1)
+    cursor = db.sessions.find(_active_workflow_session_query()).sort(
+        "last_heartbeat", -1
+    )
     return await cursor.to_list(length=200)
 
 
@@ -937,9 +1012,17 @@ async def _fetch_session_counts_by_id(
                     "_id": "$session_id",
                     "items_counted": {"$sum": 1},
                     "reviewed_items": {
-                        "$sum": {"$cond": [{"$in": ["$status", ["approved", "locked"]]}, 1, 0]}
+                        "$sum": {
+                            "$cond": [
+                                {"$in": ["$status", ["approved", "locked"]]},
+                                1,
+                                0,
+                            ]
+                        }
                     },
-                    "last_counted_at": {"$max": {"$ifNull": ["$updated_at", "$counted_at"]}},
+                    "last_counted_at": {
+                        "$max": {"$ifNull": ["$updated_at", "$counted_at"]}
+                    },
                 }
             },
         ]
@@ -962,8 +1045,12 @@ async def _fetch_pending_reviews_by_user(
                 "$group": {
                     "_id": "$counted_by",
                     "pending_approvals": {"$sum": 1},
-                    "pending_review_since": {"$min": {"$ifNull": ["$submitted_at", "$counted_at"]}},
-                    "last_pending_at": {"$max": {"$ifNull": ["$updated_at", "$counted_at"]}},
+                    "pending_review_since": {
+                        "$min": {"$ifNull": ["$submitted_at", "$counted_at"]}
+                    },
+                    "last_pending_at": {
+                        "$max": {"$ifNull": ["$updated_at", "$counted_at"]}
+                    },
                 }
             },
         ]
@@ -1029,9 +1116,9 @@ async def _fetch_users_by_username(
     if not candidate_usernames:
         return {}
 
-    user_docs = await db.users.find({"username": {"$in": sorted(candidate_usernames)}}).to_list(
-        length=len(candidate_usernames)
-    )
+    user_docs = await db.users.find(
+        {"username": {"$in": sorted(candidate_usernames)}}
+    ).to_list(length=len(candidate_usernames))
     return {
         user.get("username"): user
         for user in user_docs
@@ -1055,17 +1142,25 @@ def _build_user_workflow_summary(
     )
     active_session = user_sessions[0] if user_sessions else None
     active_session_id = (
-        (active_session.get("id") or active_session.get("session_id")) if active_session else None
+        (active_session.get("id") or active_session.get("session_id"))
+        if active_session
+        else None
     )
-    session_meta = session_meta_by_id.get(active_session_id, {}) if active_session_id else {}
-    session_counts = session_counts_by_id.get(active_session_id, {}) if active_session_id else {}
+    session_meta = (
+        session_meta_by_id.get(active_session_id, {}) if active_session_id else {}
+    )
+    session_counts = (
+        session_counts_by_id.get(active_session_id, {}) if active_session_id else {}
+    )
 
     pending_info = pending_by_user.get(username, {})
     recount_info = recount_by_user.get(username, {})
     items_counted = int(session_counts.get("items_counted", 0) or 0)
     reviewed_items = int(session_counts.get("reviewed_items", 0) or 0)
     total_items = int(session_meta.get("total_items", 0) or 0)
-    progress_percent = round((items_counted / total_items) * 100, 1) if total_items > 0 else 0.0
+    progress_percent = (
+        round((items_counted / total_items) * 100, 1) if total_items > 0 else 0.0
+    )
     pending_review_since = _coerce_datetime(
         pending_info.get("pending_review_since") or pending_info.get("last_pending_at")
     )
@@ -1107,7 +1202,9 @@ def _build_user_workflow_summary(
         role=user_doc.get("role") or "staff",
         workflow_stage=workflow_stage,
         presence_status=presence_status,
-        active_session_id=active_session_id if isinstance(active_session_id, str) else None,
+        active_session_id=(
+            active_session_id if isinstance(active_session_id, str) else None
+        ),
         session_status=session_status,
         session_type=session_meta.get("type"),
         warehouse=session_meta.get("warehouse"),
@@ -1193,7 +1290,9 @@ async def get_sessions(
 
     # Get paginated sessions
     skip = (page - 1) * page_size
-    sessions_cursor = db.sessions.find(query).sort("started_at", -1).skip(skip).limit(page_size)
+    sessions_cursor = (
+        db.sessions.find(query).sort("started_at", -1).skip(skip).limit(page_size)
+    )
     sessions = await sessions_cursor.to_list(length=page_size)
 
     logger.debug(
@@ -1237,6 +1336,16 @@ async def create_session(
     warehouse, location_type, location_name, rack_no = _validate_session_create_request(
         session_data
     )
+    existing_client_session = await _find_existing_session_for_client_identity(
+        db, session_data, current_user["username"]
+    )
+    if existing_client_session:
+        logger.info(
+            "Existing session found for client session id; returning existing session",
+            extra={"session_id": existing_client_session.get("id")},
+        )
+        return Session(**existing_client_session)
+
     existing_session = await _find_existing_session_for_warehouse(
         db, current_user["username"], warehouse
     )
@@ -1291,8 +1400,18 @@ async def get_active_sessions(
     query: dict[str, Any] = {
         "status": {"$in": ACTIVE_SESSION_STATUSES},
         "$and": [
-            {"$or": [{"finalized_at": {"$exists": False}}, {"finalized_at": {"$in": [None, ""]}}]},
-            {"$or": [{"closed_at": {"$exists": False}}, {"closed_at": {"$in": [None, ""]}}]},
+            {
+                "$or": [
+                    {"finalized_at": {"$exists": False}},
+                    {"finalized_at": {"$in": [None, ""]}},
+                ]
+            },
+            {
+                "$or": [
+                    {"closed_at": {"$exists": False}},
+                    {"closed_at": {"$in": [None, ""]}},
+                ]
+            },
         ],
     }
 
@@ -1384,7 +1503,10 @@ async def get_session_detail(
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
     # Check access
-    if current_user["role"] != "supervisor" and _session_owner(session) != current_user["username"]:
+    if (
+        current_user["role"] != "supervisor"
+        and _session_owner(session) != current_user["username"]
+    ):
         raise HTTPException(status_code=403, detail="Access denied")
 
     line_summary = await _get_session_line_summary(db, session_id)
@@ -1415,7 +1537,10 @@ async def get_session_stats(
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
     # Check access
-    if current_user["role"] != "supervisor" and _session_owner(session) != current_user["username"]:
+    if (
+        current_user["role"] != "supervisor"
+        and _session_owner(session) != current_user["username"]
+    ):
         raise HTTPException(status_code=403, detail="Access denied")
 
     line_summary = await _get_session_line_summary(db, session_id)
@@ -1541,10 +1666,15 @@ async def update_session_status(
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
     if is_session_finalized(session):
-        raise HTTPException(status_code=409, detail="Finalized sessions cannot be modified")
+        raise HTTPException(
+            status_code=409, detail="Finalized sessions cannot be modified"
+        )
 
     # Verify ownership or supervisor
-    if current_user["role"] not in {"supervisor", "admin"} and _session_owner(session) != user_id:
+    if (
+        current_user["role"] not in {"supervisor", "admin"}
+        and _session_owner(session) != user_id
+    ):
         raise HTTPException(status_code=403, detail="Not your session")
 
     requested = str(status or "").strip().upper()
@@ -1565,7 +1695,9 @@ async def update_session_status(
         "PAUSED",
         "RECONCILE",
     }:
-        raise HTTPException(status_code=400, detail=f"Unsupported session status: {requested}")
+        raise HTTPException(
+            status_code=400, detail=f"Unsupported session status: {requested}"
+        )
 
     lifecycle_service = SessionLifecycleService(db)
     current_canonical = normalize_session_status_canonical(session.get("status"))
@@ -1642,7 +1774,10 @@ async def _finalize_session_canonical(
 
     session_status_raw = str(session.get("status") or "").strip().upper()
     session_status_canonical = normalize_session_status_canonical(session_status_raw)
-    if session_status_canonical != "REVIEW" and session_status_raw not in {"REVIEW", "RECONCILE"}:
+    if session_status_canonical != "REVIEW" and session_status_raw not in {
+        "REVIEW",
+        "RECONCILE",
+    }:
         raise HTTPException(
             status_code=409,
             detail="Session must be in REVIEW before finalization",
@@ -1657,7 +1792,10 @@ async def _finalize_session_canonical(
         )
     except Exception as exc:
         message = str(exc)
-        if "cannot be finalized" in message.lower() or "unresolved count lines" in message.lower():
+        if (
+            "cannot be finalized" in message.lower()
+            or "unresolved count lines" in message.lower()
+        ):
             raise HTTPException(status_code=409, detail=message) from exc
         if "version mismatch" in message.lower() or "concurrent" in message.lower():
             raise HTTPException(status_code=409, detail=message) from exc
@@ -1666,7 +1804,9 @@ async def _finalize_session_canonical(
     finalized_at = finalize_result["finalized_at"]
 
     if session.get("rack_no"):
-        await lock_manager.release_rack_lock(session["rack_no"], session.get("staff_user"))
+        await lock_manager.release_rack_lock(
+            session["rack_no"], session.get("staff_user")
+        )
         try:
             await db.rack_registry.update_one(
                 {"rack_id": session["rack_no"]},
@@ -1711,7 +1851,9 @@ async def _complete_session_legacy_compatible(
 ) -> dict[str, Any]:
     raise HTTPException(
         status_code=410,
-        detail=("CRITICAL: /complete path is disabled. Use canonical /finalize flow only."),
+        detail=(
+            "CRITICAL: /complete path is disabled. Use canonical /finalize flow only."
+        ),
     )
 
 
@@ -1746,7 +1888,9 @@ async def complete_session(
     This legacy endpoint preserves the historical owner-compatible close flow.
     """
     lock_manager = get_lock_manager(redis_service)
-    return await _complete_session_legacy_compatible(session_id, db, current_user, lock_manager)
+    return await _complete_session_legacy_compatible(
+        session_id, db, current_user, lock_manager
+    )
 
 
 @router.get("/user/history")
@@ -1759,7 +1903,9 @@ async def get_user_session_history(
     user_id = current_user["username"]
 
     sessions_cursor = (
-        db.sessions.find({"staff_user": user_id, "status": {"$in": ["COMPLETED", "CLOSED"]}})
+        db.sessions.find(
+            {"staff_user": user_id, "status": {"$in": ["COMPLETED", "CLOSED"]}}
+        )
         .sort("completed_at", -1)
         .limit(limit)
     )
@@ -1794,10 +1940,14 @@ async def check_session_integrity(
     else:
         start_ts = float(start_time or 0)
         # M8 fix: Use UTC timezone to match stored timestamps
-        start_dt = datetime.fromtimestamp(start_ts, tz=timezone.utc).replace(tzinfo=None)
+        start_dt = datetime.fromtimestamp(start_ts, tz=timezone.utc).replace(
+            tzinfo=None
+        )
 
     # Check for items updated after session start
-    affected_count = await db.erp_items.count_documents({"updated_at": {"$gt": start_dt}})
+    affected_count = await db.erp_items.count_documents(
+        {"updated_at": {"$gt": start_dt}}
+    )
 
     # Get last sync time
     sync_meta = await db.sync_metadata.find_one({"_id": "sql_qty_sync"})

@@ -15,7 +15,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from backend.auth.dependencies import require_admin
+from backend.config import settings
 from backend.db.runtime import get_db
+from backend.services.projection_read_service import ProjectionReadService
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +87,9 @@ async def calculate_total_stock_value(db) -> float:
                 "$group": {
                     "_id": None,
                     "total_value": {
-                        "$sum": {"$multiply": ["$stock_qty", {"$ifNull": ["$price", 0]}]}
+                        "$sum": {
+                            "$multiply": ["$stock_qty", {"$ifNull": ["$price", 0]}]
+                        }
                     },
                 }
             },
@@ -93,7 +97,9 @@ async def calculate_total_stock_value(db) -> float:
         result = await db.erp_items.aggregate(pipeline).to_list(1)
         return result[0]["total_value"] if result else 0.0
     except Exception as e:
-        logger.error("Error calculating total stock value: %s", sanitize_for_logging(str(e)))
+        logger.error(
+            "Error calculating total stock value: %s", sanitize_for_logging(str(e))
+        )
         return 0.0
 
 
@@ -108,7 +114,9 @@ async def calculate_verified_value(db) -> float:
             total_value += qty * unit_value
         return total_value
     except Exception as e:
-        logger.error("Error calculating verified value: %s", sanitize_for_logging(str(e)))
+        logger.error(
+            "Error calculating verified value: %s", sanitize_for_logging(str(e))
+        )
         return 0.0
 
 
@@ -121,12 +129,19 @@ async def calculate_completion_percentage(db) -> float:
 
         verified_items_result = await db.count_lines.aggregate(
             [
-                {"$match": {"status": "locked", "item_code": {"$exists": True, "$ne": ""}}},
+                {
+                    "$match": {
+                        "status": "locked",
+                        "item_code": {"$exists": True, "$ne": ""},
+                    }
+                },
                 {"$group": {"_id": "$item_code"}},
                 {"$count": "count"},
             ]
         ).to_list(1)
-        verified_items = verified_items_result[0]["count"] if verified_items_result else 0
+        verified_items = (
+            verified_items_result[0]["count"] if verified_items_result else 0
+        )
         return round((verified_items / total_items) * 100, 2)
     except Exception as e:
         logger.error("Error calculating completion: %s", sanitize_for_logging(str(e)))
@@ -202,7 +217,9 @@ async def count_items_verified_today(db) -> int:
             }
         )
     except Exception as e:
-        logger.error("Error counting today's verifications: %s", sanitize_for_logging(str(e)))
+        logger.error(
+            "Error counting today's verifications: %s", sanitize_for_logging(str(e))
+        )
         return 0
 
 
@@ -261,6 +278,13 @@ async def get_dashboard_kpis(current_user: dict = Depends(require_admin)):
     """
     db = get_db()
 
+    if settings.V3_PROJECTION_DASHBOARD_READS:
+        return KPIResponse(
+            **await ProjectionReadService(db).get_admin_kpis(
+                active_users=await count_active_users(db)
+            )
+        )
+
     return KPIResponse(
         total_stock_value=await calculate_total_stock_value(db),
         verified_stock_value=await calculate_verified_value(db),
@@ -294,7 +318,9 @@ async def get_system_status(current_user: dict = Depends(require_admin)):
                     "_id": None,
                     "avg_latency": {"$avg": "$latency_ms"},
                     "total_requests": {"$sum": 1},
-                    "error_count": {"$sum": {"$cond": [{"$gte": ["$status_code", 400]}, 1, 0]}},
+                    "error_count": {
+                        "$sum": {"$cond": [{"$gte": ["$status_code", 400]}, 1, 0]}
+                    },
                 }
             },
         ]
@@ -331,11 +357,17 @@ async def get_active_users(current_user: dict = Depends(require_admin)):
 
     try:
         # Get recent user presence records
-        cursor = db.user_presence.find({"last_seen": {"$gte": cutoff}}).sort("last_seen", -1)
+        cursor = db.user_presence.find({"last_seen": {"$gte": cutoff}}).sort(
+            "last_seen", -1
+        )
 
         presence_records = await cursor.to_list(100)
 
-        user_ids = [record.get("user_id") for record in presence_records if record.get("user_id")]
+        user_ids = [
+            record.get("user_id")
+            for record in presence_records
+            if record.get("user_id")
+        ]
 
         # ⚡ Bolt: Bulk fetch users to avoid N+1 queries
         users_cursor = db.users.find({"_id": {"$in": user_ids}})
@@ -348,7 +380,9 @@ async def get_active_users(current_user: dict = Depends(require_admin)):
         sessions_cursor = db.verification_sessions.find(
             {
                 "user_id": {"$in": string_user_ids},
-                "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE", "active", "in_progress"]},
+                "status": {
+                    "$in": ["OPEN", "ACTIVE", "RECONCILE", "active", "in_progress"]
+                },
             }
         )
         sessions_list = await sessions_cursor.to_list(None)
@@ -367,7 +401,9 @@ async def get_active_users(current_user: dict = Depends(require_admin)):
                 session = sessions_dict.get(str(user["_id"]))
 
                 # Determine online status
-                last_seen = record.get("last_seen", datetime.now(timezone.utc).replace(tzinfo=None))
+                last_seen = record.get(
+                    "last_seen", datetime.now(timezone.utc).replace(tzinfo=None)
+                )
                 minutes_ago = (
                     datetime.now(timezone.utc).replace(tzinfo=None) - last_seen
                 ).total_seconds() / 60
@@ -439,7 +475,9 @@ async def get_error_logs(
         )
 
 
-@admin_dashboard_router.get("/performance-metrics", response_model=list[PerformanceMetric])
+@admin_dashboard_router.get(
+    "/performance-metrics", response_model=list[PerformanceMetric]
+)
 async def get_performance_metrics(
     hours: int = Query(default=24, le=168),
     interval_minutes: int = Query(default=60, le=360),
@@ -468,7 +506,9 @@ async def get_performance_metrics(
                     },
                     "avg_latency": {"$avg": "$latency_ms"},
                     "request_count": {"$sum": 1},
-                    "error_count": {"$sum": {"$cond": [{"$gte": ["$status_code", 400]}, 1, 0]}},
+                    "error_count": {
+                        "$sum": {"$cond": [{"$gte": ["$status_code", 400]}, 1, 0]}
+                    },
                 }
             },
             {"$sort": {"_id": 1}},
@@ -499,7 +539,9 @@ async def get_performance_metrics(
         return metrics
 
     except Exception as e:
-        logger.error("Error fetching performance metrics: %s", sanitize_for_logging(str(e)))
+        logger.error(
+            "Error fetching performance metrics: %s", sanitize_for_logging(str(e))
+        )
         # Return empty list on error rather than failing
         return []
 

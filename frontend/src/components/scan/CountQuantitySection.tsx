@@ -16,6 +16,14 @@ import {
   spacing,
 } from "@/theme/unified";
 
+const SURFACE_CARD = "#ffffff";
+const SURFACE_BORDER = "#d9e5e2";
+const SURFACE_MUTED = "#f8fafc";
+const ACCENT = "#0f766e";
+const ACCENT_SOFT = "#ecf7f4";
+const TEXT_STRONG = "#0f172a";
+const TEXT_MUTED = "#475569";
+
 interface CountQuantitySectionProps {
   isSplitMode: boolean;
   isWeightBasedUOM: boolean;
@@ -54,14 +62,11 @@ export function CountQuantitySection({
   onToggleSplitMode,
 }: CountQuantitySectionProps) {
   return (
-    <>
+    <View style={styles.sectionCard}>
       <View style={styles.header}>
         <View style={styles.headerText}>
           <Text
-            style={[
-              styles.sectionTitle,
-              { color: semanticColors.text.primary, marginBottom: 2 },
-            ]}
+            style={[styles.sectionTitle, { color: TEXT_STRONG, marginBottom: 2 }]}
           >
             Count
           </Text>
@@ -72,7 +77,7 @@ export function CountQuantitySection({
             <Text
               style={[
                 styles.sectionMeta,
-                { color: semanticColors.text.secondary, fontSize: 12 },
+                { color: TEXT_MUTED, fontSize: 12 },
               ]}
             >
               Unit: {uomUnit}
@@ -84,12 +89,12 @@ export function CountQuantitySection({
           <Ionicons
             name={isSplitMode ? "grid" : "grid-outline"}
             size={14}
-            color={isSplitMode ? colors.white : colors.primary[600]}
+            color={isSplitMode ? colors.white : ACCENT}
           />
           <Text
             style={[
               styles.toggleButtonText,
-              { color: isSplitMode ? colors.white : colors.primary[600] },
+              { color: isSplitMode ? colors.white : ACCENT },
             ]}
           >
             {isSplitMode ? "Piece Count" : "Split Count"}
@@ -103,8 +108,8 @@ export function CountQuantitySection({
             styles.qtyButton,
             {
               backgroundColor: isSplitMode
-                ? colors.neutral[100]
-                : colors.neutral[200],
+                ? "#e2e8f0"
+                : "#dfe8e5",
             },
           ]}
           onPress={onDecrement}
@@ -115,7 +120,7 @@ export function CountQuantitySection({
             name="remove"
             size={28}
             color={
-              isSplitMode ? colors.neutral[300] : semanticColors.text.primary
+              isSplitMode ? colors.neutral[300] : TEXT_STRONG
             }
           />
         </TouchableOpacity>
@@ -124,8 +129,8 @@ export function CountQuantitySection({
           style={[
             styles.qtyDisplay,
             {
-              backgroundColor: semanticColors.background.paper,
-              borderColor: colors.primary[200],
+              backgroundColor: SURFACE_CARD,
+              borderColor: isSplitMode ? "#cbd5e1" : "#bfe0d6",
             },
           ]}
         >
@@ -134,8 +139,8 @@ export function CountQuantitySection({
               styles.qtyText,
               {
                 color: isSplitMode
-                  ? colors.primary[700]
-                  : semanticColors.text.primary,
+                  ? ACCENT
+                  : TEXT_STRONG,
               },
             ]}
             value={quantity}
@@ -154,8 +159,8 @@ export function CountQuantitySection({
             styles.qtyButton,
             {
               backgroundColor: isSplitMode
-                ? colors.neutral[100]
-                : colors.primary[600],
+                ? "#e2e8f0"
+                : ACCENT,
             },
           ]}
           onPress={onIncrement}
@@ -226,11 +231,18 @@ export function CountQuantitySection({
           </View>
         </View>
       )}
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  sectionCard: {
+    padding: spacing.lg,
+    backgroundColor: SURFACE_CARD,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
+  },
   actionRow: {
     flexDirection: "row",
     gap: spacing.sm,
@@ -238,7 +250,7 @@ const styles = StyleSheet.create({
   },
   addSplitButton: {
     alignItems: "center",
-    backgroundColor: colors.primary[600],
+    backgroundColor: ACCENT,
     borderRadius: borderRadius.md,
     flexDirection: "row",
     gap: spacing.xs,
@@ -250,8 +262,8 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     alignItems: "center",
-    backgroundColor: colors.neutral[100],
-    borderColor: colors.neutral[200],
+    backgroundColor: SURFACE_MUTED,
+    borderColor: "#e2e8f0",
     borderRadius: borderRadius.md,
     borderWidth: 1,
     height: 44,
@@ -266,7 +278,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   helperText: {
-    color: semanticColors.text.secondary,
+    color: TEXT_MUTED,
     fontSize: 12,
     fontWeight: "500",
     marginBottom: spacing.sm,
@@ -277,15 +289,15 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   modeBadge: {
-    backgroundColor: colors.primary[50],
-    borderColor: colors.primary[100],
+    backgroundColor: ACCENT_SOFT,
+    borderColor: "#cae8df",
     borderRadius: 4,
     borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
   modeBadgeText: {
-    color: colors.primary[700],
+    color: ACCENT,
     fontSize: 10,
     fontWeight: fontWeight.bold,
     textTransform: "uppercase",
@@ -293,16 +305,16 @@ const styles = StyleSheet.create({
   qtyButton: {
     alignItems: "center",
     borderRadius: borderRadius.lg,
-    height: 56,
+    height: 60,
     justifyContent: "center",
-    width: 56,
+    width: 60,
   },
   qtyDisplay: {
     alignItems: "center",
     borderRadius: borderRadius.lg,
     borderWidth: 2,
     flex: 1,
-    height: 56,
+    height: 60,
     justifyContent: "center",
     marginHorizontal: spacing.sm,
   },
@@ -330,8 +342,8 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semiBold,
   },
   splitCountContainer: {
-    backgroundColor: semanticColors.background.card,
-    borderColor: semanticColors.border.default,
+    backgroundColor: SURFACE_MUTED,
+    borderColor: "#e2e8f0",
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     marginTop: spacing.sm,
@@ -339,23 +351,23 @@ const styles = StyleSheet.create({
   },
   splitIndexBadge: {
     alignItems: "center",
-    backgroundColor: colors.neutral[100],
+    backgroundColor: ACCENT_SOFT,
     borderRadius: 16,
     height: 32,
     justifyContent: "center",
     width: 32,
   },
   splitIndexText: {
-    color: colors.neutral[600],
+    color: ACCENT,
     fontSize: 12,
     fontWeight: fontWeight.bold,
   },
   splitInput: {
-    backgroundColor: semanticColors.background.paper,
-    borderColor: semanticColors.border.default,
+    backgroundColor: SURFACE_CARD,
+    borderColor: "#d6e3ea",
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    color: semanticColors.text.primary,
+    color: TEXT_STRONG,
     flex: 1,
     fontSize: 18,
     fontWeight: fontWeight.semiBold,
@@ -370,7 +382,7 @@ const styles = StyleSheet.create({
   },
   toggleButton: {
     alignItems: "center",
-    backgroundColor: colors.neutral[100],
+    backgroundColor: ACCENT_SOFT,
     borderRadius: 20,
     flexDirection: "row",
     gap: 4,

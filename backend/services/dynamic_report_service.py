@@ -244,7 +244,7 @@ class DynamicReportService:
                 projection[field_name] = 1
 
             # Fetch items
-            cursor = self.db.items.find(query, projection)
+            cursor = self.db.erp_items.find(query, projection)
 
             # Apply sorting
             if sorting:

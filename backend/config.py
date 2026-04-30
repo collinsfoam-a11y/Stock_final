@@ -56,7 +56,9 @@ def _env_file_value(name: str) -> Optional[str]:
     try:
         value = resolved_path.read_text(encoding="utf-8").strip()
     except OSError as exc:
-        raise ValueError(f"{file_var} points to an unreadable file: {resolved_path}") from exc
+        raise ValueError(
+            f"{file_var} points to an unreadable file: {resolved_path}"
+        ) from exc
 
     if not value:
         raise ValueError(f"{file_var} points to an empty file: {resolved_path}")
@@ -147,6 +149,23 @@ class Settings(PydanticBaseSettings):
                     v,
                 )
                 return False
+            if normalized in (
+                "release",
+                "prod",
+                "production",
+                "stage",
+                "staging",
+                "test",
+                "testing",
+                "dev",
+                "development",
+            ):
+                logger.warning(
+                    "DEBUG env var has environment value '%s'; treating DEBUG as false. "
+                    "Use ENVIRONMENT instead.",
+                    v,
+                )
+                return False
         raise ValueError("DEBUG must be a boolean")
 
     @field_validator("MIN_CLIENT_VERSION")
@@ -163,7 +182,9 @@ class Settings(PydanticBaseSettings):
         # Allow formats like '1', '1.2', '1.2.3',
         # optionally with suffix '-beta' or '+meta'
         if not re.match(r"^\d+(\.\d+){0,2}([-+][\w.]+)?$", v_str):
-            raise ValueError("MIN_CLIENT_VERSION must be a semantic version like '1.2.3'")
+            raise ValueError(
+                "MIN_CLIENT_VERSION must be a semantic version like '1.2.3'"
+            )
         return v_str
 
     # MongoDB (with dynamic port detection)
@@ -180,7 +201,9 @@ class Settings(PydanticBaseSettings):
 
         # 1) Accept common environment aliases.
         # Prefer explicit env vars, then `_FILE` aliases for secret-mounted deployments.
-        resolved_mongo_url = _secret_env_first("MONGO_URL", "MONGODB_URI", "MONGODB_URL")
+        resolved_mongo_url = _secret_env_first(
+            "MONGO_URL", "MONGODB_URI", "MONGODB_URL"
+        )
         if resolved_mongo_url:
             v = resolved_mongo_url
 
@@ -241,7 +264,9 @@ class Settings(PydanticBaseSettings):
     )
     JWT_REFRESH_SECRET: Optional[str] = Field(
         default=None,
-        description=("JWT refresh token secret - must be set via JWT_REFRESH_SECRET env var"),
+        description=(
+            "JWT refresh token secret - must be set via JWT_REFRESH_SECRET env var"
+        ),
     )
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(15, ge=1)
@@ -342,6 +367,14 @@ class Settings(PydanticBaseSettings):
     ERP_SYNC_INTERVAL: int = Field(3600, ge=60)  # 1 hour
     CHANGE_DETECTION_SYNC_ENABLED: bool = True
     CHANGE_DETECTION_INTERVAL: int = Field(300, ge=60)  # 5 minutes
+    V3_PROJECTION_DASHBOARD_READS: bool = Field(
+        default=False,
+        description="Read dashboard endpoints from V3 projection collections only.",
+    )
+    V3_PROJECTION_REPORT_READS: bool = Field(
+        default=False,
+        description="Read report endpoints from V3 projection collections only.",
+    )
 
     @field_validator("ERP_SYNC_INTERVAL", "CHANGE_DETECTION_INTERVAL")
     @classmethod
@@ -362,10 +395,12 @@ class Settings(PydanticBaseSettings):
 
     # Error Tracking (Sentry)
     SENTRY_DSN: Optional[str] = Field(
-        default=None, description="Sentry DSN for error tracking. Set via SENTRY_DSN env var."
+        default=None,
+        description="Sentry DSN for error tracking. Set via SENTRY_DSN env var.",
     )
     SENTRY_ENVIRONMENT: Optional[str] = Field(
-        default="development", description="Sentry environment (defaults to ENVIRONMENT setting)"
+        default="development",
+        description="Sentry environment (defaults to ENVIRONMENT setting)",
     )
     SENTRY_TRACES_SAMPLE_RATE: float = Field(
         default=0.1,
@@ -374,7 +409,10 @@ class Settings(PydanticBaseSettings):
         description="Sentry performance monitoring sample rate (0.0-1.0)",
     )
     SENTRY_PROFILES_SAMPLE_RATE: float = Field(
-        default=0.1, ge=0.0, le=1.0, description="Sentry profiling sample rate (0.0-1.0)"
+        default=0.1,
+        ge=0.0,
+        le=1.0,
+        description="Sentry profiling sample rate (0.0-1.0)",
     )
 
     # Security
@@ -425,7 +463,9 @@ class Settings(PydanticBaseSettings):
             normalized = "WARNING"
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if normalized not in valid_levels:
-            raise ValueError(f"LOG_LEVEL must be one of: {', '.join(valid_levels)} (WARN accepted)")
+            raise ValueError(
+                f"LOG_LEVEL must be one of: {', '.join(valid_levels)} (WARN accepted)"
+            )
         return normalized
 
     @field_validator("AUTH_COOKIE_SAMESITE")
@@ -451,12 +491,23 @@ class Settings(PydanticBaseSettings):
             "Defaults include localhost variants."
         ),
     )
-    HOST: str = "0.0.0.0"  # nosec B104 - Binding to all interfaces is required for Docker and LAN access (React Native)
+    HOST: str = (
+        "0.0.0.0"  # nosec B104 - Binding to all interfaces is required for Docker and LAN access (React Native)
+    )
     PORT: int = Field(8001, ge=1, le=65535)
     WORKERS: int = Field(1, ge=1)
     PI_SERVER_URL: str = Field(
         default="http://localhost:8045/v1", description="URL for the pi-server sidecar"
     )
+    PI_SERVER_API_KEY: Optional[str] = Field(
+        default="sk-antigravity",
+        description="Bearer token used when calling the pi-server sidecar.",
+    )
+
+    @field_validator("PI_SERVER_API_KEY", mode="before")
+    @classmethod
+    def resolve_pi_server_api_key(cls, v: Optional[str]) -> Optional[str]:
+        return _secret_env_first("PI_SERVER_API_KEY") or v
 
     @field_validator("PORT")
     @classmethod
@@ -479,6 +530,18 @@ class Settings(PydanticBaseSettings):
     def resolve_metrics_enabled(cls, v: object) -> bool:
         env_value = _env_first("METRICS_ENABLED", "ENABLE_METRICS")
         return _parse_bool(env_value if env_value is not None else v, default=True)
+
+    @field_validator("V3_PROJECTION_DASHBOARD_READS", mode="before")
+    @classmethod
+    def resolve_projection_dashboard_reads(cls, v: object) -> bool:
+        env_value = _env_first("V3_PROJECTION_DASHBOARD_READS")
+        return _parse_bool(env_value if env_value is not None else v, default=False)
+
+    @field_validator("V3_PROJECTION_REPORT_READS", mode="before")
+    @classmethod
+    def resolve_projection_report_reads(cls, v: object) -> bool:
+        env_value = _env_first("V3_PROJECTION_REPORT_READS")
+        return _parse_bool(env_value if env_value is not None else v, default=False)
 
     # Enhanced Connection Pool Settings
     CONNECTION_RETRY_ATTEMPTS: int = Field(
@@ -550,7 +613,9 @@ except Exception as e:
                 "LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
             )
             self.LOG_FILE = os.getenv("LOG_FILE", "app.log")
-            self.USE_CONNECTION_POOL = os.getenv("USE_CONNECTION_POOL", "true").lower() == "true"
+            self.USE_CONNECTION_POOL = (
+                os.getenv("USE_CONNECTION_POOL", "true").lower() == "true"
+            )
             self.POOL_SIZE = int(os.getenv("POOL_SIZE", 10))
             self.MAX_OVERFLOW = int(os.getenv("MAX_OVERFLOW", 5))
             self.REDIS_URL = _secret_env_first("REDIS_URL")
@@ -559,13 +624,27 @@ except Exception as e:
             self.RATE_LIMIT_BURST = int(os.getenv("RATE_LIMIT_BURST", 20))
             self.MAX_CONCURRENT = int(os.getenv("MAX_CONCURRENT", 50))
             self.METRICS_HISTORY_SIZE = int(os.getenv("METRICS_HISTORY_SIZE", 1000))
-            self.ERP_SYNC_ENABLED = os.getenv("ERP_SYNC_ENABLED", "true").lower() == "true"
+            self.ERP_SYNC_ENABLED = (
+                os.getenv("ERP_SYNC_ENABLED", "true").lower() == "true"
+            )
             self.ERP_SYNC_INTERVAL = int(os.getenv("ERP_SYNC_INTERVAL", 3600))
-            self.AUTH_SINGLE_SESSION = os.getenv("AUTH_SINGLE_SESSION", "true").lower() == "true"
+            self.AUTH_SINGLE_SESSION = (
+                os.getenv("AUTH_SINGLE_SESSION", "true").lower() == "true"
+            )
             self.CHANGE_DETECTION_SYNC_ENABLED = (
                 os.getenv("CHANGE_DETECTION_SYNC_ENABLED", "true").lower() == "true"
             )
-            self.CHANGE_DETECTION_INTERVAL = int(os.getenv("CHANGE_DETECTION_INTERVAL", 300))
+            self.CHANGE_DETECTION_INTERVAL = int(
+                os.getenv("CHANGE_DETECTION_INTERVAL", 300)
+            )
+            self.V3_PROJECTION_DASHBOARD_READS = _parse_bool(
+                os.getenv("V3_PROJECTION_DASHBOARD_READS"),
+                default=False,
+            )
+            self.V3_PROJECTION_REPORT_READS = _parse_bool(
+                os.getenv("V3_PROJECTION_REPORT_READS"),
+                default=False,
+            )
             # New settings for rate limiting and CORS
             self.RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("RATE_LIMIT_MAX_ATTEMPTS", 5))
             self.RATE_LIMIT_TTL_SECONDS = int(os.getenv("RATE_LIMIT_TTL_SECONDS", 300))
@@ -573,8 +652,13 @@ except Exception as e:
             self.APP_NAME = os.getenv("APP_NAME", "Stock Count API")
             self.APP_VERSION = os.getenv("APP_VERSION", "1.0.0")
             # Normalize MIN_CLIENT_VERSION: use default when env var is missing or empty, and strip whitespace
-            self.MIN_CLIENT_VERSION = (os.getenv("MIN_CLIENT_VERSION") or "1.0.0").strip()
+            self.MIN_CLIENT_VERSION = (
+                os.getenv("MIN_CLIENT_VERSION") or "1.0.0"
+            ).strip()
             self.PI_SERVER_URL = os.getenv("PI_SERVER_URL", "http://localhost:8045/v1")
+            self.PI_SERVER_API_KEY = (
+                _secret_env_first("PI_SERVER_API_KEY") or "sk-antigravity"
+            )
             self.ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS")
             self.ENABLE_LAN_ENFORCEMENT = (
                 os.getenv("ENABLE_LAN_ENFORCEMENT", "false").lower() == "true"
@@ -588,7 +672,9 @@ except Exception as e:
             self.AUTO_SEED_MOCK_ERP_DATA = (
                 os.getenv("AUTO_SEED_MOCK_ERP_DATA", "false").lower() == "true"
             )
-            self.AUTH_ACCESS_COOKIE_NAME = os.getenv("AUTH_ACCESS_COOKIE_NAME", "sv_access_token")
+            self.AUTH_ACCESS_COOKIE_NAME = os.getenv(
+                "AUTH_ACCESS_COOKIE_NAME", "sv_access_token"
+            )
             self.AUTH_REFRESH_COOKIE_NAME = os.getenv(
                 "AUTH_REFRESH_COOKIE_NAME", "sv_refresh_token"
             )
@@ -635,12 +721,16 @@ def perform_security_checks(settings_obj):
 
         if (is_production or is_staging) and not debug_mode:
             _validate_secret("JWT_SECRET", jwt_secret, placeholders, environment)
-            _validate_secret("JWT_REFRESH_SECRET", jwt_refresh, placeholders, environment)
+            _validate_secret(
+                "JWT_REFRESH_SECRET", jwt_refresh, placeholders, environment
+            )
             logger.info(f"✅ {environment.capitalize()} mode: Security checks passed")
         else:
             # Development mode - just warn
             if jwt_secret in placeholders:
-                logger.warning("⚠️  DEVELOPMENT: Using default JWT_SECRET. Change for production!")
+                logger.warning(
+                    "⚠️  DEVELOPMENT: Using default JWT_SECRET. Change for production!"
+                )
             if jwt_refresh in placeholders:
                 logger.warning(
                     "⚠️  DEVELOPMENT: Using default JWT_REFRESH_SECRET. Change for production!"
@@ -687,7 +777,11 @@ def _enforce_production_guards(settings_obj):
         )
 
     # Guard 4: DEBUG_ENDPOINTS must be disabled in production
-    debug_endpoints = os.getenv("DEBUG_ENDPOINTS", "false").lower() in ("true", "1", "yes")
+    debug_endpoints = os.getenv("DEBUG_ENDPOINTS", "false").lower() in (
+        "true",
+        "1",
+        "yes",
+    )
     if is_prod and debug_endpoints:
         raise RuntimeError(
             "CRITICAL: DEBUG_ENDPOINTS=true is not allowed in production. "

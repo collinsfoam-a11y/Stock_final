@@ -19,6 +19,14 @@ import {
   typography,
 } from "@/theme/modernDesign";
 
+const SURFACE_CARD = "#ffffff";
+const SURFACE_BORDER = "#d9e5e2";
+const SURFACE_MUTED = "#f8fafc";
+const ACCENT = "#0f766e";
+const ACCENT_SOFT = "#ecf7f4";
+const TEXT_STRONG = "#0f172a";
+const TEXT_MUTED = "#475569";
+
 type ScanLookupItem = {
   _id?: string | number;
   barcode?: string;
@@ -139,7 +147,14 @@ export function ScanLookupPanel({
 }: ScanLookupPanelProps) {
   return (
     <>
-      <View style={styles.searchSection}>
+      <View style={styles.searchSectionCard}>
+        <Text style={styles.panelKicker}>Find an item</Text>
+        <Text style={styles.panelTitle}>Scan a barcode or search manually</Text>
+        <Text style={styles.panelCopy}>
+          Open the camera for fast capture, or type an item code when the label
+          is worn or unavailable.
+        </Text>
+
         <View style={styles.searchRow}>
           <View style={styles.searchInputWrapper}>
             <ModernInput
@@ -189,7 +204,11 @@ export function ScanLookupPanel({
 
       {searchResults.length === 0 && (
         <View style={styles.recentSection}>
-          <Text style={styles.sectionTitle}>Recent Items</Text>
+          <Text style={styles.sectionTitle}>Recent items</Text>
+          <Text style={styles.sectionCopy}>
+            Reopen the last products touched in this session without scanning
+            them again.
+          </Text>
 
           {initialLoading ? (
             <>
@@ -240,8 +259,34 @@ export function ScanLookupPanel({
 }
 
 const styles = StyleSheet.create({
-  searchSection: {
+  searchSectionCard: {
     marginBottom: spacing.xl,
+    padding: spacing.lg,
+    backgroundColor: SURFACE_CARD,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
+    ...shadows.md,
+  },
+  panelKicker: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    color: ACCENT,
+    marginBottom: spacing.xs,
+  },
+  panelTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: "700",
+    color: TEXT_STRONG,
+    marginBottom: spacing.xs,
+  },
+  panelCopy: {
+    fontSize: typography.fontSize.sm,
+    lineHeight: 22,
+    color: TEXT_MUTED,
+    marginBottom: spacing.md,
   },
   searchRow: {
     flexDirection: "row",
@@ -250,15 +295,14 @@ const styles = StyleSheet.create({
   },
   searchInputWrapper: {
     flex: 1,
-    ...shadows.sm,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: SURFACE_CARD,
+    borderRadius: 14,
   },
   searchButton: {
     width: 56,
     height: 56,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primary[600],
+    borderRadius: 14,
+    backgroundColor: ACCENT,
     alignItems: "center",
     justifyContent: "center",
     ...shadows.md,
@@ -268,11 +312,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
   },
   searchResultsContainer: {
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
     paddingVertical: spacing.xs,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    ...shadows.lg,
+    backgroundColor: SURFACE_MUTED,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
     zIndex: 200,
     elevation: 10,
   },
@@ -294,42 +339,45 @@ const styles = StyleSheet.create({
   resultName: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.gray[900],
+    color: TEXT_STRONG,
   },
   resultCode: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray[500],
+    color: TEXT_MUTED,
   },
   resultStock: {
     marginTop: 2,
     fontSize: typography.fontSize.xs,
-    color: colors.primary[700],
+    color: ACCENT,
     fontWeight: typography.fontWeight.semibold,
   },
   recentSection: {
     marginBottom: spacing.lg,
   },
+  sectionCopy: {
+    fontSize: typography.fontSize.sm,
+    lineHeight: 20,
+    color: TEXT_MUTED,
+    marginBottom: spacing.md,
+  },
   recentListContainer: {
     paddingBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: typography.fontSize.sm,
+    fontSize: typography.fontSize.lg,
     fontWeight: "700",
-    color: colors.gray[500],
-    marginBottom: spacing.md,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginLeft: spacing.xs,
+    color: TEXT_STRONG,
+    marginBottom: spacing.xs,
   },
   recentCard: {
     marginBottom: spacing.sm,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.white,
+    borderRadius: 18,
+    backgroundColor: SURFACE_CARD,
     ...shadows.sm,
     borderWidth: 1,
-    borderColor: colors.gray[100],
+    borderColor: "#e2e8f0",
   },
   recentRow: {
     flexDirection: "row",
@@ -339,7 +387,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.primary[50],
+    backgroundColor: ACCENT_SOFT,
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.md,
@@ -350,29 +398,29 @@ const styles = StyleSheet.create({
   recentName: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[900],
+    color: TEXT_STRONG,
     marginBottom: 2,
   },
   recentCode: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray[500],
+    color: TEXT_MUTED,
     fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
   },
   emptyState: {
     alignItems: "center",
     paddingVertical: spacing.xl,
     paddingHorizontal: spacing.lg,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    backgroundColor: SURFACE_CARD,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: colors.gray[100],
+    borderColor: "#e2e8f0",
     borderStyle: "dashed",
   },
   emptyIconContainer: {
     width: 64,
     height: 64,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.gray[50],
+    backgroundColor: ACCENT_SOFT,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.md,
@@ -380,12 +428,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[900],
+    color: TEXT_STRONG,
     marginBottom: spacing.xs,
   },
   emptySubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    color: TEXT_MUTED,
     textAlign: "center",
     lineHeight: 20,
   },

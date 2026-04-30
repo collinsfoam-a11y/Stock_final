@@ -14,7 +14,6 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Item } from "@/types/scan";
 import Animated, { FadeInUp, Layout } from "react-native-reanimated";
-import { LinearGradient } from "expo-linear-gradient";
 import { flags } from "@/constants/flags";
 import { colors as unifiedColors, radius } from "@/theme/unified";
 
@@ -36,31 +35,16 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
 
     return (
       <Container style={[styles.itemCard, styles.shadow]} {...animatedProps}>
-        <LinearGradient
-          colors={[unifiedColors.neutral[800], unifiedColors.neutral[900]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
-        />
-
         <View style={styles.contentContainer}>
           <Text style={styles.itemName}>{item.name}</Text>
-          {item.item_code && (
-            <Text style={styles.itemCode}>Code: {item.item_code}</Text>
-          )}
-          {item.barcode && (
-            <Text style={styles.itemBarcode}>Barcode: {item.barcode}</Text>
-          )}
+          {item.item_code && <Text style={styles.itemCode}>Code: {item.item_code}</Text>}
+          {item.barcode && <Text style={styles.itemBarcode}>Barcode: {item.barcode}</Text>}
 
           {/* Additional Item Information */}
           <View style={styles.itemInfoGrid}>
             {item.category && (
               <View style={styles.itemInfoItem}>
-                <Ionicons
-                  name="pricetag"
-                  size={14}
-                  color={unifiedColors.neutral[400]}
-                />
+                <Ionicons name="pricetag" size={14} color={unifiedColors.neutral[500]} />
                 <Text style={styles.itemInfoText}>
                   {item.category}
                   {item.subcategory && ` • ${item.subcategory}`}
@@ -69,24 +53,14 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
             )}
             {item.item_type && (
               <View style={styles.itemInfoItem}>
-                <Ionicons
-                  name="layers"
-                  size={14}
-                  color={unifiedColors.neutral[400]}
-                />
+                <Ionicons name="layers" size={14} color={unifiedColors.neutral[500]} />
                 <Text style={styles.itemInfoText}>Type: {item.item_type}</Text>
               </View>
             )}
             {item.item_group && (
               <View style={styles.itemInfoItem}>
-                <Ionicons
-                  name="albums"
-                  size={14}
-                  color={unifiedColors.neutral[400]}
-                />
-                <Text style={styles.itemInfoText}>
-                  Group: {item.item_group}
-                </Text>
+                <Ionicons name="albums" size={14} color={unifiedColors.neutral[500]} />
+                <Text style={styles.itemInfoText}>Group: {item.item_group}</Text>
               </View>
             )}
           </View>
@@ -94,11 +68,7 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
           {/* Location Display */}
           {(item.location || (item as any).floor || (item as any).rack) && (
             <View style={styles.locationRow}>
-              <Ionicons
-                name="location"
-                size={16}
-                color={unifiedColors.primary[300]}
-              />
+              <Ionicons name="location" size={16} color={unifiedColors.primary[600]} />
               <Text style={styles.locationText}>
                 {[(item as any).floor, (item as any).rack, item.location]
                   .filter(Boolean)
@@ -110,11 +80,7 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
           {/* Verification Badge */}
           {(item as any).verified && (
             <View style={styles.verificationBadge}>
-              <Ionicons
-                name="checkmark-circle"
-                size={16}
-                color={unifiedColors.success[400]}
-              />
+              <Ionicons name="checkmark-circle" size={16} color={unifiedColors.success[400]} />
               <Text style={styles.verificationText}>
                 Verified by {(item as any).verified_by || "Unknown"}
                 {(item as any).verified_at && (
@@ -131,12 +97,7 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
           <View style={{ flexDirection: "row", gap: 12 }}>
             {/* Left Column: ERP Stock */}
             <View style={{ flex: 1 }}>
-              <View
-                style={[
-                  styles.qtyBox,
-                  { height: "100%", justifyContent: "center" },
-                ]}
-              >
+              <View style={[styles.qtyBox, { height: "100%", justifyContent: "center" }]}>
                 <View style={styles.qtyHeader}>
                   <Text style={styles.qtyLabel}>ERP Stock</Text>
                   {onRefreshStock && (
@@ -149,16 +110,9 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
                       disabled={refreshingStock}
                     >
                       {refreshingStock ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={unifiedColors.primary[300]}
-                        />
+                        <ActivityIndicator size="small" color={unifiedColors.primary[600]} />
                       ) : (
-                        <Ionicons
-                          name="refresh"
-                          size={18}
-                          color={unifiedColors.primary[300]}
-                        />
+                        <Ionicons name="refresh" size={18} color={unifiedColors.primary[600]} />
                       )}
                     </TouchableOpacity>
                   )}
@@ -168,9 +122,7 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
                     {item.stock_qty ?? item.quantity ?? 0}
                   </Text>
                   {item.uom_name && (
-                    <Text style={[styles.uomText, { marginTop: 0 }]}>
-                      {item.uom_name}
-                    </Text>
+                    <Text style={[styles.uomText, { marginTop: 0 }]}>{item.uom_name}</Text>
                   )}
                 </View>
               </View>
@@ -205,52 +157,53 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
       prevProps.item.sales_price === nextProps.item.sales_price &&
       prevProps.refreshingStock === nextProps.refreshingStock
     );
-  },
+  }
 );
 
 ItemDisplay.displayName = "ItemDisplay";
 
 const styles = StyleSheet.create({
   itemCard: {
-    borderRadius: 24,
+    backgroundColor: unifiedColors.white,
+    borderRadius: radius.sm,
     marginBottom: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: unifiedColors.neutral[200],
   },
   shadow: {
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
+        shadowColor: unifiedColors.neutral[900],
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
       },
       android: {
-        elevation: 8,
+        elevation: 1,
       },
       web: {
-        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
+        boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
       },
     }),
   },
   contentContainer: {
-    padding: 24,
+    padding: 16,
   },
   itemName: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "#fff",
+    color: unifiedColors.neutral[900],
     marginBottom: 8,
   },
   itemCode: {
     fontSize: 14,
-    color: unifiedColors.neutral[400],
+    color: unifiedColors.neutral[600],
     marginBottom: 4,
   },
   itemBarcode: {
     fontSize: 14,
-    color: unifiedColors.neutral[400],
+    color: unifiedColors.neutral[600],
     marginBottom: 12,
     fontFamily: "monospace",
   },
@@ -261,7 +214,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   itemInfoItem: {
-    backgroundColor: unifiedColors.neutral[800],
+    backgroundColor: unifiedColors.neutral[50],
     borderRadius: radius.sm,
     padding: 12,
     flex: 1,
@@ -271,7 +224,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   itemInfoText: {
-    color: "#fff",
+    color: unifiedColors.neutral[800],
     fontSize: 14,
     flex: 1,
   },
@@ -282,25 +235,25 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   locationText: {
-    color: unifiedColors.neutral[400],
+    color: unifiedColors.neutral[600],
     fontSize: 14,
   },
   verificationBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: `${unifiedColors.success[900]}80`,
+    backgroundColor: unifiedColors.success[50],
     borderRadius: radius.sm,
     padding: 12,
     marginBottom: 16,
   },
   verificationText: {
-    color: unifiedColors.primary[500],
+    color: unifiedColors.success[700],
     fontSize: 14,
     flex: 1,
   },
   verificationTime: {
-    color: unifiedColors.neutral[400],
+    color: unifiedColors.neutral[600],
     fontSize: 12,
   },
   qtyRow: {
@@ -309,7 +262,7 @@ const styles = StyleSheet.create({
   },
   qtyBox: {
     flex: 1,
-    backgroundColor: unifiedColors.neutral[800],
+    backgroundColor: unifiedColors.neutral[50],
     borderRadius: radius.md,
     padding: 16,
   },
@@ -321,7 +274,7 @@ const styles = StyleSheet.create({
   },
   qtyLabel: {
     fontSize: 12,
-    color: unifiedColors.neutral[400],
+    color: unifiedColors.neutral[600],
     fontWeight: "600",
   },
   refreshButton: {
@@ -333,16 +286,16 @@ const styles = StyleSheet.create({
   qtyValue: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#fff",
+    color: unifiedColors.neutral[900],
   },
   qtyValueSmall: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#fff",
+    color: unifiedColors.neutral[900],
   },
   uomText: {
     fontSize: 12,
-    color: unifiedColors.neutral[400],
+    color: unifiedColors.neutral[600],
     marginTop: 4,
   },
 });

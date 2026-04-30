@@ -11,6 +11,7 @@ from typing import Any, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from backend.sql_server_connector import SQLServerConnector
+from backend.services.governance_guard import write_authority
 
 logger = logging.getLogger(__name__)
 
@@ -369,19 +370,20 @@ class SQLSyncService:
                             stats["qty_changes_detected"] += 1  # Backwards-compatible
                             now = datetime.now(timezone.utc).replace(tzinfo=None)
 
-                            await self.mongo_db.erp_items.update_one(
-                                {"item_code": item_code},
-                                {
-                                    "$set": {
-                                        "stock_qty": sql_qty,
-                                        "sql_server_qty": sql_qty,
-                                        "last_synced": now,
-                                        "qty_changed_at": now,
-                                        "qty_change_delta": sql_qty - mongo_qty,
-                                        "updated_at": now,
-                                    }
-                                },
-                            )
+                            with write_authority("SQLSyncService"):
+                                await self.mongo_db.erp_items.update_one(
+                                    {"item_code": item_code},
+                                    {
+                                        "$set": {
+                                            "stock_qty": sql_qty,
+                                            "sql_server_qty": sql_qty,
+                                            "last_synced": now,
+                                            "qty_changed_at": now,
+                                            "qty_change_delta": sql_qty - mongo_qty,
+                                            "updated_at": now,
+                                        }
+                                    },
+                                )
                             stats["qty_updated"] += 1
 
                             logger.debug(
@@ -446,7 +448,8 @@ class SQLSyncService:
             try:
                 sql_qty = _coerce_qty(sql_item.get("stock_qty"))
                 new_item = _build_new_item_dict(sql_item, sql_qty, now)
-                await self.mongo_db.erp_items.insert_one(new_item)
+                with write_authority("SQLSyncService"):
+                    await self.mongo_db.erp_items.insert_one(new_item)
                 stats["items_discovered"] += 1
                 logger.debug(f"Created new item: {item_code}")
             except Exception as exc:
@@ -697,7 +700,8 @@ class SQLSyncService:
         if not mongo_item:
             # New item - create with basic data
             new_item = _build_new_item_dict(sql_item, sql_qty, now)
-            await self.mongo_db.erp_items.insert_one(new_item)
+            with write_authority("SQLSyncService"):
+                await self.mongo_db.erp_items.insert_one(new_item)
             stats["items_created"] += 1
             logger.debug(f"Created new item: {item_code}")
         else:
@@ -754,10 +758,11 @@ class SQLSyncService:
         if metadata_updates:
             update_fields.update(metadata_updates)
 
-        await self.mongo_db.erp_items.update_one(
-            {"item_code": item_code},
-            {"$set": update_fields},
-        )
+        with write_authority("SQLSyncService"):
+            await self.mongo_db.erp_items.update_one(
+                {"item_code": item_code},
+                {"$set": update_fields},
+            )
 
     def _finalize_sync_stats(self, stats: dict[str, Any]) -> None:
         """Update backwards-compatible stats and internal tracking."""
@@ -828,19 +833,20 @@ class SQLSyncService:
                     if sql_qty != mongo_qty:
                         # Update MongoDB cache
                         now = datetime.now(timezone.utc).replace(tzinfo=None)
-                        await self.mongo_db.erp_items.update_one(
-                            {"item_code": item_code},
-                            {
-                                "$set": {
-                                    "stock_qty": sql_qty,
-                                    "sql_server_qty": sql_qty,
-                                    "last_synced": now,
-                                    "qty_changed_at": now,
-                                    "updated_at": now,
-                                }
-                            },
-                            upsert=True,
-                        )
+                        with write_authority("SQLSyncService"):
+                            await self.mongo_db.erp_items.update_one(
+                                {"item_code": item_code},
+                                {
+                                    "$set": {
+                                        "stock_qty": sql_qty,
+                                        "sql_server_qty": sql_qty,
+                                        "last_synced": now,
+                                        "qty_changed_at": now,
+                                        "updated_at": now,
+                                    }
+                                },
+                                upsert=True,
+                            )
                         updated = True
 
                     return {

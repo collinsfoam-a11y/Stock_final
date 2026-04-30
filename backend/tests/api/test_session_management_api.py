@@ -61,7 +61,11 @@ def mock_user_staff():
 @pytest.fixture
 def mock_user_supervisor():
     """Create mock supervisor user"""
-    return {"username": "supervisor1", "role": "supervisor", "full_name": "Supervisor User"}
+    return {
+        "username": "supervisor1",
+        "role": "supervisor",
+        "full_name": "Supervisor User",
+    }
 
 
 @pytest.fixture
@@ -116,6 +120,15 @@ class TestSessionModels:
         assert session_create.location_type == "Showroom"
         assert session_create.location_name == "Ground Floor"
         assert session_create.rack_no == "A1"
+
+    def test_session_create_model_accepts_offline_identity(self):
+        session_create = SessionCreate(
+            warehouse="WH001",
+            client_session_id="offline-session-1",
+            offline_id="offline-session-1",
+        )
+        assert session_create.client_session_id == "offline-session-1"
+        assert session_create.offline_id == "offline-session-1"
 
     def test_session_create_default_type(self):
         """Test SessionCreate default type"""
@@ -222,14 +235,22 @@ class TestCreateSessionEndpoint:
         # Mock Governance collections
         mock_db.config_versions = AsyncMock()
         mock_db.config_versions.find_one = AsyncMock(
-            return_value={"id": "v1", "created_at": datetime.now(timezone.utc).replace(tzinfo=None)}
+            return_value={
+                "id": "v1",
+                "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            }
         )
 
         mock_db.erp_items = AsyncMock()
 
         # Create an async generator for the cursor
         async def mock_items_gen(*args, **kwargs):
-            yield {"item_code": "ITEM-001", "stock_qty": 50, "warehouse": "WH001", "_id": "item_1"}
+            yield {
+                "item_code": "ITEM-001",
+                "stock_qty": 50,
+                "warehouse": "WH001",
+                "_id": "item_1",
+            }
 
         mock_cursor = MagicMock()
         mock_cursor.__aiter__ = mock_items_gen
@@ -367,7 +388,9 @@ class TestGetSessionsEndpoint:
     """Test GET /api/sessions/"""
 
     @pytest.mark.asyncio
-    async def test_get_sessions_staff_sees_own(self, mock_user_staff, sample_session_data):
+    async def test_get_sessions_staff_sees_own(
+        self, mock_user_staff, sample_session_data
+    ):
         """Test staff user only sees their own sessions"""
         mock_db = MagicMock()
         mock_db.sessions = MagicMock()
@@ -497,7 +520,9 @@ class TestGetSessionDetailEndpoint:
     """Test GET /api/sessions/{session_id}"""
 
     @pytest.mark.asyncio
-    async def test_get_session_detail_success(self, mock_user_staff, sample_verification_session):
+    async def test_get_session_detail_success(
+        self, mock_user_staff, sample_verification_session
+    ):
         """Test getting session details"""
         mock_db = MagicMock()
         mock_db.sessions = MagicMock()
@@ -616,7 +641,9 @@ class TestSessionStatsEndpoint:
     """Test GET /api/sessions/{session_id}/stats"""
 
     @pytest.mark.asyncio
-    async def test_get_session_stats(self, mock_user_staff, sample_verification_session):
+    async def test_get_session_stats(
+        self, mock_user_staff, sample_verification_session
+    ):
         """Test getting session statistics"""
         mock_db = MagicMock()
         mock_db.sessions = MagicMock()
@@ -665,7 +692,9 @@ class TestSessionStatsEndpoint:
             app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
-    async def test_get_session_stats_empty(self, mock_user_staff, sample_verification_session):
+    async def test_get_session_stats_empty(
+        self, mock_user_staff, sample_verification_session
+    ):
         """Test session stats when no items counted"""
         mock_db = MagicMock()
         mock_db.sessions = MagicMock()
@@ -715,17 +744,23 @@ class TestCompleteSessionEndpoint:
         mock_db = MagicMock()
         mock_db.sessions = MagicMock()
         mock_db.sessions.find_one = AsyncMock(return_value=reconciled_session)
-        mock_db.sessions.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+        mock_db.sessions.update_one = AsyncMock(
+            return_value=MagicMock(modified_count=1)
+        )
         mock_db.count_lines = MagicMock()
         mock_db.count_lines.find = MagicMock(return_value=_AsyncCursor([]))
-        mock_db.count_lines.update_many = AsyncMock(return_value=MagicMock(modified_count=0))
+        mock_db.count_lines.update_many = AsyncMock(
+            return_value=MagicMock(modified_count=0)
+        )
         mock_db.verification_sessions = MagicMock()
         mock_db.verification_sessions.find_one = AsyncMock(return_value=None)
         mock_db.verification_sessions.update_one = AsyncMock(
             return_value=MagicMock(modified_count=1)
         )
         mock_db.rack_registry = MagicMock()
-        mock_db.rack_registry.update_one = AsyncMock(return_value=MagicMock(modified_count=0))
+        mock_db.rack_registry.update_one = AsyncMock(
+            return_value=MagicMock(modified_count=0)
+        )
 
         mock_redis = MagicMock()
         mock_lock_manager = MagicMock()
@@ -824,13 +859,17 @@ class TestUpdateSessionStatusEndpoint:
     """Test PUT /api/sessions/{session_id}/status"""
 
     @pytest.mark.asyncio
-    async def test_update_status_success(self, mock_user_staff, sample_verification_session):
+    async def test_update_status_success(
+        self, mock_user_staff, sample_verification_session
+    ):
         """Test updating session status"""
         mock_db = MagicMock()
         active_session = {**sample_verification_session, "status": "ACTIVE"}
         mock_db.sessions = MagicMock()
         mock_db.sessions.find_one = AsyncMock(return_value=active_session)
-        mock_db.sessions.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+        mock_db.sessions.update_one = AsyncMock(
+            return_value=MagicMock(modified_count=1)
+        )
         mock_db.verification_sessions = MagicMock()
         mock_db.verification_sessions.update_one = AsyncMock(
             return_value=MagicMock(modified_count=1)
@@ -853,7 +892,9 @@ class TestUpdateSessionStatusEndpoint:
                 transport=ASGITransport(app=app),
                 base_url="http://localhost",
             ) as client:
-                response = await client.put("/api/sessions/sess_123/status?status=RECONCILE")
+                response = await client.put(
+                    "/api/sessions/sess_123/status?status=RECONCILE"
+                )
                 assert response.status_code == 200
                 data = response.json()
                 assert data["success"] is True
@@ -862,7 +903,9 @@ class TestUpdateSessionStatusEndpoint:
             app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
-    async def test_update_status_supervisor_can_modify_others(self, mock_user_supervisor):
+    async def test_update_status_supervisor_can_modify_others(
+        self, mock_user_supervisor
+    ):
         """Test supervisor can update any session"""
         session = {
             "id": "sess_123",
@@ -879,7 +922,9 @@ class TestUpdateSessionStatusEndpoint:
         mock_db = MagicMock()
         mock_db.sessions = MagicMock()
         mock_db.sessions.find_one = AsyncMock(return_value=session)
-        mock_db.sessions.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+        mock_db.sessions.update_one = AsyncMock(
+            return_value=MagicMock(modified_count=1)
+        )
         mock_db.verification_sessions = MagicMock()
         mock_db.verification_sessions.update_one = AsyncMock(
             return_value=MagicMock(modified_count=1)
@@ -902,7 +947,9 @@ class TestUpdateSessionStatusEndpoint:
                 transport=ASGITransport(app=app),
                 base_url="http://localhost",
             ) as client:
-                response = await client.put("/api/sessions/sess_123/status?status=REVIEW")
+                response = await client.put(
+                    "/api/sessions/sess_123/status?status=REVIEW"
+                )
                 assert response.status_code == 200
         finally:
             app.dependency_overrides.clear()
@@ -936,7 +983,14 @@ class TestActiveSessionsEndpoint:
         mock_db.count_lines = MagicMock()
         mock_db.count_lines.find = MagicMock(
             return_value=_AsyncCursor(
-                [{"session_id": "sess_1", "status": "pending", "verified": False, "variance": 0.0}]
+                [
+                    {
+                        "session_id": "sess_1",
+                        "status": "pending",
+                        "verified": False,
+                        "variance": 0.0,
+                    }
+                ]
             )
         )
 
@@ -1037,7 +1091,9 @@ class TestActiveSessionsEndpoint:
 
 class TestSessionIdentifierFallbacks:
     @pytest.mark.asyncio
-    async def test_session_heartbeat_updates_canonical_session_by_session_id(self, mock_user_staff):
+    async def test_session_heartbeat_updates_canonical_session_by_session_id(
+        self, mock_user_staff
+    ):
         session = {
             "session_id": "sess_heartbeat_only",
             "warehouse": "WH001",
@@ -1053,7 +1109,9 @@ class TestSessionIdentifierFallbacks:
         mock_db = MagicMock()
         mock_db.sessions = MagicMock()
         mock_db.sessions.find_one = AsyncMock(return_value=session)
-        mock_db.sessions.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+        mock_db.sessions.update_one = AsyncMock(
+            return_value=MagicMock(modified_count=1)
+        )
         mock_db.verification_sessions = MagicMock()
         mock_db.verification_sessions.update_one = AsyncMock(
             return_value=MagicMock(modified_count=1)
@@ -1090,7 +1148,9 @@ class TestSessionIdentifierFallbacks:
                     transport=ASGITransport(app=app),
                     base_url="http://localhost",
                 ) as client:
-                    response = await client.post("/api/sessions/sess_heartbeat_only/heartbeat")
+                    response = await client.post(
+                        "/api/sessions/sess_heartbeat_only/heartbeat"
+                    )
                     assert response.status_code == 200
         finally:
             app.dependency_overrides.clear()
@@ -1133,7 +1193,9 @@ class TestSessionIdentifierFallbacks:
         mock_db = MagicMock()
         mock_db.sessions = MagicMock()
         mock_db.sessions.find_one = AsyncMock(return_value=session)
-        mock_db.sessions.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+        mock_db.sessions.update_one = AsyncMock(
+            return_value=MagicMock(modified_count=1)
+        )
         mock_db.verification_sessions = MagicMock()
         mock_db.verification_sessions.find_one = AsyncMock(return_value=None)
         mock_db.rack_registry = MagicMock()
@@ -1169,7 +1231,9 @@ class TestSessionIdentifierFallbacks:
                     transport=ASGITransport(app=app),
                     base_url="http://localhost",
                 ) as client:
-                    response = await client.post("/api/sessions/sess_owner_user_id_only/complete")
+                    response = await client.post(
+                        "/api/sessions/sess_owner_user_id_only/complete"
+                    )
                     assert response.status_code == 410
                     assert "disabled" in response.json()["detail"].lower()
         finally:
@@ -1269,7 +1333,9 @@ class TestUserWorkflowEndpoint:
                 {
                     "_id": "staff1",
                     "pending_approvals": 2,
-                    "pending_review_since": datetime.now(timezone.utc).replace(tzinfo=None),
+                    "pending_review_since": datetime.now(timezone.utc).replace(
+                        tzinfo=None
+                    ),
                     "last_pending_at": datetime.now(timezone.utc).replace(tzinfo=None),
                 }
             ],
@@ -1277,7 +1343,9 @@ class TestUserWorkflowEndpoint:
                 {
                     "_id": "staff1",
                     "assigned_recounts": 1,
-                    "recount_assigned_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                    "recount_assigned_at": datetime.now(timezone.utc).replace(
+                        tzinfo=None
+                    ),
                     "last_recount_at": datetime.now(timezone.utc).replace(tzinfo=None),
                 }
             ],
@@ -1306,7 +1374,9 @@ class TestUserWorkflowEndpoint:
         assert data[0]["recount_assigned_at"] is not None
 
     @pytest.mark.asyncio
-    async def test_get_user_workflows_sorts_highest_priority_first(self, mock_user_supervisor):
+    async def test_get_user_workflows_sorts_highest_priority_first(
+        self, mock_user_supervisor
+    ):
         now = datetime.now(timezone.utc).replace(tzinfo=None)
         active_sessions = [
             {
@@ -1345,8 +1415,18 @@ class TestUserWorkflowEndpoint:
             mock_user_supervisor,
             active_sessions=active_sessions,
             session_counts=[
-                {"_id": "sess_1", "items_counted": 6, "reviewed_items": 3, "last_counted_at": now},
-                {"_id": "sess_2", "items_counted": 8, "reviewed_items": 8, "last_counted_at": now},
+                {
+                    "_id": "sess_1",
+                    "items_counted": 6,
+                    "reviewed_items": 3,
+                    "last_counted_at": now,
+                },
+                {
+                    "_id": "sess_2",
+                    "items_counted": 8,
+                    "reviewed_items": 8,
+                    "last_counted_at": now,
+                },
             ],
             pending_reviews=[
                 {

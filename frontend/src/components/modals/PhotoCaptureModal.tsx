@@ -24,11 +24,20 @@ import {
 } from "@/services/device/expoCamera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-  modernColors,
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-} from "../../styles/modernDesignSystem";
+  colors,
+  fontSize,
+  fontWeight,
+  radius as borderRadius,
+  spacing,
+} from "../../theme/unified";
+
+const SURFACE_BG = "#f4f7f6";
+const SURFACE_CARD = "#ffffff";
+const SURFACE_BORDER = "#d9e5e2";
+const SURFACE_MUTED = "#f8fafc";
+const ACCENT = "#0f766e";
+const TEXT_STRONG = "#0f172a";
+const TEXT_MUTED = "#475569";
 
 interface PhotoCaptureModalProps {
   visible: boolean;
@@ -176,7 +185,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               <Ionicons
                 name="close"
                 size={24}
-                color={modernColors.text.primary}
+                color={TEXT_STRONG}
               />
             </TouchableOpacity>
           </View>
@@ -184,7 +193,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             <Ionicons
               name="camera-outline"
               size={64}
-              color={modernColors.text.tertiary}
+              color={TEXT_MUTED}
             />
             <Text style={styles.permissionText}>
               Camera permission is required to capture photos
@@ -234,7 +243,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             <Ionicons
               name="close"
               size={24}
-              color={modernColors.text.primary}
+              color={TEXT_STRONG}
             />
           </TouchableOpacity>
         </View>
@@ -296,56 +305,71 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: modernColors.background.default,
+    backgroundColor: SURFACE_BG,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: modernSpacing.md,
-    paddingVertical: modernSpacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
   },
   title: {
-    ...modernTypography.h4,
-    color: modernColors.text.primary,
+    fontSize: fontSize.lg,
+    fontWeight: "700",
+    color: TEXT_STRONG,
   },
   closeButton: {
-    padding: modernSpacing.xs,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
   },
   permissionContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: modernSpacing.xl,
+    padding: spacing.xl,
   },
   permissionText: {
-    ...modernTypography.body.medium,
-    color: modernColors.text.secondary,
+    fontSize: fontSize.md,
+    color: TEXT_MUTED,
     textAlign: "center",
-    marginTop: modernSpacing.md,
-    marginBottom: modernSpacing.xl,
+    marginTop: spacing.md,
+    marginBottom: spacing.xl,
   },
   permissionButton: {
-    backgroundColor: modernColors.primary[500],
-    paddingHorizontal: modernSpacing.xl,
-    paddingVertical: modernSpacing.md,
-    borderRadius: modernBorderRadius.md,
+    minHeight: 48,
+    backgroundColor: ACCENT,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   permissionButtonText: {
-    ...modernTypography.button.medium,
-    color: "#fff",
+    fontSize: fontSize.md,
+    fontWeight: "600",
+    color: colors.white,
   },
   permissionHelpText: {
-    ...modernTypography.body.small,
-    color: modernColors.text.secondary,
+    fontSize: fontSize.sm,
+    color: TEXT_MUTED,
     textAlign: "center",
-    marginBottom: modernSpacing.md,
+    marginBottom: spacing.md,
   },
   cameraContainer: {
     flex: 1,
     overflow: "hidden",
-    borderRadius: modernBorderRadius.lg,
-    marginHorizontal: modernSpacing.md,
+    borderRadius: 24,
+    marginHorizontal: spacing.lg,
+    backgroundColor: SURFACE_CARD,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
   },
   camera: {
     flex: 1,
@@ -363,42 +387,45 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: modernSpacing.xl,
-    gap: modernSpacing.md,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
   },
   captureButton: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: modernColors.background.paper,
+    backgroundColor: colors.white,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 4,
-    borderColor: modernColors.primary[500],
+    borderColor: ACCENT,
   },
   captureButtonInner: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: modernColors.primary[500],
+    backgroundColor: ACCENT,
   },
   controlButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: modernSpacing.lg,
-    paddingVertical: modernSpacing.md,
-    borderRadius: modernBorderRadius.md,
-    gap: modernSpacing.xs,
+    minHeight: 52,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: 18,
+    gap: spacing.xs,
   },
   retakeButton: {
-    backgroundColor: modernColors.neutral[600],
+    backgroundColor: TEXT_MUTED,
   },
   confirmButton: {
-    backgroundColor: modernColors.success.main,
+    backgroundColor: ACCENT,
   },
   controlButtonText: {
-    ...modernTypography.button.medium,
-    color: "#fff",
+    fontSize: fontSize.md,
+    fontWeight: "600",
+    color: colors.white,
   },
 });
 

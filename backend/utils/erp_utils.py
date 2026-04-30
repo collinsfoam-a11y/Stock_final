@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 from backend.api.schemas import ERPItem
 from backend.error_messages import get_error_message
+from backend.services.governance_guard import write_authority
 
 logger = logging.getLogger(__name__)
 
@@ -350,14 +351,15 @@ async def refresh_stock_from_erp(
             )
 
             # Update MongoDB
-            await db.erp_items.update_one(
-                {"item_code": item_code},
-                {
-                    "$set": item_data,
-                    "$setOnInsert": {"created_at": datetime.now(timezone.utc).replace(tzinfo=None)},
-                },
-                upsert=True,
-            )
+            with write_authority("ERPWriteService"):
+                await db.erp_items.update_one(
+                    {"item_code": item_code},
+                    {
+                        "$set": item_data,
+                        "$setOnInsert": {"created_at": datetime.now(timezone.utc).replace(tzinfo=None)},
+                    },
+                    upsert=True,
+                )
 
             # Clear cache
             await cache_service.delete("items", item_data.get("barcode", ""))
