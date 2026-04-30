@@ -189,7 +189,10 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
               style={styles.backButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               accessibilityRole="button"
-              accessibilityLabel={rightActionAccessibilityLabel || "Action"}
+              accessibilityLabel={
+                rightActionAccessibilityLabel ||
+                `${rightAction.icon.replace("-outline", "").replace(/-/g, " ")} action`
+              }
             >
               <Ionicons
                 name={rightAction.icon}
