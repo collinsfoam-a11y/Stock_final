@@ -239,7 +239,7 @@ async def get_item_details(
     """Get detailed information for a specific item."""
     db = get_db()
     if settings.V3_PROJECTION_DASHBOARD_READS:
-        return await ProjectionReadService(db).get_item_details(item_id)
+        return await ProjectionReadService(db, enforce_readiness=True).get_item_details(item_id)
 
     with trace_span("mongodb.count_lines.find_one", {"item_id": item_id}):
         item = await db.count_lines.find_one({"id": item_id})
@@ -278,7 +278,7 @@ async def get_dashboard_stats(
     """Get real-time dashboard statistics."""
     db = get_db()
     if settings.V3_PROJECTION_DASHBOARD_READS:
-        return await ProjectionReadService(db).get_dashboard_stats()
+        return await ProjectionReadService(db, enforce_readiness=True).get_dashboard_stats()
 
     with trace_span("calculate_dashboard_stats"):
         # Run aggregations in parallel
@@ -393,7 +393,7 @@ async def get_filter_options(
     """Get available filter options (distinct values)."""
     db = get_db()
     if settings.V3_PROJECTION_DASHBOARD_READS:
-        return await ProjectionReadService(db).get_filter_options()
+        return await ProjectionReadService(db, enforce_readiness=True).get_filter_options()
 
     with trace_span("fetch_filter_options"):
         warehouses = await db.count_lines.distinct("warehouse")
@@ -541,7 +541,9 @@ async def _ws_handle_get_item_details(data: dict, user_id: str, db) -> None:
     item_id = data.get("item_id")
     if item_id:
         if settings.V3_PROJECTION_DASHBOARD_READS:
-            result = await ProjectionReadService(db).get_item_details(item_id)
+            result = await ProjectionReadService(db, enforce_readiness=True).get_item_details(
+                item_id
+            )
             await manager.send_personal_message(
                 {"type": "item_details", "payload": result["item"]},
                 user_id,

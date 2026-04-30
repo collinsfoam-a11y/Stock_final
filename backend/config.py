@@ -500,7 +500,7 @@ class Settings(PydanticBaseSettings):
         default="http://localhost:8045/v1", description="URL for the pi-server sidecar"
     )
     PI_SERVER_API_KEY: Optional[str] = Field(
-        default="sk-antigravity",
+        default=None,
         description="Bearer token used when calling the pi-server sidecar.",
     )
 
@@ -542,6 +542,24 @@ class Settings(PydanticBaseSettings):
     def resolve_projection_report_reads(cls, v: object) -> bool:
         env_value = _env_first("V3_PROJECTION_REPORT_READS")
         return _parse_bool(env_value if env_value is not None else v, default=False)
+
+    PROJECTION_READINESS_COLLECTION: str = Field(
+        default="projection_readiness",
+        description="Collection containing out-of-band projection readiness status.",
+    )
+    PROJECTION_READINESS_DOCUMENT_ID: str = Field(
+        default="current",
+        description="Document id/name containing current projection readiness status.",
+    )
+    PROJECTION_GATE_TTL_SECONDS: int = Field(30, ge=1, le=3600)
+    PROJECTION_GATE_RETRY_AFTER_SECONDS: int = Field(30, ge=1, le=3600)
+    PROJECTION_STABILITY_WINDOW_SECONDS: int = Field(60, ge=0, le=3600)
+    PROJECTION_MAX_LAG_SECONDS: float = Field(5.0, ge=0.0)
+    PROJECTION_FRESHNESS_SECONDS: int = Field(300, ge=1, le=86400)
+    PROJECTION_DRIFT_COOLDOWN_SECONDS: int = Field(300, ge=0, le=86400)
+    PROJECTION_ALERT_READINESS_FALSE_SECONDS: int = Field(300, ge=1, le=86400)
+    PROJECTION_ALERT_SYNC_FAILURE_RATE: float = Field(0.10, ge=0.0, le=1.0)
+    SESSION_CLIENT_ID_TTL_HOURS: int = Field(48, ge=1, le=168)
 
     # Enhanced Connection Pool Settings
     CONNECTION_RETRY_ATTEMPTS: int = Field(
@@ -656,8 +674,39 @@ except Exception as e:
                 os.getenv("MIN_CLIENT_VERSION") or "1.0.0"
             ).strip()
             self.PI_SERVER_URL = os.getenv("PI_SERVER_URL", "http://localhost:8045/v1")
-            self.PI_SERVER_API_KEY = (
-                _secret_env_first("PI_SERVER_API_KEY") or "sk-antigravity"
+            self.PI_SERVER_API_KEY = _secret_env_first("PI_SERVER_API_KEY")
+            self.PROJECTION_READINESS_COLLECTION = os.getenv(
+                "PROJECTION_READINESS_COLLECTION", "projection_readiness"
+            )
+            self.PROJECTION_READINESS_DOCUMENT_ID = os.getenv(
+                "PROJECTION_READINESS_DOCUMENT_ID", "current"
+            )
+            self.PROJECTION_GATE_TTL_SECONDS = int(
+                os.getenv("PROJECTION_GATE_TTL_SECONDS", 30)
+            )
+            self.PROJECTION_GATE_RETRY_AFTER_SECONDS = int(
+                os.getenv("PROJECTION_GATE_RETRY_AFTER_SECONDS", 30)
+            )
+            self.PROJECTION_STABILITY_WINDOW_SECONDS = int(
+                os.getenv("PROJECTION_STABILITY_WINDOW_SECONDS", 60)
+            )
+            self.PROJECTION_MAX_LAG_SECONDS = float(
+                os.getenv("PROJECTION_MAX_LAG_SECONDS", 5)
+            )
+            self.PROJECTION_FRESHNESS_SECONDS = int(
+                os.getenv("PROJECTION_FRESHNESS_SECONDS", 300)
+            )
+            self.PROJECTION_DRIFT_COOLDOWN_SECONDS = int(
+                os.getenv("PROJECTION_DRIFT_COOLDOWN_SECONDS", 300)
+            )
+            self.PROJECTION_ALERT_READINESS_FALSE_SECONDS = int(
+                os.getenv("PROJECTION_ALERT_READINESS_FALSE_SECONDS", 300)
+            )
+            self.PROJECTION_ALERT_SYNC_FAILURE_RATE = float(
+                os.getenv("PROJECTION_ALERT_SYNC_FAILURE_RATE", 0.10)
+            )
+            self.SESSION_CLIENT_ID_TTL_HOURS = int(
+                os.getenv("SESSION_CLIENT_ID_TTL_HOURS", 48)
             )
             self.ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS")
             self.ENABLE_LAN_ENFORCEMENT = (

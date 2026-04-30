@@ -4,14 +4,17 @@ Target: Achieve 80%+ coverage
 """
 
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from backend.api.session_management_api import _collect_snapshot_items
+from backend.api.session_management_api import (
+    _collect_snapshot_items,
+    _session_client_identity_filter,
+)
 from backend.api.schemas import SessionCreate
 from backend.server import app
 from backend.tests.utils.in_memory_db import InMemoryDatabase
@@ -50,6 +53,24 @@ class _AsyncCursor:
         item = self._items[self._index]
         self._index += 1
         return item
+
+
+def test_session_client_identity_filter_enforces_ttl_window(monkeypatch):
+    monkeypatch.setattr(
+        "backend.api.session_management_api.settings.SESSION_CLIENT_ID_TTL_HOURS", 24
+    )
+    session_create = SessionCreate(
+        warehouse="WH001",
+        client_session_id="11111111-1111-4111-8111-111111111111",
+    )
+
+    identity_filter = _session_client_identity_filter(session_create, "staff1")
+
+    assert identity_filter is not None
+    assert identity_filter["staff_user"] == "staff1"
+    freshness_clause = identity_filter["$and"][1]["$or"]
+    cutoff = freshness_clause[0]["started_at"]["$gte"]
+    assert datetime.now(timezone.utc).replace(tzinfo=None) - cutoff < timedelta(hours=25)
 
 
 @pytest.fixture

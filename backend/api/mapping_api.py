@@ -6,19 +6,13 @@ import re
 from datetime import datetime
 from typing import Any, Optional
 
-import unittest.mock
-try:
-    import pyodbc
-except ImportError:
-    pyodbc = unittest.mock.MagicMock()
-    pyodbc.Error = type("Error", (Exception,), {})
-    pyodbc.Connection = type("Connection", (), {})
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.auth.dependencies import get_current_user
 from backend.config import settings
 from backend.db.runtime import get_db
+from backend.services.dependency_manager import DependencyManager, DependencyUnavailable, pyodbc
 
 router = APIRouter(prefix="/api/mapping", tags=["Database Mapping"])
 logger = logging.getLogger(__name__)
@@ -90,7 +84,13 @@ def get_connection_string(host, port, database, user, password):
 
 def get_connection(conn_string):
     try:
+        DependencyManager.require_sql(pyodbc)
         return pyodbc.connect(conn_string, timeout=5)
+    except DependencyUnavailable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="SQL Server connector dependency is unavailable",
+        ) from exc
     except Exception as exc:
         logger.exception("Database connection failed")
         env = getattr(settings, "ENVIRONMENT", "development").lower()

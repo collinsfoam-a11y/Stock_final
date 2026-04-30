@@ -8,6 +8,11 @@ from typing import Any, Optional
 
 from fastapi import HTTPException
 
+from backend.services.projection_readiness_gate import (
+    ProjectionGateCache,
+    get_projection_gate_cache,
+)
+
 _VERIFIED_QTY_FIELD = "verified" + "_qty"
 
 
@@ -20,10 +25,23 @@ class ProjectionReadService:
     FINANCIAL_COLLECTION = "financial_projection"
     BATCH_COLLECTION = "batch_records"
 
-    def __init__(self, db: Any) -> None:
+    def __init__(
+        self,
+        db: Any,
+        *,
+        enforce_readiness: bool = False,
+        gate_cache: Optional[ProjectionGateCache] = None,
+    ) -> None:
         self.db = db
+        self.enforce_readiness = enforce_readiness
+        self.gate_cache = gate_cache or (
+            get_projection_gate_cache(db) if enforce_readiness else None
+        )
 
     async def _ensure_collection(self, collection_name: str) -> Any:
+        if self.enforce_readiness and self.gate_cache is not None:
+            await self.gate_cache.require_ready()
+
         if hasattr(self.db, "list_collection_names"):
             try:
                 names = await self.db.list_collection_names()
@@ -78,6 +96,8 @@ class ProjectionReadService:
                 if value.tzinfo
                 else value
             )
+        if isinstance(value, date):
+            return datetime.combine(value, time.min)
         if isinstance(value, (int, float)):
             try:
                 return datetime.fromtimestamp(float(value), tz=timezone.utc).replace(
@@ -101,6 +121,26 @@ class ProjectionReadService:
                 else parsed
             )
         return None
+
+    @classmethod
+    def _normalize_sort_key(cls, value: Any) -> tuple[int, int, Any]:
+        """Normalize mixed projection values into a stable, comparable key."""
+
+        if value in (None, ""):
+            return (1, 3, "")
+        parsed_datetime = cls._normalize_datetime(value)
+        if parsed_datetime is not None:
+            return (0, 0, parsed_datetime.timestamp())
+        if isinstance(value, bool):
+            return (0, 1, int(value))
+        if isinstance(value, (int, float)):
+            return (0, 1, float(value))
+        if isinstance(value, str):
+            try:
+                return (0, 1, float(value))
+            except ValueError:
+                return (0, 2, value.lower())
+        return (0, 2, str(value).lower())
 
     @classmethod
     def _date_match(cls, value: Any, start: Optional[Any], end: Optional[Any]) -> bool:
@@ -265,21 +305,19 @@ class ProjectionReadService:
         filters = config.filters
         query = self._build_verified_query(filters)
         total_records = await collection.count_documents({"is_removed": {"$ne": True}})
-        filtered_records = await collection.count_documents(query)
         sort_field = config.sort_by or "counted_at"
         sort_order = getattr(config.sort_order, "value", config.sort_order)
-        sort_direction = -1 if str(sort_order) == "desc" else 1
         skip = (config.page - 1) * config.page_size
 
-        rows = await (
-            collection.find(query)
-            .sort(sort_field, sort_direction)
-            .skip(skip)
-            .limit(config.page_size)
-            .to_list(config.page_size)
-        )
+        rows = await collection.find(query).to_list(None)
+        rows = self._apply_verified_raw_filters(rows, filters)
         data = [self._map_verified_item(row) for row in rows]
-        data = self._apply_verified_python_filters(data, filters)
+        data.sort(
+            key=lambda row: self._normalize_sort_key(row.get(sort_field)),
+            reverse=str(sort_order) == "desc",
+        )
+        filtered_records = len(data)
+        page_data = data[skip : skip + config.page_size]
         aggregations = (
             self._verified_aggregations(data) if config.include_aggregations else {}
         )
@@ -287,7 +325,7 @@ class ProjectionReadService:
 
         return {
             "success": True,
-            "data": data,
+            "data": page_data,
             "columns": [col.model_dump() for col in columns],
             "summary": summary_model(
                 total_records=total_records,
@@ -312,7 +350,7 @@ class ProjectionReadService:
         }
 
     @classmethod
-    def _apply_verified_python_filters(
+    def _apply_verified_raw_filters(
         cls, rows: list[dict[str, Any]], filters: Any
     ) -> list[dict[str, Any]]:
         if not filters:
@@ -321,21 +359,30 @@ class ProjectionReadService:
         for row in rows:
             if getattr(filters, "date_from", None) or getattr(filters, "date_to", None):
                 if not cls._date_match(
-                    row.get("counted_at"), filters.date_from, filters.date_to
+                    cls._first(row, "counted_at", "created_at", "updated_at"),
+                    filters.date_from,
+                    filters.date_to,
                 ):
                     continue
+            variance = cls._to_float(cls._first(row, "variance", "total_variance"))
             if (
                 getattr(filters, "variance_min", None) is not None
-                and row["variance"] < filters.variance_min
+                and variance < filters.variance_min
             ):
                 continue
             if (
                 getattr(filters, "variance_max", None) is not None
-                and row["variance"] > filters.variance_max
+                and variance > filters.variance_max
             ):
                 continue
             result.append(row)
         return result
+
+    @classmethod
+    def _apply_verified_python_filters(
+        cls, rows: list[dict[str, Any]], filters: Any
+    ) -> list[dict[str, Any]]:
+        return rows
 
     @staticmethod
     def _verified_aggregations(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -468,7 +515,10 @@ class ProjectionReadService:
         sort_field = config.sort_by or "variance"
         sort_order = getattr(config.sort_order, "value", config.sort_order)
         reverse = str(sort_order) == "desc"
-        data.sort(key=lambda row: row.get(sort_field) or 0, reverse=reverse)
+        data.sort(
+            key=lambda row: self._normalize_sort_key(row.get(sort_field)),
+            reverse=reverse,
+        )
         filtered_records = len(data)
         skip = (config.page - 1) * config.page_size
         page_data = data[skip : skip + config.page_size]
@@ -534,9 +584,7 @@ class ProjectionReadService:
         sort_field = config.sort_by or "started_at"
         sort_order = getattr(config.sort_order, "value", config.sort_order)
         data.sort(
-            key=lambda row: self._normalize_datetime(row.get(sort_field))
-            or row.get(sort_field)
-            or datetime.min,
+            key=lambda row: self._normalize_sort_key(row.get(sort_field)),
             reverse=str(sort_order) == "desc",
         )
         filtered_records = len(data)
@@ -575,7 +623,8 @@ class ProjectionReadService:
         warehouses = await collection.distinct("warehouse")
         floors = sorted(
             set(await collection.distinct("floor"))
-            | set(await collection.distinct("floor_no"))
+            | set(await collection.distinct("floor_no")),
+            key=self._normalize_sort_key,
         )
         categories = await collection.distinct("category")
         statuses = await collection.distinct("status")
@@ -730,9 +779,14 @@ class ProjectionReadService:
                 target["finalized_qty"] += mapped.get("counted_qty", 0.0)
                 target["is_verified"] = True
                 verified_at = mapped.get("verified_at") or mapped.get("counted_at")
+                verified_dt = self._normalize_datetime(verified_at)
+                last_verified_dt = self._normalize_datetime(target["last_verified"])
                 if verified_at and (
                     target["last_verified"] is None
-                    or verified_at > target["last_verified"]
+                    or (
+                        verified_dt is not None
+                        and (last_verified_dt is None or verified_dt > last_verified_dt)
+                    )
                 ):
                     target["last_verified"] = verified_at
         return sorted(
@@ -822,7 +876,6 @@ class ProjectionReadService:
             )
         return sorted(
             results,
-            key=lambda row: self._normalize_datetime(row.get("started_at"))
-            or datetime.min,
+            key=lambda row: self._normalize_sort_key(row.get("started_at")),
             reverse=True,
         )[:5000]

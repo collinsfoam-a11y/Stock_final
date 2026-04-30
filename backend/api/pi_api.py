@@ -10,12 +10,18 @@ from backend.config import settings
 
 logger = logging.getLogger("stock-verify")
 router = APIRouter(prefix="/api/pi", tags=["AI Assistant"])
+_PI_AUTH_WARNING_EMITTED = False
 
 
 def _pi_server_headers() -> Dict[str, str]:
+    global _PI_AUTH_WARNING_EMITTED
+
     headers = {"Content-Type": "application/json"}
     if settings.PI_SERVER_API_KEY:
         headers["Authorization"] = f"Bearer {settings.PI_SERVER_API_KEY}"
+    elif not _PI_AUTH_WARNING_EMITTED:
+        logger.warning("Running pi-server sidecar requests without auth (local mode)")
+        _PI_AUTH_WARNING_EMITTED = True
     return headers
 
 

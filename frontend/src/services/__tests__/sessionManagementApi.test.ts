@@ -44,6 +44,7 @@ jest.mock("../logging", () => ({
 
 jest.mock("../../utils/uuid", () => ({
   generateOfflineId: jest.fn(() => "offline_session_1"),
+  generateUUID: jest.fn(() => "00000000-0000-4000-8000-000000000001"),
 }));
 
 describe("sessionManagementApi.getSession", () => {
@@ -192,7 +193,7 @@ describe("sessionManagementApi.getSession", () => {
 
     const result = await createSession("WH-OFFLINE");
 
-    expect(result.id).toBe("offline_session_1");
+    expect(result.id).toBe("00000000-0000-4000-8000-000000000001");
     expect(result._createdOffline).toBe(true);
     expect(offlineStorage.cacheSession).toHaveBeenCalledWith(
       expect.objectContaining({ warehouse: "WH-OFFLINE" }),

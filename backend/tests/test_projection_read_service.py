@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi import HTTPException
@@ -12,6 +12,11 @@ from backend.services.advanced_report_service import (
     ReportSummary,
 )
 from backend.services.projection_read_service import ProjectionReadService
+from backend.services.projection_readiness_gate import (
+    ProjectionDriftMonitor,
+    ProjectionReadinessReason,
+    get_projection_gate_cache,
+)
 from backend.tests.utils.in_memory_db import InMemoryDatabase
 
 
@@ -66,3 +71,152 @@ async def test_projection_read_service_fails_when_required_collection_missing():
         await service.get_item_details("missing-line")
 
     assert exc.value.status_code == 404
+
+
+async def _seed_projection_readiness(
+    db: InMemoryDatabase,
+    *,
+    is_consistent: bool = True,
+    healthy_since: datetime | None = None,
+    drift_count: int = 0,
+) -> None:
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    for collection_name in (
+        ProjectionReadService.SESSION_COLLECTION,
+        ProjectionReadService.VERIFIED_COLLECTION,
+        ProjectionReadService.VARIANCE_COLLECTION,
+        ProjectionReadService.FINANCIAL_COLLECTION,
+        ProjectionReadService.BATCH_COLLECTION,
+    ):
+        db[collection_name]
+
+    await db["projection_readiness"].insert_one(
+        {
+            "_id": "current",
+            "is_consistent": is_consistent,
+            "projection_gap_count": 0,
+            "projection_drift_count": drift_count,
+            "projection_lag_seconds": 0,
+            "updated_at": now,
+            "healthy_since": healthy_since or now - timedelta(minutes=5),
+        }
+    )
+
+
+@pytest.mark.asyncio
+async def test_projection_gate_fails_closed_when_status_missing():
+    db = InMemoryDatabase()
+    for collection_name in (
+        ProjectionReadService.SESSION_COLLECTION,
+        ProjectionReadService.VERIFIED_COLLECTION,
+        ProjectionReadService.VARIANCE_COLLECTION,
+        ProjectionReadService.FINANCIAL_COLLECTION,
+        ProjectionReadService.BATCH_COLLECTION,
+    ):
+        db[collection_name]
+
+    service = ProjectionReadService(db, enforce_readiness=True)
+
+    with pytest.raises(HTTPException) as exc:
+        await service.get_dashboard_stats()
+
+    assert exc.value.status_code == 503
+    assert exc.value.detail["code"] == "PROJECTION_NOT_READY"
+    assert exc.value.detail["reason"] == ProjectionReadinessReason.PARITY_FAILED.value
+
+
+@pytest.mark.asyncio
+async def test_projection_gate_allows_reads_after_stability_window():
+    db = InMemoryDatabase()
+    await _seed_projection_readiness(
+        db,
+        healthy_since=datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=5),
+    )
+    await db["verified_items_projection"].insert_one(
+        {
+            "id": "line-ready",
+            "item_code": "READY",
+            "counted_qty": 1,
+            "variance": 0,
+            "verified": True,
+            "counted_at": datetime.now(timezone.utc).replace(tzinfo=None),
+        }
+    )
+
+    result = await ProjectionReadService(db, enforce_readiness=True).get_dashboard_stats()
+
+    assert result["success"] is True
+    assert result["stats"]["total_items"] == 1
+
+
+@pytest.mark.asyncio
+async def test_projection_gate_blocks_during_stability_window():
+    db = InMemoryDatabase()
+    await _seed_projection_readiness(
+        db,
+        healthy_since=datetime.now(timezone.utc).replace(tzinfo=None),
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await ProjectionReadService(db, enforce_readiness=True).get_dashboard_stats()
+
+    assert exc.value.status_code == 503
+    assert exc.value.detail["reason"] == ProjectionReadinessReason.STALE_DATA.value
+    assert exc.value.detail["retry_after_seconds"] > 0
+
+
+@pytest.mark.asyncio
+async def test_projection_drift_monitor_marks_gate_unhealthy_with_cooldown():
+    db = InMemoryDatabase()
+    await _seed_projection_readiness(db, is_consistent=False, drift_count=1)
+    cache = get_projection_gate_cache(db)
+
+    status = await ProjectionDriftMonitor(cache).evaluate_once()
+
+    assert status.ready is False
+    assert status.reason == ProjectionReadinessReason.PARITY_FAILED
+    assert status.retry_after_seconds > 0
+
+
+@pytest.mark.asyncio
+async def test_projection_verified_report_filters_before_pagination_and_sorts_mixed_dates():
+    db = InMemoryDatabase()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    await db["verified_items_projection"].insert_one(
+        {
+            "id": "old-line",
+            "item_code": "OLD",
+            "counted_qty": 1,
+            "variance": 0,
+            "verified": True,
+            "counted_at": "2024-01-01T00:00:00Z",
+        }
+    )
+    await db["verified_items_projection"].insert_one(
+        {
+            "id": "new-line",
+            "item_code": "NEW",
+            "counted_qty": 1,
+            "variance": 0,
+            "verified": True,
+            "counted_at": now,
+        }
+    )
+
+    config = ReportConfig(
+        report_type="verified_items",
+        filters=ReportFilters(date_from=now.date()),
+        page=1,
+        page_size=1,
+        sort_by="counted_at",
+        include_aggregations=True,
+    )
+
+    result = await ProjectionReadService(db).generate_verified_items_report(
+        config,
+        columns=AdvancedReportService.REPORT_COLUMNS["verified_items"],
+        summary_model=ReportSummary,
+    )
+
+    assert result["summary"]["filtered_records"] == 1
+    assert result["data"][0]["item_code"] == "NEW"

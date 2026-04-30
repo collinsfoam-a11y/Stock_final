@@ -163,16 +163,9 @@ const resolveMappedSessionId = async (rawSessionId: unknown): Promise<string | u
 };
 
 const resolveLocationContext = (data: Record<string, unknown>) => {
-  const floorId = stringValue(data.floor_id || data.floor_no || data.floor || data.location_name);
+  const floorId = stringValue(data.floor_id || data.floor_no);
   const rackId = stringValue(data.rack_id || data.rack_no || data.rack);
-  const locationId = stringValue(
-    data.location_id ||
-      data.location ||
-      data.mark_location ||
-      data.warehouse ||
-      data.location_type ||
-      floorId
-  );
+  const locationId = stringValue(data.location_id);
 
   if (!locationId || !floorId || !rackId) {
     throw new Error("Missing location_id, floor_id, or rack_id for records-based sync");
@@ -201,6 +194,7 @@ const buildCountLineRecord = async (item: OfflineQueueItem): Promise<SyncRecord>
   );
 
   return {
+    record_id: item.id,
     client_record_id: item.id,
     session_id: sessionId,
     location_id: locationId,

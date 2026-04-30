@@ -12,7 +12,7 @@ import {
 } from "../offline/offlineStorage";
 import { getNetworkStatus } from "../../utils/network";
 import { createLogger } from "../logging";
-import { generateOfflineId } from "../../utils/uuid";
+import { generateUUID } from "../../utils/uuid";
 import type { Session } from "../../types";
 
 const log = createLogger("SessionManagementApi");
@@ -72,6 +72,15 @@ const normalizeCreateSessionParams = (
   offlineId: typeof params !== "string" ? params.offline_id : undefined,
 });
 
+const ensureSessionIdentity = (config: SessionCreateConfig): SessionCreateConfig => {
+  const clientSessionId = config.clientSessionId || config.offlineId || generateUUID();
+  return {
+    ...config,
+    clientSessionId,
+    offlineId: config.offlineId || clientSessionId,
+  };
+};
+
 const buildOfflineSession = ({
   warehouse,
   sessionType,
@@ -81,7 +90,7 @@ const buildOfflineSession = ({
   clientSessionId,
   offlineId,
 }: SessionCreateConfig) => {
-  const generatedId = clientSessionId || offlineId || generateOfflineId();
+  const generatedId = clientSessionId || offlineId || generateUUID();
   return {
     id: generatedId,
     client_session_id: generatedId,
@@ -224,7 +233,7 @@ export const shouldAttemptReadApi = () => {
  * Creates a session online when possible and falls back to an offline placeholder otherwise.
  */
 export const createSession = async (params: string | CreateSessionParams) => {
-  const config = normalizeCreateSessionParams(params);
+  const config = ensureSessionIdentity(normalizeCreateSessionParams(params));
   const networkStatus = getNetworkStatus();
 
   log.debug("Create session requested", {
@@ -247,10 +256,16 @@ export const createSession = async (params: string | CreateSessionParams) => {
       return offlineSession;
     }
 
+    const pendingSession = buildOfflineSession(config);
+    await cacheSession({ ...pendingSession, status: "PENDING_SYNC" });
+
     const response = await api.post("/api/sessions", buildSessionCreatePayload(config), {
       timeout: 3000,
       skipOfflineQueue: true,
     } as any);
+    if (pendingSession.id && pendingSession.id !== response.data?.id) {
+      await removeSessionFromCache(pendingSession.id);
+    }
     await cacheSession(response.data);
     log.debug("Created session via API", {
       id: response.data?.id,

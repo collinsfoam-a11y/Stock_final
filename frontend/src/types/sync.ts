@@ -4,6 +4,7 @@
  */
 
 export interface SyncRecord {
+  record_id: string;
   client_record_id: string;
   session_id: string;
   location_id: string;

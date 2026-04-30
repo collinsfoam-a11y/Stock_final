@@ -9,11 +9,6 @@ from pathlib import Path
 from typing import Any, Optional, Sequence
 
 try:
-    import pyodbc
-except ImportError:  # pragma: no cover - exercised in dependency-manager tests
-    pyodbc = None  # type: ignore[assignment]
-
-try:
     from tenacity import retry, stop_after_attempt, wait_exponential
 except ImportError:
     # Dummy decorators if tenacity is not installed
@@ -29,6 +24,7 @@ except ImportError:
         pass
 
 from backend.db_mapping_config import SQL_TEMPLATES, get_active_mapping
+from backend.services.dependency_manager import DependencyManager, pyodbc
 from backend.utils.db_connection import SQLServerConnectionBuilder
 
 # Add project root to path for direct execution (debugging)
@@ -525,6 +521,7 @@ class SQLServerConnector:
     def _attempt_connection_method(self, method: dict[str, Any]) -> bool:
         """Attempt connection using a specific method"""
         try:
+            DependencyManager.require_sql(pyodbc)
             port_param = self._normalize_port_value(method.get("port"))
 
             self.connection = SQLServerConnectionBuilder.create_optimized_connection(

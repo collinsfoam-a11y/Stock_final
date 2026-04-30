@@ -69,9 +69,27 @@ run_node_steps() {
     run_step node-test make --no-print-directory node-test
 }
 
+run_projection_gate() {
+    if [[ "${PROJECTION_CI_GATE_ENABLED:-false}" != "true" ]]; then
+        return
+    fi
+
+    local report_path="${PROJECTION_PARITY_REPORT:-.agent/reports/projection-parity-validation.json}"
+    local readiness_path="${PROJECTION_READINESS_REPORT:-}"
+    if [[ -n "$readiness_path" ]]; then
+        run_step projection-gate ./scripts/python.sh backend/scripts/check_projection_ci_gate.py \
+            --report "$report_path" \
+            --readiness-report "$readiness_path"
+    else
+        run_step projection-gate ./scripts/python.sh backend/scripts/check_projection_ci_gate.py \
+            --report "$report_path"
+    fi
+}
+
 case "$MODE" in
     python)
         run_python_steps
+        run_projection_gate
         ;;
     node)
         run_node_steps
@@ -79,6 +97,7 @@ case "$MODE" in
     ci)
         run_python_steps
         run_node_steps
+        run_projection_gate
         printf '[ok] agent-ci complete\n'
         ;;
     *)

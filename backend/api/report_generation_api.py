@@ -139,7 +139,9 @@ def _write_xlsx_data(ws: Any, data: list[dict], headers: list[str]) -> None:
 async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
     """Generate stock summary report data."""
     if settings.V3_PROJECTION_REPORT_READS:
-        return await ProjectionReadService(db).generate_stock_summary(filters)
+        return await ProjectionReadService(db, enforce_readiness=True).generate_stock_summary(
+            filters
+        )
 
     item_query: dict[str, Any] = {}
     if filters.warehouse:
@@ -232,7 +234,9 @@ async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
 async def generate_variance_report(db, filters: ReportFilter) -> list[dict]:
     """Generate variance report data."""
     if settings.V3_PROJECTION_REPORT_READS:
-        return await ProjectionReadService(db).generate_variance_report(filters)
+        return await ProjectionReadService(db, enforce_readiness=True).generate_variance_report(
+            filters
+        )
 
     line_query: dict[str, Any] = {"variance": {"$ne": 0}}
     if filters.status:
@@ -371,7 +375,9 @@ async def generate_user_activity_report(db, filters: ReportFilter) -> list[dict]
 async def generate_session_history_report(db, filters: ReportFilter) -> list[dict]:
     """Generate session history report data."""
     if settings.V3_PROJECTION_REPORT_READS:
-        return await ProjectionReadService(db).generate_session_history(filters)
+        return await ProjectionReadService(db, enforce_readiness=True).generate_session_history(
+            filters
+        )
 
     query: dict[str, Any] = {}
 
@@ -687,7 +693,9 @@ async def get_report_filter_options(
 
     try:
         if settings.V3_PROJECTION_REPORT_READS:
-            projection_options = await ProjectionReadService(db).get_filter_options()
+            projection_options = await ProjectionReadService(
+                db, enforce_readiness=True
+            ).get_filter_options()
             options = projection_options["options"]
             return {
                 "report_type": report_type,

@@ -31,6 +31,7 @@ async def test_sync_single_record_scopes_upsert_by_session_id(monkeypatch):
     )
 
     record = SyncRecord(
+        record_id="offline-line-1",
         client_record_id="offline-line-1",
         session_id="session-a",
         location_id="showroom",

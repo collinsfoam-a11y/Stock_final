@@ -28,6 +28,7 @@ from backend.services.circuit_breaker import get_circuit_breaker
 from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.governance_guard import GovernanceViolation, raise_forbidden_direct_write
 from backend.services.lock_manager import LockManager, get_lock_manager
+from backend.services.observability import metrics
 from backend.services.redis_service import get_redis
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.sync_conflicts_service import SyncConflictsService
@@ -56,6 +57,7 @@ router = APIRouter(prefix="/api/sync", tags=["Sync"])
 class SyncRecord(BaseModel):
     """Single record to sync"""
 
+    record_id: str = Field(..., description="Stable client-side idempotency record ID")
     client_record_id: str = Field(..., description="Unique client-side record ID")
     session_id: str = Field(..., description="Session ID")
     location_id: str = Field(..., description="Location ID")
@@ -145,6 +147,33 @@ class BatchSyncResponse(BaseModel):
 # Sync Logic
 
 
+async def _record_item_code_is_known(db: Any, record: SyncRecord) -> bool:
+    """Validate item_code against the session snapshot or ERP item cache."""
+
+    item_code = str(record.item_code or "").strip()
+    if not item_code:
+        return False
+
+    try:
+        snapshot = await db.session_snapshots.find_one({"session_id": record.session_id})
+        if snapshot:
+            items = snapshot.get("items") if isinstance(snapshot, dict) else None
+            if isinstance(items, list):
+                return any(
+                    str(item.get("item_code") or "").strip() == item_code
+                    for item in items
+                    if isinstance(item, dict)
+                )
+    except Exception:
+        logger.debug("Unable to validate item_code from session snapshot", exc_info=True)
+
+    try:
+        return bool(await db.erp_items.find_one({"item_code": item_code}))
+    except Exception:
+        logger.debug("Unable to validate item_code from ERP item cache", exc_info=True)
+        return False
+
+
 async def validate_record(
     record: SyncRecord,
     db,
@@ -158,6 +187,35 @@ async def validate_record(
     Returns:
         SyncConflict if validation fails, None if valid
     """
+    if not all(
+        [
+            str(record.location_id or "").strip(),
+            str(record.floor_id or "").strip(),
+            str(record.rack_id or "").strip(),
+        ]
+    ):
+        return SyncConflict(
+            client_record_id=record.client_record_id,
+            conflict_type="INVALID_LOCATION",
+            message="Missing required location hierarchy",
+            details={"required_fields": ["location_id", "floor_id", "rack_id"]},
+        )
+
+    if not str(record.item_code or "").strip():
+        return SyncConflict(
+            client_record_id=record.client_record_id,
+            conflict_type="UNKNOWN_ITEM_CODE",
+            message="Missing item_code",
+        )
+
+    if not await _record_item_code_is_known(db, record):
+        return SyncConflict(
+            client_record_id=record.client_record_id,
+            conflict_type="UNKNOWN_ITEM_CODE",
+            message=f"Unknown item_code '{record.item_code}'",
+            details={"item_code": record.item_code},
+        )
+
     # Check for duplicate serial numbers
     if record.serial_numbers:
         for serial in record.serial_numbers:
@@ -260,8 +318,9 @@ async def sync_single_record(
         )
         doc = {
             "id": str(uuid.uuid4()),
+            "record_id": record.record_id,
             "client_record_id": record.client_record_id,
-            "idempotency_key": record.client_record_id,
+            "idempotency_key": record.record_id,
             "session_id": record.session_id,
             "location_id": location_id,
             "floor_id": floor_id,
@@ -439,9 +498,9 @@ async def sync_batch(
         lifecycle_service = SessionLifecycleService(db)
         # Validate all records first
         for record in request.records:
-            # Check idempotency first using client_record_id as operation_id
+            # Check idempotency first using stable record_id as operation_id
             existing_op = await db.idempotency_operations.find_one(
-                {"operation_id": record.client_record_id}
+                {"operation_id": record.record_id}
             )
             if existing_op:
                 ok_records.append(record.client_record_id)
@@ -463,11 +522,19 @@ async def sync_batch(
 
                 if success:
                     # Record idempotency
-                    await db.idempotency_operations.insert_one(
+                    await db.idempotency_operations.update_one(
+                        {"operation_id": record.record_id},
                         {
-                            "operation_id": record.client_record_id,
-                            "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                        }
+                            "$setOnInsert": {
+                                "operation_id": record.record_id,
+                                "client_record_id": record.client_record_id,
+                                "session_id": record.session_id,
+                                "created_at": datetime.now(timezone.utc).replace(
+                                    tzinfo=None
+                                ),
+                            }
+                        },
+                        upsert=True,
                     )
                     ok_records.append(record.client_record_id)
                 else:
@@ -495,6 +562,14 @@ async def sync_batch(
         f"{len(conflicts)} conflicts, {len(errors)} errors "
         f"({processing_time:.2f}ms)"
     )
+
+    try:
+        await metrics.set_gauge(
+            "sync_failure_rate",
+            (len(conflicts) + len(errors)) / max(len(request.records), 1),
+        )
+    except Exception:
+        logger.debug("Failed to publish sync failure metric", exc_info=True)
 
     # Build per-record results for legacy clients that expect flat success flags
     results = [SyncResult(id=record_id, success=True, message=None) for record_id in ok_records]

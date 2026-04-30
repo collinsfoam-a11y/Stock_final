@@ -37,6 +37,7 @@ async def test_modern_batch_sync_success(async_client: AsyncClient, authenticate
     payload = {
         "records": [
             {
+                "record_id": client_record_id,
                 "client_record_id": client_record_id,
                 "session_id": session_id,
                 "location_id": "LOC-1",
@@ -63,6 +64,16 @@ async def test_modern_batch_sync_success(async_client: AsyncClient, authenticate
     assert len(data["conflicts"]) == 0
     assert len(data["errors"]) == 0
 
+    replay = await async_client.post(
+        "/api/sync/batch", json=payload, headers=authenticated_headers
+    )
+    assert replay.status_code == 200
+    assert client_record_id in replay.json()["ok"]
+    count = await test_db.count_lines.count_documents(
+        {"session_id": session_id, "idempotency_key": client_record_id}
+    )
+    assert count == 1
+
 
 @pytest.mark.asyncio
 async def test_modern_batch_sync_duplicate_serial_conflict(
@@ -79,6 +90,7 @@ async def test_modern_batch_sync_duplicate_serial_conflict(
     payload1 = {
         "records": [
             {
+                "record_id": "rec-1",
                 "client_record_id": "rec-1",
                 "session_id": session_1,
                 "location_id": "LOC-1",
@@ -99,6 +111,7 @@ async def test_modern_batch_sync_duplicate_serial_conflict(
     payload2 = {
         "records": [
             {
+                "record_id": "rec-2",
                 "client_record_id": "rec-2",
                 "session_id": session_2,
                 "location_id": "LOC-2",
@@ -120,3 +133,54 @@ async def test_modern_batch_sync_duplicate_serial_conflict(
     assert len(data2["conflicts"]) == 1
     assert data2["conflicts"][0]["conflict_type"] == "duplicate_serial"
     assert serial in data2["conflicts"][0]["message"]
+
+
+@pytest.mark.asyncio
+async def test_modern_batch_sync_rejects_partial_location_and_unknown_item(
+    async_client: AsyncClient, authenticated_headers, test_db
+):
+    session_id = str(uuid.uuid4())
+    await _seed_active_session_with_snapshot(test_db, session_id=session_id, item_code="ITEM-KNOWN")
+
+    payload = {
+        "records": [
+            {
+                "record_id": "rec-missing-location",
+                "client_record_id": "rec-missing-location",
+                "session_id": session_id,
+                "location_id": "LOC-1",
+                "floor_id": "",
+                "rack_id": "R1",
+                "item_code": "ITEM-KNOWN",
+                "verified_qty": 1.0,
+                "created_at": "2024-01-01T10:01:00Z",
+                "updated_at": "2024-01-01T10:01:00Z",
+            },
+            {
+                "record_id": "rec-unknown-item",
+                "client_record_id": "rec-unknown-item",
+                "session_id": session_id,
+                "location_id": "LOC-1",
+                "floor_id": "F1",
+                "rack_id": "R1",
+                "item_code": "ITEM-UNKNOWN",
+                "verified_qty": 1.0,
+                "created_at": "2024-01-01T10:01:00Z",
+                "updated_at": "2024-01-01T10:01:00Z",
+            },
+        ]
+    }
+
+    response = await async_client.post(
+        "/api/sync/batch", json=payload, headers=authenticated_headers
+    )
+
+    assert response.status_code == 200
+    conflict_types = {
+        conflict["client_record_id"]: conflict["conflict_type"]
+        for conflict in response.json()["conflicts"]
+    }
+    assert conflict_types == {
+        "rec-missing-location": "INVALID_LOCATION",
+        "rec-unknown-item": "UNKNOWN_ITEM_CODE",
+    }

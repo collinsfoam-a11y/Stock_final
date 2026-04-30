@@ -354,7 +354,9 @@ class AdvancedReportService:
             or settings.V3_PROJECTION_REPORT_READS
         ):
             columns = config.columns or self.get_column_config("verified_items")
-            return await ProjectionReadService(self.db).generate_verified_items_report(
+            return await ProjectionReadService(
+                self.db, enforce_readiness=True
+            ).generate_verified_items_report(
                 config,
                 columns=columns,
                 summary_model=ReportSummary,
@@ -482,7 +484,9 @@ class AdvancedReportService:
         """Generate session summary report with aggregated data."""
         if settings.V3_PROJECTION_REPORT_READS:
             columns = config.columns or self.get_column_config("session_summary")
-            return await ProjectionReadService(self.db).generate_session_summary_report(
+            return await ProjectionReadService(
+                self.db, enforce_readiness=True
+            ).generate_session_summary_report(
                 config,
                 columns=columns,
                 summary_model=ReportSummary,
@@ -619,7 +623,7 @@ class AdvancedReportService:
         if settings.V3_PROJECTION_REPORT_READS:
             columns = config.columns or self.get_column_config("variance_analysis")
             return await ProjectionReadService(
-                self.db
+                self.db, enforce_readiness=True
             ).generate_variance_analysis_report(
                 config,
                 columns=columns,

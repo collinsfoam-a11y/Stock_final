@@ -27,7 +27,10 @@ async def test_pi_status_online():
     app.dependency_overrides[get_current_user] = get_mock_admin
 
     def handler(request):
-        assert request.headers["authorization"] == f"Bearer {settings.PI_SERVER_API_KEY}"
+        if settings.PI_SERVER_API_KEY:
+            assert request.headers["authorization"] == f"Bearer {settings.PI_SERVER_API_KEY}"
+        else:
+            assert "authorization" not in request.headers
         return httpx.Response(status_code=200, json={"models": []})
 
     respx.get(f"{settings.PI_SERVER_URL}/models").mock(side_effect=handler)
@@ -68,7 +71,10 @@ async def test_pi_chat_success(test_db):
     app.dependency_overrides[get_current_user] = get_mock_admin
 
     def handler(request):
-        assert request.headers["authorization"] == f"Bearer {settings.PI_SERVER_API_KEY}"
+        if settings.PI_SERVER_API_KEY:
+            assert request.headers["authorization"] == f"Bearer {settings.PI_SERVER_API_KEY}"
+        else:
+            assert "authorization" not in request.headers
         return httpx.Response(
             status_code=200,
             json={"choices": [{"message": {"content": "Hello world"}}]},

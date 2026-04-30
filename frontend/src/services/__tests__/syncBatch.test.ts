@@ -150,6 +150,7 @@ describe("syncOfflineQueue", () => {
 
     expect(api.syncBatch).toHaveBeenCalledWith([
       expect.objectContaining({
+        record_id: "op_1",
         client_record_id: "op_1",
         session_id: "sess_1",
         location_id: "showroom",
@@ -283,6 +284,29 @@ describe("syncOfflineQueue", () => {
         status: "blocked_conflict",
       })
     );
+  });
+
+  it("should not synthesize location ids from warehouse or floor aliases", async () => {
+    (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue([
+      {
+        ...mockOperations[0],
+        data: {
+          session_id: "sess_1",
+          warehouse: "showroom",
+          floor: "F1",
+          rack_id: "R1",
+          item_code: "ITEM001",
+          counted_qty: 10,
+        },
+      },
+    ]);
+
+    const result = await syncOfflineQueue();
+
+    expect(api.syncBatch).not.toHaveBeenCalled();
+    expect(result.failed).toBe(1);
+    expect(result.errors[0]?.error).toContain("Missing location_id");
+    expect(offlineStorage.removeManyFromOfflineQueue).not.toHaveBeenCalled();
   });
 
   it("should preserve repeated failures for manual review instead of deleting them", async () => {

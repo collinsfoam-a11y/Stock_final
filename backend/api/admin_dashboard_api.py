@@ -280,7 +280,7 @@ async def get_dashboard_kpis(current_user: dict = Depends(require_admin)):
 
     if settings.V3_PROJECTION_DASHBOARD_READS:
         return KPIResponse(
-            **await ProjectionReadService(db).get_admin_kpis(
+            **await ProjectionReadService(db, enforce_readiness=True).get_admin_kpis(
                 active_users=await count_active_users(db)
             )
         )

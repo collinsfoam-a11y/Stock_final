@@ -12,6 +12,7 @@ import argparse
 import asyncio
 import json
 import logging
+import random
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -47,6 +48,9 @@ class ProjectionParityConfig:
     output_path: Path = Path(".agent/reports/projection-parity-validation.json")
     sample_count: int = 3
     sample_session_ids: tuple[str, ...] = ()
+    max_records: Optional[int] = None
+    timeout_seconds: Optional[float] = None
+    sample_seed: Optional[int] = None
     float_tolerance: float = 0.01
     event_lag_threshold_seconds: float = 5.0
 
@@ -299,9 +303,19 @@ def _projection_sample_sort_key(row: dict[str, Any]) -> datetime:
     return datetime.min
 
 
-async def _load_legacy_sessions(db: AsyncIOMotorDatabase) -> dict[str, dict[str, Any]]:
+def _limit_cursor(cursor: Any, max_records: Optional[int]) -> Any:
+    if max_records and max_records > 0 and hasattr(cursor, "limit"):
+        return cursor.limit(max_records)
+    return cursor
+
+
+async def _load_legacy_sessions(
+    db: AsyncIOMotorDatabase,
+    *,
+    max_records: Optional[int] = None,
+) -> dict[str, dict[str, Any]]:
     sessions: dict[str, dict[str, Any]] = {}
-    cursor = db.sessions.find({})
+    cursor = _limit_cursor(db.sessions.find({}), max_records)
     async for session in cursor:
         session_id = _session_identifier(session)
         if session_id:
@@ -336,11 +350,15 @@ def _select_sample_session_ids(
         if _to_int(_first_present(row, "total_items", "item_count")) > 0
     ]
     projection_candidates.sort(key=_projection_sample_sort_key, reverse=True)
+    if config.sample_seed is not None:
+        random.Random(config.sample_seed).shuffle(projection_candidates)
     selected = [_session_identifier(row) for row in projection_candidates[: config.sample_count]]
     if selected:
         return tuple(session_id for session_id in selected if session_id)
 
     ordered = sorted(legacy_sessions.values(), key=_sample_sort_key, reverse=True)
+    if config.sample_seed is not None:
+        random.Random(config.sample_seed).shuffle(ordered)
     selected = [_session_identifier(session) for session in ordered[: config.sample_count]]
     return tuple(session_id for session_id in selected if session_id)
 
@@ -349,6 +367,7 @@ async def _scan_legacy_count_lines(
     db: AsyncIOMotorDatabase,
     *,
     sample_session_ids: set[str],
+    max_records: Optional[int] = None,
 ) -> tuple[dict[str, Any], dict[str, list[dict[str, Any]]]]:
     aggregate = {
         "row_count": 0,
@@ -362,7 +381,7 @@ async def _scan_legacy_count_lines(
         session_id: [] for session_id in sample_session_ids
     }
 
-    cursor = db.count_lines.find({})
+    cursor = _limit_cursor(db.count_lines.find({}), max_records)
     async for line in cursor:
         if is_superseded_count_line(line):
             continue
@@ -386,6 +405,8 @@ async def _scan_legacy_count_lines(
 async def _scan_session_projection(
     db: AsyncIOMotorDatabase,
     collection_name: str,
+    *,
+    max_records: Optional[int] = None,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
     rows_by_session: dict[str, dict[str, Any]] = {}
     aggregate = {
@@ -398,7 +419,7 @@ async def _scan_session_projection(
         "latest_updated_at": None,
     }
 
-    cursor = db[collection_name].find({})
+    cursor = _limit_cursor(db[collection_name].find({}), max_records)
     async for row in cursor:
         session_id = _session_identifier(row)
         if not session_id:
@@ -430,6 +451,7 @@ async def _scan_item_projection(
     *,
     collection_name: str,
     sample_session_ids: set[str],
+    max_records: Optional[int] = None,
 ) -> tuple[dict[str, Any], dict[str, list[dict[str, Any]]]]:
     aggregate = {
         "row_count": 0,
@@ -442,7 +464,7 @@ async def _scan_item_projection(
         session_id: [] for session_id in sample_session_ids
     }
 
-    cursor = db[collection_name].find({})
+    cursor = _limit_cursor(db[collection_name].find({}), max_records)
     async for row in cursor:
         aggregate["row_count"] += 1
         if _projection_item_is_verified(row):
@@ -471,6 +493,7 @@ async def _scan_verified_projection(
     *,
     collection_name: str,
     sample_session_ids: set[str],
+    max_records: Optional[int] = None,
 ) -> tuple[dict[str, Any], dict[str, list[dict[str, Any]]]]:
     aggregate = {
         "row_count": 0,
@@ -481,7 +504,7 @@ async def _scan_verified_projection(
         session_id: [] for session_id in sample_session_ids
     }
 
-    cursor = db[collection_name].find({})
+    cursor = _limit_cursor(db[collection_name].find({}), max_records)
     async for row in cursor:
         if bool(row.get("is_removed")):
             continue
@@ -508,6 +531,7 @@ async def _scan_variance_projection(
     db: AsyncIOMotorDatabase,
     *,
     collection_name: str,
+    max_records: Optional[int] = None,
 ) -> dict[str, Any]:
     aggregate = {
         "row_count": 0,
@@ -515,7 +539,7 @@ async def _scan_variance_projection(
         "latest_updated_at": None,
     }
 
-    cursor = db[collection_name].find({})
+    cursor = _limit_cursor(db[collection_name].find({}), max_records)
     async for row in cursor:
         if bool(row.get("is_removed")):
             continue
@@ -557,6 +581,7 @@ async def _scan_financial_projection(
     db: AsyncIOMotorDatabase,
     *,
     collection_name: str,
+    max_records: Optional[int] = None,
 ) -> dict[str, Any]:
     aggregate = {
         "row_count": 0,
@@ -564,7 +589,7 @@ async def _scan_financial_projection(
         "latest_updated_at": None,
     }
 
-    cursor = db[collection_name].find({})
+    cursor = _limit_cursor(db[collection_name].find({}), max_records)
     async for row in cursor:
         aggregate["row_count"] += 1
         aggregate["financial_total"] += _financial_projection_value(row)
@@ -584,6 +609,7 @@ async def _fetch_projection_batches(
     *,
     collection_name: str,
     sample_session_ids: set[str],
+    max_records: Optional[int] = None,
 ) -> dict[str, dict[str, list[dict[str, Any]]]]:
     grouped: dict[str, dict[str, list[dict[str, Any]]]] = {
         session_id: {} for session_id in sample_session_ids
@@ -591,7 +617,10 @@ async def _fetch_projection_batches(
     if not sample_session_ids:
         return grouped
 
-    cursor = db[collection_name].find({"session_id": {"$in": sorted(sample_session_ids)}})
+    cursor = _limit_cursor(
+        db[collection_name].find({"session_id": {"$in": sorted(sample_session_ids)}}),
+        max_records,
+    )
     async for row in cursor:
         session_id = _normalize_text(row.get("session_id"))
         item_code = _normalize_text(_first_present(row, "item_code", "item_id"))
@@ -711,6 +740,11 @@ def _build_base_report(config: ProjectionParityConfig) -> dict[str, Any]:
             "event_log": config.event_log_collection,
         },
         "details": {},
+        "controls": {
+            "max_records": config.max_records,
+            "timeout_seconds": config.timeout_seconds,
+            "sample_seed": config.sample_seed,
+        },
         "failures": [],
     }
 
@@ -740,7 +774,7 @@ async def validate_projection_parity(
                 projection=collection_name,
             )
 
-    legacy_sessions = await _load_legacy_sessions(db)
+    legacy_sessions = await _load_legacy_sessions(db, max_records=config.max_records)
     session_projection_rows: dict[str, dict[str, Any]] = {}
     session_projection_aggregate = {
         "session_count": 0,
@@ -756,6 +790,7 @@ async def validate_projection_parity(
         session_projection_rows, session_projection_aggregate = await _scan_session_projection(
             db,
             config.session_projection_collection,
+            max_records=config.max_records,
         )
 
     sample_session_ids = _select_sample_session_ids(
@@ -771,6 +806,7 @@ async def validate_projection_parity(
     legacy_aggregate, legacy_sample_lines = await _scan_legacy_count_lines(
         db,
         sample_session_ids=sample_session_set,
+        max_records=config.max_records,
     )
 
     verified_projection_aggregate = {
@@ -803,22 +839,26 @@ async def validate_projection_parity(
             db,
             collection_name=config.verified_projection_collection,
             sample_session_ids=sample_session_set,
+            max_records=config.max_records,
         )
     if await _collection_exists(db, config.variance_projection_collection):
         variance_projection_aggregate = await _scan_variance_projection(
             db,
             collection_name=config.variance_projection_collection,
+            max_records=config.max_records,
         )
     if await _collection_exists(db, config.financial_projection_collection):
         financial_projection_aggregate = await _scan_financial_projection(
             db,
             collection_name=config.financial_projection_collection,
+            max_records=config.max_records,
         )
     if await _collection_exists(db, config.batch_projection_collection):
         batch_projection_samples = await _fetch_projection_batches(
             db,
             collection_name=config.batch_projection_collection,
             sample_session_ids=sample_session_set,
+            max_records=config.max_records,
         )
 
     report["details"]["session_totals"] = {
@@ -1174,13 +1214,21 @@ async def _run(args: argparse.Namespace) -> tuple[dict[str, Any], Path]:
         output_path=Path(args.output),
         sample_count=args.samples,
         sample_session_ids=tuple(args.session_id or ()),
+        max_records=args.max_records,
+        timeout_seconds=args.timeout,
+        sample_seed=args.sample_seed,
         float_tolerance=args.float_tolerance,
         event_lag_threshold_seconds=args.event_lag_threshold_seconds,
     )
 
     async with lifespan_db(settings.MONGO_URL, settings.DB_NAME):
         db = get_db()
-        report = await validate_projection_parity(db, config=config)
+        validation = validate_projection_parity(db, config=config)
+        report = (
+            await asyncio.wait_for(validation, timeout=config.timeout_seconds)
+            if config.timeout_seconds
+            else await validation
+        )
     return report, write_report(report, config.output_path)
 
 
@@ -1196,6 +1244,24 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=3,
         help="Number of recent sessions to sample when --session-id is not provided.",
+    )
+    parser.add_argument(
+        "--max-records",
+        type=int,
+        default=None,
+        help="Maximum records to scan per collection for bounded CI validation.",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=None,
+        help="Maximum runtime in seconds before failing validation.",
+    )
+    parser.add_argument(
+        "--sample-seed",
+        type=int,
+        default=None,
+        help="Fixed seed for deterministic sample selection.",
     )
     parser.add_argument(
         "--session-id",

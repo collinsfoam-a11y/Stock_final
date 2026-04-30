@@ -6,6 +6,7 @@ import pytest
 
 from backend.scripts.validate_projection_parity import (
     ProjectionParityConfig,
+    _select_sample_session_ids,
     validate_projection_parity,
     write_report,
 )
@@ -160,6 +161,30 @@ async def test_validate_projection_parity_passes_for_matching_projection_state(t
 
     output_path = write_report(report, tmp_path / "reports" / "projection.json")
     assert output_path.exists() is True
+
+
+def test_projection_parity_sample_seed_is_deterministic():
+    legacy_sessions = {
+        f"sess-{idx}": {
+            "id": f"sess-{idx}",
+            "session_id": f"sess-{idx}",
+            "started_at": _utc_now_naive() - timedelta(minutes=idx),
+        }
+        for idx in range(10)
+    }
+    projection_rows = {
+        session_id: {"session_id": session_id, "total_items": 1}
+        for session_id in legacy_sessions
+    }
+    report_a = {"is_consistent": True, "metrics": {"projection_gap_count": 0}, "failures": []}
+    report_b = {"is_consistent": True, "metrics": {"projection_gap_count": 0}, "failures": []}
+    config = ProjectionParityConfig(sample_count=3, sample_seed=42, max_records=5000)
+
+    first = _select_sample_session_ids(legacy_sessions, projection_rows, config, report_a)
+    second = _select_sample_session_ids(legacy_sessions, projection_rows, config, report_b)
+
+    assert first == second
+    assert len(first) == 3
 
 
 @pytest.mark.asyncio

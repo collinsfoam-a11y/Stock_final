@@ -23,6 +23,7 @@ from backend.auth.dependencies import (
     get_current_user_async as get_current_user,
     require_role,
 )
+from backend.config import settings
 from backend.core.websocket_manager import manager
 from backend.db.runtime import get_db
 from backend.services.lock_manager import get_lock_manager
@@ -38,6 +39,7 @@ from backend.services.governance_guard import (
     normalize_session_status as normalize_session_status_canonical,
 )
 from backend.services.session_lifecycle_service import SessionLifecycleService
+from backend.services.observability import metrics
 from backend.services.redis_service import get_redis
 from backend.services.runtime import get_refresh_token_service
 from backend.utils.api_utils import sanitize_for_logging
@@ -802,11 +804,25 @@ def _session_client_identity_filter(
     if not client_ids:
         return None
 
+    ttl_hours = int(getattr(settings, "SESSION_CLIENT_ID_TTL_HOURS", 48) or 48)
+    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=ttl_hours)
+
     return {
         "staff_user": username,
-        "$or": [
-            {"client_session_id": {"$in": sorted(client_ids)}},
-            {"offline_id": {"$in": sorted(client_ids)}},
+        "$and": [
+            {
+                "$or": [
+                    {"client_session_id": {"$in": sorted(client_ids)}},
+                    {"offline_id": {"$in": sorted(client_ids)}},
+                ]
+            },
+            {
+                "$or": [
+                    {"started_at": {"$gte": cutoff}},
+                    {"created_at": {"$gte": cutoff}},
+                    {"last_heartbeat": {"$gte": cutoff}},
+                ]
+            },
         ],
     }
 
@@ -823,6 +839,11 @@ async def _find_existing_session_for_client_identity(
     existing_session = await db.sessions.find_one(identity_filter)
     if not existing_session:
         return None
+
+    try:
+        await metrics.increment("session_duplicate_attempts")
+    except Exception:
+        logger.debug("Failed to publish session duplicate metric", exc_info=True)
 
     if "_id" in existing_session and "id" not in existing_session:
         existing_session["id"] = str(existing_session["_id"])
