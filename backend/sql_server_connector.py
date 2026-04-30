@@ -1,3 +1,4 @@
+from __future__ import annotations
 # ruff: noqa: E402
 import asyncio
 import logging
@@ -7,7 +8,11 @@ import threading
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
-import pyodbc
+try:
+    import pyodbc
+except ImportError:  # pragma: no cover - exercised in dependency-manager tests
+    pyodbc = None  # type: ignore[assignment]
+
 try:
     from tenacity import retry, stop_after_attempt, wait_exponential
 except ImportError:

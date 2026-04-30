@@ -1,3 +1,4 @@
+from __future__ import annotations
 import base64
 import hashlib
 import logging
@@ -5,7 +6,13 @@ import re
 from datetime import datetime
 from typing import Any, Optional
 
-import pyodbc
+import unittest.mock
+try:
+    import pyodbc
+except ImportError:
+    pyodbc = unittest.mock.MagicMock()
+    pyodbc.Error = type("Error", (Exception,), {})
+    pyodbc.Connection = type("Connection", (), {})
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 

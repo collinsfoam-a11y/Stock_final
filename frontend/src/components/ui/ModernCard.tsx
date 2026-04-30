@@ -31,13 +31,10 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   modernColors,
   modernSpacing,
-  modernBorderRadius,
   modernShadows,
-  modernTypography,
   modernAnimations,
 } from "../../styles/modernDesignSystem";
 import {
-  colors as unifiedColors,
   semanticColors,
   radius as unifiedRadius,
   spacing as unifiedSpacing,
