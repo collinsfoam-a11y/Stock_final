@@ -1,11 +1,10 @@
 """
 Batch Sync API - High-performance batch synchronization
 Handles offline queue sync with conflict detection and retry logic
-and preserves backward compatibility with legacy offline payloads.
+and enforces the records-only offline sync contract.
 """
 
 import logging
-from backend.utils.api_utils import sanitize_for_logging
 import re
 import time
 import uuid
@@ -15,6 +14,7 @@ from typing import Any, Optional
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
+from pymongo.errors import BulkWriteError, DuplicateKeyError, PyMongoError
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
@@ -33,19 +33,9 @@ from backend.services.redis_service import get_redis
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.sync_conflicts_service import SyncConflictsService
 from backend.services.transaction_manager import mongo_transaction
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
-
-
-class LegacySyncOperation(BaseModel):
-    """Legacy offline queue operation structure"""
-
-    id: str
-    type: str
-    data: dict[str, Any]
-    timestamp: Optional[str] = None
-
-    model_config = ConfigDict(extra="allow")
 
 
 router = APIRouter(prefix="/api/sync", tags=["Sync"])
@@ -81,14 +71,14 @@ class SyncRecord(BaseModel):
 
 
 class BatchSyncRequest(BaseModel):
-    """Batch sync request supporting modern records and legacy operations"""
+    """Records-only batch sync request."""
 
     records: list[SyncRecord] = Field(
         default_factory=list, description="Structured records to sync"
     )
-    operations: list[LegacySyncOperation] = Field(
+    operations: list[dict[str, Any]] = Field(
         default_factory=list,
-        description="Legacy operations array used by earlier clients",
+        description="Rejected operations array from earlier clients",
     )
     batch_id: Optional[str] = Field(None, description="Client batch ID for tracking")
 
@@ -138,10 +128,14 @@ class BatchSyncResponse(BaseModel):
         description="Backward compatible per-record results (id/success/message)",
     )
     processed_count: Optional[int] = Field(
-        None, description="Legacy summary: total operations processed"
+        None, description="Compatibility summary: total operations processed"
     )
-    success_count: Optional[int] = Field(None, description="Legacy summary: successful operations")
-    failed_count: Optional[int] = Field(None, description="Legacy summary: failed operations")
+    success_count: Optional[int] = Field(
+        None, description="Compatibility summary: successful operations"
+    )
+    failed_count: Optional[int] = Field(
+        None, description="Compatibility summary: failed operations"
+    )
 
 
 # Sync Logic
@@ -154,24 +148,56 @@ async def _record_item_code_is_known(db: Any, record: SyncRecord) -> bool:
     if not item_code:
         return False
 
-    try:
-        snapshot = await db.session_snapshots.find_one({"session_id": record.session_id})
-        if snapshot:
-            items = snapshot.get("items") if isinstance(snapshot, dict) else None
-            if isinstance(items, list):
-                return any(
-                    str(item.get("item_code") or "").strip() == item_code
-                    for item in items
-                    if isinstance(item, dict)
-                )
-    except Exception:
-        logger.debug("Unable to validate item_code from session snapshot", exc_info=True)
+    snapshot = await db.session_snapshots.find_one({"session_id": record.session_id})
+    if snapshot:
+        items = snapshot.get("items") if isinstance(snapshot, dict) else None
+        if isinstance(items, list):
+            return any(
+                str(item.get("item_code") or "").strip() == item_code
+                for item in items
+                if isinstance(item, dict)
+            )
 
-    try:
-        return bool(await db.erp_items.find_one({"item_code": item_code}))
-    except Exception:
-        logger.debug("Unable to validate item_code from ERP item cache", exc_info=True)
+    return bool(await db.erp_items.find_one({"item_code": item_code}))
+
+
+def _idempotency_replay_conflict(
+    record: SyncRecord, existing_op: dict[str, Any]
+) -> Optional[SyncConflict]:
+    existing_client_record_id = str(existing_op.get("client_record_id") or "").strip()
+    existing_session_id = str(existing_op.get("session_id") or "").strip()
+
+    if existing_client_record_id and existing_client_record_id != record.client_record_id:
+        return SyncConflict(
+            client_record_id=record.client_record_id,
+            conflict_type="DUPLICATE_RECORD_ID",
+            message="record_id has already been processed for a different client_record_id",
+            details={
+                "record_id": record.record_id,
+                "existing_client_record_id": existing_client_record_id,
+            },
+        )
+
+    if existing_session_id and existing_session_id != record.session_id:
+        return SyncConflict(
+            client_record_id=record.client_record_id,
+            conflict_type="DUPLICATE_RECORD_ID",
+            message="record_id has already been processed for a different session_id",
+            details={
+                "record_id": record.record_id,
+                "existing_session_id": existing_session_id,
+            },
+        )
+
+    return None
+
+
+def _bulk_write_error_is_duplicate_only(exc: BulkWriteError) -> bool:
+    details = exc.details if isinstance(exc.details, dict) else {}
+    write_errors = details.get("writeErrors")
+    if not isinstance(write_errors, list) or not write_errors:
         return False
+    return all(isinstance(error, dict) and error.get("code") == 11000 for error in write_errors)
 
 
 async def validate_record(
@@ -393,18 +419,27 @@ async def sync_single_record(
             # Insert with ignore duplicates
             try:
                 await db.item_serials.insert_many(serial_docs, ordered=False)
-            except Exception as e:
-                # Ignore duplicate key errors
-                if "duplicate key" not in str(e).lower():
+            except DuplicateKeyError:
+                pass
+            except BulkWriteError as e:
+                if not _bulk_write_error_is_duplicate_only(e):
                     raise
 
         return True, None
 
     except GovernanceViolation as e:
-        logger.error("Governance violation syncing record {record.client_record_id}: %s", sanitize_for_logging(str(e)))
+        logger.error(
+            "Governance violation syncing record %s: %s",
+            record.client_record_id,
+            sanitize_for_logging(str(e)),
+        )
         return False, str(e)
-    except Exception as e:
-        logger.error("Error syncing record {record.client_record_id}: %s", sanitize_for_logging(str(e)))
+    except (PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        logger.error(
+            "Error syncing record %s: %s",
+            record.client_record_id,
+            sanitize_for_logging(str(e)),
+        )
         return False, str(e)
 
 
@@ -449,7 +484,7 @@ async def sync_batch(
         raise HTTPException(
             status_code=410,
             detail=(
-                "CRITICAL: Legacy operations-based sync is disabled. "
+                "CRITICAL: operations-based sync is disabled. "
                 "Submit records-based payload only."
             ),
         )
@@ -503,6 +538,10 @@ async def sync_batch(
                 {"operation_id": record.record_id}
             )
             if existing_op:
+                replay_conflict = _idempotency_replay_conflict(record, existing_op)
+                if replay_conflict:
+                    conflicts.append(replay_conflict)
+                    continue
                 ok_records.append(record.client_record_id)
                 continue
 
@@ -527,6 +566,7 @@ async def sync_batch(
                         {
                             "$setOnInsert": {
                                 "operation_id": record.record_id,
+                                "record_id": record.record_id,
                                 "client_record_id": record.client_record_id,
                                 "session_id": record.session_id,
                                 "created_at": datetime.now(timezone.utc).replace(
@@ -549,7 +589,7 @@ async def sync_batch(
         # Record success in circuit breaker
         await circuit_breaker.record_success()
 
-    except Exception as e:
+    except (GovernanceViolation, PyMongoError, RuntimeError, TypeError, ValueError) as e:
         # Record failure in circuit breaker
         await circuit_breaker.record_failure()
         logger.error("Batch sync failed: %s", sanitize_for_logging(str(e)))
@@ -568,10 +608,10 @@ async def sync_batch(
             "sync_failure_rate",
             (len(conflicts) + len(errors)) / max(len(request.records), 1),
         )
-    except Exception:
+    except (RuntimeError, TypeError, ValueError):
         logger.debug("Failed to publish sync failure metric", exc_info=True)
 
-    # Build per-record results for legacy clients that expect flat success flags
+    # Build per-record results for clients that expect flat success flags
     results = [SyncResult(id=record_id, success=True, message=None) for record_id in ok_records]
 
     results.extend(
@@ -1140,23 +1180,3 @@ async def _process_unknown_item_op(
     db: Any,
 ) -> str:
     raise_forbidden_direct_write("sync_batch_api.unknown_item_operation")
-
-
-# Operation type → handler mapping
-_LEGACY_OP_HANDLERS: dict[str, Any] = {
-    "session": _process_session_op,
-    "count_line": _process_count_line_op,
-    "unknown_item": _process_unknown_item_op,
-}
-
-
-async def _process_legacy_operations(
-    operations: list[LegacySyncOperation],
-    batch_id: Optional[str],
-    current_user: dict[str, Any],
-    start_time: float,
-) -> BatchSyncResponse:
-    raise HTTPException(
-        status_code=410,
-        detail=("CRITICAL: Legacy operations-based sync is disabled. Use records-based sync only."),
-    )

@@ -128,6 +128,13 @@ class MigrationManager:
         )
         await self._create_index_safe(
             self.db.count_lines,
+            "record_id",
+            unique=True,
+            sparse=True,
+            name="count_lines.record_id",
+        )
+        await self._create_index_safe(
+            self.db.count_lines,
             "semantic_hash",
             unique=True,
             sparse=True,
