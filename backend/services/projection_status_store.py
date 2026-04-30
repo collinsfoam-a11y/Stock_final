@@ -29,6 +29,7 @@ class ProjectionReadinessReason(str, Enum):
     STALE_DATA = "STALE_DATA"
     LAG_EXCEEDED = "LAG_EXCEEDED"
     COLLECTION_MISSING = "COLLECTION_MISSING"
+    DRIFT_DETECTED = "DRIFT_DETECTED"
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,7 @@ class ProjectionGateStatus:
     message: str
     retry_after_seconds: int
     checked_at: datetime
+    stability_since: Optional[datetime] = None
     healthy_since: Optional[datetime] = None
     lag_seconds: Optional[float] = None
     drift_count: int = 0
@@ -190,6 +192,40 @@ class ProjectionStatusStore:
                 "Projection readiness status store is unavailable"
             ) from exc
 
+    async def mark_drift_detected(
+        self,
+        *,
+        drift_count: int,
+        gap_count: int,
+        message: str = "Projection drift detected; projection reads are disabled by gate.",
+    ) -> None:
+        """Persist a fail-closed drift status for the projection gate."""
+
+        now = utc_now()
+        collection = self.db[self.collection_name]
+        try:
+            await collection.update_one(
+                {"_id": self.document_id},
+                {
+                    "$set": {
+                        "is_ready": False,
+                        "ready": False,
+                        "reason": ProjectionReadinessReason.DRIFT_DETECTED.value,
+                        "message": message,
+                        "projection_drift_count": max(drift_count, 1),
+                        "projection_gap_count": max(gap_count, 0),
+                        "updated_at": now,
+                        "stability_since": None,
+                        "healthy_since": None,
+                    }
+                },
+                upsert=True,
+            )
+        except PyMongoError as exc:
+            raise ProjectionStatusUnavailable(
+                "Projection readiness drift status could not be persisted"
+            ) from exc
+
     def _status_from_document(
         self,
         document: dict[str, Any],
@@ -297,7 +333,8 @@ class ProjectionStatusStore:
             message=str(document.get("message") or "Projection readiness checks passed."),
             retry_after_seconds=0,
             checked_at=checked_at,
-            healthy_since=self._status_healthy_since(document),
+            stability_since=self._status_stability_since(document),
+            healthy_since=self._status_stability_since(document),
             lag_seconds=lag_seconds,
             drift_count=drift_count,
             gap_count=gap_count,
@@ -312,8 +349,8 @@ class ProjectionStatusStore:
         return None
 
     @staticmethod
-    def _status_healthy_since(document: dict[str, Any]) -> Optional[datetime]:
-        for field_name in ("healthy_since", "ready_since", "stable_since", "stability_since"):
+    def _status_stability_since(document: dict[str, Any]) -> Optional[datetime]:
+        for field_name in ("stability_since", "healthy_since", "ready_since", "stable_since"):
             parsed = parse_datetime(document.get(field_name))
             if parsed:
                 return parsed

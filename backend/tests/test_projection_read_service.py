@@ -99,9 +99,11 @@ async def _seed_projection_readiness(
     *,
     is_consistent: bool = True,
     healthy_since: datetime | None = None,
+    stability_since: datetime | None = None,
     drift_count: int = 0,
 ) -> None:
     now = datetime.now(timezone.utc).replace(tzinfo=None)
+    stable_at = stability_since or healthy_since or now - timedelta(minutes=5)
     for collection_name in (
         ProjectionReadService.SESSION_COLLECTION,
         ProjectionReadService.VERIFIED_COLLECTION,
@@ -119,7 +121,8 @@ async def _seed_projection_readiness(
             "projection_drift_count": drift_count,
             "projection_lag_seconds": 0,
             "updated_at": now,
-            "healthy_since": healthy_since or now - timedelta(minutes=5),
+            "stability_since": stable_at,
+            "healthy_since": stable_at,
         }
     )
 
@@ -180,6 +183,27 @@ async def test_projection_gate_status_store_failure_fails_closed():
 
 
 @pytest.mark.asyncio
+async def test_projection_gate_cache_uses_ttl_to_avoid_repeated_status_reads():
+    status = ProjectionGateStatus(
+        ready=False,
+        raw_ready=False,
+        reason=ProjectionReadinessReason.PARITY_FAILED,
+        message="not ready",
+        retry_after_seconds=30,
+        checked_at=datetime.now(timezone.utc).replace(tzinfo=None),
+    )
+    store = _FakeStatusStore(status)
+    cache = ProjectionGateCache(ProjectionReadinessGate(store))  # type: ignore[arg-type]
+
+    first = await cache.get_status()
+    second = await cache.get_status()
+
+    assert first is status
+    assert second is status
+    assert store.calls == 1
+
+
+@pytest.mark.asyncio
 async def test_projection_gate_allows_reads_after_stability_window():
     db = InMemoryDatabase()
     await _seed_projection_readiness(
@@ -220,16 +244,42 @@ async def test_projection_gate_blocks_during_stability_window():
 
 
 @pytest.mark.asyncio
-async def test_projection_drift_monitor_marks_gate_unhealthy_with_cooldown():
+async def test_projection_gate_uses_stability_since_field():
+    db = InMemoryDatabase()
+    await _seed_projection_readiness(
+        db,
+        stability_since=datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=5),
+    )
+    await db["verified_items_projection"].insert_one(
+        {
+            "id": "line-stable",
+            "item_code": "STABLE",
+            "counted_qty": 1,
+            "variance": 0,
+            "verified": True,
+            "counted_at": datetime.now(timezone.utc).replace(tzinfo=None),
+        }
+    )
+
+    result = await ProjectionReadService(db, enforce_readiness=True).get_dashboard_stats()
+
+    assert result["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_projection_drift_monitor_marks_store_and_cache_unhealthy_with_cooldown():
     db = InMemoryDatabase()
     await _seed_projection_readiness(db, is_consistent=False, drift_count=1)
     cache = get_projection_gate_cache(db)
 
     status = await ProjectionDriftMonitor(cache).evaluate_once()
+    persisted = await db["projection_readiness"].find_one({"_id": "current"})
 
     assert status.ready is False
-    assert status.reason == ProjectionReadinessReason.PARITY_FAILED
+    assert status.reason == ProjectionReadinessReason.DRIFT_DETECTED
     assert status.retry_after_seconds > 0
+    assert persisted["is_ready"] is False
+    assert persisted["reason"] == ProjectionReadinessReason.DRIFT_DETECTED.value
 
 
 @pytest.mark.asyncio

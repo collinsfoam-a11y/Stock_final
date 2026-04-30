@@ -106,9 +106,10 @@ class ProjectionGateCache:
     def mark_unhealthy(
         self,
         *,
-        reason: ProjectionReadinessReason = ProjectionReadinessReason.PARITY_FAILED,
+        reason: ProjectionReadinessReason = ProjectionReadinessReason.DRIFT_DETECTED,
         message: str = "Projection drift detected.",
     ) -> ProjectionGateStatus:
+        self.invalidate()
         self._cooldown_until = time.monotonic() + self.cooldown_seconds
         status = ProjectionGateStatus(
             ready=False,
@@ -130,12 +131,14 @@ class ProjectionGateCache:
         if not raw_status.raw_ready:
             return raw_status
 
-        healthy_since = raw_status.healthy_since
-        if healthy_since is None and self._cached_status and self._cached_status.raw_ready:
-            healthy_since = self._cached_status.healthy_since
-        healthy_since = healthy_since or raw_status.checked_at
+        stability_since = raw_status.stability_since or raw_status.healthy_since
+        if stability_since is None and self._cached_status and self._cached_status.raw_ready:
+            stability_since = (
+                self._cached_status.stability_since or self._cached_status.healthy_since
+            )
+        stability_since = stability_since or raw_status.checked_at
 
-        elapsed = (raw_status.checked_at - healthy_since).total_seconds()
+        elapsed = (raw_status.checked_at - stability_since).total_seconds()
         remaining = max(self.stability_window_seconds - elapsed, 0)
         if remaining > 0:
             return replace(
@@ -144,10 +147,17 @@ class ProjectionGateCache:
                 reason=ProjectionReadinessReason.STALE_DATA,
                 message="Projection readiness stability window has not elapsed.",
                 retry_after_seconds=max(int(remaining), 1),
-                healthy_since=healthy_since,
+                stability_since=stability_since,
+                healthy_since=stability_since,
             )
 
-        return replace(raw_status, ready=True, retry_after_seconds=0, healthy_since=healthy_since)
+        return replace(
+            raw_status,
+            ready=True,
+            retry_after_seconds=0,
+            stability_since=stability_since,
+            healthy_since=stability_since,
+        )
 
     def _store(self, status: ProjectionGateStatus) -> None:
         self._cached_status = status
@@ -212,7 +222,17 @@ class ProjectionDriftMonitor:
         status = await self.cache.get_status(force_refresh=True)
         if status.drift_count > 0 or status.gap_count > 0:
             unhealthy = self.cache.mark_unhealthy(
-                reason=ProjectionReadinessReason.PARITY_FAILED,
+                reason=ProjectionReadinessReason.DRIFT_DETECTED,
+                message="Projection drift detected; projection reads are disabled by gate.",
+            )
+            await self.cache.gate.status_store.mark_drift_detected(
+                drift_count=status.drift_count,
+                gap_count=status.gap_count,
+                message=unhealthy.message,
+            )
+            self.cache.invalidate()
+            unhealthy = self.cache.mark_unhealthy(
+                reason=ProjectionReadinessReason.DRIFT_DETECTED,
                 message="Projection drift detected; projection reads are disabled by gate.",
             )
             logger.critical(
