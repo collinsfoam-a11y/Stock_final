@@ -5,16 +5,17 @@ Endpoints for creating and generating custom reports
 
 import io
 import logging
-from backend.utils.api_utils import sanitize_for_logging
 from typing import Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from pymongo.errors import PyMongoError
 
 from backend.auth import get_current_user
 from backend.db.runtime import get_db
 from backend.services.dynamic_report_service import DynamicReportService
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +130,7 @@ async def create_report_template(
             "template": template,
         }
 
-    except Exception as e:
+    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
         logger.error("Error creating report template: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -151,7 +152,7 @@ async def get_report_templates(
 
         return {"success": True, "count": len(templates), "templates": templates}
 
-    except Exception as e:
+    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
         logger.error("Error getting report templates: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -229,7 +230,7 @@ async def generate_report(
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
+    except (KeyError, PyMongoError, RuntimeError, TypeError) as e:
         logger.error("Error generating report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -258,7 +259,7 @@ async def get_generated_reports(
 
         return {"success": True, "count": len(reports), "reports": reports}
 
-    except Exception as e:
+    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
         logger.error("Error getting generated reports: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -288,7 +289,7 @@ async def download_report(
 
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
+    except (KeyError, PyMongoError, RuntimeError, TypeError) as e:
         logger.error("Error downloading report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -350,7 +351,7 @@ async def quick_report_items_with_fields(
             headers={"Content-Disposition": f"attachment; filename={file_name}"},
         )
 
-    except Exception as e:
+    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
         logger.error("Error generating quick report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -415,6 +416,6 @@ async def quick_report_variance_summary(
             headers={"Content-Disposition": f"attachment; filename={file_name}"},
         )
 
-    except Exception as e:
+    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
         logger.error("Error generating variance summary: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")

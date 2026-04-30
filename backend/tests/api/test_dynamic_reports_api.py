@@ -140,7 +140,7 @@ class TestCreateReportTemplateEndpoint:
     async def test_create_template_error(self, mock_user_supervisor, sample_report_template):
         """Test template creation error handling"""
         mock_service = MagicMock()
-        mock_service.create_report_template = AsyncMock(side_effect=Exception("DB error"))
+        mock_service.create_report_template = AsyncMock(side_effect=RuntimeError("DB error"))
 
         async def override_get_current_user():
             return mock_user_supervisor

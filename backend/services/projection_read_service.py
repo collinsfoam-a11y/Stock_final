@@ -41,23 +41,6 @@ class ProjectionReadService:
     async def _ensure_collection(self, collection_name: str) -> Any:
         if self.enforce_readiness and self.gate_cache is not None:
             await self.gate_cache.require_ready()
-
-        if hasattr(self.db, "list_collection_names"):
-            try:
-                names = await self.db.list_collection_names()
-                if collection_name not in set(names):
-                    raise HTTPException(
-                        status_code=503,
-                        detail=(
-                            f"Projection collection '{collection_name}' is unavailable. "
-                            "Run projection parity validation before enabling projection reads."
-                        ),
-                    )
-            except HTTPException:
-                raise
-            except Exception:
-                # Test fakes may not implement list_collection_names accurately.
-                pass
         return self.db[collection_name]
 
     @staticmethod

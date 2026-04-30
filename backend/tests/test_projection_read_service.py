@@ -14,10 +14,31 @@ from backend.services.advanced_report_service import (
 from backend.services.projection_read_service import ProjectionReadService
 from backend.services.projection_readiness_gate import (
     ProjectionDriftMonitor,
+    ProjectionGateCache,
+    ProjectionReadinessGate,
     ProjectionReadinessReason,
     get_projection_gate_cache,
 )
+from backend.services.projection_status_store import (
+    ProjectionGateStatus,
+    ProjectionStatusUnavailable,
+)
 from backend.tests.utils.in_memory_db import InMemoryDatabase
+
+
+class _FakeStatusStore:
+    def __init__(self, status: ProjectionGateStatus) -> None:
+        self.status = status
+        self.calls = 0
+
+    async def read_status(self) -> ProjectionGateStatus:
+        self.calls += 1
+        return self.status
+
+
+class _UnavailableStatusStore:
+    async def read_status(self) -> ProjectionGateStatus:
+        raise ProjectionStatusUnavailable("boom")
 
 
 @pytest.mark.asyncio
@@ -123,6 +144,39 @@ async def test_projection_gate_fails_closed_when_status_missing():
     assert exc.value.status_code == 503
     assert exc.value.detail["code"] == "PROJECTION_NOT_READY"
     assert exc.value.detail["reason"] == ProjectionReadinessReason.PARITY_FAILED.value
+
+
+@pytest.mark.asyncio
+async def test_projection_gate_reads_only_from_status_store():
+    status = ProjectionGateStatus(
+        ready=True,
+        raw_ready=True,
+        reason=None,
+        message="ready",
+        retry_after_seconds=0,
+        checked_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        healthy_since=datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=5),
+    )
+    store = _FakeStatusStore(status)
+    gate = ProjectionReadinessGate(store)  # type: ignore[arg-type]
+
+    result = await gate.evaluate()
+
+    assert result is status
+    assert store.calls == 1
+    assert not hasattr(gate, "db")
+
+
+@pytest.mark.asyncio
+async def test_projection_gate_status_store_failure_fails_closed():
+    gate = ProjectionReadinessGate(_UnavailableStatusStore())  # type: ignore[arg-type]
+    cache = ProjectionGateCache(gate)
+
+    status = await cache.get_status(force_refresh=True)
+
+    assert status.ready is False
+    assert status.reason == ProjectionReadinessReason.PARITY_FAILED
+    assert status.http_detail()["code"] == "PROJECTION_NOT_READY"
 
 
 @pytest.mark.asyncio

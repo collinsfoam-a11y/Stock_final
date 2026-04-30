@@ -7,18 +7,19 @@ import csv
 import io
 import json
 import logging
-from backend.utils.api_utils import sanitize_for_logging
 from datetime import date, datetime, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from pymongo.errors import PyMongoError
 
 from backend.auth.dependencies import get_current_user, require_role
 from backend.config import settings
 from backend.db.runtime import get_db
 from backend.services.projection_read_service import ProjectionReadService
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -541,7 +542,7 @@ async def generate_report(
     generator = REPORT_GENERATORS[request.report_type]
     try:
         data = await generator(db, filters)
-    except Exception as e:
+    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
         logger.error("Error generating report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -582,7 +583,7 @@ async def export_report_csv(
     generator = REPORT_GENERATORS[request.report_type]
     try:
         data = await generator(db, filters)
-    except Exception as e:
+    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
         logger.error("Error generating report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -642,7 +643,7 @@ async def export_report_xlsx(
     generator = REPORT_GENERATORS[request.report_type]
     try:
         data = await generator(db, filters)
-    except Exception as e:
+    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
         logger.error("Error generating report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -743,7 +744,7 @@ async def get_report_filter_options(
             },
         }
 
-    except Exception as e:
+    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
         logger.error("Error fetching filter options: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
