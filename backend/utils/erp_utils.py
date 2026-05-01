@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 from backend.api.schemas import ERPItem
 from backend.error_messages import get_error_message
-from backend.services.governance_guard import write_authority
+from backend.services.erp_item_data_service import ERPItemDataService
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ def _safe_date_str(val: Any) -> Optional[str]:
         return datetime.combine(val, datetime.min.time()).isoformat()
     try:
         return str(val)
-    except Exception:
+    except (TypeError, ValueError):
         return None
 
 
@@ -111,7 +111,7 @@ _PURCHASE_FIELDS = (
 
 async def _ensure_sql_connection(sql_connector: Any, db: Any) -> bool:
     """Ensure SQL Server connection is established if configured."""
-    config = await db.erp_config.find_one({})
+    config = await ERPItemDataService(db).get_erp_config()
 
     if not config or not config.get("use_sql_server", False):
         return False
@@ -129,7 +129,7 @@ async def _ensure_sql_connection(sql_connector: Any, db: Any) -> bool:
         if host and database:
             sql_connector.connect(host, port, database, user, password)
             return True
-    except Exception as e:
+    except (RuntimeError, OSError, TypeError, ValueError) as e:
         logger.warning(f"Failed to establish SQL Server connection: {str(e)}")
 
     return False
@@ -208,9 +208,9 @@ def _map_erp_item_to_schema(item: dict[str, Any], original_barcode: str = None) 
     return mapped
 
 
-async def _fetch_from_mongo_fallback(barcode: str, db: Any, cache_service: Any) -> ERPItem:
-    """Fallback to MongoDB cache when ERP is unavailable."""
-    item = await db.erp_items.find_one({"barcode": barcode})
+async def _fetch_from_mongo_cache(barcode: str, db: Any, cache_service: Any) -> ERPItem:
+    """Read from MongoDB cache when ERP is unavailable."""
+    item = await ERPItemDataService(db).find_by_barcode(barcode)
     if not item:
         error = get_error_message("DB_ITEM_NOT_FOUND", {"barcode": barcode})
         logger.warning(f"Item not found in MongoDB cache: barcode={barcode}")
@@ -237,7 +237,7 @@ async def fetch_item_from_erp(
     barcode: str, sql_connector: Any, db: Any, cache_service: Any
 ) -> ERPItem:
     """
-    Fetch item by barcode from ERP (SQL Server) with fallback to MongoDB and caching.
+    Fetch item by barcode from ERP (SQL Server), using MongoDB cache when ERP is unavailable.
     """
     # Try cache first
     cached = await cache_service.get("items", barcode)
@@ -291,7 +291,7 @@ async def fetch_item_from_erp(
             return ERPItem(**item_data)
         except HTTPException:
             raise
-        except Exception as e:
+        except (RuntimeError, OSError, TypeError, ValueError) as e:
             error = get_error_message("ERP_QUERY_FAILED", {"barcode": barcode, "error": str(e)})
             logger.error(f"ERP query error for barcode {barcode}: {str(e)}", exc_info=True)
             raise HTTPException(
@@ -305,7 +305,7 @@ async def fetch_item_from_erp(
                 },
             )
 
-    return await _fetch_from_mongo_fallback(barcode, db, cache_service)
+    return await _fetch_from_mongo_cache(barcode, db, cache_service)
 
 
 async def refresh_stock_from_erp(
@@ -323,7 +323,7 @@ async def refresh_stock_from_erp(
 
             # If not found by code, try to get from MongoDB first to get barcode
             if not item:
-                mongo_item = await db.erp_items.find_one({"item_code": item_code})
+                mongo_item = await ERPItemDataService(db).find_by_item_code(item_code)
                 if mongo_item and mongo_item.get("barcode"):
                     item = sql_connector.get_item_by_barcode(mongo_item.get("barcode"))
 
@@ -350,16 +350,7 @@ async def refresh_stock_from_erp(
                 }
             )
 
-            # Update MongoDB
-            with write_authority("ERPWriteService"):
-                await db.erp_items.update_one(
-                    {"item_code": item_code},
-                    {
-                        "$set": item_data,
-                        "$setOnInsert": {"created_at": datetime.now(timezone.utc).replace(tzinfo=None)},
-                    },
-                    upsert=True,
-                )
+            await ERPItemDataService(db).upsert_item(item_code, item_data)
 
             # Clear cache
             await cache_service.delete("items", item_data.get("barcode", ""))
@@ -374,7 +365,7 @@ async def refresh_stock_from_erp(
 
         except HTTPException:
             raise
-        except Exception as e:
+        except (RuntimeError, OSError, TypeError, ValueError) as e:
             error = get_error_message("ERP_CONNECTION_ERROR", {"error": str(e)})
             logger.error(f"Failed to refresh stock from ERP: {str(e)}")
             raise HTTPException(
@@ -387,8 +378,7 @@ async def refresh_stock_from_erp(
                 },
             )
 
-    # Fallback: Get from MongoDB
-    item = await db.erp_items.find_one({"item_code": item_code})
+    item = await ERPItemDataService(db).find_by_item_code(item_code)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
@@ -401,7 +391,7 @@ async def refresh_stock_from_erp(
 
 async def search_items_in_erp(search_term: str, sql_connector: Any, db: Any) -> list[ERPItem]:
     """
-    Search items in ERP or MongoDB.
+    Search items in ERP or MongoDB cache.
     """
     is_connected = await _ensure_sql_connection(sql_connector, db)
 
@@ -413,12 +403,10 @@ async def search_items_in_erp(search_term: str, sql_connector: Any, db: Any) -> 
 
             logger.info(f"Search in ERP returned {len(result_items)} items for '{search_term}'")
             return [ERPItem(**item) for item in result_items]
-        except Exception as e:
+        except (RuntimeError, OSError, TypeError, ValueError) as e:
             logger.error(f"ERP search error: {str(e)}")
-            # Fallback to MongoDB
             pass
 
-    # Fallback: Search in MongoDB
     query = {
         "$or": [
             {"item_name": {"$regex": search_term, "$options": "i"}},
@@ -426,7 +414,6 @@ async def search_items_in_erp(search_term: str, sql_connector: Any, db: Any) -> 
             {"barcode": {"$regex": search_term, "$options": "i"}},
         ]
     }
-    cursor = db.erp_items.find(query).limit(50)
-    items = await cursor.to_list(length=50)
+    items = await ERPItemDataService(db).search_items(query, limit=50)
 
     return [ERPItem(**item) for item in items]

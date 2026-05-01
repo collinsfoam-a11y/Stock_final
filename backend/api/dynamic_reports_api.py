@@ -13,8 +13,10 @@ from pydantic import BaseModel, Field
 from pymongo.errors import PyMongoError
 
 from backend.auth import get_current_user
-from backend.db.runtime import get_db
-from backend.services.dynamic_report_service import DynamicReportService
+from backend.services.dynamic_report_service import (
+    DynamicReportService,
+    create_dynamic_report_service,
+)
 from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
@@ -30,7 +32,7 @@ def get_dynamic_report_service() -> DynamicReportService:
     """Get global dynamic report service instance"""
     global _dynamic_report_service
     if _dynamic_report_service is None:
-        _dynamic_report_service = DynamicReportService(get_db())
+        _dynamic_report_service = create_dynamic_report_service()
     return _dynamic_report_service
 
 
@@ -310,8 +312,7 @@ async def quick_report_items_with_fields(
     """
     try:
         # Create quick template
-        fields_service = service.db.dynamic_field_definitions
-        dynamic_fields = await fields_service.find({"enabled": True}).to_list(length=None)
+        dynamic_fields = await service.get_enabled_dynamic_fields()
 
         fields: list[dict[str, Any]] = [
             {"name": "item_code", "label": "Item Code", "source": "database"},

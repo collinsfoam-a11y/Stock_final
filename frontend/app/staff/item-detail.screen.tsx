@@ -42,12 +42,7 @@ import { useItemEvidenceState } from "@/domains/inventory/hooks/scan/useItemEvid
 import { useItemMetadataState } from "@/domains/inventory/hooks/scan/useItemMetadataState";
 import { useQuantityCountManager } from "@/domains/inventory/hooks/scan/useQuantityCountManager";
 import { useSerialEntryManager } from "@/domains/inventory/hooks/scan/useSerialEntryManager";
-import {
-  colors,
-  spacing,
-  fontSize,
-  fontWeight,
-} from "@/theme/unified";
+import { colors, spacing, fontSize, fontWeight } from "@/theme/unified";
 
 const SURFACE_BG = "#f4f7f6";
 const SURFACE_CARD = "#ffffff";
@@ -62,9 +57,7 @@ export default function ItemDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ barcode: string; sessionId: string }>();
   const { barcode, sessionId } = params;
-  const normalizedSessionId = Array.isArray(sessionId)
-    ? sessionId[0]
-    : sessionId;
+  const normalizedSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId;
   const { currentFloor, currentRack } = useScanSessionStore();
   const { settings } = useSettingsStore();
   const locationLabel = [currentFloor, currentRack].filter(Boolean).join(" • ");
@@ -249,6 +242,7 @@ export default function ItemDetailScreen() {
       hasExpiryDate,
       itemExpiryDate,
       itemExpiryDateFormat,
+      countdownSeconds: 2,
       onSuccess: handleBackPress,
     });
   useItemDraftAutosave({
@@ -276,9 +270,7 @@ export default function ItemDetailScreen() {
         />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary[600]} />
-          <Text style={styles.loadingText}>
-            Loading item details...
-          </Text>
+          <Text style={styles.loadingText}>Loading item details...</Text>
         </View>
       </ThemedScreen>
     );
@@ -296,11 +288,7 @@ export default function ItemDetailScreen() {
           style={styles.headerShell}
         />
         <View style={styles.errorContainer}>
-          <Ionicons
-            name="alert-circle-outline"
-            size={64}
-            color={colors.error[500]}
-          />
+          <Ionicons name="alert-circle-outline" size={64} color={colors.error[500]} />
           <Text style={styles.errorTitle}>Item Not Found</Text>
           <Text style={styles.errorText}>
             We couldn't retrieve details for the scanned barcode.
@@ -347,8 +335,7 @@ export default function ItemDetailScreen() {
                   {item.item_name || item.name || "Selected item"}
                 </Text>
                 <Text style={styles.contextSubtitle}>
-                  Confirm quantity, batch, serial, MRP, and evidence in one
-                  guided flow.
+                  Confirm quantity, batch, serial, MRP, and evidence in one guided flow.
                 </Text>
               </View>
               <View style={styles.contextBadge}>
@@ -368,17 +355,11 @@ export default function ItemDetailScreen() {
               </View>
               <View style={styles.contextMetaChip}>
                 <Ionicons name="layers-outline" size={16} color={ACCENT} />
-                <Text style={styles.contextMetaText}>
-                  {locationLabel || "Location pending"}
-                </Text>
+                <Text style={styles.contextMetaText}>{locationLabel || "Location pending"}</Text>
               </View>
               <View style={styles.contextMetaChip}>
                 <Ionicons
-                  name={
-                    settings.offlineMode
-                      ? "cloud-offline-outline"
-                      : "checkmark-done-outline"
-                  }
+                  name={settings.offlineMode ? "cloud-offline-outline" : "checkmark-done-outline"}
                   size={16}
                   color={settings.offlineMode ? colors.warning[600] : ACCENT}
                 />
@@ -464,9 +445,7 @@ export default function ItemDetailScreen() {
                 onAddSerial={handleAddSerial}
                 onOpenScanner={() => setShowSerialScanner(true)}
                 onRemoveSerial={handleRemoveSerial}
-                onSerialChange={(index, text) =>
-                  handleSerialChange(index, "serial_number", text)
-                }
+                onSerialChange={(index, text) => handleSerialChange(index, "serial_number", text)}
                 onSerializedChange={setIsSerializedItem}
               />
 

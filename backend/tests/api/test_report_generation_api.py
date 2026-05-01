@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi import HTTPException
 
-import backend.api.report_generation_api as report_generation_api
+import backend.services.report_generation_service as report_generation_service
 from backend.api.report_generation_api import (
     ReportFilter,
     generate_session_history_report,
@@ -75,9 +75,11 @@ async def test_generate_stock_summary_short_circuits_when_item_filters_match_not
 
 @pytest.mark.asyncio
 async def test_projection_report_failure_fails_closed_without_legacy_db_reads(monkeypatch):
-    monkeypatch.setattr(report_generation_api.settings, "V3_PROJECTION_REPORT_READS", True)
     monkeypatch.setattr(
-        report_generation_api,
+        report_generation_service.settings, "V3_PROJECTION_REPORT_READS", True
+    )
+    monkeypatch.setattr(
+        report_generation_service,
         "ProjectionReadService",
         _FailingProjectionReadService,
     )
@@ -167,9 +169,11 @@ async def test_generate_session_history_report_fetches_count_lines_in_one_query(
 
 @pytest.mark.asyncio
 async def test_projection_session_history_uses_service_layer_only(monkeypatch):
-    monkeypatch.setattr(report_generation_api.settings, "V3_PROJECTION_REPORT_READS", True)
     monkeypatch.setattr(
-        report_generation_api,
+        report_generation_service.settings, "V3_PROJECTION_REPORT_READS", True
+    )
+    monkeypatch.setattr(
+        report_generation_service,
         "ProjectionReadService",
         _ProjectionReadServiceWithSessionHistory,
     )

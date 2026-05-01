@@ -47,8 +47,10 @@ class TestEnhancedConnectionPool:
         """Test connection creation with retry logic"""
         # First two attempts fail, third succeeds
         mock_connect.side_effect = [
-            Exception("Connection failed"),
-            Exception("Connection failed"),
+            RuntimeError("Connection failed"),
+            RuntimeError("Connection failed"),
+            mock_connection,
+            mock_connection,
             mock_connection,
         ]
 
@@ -61,7 +63,7 @@ class TestEnhancedConnectionPool:
     @patch("backend.services.enhanced_connection_pool.pyodbc.connect" if getattr(__import__("backend.services.enhanced_connection_pool", fromlist=["pyodbc"]).pyodbc, "connect", None) else "unittest.mock.MagicMock")
     def test_connection_retry_exhausted(self, mock_connect, pool_config):
         """Test that retry logic gives up after max attempts"""
-        mock_connect.side_effect = Exception("Connection failed")
+        mock_connect.side_effect = RuntimeError("Connection failed")
 
         # Pool swallows connection errors and retries until timeout
         # So we expect TimeoutError, not ConnectionError

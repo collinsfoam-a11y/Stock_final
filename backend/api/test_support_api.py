@@ -15,9 +15,8 @@ from pydantic import BaseModel, Field
 
 from backend.auth.dependencies import get_current_user
 from backend.config import settings
-from backend.db.runtime import get_db
 from backend.services.runtime import get_cache_service
-from backend.services.governance_guard import write_authority
+from backend.services.test_support_service import TestSupportService, get_test_support_service
 
 router = APIRouter(prefix="/api/test-support", tags=["test-support"])
 
@@ -242,12 +241,11 @@ async def _invalidate_fixture_item_cache(
 
 
 async def _resolve_session_ids(
-    db: Any,
+    test_support_service: TestSupportService,
     *,
     explicit_session_ids: list[str],
     warehouse_fragments: list[str],
 ) -> list[str]:
-    session_ids = set(explicit_session_ids)
     warehouse_query = _build_or_query(
         [
             {field_name: {"$regex": re.escape(fragment), "$options": "i"}}
@@ -255,27 +253,19 @@ async def _resolve_session_ids(
             for field_name in ("warehouse", "rack_no", "location_name")
         ]
     )
-    if not warehouse_query:
-        return sorted(session_ids)
-
-    async for session in db.sessions.find(warehouse_query, {"id": 1, "session_id": 1}):
-        if session.get("id"):
-            session_ids.add(str(session["id"]))
-        if session.get("session_id"):
-            session_ids.add(str(session["session_id"]))
-
-    return sorted(session_ids)
+    return await test_support_service.resolve_session_ids(
+        warehouse_query, set(explicit_session_ids)
+    )
 
 
 async def _resolve_count_line_ids(
-    db: Any,
+    test_support_service: TestSupportService,
     *,
     explicit_count_line_ids: list[str],
     item_codes: list[str],
     barcodes: list[str],
     session_ids: list[str],
 ) -> list[str]:
-    count_line_ids = set(explicit_count_line_ids)
     count_line_query = _build_or_query(
         [
             {"id": {"$in": explicit_count_line_ids}} if explicit_count_line_ids else {},
@@ -284,14 +274,9 @@ async def _resolve_count_line_ids(
             {"session_id": {"$in": session_ids}} if session_ids else {},
         ]
     )
-    if not count_line_query:
-        return sorted(count_line_ids)
-
-    async for line in db.count_lines.find(count_line_query, {"id": 1}):
-        if line.get("id"):
-            count_line_ids.add(str(line["id"]))
-
-    return sorted(count_line_ids)
+    return await test_support_service.resolve_count_line_ids(
+        count_line_query, set(explicit_count_line_ids)
+    )
 
 
 def _build_collection_queries(
@@ -379,7 +364,7 @@ def _build_collection_queries(
 
 
 async def _resolve_fixture_scope_context(
-    db: Any, payload: SyntheticCleanupRequest
+    test_support_service: TestSupportService, payload: SyntheticCleanupRequest
 ) -> dict[str, Any]:
     test_run_id = _normalize_test_run_id(payload.test_run_id)
     item_codes = [
@@ -394,12 +379,12 @@ async def _resolve_fixture_scope_context(
     explicit_count_line_ids = _normalize_list(payload.count_line_ids)
 
     session_ids = await _resolve_session_ids(
-        db,
+        test_support_service,
         explicit_session_ids=explicit_session_ids,
         warehouse_fragments=warehouse_fragments,
     )
     count_line_ids = await _resolve_count_line_ids(
-        db,
+        test_support_service,
         explicit_count_line_ids=explicit_count_line_ids,
         item_codes=item_codes,
         barcodes=barcodes,
@@ -434,7 +419,7 @@ def _fixture_scope_metadata(current_user: dict[str, Any], test_run_id: str) -> d
 
 
 async def _apply_runtime_scope(
-    db: Any,
+    test_support_service: TestSupportService,
     *,
     current_user: dict[str, Any],
     test_run_id: str,
@@ -452,27 +437,29 @@ async def _apply_runtime_scope(
         if not query:
             scoped_counts[collection_name] = 0
             continue
-        result = await db[collection_name].update_many(query, {"$set": metadata})
-        scoped_counts[collection_name] = int(getattr(result, "modified_count", 0))
+        scoped_counts[collection_name] = await test_support_service.apply_runtime_scope(
+            collection_name=collection_name,
+            query=query,
+            metadata=metadata,
+        )
 
     return scoped_counts, blocked_collections
 
 
 async def _fetch_collection_documents(
-    db: Any,
+    test_support_service: TestSupportService,
     collection_name: str,
     query: dict[str, Any],
     *,
     sort_field: Optional[str] = None,
     limit: int = 25,
 ) -> list[dict[str, Any]]:
-    if not query:
-        return []
-
-    cursor = db[collection_name].find(query)
-    if sort_field:
-        cursor = cursor.sort(sort_field, -1)
-    return await cursor.limit(limit).to_list(length=limit)
+    return await test_support_service.fetch_collection_documents(
+        collection_name,
+        query,
+        sort_field=sort_field,
+        limit=limit,
+    )
 
 
 @router.post("/erp-items")
@@ -480,7 +467,7 @@ async def upsert_synthetic_erp_item(
     payload: SyntheticErpItemRequest,
     request: Request,
     current_user: dict = Depends(get_current_user),
-    db: Any = Depends(get_db),
+    test_support_service: TestSupportService = Depends(get_test_support_service),
 ):
     _assert_test_support_access(request, current_user)
 
@@ -516,19 +503,15 @@ async def upsert_synthetic_erp_item(
         "fixture_source": FIXTURE_SOURCE,
     }
 
-    with write_authority("TestSupportAPI"):
-        await db.erp_items.update_one(
-            {"item_code": item_code},
-            {
-                "$set": document,
-                "$setOnInsert": {
-                    "created_at": now,
-                    "created_by": current_user.get("username"),
-                    "synced_from_erp": False,
-                },
-            },
-            upsert=True,
-        )
+    saved = await test_support_service.upsert_erp_item(
+        item_code=item_code,
+        document=document,
+        set_on_insert={
+            "created_at": now,
+            "created_by": current_user.get("username"),
+            "synced_from_erp": False,
+        },
+    )
 
     await _invalidate_fixture_item_cache(
         barcode=payload.barcode,
@@ -536,7 +519,6 @@ async def upsert_synthetic_erp_item(
         manual_barcode=payload.manual_barcode,
     )
 
-    saved = await db.erp_items.find_one({"item_code": item_code})
     return {"success": True, "item": _serialize_document(saved)}
 
 
@@ -546,13 +528,13 @@ async def patch_synthetic_erp_item(
     payload: SyntheticErpItemPatchRequest,
     request: Request,
     current_user: dict = Depends(get_current_user),
-    db: Any = Depends(get_db),
+    test_support_service: TestSupportService = Depends(get_test_support_service),
 ):
     _assert_test_support_access(request, current_user)
 
     normalized_item_code = _require_synthetic_item_code(item_code)
     test_run_id = _normalize_test_run_id(payload.test_run_id)
-    existing = await db.erp_items.find_one({"item_code": normalized_item_code})
+    existing = await test_support_service.get_erp_item(normalized_item_code)
     if not existing:
         raise HTTPException(status_code=404, detail="Synthetic ERP item not found")
     if str(existing.get("test_run_id") or "") != test_run_id:
@@ -576,8 +558,10 @@ async def patch_synthetic_erp_item(
     update_data["updated_at"] = _utc_now()
     update_data["updated_by"] = current_user.get("username")
 
-    with write_authority("TestSupportAPI"):
-        await db.erp_items.update_one({"item_code": normalized_item_code}, {"$set": update_data})
+    saved = await test_support_service.patch_erp_item(
+        item_code=normalized_item_code,
+        update_data=update_data,
+    )
 
     await _invalidate_fixture_item_cache(
         barcode=existing.get("barcode"),
@@ -585,7 +569,6 @@ async def patch_synthetic_erp_item(
         manual_barcode=update_data.get("manual_barcode") or existing.get("manual_barcode"),
     )
 
-    saved = await db.erp_items.find_one({"item_code": normalized_item_code})
     return {"success": True, "item": _serialize_document(saved)}
 
 
@@ -594,7 +577,7 @@ async def create_synthetic_item_variance(
     payload: SyntheticVarianceRequest,
     request: Request,
     current_user: dict = Depends(get_current_user),
-    db: Any = Depends(get_db),
+    test_support_service: TestSupportService = Depends(get_test_support_service),
 ):
     _assert_test_support_access(request, current_user)
 
@@ -635,10 +618,10 @@ async def create_synthetic_item_variance(
         "session_id": payload.session_id,
         "count_line_id": variance_doc["count_line_id"],
     }
-    await db.item_variances.delete_many(filter_query)
-    await db.verification_logs.delete_many(filter_query)
-    await db.item_variances.insert_one(dict(variance_doc))
-    await db.verification_logs.insert_one(dict(variance_doc))
+    await test_support_service.replace_variance_fixture(
+        filter_query=filter_query,
+        variance_doc=variance_doc,
+    )
 
     return {"success": True, "variance": _serialize_document(variance_doc)}
 
@@ -648,11 +631,11 @@ async def cleanup_synthetic_fixtures(
     payload: SyntheticCleanupRequest,
     request: Request,
     current_user: dict = Depends(get_current_user),
-    db: Any = Depends(get_db),
+    test_support_service: TestSupportService = Depends(get_test_support_service),
 ):
     _assert_test_support_access(request, current_user)
 
-    scope_context = await _resolve_fixture_scope_context(db, payload)
+    scope_context = await _resolve_fixture_scope_context(test_support_service, payload)
     test_run_id = scope_context["test_run_id"]
     item_codes = scope_context["item_codes"]
     barcodes = scope_context["barcodes"]
@@ -661,7 +644,7 @@ async def cleanup_synthetic_fixtures(
     collection_queries = scope_context["collection_queries"]
 
     scoped, blocked_collections = await _apply_runtime_scope(
-        db,
+        test_support_service,
         current_user=current_user,
         test_run_id=test_run_id,
         collection_queries=collection_queries,
@@ -676,8 +659,10 @@ async def cleanup_synthetic_fixtures(
         if not scoped_query:
             deleted[collection_name] = 0
             continue
-        result = await db[collection_name].delete_many(scoped_query)
-        deleted[collection_name] = int(getattr(result, "deleted_count", 0))
+        deleted[collection_name] = await test_support_service.delete_collection_documents(
+            collection_name,
+            scoped_query,
+        )
 
     for item_code in item_codes:
         await _invalidate_fixture_item_cache(barcode=None, item_code=item_code)
@@ -700,17 +685,17 @@ async def scope_runtime_fixtures(
     payload: SyntheticCleanupRequest,
     request: Request,
     current_user: dict = Depends(get_current_user),
-    db: Any = Depends(get_db),
+    test_support_service: TestSupportService = Depends(get_test_support_service),
 ):
     _assert_test_support_access(request, current_user)
 
-    scope_context = await _resolve_fixture_scope_context(db, payload)
+    scope_context = await _resolve_fixture_scope_context(test_support_service, payload)
     test_run_id = scope_context["test_run_id"]
     session_ids = scope_context["session_ids"]
     count_line_ids = scope_context["count_line_ids"]
     collection_queries = scope_context["collection_queries"]
     scoped, blocked_collections = await _apply_runtime_scope(
-        db,
+        test_support_service,
         current_user=current_user,
         test_run_id=test_run_id,
         collection_queries=collection_queries,
@@ -731,11 +716,11 @@ async def inspect_synthetic_fixtures(
     payload: SyntheticInspectRequest,
     request: Request,
     current_user: dict = Depends(get_current_user),
-    db: Any = Depends(get_db),
+    test_support_service: TestSupportService = Depends(get_test_support_service),
 ):
     _assert_test_support_access(request, current_user)
 
-    scope_context = await _resolve_fixture_scope_context(db, payload)
+    scope_context = await _resolve_fixture_scope_context(test_support_service, payload)
     test_run_id = scope_context["test_run_id"]
     session_ids = scope_context["session_ids"]
     count_line_ids = scope_context["count_line_ids"]
@@ -743,63 +728,63 @@ async def inspect_synthetic_fixtures(
     max_records = payload.max_records
 
     sessions = await _fetch_collection_documents(
-        db,
+        test_support_service,
         "sessions",
         _with_test_run_scope(test_run_id, collection_queries["sessions"]),
         sort_field="started_at",
         limit=max_records,
     )
     erp_items = await _fetch_collection_documents(
-        db,
+        test_support_service,
         "erp_items",
         _with_test_run_scope(test_run_id, collection_queries["erp_items"]),
         sort_field="updated_at",
         limit=max_records,
     )
     count_lines = await _fetch_collection_documents(
-        db,
+        test_support_service,
         "count_lines",
         _with_test_run_scope(test_run_id, collection_queries["count_lines"]),
         sort_field="counted_at",
         limit=max_records,
     )
     item_variances = await _fetch_collection_documents(
-        db,
+        test_support_service,
         "item_variances",
         _with_test_run_scope(test_run_id, collection_queries["item_variances"]),
         sort_field="verified_at",
         limit=max_records,
     )
     verification_logs = await _fetch_collection_documents(
-        db,
+        test_support_service,
         "verification_logs",
         _with_test_run_scope(test_run_id, collection_queries["verification_logs"]),
         sort_field="verified_at",
         limit=max_records,
     )
     notifications = await _fetch_collection_documents(
-        db,
+        test_support_service,
         "notifications",
         _with_test_run_scope(test_run_id, collection_queries["notifications"]),
         sort_field="created_at",
         limit=max_records,
     )
     recount_requests = await _fetch_collection_documents(
-        db,
+        test_support_service,
         "recount_requests",
         _with_test_run_scope(test_run_id, collection_queries["recount_requests"]),
         sort_field="created_at",
         limit=max_records,
     )
     session_snapshots = await _fetch_collection_documents(
-        db,
+        test_support_service,
         "session_snapshots",
         _with_test_run_scope(test_run_id, collection_queries["session_snapshots"]),
         sort_field="created_at",
         limit=max_records,
     )
     stock_snapshots = await _fetch_collection_documents(
-        db,
+        test_support_service,
         "stock_snapshots",
         _with_test_run_scope(test_run_id, collection_queries["stock_snapshots"]),
         sort_field="created_at",

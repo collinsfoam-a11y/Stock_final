@@ -8,25 +8,22 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 
 from backend.auth.permissions import Permission, require_permission
-from backend.db.runtime import get_db
 from backend.services.scheduled_export_service import (
     ExportFormat,
     ExportFrequency,
     ScheduledExportService,
+    create_scheduled_export_service,
 )
 
 exports_router = APIRouter(prefix="/exports", tags=["exports"])
 
 
-async def get_scheduled_export_service(
-    db: AsyncIOMotorDatabase = Depends(get_db),
-) -> ScheduledExportService:
+async def get_scheduled_export_service() -> ScheduledExportService:
     # Service is lightweight; background scheduling is handled by the lifespan instance.
-    return ScheduledExportService(db)
+    return create_scheduled_export_service()
 
 
 class ExportScheduleCreate(BaseModel):
@@ -117,9 +114,7 @@ async def get_export_schedule(
     current_user: dict = require_permission(Permission.EXPORT_SCHEDULE),
 ):
     """Get details of a specific export schedule"""
-    from bson import ObjectId
-
-    schedule = await export_service.db.export_schedules.find_one({"_id": ObjectId(schedule_id)})
+    schedule = await export_service.get_export_schedule(schedule_id)
 
     if not schedule:
         raise HTTPException(
@@ -132,8 +127,6 @@ async def get_export_schedule(
                 },
             },
         )
-
-    schedule["id"] = str(schedule.pop("_id"))
 
     return {"success": True, "data": schedule}
 
@@ -247,10 +240,8 @@ async def execute_export_schedule(
     current_user: dict = require_permission(Permission.EXPORT_SCHEDULE),
 ):
     """Manually execute an export schedule"""
-    from bson import ObjectId
-
     # Get schedule
-    schedule = await export_service.db.export_schedules.find_one({"_id": ObjectId(schedule_id)})
+    schedule = await export_service.get_export_schedule_for_execution(schedule_id)
 
     if not schedule:
         raise HTTPException(
@@ -292,12 +283,7 @@ async def list_export_results(
     """List export results"""
     from bson import ObjectId
 
-    query = {}
-    if schedule_id:
-        query["schedule_id"] = ObjectId(schedule_id)
-
-    cursor = export_service.db.export_results.find(query).sort("created_at", -1).limit(limit)
-    results = await cursor.to_list(length=limit)
+    results = await export_service.list_export_results(schedule_id=schedule_id, limit=limit)
 
     # Remove file_content from list (too large)
     for result in results:
@@ -320,9 +306,7 @@ async def download_export_result(
     current_user: dict = require_permission(Permission.EXPORT_ALL),
 ):
     """Download an export result file"""
-    from bson import ObjectId
-
-    result = await export_service.db.export_results.find_one({"_id": ObjectId(result_id)})
+    result = await export_service.get_export_result(result_id)
 
     if not result:
         raise HTTPException(

@@ -44,6 +44,22 @@ class _FakeDb:
 class _FakeExportService:
     def __init__(self, document=None, documents=None):
         self.db = _FakeDb(document=document, documents=documents)
+        self.document = document
+        self.documents = documents or ([] if document is None else [document])
+
+    async def get_export_result(self, result_id: str):
+        if self.document and str(self.document["_id"]) == result_id:
+            return self.document
+        return None
+
+    async def list_export_results(self, *, schedule_id: str | None, limit: int):
+        if not schedule_id:
+            return list(self.documents)[:limit]
+        return [
+            document
+            for document in self.documents
+            if str(document.get("schedule_id")) == schedule_id
+        ][:limit]
 
 
 @pytest.mark.asyncio

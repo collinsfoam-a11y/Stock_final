@@ -14,12 +14,12 @@ import {
   TextStyle,
   TouchableWithoutFeedback,
   Keyboard,
-  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useThemeContext } from "../../context/ThemeContext";
 import { PatternBackground } from "./PatternBackground";
 import { colors as unifiedColors } from "../../theme/unified";
+import { createShadow } from "@/theme/shadowUtils";
 
 interface ThemedScreenProps {
   children: React.ReactNode;
@@ -161,19 +161,12 @@ export const ThemedCard: React.FC<ThemedCardProps> = ({
         return {
           ...base,
           backgroundColor: theme.colors.surface,
-          ...Platform.select({
-            web: {
-              boxShadow: `0 4px 12px ${isDark ? "rgba(0,0,0,0.3)" : "rgba(100,116,139,0.1)"}`,
-            },
-            default: {
-              shadowColor: isDark
-                ? unifiedColors.black
-                : unifiedColors.neutral[500],
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: isDark ? 0.3 : 0.1,
-              shadowRadius: 12,
-              elevation: 8,
-            },
+          ...createShadow({
+            color: isDark ? unifiedColors.black : unifiedColors.neutral[500],
+            offsetY: 4,
+            opacity: isDark ? 0.3 : 0.1,
+            radius: 12,
+            elevation: 8,
           }),
         };
       case "outlined":

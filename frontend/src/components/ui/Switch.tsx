@@ -5,7 +5,7 @@
  */
 
 import React from "react";
-import { TouchableOpacity, StyleSheet, ViewStyle } from "react-native";
+import { TouchableOpacity, StyleSheet, ViewStyle, Platform } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -13,6 +13,7 @@ import Animated, {
   interpolateColor,
 } from "react-native-reanimated";
 import { colorPalette } from "@/theme/designTokens";
+import { createShadow } from "@/theme/shadowUtils";
 
 export type SwitchSize = "sm" | "md" | "lg";
 
@@ -121,10 +122,12 @@ const styles = StyleSheet.create({
   },
   thumb: {
     backgroundColor: colorPalette.neutral[0],
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
+    ...(Platform.OS === "web"
+      ? {
+          boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.2)",
+        }
+      : {
+          ...createShadow({ color: "#000", offsetX: 0, offsetY: 2, opacity: 0.2, radius: 2, elevation: 2 }),
+        }),
   },
 });

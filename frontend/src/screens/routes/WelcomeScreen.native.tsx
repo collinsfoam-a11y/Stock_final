@@ -19,6 +19,7 @@ import { colors, spacing, radius, gradients } from "@/theme/unified";
 import { useAuthStore } from "@/store/authStore";
 import { getRouteForRole, type UserRole } from "@/utils/roleNavigation";
 import { BrandLogo } from "@/components/branding/BrandLogo";
+import { createShadow } from "@/theme/shadowUtils";
 
 const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
   if (Platform.OS === "web") {
@@ -350,11 +351,13 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   buttonShadow: {
-    shadowColor: "#22c55e",
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 12,
+    ...createShadow({
+      color: "#22c55e",
+      offsetY: 10,
+      opacity: 0.35,
+      radius: 20,
+      elevation: 12,
+    }),
   },
   loginButton: {
     minHeight: 56,

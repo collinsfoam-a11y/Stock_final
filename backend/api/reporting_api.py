@@ -10,11 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
-from backend.db.runtime import get_db
-from backend.services.reporting.compare_engine import CompareEngine
-from backend.services.reporting.export_engine import ExportEngine
 from backend.services.reporting.query_builder import QueryBuilder
-from backend.services.reporting.snapshot_engine import SnapshotEngine
+from backend.services.reporting_service import ReportingService, get_reporting_service
 
 logger = logging.getLogger(__name__)
 
@@ -64,49 +61,24 @@ class CompareSnapshotsRequest(BaseModel):
 async def preview_query(
     query_spec: QuerySpec,
     current_user: dict[str, Any] = Depends(get_current_user),
+    reporting_service: ReportingService = Depends(get_reporting_service),
 ) -> dict[str, Any]:
     """
     Preview query results without saving
     """
-    db = get_db()
-
-    query_builder = QueryBuilder()
-
-    # Build pipeline
-    pipeline = query_builder.build_pipeline(
-        collection=query_spec.collection,
-        filters=query_spec.filters,
-        group_by=query_spec.group_by,
-        aggregations=query_spec.aggregations,
-        sort=query_spec.sort,
-        limit=query_spec.limit or 100,  # Default preview limit
-    )
-
-    # Execute query
-    cursor = db[query_spec.collection].aggregate(pipeline)
-    results = await cursor.to_list(length=query_spec.limit or 100)
-
-    return {
-        "collection": query_spec.collection,
-        "row_count": len(results),
-        "rows": results,
-        "pipeline": pipeline,  # For debugging
-    }
+    return await reporting_service.preview_query(query_spec)
 
 
 @router.post("/snapshots", response_model=dict[str, Any])
 async def create_snapshot(
     request: CreateSnapshotRequest,
     current_user: dict[str, Any] = Depends(get_current_user),
+    reporting_service: ReportingService = Depends(get_reporting_service),
 ) -> dict[str, Any]:
     """
     Create a new snapshot
     """
-    db = get_db()
-
-    snapshot_engine = SnapshotEngine(db)
-
-    snapshot = await snapshot_engine.create_snapshot(
+    snapshot = await reporting_service.snapshot_engine.create_snapshot(
         name=request.name,
         description=request.description,
         query_spec=request.query_spec.model_dump(),
@@ -125,14 +97,11 @@ async def list_snapshots(
     tags: Optional[str] = Query(None),  # Comma-separated
     limit: int = Query(50, ge=1, le=200),
     current_user: dict[str, Any] = Depends(get_current_user),
+    reporting_service: ReportingService = Depends(get_reporting_service),
 ) -> list[dict[str, Any]]:
     """
     List snapshots with filters
     """
-    db = get_db()
-
-    snapshot_engine = SnapshotEngine(db)
-
     # Parse tags
     tag_list = tags.split(",") if tags else None
 
@@ -141,7 +110,7 @@ async def list_snapshots(
         if current_user["role"] != "supervisor":
             raise HTTPException(status_code=403, detail="Access denied")
 
-    snapshots = await snapshot_engine.list_snapshots(
+    snapshots = await reporting_service.snapshot_engine.list_snapshots(
         created_by=created_by,
         snapshot_type=snapshot_type,
         tags=tag_list,
@@ -157,15 +126,14 @@ async def get_snapshot(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     current_user: dict[str, Any] = Depends(get_current_user),
+    reporting_service: ReportingService = Depends(get_reporting_service),
 ) -> dict[str, Any]:
     """
     Get snapshot with pagination
     """
-    db = get_db()
-
-    snapshot_engine = SnapshotEngine(db)
-
-    snapshot_data = await snapshot_engine.get_snapshot_data(snapshot_id, skip=skip, limit=limit)
+    snapshot_data = await reporting_service.snapshot_engine.get_snapshot_data(
+        snapshot_id, skip=skip, limit=limit
+    )
 
     if not snapshot_data:
         raise HTTPException(status_code=404, detail="Snapshot not found")
@@ -177,16 +145,15 @@ async def get_snapshot(
 async def delete_snapshot(
     snapshot_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
+    reporting_service: ReportingService = Depends(get_reporting_service),
 ) -> dict[str, Any]:
     """
     Delete snapshot
     """
-    db = get_db()
-
-    snapshot_engine = SnapshotEngine(db)
-
     try:
-        deleted = await snapshot_engine.delete_snapshot(snapshot_id, current_user["username"])
+        deleted = await reporting_service.snapshot_engine.delete_snapshot(
+            snapshot_id, current_user["username"]
+        )
 
         if deleted:
             return {"success": True, "snapshot_id": snapshot_id}
@@ -201,15 +168,12 @@ async def delete_snapshot(
 async def refresh_snapshot(
     snapshot_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
+    reporting_service: ReportingService = Depends(get_reporting_service),
 ) -> dict[str, Any]:
     """
     Refresh snapshot with latest data
     """
-    db = get_db()
-
-    snapshot_engine = SnapshotEngine(db)
-
-    new_snapshot = await snapshot_engine.refresh_snapshot(snapshot_id)
+    new_snapshot = await reporting_service.snapshot_engine.refresh_snapshot(snapshot_id)
     return new_snapshot
 
 
@@ -218,38 +182,33 @@ async def export_snapshot(
     snapshot_id: str,
     format: str = Query("csv", pattern="^(csv|xlsx|json)$"),
     current_user: dict[str, Any] = Depends(get_current_user),
+    reporting_service: ReportingService = Depends(get_reporting_service),
 ) -> Response:
     """
     Export snapshot to file
 
     Formats: csv, xlsx, json
     """
-    db = get_db()
-
-    snapshot_engine = SnapshotEngine(db)
-    export_engine = ExportEngine()
-
-    # Get snapshot
-    snapshot = await snapshot_engine.get_snapshot(snapshot_id)
+    snapshot = await reporting_service.snapshot_engine.get_snapshot(snapshot_id)
 
     if not snapshot:
         raise HTTPException(status_code=404, detail="Snapshot not found")
 
     # Export
     if format == "csv":
-        content = export_engine.export_to_csv(snapshot)
+        content = reporting_service.export_engine.export_to_csv(snapshot)
         media_type = "text/csv"
     elif format == "xlsx":
-        content = export_engine.export_to_xlsx(snapshot)
+        content = reporting_service.export_engine.export_to_xlsx(snapshot)
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     elif format == "json":
-        content = export_engine.export_to_json(snapshot)
+        content = reporting_service.export_engine.export_to_json(snapshot)
         media_type = "application/json"
     else:
         raise HTTPException(status_code=400, detail="Invalid format")
 
     # Generate filename
-    filename = export_engine.get_export_filename(snapshot, format)
+    filename = reporting_service.export_engine.get_export_filename(snapshot, format)
 
     return Response(
         content=content,
@@ -262,15 +221,12 @@ async def export_snapshot(
 async def compare_snapshots(
     request: CompareSnapshotsRequest,
     current_user: dict[str, Any] = Depends(get_current_user),
+    reporting_service: ReportingService = Depends(get_reporting_service),
 ) -> dict[str, Any]:
     """
     Compare two snapshots
     """
-    db = get_db()
-
-    compare_engine = CompareEngine(db)
-
-    comparison = await compare_engine.compare_snapshots(
+    comparison = await reporting_service.compare_engine.compare_snapshots(
         snapshot_a_id=request.snapshot_a_id,
         snapshot_b_id=request.snapshot_b_id,
         created_by=current_user["username"],
@@ -284,15 +240,12 @@ async def compare_snapshots(
 async def get_comparison(
     job_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
+    reporting_service: ReportingService = Depends(get_reporting_service),
 ) -> dict[str, Any]:
     """
     Get comparison job
     """
-    db = get_db()
-
-    compare_engine = CompareEngine(db)
-
-    comparison = await compare_engine.get_comparison(job_id)
+    comparison = await reporting_service.compare_engine.get_comparison(job_id)
 
     if not comparison:
         raise HTTPException(status_code=404, detail="Comparison not found")
@@ -305,20 +258,19 @@ async def list_comparisons(
     created_by: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     current_user: dict[str, Any] = Depends(get_current_user),
+    reporting_service: ReportingService = Depends(get_reporting_service),
 ) -> list[dict[str, Any]]:
     """
     List comparison jobs
     """
-    db = get_db()
-
-    compare_engine = CompareEngine(db)
-
     # Only supervisors can view other users' comparisons
     if created_by and created_by != current_user["username"]:
         if current_user["role"] != "supervisor":
             raise HTTPException(status_code=403, detail="Access denied")
 
-    comparisons = await compare_engine.list_comparisons(created_by=created_by, limit=limit)
+    comparisons = await reporting_service.compare_engine.list_comparisons(
+        created_by=created_by, limit=limit
+    )
 
     return comparisons
 

@@ -101,7 +101,7 @@ async def get_backend_logs(
             "success": True,
             "data": {"logs": logs, "count": len(logs), "service": "backend"},
         }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error getting backend logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -134,7 +134,7 @@ async def get_frontend_logs(
                 "service": "frontend",
             },
         }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error getting frontend logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -182,7 +182,7 @@ async def get_mongodb_logs(
                 "service": "mongodb",
             },
         }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error getting MongoDB logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -210,7 +210,7 @@ async def get_system_logs(
             "success": True,
             "data": {"logs": logs, "count": len(logs), "service": "system"},
         }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error getting system logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -244,7 +244,7 @@ async def clear_logs(
             "message": f"Cleared logs for: {', '.join(cleared) if cleared else 'no log files found'}",
             "cleared": cleared,
         }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error clearing logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

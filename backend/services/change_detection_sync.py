@@ -104,14 +104,14 @@ class ChangeDetectionSyncService:
 
             return Ok(query)
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             return Fail(
                 DatabaseError(
                     "Failed to generate products query",
                     {"error": str(e), "last_sync_time": last_sync_time},
                 )
             )
-            # unreachable fallback query removed (after return)
+            # unreachable alternate query removed (after return)
 
     def _build_update_operations(
         self, changes: list[ProductData]
@@ -155,7 +155,7 @@ class ChangeDetectionSyncService:
 
             return Ok(operations)
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             return Fail(
                 DatabaseError(
                     "Failed to build update operations",
@@ -184,7 +184,7 @@ class ChangeDetectionSyncService:
             else:
                 results_list = cast(Optional[list[ProductData]], results)
             return Ok(results_list or [])
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             return Fail(
                 DatabaseError(
                     "Failed to execute products query",
@@ -216,7 +216,7 @@ class ChangeDetectionSyncService:
                     "upserted": result.upserted_count,
                 }
             )
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             return Fail(
                 DatabaseError(
                     "Bulk write operation failed",
@@ -272,7 +272,7 @@ class ChangeDetectionSyncService:
             # Update and return stats
             return self._finalize_sync(start_time, len(changed_products), stats["modified"])
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             error = DatabaseError("Unexpected error during sync", {"error": str(e)})
             logger.exception("Error during change detection sync")
             return Fail(error)
@@ -373,7 +373,7 @@ class ChangeDetectionSyncService:
                 }
             )
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             self._running = False
             error = SyncError("Failed to start sync service", {"error": str(e)})
             logger.error(str(error))
@@ -398,7 +398,7 @@ class ChangeDetectionSyncService:
                 await self._task
             except asyncio.CancelledError:
                 logger.debug("Sync task cancelled successfully")
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 error = SyncError("Error while stopping sync service", {"error": str(e)})
                 logger.error(str(error))
                 return Fail(error)
@@ -426,7 +426,7 @@ class ChangeDetectionSyncService:
             except asyncio.CancelledError:
                 logger.info("Sync loop task cancelled")
                 break
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.exception("Unexpected error in sync loop: %s", str(e))
                 # Wait a bit before retrying after an error
                 await asyncio.sleep(min(60, self.sync_interval))

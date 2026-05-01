@@ -133,7 +133,7 @@ def test_sql_down_behavior_blocked(client, fake_environment, monkeypatch):
     monkeypatch.setattr(
         sql_verification_service,
         "_get_sql_quantity",
-        AsyncMock(side_effect=Exception("SQL Server Connection Timeout")),
+        AsyncMock(side_effect=RuntimeError("SQL Server Connection Timeout")),
     )
 
     resp = client.post(f"/api/v2/verification/items/{item_code}/verify-qty", headers=headers)

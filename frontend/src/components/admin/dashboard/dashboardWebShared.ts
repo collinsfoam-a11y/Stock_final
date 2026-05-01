@@ -24,8 +24,7 @@ export const normalizeDashboardMetrics = (payload: unknown) => {
   const totalRequests = Number(requests.total || 0);
   const uptimeSeconds = Number(uptime.seconds || 0);
   const rawErrorRate = Number(requests.error_rate || 0);
-  const hasRequestMetrics =
-    Object.keys(requests).length > 0 || Object.keys(performance).length > 0;
+  const hasRequestMetrics = Object.keys(requests).length > 0 || Object.keys(performance).length > 0;
 
   return {
     ...stats,
@@ -43,12 +42,7 @@ export const normalizeDashboardMetrics = (payload: unknown) => {
   };
 };
 
-export type DashboardTab =
-  | "overview"
-  | "monitoring"
-  | "reports"
-  | "analytics"
-  | "diagnosis";
+export type DashboardTab = "overview" | "monitoring" | "reports" | "analytics" | "diagnosis";
 
 export const DASHBOARD_TABS: DashboardTab[] = [
   "overview",
@@ -59,8 +53,7 @@ export const DASHBOARD_TABS: DashboardTab[] = [
 ];
 
 export const isDashboardTab = (value: unknown): value is DashboardTab =>
-  typeof value === "string" &&
-  DASHBOARD_TABS.includes(value as DashboardTab);
+  typeof value === "string" && DASHBOARD_TABS.includes(value as DashboardTab);
 
 export const toYMD = (date: Date) => {
   const year = date.getFullYear();
@@ -106,8 +99,7 @@ export const prepareStatusChartData = (systemStats: any) => {
     },
     {
       label: "Idle",
-      value:
-        (systemStats.total_sessions || 0) - (systemStats.active_sessions || 0),
+      value: (systemStats.total_sessions || 0) - (systemStats.active_sessions || 0),
       color: auroraTheme.colors.neutral[400],
     },
   ];
@@ -193,12 +185,12 @@ export const dashboardWebStyles = StyleSheet.create({
   refreshButton: {
     padding: 10,
     borderRadius: 20,
-    backgroundColor: auroraTheme.glass.medium.backgroundColor as string,
+    backgroundColor: auroraTheme.colors.background.secondary,
   },
   logoutButton: {
     padding: 10,
     borderRadius: 20,
-    backgroundColor: "rgba(239, 68, 68, 0.15)",
+    backgroundColor: auroraTheme.colors.error[100],
   },
   tabsContainer: {
     flexDirection: "row",
@@ -246,6 +238,74 @@ export const dashboardWebStyles = StyleSheet.create({
   },
   tabContent: {
     gap: 24,
+  },
+  overviewKpiStrip: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 14,
+  },
+  adminKpiCard: {
+    flex: 1,
+    minWidth: 150,
+    minHeight: 126,
+    padding: 18,
+    justifyContent: "space-between",
+  },
+  adminKpiIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  adminKpiValue: {
+    ...typography.h2,
+    marginTop: 12,
+  },
+  adminKpiLabel: {
+    ...typography.label,
+    color: auroraTheme.colors.text.secondary,
+    textTransform: "uppercase",
+    fontSize: 12,
+  },
+  alertsPanel: {
+    padding: 18,
+    gap: 12,
+  },
+  alertsPanelWarning: {
+    borderColor: auroraTheme.colors.warning[200],
+    backgroundColor: auroraTheme.colors.warning[50],
+  },
+  alertPanelHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  alertPanelTitle: {
+    ...typography.bodyStrong,
+    fontSize: 16,
+  },
+  alertListRow: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: auroraTheme.colors.border.light,
+  },
+  alertListTitle: {
+    ...typography.bodyStrong,
+    fontSize: 14,
+  },
+  alertListBody: {
+    ...typography.small,
+    marginTop: 3,
+    color: auroraTheme.colors.text.secondary,
+    lineHeight: 18,
+  },
+  quickLinksSection: {
+    gap: 12,
+  },
+  sectionTitleCompact: {
+    ...typography.h3,
+    fontSize: 18,
   },
   quickStatsRow: {
     flexDirection: "row",
@@ -321,7 +381,17 @@ export const dashboardWebStyles = StyleSheet.create({
   chartTitle: {
     ...typography.h3,
     fontSize: 18,
-    marginBottom: 24,
+  },
+  chartHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 20,
+  },
+  chartMeta: {
+    ...typography.small,
+    color: auroraTheme.colors.text.secondary,
   },
   sectionCard: {
     padding: 0,
@@ -446,7 +516,7 @@ export const dashboardWebStyles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     paddingVertical: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: auroraTheme.colors.background.secondary,
     borderRadius: 12,
     marginBottom: 24,
   },
@@ -467,7 +537,7 @@ export const dashboardWebStyles = StyleSheet.create({
   issueRow: {
     flexDirection: "row",
     padding: 16,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: auroraTheme.colors.background.secondary,
     borderRadius: 12,
     alignItems: "center",
     gap: 16,
@@ -528,7 +598,7 @@ export const dashboardWebStyles = StyleSheet.create({
     marginTop: 20,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    backgroundColor: auroraTheme.colors.background.secondary,
     gap: 10,
   },
   recommendationsTitle: {

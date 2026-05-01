@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { AnimatedPressable, GlassCard, LiveIndicator } from "@/components/ui";
+import { AnimatedPressable, LiveIndicator, OperationalCard } from "@/components/ui";
 import { theme } from "@/styles/modernDesignSystem";
 import { colors as unifiedColors } from "@/theme/unified";
 
@@ -29,27 +29,19 @@ export function SupervisorOverviewCard({
   overviewActions,
 }: SupervisorOverviewCardProps) {
   return (
-    <Animated.View
-      entering={FadeInDown.delay(0).springify()}
-      style={styles.section}
-    >
-      <GlassCard
-        variant="medium"
-        intensity={24}
+    <Animated.View entering={FadeInDown.delay(0).springify()} style={styles.section}>
+      <OperationalCard
+        variant="light"
         borderRadius={theme.borderRadius.xl}
         padding={theme.spacing.lg}
-        withGradientBorder={true}
-        elevation="lg"
+        elevation="sm"
       >
         <View style={styles.topRow}>
           <View style={styles.copy}>
             <Text style={styles.eyebrow}>Supervisor overview</Text>
-            <Text style={styles.title}>
-              Keep counting on track and fix issues early.
-            </Text>
+            <Text style={styles.title}>Keep counting on track and fix issues early.</Text>
             <Text style={styles.subtitle}>
-              Track progress, check team activity, and resolve count differences
-              from one place.
+              Track progress, check team activity, and resolve count differences from one place.
             </Text>
           </View>
           <View style={styles.indicator}>
@@ -67,9 +59,7 @@ export function SupervisorOverviewCard({
             <Text style={styles.metricLabel}>High risk</Text>
           </View>
           <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>
-              {Math.round(completionPercentage)}%
-            </Text>
+            <Text style={styles.metricValue}>{Math.round(completionPercentage)}%</Text>
             <Text style={styles.metricLabel}>Completion</Text>
           </View>
         </View>
@@ -80,32 +70,20 @@ export function SupervisorOverviewCard({
               key={action.key}
               onPress={action.onPress}
               hapticFeedback="light"
-              style={[
-                styles.actionButton,
-                action.primary && styles.actionButtonPrimary,
-              ]}
+              style={[styles.actionButton, action.primary && styles.actionButtonPrimary]}
             >
               <Ionicons
                 name={action.icon}
                 size={18}
-                color={
-                  action.primary
-                    ? unifiedColors.white
-                    : theme.colors.text.primary
-                }
+                color={action.primary ? unifiedColors.white : theme.colors.text.primary}
               />
-              <Text
-                style={[
-                  styles.actionLabel,
-                  action.primary && styles.actionLabelPrimary,
-                ]}
-              >
+              <Text style={[styles.actionLabel, action.primary && styles.actionLabelPrimary]}>
                 {action.label}
               </Text>
             </AnimatedPressable>
           ))}
         </View>
-      </GlassCard>
+      </OperationalCard>
     </Animated.View>
   );
 }
@@ -127,10 +105,10 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   eyebrow: {
-    color: theme.colors.primary[300],
+    color: theme.colors.primary[600],
     fontSize: 12,
     fontWeight: "700",
-    letterSpacing: 1.2,
+    letterSpacing: 0.8,
     textTransform: "uppercase",
   },
   title: {
@@ -155,9 +133,9 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.lg,
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    backgroundColor: "#f8fafc",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderColor: "#e2e8f0",
     gap: theme.spacing.xs,
   },
   metricValue: {
@@ -185,8 +163,8 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.borderRadius.full,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.16)",
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: "#d9e5e2",
+    backgroundColor: "#ffffff",
   },
   actionButtonPrimary: {
     backgroundColor: theme.colors.primary[500],

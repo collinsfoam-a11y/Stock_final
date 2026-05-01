@@ -4,7 +4,6 @@ import { Alert } from "react-native";
 import { checkItemScanStatus, getItemByBarcode, searchItems } from "@/services/api/api";
 import { localDb } from "@/db/localDb";
 import apiClient from "@/services/httpClient";
-import { RecentItemsService } from "@/services/enhancedFeatures";
 import { useSettingsStore } from "@/store/settingsStore";
 import { toastService } from "@/services/toastService";
 import { Item } from "@/types/scan";
@@ -146,8 +145,6 @@ export const useItemDetailData = ({
           // Existing count lookup is best-effort.
         }
       }
-
-      await RecentItemsService.addRecent(itemData.item_code || barcode, itemData);
 
       if (offlineMode) {
         toastService.show("Offline mode enabled: showing cached item data", {

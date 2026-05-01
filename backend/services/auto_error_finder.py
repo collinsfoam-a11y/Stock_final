@@ -63,7 +63,7 @@ class AutoErrorFinder:
         for py_file in python_files:
             try:
                 self._scan_file(py_file)
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.error(f"Error scanning {py_file}: {str(e)}")
                 self.issues.append(
                     CodeIssue(
@@ -89,7 +89,7 @@ class AutoErrorFinder:
         try:
             with open(file_path, encoding="utf-8") as f:
                 content = f.read()
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.warning(f"Cannot read {file_path}: {str(e)}")
             return
 
@@ -114,7 +114,7 @@ class AutoErrorFinder:
         try:
             tree = ast.parse(content)
             self._analyze_ast(tree, file_path, content)
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.warning(f"Error analyzing AST for {file_path}: {str(e)}")
 
     def _analyze_ast(self, tree: ast.AST, file_path: Path, content: str):

@@ -1,7 +1,6 @@
 /**
- * Sync Conflicts Screen
- * Review and resolve data synchronization conflicts
- * Uses functional operational surfaces for conflict review.
+ * Sync Differences Screen
+ * Review and resolve counted-versus-system differences.
  */
 import React, { useState, useEffect, useCallback } from "react";
 import {
@@ -14,14 +13,15 @@ import {
   TextInput,
   RefreshControl,
   Platform,
+  TouchableOpacity,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBar } from "expo-status-bar";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
+import { useIdleProbe } from "../../src/hooks/useIdleProbe";
 import { usePermission } from "../../src/hooks/usePermission";
 import {
   getSyncConflicts,
@@ -29,27 +29,182 @@ import {
   batchResolveSyncConflicts,
   getSyncConflictStats,
 } from "../../src/services/api/api";
-import {
-  OperationalBackground,
-  OperationalCard,
-  StatsCard,
-  AnimatedPressable,
-} from "../../src/components/ui";
 import { auroraTheme } from "../../src/theme/auroraTheme";
+import { uxProbe } from "../../src/utils/uxProbe";
+
+const SURFACE_BG = "#f4f7f6";
+const SURFACE_CARD = "#ffffff";
+const SURFACE_BORDER = "#d9e5e2";
+const SURFACE_MUTED = "#f8fafc";
+const ACCENT = "#0f766e";
+const ACCENT_SOFT = "#ecf7f4";
+const TEXT_STRONG = "#0f172a";
+const TEXT_MUTED = "#475569";
+const WARNING = "#b45309";
+const WARNING_BG = "#fffbeb";
+const ERROR = "#dc2626";
+const SUCCESS = "#15803d";
+
+function safeHaptic(call: () => Promise<void>) {
+  if (Platform.OS === "web") return;
+  void call().catch(() => undefined);
+}
 
 interface SyncConflict {
-  _id: string;
+  _id?: string;
+  id?: string;
   session_id: string;
   item_code: string;
   conflict_type: string;
   local_value: any;
   server_value: any;
+  local_data?: Record<string, unknown>;
+  server_data?: Record<string, unknown>;
+  conflicts?: {
+    field: string;
+    local_value: unknown;
+    server_value: unknown;
+  }[];
   status: string;
   detected_at: string;
+  created_at?: string;
   resolution?: string;
   resolved_at?: string;
   resolved_by?: string;
 }
+
+type ModalMode = "view" | "resolve";
+
+const QTY_KEYS = [
+  "counted_qty",
+  "countedQty",
+  "physical_qty",
+  "expected_qty",
+  "erp_qty",
+  "stock_qty",
+  "stockQty",
+  "quantity",
+  "qty",
+  "count",
+];
+
+const getConflictId = (conflict: SyncConflict) => conflict._id || conflict.id || "";
+
+const toRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+
+const getConflictLocalData = (conflict: SyncConflict) =>
+  toRecord(conflict.local_data ?? conflict.local_value);
+
+const getConflictServerData = (conflict: SyncConflict) =>
+  toRecord(conflict.server_data ?? conflict.server_value);
+
+const firstDefined = (...values: unknown[]) =>
+  values.find((value) => value !== null && value !== undefined && value !== "");
+
+const humanizeConflictType = (value: string) =>
+  value
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (match) => match.toUpperCase());
+
+const getIssueLabel = (conflict: SyncConflict) => {
+  const raw = `${conflict.conflict_type || ""} ${
+    conflict.conflicts?.map((item) => item.field).join(" ") || ""
+  }`.toLowerCase();
+
+  if (raw.includes("duplicate")) return "Duplicate item";
+  if (raw.includes("unknown")) return "Unknown item";
+  if (raw.includes("qty") || raw.includes("quantity") || raw.includes("count")) {
+    return "Qty mismatch";
+  }
+  return conflict.conflict_type ? humanizeConflictType(conflict.conflict_type) : "Data mismatch";
+};
+
+const readQtyFromRecord = (record: Record<string, unknown>) => {
+  for (const key of QTY_KEYS) {
+    if (record[key] !== undefined && record[key] !== null && record[key] !== "") {
+      return record[key];
+    }
+  }
+  return undefined;
+};
+
+const getPrimaryQtyConflict = (conflict: SyncConflict) =>
+  conflict.conflicts?.find((item) => /qty|quantity|count|stock/i.test(item.field)) ||
+  conflict.conflicts?.[0];
+
+const getSystemQty = (conflict: SyncConflict) => {
+  const qtyConflict = getPrimaryQtyConflict(conflict);
+  return firstDefined(
+    qtyConflict?.server_value,
+    readQtyFromRecord(getConflictServerData(conflict)),
+    typeof conflict.server_value !== "object" ? conflict.server_value : undefined
+  );
+};
+
+const getCountedQty = (conflict: SyncConflict) => {
+  const qtyConflict = getPrimaryQtyConflict(conflict);
+  return firstDefined(
+    qtyConflict?.local_value,
+    readQtyFromRecord(getConflictLocalData(conflict)),
+    typeof conflict.local_value !== "object" ? conflict.local_value : undefined
+  );
+};
+
+const getDifference = (conflict: SyncConflict) => {
+  const system = Number(getSystemQty(conflict));
+  const counted = Number(getCountedQty(conflict));
+  if (!Number.isFinite(system) || !Number.isFinite(counted)) return "-";
+  const diff = counted - system;
+  return diff > 0 ? `+${diff}` : String(diff);
+};
+
+const getItemName = (conflict: SyncConflict) => {
+  const local = getConflictLocalData(conflict);
+  const server = getConflictServerData(conflict);
+  return String(
+    firstDefined(
+      local.item_name,
+      local.name,
+      server.item_name,
+      server.name,
+      conflict.item_code,
+      local.item_code,
+      server.item_code,
+      "Unknown item"
+    )
+  );
+};
+
+const getQtyFieldForMerge = (conflict: SyncConflict) => {
+  const qtyConflict = getPrimaryQtyConflict(conflict);
+  if (qtyConflict?.field) return qtyConflict.field;
+
+  const local = getConflictLocalData(conflict);
+  const server = getConflictServerData(conflict);
+  return QTY_KEYS.find((key) => key in local || key in server) || "counted_qty";
+};
+
+const buildMergedQtyData = (conflict: SyncConflict, qtyText: string) => {
+  const qty = Number(qtyText);
+  const value = Number.isFinite(qty) ? qty : qtyText.trim();
+  return {
+    ...getConflictServerData(conflict),
+    [getQtyFieldForMerge(conflict)]: value,
+  };
+};
+
+const toResolveProbeAction = (
+  resolution: string
+): "accept_counted" | "accept_system" | "edit_qty" => {
+  if (resolution === "accept_server") return "accept_system";
+  if (resolution === "merge") return "edit_qty";
+  return "accept_counted";
+};
 
 export default function SyncConflictsScreen() {
   const router = useRouter();
@@ -61,8 +216,13 @@ export default function SyncConflictsScreen() {
   const [filterStatus, setFilterStatus] = useState<string>("pending");
   const [selectedConflicts, setSelectedConflicts] = useState<Set<string>>(new Set());
   const [modalVisible, setModalVisible] = useState(false);
+  const [modalMode, setModalMode] = useState<ModalMode>("view");
   const [selectedConflict, setSelectedConflict] = useState<SyncConflict | null>(null);
   const [resolutionNote, setResolutionNote] = useState("");
+  const [editedQty, setEditedQty] = useState("");
+  const { markAction } = useIdleProbe(
+    modalVisible ? "sync_differences_modal" : "sync_differences_screen"
+  );
 
   const loadStats = useCallback(async () => {
     try {
@@ -79,8 +239,11 @@ export default function SyncConflictsScreen() {
       const response = await getSyncConflicts(status);
       setConflicts(response.data?.conflicts || []);
     } catch (error: any) {
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Error", error.message || "Failed to load sync conflicts");
+      safeHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
+      Alert.alert(
+        "Sync differences did not load",
+        error.message || "Pull down to refresh, or check the network connection and try again."
+      );
     }
   }, [filterStatus]);
 
@@ -103,38 +266,85 @@ export default function SyncConflictsScreen() {
   }, [hasPermission, router, loadData]);
 
   const handleRefresh = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    markAction();
+    safeHaptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
     setRefreshing(true);
     loadData();
   };
 
-  const handleResolve = async (conflictId: string, resolution: string) => {
+  const handleResolve = async (
+    conflictId: string,
+    resolution: string,
+    note = resolutionNote,
+    mergedData?: Record<string, unknown>
+  ) => {
+    markAction();
     try {
-      await resolveSyncConflict(conflictId, resolution, resolutionNote);
-      if (Platform.OS !== "web")
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Success", "Conflict resolved successfully");
+      await resolveSyncConflict(conflictId, resolution, note, mergedData);
+      uxProbe({ t: "resolve_diff", action: toResolveProbeAction(resolution) });
+      safeHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
       setModalVisible(false);
       setSelectedConflict(null);
       setResolutionNote("");
+      setEditedQty("");
       loadData();
     } catch (error: any) {
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Error", error.message || "Failed to resolve conflict");
+      safeHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
+      Alert.alert(
+        "Difference was not resolved",
+        error.message || "Check the selected resolution and try again."
+      );
     }
   };
 
-  const handleBatchResolve = async (resolution: string) => {
-    if (selectedConflicts.size === 0) {
-      Alert.alert("Error", "Please select conflicts to resolve");
+  const handleEditQtyResolve = () => {
+    markAction();
+    if (!selectedConflict) return;
+    const cleanedQty = editedQty.trim();
+    if (!cleanedQty || Number.isNaN(Number(cleanedQty))) {
+      uxProbe({
+        t: "nav_confusion",
+        screen: "sync_differences_modal",
+        note: "edit_qty_invalid",
+      });
+      Alert.alert("Enter corrected quantity", "Type the correct quantity, then tap Edit qty.");
       return;
     }
 
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    const note = [`Corrected quantity: ${cleanedQty}`, resolutionNote.trim()]
+      .filter(Boolean)
+      .join(". ");
+
+    void handleResolve(
+      getConflictId(selectedConflict),
+      "merge",
+      note,
+      buildMergedQtyData(selectedConflict, cleanedQty)
+    );
+  };
+
+  const handleBatchResolve = async (resolution: string) => {
+    markAction();
+    if (selectedConflicts.size === 0) {
+      uxProbe({
+        t: "nav_confusion",
+        screen: "sync_differences_screen",
+        note: "batch_resolve_without_selection",
+      });
+      Alert.alert(
+        "Select differences first",
+        "Tick one or more items, then choose how to keep the final quantity."
+      );
+      return;
+    }
+
+    safeHaptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy));
+
+    const resolutionLabel = resolution === "accept_server" ? "Accept System" : "Accept Counted";
 
     Alert.alert(
       "Confirm Batch Resolution",
-      `Resolve ${selectedConflicts.size} conflicts with "${resolution}"?`,
+      `Resolve ${selectedConflicts.size} differences with "${resolutionLabel}"?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -146,14 +356,17 @@ export default function SyncConflictsScreen() {
                 resolution,
                 resolutionNote
               );
-              if (Platform.OS !== "web")
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              Alert.alert("Success", "Conflicts resolved successfully");
+              uxProbe({ t: "resolve_diff", action: toResolveProbeAction(resolution) });
+              safeHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
+              Alert.alert("Success", "Differences resolved successfully");
               setSelectedConflicts(new Set());
               setResolutionNote("");
               loadData();
             } catch (error: any) {
-              Alert.alert("Error", error.message || "Failed to resolve conflicts");
+              Alert.alert(
+                "Differences were not resolved",
+                error.message || "Check the selected items and try again."
+              );
             }
           },
         },
@@ -162,7 +375,8 @@ export default function SyncConflictsScreen() {
   };
 
   const toggleConflictSelection = (conflictId: string) => {
-    if (Platform.OS !== "web") Haptics.selectionAsync();
+    markAction();
+    safeHaptic(() => Haptics.selectionAsync());
     const newSelection = new Set(selectedConflicts);
     if (newSelection.has(conflictId)) {
       newSelection.delete(conflictId);
@@ -172,218 +386,250 @@ export default function SyncConflictsScreen() {
     setSelectedConflicts(newSelection);
   };
 
-  const openConflictDetail = (conflict: SyncConflict) => {
-    if (Platform.OS !== "web") Haptics.selectionAsync();
+  const openConflictDetail = (conflict: SyncConflict, mode: ModalMode) => {
+    markAction();
+    safeHaptic(() => Haptics.selectionAsync());
     setSelectedConflict(conflict);
+    setModalMode(mode);
+    setResolutionNote("");
+    setEditedQty(String(getCountedQty(conflict) ?? ""));
     setModalVisible(true);
   };
 
   const renderConflictCard = ({ item }: { item: SyncConflict }) => {
-    const isSelected = selectedConflicts.has(item._id);
+    const conflictId = getConflictId(item);
+    const isSelected = selectedConflicts.has(conflictId);
+    const itemName = getItemName(item);
+    const issueLabel = getIssueLabel(item);
+    const systemQty = getSystemQty(item);
+    const countedQty = getCountedQty(item);
+    const difference = getDifference(item);
+    const detectedAt = item.detected_at || item.created_at;
+    const isPending = String(item.status || "").toLowerCase() === "pending";
 
     return (
-      <AnimatedPressable
-        onPress={() => toggleConflictSelection(item._id)}
-        onLongPress={() => openConflictDetail(item)}
-        style={{ marginBottom: auroraTheme.spacing.md }}
+      <TouchableOpacity
+        activeOpacity={0.86}
+        onPress={() => openConflictDetail(item, "view")}
+        style={[styles.conflictCard, isSelected && styles.conflictCardSelected]}
+        accessibilityRole="button"
+        accessibilityLabel={`Open difference details for ${itemName}`}
       >
-        <OperationalCard
-          variant={isSelected ? "medium" : "light"}
-          padding={auroraTheme.spacing.md}
-          borderRadius={auroraTheme.borderRadius.lg}
-          style={
-            isSelected
-              ? { borderColor: auroraTheme.colors.primary[500], borderWidth: 1 }
-              : undefined
-          }
-        >
-          <View style={styles.cardHeader}>
-            <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
-              {isSelected && <Ionicons name="checkmark" size={16} color="white" />}
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.itemCode}>{item.item_code}</Text>
-              <View style={styles.conflictTypeContainer}>
-                <Text style={styles.conflictType}>{item.conflict_type}</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.conflictData}>
-            <View style={styles.dataColumn}>
-              <Text style={styles.dataLabel}>Local Value</Text>
-              <OperationalCard
-                variant="dark"
-                intensity={10}
-                padding={8}
-                borderRadius={auroraTheme.borderRadius.sm}
-              >
-                <Text style={styles.dataValue} numberOfLines={2}>
-                  {JSON.stringify(item.local_value)}
-                </Text>
-              </OperationalCard>
-            </View>
-            <View style={styles.dataColumn}>
-              <Text style={styles.dataLabel}>Server Value</Text>
-              <OperationalCard
-                variant="dark"
-                intensity={10}
-                padding={8}
-                borderRadius={auroraTheme.borderRadius.sm}
-              >
-                <Text style={styles.dataValue} numberOfLines={2}>
-                  {JSON.stringify(item.server_value)}
-                </Text>
-              </OperationalCard>
+        <View style={styles.cardHeader}>
+          <TouchableOpacity
+            onPress={(event) => {
+              event.stopPropagation?.();
+              toggleConflictSelection(conflictId);
+            }}
+            style={[styles.checkbox, isSelected && styles.checkboxChecked]}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: isSelected }}
+            accessibilityLabel={`Select conflict for ${itemName}`}
+          >
+            {isSelected && <Ionicons name="checkmark" size={16} color="white" />}
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.itemName} numberOfLines={2}>
+              {itemName}
+            </Text>
+            <Text style={styles.itemCode} numberOfLines={1}>
+              Code: {item.item_code || conflictId}
+            </Text>
+            <View style={styles.conflictTypeContainer}>
+              <Text style={styles.conflictType}>Difference: {issueLabel}</Text>
             </View>
           </View>
+        </View>
 
-          <Text style={styles.timestamp}>
-            Detected: {new Date(item.detected_at).toLocaleString()}
-          </Text>
+        <View style={styles.qtySummaryRow}>
+          <View style={styles.qtySummaryItem}>
+            <Text style={styles.dataLabel}>System</Text>
+            <Text style={styles.qtyValue}>{String(systemQty ?? "-")}</Text>
+          </View>
+          <View style={styles.qtySummaryItem}>
+            <Text style={styles.dataLabel}>Counted</Text>
+            <Text style={styles.qtyValue}>{String(countedQty ?? "-")}</Text>
+          </View>
+          <View style={styles.qtySummaryItem}>
+            <Text style={styles.dataLabel}>Difference</Text>
+            <Text
+              style={[
+                styles.qtyValue,
+                difference !== "0" && difference !== "-" && styles.qtyValueWarning,
+              ]}
+            >
+              {difference}
+            </Text>
+          </View>
+        </View>
 
-          {item.status !== "pending" && (
-            <View style={styles.resolvedInfo}>
-              <Ionicons
-                name="checkmark-circle-outline"
-                size={14}
-                color={auroraTheme.colors.success[500]}
-              />
-              <Text style={styles.resolvedText}>
-                Resolved: {item.resolution} by {item.resolved_by}
-              </Text>
-            </View>
-          )}
-        </OperationalCard>
-      </AnimatedPressable>
+        {detectedAt ? (
+          <Text style={styles.timestamp}>Detected: {new Date(detectedAt).toLocaleString()}</Text>
+        ) : null}
+
+        {isPending ? (
+          <View style={styles.rowActions}>
+            <TouchableOpacity
+              onPress={(event) => {
+                event.stopPropagation?.();
+                void handleResolve(conflictId, "accept_local");
+              }}
+              style={[styles.rowActionButton, styles.rowActionPrimary]}
+              accessibilityRole="button"
+              accessibilityLabel={`Accept counted quantity for ${itemName}`}
+            >
+              <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+              <Text style={styles.rowActionPrimaryText}>Accept Counted</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={(event) => {
+                event.stopPropagation?.();
+                void handleResolve(conflictId, "accept_server");
+              }}
+              style={[styles.rowActionButton, styles.rowActionSecondary]}
+              accessibilityRole="button"
+              accessibilityLabel={`Accept system quantity for ${itemName}`}
+            >
+              <Ionicons name="server-outline" size={16} color={ACCENT} />
+              <Text style={styles.rowActionSecondaryText}>Accept System</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={(event) => {
+                event.stopPropagation?.();
+                openConflictDetail(item, "resolve");
+              }}
+              style={[styles.rowActionButton, styles.rowActionTertiary]}
+              accessibilityRole="button"
+              accessibilityLabel={`Edit quantity for ${itemName}`}
+            >
+              <Ionicons name="create-outline" size={16} color={TEXT_MUTED} />
+              <Text style={styles.rowActionTertiaryText}>Edit Qty</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        {!isPending && (
+          <View style={styles.resolvedInfo}>
+            <Ionicons name="checkmark-circle-outline" size={14} color={SUCCESS} />
+            <Text style={styles.resolvedText}>
+              Resolved: {item.resolution} by {item.resolved_by}
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
     );
   };
 
   return (
-    <OperationalBackground variant="secondary" intensity="medium" animated>
-      <StatusBar style="light" />
+    <View style={styles.screen}>
+      <StatusBar style="dark" />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
+        <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <AnimatedPressable onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={auroraTheme.colors.text.primary} />
-            </AnimatedPressable>
+            <TouchableOpacity
+              onPress={() => {
+                markAction();
+                router.back();
+              }}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color={TEXT_STRONG} />
+            </TouchableOpacity>
             <View>
-              <Text style={styles.pageTitle}>Sync Conflicts</Text>
-              <Text style={styles.pageSubtitle}>Resolve data discrepancies</Text>
+              <Text style={styles.pageTitle}>Sync Differences</Text>
+              <Text style={styles.pageSubtitle}>
+                System and counted quantities that need a decision
+              </Text>
             </View>
           </View>
-        </Animated.View>
+        </View>
 
         {stats && (
-          <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.statsContainer}>
-            <StatsCard
-              title="Total"
-              value={stats.total?.toString() || "0"}
-              icon="alert-circle-outline"
-              variant="primary"
-              style={{ flex: 1 }}
-            />
-            <StatsCard
-              title="Pending"
-              value={stats.pending?.toString() || "0"}
-              icon="time-outline"
-              variant="warning"
-              style={{ flex: 1 }}
-            />
-            <StatsCard
-              title="Resolved"
-              value={stats.resolved?.toString() || "0"}
-              icon="checkmark-circle-outline"
-              variant="success"
-              style={{ flex: 1 }}
-            />
-          </Animated.View>
+          <View style={styles.statsContainer}>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricLabel}>Total</Text>
+              <Text style={styles.metricValue}>{stats.total?.toString() || "0"}</Text>
+            </View>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricLabel}>Pending</Text>
+              <Text style={[styles.metricValue, styles.metricWarning]}>
+                {stats.pending?.toString() || "0"}
+              </Text>
+            </View>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricLabel}>Resolved</Text>
+              <Text style={[styles.metricValue, styles.metricSuccess]}>
+                {stats.resolved?.toString() || "0"}
+              </Text>
+            </View>
+          </View>
         )}
 
         {/* Filters */}
-        <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.filterBar}>
+        <View style={styles.filterBar}>
           {["pending", "resolved", "all"].map((status) => (
-            <AnimatedPressable
+            <TouchableOpacity
               key={status}
               onPress={() => {
-                if (Platform.OS !== "web") Haptics.selectionAsync();
+                markAction();
+                safeHaptic(() => Haptics.selectionAsync());
                 setFilterStatus(status);
               }}
               style={{ flex: 1 }}
             >
-              <OperationalCard
-                variant={filterStatus === status ? "medium" : "light"}
-                padding={auroraTheme.spacing.sm}
-                borderRadius={auroraTheme.borderRadius.full}
-                style={[
-                  styles.filterButton,
-                  filterStatus === status && {
-                    borderColor: auroraTheme.colors.primary[500],
-                    borderWidth: 1,
-                  },
-                ]}
-              >
+              <View style={[styles.filterButton, filterStatus === status && styles.filterActive]}>
                 <Text
                   style={[
                     styles.filterButtonText,
-                    filterStatus === status && {
-                      color: auroraTheme.colors.primary[500],
-                    },
+                    filterStatus === status && styles.filterButtonTextActive,
                   ]}
                 >
                   {status.charAt(0).toUpperCase() + status.slice(1)}
                 </Text>
-              </OperationalCard>
-            </AnimatedPressable>
+              </View>
+            </TouchableOpacity>
           ))}
-        </Animated.View>
+        </View>
+
+        <View style={styles.helperCard}>
+          <Text style={styles.helperText}>System = ERP value</Text>
+          <View style={styles.helperDivider} />
+          <Text style={styles.helperText}>Counted = your value</Text>
+        </View>
 
         {selectedConflicts.size > 0 && (
-          <Animated.View entering={FadeInDown.delay(100)} style={styles.batchActions}>
-            <OperationalCard
-              variant="medium"
-              padding={auroraTheme.spacing.md}
-              borderRadius={auroraTheme.borderRadius.lg}
-              style={styles.batchCard}
-            >
+          <View style={styles.batchActions}>
+            <View style={styles.batchCard}>
               <Text style={styles.batchText}>{selectedConflicts.size} selected</Text>
               <View style={styles.batchButtons}>
-                <AnimatedPressable
-                  style={[styles.batchButton, { backgroundColor: auroraTheme.colors.success[500] }]}
+                <TouchableOpacity
+                  style={[styles.batchButton, styles.batchButtonSecondary]}
                   onPress={() => handleBatchResolve("accept_server")}
                 >
-                  <Text style={styles.batchButtonText}>Accept Server</Text>
-                </AnimatedPressable>
-                <AnimatedPressable
-                  style={[
-                    styles.batchButton,
-                    { backgroundColor: auroraTheme.colors.secondary[500] },
-                  ]}
+                  <Text style={styles.batchButtonTextSecondary}>Accept System</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.batchButton, styles.batchButtonPrimary]}
                   onPress={() => handleBatchResolve("accept_local")}
                 >
-                  <Text style={styles.batchButtonText}>Accept Local</Text>
-                </AnimatedPressable>
+                  <Text style={styles.batchButtonText}>Accept Counted</Text>
+                </TouchableOpacity>
               </View>
-            </OperationalCard>
-          </Animated.View>
+            </View>
+          </View>
         )}
 
         {loading && !refreshing ? (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color={auroraTheme.colors.primary[500]} />
-            <Text style={styles.loadingText}>Loading conflicts...</Text>
+            <ActivityIndicator size="large" color={ACCENT} />
+            <Text style={styles.loadingText}>Loading differences...</Text>
           </View>
         ) : conflicts.length === 0 ? (
           <View style={styles.centered}>
-            <Ionicons
-              name="checkmark-done-circle-outline"
-              size={64}
-              color={auroraTheme.colors.success[500]}
-            />
-            <Text style={styles.emptyText}>No conflicts found</Text>
-            <Text style={styles.emptySubtext}>System data is in sync</Text>
+            <Ionicons name="checkmark-done-circle-outline" size={64} color={SUCCESS} />
+            <Text style={styles.emptyText}>No differences found</Text>
+            <Text style={styles.emptySubtext}>Everything is up to date</Text>
           </View>
         ) : (
           <View style={{ flex: 1 }}>
@@ -392,14 +638,14 @@ export default function SyncConflictsScreen() {
               renderItem={renderConflictCard}
               // @ts-ignore
               estimatedItemSize={200}
-              keyExtractor={(item) => item._id}
+              keyExtractor={(item) => getConflictId(item)}
               contentContainerStyle={styles.listContent}
               refreshControl={
                 <RefreshControl
                   refreshing={refreshing}
                   onRefresh={handleRefresh}
-                  tintColor={auroraTheme.colors.primary[500]}
-                  colors={[auroraTheme.colors.primary[500]]}
+                  tintColor={ACCENT}
+                  colors={[ACCENT]}
                 />
               }
             />
@@ -412,101 +658,173 @@ export default function SyncConflictsScreen() {
           transparent={true}
           onRequestClose={() => setModalVisible(false)}
         >
-          <OperationalBackground variant="primary" intensity="high" style={styles.modalOverlay}>
-            <OperationalCard
-              variant="modal"
-              padding={auroraTheme.spacing.lg}
-              borderRadius={auroraTheme.borderRadius.xl}
-              style={styles.modalContent}
-            >
-              <Text style={styles.modalTitle}>Resolve Conflict</Text>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>
+                {modalMode === "resolve" ? "Resolve Difference" : "Difference Details"}
+              </Text>
 
               {selectedConflict && (
                 <>
                   <Text style={styles.modalLabel}>
-                    Item: <Text style={{ color: "white" }}>{selectedConflict.item_code}</Text>
+                    Item:{" "}
+                    <Text style={styles.modalStrongText}>{getItemName(selectedConflict)}</Text>
                   </Text>
                   <View style={styles.modalTypeBadge}>
-                    <Text style={styles.modalTypeText}>{selectedConflict.conflict_type}</Text>
+                    <Text style={styles.modalTypeText}>
+                      Difference: {getIssueLabel(selectedConflict)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.modalQtyGrid}>
+                    <View style={styles.modalQtyCard}>
+                      <Text style={styles.modalSectionTitle}>Expected qty</Text>
+                      <Text style={styles.modalQtyValue}>
+                        {String(getSystemQty(selectedConflict) ?? "-")}
+                      </Text>
+                    </View>
+                    <View style={styles.modalQtyCard}>
+                      <Text style={styles.modalSectionTitle}>Counted qty</Text>
+                      <Text style={styles.modalQtyValue}>
+                        {String(getCountedQty(selectedConflict) ?? "-")}
+                      </Text>
+                    </View>
+                    <View style={styles.modalQtyCard}>
+                      <Text style={styles.modalSectionTitle}>Difference</Text>
+                      <Text
+                        style={[
+                          styles.modalQtyValue,
+                          getDifference(selectedConflict) !== "0" &&
+                            getDifference(selectedConflict) !== "-" &&
+                            styles.qtyValueWarning,
+                        ]}
+                      >
+                        {getDifference(selectedConflict)}
+                      </Text>
+                    </View>
                   </View>
 
                   <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>Local Value</Text>
-                    <OperationalCard
-                      variant="dark"
-                      padding={auroraTheme.spacing.md}
-                      borderRadius={auroraTheme.borderRadius.md}
-                    >
+                    <Text style={styles.modalSectionTitle}>System data</Text>
+                    <View style={styles.modalValueBlock}>
                       <Text style={styles.modalValue}>
-                        {JSON.stringify(selectedConflict.local_value, null, 2)}
+                        {JSON.stringify(getConflictServerData(selectedConflict), null, 2)}
                       </Text>
-                    </OperationalCard>
+                    </View>
                   </View>
 
                   <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>Server Value</Text>
-                    <OperationalCard
-                      variant="dark"
-                      padding={auroraTheme.spacing.md}
-                      borderRadius={auroraTheme.borderRadius.md}
-                    >
+                    <Text style={styles.modalSectionTitle}>Counted data</Text>
+                    <View style={styles.modalValueBlock}>
                       <Text style={styles.modalValue}>
-                        {JSON.stringify(selectedConflict.server_value, null, 2)}
+                        {JSON.stringify(getConflictLocalData(selectedConflict), null, 2)}
                       </Text>
-                    </OperationalCard>
+                    </View>
                   </View>
 
-                  <TextInput
-                    style={[styles.modalInput, styles.modalTextArea]}
-                    placeholder="Resolution note (optional)"
-                    placeholderTextColor={auroraTheme.colors.text.tertiary}
-                    value={resolutionNote}
-                    onChangeText={setResolutionNote}
-                    multiline
-                  />
+                  {modalMode === "resolve" ? (
+                    <>
+                      <TextInput
+                        style={styles.modalInput}
+                        placeholder="Correct quantity for Edit qty"
+                        placeholderTextColor="#64748b"
+                        value={editedQty}
+                        onChangeText={(value) => {
+                          markAction();
+                          setEditedQty(value);
+                        }}
+                        keyboardType="decimal-pad"
+                        accessibilityLabel="Correct quantity"
+                      />
 
-                  <View style={styles.modalActions}>
-                    <AnimatedPressable
-                      style={[
-                        styles.modalButton,
-                        { backgroundColor: auroraTheme.colors.success[500] },
-                      ]}
-                      onPress={() => handleResolve(selectedConflict._id, "accept_server")}
-                    >
-                      <Text style={styles.modalButtonText}>Accept Server</Text>
-                    </AnimatedPressable>
+                      <TextInput
+                        style={[styles.modalInput, styles.modalTextArea]}
+                        placeholder="Resolution note (optional)"
+                        placeholderTextColor="#64748b"
+                        value={resolutionNote}
+                        onChangeText={(value) => {
+                          markAction();
+                          setResolutionNote(value);
+                        }}
+                        multiline
+                      />
 
-                    <AnimatedPressable
-                      style={[
-                        styles.modalButton,
-                        { backgroundColor: auroraTheme.colors.secondary[500] },
-                      ]}
-                      onPress={() => handleResolve(selectedConflict._id, "accept_local")}
-                    >
-                      <Text style={styles.modalButtonText}>Accept Local</Text>
-                    </AnimatedPressable>
-                  </View>
+                      <View style={styles.modalActions}>
+                        <TouchableOpacity
+                          style={[styles.modalButton, styles.modalButtonSecondary]}
+                          onPress={() =>
+                            void handleResolve(getConflictId(selectedConflict), "accept_server")
+                          }
+                          accessibilityRole="button"
+                        >
+                          <Text style={styles.modalButtonTitleSecondary}>Accept System</Text>
+                          <Text style={styles.modalButtonMetaSecondary}>ERP value</Text>
+                        </TouchableOpacity>
 
-                  <AnimatedPressable
+                        <TouchableOpacity
+                          style={[styles.modalButton, styles.modalButtonPrimary]}
+                          onPress={() =>
+                            void handleResolve(getConflictId(selectedConflict), "accept_local")
+                          }
+                          accessibilityRole="button"
+                        >
+                          <Text style={styles.modalButtonTitlePrimary}>Accept Counted</Text>
+                          <Text style={styles.modalButtonMetaPrimary}>Your count</Text>
+                          <View style={styles.recommendedBadge}>
+                            <Text style={styles.recommendedBadgeText}>Recommended</Text>
+                          </View>
+                        </TouchableOpacity>
+                      </View>
+
+                      <TouchableOpacity
+                        style={[styles.modalButton, styles.editQtyButton]}
+                        onPress={handleEditQtyResolve}
+                        accessibilityRole="button"
+                      >
+                        <Ionicons name="create-outline" size={18} color="#fff" />
+                        <Text style={styles.modalButtonText}>Edit qty</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    String(selectedConflict.status || "").toLowerCase() === "pending" && (
+                      <TouchableOpacity
+                        style={[styles.modalButton, styles.editQtyButton]}
+                        onPress={() => setModalMode("resolve")}
+                        accessibilityRole="button"
+                      >
+                        <Text style={styles.modalButtonText}>Resolve This Difference</Text>
+                      </TouchableOpacity>
+                    )
+                  )}
+
+                  <TouchableOpacity
                     style={[styles.modalButton, styles.modalButtonCancel]}
-                    onPress={() => setModalVisible(false)}
+                    onPress={() => {
+                      markAction();
+                      setModalVisible(false);
+                    }}
+                    accessibilityRole="button"
                   >
-                    <Text style={styles.modalButtonText}>Cancel</Text>
-                  </AnimatedPressable>
+                    <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                  </TouchableOpacity>
                 </>
               )}
-            </OperationalCard>
-          </OperationalBackground>
+            </View>
+          </View>
         </Modal>
       </View>
-    </OperationalBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: SURFACE_BG,
+  },
   container: {
     flex: 1,
-    paddingTop: 60,
+    paddingTop: 52,
     paddingHorizontal: auroraTheme.spacing.md,
   },
   centered: {
@@ -519,7 +837,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: auroraTheme.spacing.md,
+    marginBottom: auroraTheme.spacing.sm,
   },
   headerLeft: {
     flexDirection: "row",
@@ -528,39 +846,105 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: auroraTheme.spacing.xs,
-    backgroundColor: auroraTheme.colors.background.glass,
+    backgroundColor: SURFACE_CARD,
     borderRadius: auroraTheme.borderRadius.full,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
+    borderColor: SURFACE_BORDER,
   },
   pageTitle: {
     fontFamily: auroraTheme.typography.fontFamily.heading,
-    fontSize: auroraTheme.typography.fontSize["2xl"],
-    color: auroraTheme.colors.text.primary,
+    fontSize: auroraTheme.typography.fontSize.xl,
+    color: TEXT_STRONG,
     fontWeight: "700",
   },
   pageSubtitle: {
     fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
+    color: TEXT_MUTED,
   },
   statsContainer: {
     flexDirection: "row",
     gap: auroraTheme.spacing.sm,
-    marginBottom: auroraTheme.spacing.md,
+    marginBottom: auroraTheme.spacing.sm,
+  },
+  metricCard: {
+    flex: 1,
+    minHeight: 62,
+    padding: auroraTheme.spacing.sm,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
+    backgroundColor: SURFACE_CARD,
+    justifyContent: "center",
+  },
+  metricLabel: {
+    fontSize: auroraTheme.typography.fontSize.xs,
+    color: TEXT_MUTED,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  metricValue: {
+    marginTop: 2,
+    fontSize: auroraTheme.typography.fontSize.xl,
+    color: TEXT_STRONG,
+    fontWeight: "800",
+  },
+  metricWarning: {
+    color: WARNING,
+  },
+  metricSuccess: {
+    color: SUCCESS,
   },
   filterBar: {
     flexDirection: "row",
     gap: auroraTheme.spacing.sm,
-    marginBottom: auroraTheme.spacing.md,
+    marginBottom: auroraTheme.spacing.sm,
   },
   filterButton: {
+    minHeight: 40,
+    paddingHorizontal: auroraTheme.spacing.md,
+    paddingVertical: auroraTheme.spacing.sm,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
+    backgroundColor: SURFACE_CARD,
     alignItems: "center",
     justifyContent: "center",
+  },
+  filterActive: {
+    borderColor: ACCENT,
+    backgroundColor: ACCENT_SOFT,
   },
   filterButtonText: {
     fontSize: auroraTheme.typography.fontSize.sm,
     fontWeight: "600",
-    color: auroraTheme.colors.text.secondary,
+    color: TEXT_MUTED,
+  },
+  filterButtonTextActive: {
+    color: ACCENT,
+  },
+  helperCard: {
+    minHeight: 38,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: auroraTheme.spacing.sm,
+    paddingHorizontal: auroraTheme.spacing.md,
+    paddingVertical: 8,
+    marginBottom: auroraTheme.spacing.sm,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
+    backgroundColor: ACCENT_SOFT,
+  },
+  helperText: {
+    color: TEXT_STRONG,
+    fontSize: auroraTheme.typography.fontSize.xs,
+    fontWeight: "800",
+  },
+  helperDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: SURFACE_BORDER,
   },
   batchActions: {
     marginBottom: auroraTheme.spacing.md,
@@ -569,11 +953,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: auroraTheme.spacing.md,
+    padding: auroraTheme.spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
+    backgroundColor: SURFACE_CARD,
   },
   batchText: {
     fontSize: auroraTheme.typography.fontSize.md,
     fontWeight: "600",
-    color: auroraTheme.colors.text.primary,
+    color: TEXT_STRONG,
   },
   batchButtons: {
     flexDirection: "row",
@@ -584,13 +974,38 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: auroraTheme.borderRadius.full,
   },
+  batchButtonPrimary: {
+    backgroundColor: ACCENT,
+  },
+  batchButtonSecondary: {
+    backgroundColor: SURFACE_MUTED,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
+  },
   batchButtonText: {
     color: "white",
     fontWeight: "bold",
     fontSize: auroraTheme.typography.fontSize.xs,
   },
+  batchButtonTextSecondary: {
+    color: TEXT_STRONG,
+    fontWeight: "bold",
+    fontSize: auroraTheme.typography.fontSize.xs,
+  },
   listContent: {
     paddingBottom: auroraTheme.spacing.xl,
+  },
+  conflictCard: {
+    marginBottom: auroraTheme.spacing.sm,
+    padding: auroraTheme.spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
+    backgroundColor: SURFACE_CARD,
+  },
+  conflictCardSelected: {
+    borderColor: ACCENT,
+    backgroundColor: "#f0fdfa",
   },
   cardHeader: {
     flexDirection: "row",
@@ -602,23 +1017,29 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: auroraTheme.borderRadius.sm,
     borderWidth: 2,
-    borderColor: auroraTheme.colors.text.tertiary,
+    borderColor: "#94a3b8",
     marginRight: auroraTheme.spacing.md,
     justifyContent: "center",
     alignItems: "center",
   },
   checkboxChecked: {
-    backgroundColor: auroraTheme.colors.primary[500],
-    borderColor: auroraTheme.colors.primary[500],
+    backgroundColor: ACCENT,
+    borderColor: ACCENT,
   },
   itemCode: {
+    marginTop: 4,
+    fontSize: auroraTheme.typography.fontSize.sm,
+    fontWeight: "600",
+    color: TEXT_MUTED,
+  },
+  itemName: {
     fontSize: auroraTheme.typography.fontSize.lg,
     fontWeight: "700",
-    color: auroraTheme.colors.text.primary,
+    color: TEXT_STRONG,
   },
   conflictTypeContainer: {
     alignSelf: "flex-start",
-    backgroundColor: "rgba(234, 179, 8, 0.1)",
+    backgroundColor: WARNING_BG,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: auroraTheme.borderRadius.full,
@@ -626,8 +1047,32 @@ const styles = StyleSheet.create({
   },
   conflictType: {
     fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.warning[500],
+    color: WARNING,
     fontWeight: "600",
+  },
+  qtySummaryRow: {
+    flexDirection: "row",
+    gap: auroraTheme.spacing.sm,
+    marginBottom: auroraTheme.spacing.md,
+  },
+  qtySummaryItem: {
+    flex: 1,
+    minHeight: 66,
+    padding: auroraTheme.spacing.sm,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    backgroundColor: SURFACE_MUTED,
+    justifyContent: "center",
+  },
+  qtyValue: {
+    marginTop: 4,
+    fontSize: auroraTheme.typography.fontSize.lg,
+    fontWeight: "800",
+    color: TEXT_STRONG,
+  },
+  qtyValueWarning: {
+    color: ERROR,
   },
   conflictData: {
     flexDirection: "row",
@@ -639,18 +1084,68 @@ const styles = StyleSheet.create({
   },
   dataLabel: {
     fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.tertiary,
+    color: TEXT_MUTED,
     marginBottom: 4,
     textTransform: "uppercase",
   },
+  valueBlock: {
+    minHeight: 48,
+    padding: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    backgroundColor: SURFACE_MUTED,
+  },
   dataValue: {
     fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
+    color: TEXT_MUTED,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
   timestamp: {
     fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.tertiary,
+    color: TEXT_MUTED,
+  },
+  rowActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: auroraTheme.spacing.sm,
+    marginTop: auroraTheme.spacing.md,
+  },
+  rowActionButton: {
+    minHeight: 44,
+    flex: 1,
+    minWidth: 132,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderRadius: 12,
+    paddingHorizontal: auroraTheme.spacing.md,
+  },
+  rowActionSecondary: {
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
+    backgroundColor: SURFACE_CARD,
+  },
+  rowActionPrimary: {
+    backgroundColor: ACCENT,
+  },
+  rowActionTertiary: {
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
+    backgroundColor: SURFACE_MUTED,
+  },
+  rowActionSecondaryText: {
+    color: ACCENT,
+    fontWeight: "700",
+  },
+  rowActionPrimaryText: {
+    color: "#fff",
+    fontWeight: "700",
+  },
+  rowActionTertiaryText: {
+    color: TEXT_MUTED,
+    fontWeight: "700",
   },
   resolvedInfo: {
     flexDirection: "row",
@@ -659,26 +1154,26 @@ const styles = StyleSheet.create({
     marginTop: auroraTheme.spacing.sm,
     paddingTop: auroraTheme.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: auroraTheme.colors.border.light,
+    borderTopColor: SURFACE_BORDER,
   },
   resolvedText: {
     fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.success[500],
+    color: SUCCESS,
   },
   loadingText: {
     marginTop: auroraTheme.spacing.md,
     fontSize: auroraTheme.typography.fontSize.md,
-    color: auroraTheme.colors.text.secondary,
+    color: TEXT_MUTED,
   },
   emptyText: {
     fontSize: auroraTheme.typography.fontSize.lg,
     fontWeight: "500",
-    color: auroraTheme.colors.text.secondary,
+    color: TEXT_MUTED,
     marginTop: auroraTheme.spacing.md,
   },
   emptySubtext: {
     fontSize: auroraTheme.typography.fontSize.md,
-    color: auroraTheme.colors.text.tertiary,
+    color: TEXT_MUTED,
     marginTop: auroraTheme.spacing.xs,
   },
   modalOverlay: {
@@ -691,21 +1186,31 @@ const styles = StyleSheet.create({
   modalContent: {
     width: "100%",
     maxWidth: 500,
+    maxHeight: "90%",
+    padding: auroraTheme.spacing.lg,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
+    backgroundColor: SURFACE_CARD,
   },
   modalTitle: {
     fontSize: auroraTheme.typography.fontSize["2xl"],
     fontWeight: "bold",
-    color: auroraTheme.colors.text.primary,
+    color: TEXT_STRONG,
     marginBottom: auroraTheme.spacing.lg,
     textAlign: "center",
   },
   modalLabel: {
     fontSize: auroraTheme.typography.fontSize.md,
-    color: auroraTheme.colors.text.secondary,
+    color: TEXT_MUTED,
     marginBottom: 4,
   },
+  modalStrongText: {
+    color: TEXT_STRONG,
+    fontWeight: "800",
+  },
   modalTypeBadge: {
-    backgroundColor: "rgba(234, 179, 8, 0.1)",
+    backgroundColor: WARNING_BG,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: auroraTheme.borderRadius.full,
@@ -713,9 +1218,28 @@ const styles = StyleSheet.create({
     marginBottom: auroraTheme.spacing.lg,
   },
   modalTypeText: {
-    color: auroraTheme.colors.warning[500],
+    color: WARNING,
     fontSize: auroraTheme.typography.fontSize.sm,
     fontWeight: "600",
+  },
+  modalQtyGrid: {
+    flexDirection: "row",
+    gap: auroraTheme.spacing.sm,
+    marginBottom: auroraTheme.spacing.lg,
+  },
+  modalQtyCard: {
+    flex: 1,
+    padding: auroraTheme.spacing.sm,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    backgroundColor: SURFACE_MUTED,
+  },
+  modalQtyValue: {
+    marginTop: 4,
+    fontSize: auroraTheme.typography.fontSize.xl,
+    color: TEXT_STRONG,
+    fontWeight: "800",
   },
   modalSection: {
     marginBottom: auroraTheme.spacing.lg,
@@ -723,24 +1247,31 @@ const styles = StyleSheet.create({
   modalSectionTitle: {
     fontSize: auroraTheme.typography.fontSize.sm,
     fontWeight: "600",
-    color: auroraTheme.colors.text.tertiary,
+    color: TEXT_MUTED,
     marginBottom: 8,
     textTransform: "uppercase",
   },
+  modalValueBlock: {
+    padding: auroraTheme.spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    backgroundColor: SURFACE_MUTED,
+  },
   modalValue: {
     fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.primary,
+    color: TEXT_STRONG,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
   modalInput: {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    color: auroraTheme.colors.text.primary,
+    backgroundColor: SURFACE_MUTED,
+    color: TEXT_STRONG,
     padding: 12,
     borderRadius: auroraTheme.borderRadius.md,
     fontSize: auroraTheme.typography.fontSize.md,
     marginBottom: auroraTheme.spacing.lg,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
+    borderColor: SURFACE_BORDER,
   },
   modalTextArea: {
     minHeight: 100,
@@ -750,20 +1281,81 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: auroraTheme.spacing.md,
     marginBottom: auroraTheme.spacing.md,
+    alignItems: "stretch",
   },
   modalButton: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: auroraTheme.borderRadius.full,
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 88,
+    paddingHorizontal: auroraTheme.spacing.md,
+  },
+  modalButtonPrimary: {
+    backgroundColor: ACCENT,
+    position: "relative",
+  },
+  modalButtonSecondary: {
+    backgroundColor: SURFACE_MUTED,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
   },
   modalButtonCancel: {
-    backgroundColor: auroraTheme.colors.background.glass,
+    backgroundColor: SURFACE_CARD,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
+    borderColor: SURFACE_BORDER,
+  },
+  editQtyButton: {
+    backgroundColor: ACCENT,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    marginBottom: auroraTheme.spacing.md,
   },
   modalButtonText: {
     color: "#fff",
+    fontSize: auroraTheme.typography.fontSize.md,
+    fontWeight: "600",
+  },
+  modalButtonTitlePrimary: {
+    color: "#fff",
+    fontSize: auroraTheme.typography.fontSize.md,
+    fontWeight: "700",
+  },
+  modalButtonMetaPrimary: {
+    marginTop: 2,
+    color: "#dbeafe",
+    fontSize: auroraTheme.typography.fontSize.xs,
+    fontWeight: "600",
+  },
+  modalButtonTitleSecondary: {
+    color: TEXT_STRONG,
+    fontSize: auroraTheme.typography.fontSize.md,
+    fontWeight: "700",
+  },
+  modalButtonMetaSecondary: {
+    marginTop: 2,
+    color: TEXT_MUTED,
+    fontSize: auroraTheme.typography.fontSize.xs,
+    fontWeight: "600",
+  },
+  recommendedBadge: {
+    marginTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: auroraTheme.borderRadius.full,
+    backgroundColor: "#0f5f59",
+  },
+  recommendedBadgeText: {
+    color: "#fff",
+    fontSize: auroraTheme.typography.fontSize.xs,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+  },
+  modalButtonCancelText: {
+    color: TEXT_STRONG,
     fontSize: auroraTheme.typography.fontSize.md,
     fontWeight: "600",
   },

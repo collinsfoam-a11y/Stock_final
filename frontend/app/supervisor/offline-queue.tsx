@@ -1,10 +1,17 @@
 /**
  * Offline Queue Screen
- * Manage offline actions and conflicts
- * Uses functional operational surfaces for queue review.
+ * Manage offline actions and counted-versus-system differences.
  */
 import React from "react";
-import { View, Text, StyleSheet, RefreshControl, Platform, Alert } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  RefreshControl,
+  Platform,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBar } from "expo-status-bar";
@@ -29,7 +36,7 @@ import { auroraTheme } from "../../src/theme/auroraTheme";
 export default function OfflineQueueScreen() {
   const router = useRouter();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
-  const [loading, setLoading] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
   const [queue, setQueue] = React.useState<any[]>([]);
   const [conflicts, setConflicts] = React.useState<any[]>([]);
 
@@ -174,7 +181,7 @@ export default function OfflineQueueScreen() {
         <View style={styles.cardHeader}>
           <View style={styles.errorBadge}>
             <Ionicons name="warning" size={12} color={auroraTheme.colors.warning[500]} />
-            <Text style={styles.errorBadgeText}>Conflict</Text>
+            <Text style={styles.errorBadgeText}>Difference</Text>
           </View>
           <Text style={styles.timestamp}>
             {new Date(item.timestamp || item.createdAt).toLocaleString()}
@@ -198,7 +205,7 @@ export default function OfflineQueueScreen() {
 
         <View style={styles.cardActions}>
           <AnimatedPressable onPress={() => handleDismiss(item.id)} style={styles.dismissButton}>
-            <Text style={styles.dismissText}>Dismiss</Text>
+            <Text style={styles.dismissText}>Mark reviewed</Text>
           </AnimatedPressable>
         </View>
       </OperationalCard>
@@ -238,8 +245,8 @@ export default function OfflineQueueScreen() {
               <Ionicons name="arrow-back" size={24} color={auroraTheme.colors.text.primary} />
             </AnimatedPressable>
             <View>
-              <Text style={styles.pageTitle}>Offline Queue</Text>
-              <Text style={styles.pageSubtitle}>Pending actions & conflicts</Text>
+              <Text style={styles.pageTitle}>Pending Uploads</Text>
+              <Text style={styles.pageSubtitle}>Not saved yet and needs review</Text>
             </View>
           </View>
           <AnimatedPressable
@@ -254,12 +261,10 @@ export default function OfflineQueueScreen() {
         {offlineMode && (
           <Animated.View entering={FadeInDown.delay(140).springify()}>
             <OperationalCard style={styles.offlineNotice} padding={auroraTheme.spacing.md}>
-              <Text style={styles.offlineNoticeTitle}>
-                Queue review is available, sync is paused
-              </Text>
+              <Text style={styles.offlineNoticeTitle}>OFFLINE MODE</Text>
               <Text style={styles.offlineNoticeBody}>
-                You can inspect queued actions and conflicts in offline mode, but syncing them
-                requires turning offline mode off and reconnecting.
+                {queue.length} item(s) are not saved yet. Review is available here. Turn offline
+                mode off and reconnect to upload them.
               </Text>
             </OperationalCard>
           </Animated.View>
@@ -274,7 +279,7 @@ export default function OfflineQueueScreen() {
             style={{ flex: 1 }}
           />
           <StatsCard
-            title="Conflicts"
+            title="Needs Review"
             value={conflicts.length.toString()}
             icon="alert-circle-outline"
             variant={conflicts.length > 0 ? "error" : "success"}
@@ -303,14 +308,29 @@ export default function OfflineQueueScreen() {
               }
               ListEmptyComponent={
                 <View style={styles.emptyState}>
-                  <Text style={styles.emptyText}>No pending actions</Text>
+                  {loading ? (
+                    <>
+                      <ActivityIndicator size="small" color={auroraTheme.colors.primary[500]} />
+                      <Text style={styles.loadingText}>Loading pending uploads...</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons
+                        name="checkmark-done-circle-outline"
+                        size={40}
+                        color={auroraTheme.colors.success[500]}
+                      />
+                      <Text style={styles.emptyText}>No pending actions</Text>
+                      <Text style={styles.emptySubtext}>Everything is up to date</Text>
+                    </>
+                  )}
                 </View>
               }
             />
           </View>
 
           <View style={[styles.sectionHeader, { marginTop: auroraTheme.spacing.lg }]}>
-            <Text style={styles.sectionTitle}>Conflicts</Text>
+            <Text style={styles.sectionTitle}>Needs Review</Text>
           </View>
 
           <View style={{ flex: 1 }}>
@@ -322,7 +342,22 @@ export default function OfflineQueueScreen() {
               keyExtractor={(item) => item.id || `c-${Math.random()}`}
               ListEmptyComponent={
                 <View style={styles.emptyState}>
-                  <Text style={styles.emptyText}>No conflicts resolved</Text>
+                  {loading ? (
+                    <>
+                      <ActivityIndicator size="small" color={auroraTheme.colors.primary[500]} />
+                      <Text style={styles.loadingText}>Loading review items...</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons
+                        name="checkmark-done-circle-outline"
+                        size={40}
+                        color={auroraTheme.colors.success[500]}
+                      />
+                      <Text style={styles.emptyText}>No differences found</Text>
+                      <Text style={styles.emptySubtext}>Everything is up to date</Text>
+                    </>
+                  )}
                 </View>
               }
             />
@@ -496,5 +531,18 @@ const styles = StyleSheet.create({
   emptyText: {
     color: auroraTheme.colors.text.tertiary,
     fontSize: auroraTheme.typography.fontSize.sm,
+    fontWeight: "700",
+    marginTop: auroraTheme.spacing.sm,
+  },
+  emptySubtext: {
+    marginTop: 4,
+    color: auroraTheme.colors.text.secondary,
+    fontSize: auroraTheme.typography.fontSize.xs,
+    textAlign: "center",
+  },
+  loadingText: {
+    marginTop: auroraTheme.spacing.sm,
+    color: auroraTheme.colors.text.secondary,
+    fontSize: auroraTheme.typography.fontSize.xs,
   },
 });

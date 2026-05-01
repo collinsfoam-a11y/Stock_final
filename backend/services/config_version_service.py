@@ -55,7 +55,7 @@ class ConfigVersionService:
             logger.info(f"Created version {next_version} for {config_type}:{config_id}")
             return str(result.inserted_id)
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Failed to create config version: {e}")
             return ""
 

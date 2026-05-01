@@ -1,12 +1,11 @@
 import logging
 from backend.utils.api_utils import sanitize_for_logging
 import httpx
-from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from typing import Any, Dict
 from backend.auth.dependencies import get_current_user
-from backend.db.runtime import get_db
 from backend.config import settings
+from backend.services.pi_service import PI_SERVICE_ERRORS, PiService, get_pi_service
 
 logger = logging.getLogger("stock-verify")
 router = APIRouter(prefix="/api/pi", tags=["AI Assistant"])
@@ -25,35 +24,11 @@ def _pi_server_headers() -> Dict[str, str]:
     return headers
 
 
-async def get_system_stats_context(db: Any) -> str:
+async def get_system_stats_context(pi_service: PiService) -> str:
     """Gather real-time stats for the AI Assistant context."""
     try:
-        total_items = await db.erp_items.count_documents({})
-        verified_items = await db.erp_items.count_documents({"verified": True})
-        active_sessions = await db.sessions.count_documents({"status": {"$in": ["OPEN", "ACTIVE"]}})
-        total_scans = await db.count_lines.count_documents({})
-
-        # Calculate overall accuracy
-        pipeline = [
-            {
-                "$group": {
-                    "_id": None,
-                    "accurate": {"$sum": {"$cond": [{"$eq": ["$variance", 0]}, 1, 0]}},
-                }
-            }
-        ]
-        stats = await db.count_lines.aggregate(pipeline).to_list(1)
-        accuracy = (stats[0]["accurate"] / total_scans * 100) if total_scans > 0 else 100
-
-        return (
-            f"System Context (Live Stats):\n"
-            f"- Total ERP Items: {total_items}\n"
-            f"- Verified Items: {verified_items}\n"
-            f"- Active Count Sessions: {active_sessions}\n"
-            f"- Total Scans Performed: {total_scans}\n"
-            f"- Overall Session Accuracy: {accuracy:.1f}%\n"
-        )
-    except Exception as e:
+        return await pi_service.get_system_stats_context()
+    except PI_SERVICE_ERRORS as e:
         logger.error("Error gathering stats for AI context: %s", sanitize_for_logging(str(e)))
         return "System Context: Stats unavailable at the moment."
 
@@ -74,15 +49,15 @@ async def chat_with_pi(
 
     try:
         body = await request.json()
-    except Exception:
+    except ValueError:
         raise HTTPException(status_code=400, detail="Invalid JSON body")
 
-    db = get_db()
+    pi_service = get_pi_service()
     messages = body.get("messages", [])
 
     # Inject System Context as a system message if not already present
     if not any(m.get("role") == "system" for m in messages):
-        stats_context = await get_system_stats_context(db)
+        stats_context = await get_system_stats_context(pi_service)
         messages.insert(
             0,
             {
@@ -115,23 +90,12 @@ async def chat_with_pi(
 
             # Persistent History Store (Rule: Auditability)
             try:
-                # Save user's last message if present
-                user_msg = next((m for m in reversed(messages) if m["role"] == "user"), None)
-                assistant_completion = (
-                    result["choices"][0]["message"] if result.get("choices") else None
+                await pi_service.persist_chat_history(
+                    username=current_user["username"],
+                    messages=messages,
+                    result=result,
                 )
-
-                if user_msg and assistant_completion:
-                    await db.chat_history.insert_one(
-                        {
-                            "username": current_user["username"],
-                            "timestamp": datetime.now(timezone.utc),
-                            "user_message": user_msg["content"],
-                            "assistant_response": assistant_completion["content"],
-                            "model": result.get("model", "unknown"),
-                        }
-                    )
-            except Exception as e:
+            except PI_SERVICE_ERRORS as e:
                 logger.error("Failed to persist chat history: %s", sanitize_for_logging(str(e)))
 
             return result
@@ -144,7 +108,7 @@ async def chat_with_pi(
                 status_code=503,
                 detail="AI Assistant sidecar is not running. Please contact the administrator.",
             )
-        except Exception as e:
+        except (httpx.HTTPError, KeyError, RuntimeError, TypeError, ValueError) as e:
             logger.error("Error communicating with pi-server: %s", sanitize_for_logging(str(e)))
             raise HTTPException(status_code=500, detail="Internal AI error")
 
@@ -153,16 +117,10 @@ async def chat_with_pi(
 async def get_chat_history(
     limit: int = Query(20, ge=1, le=100),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db: Any = Depends(get_db),
+    pi_service: PiService = Depends(get_pi_service),
 ):
     """Retrieve chat history for the current user."""
-    cursor = (
-        db.chat_history.find({"username": current_user["username"]}, {"_id": 0})
-        .sort("timestamp", -1)
-        .limit(limit)
-    )
-
-    history = await cursor.to_list(None)
+    history = await pi_service.get_chat_history(username=current_user["username"], limit=limit)
     return {"success": True, "history": history}
 
 
@@ -183,5 +141,5 @@ async def get_pi_status(current_user: Dict[str, Any] = Depends(get_current_user)
                     else "AI sidecar returned an error"
                 ),
             }
-        except Exception:
+        except httpx.HTTPError:
             return {"active": False, "msg": "AI sidecar unreachable"}

@@ -223,7 +223,7 @@ async def enforce_session_logic(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except HTTPException:
         raise
-    except Exception as exc:
+    except (RuntimeError, TypeError, ValueError, OSError) as exc:
         logger.exception(
             "BL V2 logic guard failed",
             extra={

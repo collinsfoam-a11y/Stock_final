@@ -6,6 +6,8 @@ import logging
 from typing import Any, Dict, List
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from backend.db.runtime import get_db
+
 logger = logging.getLogger(__name__)
 
 
@@ -68,3 +70,7 @@ class HeatmapService:
             heatmap.append(entry)
 
         return heatmap
+
+
+def create_heatmap_service() -> HeatmapService:
+    return HeatmapService(get_db())

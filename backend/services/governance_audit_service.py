@@ -56,5 +56,5 @@ class GovernanceAuditService:
 
         try:
             await self.db.governance_events.insert_one(payload, **kwargs)
-        except Exception as exc:  # pragma: no cover - best-effort by contract
+        except (RuntimeError, TypeError, ValueError, OSError) as exc:  # pragma: no cover - best-effort by contract
             logger.warning("Governance audit logging failed: %s", exc)

@@ -23,6 +23,7 @@ import {
 } from "../../services/enhancedSearchService";
 import { useStableDebouncedCallback } from "../../hooks/useDebouncedCallback";
 import { localDb } from "../../db/localDb";
+import { createShadow } from "@/theme/shadowUtils";
 
 interface SearchAutocompleteProps {
   onSelectItem: (item: SearchResult) => void;
@@ -345,8 +346,13 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
             borderColor: showDropdown
               ? theme.colors.primary
               : theme.colors.border,
-            shadowColor: theme.colors.primary,
-            shadowOpacity: showDropdown ? 0.2 : 0,
+            ...createShadow({
+              color: theme.colors.primary,
+              offsetY: 2,
+              opacity: showDropdown ? 0.2 : 0,
+              radius: 4,
+              elevation: 2,
+            }),
           },
         ]}
       >
@@ -404,7 +410,6 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
             {
               backgroundColor: theme.colors.surface, // Match surface for seamless look
               borderColor: theme.colors.border,
-              shadowColor: "#000",
             },
           ]}
         >
@@ -504,9 +509,6 @@ const styles = StyleSheet.create({
     borderRadius: 12, // More rounded
     paddingHorizontal: 14,
     height: 50, // Taller input
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
   },
   searchIcon: {
     marginRight: 10,
@@ -532,10 +534,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     maxHeight: 450,
-    elevation: 10,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
+    ...createShadow({
+      color: "#000",
+      offsetY: 8,
+      opacity: 0.4,
+      radius: 12,
+      elevation: 10,
+    }),
     overflow: "hidden", // Clip content to border radius
   },
   loadingContainer: {

@@ -61,6 +61,7 @@ run_python_steps() {
     run_step python-lint ./scripts/python.sh -m ruff check backend
     run_step python-typecheck make --no-print-directory python-typecheck
     run_step python-test make --no-print-directory python-test
+    run_step governance-static ./scripts/python.sh backend/scripts/check_governance_static.py
 }
 
 run_node_steps() {
@@ -70,10 +71,6 @@ run_node_steps() {
 }
 
 run_projection_gate() {
-    if [[ "${PROJECTION_CI_GATE_ENABLED:-false}" != "true" ]]; then
-        return
-    fi
-
     local report_path="${PROJECTION_PARITY_REPORT:-.agent/reports/projection-parity-validation.json}"
     local readiness_path="${PROJECTION_READINESS_REPORT:-}"
     if [[ -n "$readiness_path" ]]; then

@@ -36,7 +36,7 @@ const OFFLINE_ROUTE_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
   session: "Session Details",
   sessions: "Sessions",
-  "sync-conflicts": "Sync Conflicts",
+  "sync-conflicts": "Sync Differences",
   "user-workflows": "User Workflows",
 };
 
@@ -132,7 +132,8 @@ function SupervisorOfflineFallback({
 }) {
   return (
     <ScreenContainer
-      gradient
+      backgroundType="solid"
+      statusBarStyle="dark"
       header={{
         title: routeTitle,
         subtitle: "Unavailable while offline mode is enabled",

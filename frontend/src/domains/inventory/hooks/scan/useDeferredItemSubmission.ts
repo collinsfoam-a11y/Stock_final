@@ -3,8 +3,10 @@ import { Alert } from "react-native";
 import * as Haptics from "expo-haptics";
 
 import { createCountLine } from "@/services/api/api";
+import { RecentItemsService } from "@/services/enhancedFeatures";
 import { toastService } from "@/services/toastService";
 import { CreateCountLinePayload, DateFormatType, Item, SerialEntryData } from "@/types/scan";
+import { uxProbe } from "@/utils/uxProbe";
 import { normalizeSerialValue } from "@/utils/scanUtils";
 import { toBackendPhotoProofs } from "./submissionPayload";
 import { getReadableInventoryErrorMessage } from "./errorMessages";
@@ -51,10 +53,7 @@ const getValidSerialNumbers = (isSerializedItem: boolean, serialNumbers: string[
         .map((serial) => normalizeSerialValue(serial))
     : [];
 
-const getValidSerialEntries = (
-  isSerializedItem: boolean,
-  serialEntries: SerialEntryData[],
-) =>
+const getValidSerialEntries = (isSerializedItem: boolean, serialEntries: SerialEntryData[]) =>
   isSerializedItem
     ? serialEntries
         .filter((entry) => entry.serial_number.trim().length > 0)
@@ -71,6 +70,7 @@ const getValidSerialEntries = (
 const showSubmissionError = (error: any) => {
   const message = getReadableInventoryErrorMessage(error, "save-count");
   const status = error?.response?.status;
+  uxProbe({ t: "scan_error", reason: status ? `save_failed_${status}` : "save_failed" });
   if (status === 423) {
     toastService.show(message, { type: "warning" });
     return;
@@ -143,23 +143,17 @@ const resolveMrpCountedValue = (mrp: string, item: Item) => {
   return item.mrp || 0;
 };
 
-const resolveManufacturingDateValue = (
-  hasMfgDate: boolean,
-  itemMfgDate: string,
-  item: Item
-) => (hasMfgDate && itemMfgDate ? itemMfgDate : item.manufacturing_date);
+const resolveManufacturingDateValue = (hasMfgDate: boolean, itemMfgDate: string, item: Item) =>
+  hasMfgDate && itemMfgDate ? itemMfgDate : item.manufacturing_date;
 
-const resolveExpiryDateValue = (
-  hasExpiryDate: boolean,
-  itemExpiryDate: string,
-  item: Item
-) => (hasExpiryDate && itemExpiryDate ? itemExpiryDate : item.expiry_date);
+const resolveExpiryDateValue = (hasExpiryDate: boolean, itemExpiryDate: string, item: Item) =>
+  hasExpiryDate && itemExpiryDate ? itemExpiryDate : item.expiry_date;
 
 const resolvePhotoProofs = (damagePhoto: string | null, itemPhotos: string[]) => {
   const nowIso = new Date().toISOString();
   const backendPhotoProofs = toBackendPhotoProofs(
     [...(damagePhoto ? [damagePhoto] : []), ...itemPhotos],
-    nowIso,
+    nowIso
   );
   return backendPhotoProofs.length > 0 ? backendPhotoProofs : undefined;
 };
@@ -234,7 +228,7 @@ const handleSubmissionResult = async (
     return;
   }
 
-  toastService.show("Item verified successfully", { type: "success" });
+  toastService.show("Item added. Ready for next scan.", { type: "success" });
   onSuccess();
 };
 
@@ -329,6 +323,7 @@ export const useDeferredItemSubmission = ({
     setSubmitting(true);
 
     try {
+      const itemCode = resolveItemCode(item, barcode);
       const payload = buildCountLinePayload({
         barcode,
         sessionId,
@@ -356,6 +351,14 @@ export const useDeferredItemSubmission = ({
         damagePhoto,
       });
       const result = await createCountLine(payload);
+      await RecentItemsService.addRecent(itemCode, {
+        ...item,
+        counted_qty: parseFloat(quantity),
+        floor_no: currentFloor || undefined,
+        rack_no: currentRack || undefined,
+        scan_status: "saved",
+      } as Item);
+      uxProbe({ t: "save_next", itemCode });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await handleSubmissionResult(result, onSuccess);
     } catch (error: any) {

@@ -14,7 +14,6 @@ from backend.api.unknown_items_api import (
 async def test_report_unknown_item_strips_client_audit_fields(monkeypatch):
     service = AsyncMock()
     service.register_unknown_item.return_value = {"id": "unknown-1"}
-    monkeypatch.setattr("backend.api.unknown_items_api.UnknownItemService", lambda db: service)
 
     request = UnknownItemReportRequest(
         session_id="sess-1",
@@ -29,7 +28,11 @@ async def test_report_unknown_item_strips_client_audit_fields(monkeypatch):
     )
     current_user = {"username": "staff1", "role": "staff", "_id": "u1"}
 
-    response = await report_unknown_item(request, db=object(), current_user=current_user)
+    response = await report_unknown_item(
+        request,
+        current_user=current_user,
+        service=service,
+    )
 
     assert response == {"success": True, "data": {"id": "unknown-1"}}
     service.register_unknown_item.assert_awaited_once()
@@ -53,7 +56,6 @@ async def test_create_sku_from_unknown_uses_transactional_service(monkeypatch):
         "count_line_id": "line-1",
         "manual_sku_created": True,
     }
-    monkeypatch.setattr("backend.api.unknown_items_api.UnknownItemService", lambda db: service)
 
     request = CreateSKUFromUnknownRequest(
         item_code="SKU-1",
@@ -69,8 +71,8 @@ async def test_create_sku_from_unknown_uses_transactional_service(monkeypatch):
     response = await create_sku_from_unknown(
         "unknown-1",
         request,
-        db=object(),
         current_user=current_user,
+        service=service,
     )
 
     assert response["success"] is True

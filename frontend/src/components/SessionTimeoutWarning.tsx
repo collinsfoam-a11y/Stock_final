@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from "react-native";
 import { useSessionTimeout } from "../hooks/useSessionTimeout";
 import { createLogger } from "../services/logging";
+import { createShadow } from "@/theme/shadowUtils";
 
 const log = createLogger("SessionTimeoutWarning");
 
@@ -84,11 +85,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 340,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    ...createShadow({ color: "#000", offsetX: 0, offsetY: 4, opacity: 0.15, radius: 12, elevation: 8 }),
   },
   icon: {
     fontSize: 48,

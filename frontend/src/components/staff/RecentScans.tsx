@@ -12,6 +12,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useThemeContext } from "../../context/ThemeContext";
 import { useHapticFeedback } from "../../hooks/useHapticFeedback";
 import { RecentItemsService } from "../../services/enhancedFeatures";
+import { createShadow } from "@/theme/shadowUtils";
 
 interface RecentScansProps {
   sessionId: string;
@@ -115,10 +116,12 @@ export const RecentScans: React.FC<RecentScansProps> = ({
             {
               backgroundColor: colors.surface,
               borderColor: colors.border,
-              shadowColor: colors.accent,
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 3,
+              ...createShadow({
+                color: colors.accent,
+                opacity: 0.1,
+                radius: 4,
+                elevation: 3,
+              }),
             },
           ]}
           onPress={() => handlePress(item)}

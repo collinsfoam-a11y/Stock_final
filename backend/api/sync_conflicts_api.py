@@ -129,7 +129,7 @@ async def resolve_conflict(
                 "error": {"message": str(e), "code": "RESOLUTION_FAILED"},
             },
         )
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -176,7 +176,7 @@ async def batch_resolve_conflicts(
                     resolved_by=current_user["username"],
                 )
                 resolved_count += 1
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 errors.append({"id": conflict_id, "error": str(e)})
 
         return {
@@ -187,7 +187,7 @@ async def batch_resolve_conflicts(
                 "errors": errors,
             },
         }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={

@@ -16,6 +16,7 @@ import { Item } from "@/types/scan";
 import Animated, { FadeInUp, Layout } from "react-native-reanimated";
 import { flags } from "@/constants/flags";
 import { colors as unifiedColors, radius } from "@/theme/unified";
+import { createShadow } from "@/theme/shadowUtils";
 
 interface ItemDisplayProps {
   item: Item;
@@ -174,10 +175,7 @@ const styles = StyleSheet.create({
   shadow: {
     ...Platform.select({
       ios: {
-        shadowColor: unifiedColors.neutral[900],
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
+        ...createShadow({ color: unifiedColors.neutral[900], offsetX: 0, offsetY: 1, opacity: 0.05, radius: 2 }),
       },
       android: {
         elevation: 1,

@@ -131,7 +131,7 @@ async def test_health_check(auto_diagnosis_service):
         return "ok"
 
     async def failing_check():
-        raise Exception("check failed")
+        raise RuntimeError("check failed")
 
     auto_diagnosis_service.register_health_check(healthy_check)
     auto_diagnosis_service.register_health_check(failing_check)

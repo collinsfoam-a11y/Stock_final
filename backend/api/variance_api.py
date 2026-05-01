@@ -2,6 +2,7 @@ from typing import Any
 from fastapi import APIRouter, Depends
 
 from backend.auth.dependencies import get_current_user
+from backend.services.variance_service import VarianceService, get_variance_service
 
 router = APIRouter()
 
@@ -29,39 +30,7 @@ async def get_variance_reasons(
 async def get_variance_trend(
     days: int = 7,
     current_user: dict = Depends(get_current_user),
+    variance_service: VarianceService = Depends(get_variance_service),
 ) -> dict[str, Any]:
     """Get variance trend data for the last N days"""
-    from datetime import datetime, timedelta, timezone
-
-    from backend.db.runtime import get_db
-
-    db = get_db()
-
-    # Calculate start date
-    start_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
-
-    # Aggregate variances by date
-    pipeline: list[dict[str, Any]] = [
-        {"$match": {"created_at": {"$gte": start_date}}},
-        {
-            "$group": {
-                "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$created_at"}},
-                "count": {"$sum": 1},
-            }
-        },
-        {"$sort": {"_id": 1}},
-    ]
-
-    results = await db.count_lines.aggregate(pipeline).to_list(length=days)
-
-    # Fill in missing dates
-    data = []
-    current_date = start_date
-    date_map = {r["_id"]: r["count"] for r in results}
-
-    for _ in range(days):
-        date_str = current_date.strftime("%Y-%m-%d")
-        data.append({"date": date_str, "count": date_map.get(date_str, 0)})
-        current_date += timedelta(days=1)
-
-    return {"success": True, "data": data}
+    return {"success": True, "data": await variance_service.get_variance_trend(days)}

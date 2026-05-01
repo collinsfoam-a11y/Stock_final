@@ -29,6 +29,11 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
             [("client_record_id", 1)],
             {"unique": True, "name": "idx_client_record_id"},
         ),
+        # Stable sync record id guard
+        (
+            [("record_id", 1)],
+            {"unique": True, "sparse": True, "name": "idx_verification_record_id"},
+        ),
         # Session queries
         (
             [("session_id", 1), ("created_at", -1)],
@@ -106,6 +111,47 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("snapshot_type", 1), ("created_at", -1)], {"name": "idx_type_time"}),
         # Query hash for deduplication
         ([("query_hash", 1)], {"name": "idx_query_hash", "sparse": True}),
+    ],
+    # Projection Collections
+    "session_dashboard_projection": [
+        ([("session_id", 1), ("item_code", 1)], {"name": "idx_session_item"}),
+        ([("updated_at", -1)], {"name": "idx_updated_at"}),
+        (
+            [("location_id", 1), ("floor_id", 1), ("rack_id", 1)],
+            {"name": "idx_location_floor_rack"},
+        ),
+    ],
+    "verified_items_projection": [
+        ([("session_id", 1), ("item_code", 1)], {"name": "idx_session_item"}),
+        ([("updated_at", -1)], {"name": "idx_updated_at"}),
+        (
+            [("location_id", 1), ("floor_id", 1), ("rack_id", 1)],
+            {"name": "idx_location_floor_rack"},
+        ),
+    ],
+    "variance_summary_projection": [
+        ([("session_id", 1), ("item_code", 1)], {"name": "idx_session_item"}),
+        ([("updated_at", -1)], {"name": "idx_updated_at"}),
+        (
+            [("location_id", 1), ("floor_id", 1), ("rack_id", 1)],
+            {"name": "idx_location_floor_rack"},
+        ),
+    ],
+    "financial_projection": [
+        ([("session_id", 1), ("item_code", 1)], {"name": "idx_session_item"}),
+        ([("updated_at", -1)], {"name": "idx_updated_at"}),
+        (
+            [("location_id", 1), ("floor_id", 1), ("rack_id", 1)],
+            {"name": "idx_location_floor_rack"},
+        ),
+    ],
+    "batch_records": [
+        ([("session_id", 1), ("item_code", 1)], {"name": "idx_session_item"}),
+        ([("updated_at", -1)], {"name": "idx_updated_at"}),
+        (
+            [("location_id", 1), ("floor_id", 1), ("rack_id", 1)],
+            {"name": "idx_location_floor_rack"},
+        ),
     ],
     # Report Compare Jobs Collection
     "report_compare_jobs": [

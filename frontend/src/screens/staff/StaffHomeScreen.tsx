@@ -28,11 +28,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useNotificationStore } from "@/store/notificationStore";
 import { useScanSessionStore } from "@/store/scanSessionStore";
 import { useSessionsQuery } from "@/hooks/useSessionsQuery";
-import {
-  createSession,
-  getZones,
-  getWarehouses,
-} from "@/services/api/api";
+import { createSession, getZones, getWarehouses } from "@/services/api/api";
 import { SESSION_PAGE_SIZE } from "@/constants/config";
 import { toastService } from "@/services/toastService";
 
@@ -41,12 +37,7 @@ import ModernCard from "@/components/ui/ModernCard";
 import ModernButton from "@/components/ui/ModernButton";
 import ModernInput from "@/components/ui/ModernInput";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
-import {
-  colors,
-  spacing,
-  typography,
-  borderRadius,
-} from "@/theme/modernDesign";
+import { colors, spacing, typography, borderRadius } from "@/theme/modernDesign";
 
 interface Zone {
   id: string;
@@ -148,9 +139,7 @@ const StaffHome = React.memo(function StaffHome() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const unreadCount = useNotificationStore((state) => state.unreadCount);
-  const fetchUnreadCount = useNotificationStore(
-    (state) => state.fetchUnreadCount,
-  );
+  const fetchUnreadCount = useNotificationStore((state) => state.fetchUnreadCount);
 
   // Check for PIN setup
   useEffect(() => {
@@ -166,7 +155,7 @@ const StaffHome = React.memo(function StaffHome() {
               text: "Set PIN",
               onPress: () => router.push("/staff/settings"),
             },
-          ],
+          ]
         );
       }, 1000);
       return () => clearTimeout(timer);
@@ -188,10 +177,7 @@ const StaffHome = React.memo(function StaffHome() {
       return true;
     };
 
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      backAction,
-    );
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
 
     return () => backHandler.remove();
   }, []);
@@ -199,7 +185,7 @@ const StaffHome = React.memo(function StaffHome() {
   useFocusEffect(
     useCallback(() => {
       void fetchUnreadCount();
-    }, [fetchUnreadCount]),
+    }, [fetchUnreadCount])
   );
 
   // State
@@ -227,7 +213,7 @@ const StaffHome = React.memo(function StaffHome() {
 
   const sessions = useMemo(
     () => (Array.isArray(sessionsData?.items) ? sessionsData.items : []),
-    [sessionsData?.items],
+    [sessionsData?.items]
   );
 
   const activeSessions = useMemo(() => {
@@ -274,9 +260,7 @@ const StaffHome = React.memo(function StaffHome() {
       const status = String(s.status || "")
         .trim()
         .toUpperCase();
-      return (
-        status === "CLOSED" || status === "COMPLETED" || status === "RECONCILE"
-      );
+      return status === "CLOSED" || status === "COMPLETED" || status === "RECONCILE";
     });
   }, [sessions]);
 
@@ -350,18 +334,14 @@ const StaffHome = React.memo(function StaffHome() {
 
     const trimmedRack = rackName.trim();
     if (!/^[a-zA-Z0-9\-_]+$/.test(trimmedRack)) {
-      Alert.alert(
-        "Invalid Rack Name",
-        "Only letters, numbers, dashes, and underscores allowed",
-      );
+      Alert.alert("Invalid Rack Name", "Only letters, numbers, dashes, and underscores allowed");
       return;
     }
 
     const warehouseName = `${locationType} - ${selectedFloor} - ${trimmedRack.toUpperCase()}`;
     const normalizedWarehouse = normalizeWarehouse(warehouseName);
     const existingSession = activeSessions.find(
-      (session: any) =>
-        normalizeWarehouse(session.warehouse) === normalizedWarehouse,
+      (session: any) => normalizeWarehouse(session.warehouse) === normalizedWarehouse
     );
     if (existingSession) {
       Alert.alert(
@@ -373,7 +353,7 @@ const StaffHome = React.memo(function StaffHome() {
             text: "Resume",
             onPress: () => handleResumeSession(existingSession),
           },
-        ],
+        ]
       );
       return;
     }
@@ -393,17 +373,13 @@ const StaffHome = React.memo(function StaffHome() {
       }
 
       // Optimistic update
-      queryClient.setQueryData(
-        ["sessions", 1, SESSION_PAGE_SIZE],
-        (old: any) => {
-          const existing = Array.isArray(old?.items) ? old.items : [];
-          const filtered = existing.filter(
-            (item: any) =>
-              (item?.id || item?._id || item?.session_id) !== sessionId,
-          );
-          return { ...old, items: [session, ...filtered] };
-        },
-      );
+      queryClient.setQueryData(["sessions", 1, SESSION_PAGE_SIZE], (old: any) => {
+        const existing = Array.isArray(old?.items) ? old.items : [];
+        const filtered = existing.filter(
+          (item: any) => (item?.id || item?._id || item?.session_id) !== sessionId
+        );
+        return { ...old, items: [session, ...filtered] };
+      });
 
       // Reset and navigate
       setShowCreateModal(false);
@@ -420,8 +396,7 @@ const StaffHome = React.memo(function StaffHome() {
         params: { sessionId },
       } as any);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to create session";
+      const errorMessage = error instanceof Error ? error.message : "Failed to create session";
       toastService.showError(errorMessage);
     } finally {
       setIsCreating(false);
@@ -474,7 +449,7 @@ const StaffHome = React.memo(function StaffHome() {
 
   const renderSessionCard = (
     session: any,
-    onPress: (session: any) => void = handleResumeSession,
+    onPress: (session: any) => void = handleResumeSession
   ) => (
     <ModernCard
       key={session.id || session._id}
@@ -488,9 +463,7 @@ const StaffHome = React.memo(function StaffHome() {
         </View>
         <View style={styles.sessionInfo}>
           <Text style={styles.warehouseText}>{session.warehouse}</Text>
-          <Text style={styles.dateText}>
-            Last used: {formatSessionDateTime(session)}
-          </Text>
+          <Text style={styles.dateText}>Last used: {formatSessionDateTime(session)}</Text>
         </View>
         <View style={styles.chevron}>
           <Ionicons name="chevron-forward" size={20} color={colors.gray[400]} />
@@ -508,10 +481,7 @@ const StaffHome = React.memo(function StaffHome() {
             style={[
               styles.statValue,
               {
-                color:
-                  session.discrepancy_count > 0
-                    ? colors.error[500]
-                    : colors.success[600],
+                color: session.discrepancy_count > 0 ? colors.error[500] : colors.success[600],
               },
             ]}
           >
@@ -531,11 +501,7 @@ const StaffHome = React.memo(function StaffHome() {
   const renderContent = () => {
     if (activeTab === "active") {
       return (
-        <Animated.View
-          entering={
-            prefersReducedMotion ? undefined : FadeInDown.duration(500)
-          }
-        >
+        <Animated.View entering={prefersReducedMotion ? undefined : FadeInDown.duration(500)}>
           <ModernButton
             title="Start New Session"
             icon="add-circle-outline"
@@ -545,20 +511,12 @@ const StaffHome = React.memo(function StaffHome() {
 
           {uniqueActiveSessions.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons
-                name="clipboard-outline"
-                size={48}
-                color={colors.gray[300]}
-              />
+              <Ionicons name="clipboard-outline" size={48} color={colors.gray[300]} />
               <Text style={styles.emptyText}>No active sessions</Text>
-              <Text style={styles.emptySubtext}>
-                Start a new session to begin scanning
-              </Text>
+              <Text style={styles.emptySubtext}>Start a new session to begin scanning</Text>
             </View>
           ) : (
-            uniqueActiveSessions.map((session) =>
-              renderSessionCard(session, handleResumeSession),
-            )
+            uniqueActiveSessions.map((session) => renderSessionCard(session, handleResumeSession))
           )}
         </Animated.View>
       );
@@ -566,24 +524,14 @@ const StaffHome = React.memo(function StaffHome() {
 
     if (activeTab === "history") {
       return (
-        <Animated.View
-          entering={
-            prefersReducedMotion ? undefined : FadeInDown.duration(500)
-          }
-        >
+        <Animated.View entering={prefersReducedMotion ? undefined : FadeInDown.duration(500)}>
           {finishedSessions.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons
-                name="time-outline"
-                size={48}
-                color={colors.gray[300]}
-              />
+              <Ionicons name="time-outline" size={48} color={colors.gray[300]} />
               <Text style={styles.emptyText}>No history yet</Text>
             </View>
           ) : (
-            finishedSessions.map((session) =>
-              renderSessionCard(session, handleOpenSessionHistory),
-            )
+            finishedSessions.map((session) => renderSessionCard(session, handleOpenSessionHistory))
           )}
         </Animated.View>
       );
@@ -591,6 +539,19 @@ const StaffHome = React.memo(function StaffHome() {
 
     return null;
   };
+
+  const trimmedRackName = rackName.trim();
+  const rackNameInvalid = Boolean(trimmedRackName && !/^[a-zA-Z0-9\-_]+$/.test(trimmedRackName));
+  const createSessionValidationMessage = !locationType
+    ? "Select location before continuing."
+    : !selectedFloor
+      ? "Select floor or area before continuing."
+      : !trimmedRackName
+        ? "Enter rack or shelf before continuing."
+        : rackNameInvalid
+          ? "Use only letters, numbers, dashes, and underscores."
+          : "";
+  const canCreateSession = !createSessionValidationMessage && !isCreating;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -622,9 +583,7 @@ const StaffHome = React.memo(function StaffHome() {
           icon: "log-out-outline",
           onPress: () => {
             if (Platform.OS === "web" && typeof window !== "undefined") {
-              const confirmed = window.confirm(
-                "Are you sure you want to logout?",
-              );
+              const confirmed = window.confirm("Are you sure you want to logout?");
               if (confirmed) {
                 logout().finally(() => {
                   router.replace("/welcome" as any);
@@ -659,12 +618,7 @@ const StaffHome = React.memo(function StaffHome() {
           accessibilityState={{ selected: activeTab === "active" }}
           accessibilityLabel={`Active sessions, ${uniqueActiveSessions.length} items`}
         >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "active" && styles.activeTabText,
-            ]}
-          >
+          <Text style={[styles.tabText, activeTab === "active" && styles.activeTabText]}>
             Active ({uniqueActiveSessions.length})
           </Text>
         </TouchableOpacity>
@@ -675,12 +629,7 @@ const StaffHome = React.memo(function StaffHome() {
           accessibilityState={{ selected: activeTab === "history" }}
           accessibilityLabel={`Session history, ${finishedSessions.length} items`}
         >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "history" && styles.activeTabText,
-            ]}
-          >
+          <Text style={[styles.tabText, activeTab === "history" && styles.activeTabText]}>
             History
           </Text>
         </TouchableOpacity>
@@ -693,9 +642,7 @@ const StaffHome = React.memo(function StaffHome() {
         nestedScrollEnabled
         bounces={true}
         alwaysBounceVertical={true}
-        refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
       >
         {renderContent()}
       </ScrollView>
@@ -738,10 +685,7 @@ const StaffHome = React.memo(function StaffHome() {
               {zones.map((zone) => (
                 <TouchableOpacity
                   key={zone.id}
-                  style={[
-                    styles.chip,
-                    locationType === zone.zone_name && styles.chipActive,
-                  ]}
+                  style={[styles.chip, locationType === zone.zone_name && styles.chipActive]}
                   onPress={() => setLocationType(zone.zone_name)}
                   accessibilityRole="radio"
                   accessibilityState={{
@@ -762,11 +706,7 @@ const StaffHome = React.memo(function StaffHome() {
             </View>
 
             {locationType && (
-              <Animated.View
-                entering={
-                  prefersReducedMotion ? undefined : FadeInUp.duration(250)
-                }
-              >
+              <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(250)}>
                 <Text style={styles.sectionLabel}>Select Floor / Area</Text>
                 <View
                   style={styles.chipContainer}
@@ -778,8 +718,7 @@ const StaffHome = React.memo(function StaffHome() {
                       key={wh.id}
                       style={[
                         styles.chip,
-                        selectedFloor === wh.warehouse_name &&
-                        styles.chipActive,
+                        selectedFloor === wh.warehouse_name && styles.chipActive,
                       ]}
                       onPress={() => setSelectedFloor(wh.warehouse_name)}
                       accessibilityRole="radio"
@@ -791,8 +730,7 @@ const StaffHome = React.memo(function StaffHome() {
                       <Text
                         style={[
                           styles.chipText,
-                          selectedFloor === wh.warehouse_name &&
-                          styles.chipTextActive,
+                          selectedFloor === wh.warehouse_name && styles.chipTextActive,
                         ]}
                       >
                         {wh.warehouse_name}
@@ -804,11 +742,7 @@ const StaffHome = React.memo(function StaffHome() {
             )}
 
             {selectedFloor && (
-              <Animated.View
-                entering={
-                  prefersReducedMotion ? undefined : FadeInUp.duration(250)
-                }
-              >
+              <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(250)}>
                 <ModernInput
                   label="Rack / Shelf Number"
                   placeholder="e.g. A-123"
@@ -818,6 +752,13 @@ const StaffHome = React.memo(function StaffHome() {
                 />
               </Animated.View>
             )}
+
+            {createSessionValidationMessage ? (
+              <View style={styles.validationNotice}>
+                <Ionicons name="alert-circle-outline" size={18} color={colors.warning[600]} />
+                <Text style={styles.validationText}>{createSessionValidationMessage}</Text>
+              </View>
+            ) : null}
           </ScrollView>
 
           <View style={styles.modalFooter}>
@@ -825,7 +766,7 @@ const StaffHome = React.memo(function StaffHome() {
               title="Start Session"
               onPress={handleStartSession}
               loading={isCreating}
-              disabled={!locationType || !selectedFloor || !rackName.trim()}
+              disabled={!canCreateSession}
               fullWidth
             />
           </View>
@@ -1043,6 +984,24 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.gray[100],
     paddingBottom: Platform.OS === "ios" ? spacing["2xl"] : spacing.lg,
+  },
+  validationNotice: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.warning[50],
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    marginBottom: spacing.lg,
+  },
+  validationText: {
+    flex: 1,
+    color: "#92400e",
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
 });
 

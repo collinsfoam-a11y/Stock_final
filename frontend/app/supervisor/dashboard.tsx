@@ -1,20 +1,12 @@
 /**
- * Supervisor Dashboard v2.0 - Aurora Design
+ * Supervisor Dashboard - Action-first control panel
  *
  * Orchestrates dashboard data, navigation, haptics, and session creation.
  * Presentational sections live in focused supervisor dashboard components.
  */
 
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  Alert,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -22,34 +14,22 @@ import * as Haptics from "expo-haptics";
 import { useToast } from "../../src/components/feedback/ToastProvider";
 import { CreateSessionModal } from "../../src/components/supervisor/dashboard/CreateSessionModal";
 import {
-  OverviewAction,
-  SupervisorOverviewCard,
-} from "../../src/components/supervisor/dashboard/SupervisorOverviewCard";
-import { SupervisorStatsSection } from "../../src/components/supervisor/dashboard/SupervisorStatsSection";
-import { SupervisorActivitySection } from "../../src/components/supervisor/dashboard/SupervisorActivitySection";
-import { SupervisorRecentSessionsSection } from "../../src/components/supervisor/dashboard/SupervisorRecentSessionsSection";
-import {
-  ActivityItem,
   DashboardStats,
   DEFAULT_ZONES,
   getFallbackWarehouses,
   WarehouseOption,
   ZoneOption,
 } from "../../src/components/supervisor/dashboard/supervisorDashboardShared";
-import {
-  ActivityType,
-  AnimatedPressable,
-  GlassCard,
-  ScreenContainer,
-  SpeedDialAction,
-  SpeedDialMenu,
-} from "../../src/components/ui";
+import { AnimatedPressable, OperationalCard, ScreenContainer } from "../../src/components/ui";
 import {
   createSession,
   getSessions,
+  getSyncConflictStats,
   getWarehouses,
   getZones,
 } from "../../src/services/api/api";
+import { getConflicts } from "../../src/services/offline/offlineQueue";
+import { getOfflineQueue } from "../../src/services/offline/offlineStorage";
 import { theme } from "../../src/styles/modernDesignSystem";
 import { Session } from "../../src/types";
 
@@ -69,6 +49,8 @@ export default function SupervisorDashboard() {
   const [zones, setZones] = useState<ZoneOption[]>([]);
   const [warehouses, setWarehouses] = useState<WarehouseOption[]>([]);
   const [isLoadingWarehouses, setIsLoadingWarehouses] = useState(false);
+  const [pendingConflictCount, setPendingConflictCount] = useState(0);
+  const [offlineQueueCount, setOfflineQueueCount] = useState(0);
 
   const [stats, setStats] = useState<DashboardStats>({
     totalSessions: 0,
@@ -82,7 +64,6 @@ export default function SupervisorDashboard() {
     avgVariancePerSession: 0,
     highRiskSessions: 0,
   });
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
 
   useEffect(() => {
     const fetchZones = async () => {
@@ -127,9 +108,16 @@ export default function SupervisorDashboard() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const sessionsRes = await getSessions(1, 100);
+      const [sessionsRes, syncStatsRes, offlineQueue, offlineConflicts] = await Promise.all([
+        getSessions(1, 100),
+        getSyncConflictStats().catch(() => null),
+        getOfflineQueue().catch(() => []),
+        getConflicts().catch(() => []),
+      ]);
       const sessionData = sessionsRes.items || [];
       setSessions(sessionData);
+      setPendingConflictCount(Number(syncStatsRes?.data?.pending ?? 0));
+      setOfflineQueueCount((offlineQueue?.length || 0) + (offlineConflicts?.length || 0));
 
       const nextStats = sessionData.reduce(
         (acc: DashboardStats, session: Session) => {
@@ -164,33 +152,13 @@ export default function SupervisorDashboard() {
           negativeVariance: 0,
           avgVariancePerSession: 0,
           highRiskSessions: 0,
-        },
+        }
       );
 
       nextStats.avgVariancePerSession =
-        nextStats.totalSessions > 0
-          ? nextStats.totalVariance / nextStats.totalSessions
-          : 0;
+        nextStats.totalSessions > 0 ? nextStats.totalVariance / nextStats.totalSessions : 0;
 
       setStats(nextStats);
-
-      const recentActivities: ActivityItem[] = sessionData
-        .slice(0, 10)
-        .map((session: Session) => ({
-          id: session.id,
-          type: "session" as ActivityType,
-          title: `Session ${session.status.toLowerCase()}`,
-          description: `${session.warehouse} - ${session.staff_name || "Unknown"} - ${session.total_items} items`,
-          timestamp: new Date(session.started_at),
-          status:
-            session.status === "OPEN"
-              ? "info"
-              : session.status === "CLOSED"
-                ? "success"
-                : "warning",
-        }));
-
-      setActivities(recentActivities);
     } catch (error) {
       console.error("Error loading dashboard data:", error);
       Alert.alert("Error", "Failed to load dashboard data");
@@ -213,6 +181,10 @@ export default function SupervisorDashboard() {
     try {
       setIsCreatingSession(true);
       const normalizedRack = rackName.trim().toUpperCase();
+      if (!/^[a-zA-Z0-9\-_]+$/.test(normalizedRack)) {
+        show("Rack can use only letters, numbers, dashes, and underscores", "warning");
+        return;
+      }
       const warehouseName = `${locationType} - ${selectedFloor} - ${normalizedRack}`;
 
       const session = await createSession({
@@ -233,8 +205,7 @@ export default function SupervisorDashboard() {
       router.push(`/supervisor/session/${session.id}` as any);
     } catch (error) {
       console.error("Failed to create session:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to create session";
+      const errorMessage = error instanceof Error ? error.message : "Failed to create session";
       show(errorMessage, "error");
     } finally {
       setIsCreatingSession(false);
@@ -249,110 +220,17 @@ export default function SupervisorDashboard() {
     loadData();
   };
 
-  const handleStatPress = (statType: "total" | "open" | "items" | "risk") => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-
-    switch (statType) {
-      case "total":
-      case "open":
-        router.push("/supervisor/sessions" as any);
-        break;
-      case "items":
-        router.push("/supervisor/items" as any);
-        break;
-      case "risk":
-        router.push("/supervisor/variances" as any);
-        break;
-    }
-  };
-
-  const speedDialActions: SpeedDialAction[] = [
-    {
-      icon: "add-circle-outline",
-      label: "New Session",
-      onPress: () => setShowCreateSessionModal(true),
-    },
-    {
-      icon: "albums-outline",
-      label: "Count Sessions",
-      onPress: () => router.push("/supervisor/sessions" as any),
-    },
-    {
-      icon: "alert-circle-outline",
-      label: "Count Differences",
-      onPress: () => router.push("/supervisor/variances" as any),
-    },
-    {
-      icon: "git-network-outline",
-      label: "Team Activity",
-      onPress: () => router.push("/supervisor/user-workflows" as any),
-    },
-    {
-      icon: "cloud-offline-outline",
-      label: "Pending Uploads",
-      onPress: () => router.push("/supervisor/offline-queue" as any),
-    },
-    {
-      icon: "sync-outline",
-      label: "Sync Issues",
-      onPress: () => router.push("/supervisor/sync-conflicts" as any),
-    },
-    {
-      icon: "settings-outline",
-      label: "Preferences",
-      onPress: () => router.push("/supervisor/settings" as any),
-    },
-    {
-      icon: "help-circle-outline",
-      label: "Help",
-      onPress: () => router.push("/help" as any),
-    },
-  ];
-
-  const overviewActions: OverviewAction[] = [
-    {
-      key: "new-session",
-      icon: "add-circle-outline",
-      label: "Create session",
-      onPress: () => setShowCreateSessionModal(true),
-      primary: true,
-    },
-    {
-      key: "review-variances",
-      icon: "alert-circle-outline",
-      label: "Review differences",
-      onPress: () => router.push("/supervisor/variances" as any),
-      primary: false,
-    },
-    {
-      key: "sync-conflicts",
-      icon: "sync-outline",
-      label: "Resolve sync issues",
-      onPress: () => router.push("/supervisor/sync-conflicts" as any),
-      primary: false,
-    },
-  ];
-
+  const activeSessions = sessions.filter((session) =>
+    ["OPEN", "ACTIVE"].includes(String(session.status || "").toUpperCase())
+  );
+  const varianceItemCount = sessions.filter(
+    (session) => Math.abs(session.total_variance || 0) > 0
+  ).length;
+  const alertCount = pendingConflictCount + varianceItemCount + offlineQueueCount;
   const completionPercentage =
     stats.totalSessions > 0
-      ? ((stats.closedSessions + stats.reconciledSessions) /
-          stats.totalSessions) *
-        100
+      ? ((stats.closedSessions + stats.reconciledSessions) / stats.totalSessions) * 100
       : 0;
-  const recommendedActions = buildRecommendedActions({
-    completionPercentage,
-    highRiskSessions: stats.highRiskSessions,
-    openSessions: stats.openSessions,
-    totalSessions: stats.totalSessions,
-    onCreateSession: () => setShowCreateSessionModal(true),
-    onOpenHelp: () => router.push("/help" as any),
-    onOpenSessions: () => router.push("/supervisor/sessions" as any),
-    onOpenSyncConflicts: () => router.push("/supervisor/sync-conflicts" as any),
-    onOpenVariances: () => router.push("/supervisor/variances" as any),
-    onOpenWorkflows: () => router.push("/supervisor/user-workflows" as any),
-  });
 
   return (
     <ScreenContainer
@@ -366,8 +244,8 @@ export default function SupervisorDashboard() {
           onPress: () => router.push("/supervisor/settings" as any),
         },
       }}
-      backgroundType="aurora"
-      statusBarStyle="light"
+      backgroundType="solid"
+      statusBarStyle="dark"
       contentMode="static"
       noPadding
     >
@@ -398,73 +276,117 @@ export default function SupervisorDashboard() {
           }
           showsVerticalScrollIndicator={false}
         >
-          <SupervisorOverviewCard
-            completionPercentage={completionPercentage}
-            highRiskSessions={stats.highRiskSessions}
-            openSessions={stats.openSessions}
-            overviewActions={overviewActions}
-          />
+          <View style={styles.kpiGrid}>
+            <DecisionKpi
+              icon="play-circle-outline"
+              label="Active Sessions"
+              value={activeSessions.length}
+              tone="info"
+            />
+            <DecisionKpi
+              icon="sync-outline"
+              label="Pending Conflicts"
+              value={pendingConflictCount}
+              tone={pendingConflictCount > 0 ? "warning" : "success"}
+            />
+            <DecisionKpi
+              icon="alert-circle-outline"
+              label="Variance Items"
+              value={varianceItemCount}
+              tone={varianceItemCount > 0 ? "danger" : "success"}
+            />
+            <DecisionKpi
+              icon="cloud-offline-outline"
+              label="Offline Items"
+              value={offlineQueueCount}
+              tone={offlineQueueCount > 0 ? "warning" : "success"}
+            />
+          </View>
 
-          <SupervisorStatsSection
-            completionPercentage={completionPercentage}
-            onStatPress={handleStatPress}
-            stats={stats}
-          />
+          {alertCount > 0 ? (
+            <OperationalCard style={styles.alertCard} variant="warning" elevation="xs">
+              <View style={styles.alertRow}>
+                <Ionicons name="warning-outline" size={20} color={ACTION_WARNING} />
+                <View style={styles.alertCopy}>
+                  <Text style={styles.alertTitle}>{alertCount} issue(s) need attention</Text>
+                  <Text style={styles.alertBody}>
+                    Clear conflicts, variance items, or offline uploads before closing the shift.
+                  </Text>
+                </View>
+              </View>
+            </OperationalCard>
+          ) : (
+            <OperationalCard style={styles.alertCard} variant="success" elevation="xs">
+              <View style={styles.alertRow}>
+                <Ionicons name="checkmark-circle-outline" size={20} color={ACTION_SUCCESS} />
+                <View style={styles.alertCopy}>
+                  <Text style={styles.alertTitle}>No supervisor blockers</Text>
+                  <Text style={styles.alertBody}>
+                    Active work can continue without review items.
+                  </Text>
+                </View>
+              </View>
+            </OperationalCard>
+          )}
 
-          <GlassCard style={styles.recommendationsCard} variant="strong">
-            <View style={styles.recommendationsHeader}>
-              <Ionicons
-                name="bulb-outline"
-                size={18}
-                color={theme.colors.primary[400]}
+          <View style={styles.sectionBlock}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <View style={styles.actionGrid}>
+              <QuickAction
+                icon="checkmark-done-outline"
+                label="Resolve Differences"
+                onPress={() => router.push("/supervisor/sync-conflicts" as any)}
+                primary
               />
-              <Text style={styles.recommendationsTitle}>Suggested next steps</Text>
+              <QuickAction
+                icon="add-circle-outline"
+                label="Create Session"
+                onPress={() => setShowCreateSessionModal(true)}
+              />
+              <QuickAction
+                icon="albums-outline"
+                label="View Sessions"
+                onPress={() => router.push("/supervisor/sessions" as any)}
+              />
+              <QuickAction
+                icon="cloud-upload-outline"
+                label="Offline Queue"
+                onPress={() => router.push("/supervisor/offline-queue" as any)}
+              />
             </View>
-            <View style={styles.recommendationsList}>
-              {recommendedActions.map((action) => (
-                <AnimatedPressable
-                  key={action.key}
-                  style={styles.recommendationAction}
-                  onPress={action.onPress}
-                >
-                  <View style={styles.recommendationIcon}>
-                    <Ionicons
-                      name={action.icon}
-                      size={16}
-                      color={theme.colors.primary[400]}
-                    />
-                  </View>
-                  <View style={styles.recommendationCopy}>
-                    <Text style={styles.recommendationTitle}>{action.title}</Text>
-                    <Text style={styles.recommendationDescription}>
-                      {action.description}
-                    </Text>
-                  </View>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={16}
-                    color={theme.colors.text.tertiary}
-                  />
-                </AnimatedPressable>
+          </View>
+
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Active Sessions</Text>
+              <AnimatedPressable
+                onPress={() => router.push("/supervisor/sessions" as any)}
+                style={styles.sectionLinkButton}
+              >
+                <Text style={styles.sectionLinkText}>View All</Text>
+                <Ionicons name="chevron-forward" size={14} color={ACTION_BLUE} />
+              </AnimatedPressable>
+            </View>
+            <View style={styles.sessionList}>
+              {activeSessions.slice(0, 5).map((session) => (
+                <SessionListRow
+                  key={session.id}
+                  completionPercentage={completionPercentage}
+                  onPress={() => router.push(`/supervisor/session/${session.id}` as any)}
+                  session={session}
+                />
               ))}
+              {activeSessions.length === 0 ? (
+                <OperationalCard style={styles.emptyCard} variant="light" elevation="xs">
+                  <Ionicons name="file-tray-outline" size={28} color={MUTED_TEXT} />
+                  <Text style={styles.emptyTitle}>No active sessions</Text>
+                  <Text style={styles.emptyBody}>
+                    Create a session when staff are ready to count.
+                  </Text>
+                </OperationalCard>
+              ) : null}
             </View>
-          </GlassCard>
-
-          <SupervisorActivitySection
-            activities={activities}
-            onOpenActivity={(activityId) =>
-              router.push(`/supervisor/session/${activityId}` as any)
-            }
-            onViewAll={() => router.push("/supervisor/activity-logs" as any)}
-          />
-
-          <SupervisorRecentSessionsSection
-            onOpenSession={(sessionId) =>
-              router.push(`/supervisor/session/${sessionId}` as any)
-            }
-            onViewAll={() => router.push("/supervisor/sessions" as any)}
-            sessions={sessions}
-          />
+          </View>
 
           <View style={styles.bottomSpacer} />
         </ScrollView>
@@ -488,105 +410,133 @@ export default function SupervisorDashboard() {
         warehouses={warehouses}
         zones={zones}
       />
-
-      <SpeedDialMenu actions={speedDialActions} position="bottom-right" />
     </ScreenContainer>
   );
 }
 
-interface RecommendedActionItem {
-  description: string;
+type KpiTone = "info" | "success" | "warning" | "danger";
+
+const ACTION_BLUE = "#2563eb";
+const ACTION_GREEN = "#15803d";
+const ACTION_SUCCESS = "#15803d";
+const ACTION_WARNING = "#b45309";
+const ACTION_DANGER = "#dc2626";
+const TEXT_STRONG = "#0f172a";
+const MUTED_TEXT = "#475569";
+const SURFACE_BORDER = "#d9e5e2";
+
+const toneColors: Record<KpiTone, { bg: string; fg: string; iconBg: string }> = {
+  info: { bg: "#eff6ff", fg: ACTION_BLUE, iconBg: "#dbeafe" },
+  success: { bg: "#ecfdf5", fg: ACTION_GREEN, iconBg: "#dcfce7" },
+  warning: { bg: "#fffbeb", fg: ACTION_WARNING, iconBg: "#fef3c7" },
+  danger: { bg: "#fef2f2", fg: ACTION_DANGER, iconBg: "#fee2e2" },
+};
+
+function DecisionKpi({
+  icon,
+  label,
+  tone,
+  value,
+}: {
   icon: keyof typeof Ionicons.glyphMap;
-  key: string;
-  onPress: () => void;
-  title: string;
+  label: string;
+  tone: KpiTone;
+  value: number;
+}) {
+  const colors = toneColors[tone];
+  return (
+    <OperationalCard
+      style={[styles.kpiCard, { backgroundColor: colors.bg, borderColor: colors.iconBg }]}
+      variant="light"
+      elevation="xs"
+    >
+      <View style={[styles.kpiIcon, { backgroundColor: colors.iconBg }]}>
+        <Ionicons name={icon} size={18} color={colors.fg} />
+      </View>
+      <Text style={[styles.kpiValue, { color: colors.fg }]}>{value}</Text>
+      <Text style={styles.kpiLabel}>{label}</Text>
+    </OperationalCard>
+  );
 }
 
-function buildRecommendedActions({
+function QuickAction({
+  icon,
+  label,
+  onPress,
+  primary = false,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  primary?: boolean;
+}) {
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      hapticFeedback="light"
+      style={[styles.quickAction, primary && styles.quickActionPrimary]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Ionicons name={icon} size={18} color={primary ? "#ffffff" : ACTION_BLUE} />
+      <Text style={[styles.quickActionText, primary && styles.quickActionTextPrimary]}>
+        {label}
+      </Text>
+    </AnimatedPressable>
+  );
+}
+
+function SessionListRow({
   completionPercentage,
-  highRiskSessions,
-  onCreateSession,
-  onOpenHelp,
-  onOpenSessions,
-  onOpenSyncConflicts,
-  onOpenVariances,
-  onOpenWorkflows,
-  openSessions,
-  totalSessions,
+  onPress,
+  session,
 }: {
   completionPercentage: number;
-  highRiskSessions: number;
-  onCreateSession: () => void;
-  onOpenHelp: () => void;
-  onOpenSessions: () => void;
-  onOpenSyncConflicts: () => void;
-  onOpenVariances: () => void;
-  onOpenWorkflows: () => void;
-  openSessions: number;
-  totalSessions: number;
-}): RecommendedActionItem[] {
-  const actions: RecommendedActionItem[] = [];
-
-  if (highRiskSessions > 0) {
-    actions.push({
-      key: "review-variances",
-      title: "Review high-risk differences",
-      description: `${highRiskSessions} session(s) need supervisor review for large count differences.`,
-      icon: "alert-circle-outline",
-      onPress: onOpenVariances,
-    });
-  }
-
-  if (openSessions > 0) {
-    actions.push({
-      key: "monitor-workflows",
-      title: "Check active team work",
-      description: `${openSessions} active session(s) are in progress and may need unblock support.`,
-      icon: "git-network-outline",
-      onPress: onOpenWorkflows,
-    });
-  }
-
-  if (completionPercentage < 70 && totalSessions > 0) {
-    actions.push({
-      key: "advance-open-sessions",
-      title: "Move sessions to completion",
-      description:
-        "Completion is below 70%. Review open sessions and clear pending items.",
-      icon: "albums-outline",
-      onPress: onOpenSessions,
-    });
-  }
-
-  actions.push({
-    key: "sync-health",
-    title: "Resolve sync issues",
-    description: "Fix sync issues so data stays up to date across devices.",
-    icon: "sync-outline",
-    onPress: onOpenSyncConflicts,
-  });
-
-  if (totalSessions === 0) {
-    actions.unshift({
-      key: "create-session",
-      title: "Create first session",
-      description: "No session exists yet. Start a session so staff can begin counting.",
-      icon: "add-circle-outline",
-      onPress: onCreateSession,
-    });
-  }
-
-  if (actions.length < 3) {
-    actions.push({
-      key: "open-help",
-      title: "Open help guide",
-      description: "Need support? Use the help page for quick instructions.",
-      icon: "help-circle-outline",
-      onPress: onOpenHelp,
-    });
-  }
-
-  return actions.slice(0, 3);
+  onPress: () => void;
+  session: Session;
+}) {
+  const variance = Number(session.total_variance || 0);
+  const totalItems = Number(session.total_items || 0);
+  const completedItems = Number(session.verified_items ?? session.counted_items ?? 0);
+  const rowCompletion =
+    totalItems > 0
+      ? Math.round((Math.min(completedItems, totalItems) / totalItems) * 100)
+      : Math.round(completionPercentage);
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      style={styles.sessionRow}
+      hapticFeedback="light"
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${session.warehouse || "session"}`}
+    >
+      <View style={styles.sessionIdentity}>
+        <Text style={styles.sessionName} numberOfLines={1}>
+          {session.warehouse || "Unnamed session"}
+        </Text>
+        <Text style={styles.sessionMeta} numberOfLines={1}>
+          {session.staff_name || "Unassigned"} | {session.total_items || 0} items
+        </Text>
+      </View>
+      <View style={styles.sessionProgressBlock}>
+        <Text style={styles.sessionProgressText}>{rowCompletion}%</Text>
+        <View style={styles.progressTrack}>
+          <View
+            style={[
+              styles.progressFill,
+              { width: `${Math.max(0, Math.min(rowCompletion, 100))}%` },
+            ]}
+          />
+        </View>
+      </View>
+      <View style={[styles.issuePill, variance !== 0 && styles.issuePillWarning]}>
+        <Text style={[styles.issuePillText, variance !== 0 && styles.issuePillTextWarning]}>
+          {variance === 0 ? "No issues" : `${variance > 0 ? "+" : ""}${variance}`}
+        </Text>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={MUTED_TEXT} />
+    </AnimatedPressable>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -594,7 +544,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: theme.spacing.lg,
+    padding: theme.spacing.md,
   },
   loadingState: {
     flex: 1,
@@ -607,56 +557,203 @@ const styles = StyleSheet.create({
   loadingText: {
     color: theme.colors.text.secondary,
   },
-  recommendationsCard: {
-    marginBottom: theme.spacing.xl,
-    padding: theme.spacing.lg,
+  kpiGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
   },
-  recommendationsHeader: {
+  kpiCard: {
+    flex: 1,
+    minWidth: 136,
+    minHeight: 88,
+    justifyContent: "space-between",
+    padding: theme.spacing.sm,
+  },
+  kpiIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  kpiValue: {
+    marginTop: 4,
+    fontSize: 24,
+    fontWeight: "800",
+  },
+  kpiLabel: {
+    color: MUTED_TEXT,
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  alertCard: {
+    marginBottom: theme.spacing.sm,
+    padding: theme.spacing.sm,
+  },
+  alertRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: theme.spacing.sm,
+  },
+  alertCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  alertTitle: {
+    color: TEXT_STRONG,
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  alertBody: {
+    color: MUTED_TEXT,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  sectionBlock: {
+    marginBottom: theme.spacing.lg,
+  },
+  sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
+    justifyContent: "space-between",
+    marginBottom: theme.spacing.sm,
   },
-  recommendationsTitle: {
-    color: theme.colors.text.primary,
+  sectionTitle: {
+    color: TEXT_STRONG,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "800",
   },
-  recommendationsList: {
+  sectionLinkButton: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  sectionLinkText: {
+    color: ACTION_BLUE,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  actionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: theme.spacing.sm,
   },
-  recommendationAction: {
+  quickAction: {
+    flex: 1,
+    minWidth: 142,
+    minHeight: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: SURFACE_BORDER,
+    backgroundColor: "#ffffff",
+  },
+  quickActionPrimary: {
+    borderColor: ACTION_BLUE,
+    backgroundColor: ACTION_BLUE,
+  },
+  quickActionText: {
+    color: TEXT_STRONG,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  quickActionTextPrimary: {
+    color: "#ffffff",
+  },
+  sessionList: {
+    gap: theme.spacing.sm,
+  },
+  sessionRow: {
+    minHeight: 72,
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing.sm,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: theme.colors.border.light,
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderColor: SURFACE_BORDER,
+    backgroundColor: "#ffffff",
   },
-  recommendationIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: theme.borderRadius.full,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(59, 130, 246, 0.14)",
+  sessionIdentity: {
+    flex: 1.4,
+    minWidth: 120,
   },
-  recommendationCopy: {
-    flex: 1,
-    gap: 2,
+  sessionName: {
+    color: TEXT_STRONG,
+    fontSize: 15,
+    fontWeight: "800",
   },
-  recommendationTitle: {
-    color: theme.colors.text.primary,
-    fontSize: 13,
+  sessionMeta: {
+    marginTop: 3,
+    color: MUTED_TEXT,
+    fontSize: 12,
     fontWeight: "600",
   },
-  recommendationDescription: {
-    color: theme.colors.text.secondary,
+  sessionProgressBlock: {
+    flex: 1,
+    minWidth: 76,
+  },
+  sessionProgressText: {
+    color: TEXT_STRONG,
     fontSize: 12,
-    lineHeight: 18,
+    fontWeight: "800",
+    marginBottom: 6,
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: "#e2e8f0",
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: ACTION_GREEN,
+  },
+  issuePill: {
+    minHeight: 30,
+    justifyContent: "center",
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "#ecfdf5",
+    borderWidth: 1,
+    borderColor: "#bbf7d0",
+  },
+  issuePillWarning: {
+    backgroundColor: "#fef2f2",
+    borderColor: "#fecaca",
+  },
+  issuePillText: {
+    color: ACTION_GREEN,
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  issuePillTextWarning: {
+    color: ACTION_DANGER,
+  },
+  emptyCard: {
+    alignItems: "center",
+    padding: theme.spacing.xl,
+  },
+  emptyTitle: {
+    marginTop: theme.spacing.sm,
+    color: TEXT_STRONG,
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  emptyBody: {
+    marginTop: 3,
+    color: MUTED_TEXT,
+    fontSize: 13,
+    textAlign: "center",
   },
   bottomSpacer: {
     height: 100,

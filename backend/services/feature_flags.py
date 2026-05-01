@@ -93,7 +93,7 @@ class FeatureFlagService:
             try:
                 flag = FeatureFlag(**doc)
                 self._cache[flag.key] = flag
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.error(f"Failed to load feature flag: {e}")
         self._cache_time = datetime.now(timezone.utc).replace(tzinfo=None)
 

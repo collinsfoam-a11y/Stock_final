@@ -142,7 +142,7 @@ class StructuredLogger:
 
         try:
             return "".join(traceback.format_exception(type(error), error, error.__traceback__))
-        except Exception:
+        except (RuntimeError, TypeError, ValueError, OSError):
             return str(error)
 
     def debug(self, message: str, **kwargs):

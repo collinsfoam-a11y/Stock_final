@@ -5,10 +5,11 @@
  */
 
 import React, { useEffect, useRef } from "react";
-import { Text, StyleSheet, Animated } from "react-native";
+import { Text, StyleSheet, Animated, Platform } from "react-native";
 import * as Haptics from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { modernColors } from "../../styles/modernDesignSystem";
+import { createShadow } from "@/theme/shadowUtils";
 
 interface SuccessFeedbackProps {
   visible: boolean;
@@ -255,11 +256,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
+    ...(Platform.OS === "web"
+      ? {
+          boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.15)",
+        }
+      : {
+          ...createShadow({ color: "#000", offsetX: 0, offsetY: 4, opacity: 0.15, radius: 8, elevation: 6 }),
+        }),
   },
   message: {
     fontSize: 16,
@@ -272,11 +275,13 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
+    ...(Platform.OS === "web"
+      ? {
+          boxShadow: "0px 6px 16px rgba(0, 0, 0, 0.2)",
+        }
+      : {
+          ...createShadow({ color: "#000", offsetX: 0, offsetY: 4, opacity: 0.2, radius: 8, elevation: 8 }),
+        }),
   },
   toastText: {
     fontSize: 14,

@@ -6,6 +6,7 @@ import {
   StyleSheet,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { createShadow } from "@/theme/shadowUtils";
 
 interface ResultOverlayProps {
   onClose: () => void;
@@ -75,9 +76,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    ...createShadow({ color: "#000", offsetX: 0, offsetY: 2, opacity: 0.25, radius: 3.84 }),
   },
 });

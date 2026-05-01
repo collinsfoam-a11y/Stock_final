@@ -12,6 +12,7 @@ from backend.api.auth import (
 )
 from backend.api.auth_routes import _session_belongs_to_current_client
 from backend.exceptions import NotFoundError, RateLimitError
+from backend.services.auth_service import AuthService
 
 
 @pytest.fixture
@@ -24,9 +25,9 @@ def mock_cache_service():
 
 @pytest.fixture
 def mock_db():
-    with patch("backend.api.auth_routes.get_db") as mock:
+    with patch("backend.api.auth_routes.get_auth_service") as mock:
         db = AsyncMock()
-        mock.return_value = db
+        mock.return_value = AuthService(db)
         yield db
 
 
@@ -174,8 +175,7 @@ def test_session_belongs_to_current_client_uses_same_ip_when_metadata_is_missing
 async def test_register_success(mock_db, mock_refresh_token_service, mock_settings, mock_auth_deps):
     mock_db.users.find_one.return_value = None
     mock_db.users.count_documents.return_value = 0
-    # mock_db.users.insert_one is not used, auth_deps.db.users.insert_one is used
-    mock_auth_deps.db.users.insert_one.return_value.inserted_id = "new_id"
+    mock_db.users.insert_one.return_value.inserted_id = "new_id"
 
     user_input = UserRegister(
         username="newuser", password="password123", role="staff", full_name="New User"
@@ -194,8 +194,8 @@ async def test_register_success(mock_db, mock_refresh_token_service, mock_settin
         assert response["refresh_token"] == "refresh_token"
 
         # Verify user insertion
-        mock_auth_deps.db.users.insert_one.assert_called_once()
-        call_args = mock_auth_deps.db.users.insert_one.call_args
+        mock_db.users.insert_one.assert_called_once()
+        call_args = mock_db.users.insert_one.call_args
         inserted_user = call_args[0][0]
         assert inserted_user["username"] == "newuser"
         assert inserted_user["hashed_password"] == "hashed_password"

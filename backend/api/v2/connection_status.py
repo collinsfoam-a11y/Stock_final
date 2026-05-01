@@ -46,7 +46,7 @@ async def get_connection_pool_status(current_user: dict = Depends(get_current_us
             message="Connection pool status retrieved successfully",
         )
 
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         return ApiResponse.error_response(
             error_code="POOL_STATUS_ERROR",
             error_message=f"Failed to get pool status: {str(e)}",
@@ -75,7 +75,7 @@ async def get_connection_pool_stats(current_user: dict = Depends(get_current_use
             message="Connection pool statistics retrieved successfully",
         )
 
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         return ApiResponse.error_response(
             error_code="POOL_STATS_ERROR",
             error_message=f"Failed to get pool statistics: {str(e)}",
@@ -104,7 +104,7 @@ async def trigger_health_check(current_user: dict = Depends(get_current_user)):
             message="Health check completed",
         )
 
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         return ApiResponse.error_response(
             error_code="HEALTH_CHECK_ERROR",
             error_message=f"Health check failed: {str(e)}",

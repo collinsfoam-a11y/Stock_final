@@ -244,7 +244,7 @@ class TestSQLSyncService:
 
         # Mock SQL connector to raise error
         mock_sql_connector.get_item_quantities_only = Mock(
-            side_effect=Exception("SQL connection error")
+            side_effect=RuntimeError("SQL connection error")
         )
 
         # Execute sync

@@ -149,7 +149,7 @@ async def test_ensure_sql_connection_connect_fail():
     )
     sql_connector = MagicMock()
     sql_connector.test_connection.return_value = False
-    sql_connector.connect.side_effect = Exception("Connection fail")
+    sql_connector.connect.side_effect = RuntimeError("Connection fail")
 
     assert await _ensure_sql_connection(sql_connector, db) is False
 

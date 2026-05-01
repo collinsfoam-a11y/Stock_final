@@ -142,7 +142,11 @@ export function SearchInput({
     borderColor: isFocused
       ? colors.primary[500]
       : semanticColors.border.default,
-    shadowOpacity: interpolate(focusProgress.value, [0, 1], [0, 0.1]),
+    ...(Platform.OS === "web"
+      ? {
+          boxShadow: `0px 4px 12px rgba(59, 130, 246, ${interpolate(focusProgress.value, [0, 1], [0, 0.1])})`,
+        }
+      : {}),
   }));
 
   // Size-based dimensions

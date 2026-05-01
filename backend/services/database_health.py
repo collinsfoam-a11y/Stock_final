@@ -79,7 +79,7 @@ class DatabaseHealthService:
             self.mongo_db = self._dedicated_client[self._db_name]
             logger.info("Database health service switched to dedicated MongoDB client")
             return True
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Failed to create dedicated MongoDB client: {e}")
             return False
 
@@ -115,7 +115,7 @@ class DatabaseHealthService:
             }
             return {"status": "unhealthy", "error": error_msg}
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             error_msg = str(e)
             self._health_status["mongo"] = {
                 "status": "unhealthy",
@@ -128,7 +128,7 @@ class DatabaseHealthService:
             return {"status": "unhealthy", "error": error_msg}
 
     async def check_sql_server_health(self) -> dict[str, Any]:
-        """Check SQL Server connection health with MongoDB fallback"""
+        """Check SQL Server connection health with MongoDB context."""
         start_time = datetime.now(timezone.utc)
         try:
             # Try direct connection first
@@ -141,7 +141,7 @@ class DatabaseHealthService:
                     from backend.config import settings
 
                     sql_password = getattr(settings, "SQL_SERVER_PASSWORD", None)
-                except Exception:
+                except (RuntimeError, TypeError, ValueError, OSError):
                     pass
 
                 is_placeholder = isinstance(sql_password, str) and sql_password.strip().lower() in {
@@ -162,7 +162,7 @@ class DatabaseHealthService:
                             asyncio.to_thread(self.sql_connector.test_connection),
                             timeout=3,
                         )
-                    except Exception as e:
+                    except (RuntimeError, TypeError, ValueError, OSError) as e:
                         is_available = False
                         error_detail = f"Connection attempt failed: {str(e)}"
                 else:
@@ -200,7 +200,7 @@ class DatabaseHealthService:
                         f"SQL Server health check: OK (Fallback to MongoDB cache with {item_count} items)"
                     )
                     return status_data
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.error(f"Fallback health check failed: {e}")
 
             # If both failed
@@ -214,7 +214,7 @@ class DatabaseHealthService:
             self._health_status["sql_server"] = status_data
             return status_data
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             error_msg = str(e)
             self._health_status["sql_server"] = {
                 "status": "unhealthy",
@@ -252,7 +252,7 @@ class DatabaseHealthService:
         while self._running:
             try:
                 await self.check_all()
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.error(f"Health check loop error: {str(e)}")
 
             await asyncio.sleep(self.check_interval)
@@ -279,7 +279,7 @@ class DatabaseHealthService:
         if self._dedicated_client:
             try:
                 self._dedicated_client.close()
-            except Exception:
+            except (RuntimeError, TypeError, ValueError, OSError):
                 pass
         logger.info("Database health monitoring stopped")
 
@@ -327,11 +327,11 @@ class DatabaseHealthService:
                         "data_size": db_stats.get("dataSize", 0),
                         "storage_size": db_stats.get("storageSize", 0),
                     }
-                except Exception as inner:
+                except (RuntimeError, TypeError, ValueError, OSError) as inner:
                     mongo_stats = {"error": str(inner)}
             else:
                 mongo_stats = {"error": str(e)}
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             mongo_stats = {"error": str(e)}
 
         try:
@@ -349,7 +349,7 @@ class DatabaseHealthService:
                 sql_stats = {"connected": False}
         except asyncio.TimeoutError:
             sql_stats = {"connected": False, "error": "Timeout checking SQL Server connection"}
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             sql_stats = {"error": str(e)}
 
         return {

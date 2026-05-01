@@ -31,26 +31,22 @@ class ErrResult:
 
 @pytest.mark.asyncio
 async def test_change_pin_success():
-    mock_db = AsyncMock()
+    mock_service = MagicMock()
+    mock_service.set_pin = AsyncMock(return_value=True)
     mock_user = {"_id": "user123", "username": "testuser", "hashed_password": "hash"}
     request = PinChangeRequest(current_password="password", new_pin="1234")
 
-    with (
-        patch("backend.api.pin_auth_api.PINAuthService") as MockService,
-        patch("backend.api.pin_auth_api.verify_password", return_value=True),
-    ):
-        mock_instance = MockService.return_value
-        mock_instance.set_pin = AsyncMock(return_value=True)
-
-        response = await change_pin(request, mock_user, mock_db)
+    with patch("backend.api.pin_auth_api.verify_password", return_value=True):
+        response = await change_pin(request, mock_user, mock_service)
 
         assert response == {"message": "PIN changed successfully"}
-        mock_instance.set_pin.assert_called_once_with("user123", "1234")
+        mock_service.set_pin.assert_called_once_with("user123", "1234")
 
 
 @pytest.mark.asyncio
 async def test_login_with_pin_success():
-    mock_db = AsyncMock()
+    mock_service = MagicMock()
+    mock_service.verify_pin = AsyncMock(return_value=True)
     mock_user = {
         "_id": "user123",
         "username": "testuser",
@@ -63,7 +59,6 @@ async def test_login_with_pin_success():
     mock_http_request.client.host = "127.0.0.1"
 
     with (
-        patch("backend.api.pin_auth_api.PINAuthService") as MockService,
         patch(
             "backend.api.pin_auth_api.check_rate_limit", new=AsyncMock(return_value=OkResult(True))
         ),
@@ -79,22 +74,19 @@ async def test_login_with_pin_success():
         ),
         patch("backend.api.pin_auth_api.reset_rate_limit", new=AsyncMock(return_value=None)),
     ):
-        mock_instance = MockService.return_value
-        mock_instance.verify_pin = AsyncMock(return_value=True)
-
-        response = await login_with_pin(request, mock_http_request, mock_db)
+        response = await login_with_pin(request, mock_http_request, mock_service)
 
         assert response["access_token"] == "access"
         assert response["refresh_token"] == "refresh"
         assert response["token_type"] == "bearer"
         assert response["user"]["username"] == "testuser"
         assert response["user"]["role"] == "staff"
-        mock_instance.verify_pin.assert_called_once_with("user123", "1234")
+        mock_service.verify_pin.assert_called_once_with("user123", "1234")
 
 
 @pytest.mark.asyncio
 async def test_login_with_pin_invalid_user():
-    mock_db = AsyncMock()
+    mock_service = MagicMock()
     request = PinLoginRequest(username="unknown", pin="1234")
     mock_http_request = MagicMock()
     mock_http_request.client.host = "127.0.0.1"
@@ -109,7 +101,7 @@ async def test_login_with_pin_invalid_user():
         ),
     ):
         with pytest.raises(HTTPException) as exc:
-            await login_with_pin(request, mock_http_request, mock_db)
+            await login_with_pin(request, mock_http_request, mock_service)
 
     assert exc.value.status_code == 401
     assert exc.value.detail == "Invalid credentials"
@@ -117,14 +109,14 @@ async def test_login_with_pin_invalid_user():
 
 @pytest.mark.asyncio
 async def test_login_with_pin_invalid_pin():
-    mock_db = AsyncMock()
+    mock_service = MagicMock()
+    mock_service.verify_pin = AsyncMock(return_value=False)
     mock_user = {"_id": "user123", "username": "testuser", "role": "staff", "is_active": True}
     request = PinLoginRequest(username="testuser", pin="wrong")
     mock_http_request = MagicMock()
     mock_http_request.client.host = "127.0.0.1"
 
     with (
-        patch("backend.api.pin_auth_api.PINAuthService") as MockService,
         patch(
             "backend.api.pin_auth_api.check_rate_limit", new=AsyncMock(return_value=OkResult(True))
         ),
@@ -133,11 +125,8 @@ async def test_login_with_pin_invalid_pin():
             new=AsyncMock(return_value=OkResult(mock_user)),
         ),
     ):
-        mock_instance = MockService.return_value
-        mock_instance.verify_pin = AsyncMock(return_value=False)
-
         with pytest.raises(HTTPException) as exc:
-            await login_with_pin(request, mock_http_request, mock_db)
+            await login_with_pin(request, mock_http_request, mock_service)
 
         assert exc.value.status_code == 401
         assert exc.value.detail == "Invalid PIN"
@@ -145,19 +134,14 @@ async def test_login_with_pin_invalid_pin():
 
 @pytest.mark.asyncio
 async def test_change_pin_service_failure():
-    mock_db = AsyncMock()
+    mock_service = MagicMock()
+    mock_service.set_pin = AsyncMock(return_value=False)
     mock_user = {"_id": "user123", "username": "testuser", "hashed_password": "hash"}
     request = PinChangeRequest(current_password="password", new_pin="1234")
 
-    with (
-        patch("backend.api.pin_auth_api.PINAuthService") as MockService,
-        patch("backend.api.pin_auth_api.verify_password", return_value=True),
-    ):
-        mock_instance = MockService.return_value
-        mock_instance.set_pin = AsyncMock(return_value=False)
-
+    with patch("backend.api.pin_auth_api.verify_password", return_value=True):
         with pytest.raises(HTTPException) as exc:
-            await change_pin(request, mock_user, mock_db)
+            await change_pin(request, mock_user, mock_service)
 
         assert exc.value.status_code == 500
         assert exc.value.detail == "Failed to set PIN"

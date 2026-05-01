@@ -142,7 +142,7 @@ class DataGovernanceService:
                 f"Retention policy set for {policy.collection_name}: {policy.retention_days} days"
             )
             return True
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Failed to set retention policy: {e}")
             return False
 
@@ -203,7 +203,7 @@ class DataGovernanceService:
                     f"deleted={result.deleted_count}, archived={archived}"
                 )
 
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.error(f"Failed to apply retention for {policy.collection_name}: {e}")
                 results[policy.collection_name] = {"error": str(e)}
 
@@ -339,7 +339,7 @@ class DataGovernanceService:
                 result = await collection.delete_many({"user": subject_id})
                 results[collection_name] = result.deleted_count
 
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.error(f"Erasure failed for {collection_name}: {e}")
                 results[collection_name] = -1
 

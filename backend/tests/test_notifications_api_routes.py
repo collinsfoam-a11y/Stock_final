@@ -40,8 +40,9 @@ def notifications_app(monkeypatch: pytest.MonkeyPatch) -> FastAPI:
         "username": "staff1",
         "role": "staff",
     }
-    app.dependency_overrides[notifications_api.get_db] = lambda: {}
-    monkeypatch.setattr(notifications_api, "NotificationService", _DummyNotificationService)
+    app.dependency_overrides[notifications_api.get_notification_service] = lambda: (
+        _DummyNotificationService({})
+    )
     return app
 
 

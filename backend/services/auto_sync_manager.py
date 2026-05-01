@@ -123,7 +123,7 @@ class AutoSyncManager:
                 await asyncio.sleep(self.check_interval)
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.error(f"Error in monitoring loop: {e}")
                 await asyncio.sleep(self.check_interval)
 
@@ -140,7 +140,7 @@ class AutoSyncManager:
             await self._handle_connection_state_change(is_available)
         except asyncio.TimeoutError:
             await self._handle_connection_state_change(False)
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Error checking SQL Server connection: {e}")
             if self._sql_available:
                 self._sql_available = False
@@ -167,7 +167,7 @@ class AutoSyncManager:
         if self._on_connection_restored:
             try:
                 await self._on_connection_restored()
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.error(f"Error in connection restored callback: {e}")
 
     async def _handle_connection_lost(self) -> None:
@@ -182,7 +182,7 @@ class AutoSyncManager:
         if self._on_connection_lost:
             try:
                 await self._on_connection_lost()
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.error(f"Error in connection lost callback: {e}")
 
     async def _trigger_sync(self):
@@ -226,7 +226,7 @@ class AutoSyncManager:
 
             logger.info("✅ Auto-sync triggered successfully")
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"❌ Error triggering sync: {e}")
             self._stats["syncs_failed"] += 1
             self._stats["last_sync_status"] = f"failed: {str(e)}"
@@ -244,7 +244,7 @@ class AutoSyncManager:
         try:
             await self._trigger_sync()
             return {"success": True, "message": "Sync triggered successfully"}
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             return {"success": False, "error": str(e)}
 
     def get_status(self) -> dict[str, Any]:

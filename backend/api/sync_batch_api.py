@@ -12,12 +12,11 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
-from pymongo.errors import BulkWriteError, DuplicateKeyError, PyMongoError
+from pymongo.errors import PyMongoError
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
-from backend.db.runtime import get_db
 from backend.middleware.security import batch_rate_limiter
 from backend.services.canonical_inventory import (
     can_reuse_rejected_count_line,
@@ -28,12 +27,14 @@ from backend.services.circuit_breaker import get_circuit_breaker
 from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.governance_guard import GovernanceViolation, raise_forbidden_direct_write
 from backend.services.lock_manager import LockManager, get_lock_manager
-from backend.services.observability import metrics
+from backend.services.metrics import record_sync_failures
 from backend.services.redis_service import get_redis
 from backend.services.session_lifecycle_service import SessionLifecycleService
+from backend.services.sync_batch_service import SyncBatchService, get_sync_batch_service
 from backend.services.sync_conflicts_service import SyncConflictsService
 from backend.services.transaction_manager import mongo_transaction
 from backend.utils.api_utils import sanitize_for_logging
+from backend.utils.request_context import get_request_id
 
 logger = logging.getLogger(__name__)
 
@@ -141,24 +142,25 @@ class BatchSyncResponse(BaseModel):
 # Sync Logic
 
 
-async def _record_item_code_is_known(db: Any, record: SyncRecord) -> bool:
+def _as_sync_batch_service(value: Any) -> SyncBatchService:
+    if isinstance(value, SyncBatchService):
+        return value
+    return SyncBatchService(value)
+
+
+async def _record_item_code_is_known(
+    sync_batch_service: SyncBatchService, record: SyncRecord
+) -> bool:
     """Validate item_code against the session snapshot or ERP item cache."""
 
     item_code = str(record.item_code or "").strip()
     if not item_code:
         return False
 
-    snapshot = await db.session_snapshots.find_one({"session_id": record.session_id})
-    if snapshot:
-        items = snapshot.get("items") if isinstance(snapshot, dict) else None
-        if isinstance(items, list):
-            return any(
-                str(item.get("item_code") or "").strip() == item_code
-                for item in items
-                if isinstance(item, dict)
-            )
-
-    return bool(await db.erp_items.find_one({"item_code": item_code}))
+    return await sync_batch_service.item_code_is_known(
+        session_id=record.session_id,
+        item_code=item_code,
+    )
 
 
 def _idempotency_replay_conflict(
@@ -192,17 +194,9 @@ def _idempotency_replay_conflict(
     return None
 
 
-def _bulk_write_error_is_duplicate_only(exc: BulkWriteError) -> bool:
-    details = exc.details if isinstance(exc.details, dict) else {}
-    write_errors = details.get("writeErrors")
-    if not isinstance(write_errors, list) or not write_errors:
-        return False
-    return all(isinstance(error, dict) and error.get("code") == 11000 for error in write_errors)
-
-
 async def validate_record(
     record: SyncRecord,
-    db,
+    sync_batch_service: SyncBatchService,
     lock_manager: LockManager,
     sync_service: Optional[SyncConflictsService] = None,
     user_id: Optional[str] = None,
@@ -234,7 +228,7 @@ async def validate_record(
             message="Missing item_code",
         )
 
-    if not await _record_item_code_is_known(db, record):
+    if not await _record_item_code_is_known(sync_batch_service, record):
         return SyncConflict(
             client_record_id=record.client_record_id,
             conflict_type="UNKNOWN_ITEM_CODE",
@@ -245,7 +239,7 @@ async def validate_record(
     # Check for duplicate serial numbers
     if record.serial_numbers:
         for serial in record.serial_numbers:
-            existing = await db.item_serials.find_one({"serial_number": serial})
+            existing = await sync_batch_service.find_item_serial(serial)
             if existing and existing.get("client_record_id") != record.client_record_id:
                 conflict_id = None
                 if sync_service and user_id:
@@ -304,7 +298,7 @@ async def validate_record(
 
 async def sync_single_record(
     record: SyncRecord,
-    db,
+    sync_batch_service: SyncBatchService,
     user_id: str,
     *,
     user_role: Optional[str] = None,
@@ -317,8 +311,10 @@ async def sync_single_record(
     Returns:
         (success: bool, error_message: Optional[str])
     """
+    sync_batch_service = _as_sync_batch_service(sync_batch_service)
     try:
-        lifecycle_service = lifecycle_service or SessionLifecycleService(db)
+        database = sync_batch_service.database
+        lifecycle_service = lifecycle_service or SessionLifecycleService(database)
         session = await lifecycle_service.ensure_session_active(record.session_id)
         if str(user_role or "").strip().lower() not in {"supervisor", "admin"}:
             owner = str(session.get("staff_user") or "").strip()
@@ -381,14 +377,14 @@ async def sync_single_record(
             "recount_of_id": None,
         }
 
-        if await _count_line_is_idempotent(db, record.session_id, doc):
+        if await _count_line_is_idempotent(sync_batch_service, record.session_id, doc):
             return True, None
 
-        write_service = write_service or CountLineWriteService(db)
-        existing_duplicate = await find_duplicate_count_line(db, doc)
+        write_service = write_service or CountLineWriteService(database)
+        existing_duplicate = await find_duplicate_count_line(database, doc)
         if existing_duplicate:
             await _handle_duplicate_count_line(
-                db=db,
+                sync_batch_service=sync_batch_service,
                 session_id=record.session_id,
                 line_data=doc,
                 existing_duplicate=existing_duplicate,
@@ -417,13 +413,7 @@ async def sync_single_record(
             ]
 
             # Insert with ignore duplicates
-            try:
-                await db.item_serials.insert_many(serial_docs, ordered=False)
-            except DuplicateKeyError:
-                pass
-            except BulkWriteError as e:
-                if not _bulk_write_error_is_duplicate_only(e):
-                    raise
+            await sync_batch_service.insert_item_serials_ignore_duplicates(serial_docs)
 
         return True, None
 
@@ -446,8 +436,10 @@ async def sync_single_record(
 @router.post("/batch", response_model=BatchSyncResponse)
 async def sync_batch(
     request: BatchSyncRequest,
+    http_request: Request,
     current_user: dict[str, Any] = Depends(get_current_user),
     redis_service=Depends(get_redis),
+    sync_batch_service: SyncBatchService = Depends(get_sync_batch_service),
 ) -> BatchSyncResponse:
     """
     Batch sync endpoint - sync multiple records in one request
@@ -468,6 +460,7 @@ async def sync_batch(
         or current_user.get("id")
         or str(current_user.get("_id", "unknown"))
     )
+    request_id = get_request_id(http_request.headers)
     is_allowed, rate_info = batch_rate_limiter.is_allowed(user_id)
     if not is_allowed:
         raise HTTPException(
@@ -495,9 +488,6 @@ async def sync_batch(
             detail="No records provided for batch sync",
         )
 
-    # Get database
-    db = get_db()
-
     # Get lock manager
     lock_manager = get_lock_manager(redis_service)
 
@@ -515,7 +505,8 @@ async def sync_batch(
     )
 
     # Initialize Sync Service
-    sync_service = SyncConflictsService(db) if db else None
+    database = sync_batch_service.database
+    sync_service = SyncConflictsService(database) if database else None
 
     # Check circuit breaker
     if not await circuit_breaker.acquire():
@@ -529,14 +520,12 @@ async def sync_batch(
     errors = []
 
     try:
-        write_service = CountLineWriteService(db)
-        lifecycle_service = SessionLifecycleService(db)
+        write_service = CountLineWriteService(database)
+        lifecycle_service = SessionLifecycleService(database)
         # Validate all records first
         for record in request.records:
             # Check idempotency first using stable record_id as operation_id
-            existing_op = await db.idempotency_operations.find_one(
-                {"operation_id": record.record_id}
-            )
+            existing_op = await sync_batch_service.get_idempotency_operation(record.record_id)
             if existing_op:
                 replay_conflict = _idempotency_replay_conflict(record, existing_op)
                 if replay_conflict:
@@ -545,14 +534,16 @@ async def sync_batch(
                 ok_records.append(record.client_record_id)
                 continue
 
-            conflict = await validate_record(record, db, lock_manager, sync_service, user_id)
+            conflict = await validate_record(
+                record, sync_batch_service, lock_manager, sync_service, user_id
+            )
             if conflict:
                 conflicts.append(conflict)
             else:
                 # Sync valid record
                 success, error_msg = await sync_single_record(
                     record,
-                    db,
+                    sync_batch_service,
                     user_id,
                     user_role=str(current_user.get("role") or ""),
                     write_service=write_service,
@@ -561,20 +552,10 @@ async def sync_batch(
 
                 if success:
                     # Record idempotency
-                    await db.idempotency_operations.update_one(
-                        {"operation_id": record.record_id},
-                        {
-                            "$setOnInsert": {
-                                "operation_id": record.record_id,
-                                "record_id": record.record_id,
-                                "client_record_id": record.client_record_id,
-                                "session_id": record.session_id,
-                                "created_at": datetime.now(timezone.utc).replace(
-                                    tzinfo=None
-                                ),
-                            }
-                        },
-                        upsert=True,
+                    await sync_batch_service.record_idempotency_operation(
+                        operation_id=record.record_id,
+                        client_record_id=record.client_record_id,
+                        session_id=record.session_id,
                     )
                     ok_records.append(record.client_record_id)
                 else:
@@ -592,22 +573,37 @@ async def sync_batch(
     except (GovernanceViolation, PyMongoError, RuntimeError, TypeError, ValueError) as e:
         # Record failure in circuit breaker
         await circuit_breaker.record_failure()
-        logger.error("Batch sync failed: %s", sanitize_for_logging(str(e)))
+        logger.error(
+            "sync_batch_failed",
+            extra={
+                "request_id": request_id,
+                "user": sanitize_for_logging(str(user_id)),
+                "endpoint": "/api/sync/batch",
+                "status": "failed",
+                "error": sanitize_for_logging(str(e)),
+            },
+        )
         raise HTTPException(status_code=500, detail=f"Batch sync failed: {str(e)}")
 
     processing_time = (time.time() - start_time) * 1000
 
+    failed_count = len(conflicts) + len(errors)
     logger.info(
-        f"Batch sync completed: {len(ok_records)} ok, "
-        f"{len(conflicts)} conflicts, {len(errors)} errors "
-        f"({processing_time:.2f}ms)"
+        "sync_batch_completed",
+        extra={
+            "request_id": request_id,
+            "user": sanitize_for_logging(str(user_id)),
+            "endpoint": "/api/sync/batch",
+            "status": "completed",
+            "ok_count": len(ok_records),
+            "conflict_count": len(conflicts),
+            "error_count": len(errors),
+            "processing_time_ms": round(processing_time, 2),
+        },
     )
 
     try:
-        await metrics.set_gauge(
-            "sync_failure_rate",
-            (len(conflicts) + len(errors)) / max(len(request.records), 1),
-        )
+        await record_sync_failures(failed_count)
     except (RuntimeError, TypeError, ValueError):
         logger.debug("Failed to publish sync failure metric", exc_info=True)
 
@@ -720,7 +716,7 @@ async def _apply_bulk_session_operation(
     session_data: dict[str, Any],
     current_user: dict[str, Any],
     id_mapping: dict[str, str],
-    db: Any,
+    sync_batch_service: SyncBatchService,
     operation: str,
     now: datetime,
 ) -> str:
@@ -752,7 +748,7 @@ async def _apply_single_session_operation(
     session_data: dict[str, Any],
     current_user: dict[str, Any],
     id_mapping: dict[str, str],
-    db: Any,
+    sync_batch_service: SyncBatchService,
     operation: str,
     now: datetime,
 ) -> str:
@@ -763,7 +759,7 @@ async def _process_session_mutation_operation(
     session_data: dict[str, Any],
     current_user: dict[str, Any],
     id_mapping: dict[str, str],
-    db: Any,
+    sync_batch_service: SyncBatchService,
 ) -> Optional[str]:
     operation = _normalize_operation_name(session_data)
     if not operation:
@@ -772,11 +768,11 @@ async def _process_session_mutation_operation(
     now = _utc_now()
     if operation in {"bulk_close", "bulk_reconcile"}:
         return await _apply_bulk_session_operation(
-            session_data, current_user, id_mapping, db, operation, now
+            session_data, current_user, id_mapping, sync_batch_service, operation, now
         )
     if operation in {"close", "reconcile"}:
         return await _apply_single_session_operation(
-            session_data, current_user, id_mapping, db, operation, now
+            session_data, current_user, id_mapping, sync_batch_service, operation, now
         )
     return None
 
@@ -796,22 +792,17 @@ def _normalize_session_type(value: Any) -> str:
 
 
 async def _find_session_by_offline_id(
-    db: Any, offline_id: Optional[Any]
+    sync_batch_service: SyncBatchService, offline_id: Optional[Any]
 ) -> Optional[dict[str, Any]]:
-    if not offline_id:
-        return None
-    return await db.sessions.find_one({"offline_id": str(offline_id)})
+    return await sync_batch_service.find_session_by_offline_id(offline_id)
 
 
 async def _find_existing_open_session(
-    db: Any, staff_user: str, warehouse: str
+    sync_batch_service: SyncBatchService, staff_user: str, warehouse: str
 ) -> Optional[dict[str, Any]]:
-    return await db.sessions.find_one(
-        {
-            "staff_user": staff_user,
-            "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]},
-            "warehouse": {"$regex": f"^{re.escape(warehouse)}$", "$options": "i"},
-        }
+    return await sync_batch_service.find_existing_open_session(
+        staff_user=staff_user,
+        warehouse_query={"$regex": f"^{re.escape(warehouse)}$", "$options": "i"},
     )
 
 
@@ -826,7 +817,7 @@ async def _process_session_creation(
     session_data: dict[str, Any],
     current_user: dict[str, Any],
     id_mapping: dict[str, str],
-    db: Any,
+    sync_batch_service: SyncBatchService,
 ) -> str:
     raise_forbidden_direct_write("sync_batch_api.session_creation_operation")
 
@@ -835,15 +826,17 @@ async def _process_session_op(
     session_data: dict[str, Any],
     current_user: dict[str, Any],
     id_mapping: dict[str, str],
-    db: Any,
+    sync_batch_service: SyncBatchService,
 ) -> str:
     """Process a session sync operation."""
     operation_result = await _process_session_mutation_operation(
-        session_data, current_user, id_mapping, db
+        session_data, current_user, id_mapping, sync_batch_service
     )
     if operation_result:
         return operation_result
-    return await _process_session_creation(session_data, current_user, id_mapping, db)
+    return await _process_session_creation(
+        session_data, current_user, id_mapping, sync_batch_service
+    )
 
 
 def _remap_line_session_id(line_data: dict[str, Any], id_mapping: dict[str, str]) -> None:
@@ -862,8 +855,10 @@ def _require_count_line_session_id(line_data: dict[str, Any]) -> str:
     return session_id
 
 
-async def _assert_session_accepts_offline_count(db: Any, session_id: str) -> dict[str, Any]:
-    lifecycle_service = SessionLifecycleService(db)
+async def _assert_session_accepts_offline_count(
+    sync_batch_service: SyncBatchService, session_id: str
+) -> dict[str, Any]:
+    lifecycle_service = SessionLifecycleService(sync_batch_service.database)
     session = await lifecycle_service.ensure_session_active(session_id)
     return session
 
@@ -911,26 +906,20 @@ def _set_count_line_defaults(line_data: dict[str, Any], current_user: dict[str, 
     line_data.setdefault("recount_of_id", None)
 
 
-async def _count_line_is_idempotent(db: Any, session_id: str, line_data: dict[str, Any]) -> bool:
+async def _count_line_is_idempotent(
+    sync_batch_service: SyncBatchService, session_id: str, line_data: dict[str, Any]
+) -> bool:
     idempotency_key = line_data.get("idempotency_key")
-    if not idempotency_key:
-        return False
-    existing_idempotent = await db.count_lines.find_one(
-        {"session_id": session_id, "idempotency_key": idempotency_key}
+    return await sync_batch_service.count_line_is_idempotent(
+        session_id=session_id,
+        idempotency_key=idempotency_key,
     )
-    return bool(existing_idempotent)
 
 
-async def _find_erp_item_for_line(db: Any, line_data: dict[str, Any]) -> Optional[dict[str, Any]]:
-    barcode = line_data.get("barcode")
-    item_code = line_data.get("item_code")
-    if barcode:
-        item = await db.erp_items.find_one({"barcode": barcode})
-        if item:
-            return item
-    if item_code:
-        return await db.erp_items.find_one({"item_code": item_code})
-    return None
+async def _find_erp_item_for_line(
+    sync_batch_service: SyncBatchService, line_data: dict[str, Any]
+) -> Optional[dict[str, Any]]:
+    return await sync_batch_service.find_erp_item_for_line(line_data)
 
 
 def _compute_variance_percent(erp_qty: float, counted_qty: float, variance: float) -> float:
@@ -1020,16 +1009,18 @@ def _set_approval_status(line_data: dict[str, Any]) -> None:
         line_data["approval_status"] = "PENDING"
 
 
-async def _populate_offline_count_line_stats(db: Any, line_data: dict[str, Any]) -> None:
+async def _populate_offline_count_line_stats(
+    sync_batch_service: SyncBatchService, line_data: dict[str, Any]
+) -> None:
     # Precompute fields from immutable baseline; CountLineWriteService re-validates on write.
-    erp_item = await _find_erp_item_for_line(db, line_data)
+    erp_item = await _find_erp_item_for_line(sync_batch_service, line_data)
     current_sql_qty = float((erp_item or {}).get("stock_qty") or 0.0)
     erp_mrp = float((erp_item or {}).get("mrp") or 0.0)
     counted_qty = float(line_data.get("counted_qty", 0.0))
     mrp_c = line_data.get("mrp_counted") or line_data.get("counted_mrp") or erp_mrp
     counted_mrp = float(mrp_c)
 
-    write_service = CountLineWriteService(db)
+    write_service = CountLineWriteService(sync_batch_service.database)
     baseline_qty, baseline_hash = await write_service.resolve_baseline(
         session_id=str(line_data.get("session_id") or ""),
         item_code=str(line_data.get("item_code") or ""),
@@ -1064,7 +1055,7 @@ async def _populate_offline_count_line_stats(db: Any, line_data: dict[str, Any])
 
 
 async def _handle_duplicate_count_line(
-    db: Any,
+    sync_batch_service: SyncBatchService,
     session_id: str,
     line_data: dict[str, Any],
     existing_duplicate: dict[str, Any],
@@ -1103,7 +1094,7 @@ async def _handle_duplicate_count_line(
     new_line_data["previous_version_id"] = previous_line_id
     new_line_data["recount_of_id"] = root_recount_id
 
-    async with mongo_transaction(db.client) as tx:
+    async with mongo_transaction(sync_batch_service.client) as tx:
         await write_service.process_write(
             {"operation": "insert_one", "document": new_line_data},
             context={
@@ -1143,22 +1134,24 @@ async def _process_count_line_op(
     line_data: dict[str, Any],
     current_user: dict[str, Any],
     id_mapping: dict[str, str],
-    db: Any,
+    sync_batch_service: SyncBatchService,
 ) -> str:
     """Process a count_line sync operation."""
+    sync_batch_service = _as_sync_batch_service(sync_batch_service)
     _remap_line_session_id(line_data, id_mapping)
     session_id = _require_count_line_session_id(line_data)
-    session = await _assert_session_accepts_offline_count(db, session_id)
+    session = await _assert_session_accepts_offline_count(sync_batch_service, session_id)
     _enforce_required_count_line_context(line_data)
     _set_count_line_defaults(line_data, current_user)
-    if await _count_line_is_idempotent(db, session_id, line_data):
+    if await _count_line_is_idempotent(sync_batch_service, session_id, line_data):
         return "Count line already synced"
     line_data.setdefault("status", "pending")
-    write_service = CountLineWriteService(db)
-    existing_duplicate = await find_duplicate_count_line(db, line_data)
+    database = sync_batch_service.database
+    write_service = CountLineWriteService(database)
+    existing_duplicate = await find_duplicate_count_line(database, line_data)
     if existing_duplicate:
         return await _handle_duplicate_count_line(
-            db=db,
+            sync_batch_service=sync_batch_service,
             session_id=session_id,
             line_data=line_data,
             existing_duplicate=existing_duplicate,
@@ -1177,6 +1170,6 @@ async def _process_unknown_item_op(
     item_data: dict[str, Any],
     current_user: dict[str, Any],
     id_mapping: dict[str, str],
-    db: Any,
+    sync_batch_service: SyncBatchService,
 ) -> str:
     raise_forbidden_direct_write("sync_batch_api.unknown_item_operation")

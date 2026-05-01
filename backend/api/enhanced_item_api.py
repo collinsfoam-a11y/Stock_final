@@ -21,9 +21,7 @@ from backend.api.erp_api import _normalize_barcode_input
 # Import from auth module to avoid circular imports
 from backend.auth.dependencies import get_current_user_async as get_current_user
 
-# Import other dependencies directly
-# Import services and database
-from backend.services.canonical_inventory import build_session_lookup
+from backend.services.enhanced_item_query_service import EnhancedItemQueryService
 from backend.services.monitoring_service import MonitoringService
 from backend.services.sql_sync_service import SQLSyncService
 from backend.utils.api_utils import sanitize_for_logging
@@ -35,6 +33,10 @@ db: AsyncIOMotorDatabase = cast(AsyncIOMotorDatabase, None)
 cache_service: Any = None
 monitoring_service: Optional[MonitoringService] = None
 sql_sync_service: Optional[SQLSyncService] = None
+
+
+def _get_enhanced_item_query_service() -> EnhancedItemQueryService:
+    return EnhancedItemQueryService(db)
 
 
 def init_enhanced_api(
@@ -53,7 +55,7 @@ def init_enhanced_api(
     if sql_connector_instance:
         try:
             sql_sync_service = SQLSyncService(sql_connector_instance, db)
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.warning(
                 "Could not initialize SQL sync for enhanced API: %s",
                 sanitize_for_logging(str(e), 200),
@@ -136,11 +138,11 @@ async def _sync_item_from_sql(barcode: str) -> Optional[dict[str, Any]]:
         )
     except asyncio.TimeoutError:
         logger.warning(
-            "Real-time SQL sync timed out for %s; using fallback",
+            "Real-time SQL sync timed out for %s; using MongoDB cache",
             sanitize_for_logging(barcode),
         )
         return None
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.warning(
             "Real-time SQL sync failed for %s: %s",
             sanitize_for_logging(barcode),
@@ -165,7 +167,7 @@ async def _resolve_item_data_source(
     if synced_item:
         return synced_item, "sql_server_sync"
 
-    item_data, source = await _fetch_with_fallback_strategy(normalized_barcode)
+    item_data, source = await _fetch_with_cache_strategy(normalized_barcode)
     return cast(Optional[dict[str, Any]], item_data), source
 
 
@@ -204,20 +206,7 @@ def _raise_item_not_found(barcode: str, response_time_ms: float) -> None:
 async def _resolve_lookup_context(
     session_id: Optional[str], rack_no: Optional[str]
 ) -> tuple[Optional[str], Optional[str]]:
-    context_rack = rack_no.strip().upper() if rack_no else None
-    context_floor = None
-    if not session_id:
-        return context_floor, context_rack
-
-    session = await db.sessions.find_one(build_session_lookup(session_id))
-    if not session:
-        return context_floor, context_rack
-
-    if not context_rack and session.get("rack"):
-        context_rack = str(session.get("rack")).strip().upper()
-    if session.get("floor"):
-        context_floor = str(session.get("floor")).strip().upper()
-    return context_floor, context_rack
+    return await _get_enhanced_item_query_service().resolve_lookup_context(session_id, rack_no)
 
 
 def _apply_misplaced_flag(
@@ -250,7 +239,7 @@ async def _decorate_item_with_misplacement_context(
     try:
         context_floor, context_rack = await _resolve_lookup_context(session_id, rack_no)
         _apply_misplaced_flag(item_data, context_floor, context_rack)
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.warning(
             "Failed to calculate is_misplaced: %s",
             sanitize_for_logging(str(e), 200),
@@ -280,7 +269,7 @@ async def _record_enhanced_lookup_metrics(
             status_code=status_code,
             duration=time.time() - start_time,
         )
-    except Exception:
+    except (RuntimeError, TypeError, ValueError, OSError):
         logger.debug("Failed to record enhanced barcode metrics", exc_info=True)
 
 
@@ -300,6 +289,10 @@ async def get_item_by_barcode_enhanced(
     """
     start_time = time.time()
     status_code = 200
+    force_source = force_source if isinstance(force_source, str) else None
+    include_metadata = include_metadata if isinstance(include_metadata, bool) else True
+    session_id = session_id if isinstance(session_id, str) else None
+    rack_no = rack_no if isinstance(rack_no, str) else None
 
     try:
         normalized_barcode = _validate_barcode_format(barcode)
@@ -334,7 +327,7 @@ async def get_item_by_barcode_enhanced(
     except HTTPException as exc:
         status_code = exc.status_code
         raise
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         status_code = 500
         response_time = (time.time() - start_time) * 1000
         logger.error(
@@ -363,7 +356,7 @@ async def _fetch_from_specific_source(barcode: str, source: str) -> tuple[Option
 
     if source == "mongodb":
         regex_match = {"$regex": f"^{re.escape(barcode)}$", "$options": "i"}
-        item = await db.erp_items.find_one(
+        item = await _get_enhanced_item_query_service().find_item_by_lookup(
             {
                 "$or": [
                     {"barcode": barcode},
@@ -389,9 +382,9 @@ async def _fetch_from_specific_source(barcode: str, source: str) -> tuple[Option
         raise HTTPException(status_code=400, detail=f"Invalid source: {source}")
 
 
-async def _fetch_with_fallback_strategy(barcode: str) -> tuple[Optional[dict], str]:
+async def _fetch_with_cache_strategy(barcode: str) -> tuple[Optional[dict], str]:
     """
-    Intelligent fallback strategy:
+    Cache-aware fetch strategy:
     1. Try cache first (fastest)
     2. Try MongoDB (fast, most up-to-date)
     """
@@ -403,13 +396,13 @@ async def _fetch_with_fallback_strategy(barcode: str) -> tuple[Optional[dict], s
             cached_item = _extract_cached_item(cached)
             if cached_item:
                 return cached_item, "cache"
-        except Exception:
+        except (RuntimeError, TypeError, ValueError, OSError):
             pass  # Continue to next strategy
 
     # Strategy 2: MongoDB (primary app database)
     try:
         regex_match = {"$regex": f"^{re.escape(barcode)}$", "$options": "i"}
-        mongo_item = await db.erp_items.find_one(
+        mongo_item = await _get_enhanced_item_query_service().find_item_by_lookup(
             {
                 "$or": [
                     {"barcode": barcode},
@@ -424,7 +417,7 @@ async def _fetch_with_fallback_strategy(barcode: str) -> tuple[Optional[dict], s
             # Convert ObjectId to string for JSON serialization
             mongo_item["_id"] = str(mongo_item["_id"])
             return mongo_item, "mongodb"
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.warning(
             "MongoDB lookup failed: %s",
             sanitize_for_logging(str(e), 200),
@@ -675,17 +668,16 @@ async def advanced_item_search(
             rack,
         )
 
-        # Execute aggregation
-        cursor = db.erp_items.aggregate(pipeline)
-        results = await cursor.to_list(length=limit)
-
         # Get total count for pagination
         # Reconstruct match conditions for count query
         # This is a bit redundant but keeps the helper function focused on the pipeline
         match_conditions = pipeline[0]["$match"]
         count_pipeline = [{"$match": match_conditions}, {"$count": "total"}]
-        count_result = await db.erp_items.aggregate(count_pipeline).to_list(1)
-        total_count = count_result[0]["total"] if count_result else 0
+        results, total_count = await _get_enhanced_item_query_service().advanced_search(
+            pipeline=pipeline,
+            count_pipeline=count_pipeline,
+            limit=limit,
+        )
 
         # Prepare response
         response_time = (time.time() - start_time) * 1000
@@ -721,7 +713,7 @@ async def advanced_item_search(
             },
         }
 
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         response_time = (time.time() - start_time) * 1000
         logger.error(
             "Advanced search failed: %s in %.2fms - %s",
@@ -747,27 +739,10 @@ async def get_unique_locations(current_user: dict = Depends(get_current_user)):
     Get unique floors and racks for filtering
     """
     try:
-        pipeline = [
-            {
-                "$group": {
-                    "_id": None,
-                    "floors": {"$addToSet": "$floor"},
-                    "racks": {"$addToSet": "$rack"},
-                }
-            }
-        ]
-
-        result = await db.erp_items.aggregate(pipeline).to_list(1)
-
-        if not result:
-            return {"floors": [], "racks": []}
-
-        # Filter out None/null values and sort
-        floors = sorted([f for f in result[0].get("floors", []) if f])
-        racks = sorted([r for r in result[0].get("racks", []) if r])
+        floors, racks = await _get_enhanced_item_query_service().get_unique_locations()
 
         return {"floors": floors, "racks": racks}
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error(
             "Failed to fetch locations: %s",
             sanitize_for_logging(str(e), 200),
@@ -783,16 +758,12 @@ async def get_item_api_performance(current_user: dict = Depends(get_current_user
         raise HTTPException(status_code=403, detail="Supervisor access required")
 
     try:
-        # Get database manager instance
-        from backend.services.database_manager import DatabaseManager
         from backend.sql_server_connector import SQLServerConnector
 
         # Initialize SQL connector
         sql_connector = SQLServerConnector()
 
-        db_manager = DatabaseManager(
-            mongo_client=db.client, mongo_db=db, sql_connector=sql_connector
-        )
+        db_manager = _get_enhanced_item_query_service().create_database_manager(sql_connector)
 
         # Comprehensive performance analysis
         api_metrics = (
@@ -811,7 +782,7 @@ async def get_item_api_performance(current_user: dict = Depends(get_current_user
 
         return performance_data
 
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error(
             "Performance stats failed: %s",
             sanitize_for_logging(str(e), 200),
@@ -842,19 +813,16 @@ async def get_database_status(current_user: dict = Depends(get_current_user)):
     Get comprehensive database status and health information
     """
     try:
-        from backend.services.database_manager import DatabaseManager
         from backend.sql_server_connector import SQLServerConnector
 
         # Initialize SQL connector
         sql_connector = SQLServerConnector()
 
-        db_manager = DatabaseManager(
-            mongo_client=db.client, mongo_db=db, sql_connector=sql_connector
-        )
+        db_manager = _get_enhanced_item_query_service().create_database_manager(sql_connector)
 
         return await db_manager.check_database_health()
 
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error(
             "Database status check failed: %s",
             sanitize_for_logging(str(e), 200),
@@ -871,13 +839,10 @@ async def optimize_database_performance(current_user: dict = Depends(get_current
         raise HTTPException(status_code=403, detail="Supervisor access required")
 
     try:
-        from backend.services.database_manager import DatabaseManager
         from backend.sql_server_connector import SQLServerConnector
 
-        db_manager = DatabaseManager(
-            mongo_client=db.client,
-            mongo_db=db,
-            sql_connector=SQLServerConnector(),
+        db_manager = _get_enhanced_item_query_service().create_database_manager(
+            SQLServerConnector()
         )
 
         optimization_results = await db_manager.optimize_database_performance()
@@ -888,7 +853,7 @@ async def optimize_database_performance(current_user: dict = Depends(get_current
             "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
         }
 
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error(
             "Database optimization failed: %s",
             sanitize_for_logging(str(e), 200),

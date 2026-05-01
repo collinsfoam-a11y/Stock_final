@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from bson import ObjectId
+from backend.db.runtime import get_db
 from backend.services.governance_guard import write_authority
 
 logger = logging.getLogger(__name__)
@@ -125,7 +126,7 @@ class DynamicFieldsService:
             logger.info(f"Created dynamic field: {field_name} ({field_type})")
             return field_def
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Error creating field definition: {str(e)}")
             raise
 
@@ -145,7 +146,7 @@ class DynamicFieldsService:
 
             return fields
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Error getting field definitions: {str(e)}")
             raise
 
@@ -170,7 +171,7 @@ class DynamicFieldsService:
             logger.info(f"Updated field definition: {field_id}")
             return result
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Error updating field definition: {str(e)}")
             raise
 
@@ -191,7 +192,7 @@ class DynamicFieldsService:
 
             return result.modified_count > 0
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Error deleting field definition: {str(e)}")
             raise
 
@@ -273,7 +274,7 @@ class DynamicFieldsService:
 
                 return field_value
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Error setting field value: {str(e)}")
             raise
 
@@ -295,7 +296,7 @@ class DynamicFieldsService:
 
             return result
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Error getting item field values: {str(e)}")
             raise
 
@@ -366,7 +367,7 @@ class DynamicFieldsService:
 
             return items
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Error getting items with fields: {str(e)}")
             raise
 
@@ -477,6 +478,10 @@ class DynamicFieldsService:
 
             return stats
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Error getting field statistics: {str(e)}")
             raise
+
+
+def create_dynamic_fields_service() -> DynamicFieldsService:
+    return DynamicFieldsService(get_db())

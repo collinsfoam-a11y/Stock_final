@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
-from backend.auth.jwt_provider import decode
+from backend.auth.jwt_provider import ExpiredSignatureError, InvalidTokenError, decode
 from backend.config import settings
 from backend.core.websocket_manager import manager
 
@@ -82,7 +82,14 @@ async def websocket_endpoint(
         if not settings.JWT_SECRET:
             raise ValueError("JWT_SECRET not set")
         payload = decode(jwt_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-    except Exception as e:
+    except (
+        ExpiredSignatureError,
+        InvalidTokenError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+        OSError,
+    ) as e:
         logger.warning("WebSocket auth failed: %s", sanitize_for_logging(str(e)))
 
     if not payload:
@@ -126,10 +133,10 @@ async def websocket_endpoint(
     except WebSocketDisconnect:
         manager.disconnect(websocket, user_id, session_id)
         logger.info("Client disconnected: %s", sanitize_for_logging(user_id))
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("WebSocket error: %s", sanitize_for_logging(str(e)))
         manager.disconnect(websocket, user_id, session_id)
         try:
             await websocket.close(code=1011)  # Internal Error
-        except Exception:
+        except (RuntimeError, TypeError, ValueError, OSError):
             pass

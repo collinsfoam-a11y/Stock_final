@@ -57,7 +57,7 @@ async def test_get_item_batches_offline_fallback(
 
     assert "batches" in data
     assert len(data["batches"]) == 3
-    assert data["source"] == "mongodb_offline_fallback"
+    assert data["source"] == "mongodb_offline_cache"
 
     # Sorted by stock desc; tie-breaker by batch_no asc
     assert [b["batch_no"] for b in data["batches"]] == ["B1", "B3", "B2"]
@@ -133,4 +133,4 @@ async def test_get_item_batches_empty(async_client: AsyncClient, authenticated_h
     assert response.status_code == 200
     data = response.json()
     assert data["batches"] == []
-    assert data["source"] == "mongodb_offline_fallback"
+    assert data["source"] == "mongodb_offline_cache"

@@ -1,4 +1,4 @@
-import { createCountLine, getCountLines } from "../inventoryWorkflowApi";
+import { checkItemScanStatus, createCountLine, getCountLines } from "../inventoryWorkflowApi";
 import * as sessionManagementApi from "../sessionManagementApi";
 import * as offlineCountLineService from "../../offline/offlineCountLine";
 import * as offlineStorage from "../../offline/offlineStorage";
@@ -227,5 +227,23 @@ describe("createCountLine offline queueing", () => {
     expect(response.items[0]?.item_name).toBe("Soap Bar");
     expect(offlineStorage.getItemFromCache).toHaveBeenCalledTimes(1);
     expect(offlineStorage.getItemFromCache).toHaveBeenCalledWith("ITEM001");
+  });
+
+  it("falls back quietly when live scan status lookup is unavailable", async () => {
+    jest.spyOn(sessionManagementApi, "shouldAttemptReadApi").mockReturnValue(true);
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    (httpClient.get as jest.Mock).mockRejectedValue(new Error("Network Error"));
+
+    try {
+      const response = await checkItemScanStatus("session/1", "ITEM/001");
+
+      expect(httpClient.get).toHaveBeenCalledWith(
+        "/api/sessions/session%2F1/items/ITEM%2F001/scan-status"
+      );
+      expect(response).toEqual({ scanned: false, total_qty: 0, locations: [] });
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
   });
 });

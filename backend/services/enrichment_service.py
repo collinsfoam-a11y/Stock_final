@@ -220,7 +220,7 @@ class EnrichmentService:
         except ValueError as e:
             logger.error(f"Enrichment validation error for {item_code}: {str(e)}")
             return {"success": False, "error": str(e)}
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Enrichment failed for {item_code}: {str(e)}")
             raise
 
@@ -456,7 +456,7 @@ class EnrichmentService:
                         }
                     )
 
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 results["failed"] += 1
                 results["errors"].append(
                     {"item_code": enrichment.get("item_code"), "error": str(e)}

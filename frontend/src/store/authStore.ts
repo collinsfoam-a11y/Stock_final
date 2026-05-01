@@ -189,6 +189,27 @@ const getLocalAuthentication = async () => {
   return localAuthenticationPromise;
 };
 
+const shouldProbeWebCookieSession = (baseUrl: unknown): boolean => {
+  if (Platform.OS !== "web" || typeof window === "undefined") return false;
+
+  const normalizedBaseUrl = typeof baseUrl === "string" ? baseUrl.trim() : "";
+  if (!normalizedBaseUrl) {
+    // Relative/empty base URL implies same-origin requests.
+    return true;
+  }
+
+  try {
+    const currentOrigin = new URL(window.location.origin);
+    const backendOrigin = new URL(normalizedBaseUrl, window.location.origin);
+    return (
+      backendOrigin.protocol === currentOrigin.protocol &&
+      backendOrigin.hostname === currentOrigin.hostname
+    );
+  } catch {
+    return false;
+  }
+};
+
 const parseAuthError = (
   error: any,
   fallbackMessage: string,
@@ -880,6 +901,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           syncOfflineQueue: false,
         });
       } else if (Platform.OS === "web") {
+        if (!shouldProbeWebCookieSession(apiClient.defaults.baseURL)) {
+          set({ isLoading: false, isInitialized: true });
+          return;
+        }
+
         try {
           const response = await apiClient.get("/api/auth/me");
           const payload =

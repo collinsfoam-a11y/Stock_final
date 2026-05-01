@@ -1,22 +1,14 @@
 /**
- * StatsCard Component - Aurora Design v2.1
+ * StatsCard Component
  *
- * Glassmorphic stats card with gradient accents
- * Features:
- * - Glass morphism effect
- * - Gradient border option
- * - Icon with gradient background
- * - Smooth entrance animations
- * - Animated counter values
- * - Haptic feedback
+ * Operational stat tile used on supervisor and review-heavy screens.
  */
 
 import React from "react";
 import { View, Text, StyleSheet, ViewStyle } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { GlassCard } from "./GlassCard";
+import { OperationalCard } from "./OperationalSurface";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { AnimatedCounter } from "./AnimatedCounter";
 import { auroraTheme } from "@/theme/auroraTheme";
@@ -43,24 +35,24 @@ interface StatsCardProps {
 
 const variantColors = {
   primary: {
-    gradient: auroraTheme.colors.aurora.primary,
-    color: auroraTheme.colors.primary[500],
+    background: auroraTheme.colors.primary[50],
+    color: auroraTheme.colors.primary[700],
   },
   success: {
-    gradient: auroraTheme.colors.aurora.success,
-    color: auroraTheme.colors.success[500],
+    background: auroraTheme.colors.success[100],
+    color: auroraTheme.colors.success[700],
   },
   warning: {
-    gradient: auroraTheme.colors.aurora.warm,
-    color: auroraTheme.colors.warning[500],
+    background: auroraTheme.colors.warning[100],
+    color: auroraTheme.colors.warning[700],
   },
   error: {
-    gradient: [auroraTheme.colors.error[500], auroraTheme.colors.error[700]],
-    color: auroraTheme.colors.error[500],
+    background: auroraTheme.colors.error[100],
+    color: auroraTheme.colors.error[700],
   },
   info: {
-    gradient: auroraTheme.colors.aurora.secondary,
-    color: auroraTheme.colors.secondary[500],
+    background: auroraTheme.colors.secondary[100],
+    color: auroraTheme.colors.secondary[700],
   },
 };
 
@@ -78,25 +70,14 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   prefix = "",
   suffix = "",
 }) => {
-  const { gradient } = variantColors[variant];
-  const numericValue =
-    typeof value === "number" ? value : parseFloat(value) || 0;
+  const { background, color } = variantColors[variant];
+  const numericValue = typeof value === "number" ? value : parseFloat(value) || 0;
 
   const content = (
     <View style={styles.content}>
-      {/* Icon with gradient background */}
-      <LinearGradient
-        colors={gradient as readonly [string, string, ...string[]]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.iconContainer}
-      >
-        <Ionicons
-          name={icon}
-          size={28}
-          color={auroraTheme.colors.text.primary}
-        />
-      </LinearGradient>
+      <View style={[styles.iconContainer, { backgroundColor: background }]}>
+        <Ionicons name={icon} size={28} color={color} />
+      </View>
 
       {/* Stats */}
       <View style={styles.stats}>
@@ -165,9 +146,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
               name={trend.isPositive ? "trending-up" : "trending-down"}
               size={14}
               color={
-                trend.isPositive
-                  ? auroraTheme.colors.success[500]
-                  : auroraTheme.colors.error[500]
+                trend.isPositive ? auroraTheme.colors.success[500] : auroraTheme.colors.error[500]
               }
             />
             <Text
@@ -192,17 +171,15 @@ export const StatsCard: React.FC<StatsCardProps> = ({
 
   const cardContent = (
     <Animated.View entering={FadeInDown.delay(delay).springify()}>
-      <GlassCard
-        variant="medium"
-        intensity={25}
+      <OperationalCard
+        variant="light"
         borderRadius={auroraTheme.borderRadius.xl}
         padding={auroraTheme.spacing.lg}
-        withGradientBorder={true}
-        elevation="lg"
+        elevation="sm"
         style={style}
       >
         {content}
-      </GlassCard>
+      </OperationalCard>
     </Animated.View>
   );
 
@@ -228,7 +205,6 @@ const styles = StyleSheet.create({
     borderRadius: auroraTheme.borderRadius.xl,
     justifyContent: "center",
     alignItems: "center",
-    ...auroraTheme.shadows.md,
   },
   stats: {
     alignItems: "center",

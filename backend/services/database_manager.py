@@ -117,7 +117,7 @@ class DatabaseManager:
                 try:
                     count = await self.mongo_db[collection].count_documents({})
                     collections_info[collection] = count
-                except Exception as e:
+                except (RuntimeError, TypeError, ValueError, OSError) as e:
                     logger.error(f"Error counting documents in {collection}: {e}")
                     collections_info[collection] = -1  # Error getting count
 
@@ -132,7 +132,7 @@ class DatabaseManager:
                 "indexes": await self._get_index_info(),
             }
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"MongoDB health check failed: {str(e)}")
             return {"status": "error", "error": str(e), "response_time_ms": 0}
 
@@ -171,7 +171,7 @@ class DatabaseManager:
                 "connection_info": self.sql_connector.config,
             }
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"SQL Server health check failed: {str(e)}")
             return {"status": "error", "error": str(e), "response_time_ms": 0}
 
@@ -212,7 +212,7 @@ class DatabaseManager:
                 "last_checked": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
             }
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Data consistency check failed: {str(e)}")
             return {"status": "error", "error": str(e)}
 
@@ -241,7 +241,7 @@ class DatabaseManager:
                 },
             }
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Performance metrics failed: {str(e)}")
             return {"error": str(e)}
 
@@ -256,12 +256,12 @@ class DatabaseManager:
                 try:
                     indexes = await self.mongo_db[collection].list_indexes().to_list(None)
                     index_info[collection] = [idx["name"] for idx in indexes]
-                except Exception as e:
+                except (RuntimeError, TypeError, ValueError, OSError) as e:
                     logger.error(f"Error listing indexes for {collection}: {e}")
                     index_info[collection] = ["error"]
 
             return index_info
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Index info collection failed: {str(e)}")
             return {"error": str(e)}
 
@@ -287,7 +287,7 @@ class DatabaseManager:
                         optimizations["maintenance_tasks"].append(
                             f"Created index {index_spec['name']} on {collection}"
                         )
-                    except Exception as e:
+                    except (RuntimeError, TypeError, ValueError, OSError) as e:
                         logger.warning(f"Index creation failed: {str(e)}")
 
             # Compact collections if needed
@@ -297,12 +297,12 @@ class DatabaseManager:
                 try:
                     await self.mongo_db.command("compact", collection)
                     optimizations["maintenance_tasks"].append(f"Compacted collection {collection}")
-                except Exception as e:
+                except (RuntimeError, TypeError, ValueError, OSError) as e:
                     logger.warning(f"Collection compaction failed for {collection}: {str(e)}")
 
             return optimizations
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Database optimization failed: {str(e)}")
             return {"error": str(e)}
 
@@ -349,7 +349,7 @@ class DatabaseManager:
                 if missing_for_collection:
                     missing[collection] = missing_for_collection
 
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.warning(f"Could not check indexes for {collection}: {str(e)}")
 
         return missing
@@ -370,10 +370,10 @@ class DatabaseManager:
                     if size_mb > 10:
                         large_collections.append(collection)
 
-                except Exception:
+                except (RuntimeError, TypeError, ValueError, OSError):
                     continue  # Skip collections that can't be analyzed
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.warning(f"Collection analysis failed: {str(e)}")
 
         return large_collections
@@ -390,7 +390,7 @@ class DatabaseManager:
         try:
             await self._analyze_mongo_collections(insights)
             self._analyze_sql_server(insights)
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Database insights failed: {str(e)}")
             insights["error"] = str(e)
 
@@ -428,7 +428,7 @@ class DatabaseManager:
                             "Collection {collection} is empty. Check sync services.",
                         )
                     )
-            except Exception:
+            except (RuntimeError, TypeError, ValueError, OSError):
                 continue
 
     def _analyze_sql_server(self, insights: dict[str, Any]) -> None:
@@ -454,7 +454,7 @@ class DatabaseManager:
                         "message": f"{items_without_barcodes:,} products have no AutoBarcode. Consider data cleanup in ERP.",
                     }
                 )
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.warning(f"SQL Server analysis failed: {str(e)}")
 
     async def verify_data_flow(self) -> dict[str, Any]:
@@ -507,7 +507,7 @@ class DatabaseManager:
 
             flow_test["overall_status"] = "success" if all_success else "partial_failure"
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Data flow verification failed: {str(e)}")
             flow_test["overall_status"] = "error"
             flow_test["error"] = str(e)

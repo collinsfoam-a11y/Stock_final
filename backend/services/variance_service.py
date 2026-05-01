@@ -7,10 +7,12 @@ approval is required.
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import Dict, List, Optional, Tuple
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Tuple
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
+
+from backend.db.runtime import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +22,28 @@ class VarianceService:
 
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
+
+    async def get_variance_trend(self, days: int) -> list[dict[str, Any]]:
+        start_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
+        pipeline: list[dict[str, Any]] = [
+            {"$match": {"created_at": {"$gte": start_date}}},
+            {
+                "$group": {
+                    "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$created_at"}},
+                    "count": {"$sum": 1},
+                }
+            },
+            {"$sort": {"_id": 1}},
+        ]
+        results = await self.db.count_lines.aggregate(pipeline).to_list(length=days)
+        current_date = start_date
+        date_map = {row["_id"]: row["count"] for row in results}
+        data = []
+        for _ in range(days):
+            date_str = current_date.strftime("%Y-%m-%d")
+            data.append({"date": date_str, "count": date_map.get(date_str, 0)})
+            current_date += timedelta(days=1)
+        return data
 
     async def calculate_variance(
         self,
@@ -247,3 +271,7 @@ class VarianceService:
             return default_config
 
         return config
+
+
+def get_variance_service() -> VarianceService:
+    return VarianceService(get_db())

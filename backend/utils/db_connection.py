@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """
 Shared database connection utilities to eliminate duplicate connection logic
 """
@@ -6,9 +7,15 @@ Shared database connection utilities to eliminate duplicate connection logic
 import logging
 from typing import Optional
 
-from backend.services.dependency_manager import pyodbc
+from backend.services.dependency_manager import DependencyManager, DependencyUnavailable, pyodbc
 
 logger = logging.getLogger(__name__)
+
+
+def _require_sql_module():
+    if not DependencyManager.has_sql():
+        return DependencyManager.require_sql(pyodbc)
+    return DependencyManager.require_sql()
 
 
 class SQLServerConnectionBuilder:
@@ -32,7 +39,8 @@ class SQLServerConnectionBuilder:
 
         # Get list of installed drivers
         try:
-            installed_drivers = [driver for driver in pyodbc.drivers()]
+            sql = _require_sql_module()
+            installed_drivers = [driver for driver in sql.drivers()]
             logger.debug(f"Installed ODBC drivers: {installed_drivers}")
 
             # Try each driver in priority order
@@ -51,6 +59,8 @@ class SQLServerConnectionBuilder:
 
             logger.error("No SQL Server ODBC driver found!")
             return None
+        except DependencyUnavailable:
+            raise
         except Exception as e:
             logger.error(f"Error detecting ODBC drivers: {e}")
             return None
@@ -160,7 +170,8 @@ class SQLServerConnectionBuilder:
             timeout=timeout,
         )
 
-        conn = pyodbc.connect(conn_str, timeout=timeout)
+        sql = _require_sql_module()
+        conn = sql.connect(conn_str, timeout=timeout)
 
         # Set connection attributes for performance
         conn.timeout = timeout

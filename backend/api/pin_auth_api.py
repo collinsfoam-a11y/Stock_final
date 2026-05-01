@@ -3,7 +3,6 @@ Auth API Endpoints (PIN Extensions)
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 
 from backend.api.auth import (
@@ -13,8 +12,7 @@ from backend.api.auth import (
     reset_rate_limit,
 )
 from backend.auth.dependencies import get_current_user
-from backend.db.runtime import get_db
-from backend.services.pin_auth_service import PINAuthService
+from backend.services.pin_auth_service import PINAuthService, get_pin_auth_service
 from backend.utils.auth_utils import verify_password
 
 router = APIRouter()
@@ -35,11 +33,9 @@ class PinLoginRequest(BaseModel):
 async def change_pin(
     request: PinChangeRequest,
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_db),
+    pin_service: PINAuthService = Depends(get_pin_auth_service),
 ):
     """Change the current user's PIN."""
-    pin_service = PINAuthService(db)
-
     # Verify current password before allowing PIN change
     hashed_password = current_user.get("hashed_password")
     if not hashed_password or not verify_password(request.current_password, hashed_password):
@@ -62,7 +58,7 @@ async def change_pin(
 async def login_with_pin(
     request: PinLoginRequest,
     http_request: Request,
-    db: AsyncIOMotorDatabase = Depends(get_db),
+    pin_service: PINAuthService = Depends(get_pin_auth_service),
 ):
     """Login with PIN."""
     # Rate limit login attempts by IP
@@ -88,7 +84,6 @@ async def login_with_pin(
             detail="Account is deactivated",
         )
 
-    pin_service = PINAuthService(db)
     is_valid = await pin_service.verify_pin(str(user["_id"]), request.pin)
 
     if not is_valid:
@@ -109,7 +104,7 @@ async def login_with_pin(
     # Reset rate limit for successful PIN login
     try:
         await reset_rate_limit(ip_address)
-    except Exception:
+    except (RuntimeError, TypeError, ValueError):
         pass
 
     return {

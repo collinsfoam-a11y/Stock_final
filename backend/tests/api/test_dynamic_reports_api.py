@@ -547,6 +547,7 @@ class TestQuickReportEndpoints:
         )
 
         # Mock get_report_file
+        mock_service.get_enabled_dynamic_fields = AsyncMock(return_value=[])
         mock_service.get_report_file = AsyncMock(
             return_value=(
                 b"fake excel data",

@@ -60,6 +60,7 @@ from backend.services.redis_service import close_redis, init_redis
 from backend.services.refresh_token import RefreshTokenService
 from backend.services.runtime import set_cache_service, set_refresh_token_service
 from backend.services.scheduled_export_service import ScheduledExportService
+from backend.services.shadow_deployment_monitor import ShadowDeploymentMonitor
 from backend.services.sql_sync_service import SQLSyncService
 from backend.services.sync_conflicts_service import SyncConflictsService
 from backend.services.lock_service import LockService
@@ -98,6 +99,7 @@ if not logger.handlers:
 # Global service instances
 scheduled_export_service = None
 sync_conflicts_service = None
+shadow_deployment_monitor = None
 
 # Setup logging
 logger = setup_logging(
@@ -597,6 +599,19 @@ async def lifespan(app: FastAPI):  # noqa: C901
     except Exception as e:
         logger.error(f"Failed to start database health monitoring: {str(e)}")
 
+    global shadow_deployment_monitor
+    if (
+        not RUNNING_UNDER_PYTEST
+        and getattr(settings, "SHADOW_AUTO_DECISION_ENABLED", True)
+    ):
+        try:
+            shadow_deployment_monitor = ShadowDeploymentMonitor()
+            shadow_deployment_monitor.start()
+            logger.info("OK: Shadow deployment monitor started")
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
+            logger.warning(f"Shadow deployment monitor unavailable: {str(e)}")
+            shadow_deployment_monitor = None
+
     # Initialize cache
     try:
         await cache_service.initialize()
@@ -812,6 +827,8 @@ async def lifespan(app: FastAPI):  # noqa: C901
         services_running.append("Monitoring")
     if database_health_service:
         services_running.append("Database Health")
+    if shadow_deployment_monitor:
+        services_running.append("Shadow Deployment Monitor")
 
     if services_running:
         startup_checklist["services"] = True
@@ -871,6 +888,8 @@ async def lifespan(app: FastAPI):  # noqa: C901
     g.database_health_service = database_health_service
 
     g.auto_sync_manager = auto_sync_manager
+
+    g.shadow_deployment_monitor = shadow_deployment_monitor
 
     if g.ENTERPRISE_AVAILABLE:
         g.enterprise_audit_service = getattr(app.state, "enterprise_audit", None)
@@ -947,6 +966,16 @@ async def lifespan(app: FastAPI):  # noqa: C901
             logger.error(f"Error stopping database health monitoring: {str(e)}")
 
     shutdown_tasks.append(stop_health_monitoring())
+
+    async def stop_shadow_deployment_monitor():
+        if shadow_deployment_monitor:
+            try:
+                await shadow_deployment_monitor.stop()
+                logger.info("✓ Shadow deployment monitor stopped")
+            except Exception as e:
+                logger.error(f"Error stopping shadow deployment monitor: {str(e)}")
+
+    shutdown_tasks.append(stop_shadow_deployment_monitor())
 
     # Stop auto-sync manager
     async def stop_auto_sync():

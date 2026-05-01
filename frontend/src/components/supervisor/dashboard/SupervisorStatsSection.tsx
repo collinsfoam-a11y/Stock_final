@@ -2,7 +2,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { GlassCard, ProgressRing, StatsCard } from "@/components/ui";
+import { OperationalCard, StatsCard } from "@/components/ui";
 import { theme } from "@/styles/modernDesignSystem";
 import { DashboardStats } from "@/components/supervisor/dashboard/supervisorDashboardShared";
 
@@ -69,34 +69,31 @@ export function SupervisorStatsSection({
       </View>
 
       <Animated.View entering={FadeInDown.delay(300).springify()}>
-        <GlassCard
-          variant="medium"
-          intensity={25}
+        <OperationalCard
+          variant="light"
           borderRadius={theme.borderRadius.xl}
           padding={theme.spacing.lg}
-          withGradientBorder={true}
-          elevation="lg"
+          elevation="sm"
           style={styles.progressCard}
         >
           <View style={styles.progressContent}>
             <View style={styles.progressInfo}>
               <Text style={styles.progressTitle}>Session Completion</Text>
               <Text style={styles.progressSubtitle}>
-                {stats.closedSessions + stats.reconciledSessions} of{" "}
-                {stats.totalSessions} completed
+                {stats.closedSessions + stats.reconciledSessions} of {stats.totalSessions} completed
               </Text>
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { width: `${Math.max(0, Math.min(completionPercentage, 100))}%` },
+                  ]}
+                />
+              </View>
             </View>
-            <ProgressRing
-              progress={completionPercentage}
-              size={100}
-              strokeWidth={10}
-              colors={[
-                theme.colors.success.main,
-                theme.colors.success.main + "CC",
-              ]}
-            />
+            <Text style={styles.progressPercent}>{Math.round(completionPercentage)}%</Text>
           </View>
-        </GlassCard>
+        </OperationalCard>
       </Animated.View>
     </>
   );
@@ -121,6 +118,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: theme.spacing.md,
   },
   progressInfo: {
     flex: 1,
@@ -134,5 +132,24 @@ const styles = StyleSheet.create({
   progressSubtitle: {
     fontSize: 14,
     color: theme.colors.text.secondary,
+  },
+  progressTrack: {
+    marginTop: theme.spacing.sm,
+    height: 10,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: "#e2e8f0",
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.success.main,
+  },
+  progressPercent: {
+    minWidth: 64,
+    textAlign: "right",
+    fontSize: 28,
+    fontWeight: "700",
+    color: theme.colors.text.primary,
   },
 });

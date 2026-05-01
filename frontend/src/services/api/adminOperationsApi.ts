@@ -167,11 +167,7 @@ export const removeUserPermissions = async (username: string, permissions: strin
 // EXPORT SCHEDULES API
 // ==========================================
 
-export type ExportScheduleType =
-  | "sessions"
-  | "count_lines"
-  | "variance_report"
-  | "activity_logs";
+export type ExportScheduleType = "sessions" | "count_lines" | "variance_report" | "activity_logs";
 
 export type ExportScheduleFrequency = "daily" | "weekly" | "monthly";
 export type ExportScheduleFormat = "csv" | "json" | "excel";
@@ -225,9 +221,7 @@ export interface UpdateExportSchedulePayload {
   enabled?: boolean;
 }
 
-const normalizeExportSchedule = (
-  raw: Record<string, unknown>,
-): ExportScheduleRecord => ({
+const normalizeExportSchedule = (raw: Record<string, unknown>): ExportScheduleRecord => ({
   id: String(raw.id ?? raw._id ?? ""),
   name: String(raw.name ?? ""),
   export_type: String(raw.export_type ?? "sessions") as ExportScheduleType,
@@ -238,9 +232,7 @@ const normalizeExportSchedule = (
       ? (raw.filters as Record<string, unknown>)
       : {},
   email_recipients: Array.isArray(raw.email_recipients)
-    ? raw.email_recipients.filter(
-        (recipient): recipient is string => typeof recipient === "string",
-      )
+    ? raw.email_recipients.filter((recipient): recipient is string => typeof recipient === "string")
     : [],
   enabled: Boolean(raw.enabled),
   last_run: typeof raw.last_run === "string" ? raw.last_run : null,
@@ -248,39 +240,25 @@ const normalizeExportSchedule = (
   created_by: typeof raw.created_by === "string" ? raw.created_by : undefined,
   created_at: typeof raw.created_at === "string" ? raw.created_at : undefined,
   updated_at: typeof raw.updated_at === "string" ? raw.updated_at : undefined,
-  run_count:
-    typeof raw.run_count === "number" ? raw.run_count : undefined,
-  error_count:
-    typeof raw.error_count === "number" ? raw.error_count : undefined,
+  run_count: typeof raw.run_count === "number" ? raw.run_count : undefined,
+  error_count: typeof raw.error_count === "number" ? raw.error_count : undefined,
 });
 
-const normalizeExportResult = (
-  raw: Record<string, unknown>,
-): ExportResultRecord => ({
+const normalizeExportResult = (raw: Record<string, unknown>): ExportResultRecord => ({
   id: String(raw.id ?? raw._id ?? ""),
-  schedule_id:
-    typeof raw.schedule_id === "string" ? raw.schedule_id : undefined,
+  schedule_id: typeof raw.schedule_id === "string" ? raw.schedule_id : undefined,
   schedule_name: String(raw.schedule_name ?? "Export"),
   export_type:
-    typeof raw.export_type === "string"
-      ? (raw.export_type as ExportScheduleType)
-      : undefined,
+    typeof raw.export_type === "string" ? (raw.export_type as ExportScheduleType) : undefined,
   format: String(raw.format ?? "csv") as ExportScheduleFormat,
-  file_extension:
-    typeof raw.file_extension === "string" ? raw.file_extension : undefined,
+  file_extension: typeof raw.file_extension === "string" ? raw.file_extension : undefined,
   has_content: Boolean(raw.has_content),
   row_count: typeof raw.row_count === "number" ? raw.row_count : undefined,
-  size_bytes:
-    typeof raw.size_bytes === "number" ? raw.size_bytes : undefined,
-  created_at:
-    typeof raw.created_at === "string"
-      ? raw.created_at
-      : new Date().toISOString(),
+  size_bytes: typeof raw.size_bytes === "number" ? raw.size_bytes : undefined,
+  created_at: typeof raw.created_at === "string" ? raw.created_at : new Date().toISOString(),
 });
 
-export const getExportSchedules = async (
-  enabled?: boolean,
-): Promise<ExportScheduleRecord[]> => {
+export const getExportSchedules = async (enabled?: boolean): Promise<ExportScheduleRecord[]> => {
   try {
     const params = new URLSearchParams();
     if (enabled !== undefined) {
@@ -290,9 +268,7 @@ export const getExportSchedules = async (
     const response = await api.get(`/api/exports/schedules?${params.toString()}`);
     const schedules = response.data?.data?.schedules ?? response.data?.schedules ?? [];
     return Array.isArray(schedules)
-      ? schedules.map((schedule: Record<string, unknown>) =>
-          normalizeExportSchedule(schedule),
-        )
+      ? schedules.map((schedule: Record<string, unknown>) => normalizeExportSchedule(schedule))
       : [];
   } catch (error: unknown) {
     __DEV__ && console.error("Get export schedules error:", error);
@@ -300,9 +276,7 @@ export const getExportSchedules = async (
   }
 };
 
-export const getExportSchedule = async (
-  scheduleId: string,
-): Promise<ExportScheduleRecord> => {
+export const getExportSchedule = async (scheduleId: string): Promise<ExportScheduleRecord> => {
   try {
     const response = await api.get(`/api/exports/schedules/${scheduleId}`);
     return normalizeExportSchedule(response.data?.data ?? response.data);
@@ -312,9 +286,7 @@ export const getExportSchedule = async (
   }
 };
 
-export const createExportSchedule = async (
-  scheduleData: CreateExportSchedulePayload,
-) => {
+export const createExportSchedule = async (scheduleData: CreateExportSchedulePayload) => {
   try {
     const response = await api.post("/api/exports/schedules", scheduleData);
     return response.data?.data ?? response.data;
@@ -326,7 +298,7 @@ export const createExportSchedule = async (
 
 export const updateExportSchedule = async (
   scheduleId: string,
-  scheduleData: UpdateExportSchedulePayload,
+  scheduleData: UpdateExportSchedulePayload
 ) => {
   try {
     const response = await api.put(`/api/exports/schedules/${scheduleId}`, scheduleData);
@@ -361,7 +333,7 @@ export const getExportResults = async (
   scheduleId?: string,
   _status?: string,
   _page: number = 1,
-  pageSize: number = 50,
+  pageSize: number = 50
 ): Promise<ExportResultRecord[]> => {
   try {
     const params = new URLSearchParams({ limit: pageSize.toString() });
@@ -370,9 +342,7 @@ export const getExportResults = async (
     const response = await api.get(`/api/exports/results?${params.toString()}`);
     const results = response.data?.data?.results ?? response.data?.results ?? [];
     return Array.isArray(results)
-      ? results.map((result: Record<string, unknown>) =>
-          normalizeExportResult(result),
-        )
+      ? results.map((result: Record<string, unknown>) => normalizeExportResult(result))
       : [];
   } catch (error: unknown) {
     __DEV__ && console.error("Get export results error:", error);
@@ -431,12 +401,14 @@ export const getSyncConflictDetail = async (conflictId: string) => {
 export const resolveSyncConflict = async (
   conflictId: string,
   resolution: string,
-  resolutionNote?: string
+  resolutionNote?: string,
+  mergedData?: Record<string, unknown>
 ) => {
   try {
     const response = await api.post(`/api/sync/conflicts/${conflictId}/resolve`, {
       resolution,
       resolution_note: resolutionNote,
+      merged_data: mergedData,
     });
     return response.data;
   } catch (error: unknown) {

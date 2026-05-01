@@ -13,6 +13,8 @@ import pandas as pd
 from bson import ObjectId
 from pymongo.errors import PyMongoError
 
+from backend.db.runtime import get_db
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,6 +27,11 @@ class DynamicReportService:
         self.db = db
         self.report_templates = db.report_templates
         self.generated_reports = db.generated_reports
+
+    async def get_enabled_dynamic_fields(self) -> list[dict[str, Any]]:
+        return await self.db.dynamic_field_definitions.find({"enabled": True}).to_list(
+            length=None
+        )
 
     async def create_report_template(
         self,
@@ -683,3 +690,7 @@ class DynamicReportService:
         except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
             logger.error(f"Error getting report file: {str(e)}")
             raise
+
+
+def create_dynamic_report_service() -> DynamicReportService:
+    return DynamicReportService(get_db())

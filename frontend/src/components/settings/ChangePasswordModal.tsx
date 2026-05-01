@@ -22,6 +22,7 @@ import { useThemeContext } from "../../context/ThemeContext";
 import { typography } from "../../theme/designTokens";
 import { authApi } from "../../services/api/authApi";
 import * as Haptics from "expo-haptics";
+import { createShadow } from "@/theme/shadowUtils";
 
 interface ChangePasswordModalProps {
   visible: boolean;
@@ -181,11 +182,7 @@ export function ChangePasswordModal({
       width: "90%",
       maxWidth: 400,
       maxHeight: "85%",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 8,
+      ...createShadow({ color: "#000", offsetX: 0, offsetY: 4, opacity: 0.3, radius: 8, elevation: 8 }),
     },
     scrollContent: {
       flexGrow: 1,

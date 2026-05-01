@@ -19,6 +19,7 @@ from backend.services.query_utils import (
 )
 
 _VERIFIED_QTY_FIELD = "verified" + "_qty"
+_PROJECTION_SCAN_LIMIT = 10000
 
 
 class ProjectionReadService:
@@ -47,6 +48,36 @@ class ProjectionReadService:
         if self.enforce_readiness and self.gate_cache is not None:
             await self.gate_cache.require_ready()
         return self.db[collection_name]
+
+    @staticmethod
+    async def _find_page(
+        collection: Any,
+        query: dict[str, Any],
+        *,
+        sort_field: str,
+        sort_direction: int,
+        skip: int,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        cursor = (
+            collection.find(query)
+            .sort(sort_field, sort_direction)
+            .skip(skip)
+            .limit(limit)
+        )
+        return await cursor.to_list(length=limit)
+
+    @staticmethod
+    async def _find_limited(
+        collection: Any,
+        query: dict[str, Any],
+        *,
+        sort_field: str = "updated_at",
+        sort_direction: int = -1,
+        limit: int = _PROJECTION_SCAN_LIMIT,
+    ) -> list[dict[str, Any]]:
+        cursor = collection.find(query).sort(sort_field, sort_direction).limit(limit)
+        return await cursor.to_list(length=limit)
 
     @staticmethod
     def _first(document: dict[str, Any], *field_names: str) -> Any:
@@ -228,17 +259,18 @@ class ProjectionReadService:
         filters = config.filters
         query = self._build_verified_query(filters)
         total_records = await collection.count_documents({"is_removed": {"$ne": True}})
-        sort_field = config.sort_by or "counted_at"
         sort_order = getattr(config.sort_order, "value", config.sort_order)
+        sort_direction = -1 if str(sort_order) == "desc" else 1
         skip = (config.page - 1) * config.page_size
 
-        rows = await collection.find(query).to_list(None)
+        rows = await self._find_limited(
+            collection,
+            query,
+            sort_field="updated_at",
+            sort_direction=sort_direction,
+        )
         rows = self._apply_verified_raw_filters(rows, filters)
         data = [self._map_verified_item(row) for row in rows]
-        data.sort(
-            key=lambda row: self._normalize_sort_key(row.get(sort_field)),
-            reverse=str(sort_order) == "desc",
-        )
         filtered_records = len(data)
         page_data = data[skip : skip + config.page_size]
         aggregations = (
@@ -330,7 +362,7 @@ class ProjectionReadService:
 
     async def get_dashboard_stats(self) -> dict[str, Any]:
         collection = await self._ensure_collection(self.VERIFIED_COLLECTION)
-        rows = await collection.find({"is_removed": {"$ne": True}}).to_list(None)
+        rows = await self._find_limited(collection, {"is_removed": {"$ne": True}})
         items = [self._map_verified_item(row) for row in rows]
         today_start = datetime.now(timezone.utc).replace(
             tzinfo=None, hour=0, minute=0, second=0, microsecond=0
@@ -398,7 +430,7 @@ class ProjectionReadService:
     ) -> dict[str, Any]:
         collection = await self._ensure_collection(self.VARIANCE_COLLECTION)
         start_time = datetime.now(timezone.utc).replace(tzinfo=None)
-        rows = await collection.find({"is_removed": {"$ne": True}}).to_list(None)
+        rows = await self._find_limited(collection, {"is_removed": {"$ne": True}})
         filters = config.filters
         data = []
         for row in rows:
@@ -435,13 +467,6 @@ class ProjectionReadService:
                 }
             )
 
-        sort_field = config.sort_by or "variance"
-        sort_order = getattr(config.sort_order, "value", config.sort_order)
-        reverse = str(sort_order) == "desc"
-        data.sort(
-            key=lambda row: self._normalize_sort_key(row.get(sort_field)),
-            reverse=reverse,
-        )
         filtered_records = len(data)
         skip = (config.page - 1) * config.page_size
         page_data = data[skip : skip + config.page_size]
@@ -485,7 +510,7 @@ class ProjectionReadService:
     ) -> dict[str, Any]:
         collection = await self._ensure_collection(self.SESSION_COLLECTION)
         start_time = datetime.now(timezone.utc).replace(tzinfo=None)
-        rows = await collection.find({}).to_list(None)
+        rows = await self._find_limited(collection, {}, sort_field="started_at")
         filters = config.filters
         data = []
         for row in rows:
@@ -504,12 +529,6 @@ class ProjectionReadService:
                         continue
             data.append(mapped)
 
-        sort_field = config.sort_by or "started_at"
-        sort_order = getattr(config.sort_order, "value", config.sort_order)
-        data.sort(
-            key=lambda row: self._normalize_sort_key(row.get(sort_field)),
-            reverse=str(sort_order) == "desc",
-        )
         filtered_records = len(data)
         skip = (config.page - 1) * config.page_size
         page_data = data[skip : skip + config.page_size]
@@ -590,8 +609,8 @@ class ProjectionReadService:
         verified = await self._ensure_collection(self.VERIFIED_COLLECTION)
         variance = await self._ensure_collection(self.VARIANCE_COLLECTION)
 
-        session_rows = await sessions.find({}).to_list(None)
-        financial_rows = await financial.find({}).to_list(None)
+        session_rows = await self._find_limited(sessions, {}, sort_field="started_at")
+        financial_rows = await self._find_limited(financial, {})
         active_statuses = {"OPEN", "ACTIVE", "PAUSED", "RECONCILE"}
         active_sessions = sum(
             1
@@ -606,7 +625,7 @@ class ProjectionReadService:
             self._to_int(self._first(row, "verified_items", "verified_count"))
             for row in session_rows
         )
-        verified_rows = await verified.find({"is_removed": {"$ne": True}}).to_list(None)
+        verified_rows = await self._find_limited(verified, {"is_removed": {"$ne": True}})
         today_start = datetime.now(timezone.utc).replace(
             tzinfo=None, hour=0, minute=0, second=0, microsecond=0
         )
@@ -654,7 +673,7 @@ class ProjectionReadService:
 
     async def generate_stock_summary(self, filters: Any) -> list[dict[str, Any]]:
         collection = await self._ensure_collection(self.VERIFIED_COLLECTION)
-        rows = await collection.find({"is_removed": {"$ne": True}}).to_list(None)
+        rows = await self._find_limited(collection, {"is_removed": {"$ne": True}})
         start, end = self.report_date_bounds(filters.date_from, filters.date_to)
         grouped: dict[str, dict[str, Any]] = {}
         for row in rows:
@@ -718,7 +737,7 @@ class ProjectionReadService:
 
     async def generate_variance_report(self, filters: Any) -> list[dict[str, Any]]:
         collection = await self._ensure_collection(self.VARIANCE_COLLECTION)
-        rows = await collection.find({"is_removed": {"$ne": True}}).to_list(None)
+        rows = await self._find_limited(collection, {"is_removed": {"$ne": True}})
         start, end = self.report_date_bounds(filters.date_from, filters.date_to)
         results: list[dict[str, Any]] = []
         for row in rows:
@@ -766,15 +785,11 @@ class ProjectionReadService:
                     "finalized_by": mapped.get("verified_by"),
                 }
             )
-        results.sort(
-            key=lambda row: abs(float(row.get("variance_percentage") or 0.0)),
-            reverse=True,
-        )
         return results[:10000]
 
     async def generate_session_history(self, filters: Any) -> list[dict[str, Any]]:
         collection = await self._ensure_collection(self.SESSION_COLLECTION)
-        rows = await collection.find({}).to_list(None)
+        rows = await self._find_limited(collection, {}, sort_field="started_at")
         start, end = self.report_date_bounds(filters.date_from, filters.date_to)
         results: list[dict[str, Any]] = []
         for row in rows:
@@ -797,8 +812,4 @@ class ProjectionReadService:
                     "items_verified": mapped.get("verified_items", 0),
                 }
             )
-        return sorted(
-            results,
-            key=lambda row: self._normalize_sort_key(row.get("started_at")),
-            reverse=True,
-        )[:5000]
+        return results[:5000]

@@ -49,6 +49,19 @@ export function CreateSessionModal({
   warehouses,
   zones,
 }: CreateSessionModalProps) {
+  const rackValue = rackName.trim();
+  const rackInvalid = Boolean(rackValue && !/^[a-zA-Z0-9\-_]+$/.test(rackValue));
+  const validationMessage = !locationType
+    ? "Select a location type before continuing."
+    : !selectedFloor
+      ? "Select a floor or area before continuing."
+      : !rackValue
+        ? "Enter rack or shelf before continuing."
+        : rackInvalid
+          ? "Use only letters, numbers, dashes, and underscores."
+          : "";
+  const canSubmit = !validationMessage && !isCreatingSession;
+
   return (
     <Modal
       visible={visible}
@@ -64,11 +77,7 @@ export function CreateSessionModal({
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create New Session</Text>
               <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
-                <Ionicons
-                  name="close"
-                  size={24}
-                  color={theme.colors.text.primary}
-                />
+                <Ionicons name="close" size={24} color={theme.colors.text.primary} />
               </TouchableOpacity>
             </View>
 
@@ -86,16 +95,14 @@ export function CreateSessionModal({
                       key={zone.id}
                       style={[
                         styles.optionButton,
-                        locationType === zone.zone_name &&
-                          styles.optionButtonSelected,
+                        locationType === zone.zone_name && styles.optionButtonSelected,
                       ]}
                       onPress={() => onChangeLocationType(zone.zone_name)}
                     >
                       <Text
                         style={[
                           styles.optionText,
-                          locationType === zone.zone_name &&
-                            styles.optionTextSelected,
+                          locationType === zone.zone_name && styles.optionTextSelected,
                         ]}
                       >
                         {zone.zone_name}
@@ -120,9 +127,7 @@ export function CreateSessionModal({
                             selectedFloor === warehouse.warehouse_name &&
                               styles.optionButtonSelected,
                           ]}
-                          onPress={() =>
-                            onChangeSelectedFloor(warehouse.warehouse_name)
-                          }
+                          onPress={() => onChangeSelectedFloor(warehouse.warehouse_name)}
                         >
                           <Text
                             style={[
@@ -153,22 +158,17 @@ export function CreateSessionModal({
                 </View>
               )}
 
+              {validationMessage ? (
+                <View style={styles.validationNotice}>
+                  <Ionicons name="alert-circle-outline" size={18} color="#b45309" />
+                  <Text style={styles.validationText}>{validationMessage}</Text>
+                </View>
+              ) : null}
+
               <TouchableOpacity
-                style={[
-                  styles.createButton,
-                  (!locationType ||
-                    !selectedFloor ||
-                    !rackName.trim() ||
-                    isCreatingSession) &&
-                    styles.createButtonDisabled,
-                ]}
+                style={[styles.createButton, !canSubmit && styles.createButtonDisabled]}
                 onPress={onSubmit}
-                disabled={
-                  !locationType ||
-                  !selectedFloor ||
-                  !rackName.trim() ||
-                  isCreatingSession
-                }
+                disabled={!canSubmit}
               >
                 {isCreatingSession ? (
                   <ActivityIndicator color="#FFFFFF" />
@@ -267,6 +267,24 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",
+  },
+  validationNotice: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.sm,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: "#fffbeb",
+    borderWidth: 1,
+    borderColor: "#fde68a",
+    marginBottom: theme.spacing.md,
+  },
+  validationText: {
+    flex: 1,
+    color: "#92400e",
+    fontSize: 13,
+    fontWeight: "600",
   },
   bottomSpacer: {
     height: 40,

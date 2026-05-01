@@ -6,8 +6,7 @@ import logging
 from typing import Optional
 from fastapi import APIRouter, Query
 from backend.auth.permissions import Permission, require_permission
-from backend.db.runtime import get_db
-from backend.services.heatmap_service import HeatmapService
+from backend.services.heatmap_service import create_heatmap_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -22,8 +21,7 @@ async def get_heatmap(
     Get accuracy heatmap data for visualization.
     Rule 10 KPI Enforcement.
     """
-    db = get_db()
-    heatmap_service = HeatmapService(db)
+    heatmap_service = create_heatmap_service()
 
     data = await heatmap_service.get_accuracy_heatmap(session_id)
 

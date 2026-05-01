@@ -26,7 +26,7 @@ class CustomJSONEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-# Try to import Redis with async support, fallback to in-memory if not available
+# Try to import Redis with async support, otherwise use in-memory mode.
 try:
     import redis.asyncio as redis
 
@@ -37,7 +37,7 @@ except ImportError:
 
 class CacheService:
     """
-    Cache service with Redis backend and in-memory fallback
+    Cache service with Redis backend and in-memory backup mode.
     Thread-safe and async-safe for concurrent access
     """
 
@@ -66,7 +66,7 @@ class CacheService:
                 )
                 self.use_redis = True
                 logger.info("Redis client created (pending connection verification)")
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.warning(f"Redis client creation failed, using in-memory cache: {str(e)}")
                 self.use_redis = False
         else:
@@ -82,7 +82,7 @@ class CacheService:
             except asyncio.TimeoutError:
                 logger.warning("Redis connection timed out, using in-memory cache")
                 self.use_redis = False
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.warning(f"Redis connection failed: {str(e)}")
                 self.use_redis = False
 
@@ -99,7 +99,7 @@ class CacheService:
                 value = await self.redis_client.get(cache_key)
                 if value:
                     return json.loads(value)
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.error(f"Redis get error: {str(e)}")
                 return None
         else:
@@ -131,7 +131,7 @@ class CacheService:
             try:
                 await self.redis_client.setex(cache_key, ttl, serialized)
                 return True
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.error(f"Redis set error: {str(e)}")
                 return False
         else:
@@ -160,7 +160,7 @@ class CacheService:
             try:
                 count = await self.redis_client.delete(cache_key)
                 return count > 0
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.error(f"Redis delete error: {str(e)}")
                 return False
         else:
@@ -182,7 +182,7 @@ class CacheService:
                 if keys:
                     count = await self.redis_client.delete(*keys)
                     return int(count)
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.error(f"Redis clear error: {str(e)}")
         else:
             # In-memory clear
@@ -214,7 +214,7 @@ class CacheService:
                     "connected_clients": info.get("connected_clients"),
                     "uptime_days": info.get("uptime_in_days"),
                 }
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 status["status"] = "unhealthy"
                 status["details"]["error"] = str(e)
         else:
@@ -236,7 +236,7 @@ class CacheService:
                 if keys:
                     count = await self.redis_client.delete(*keys)
                     return int(count)
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.error(f"Redis clear_pattern error: {str(e)}")
                 return 0
 
@@ -271,7 +271,7 @@ class CacheService:
                 value = factory()
             await self.set(prefix, key, value, ttl)
             return value
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Factory error: {str(e)}")
             raise
 

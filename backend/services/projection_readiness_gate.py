@@ -11,7 +11,10 @@ from typing import Any, Optional
 from fastapi import HTTPException
 
 from backend.config import settings
-from backend.services.observability import metrics
+from backend.services.metrics import (
+    increment_projection_drift_count,
+    record_projection_readiness,
+)
 from backend.services.projection_status_store import (
     ProjectionGateStatus,
     ProjectionReadinessReason,
@@ -170,7 +173,7 @@ class ProjectionGateCache:
 
         self._unhealthy_since = self._unhealthy_since or status.checked_at
         unhealthy_for = (status.checked_at - self._unhealthy_since).total_seconds()
-        readiness_threshold = _setting_int("PROJECTION_ALERT_READINESS_FALSE_SECONDS", 300)
+        readiness_threshold = _setting_int("PROJECTION_ALERT_READINESS_FALSE_SECONDS", 60)
 
         if status.drift_count > 0 or status.gap_count > 0:
             logger.critical(
@@ -198,9 +201,7 @@ class ProjectionGateCache:
     @staticmethod
     async def _publish_metrics(status: ProjectionGateStatus) -> None:
         try:
-            await metrics.set_gauge("projection_readiness_status", 1.0 if status.ready else 0.0)
-            await metrics.set_gauge("projection_lag_seconds", float(status.lag_seconds or 0.0))
-            await metrics.set_gauge("projection_drift_count", float(status.drift_count))
+            await record_projection_readiness(status)
         except (RuntimeError, TypeError, ValueError):
             logger.debug("Failed to publish projection readiness metrics", exc_info=True)
 
@@ -244,7 +245,9 @@ class ProjectionDriftMonitor:
                 },
             )
             try:
-                await metrics.increment("projection_drift_count")
+                await increment_projection_drift_count(
+                    max(status.drift_count, status.gap_count, 1)
+                )
             except (RuntimeError, TypeError, ValueError):
                 logger.debug("Failed to publish projection drift counter", exc_info=True)
             return unhealthy

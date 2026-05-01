@@ -17,12 +17,7 @@ import { useRouter, useSegments } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuthStore } from "../../store/authStore";
-import {
-  layout,
-  spacing,
-  typography,
-  breakpoints,
-} from "../../styles/globalStyles";
+import { layout, spacing, typography, breakpoints } from "../../styles/globalStyles";
 import { supervisorFeatureFlags } from "../../constants/roleFeatureFlags";
 
 interface SidebarItem {
@@ -95,7 +90,7 @@ const SUPERVISOR_GROUPS: SidebarGroup[] = [
         ? [
             {
               key: "sync-conflicts",
-              label: "Sync Issues",
+              label: "Sync Differences",
               icon: "sync",
               route: "/supervisor/sync-conflicts",
             } satisfies SidebarItem,
@@ -139,15 +134,13 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
   // On mobile, show as drawer (controlled by parent)
   // On web/tablet, show as persistent sidebar
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
-    new Set(SUPERVISOR_GROUPS.map((g) => g.title)),
+    new Set(SUPERVISOR_GROUPS.map((g) => g.title))
   );
 
   const currentRoute = segments.join("/");
   const isActive = (route: string) => {
     const routePath = route.replace(/^\//, "");
-    return (
-      currentRoute === routePath || currentRoute.startsWith(routePath + "/")
-    );
+    return currentRoute === routePath || currentRoute.startsWith(routePath + "/");
   };
 
   const handleItemPress = (item: SidebarItem) => {
@@ -168,13 +161,10 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
     setExpandedGroups(newExpanded);
   };
 
-  const sidebarWidth = collapsed
-    ? layout.sidebarCollapsedWidth
-    : layout.sidebarWidth;
+  const sidebarWidth = collapsed ? layout.sidebarCollapsedWidth : layout.sidebarWidth;
   const panelBackground = theme.colors.surfaceElevated || theme.colors.surface;
   const subtleBorder = theme.colors.borderLight || theme.colors.border;
-  const activeBackground =
-    theme.colors.overlayPrimary || "rgba(14, 165, 233, 0.14)";
+  const activeBackground = theme.colors.overlayPrimary || "rgba(14, 165, 233, 0.14)";
 
   if (isMobile && !collapsed) {
     // On mobile, sidebar is handled by drawer component
@@ -220,15 +210,8 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
 
           {!collapsed && (
             <View style={styles.brandCopy}>
-              <Text style={[styles.brandTitle, { color: theme.colors.text }]}>
-                Supervisor Hub
-              </Text>
-              <Text
-                style={[
-                  styles.brandSubtitle,
-                  { color: theme.colors.textSecondary },
-                ]}
-              >
+              <Text style={[styles.brandTitle, { color: theme.colors.text }]}>Supervisor Hub</Text>
+              <Text style={[styles.brandSubtitle, { color: theme.colors.textSecondary }]}>
                 Daily operations made simple
               </Text>
             </View>
@@ -248,9 +231,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
               }
             >
               <Ionicons
-                name={
-                  collapsed ? "chevron-forward-outline" : "chevron-back-outline"
-                }
+                name={collapsed ? "chevron-forward-outline" : "chevron-back-outline"}
                 size={18}
                 color={theme.colors.text}
               />
@@ -273,18 +254,10 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
               <Ionicons name="person" size={24} color={theme.colors.primary} />
             </View>
             <View style={styles.profileInfo}>
-              <Text
-                style={[styles.profileName, { color: theme.colors.text }]}
-                numberOfLines={1}
-              >
+              <Text style={[styles.profileName, { color: theme.colors.text }]} numberOfLines={1}>
                 {user?.full_name || "User"}
               </Text>
-              <Text
-                style={[
-                  styles.profileRole,
-                  { color: theme.colors.textSecondary },
-                ]}
-              >
+              <Text style={[styles.profileRole, { color: theme.colors.textSecondary }]}>
                 {user?.role === "admin" ? "Administrator" : "Supervisor"}
               </Text>
             </View>
@@ -312,12 +285,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
                   onPress={() => toggleGroup(group.title)}
                   activeOpacity={0.7}
                 >
-                  <Text
-                    style={[
-                      styles.groupTitle,
-                      { color: theme.colors.textSecondary },
-                    ]}
-                  >
+                  <Text style={[styles.groupTitle, { color: theme.colors.textSecondary }]}>
                     {group.title}
                   </Text>
                   <Ionicons
@@ -332,9 +300,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
                 <View style={styles.groupItems}>
                   {group.items.map((item) => {
                     const active = isActive(item.route);
-                    const iconColor = active
-                      ? theme.colors.primary
-                      : theme.colors.textSecondary;
+                    const iconColor = active ? theme.colors.primary : theme.colors.textSecondary;
                     const bgColor = active
                       ? theme.colors.overlayPrimary || "rgba(76, 175, 80, 0.1)"
                       : "transparent";
@@ -346,9 +312,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
                           styles.item,
                           {
                             backgroundColor: bgColor,
-                            borderColor: active
-                              ? theme.colors.primary
-                              : "transparent",
+                            borderColor: active ? theme.colors.primary : "transparent",
                           },
                           active && styles.itemActive,
                         ]}
@@ -358,20 +322,14 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
                         accessibilityState={{ selected: active }}
                         accessibilityLabel={item.label}
                       >
-                        <Ionicons
-                          name={item.icon}
-                          size={20}
-                          color={iconColor}
-                        />
+                        <Ionicons name={item.icon} size={20} color={iconColor} />
                         {!collapsed && (
                           <>
                             <Text
                               style={[
                                 styles.itemLabel,
                                 {
-                                  color: active
-                                    ? theme.colors.primary
-                                    : theme.colors.text,
+                                  color: active ? theme.colors.primary : theme.colors.text,
                                 },
                               ]}
                             >
@@ -379,10 +337,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
                             </Text>
                             {item.badge !== undefined && item.badge > 0 && (
                               <View
-                                style={[
-                                  styles.itemBadge,
-                                  { backgroundColor: theme.colors.error },
-                                ]}
+                                style={[styles.itemBadge, { backgroundColor: theme.colors.error }]}
                               >
                                 <Text style={styles.itemBadgeText}>
                                   {item.badge > 99 ? "99+" : item.badge}
@@ -416,14 +371,8 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
           accessibilityRole="button"
           accessibilityLabel="Logout"
         >
-          <Ionicons
-            name="log-out-outline"
-            size={20}
-            color={theme.colors.error}
-          />
-          <Text style={[styles.logoutLabel, { color: theme.colors.error }]}>
-            Logout
-          </Text>
+          <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
+          <Text style={[styles.logoutLabel, { color: theme.colors.error }]}>Logout</Text>
         </TouchableOpacity>
       )}
     </View>

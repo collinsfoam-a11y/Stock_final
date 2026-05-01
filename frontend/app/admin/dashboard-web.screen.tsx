@@ -481,6 +481,7 @@ export default function DashboardWeb() {
               issues={issues}
               servicesStatus={servicesStatus}
               sessionChartData={sessionChartData}
+              sessionsAnalytics={sessionsAnalytics}
               statusChartData={statusChartData}
               styles={styles}
               systemStats={systemStats}

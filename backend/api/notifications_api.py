@@ -7,19 +7,21 @@ from backend.utils.api_utils import sanitize_for_logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from motor.motor_asyncio import AsyncIOMotorDatabase
+from bson.errors import InvalidId
+from pymongo.errors import PyMongoError
 from pydantic import BaseModel
 
 from backend.auth.dependencies import get_current_user
-from backend.db.runtime import get_db
 from backend.services.notification_service import (
     NotificationService,
     NotificationType,
     NotificationPriority,
+    get_notification_service,
 )
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
+NOTIFICATION_ERRORS = (InvalidId, PyMongoError, RuntimeError, TypeError, ValueError)
 
 
 def _get_user_id(current_user: dict) -> str:
@@ -82,7 +84,7 @@ async def get_notifications(
     unread_only: bool = Query(False, description="Show only unread notifications"),
     limit: int = Query(50, ge=1, le=100, description="Maximum notifications to return"),
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_db),
+    notification_service: NotificationService = Depends(get_notification_service),
 ):
     """
     Get user's notifications.
@@ -90,7 +92,6 @@ async def get_notifications(
     Returns in-app notifications with optional filtering.
     """
     try:
-        notification_service = NotificationService(db)
         user_id = _get_user_id(current_user)
 
         notifications = await notification_service.get_user_notifications(
@@ -105,7 +106,7 @@ async def get_notifications(
             notifications=notifications, total=len(notifications), unread_count=unread_count
         )
 
-    except Exception as e:
+    except NOTIFICATION_ERRORS as e:
         logger.error("Error fetching notifications: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -113,18 +114,17 @@ async def get_notifications(
 @router.get("/unread-count")
 async def get_unread_count(
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_db),
+    notification_service: NotificationService = Depends(get_notification_service),
 ):
     """Get count of unread notifications (for badge)"""
     try:
-        notification_service = NotificationService(db)
         user_id = _get_user_id(current_user)
 
         count = await notification_service.get_unread_count(user_id=user_id)
 
         return {"unread_count": count}
 
-    except Exception as e:
+    except NOTIFICATION_ERRORS as e:
         logger.error("Error getting unread count: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -133,11 +133,10 @@ async def get_unread_count(
 async def mark_notification_as_read(
     notification_id: str,
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_db),
+    notification_service: NotificationService = Depends(get_notification_service),
 ):
     """Mark a notification as read"""
     try:
-        notification_service = NotificationService(db)
         user_id = _get_user_id(current_user)
 
         success = await notification_service.mark_as_read(
@@ -152,7 +151,7 @@ async def mark_notification_as_read(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except NOTIFICATION_ERRORS as e:
         logger.error("Error marking notification as read: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -160,18 +159,17 @@ async def mark_notification_as_read(
 @router.post("/mark-all-read")
 async def mark_all_notifications_as_read(
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_db),
+    notification_service: NotificationService = Depends(get_notification_service),
 ):
     """Mark all notifications as read"""
     try:
-        notification_service = NotificationService(db)
         user_id = _get_user_id(current_user)
 
         count = await notification_service.mark_all_as_read(user_id=user_id)
 
         return {"success": True, "message": f"Marked {count} notifications as read", "count": count}
 
-    except Exception as e:
+    except NOTIFICATION_ERRORS as e:
         logger.error("Error marking all as read: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -180,11 +178,10 @@ async def mark_all_notifications_as_read(
 async def delete_notification(
     notification_id: str,
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_db),
+    notification_service: NotificationService = Depends(get_notification_service),
 ):
     """Delete a notification"""
     try:
-        notification_service = NotificationService(db)
         user_id = _get_user_id(current_user)
 
         success = await notification_service.delete_notification(
@@ -199,7 +196,7 @@ async def delete_notification(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except NOTIFICATION_ERRORS as e:
         logger.error("Error deleting notification: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -208,11 +205,10 @@ async def delete_notification(
 async def register_notification_device(
     payload: NotificationDeviceRequest,
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_db),
+    notification_service: NotificationService = Depends(get_notification_service),
 ):
     """Register a push token for the current user."""
     try:
-        notification_service = NotificationService(db)
         user_id = _get_user_id(current_user)
         await notification_service.register_device(
             user_id=user_id,
@@ -220,7 +216,7 @@ async def register_notification_device(
             platform=payload.platform,
         )
         return {"success": True, "message": "Notification device registered"}
-    except Exception as e:
+    except NOTIFICATION_ERRORS as e:
         logger.error("Error registering notification device: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -229,18 +225,17 @@ async def register_notification_device(
 async def unregister_notification_device(
     payload: NotificationDeviceRequest,
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_db),
+    notification_service: NotificationService = Depends(get_notification_service),
 ):
     """Disable a push token for the current user."""
     try:
-        notification_service = NotificationService(db)
         user_id = _get_user_id(current_user)
         await notification_service.unregister_device(
             user_id=user_id,
             token=payload.token,
         )
         return {"success": True, "message": "Notification device unregistered"}
-    except Exception as e:
+    except NOTIFICATION_ERRORS as e:
         logger.error("Error unregistering notification device: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -249,11 +244,10 @@ async def unregister_notification_device(
 async def send_batch_notifications(
     request: BatchNotificationRequest,
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_db),
+    notification_service: NotificationService = Depends(get_notification_service),
 ):
     """Send notifications to multiple users at once."""
     try:
-        notification_service = NotificationService(db)
         results = []
         for user_id in request.user_ids:
             try:
@@ -268,7 +262,7 @@ async def send_batch_notifications(
                 results.append(
                     {"user_id": user_id, "success": True, "notification_id": notification_id}
                 )
-            except Exception as e:
+            except NOTIFICATION_ERRORS as e:
                 results.append({"user_id": user_id, "success": False, "error": str(e)})
 
         success_count = sum(1 for r in results if r["success"])
@@ -279,6 +273,6 @@ async def send_batch_notifications(
             "failed": len(results) - success_count,
             "results": results,
         }
-    except Exception as e:
+    except NOTIFICATION_ERRORS as e:
         logger.error("Error sending batch notifications: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))

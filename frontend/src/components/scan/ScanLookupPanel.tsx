@@ -1,23 +1,11 @@
 import React from "react";
-import {
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import ModernCard from "@/components/ui/ModernCard";
 import ModernInput from "@/components/ui/ModernInput";
 import { getStockQty } from "@/utils/itemBatchUtils";
-import {
-  borderRadius,
-  colors,
-  shadows,
-  spacing,
-  typography,
-} from "@/theme/modernDesign";
+import { borderRadius, colors, shadows, spacing, typography } from "@/theme/modernDesign";
 
 const SURFACE_CARD = "#ffffff";
 const SURFACE_BORDER = "#d9e5e2";
@@ -86,18 +74,32 @@ const RecentItemCard = React.memo(function RecentItemCard({
   item: ScanLookupItem;
   onPress: () => void;
 }) {
+  const hasSavedQty = typeof item.counted_qty === "number" && !Number.isNaN(item.counted_qty);
+
   return (
     <ModernCard style={styles.recentCard} onPress={onPress}>
       <View style={styles.recentRow}>
         <View style={styles.recentIcon}>
-          <Ionicons name="cube-outline" size={22} color={colors.primary[600]} />
+          <Ionicons
+            name={hasSavedQty ? "checkmark-circle" : "cube-outline"}
+            size={22}
+            color={hasSavedQty ? colors.success[600] : colors.primary[600]}
+          />
         </View>
         <View style={styles.recentInfo}>
           <Text style={styles.recentName} numberOfLines={1}>
             {item.item_name}
           </Text>
-          <Text style={styles.recentCode}>{item.item_code}</Text>
+          <Text style={styles.recentCode}>
+            {item.item_code}
+            {hasSavedQty ? `  •  Qty ${item.counted_qty}` : ""}
+          </Text>
         </View>
+        {hasSavedQty ? (
+          <View style={styles.savedBadge}>
+            <Text style={styles.savedBadgeText}>Saved</Text>
+          </View>
+        ) : null}
         <Ionicons name="chevron-forward" size={20} color={colors.gray[400]} />
       </View>
     </ModernCard>
@@ -114,11 +116,7 @@ const SearchResultItem = React.memo(function SearchResultItem({
   const stockQty = getStockQty(item);
 
   return (
-    <TouchableOpacity
-      style={styles.resultItem}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
+    <TouchableOpacity style={styles.resultItem} onPress={onPress} activeOpacity={0.7}>
       <Ionicons name="cube-outline" size={20} color={colors.primary[600]} />
       <View style={styles.resultInfo}>
         <Text style={styles.resultName}>{item.item_name}</Text>
@@ -149,16 +147,28 @@ export function ScanLookupPanel({
     <>
       <View style={styles.searchSectionCard}>
         <Text style={styles.panelKicker}>Find an item</Text>
-        <Text style={styles.panelTitle}>Scan a barcode or search manually</Text>
+        <Text style={styles.panelTitle}>Scan item now</Text>
         <Text style={styles.panelCopy}>
-          Open the camera for fast capture, or type an item code when the label
-          is worn or unavailable.
+          Use the camera first. Type the barcode or item code only when the label is worn or
+          unavailable.
         </Text>
+
+        <TouchableOpacity
+          style={[styles.primaryScanButton, loading && styles.searchButtonDisabled]}
+          onPress={onOpenScanner}
+          disabled={loading}
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel="Open barcode scanner"
+        >
+          <Ionicons name="scan" size={24} color={colors.white} />
+          <Text style={styles.primaryScanButtonText}>Scan Item</Text>
+        </TouchableOpacity>
 
         <View style={styles.searchRow}>
           <View style={styles.searchInputWrapper}>
             <ModernInput
-              placeholder="Enter barcode or item code..."
+              placeholder="Barcode or item code"
               value={searchQuery}
               onChangeText={onChangeSearchQuery}
               icon="search"
@@ -167,6 +177,7 @@ export function ScanLookupPanel({
               onSubmitEditing={onSubmitSearch}
               returnKeyType="search"
               keyboardType="default"
+              autoFocus={Platform.OS === "web"}
               containerStyle={{ marginBottom: 0 }}
             />
           </View>
@@ -189,13 +200,8 @@ export function ScanLookupPanel({
           <View style={styles.searchResultsContainer}>
             {searchResults.map((item, index) => (
               <React.Fragment key={buildItemKey(item, index)}>
-                <SearchResultItem
-                  item={item}
-                  onPress={() => onPressItem(item)}
-                />
-                {index < searchResults.length - 1 && (
-                  <View style={styles.searchResultSeparator} />
-                )}
+                <SearchResultItem item={item} onPress={() => onPressItem(item)} />
+                {index < searchResults.length - 1 && <View style={styles.searchResultSeparator} />}
               </React.Fragment>
             ))}
           </View>
@@ -204,10 +210,9 @@ export function ScanLookupPanel({
 
       {searchResults.length === 0 && (
         <View style={styles.recentSection}>
-          <Text style={styles.sectionTitle}>Recent items</Text>
+          <Text style={styles.sectionTitle}>Last 3 saved scans</Text>
           <Text style={styles.sectionCopy}>
-            Reopen the last products touched in this session without scanning
-            them again.
+            Reopen the latest counted items without scanning them again.
           </Text>
 
           {initialLoading ? (
@@ -215,13 +220,9 @@ export function ScanLookupPanel({
               {[1, 2, 3].map((value) => (
                 <ModernCard key={value} style={styles.recentCard}>
                   <View style={styles.recentRow}>
-                    <SkeletonLoader
-                      style={{ width: 44, height: 44, borderRadius: 12 }}
-                    />
+                    <SkeletonLoader style={{ width: 44, height: 44, borderRadius: 12 }} />
                     <View style={[styles.recentInfo, { marginLeft: spacing.md }]}>
-                      <SkeletonLoader
-                        style={{ width: "80%", height: 16, borderRadius: 4 }}
-                      />
+                      <SkeletonLoader style={{ width: "80%", height: 16, borderRadius: 4 }} />
                       <SkeletonLoader
                         style={{
                           width: "50%",
@@ -238,12 +239,12 @@ export function ScanLookupPanel({
           ) : recentItems.length === 0 ? (
             <EmptyState
               icon="time-outline"
-              title="No Recent Scans"
-              subtitle="Items you scan will appear here for quick access"
+              title="No Saved Scans Yet"
+              subtitle="Your last counted items will appear here for quick access"
             />
           ) : (
             <View style={styles.recentListContainer}>
-              {recentItems.slice(0, 5).map((item, index) => (
+              {recentItems.slice(0, 3).map((item, index) => (
                 <RecentItemCard
                   key={buildItemKey(item, index)}
                   item={item}
@@ -293,6 +294,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
   },
+  primaryScanButton: {
+    minHeight: 56,
+    borderRadius: 14,
+    backgroundColor: ACCENT,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    ...shadows.md,
+  },
+  primaryScanButtonText: {
+    color: colors.white,
+    fontSize: typography.fontSize.base,
+    fontWeight: "800",
+  },
   searchInputWrapper: {
     flex: 1,
     backgroundColor: SURFACE_CARD,
@@ -309,7 +326,7 @@ const styles = StyleSheet.create({
   },
   searchButtonDisabled: {
     backgroundColor: colors.gray[300],
-    shadowOpacity: 0,
+    boxShadow: "none",
   },
   searchResultsContainer: {
     marginTop: spacing.md,
@@ -394,6 +411,22 @@ const styles = StyleSheet.create({
   },
   recentInfo: {
     flex: 1,
+  },
+  savedBadge: {
+    marginRight: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: borderRadius.full,
+    backgroundColor: "#ecfdf5",
+    borderWidth: 1,
+    borderColor: "#bbf7d0",
+  },
+  savedBadgeText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: "700",
+    color: colors.success[600],
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
   },
   recentName: {
     fontSize: typography.fontSize.base,

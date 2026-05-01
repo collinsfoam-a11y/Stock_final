@@ -78,7 +78,6 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
 }) => {
   const scale = useSharedValue(1);
   const pulseScale = useSharedValue(1);
-  const shadowOpacity = useSharedValue(0.3);
   const config = sizeConfig[size === "extended" && label ? "extended" : size];
 
   // Pulse animation
@@ -92,16 +91,8 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
         -1,
         true,
       );
-      shadowOpacity.value = withRepeat(
-        withSequence(
-          withTiming(0.5, { duration: 1000 }),
-          withTiming(0.3, { duration: 1000 }),
-        ),
-        -1,
-        true,
-      );
     }
-  }, [pulse, disabled, pulseScale, shadowOpacity]);
+  }, [pulse, disabled, pulseScale]);
 
   const handlePressIn = () => {
     scale.value = withSpring(0.92, { damping: 15, stiffness: 300 });

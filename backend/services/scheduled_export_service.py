@@ -16,6 +16,8 @@ import pandas as pd
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from backend.db.runtime import get_db
+
 UTC = timezone.utc
 
 logger = logging.getLogger(__name__)
@@ -106,6 +108,29 @@ class ScheduledExportService:
 
         return schedules
 
+    async def get_export_schedule(self, schedule_id: str) -> Optional[dict[str, Any]]:
+        schedule = await self.db.export_schedules.find_one({"_id": ObjectId(schedule_id)})
+        if schedule:
+            schedule["id"] = str(schedule.pop("_id"))
+        return schedule
+
+    async def get_export_schedule_for_execution(
+        self, schedule_id: str
+    ) -> Optional[dict[str, Any]]:
+        return await self.db.export_schedules.find_one({"_id": ObjectId(schedule_id)})
+
+    async def list_export_results(
+        self, *, schedule_id: Optional[str], limit: int
+    ) -> list[dict[str, Any]]:
+        query = {}
+        if schedule_id:
+            query["schedule_id"] = ObjectId(schedule_id)
+        cursor = self.db.export_results.find(query).sort("created_at", -1).limit(limit)
+        return await cursor.to_list(length=limit)
+
+    async def get_export_result(self, result_id: str) -> Optional[dict[str, Any]]:
+        return await self.db.export_results.find_one({"_id": ObjectId(result_id)})
+
     async def execute_export(self, schedule: dict[str, Any]) -> dict[str, Any]:
         """Execute a single export based on schedule"""
         try:
@@ -182,7 +207,7 @@ class ScheduledExportService:
                 "size_bytes": export_doc["size_bytes"],
             }
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Export failed for {schedule['name']}: {str(e)}")
 
             # Update error count
@@ -399,7 +424,7 @@ class ScheduledExportService:
                 # Sleep for 1 minute before checking again
                 await asyncio.sleep(60)
 
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.error(f"Error in export scheduler: {str(e)}")
                 await asyncio.sleep(60)
 
@@ -437,3 +462,7 @@ class ScheduledExportService:
             df = pd.DataFrame(data)
             df.to_excel(writer, index=False)
         return output.getvalue()
+
+
+def create_scheduled_export_service() -> ScheduledExportService:
+    return ScheduledExportService(get_db())

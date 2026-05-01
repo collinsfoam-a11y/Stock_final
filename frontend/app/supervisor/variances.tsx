@@ -19,6 +19,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { createShadow } from "../../src/theme/shadowUtils";
 
 import {
   ItemVerificationAPI,
@@ -227,12 +228,6 @@ export default function VariancesScreen() {
 
     return (
       <AnimatedPressable
-        onLongPress={() => {
-          if (item.count_line_id) {
-            toggleSelection(item.count_line_id);
-            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          }
-        }}
         onPress={() => {
           if (isSelectionMode && item.count_line_id) {
             toggleSelection(item.count_line_id);
@@ -261,7 +256,6 @@ export default function VariancesScreen() {
         >
           <View style={styles.varianceHeader}>
             <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-              {/* Selection Circle */}
               {isSelectionMode && (
                 <View
                   style={{
@@ -286,16 +280,28 @@ export default function VariancesScreen() {
                 <Text style={styles.itemCode}>{item.item_code}</Text>
               </View>
             </View>
-            <View
-              style={[
-                styles.varianceBadge,
-                { backgroundColor: `${statusColor}20` }, // Low opacity background
-              ]}
-            >
-              <Text style={[styles.varianceBadgeText, { color: statusColor }]}>
-                {varianceSign}
-                {(item.variance ?? 0).toFixed(2)}
-              </Text>
+            <View style={styles.headerActions}>
+              <View style={[styles.varianceBadge, { backgroundColor: `${statusColor}20` }]}>
+                <Text style={[styles.varianceBadgeText, { color: statusColor }]}>
+                  {varianceSign}
+                  {(item.variance ?? 0).toFixed(2)}
+                </Text>
+              </View>
+              {item.count_line_id ? (
+                <AnimatedPressable
+                  onPress={(event: any) => {
+                    event?.stopPropagation?.();
+                    toggleSelection(item.count_line_id!);
+                  }}
+                  style={[styles.selectButton, isSelected && styles.selectButtonSelected]}
+                >
+                  <Text
+                    style={[styles.selectButtonText, isSelected && styles.selectButtonTextSelected]}
+                  >
+                    {isSelected ? "Selected" : "Select"}
+                  </Text>
+                </AnimatedPressable>
+              ) : null}
             </View>
           </View>
 
@@ -307,7 +313,7 @@ export default function VariancesScreen() {
               </View>
               <View style={styles.divider} />
               <View style={styles.qtyItem}>
-                <Text style={styles.qtyLabel}>Verified Qty</Text>
+                <Text style={styles.qtyLabel}>Counted Qty</Text>
                 <Text style={[styles.qtyValue, { color: theme.colors.text.primary }]}>
                   {(item.verified_qty ?? 0).toFixed(2)}
                 </Text>
@@ -364,12 +370,12 @@ export default function VariancesScreen() {
             )}
             <View>
               <Text style={styles.pageTitle}>
-                {isSelectionMode ? `${selectedIds.size} Selected` : "Variances"}
+                {isSelectionMode ? `${selectedIds.size} Selected` : "Differences"}
               </Text>
               <Text style={styles.pageSubtitle}>
                 {isSelectionMode
                   ? "Select items to approve/reject"
-                  : `${pagination.total} discrepancies found`}
+                  : `${pagination.total} differences found`}
               </Text>
             </View>
           </View>
@@ -437,8 +443,8 @@ export default function VariancesScreen() {
           >
             <Text style={styles.offlineNoticeTitle}>Offline mode enabled</Text>
             <Text style={styles.offlineNoticeBody}>
-              Variance review, bulk approve/reject, and exports require a live connection because
-              discrepancy data is not cached locally.
+              Difference review, bulk approve/reject, and exports require a live connection because
+              this data is not cached locally.
             </Text>
           </OperationalCard>
         )}
@@ -456,7 +462,12 @@ export default function VariancesScreen() {
           </OperationalCard>
         )}
 
-        {variances.length === 0 && !loading ? (
+        {loading && variances.length === 0 ? (
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={theme.colors.primary[500]} />
+            <Text style={styles.loadingText}>Loading variances...</Text>
+          </View>
+        ) : variances.length === 0 ? (
           <View style={styles.centered}>
             <Ionicons
               name={offlineMode ? "cloud-offline-outline" : "checkmark-done-circle-outline"}
@@ -464,12 +475,12 @@ export default function VariancesScreen() {
               color={offlineMode ? theme.colors.text.tertiary : theme.colors.success.main}
             />
             <Text style={styles.emptyText}>
-              {offlineMode ? "Variance list unavailable offline" : "No variances found"}
+              {offlineMode ? "Variance list unavailable offline" : "No differences found"}
             </Text>
             <Text style={styles.emptySubtext}>
               {offlineMode
-                ? "Reconnect to review discrepancies and approve or reject them."
-                : "All items match system quantities"}
+                ? "Reconnect to review differences and approve or reject them."
+                : "Everything is up to date"}
             </Text>
           </View>
         ) : (
@@ -608,6 +619,10 @@ const styles = StyleSheet.create({
   varianceHeaderLeft: {
     flex: 1,
   },
+  headerActions: {
+    alignItems: "flex-end",
+    gap: theme.spacing.xs,
+  },
   itemName: {
     fontSize: 16,
     fontWeight: "600",
@@ -629,6 +644,29 @@ const styles = StyleSheet.create({
   varianceBadgeText: {
     fontSize: 14,
     fontWeight: "bold",
+  },
+  selectButton: {
+    minHeight: 32,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 6,
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.primary[300],
+    backgroundColor: "rgba(255,255,255,0.04)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  selectButtonSelected: {
+    backgroundColor: theme.colors.primary[500],
+    borderColor: theme.colors.primary[500],
+  },
+  selectButtonText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: theme.colors.primary[300],
+  },
+  selectButtonTextSelected: {
+    color: "#fff",
   },
   varianceDetails: {
     //
@@ -723,11 +761,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
+    ...createShadow({ color: "#000", offsetX: 0, offsetY: 4, opacity: 0.3, radius: 4.65, elevation: 8 }),
   },
   bulkButtonText: {
     color: "white",

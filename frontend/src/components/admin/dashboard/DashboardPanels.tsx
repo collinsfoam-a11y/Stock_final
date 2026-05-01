@@ -1,10 +1,5 @@
 import React from "react";
-import {
-  ActivityIndicator,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
@@ -25,12 +20,7 @@ interface DashboardTabBarProps {
   tabs: DashboardTab[];
 }
 
-export function DashboardTabBar({
-  activeTab,
-  onChangeTab,
-  styles,
-  tabs,
-}: DashboardTabBarProps) {
+export function DashboardTabBar({ activeTab, onChangeTab, styles, tabs }: DashboardTabBarProps) {
   return (
     <View style={styles.tabsContainer}>
       {tabs.map((tab) => (
@@ -62,6 +52,7 @@ interface DashboardOverviewPanelProps {
   issues: any[];
   servicesStatus: any;
   sessionChartData: { x: string; y: number }[];
+  sessionsAnalytics: any;
   statusChartData: { color: string; label: string; value: number }[];
   styles: any;
   systemStats: any;
@@ -73,142 +64,71 @@ export function DashboardOverviewPanel({
   issues,
   servicesStatus,
   sessionChartData,
+  sessionsAnalytics,
   statusChartData,
   styles,
   systemStats,
 }: DashboardOverviewPanelProps) {
+  const analyticsOverall = sessionsAnalytics?.overall ?? {};
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const totalItems = Number(
+    analyticsOverall.total_items ?? systemStats?.total_items ?? systemStats?.items_total ?? 0
+  );
+  const totalVariance = Number(analyticsOverall.total_variance ?? systemStats?.total_variance ?? 0);
+  const variancePercent = Number(
+    totalItems > 0
+      ? (Math.abs(totalVariance) / totalItems) * 100
+      : (systemStats?.variance_percentage ??
+          systemStats?.variance_rate ??
+          systemStats?.variance_percent ??
+          0)
+  );
+  const activeUsers = Number(systemStats?.active_users ?? 0);
+  const sessionsToday = Number(
+    sessionsAnalytics?.sessions_by_date?.[todayKey] ??
+      systemStats?.sessions_today ??
+      systemStats?.active_sessions ??
+      0
+  );
+  const quickLinks = [
+    adminTools.find(
+      (tool) => tool.key === "realtime-dashboard" || tool.title === "Live Operations"
+    ),
+    adminTools.find((tool) => tool.key === "variances" || /variance|difference/i.test(tool.title)),
+    adminTools.find((tool) => tool.key === "users" || /user/i.test(tool.title)),
+  ].filter(Boolean) as DashboardOverviewPanelProps["adminTools"];
+  const runningServices = servicesStatus
+    ? Object.values(servicesStatus).filter((service: any) => service.running).length
+    : 0;
+
   return (
     <Animated.View
       entering={FadeInDown.delay(200).springify()}
       style={styles.tabContent}
       testID="overview-panel"
     >
-      <View style={styles.quickStatsRow}>
-        <GlassCard variant="medium" style={styles.quickStatCard}>
-          <View style={styles.quickStatIcon}>
-            <Ionicons
-              name="people"
-              size={24}
-              color={auroraTheme.colors.primary[400]}
-            />
-          </View>
-          <Text style={styles.quickStatValue}>
-            {systemStats?.active_sessions || 0}
-          </Text>
-          <Text style={styles.quickStatLabel}>Active Sessions</Text>
-        </GlassCard>
-
-        <GlassCard variant="medium" style={styles.quickStatCard}>
-          <View
-            style={[
-              styles.quickStatIcon,
-              { backgroundColor: auroraTheme.colors.success[500] + "20" },
-            ]}
-          >
-            <Ionicons
-              name="shield-checkmark"
-              size={24}
-              color={auroraTheme.colors.success[500]}
-            />
-          </View>
-          <Text
-            style={[
-              styles.quickStatValue,
-              { color: auroraTheme.colors.success[500] },
-            ]}
-          >
-            {healthScore || 0}%
-          </Text>
-          <Text style={styles.quickStatLabel}>System Health</Text>
-        </GlassCard>
-
-        <GlassCard variant="medium" style={styles.quickStatCard}>
-          <View
-            style={[
-              styles.quickStatIcon,
-              { backgroundColor: auroraTheme.colors.secondary[500] + "20" },
-            ]}
-          >
-            <Ionicons
-              name="server"
-              size={24}
-              color={auroraTheme.colors.secondary[500]}
-            />
-          </View>
-          <Text style={styles.quickStatValue}>
-            {servicesStatus
-              ? Object.values(servicesStatus).filter((service: any) => service.running)
-                  .length
-              : 0}
-            /4
-          </Text>
-          <Text style={styles.quickStatLabel}>Services Running</Text>
-        </GlassCard>
-
-        <GlassCard variant="medium" style={styles.quickStatCard}>
-          <View
-            style={[
-              styles.quickStatIcon,
-              { backgroundColor: auroraTheme.colors.warning[500] + "20" },
-            ]}
-          >
-            <Ionicons
-              name="warning"
-              size={24}
-              color={auroraTheme.colors.warning[500]}
-            />
-          </View>
-          <Text
-            style={[
-              styles.quickStatValue,
-              {
-                color:
-                  issues.length > 0
-                    ? auroraTheme.colors.warning[500]
-                    : auroraTheme.colors.text.primary,
-              },
-            ]}
-          >
-            {issues.length}
-          </Text>
-          <Text style={styles.quickStatLabel}>Critical Issues</Text>
-        </GlassCard>
-      </View>
-
-      <View style={styles.toolsGrid}>
-        {adminTools.map((tool, index) => (
-          <Animated.View
-            key={tool.key}
-            entering={FadeInDown.delay(120 + index * 40).springify()}
-            style={styles.toolCardWrapper}
-          >
-            <AnimatedPressable
-              style={styles.toolCardPressable}
-              onPress={tool.onPress}
-              testID={`admin-tool-${tool.key}`}
-            >
-              <GlassCard variant="medium" style={styles.toolCard}>
-                <View style={styles.toolIcon}>
-                  <Ionicons
-                    name={tool.icon}
-                    size={22}
-                    color={auroraTheme.colors.primary[400]}
-                  />
-                </View>
-                <Text style={styles.toolTitle}>{tool.title}</Text>
-                <Text style={styles.toolSubtitle}>{tool.subtitle}</Text>
-              </GlassCard>
-            </AnimatedPressable>
-          </Animated.View>
-        ))}
+      <View style={styles.overviewKpiStrip}>
+        <AdminKpiCard icon="cube" label="Total Items" styles={styles} value={totalItems} />
+        <AdminKpiCard
+          icon="analytics"
+          label="Variance %"
+          styles={styles}
+          tone={variancePercent === 0 ? "success" : "warning"}
+          value={`${variancePercent.toFixed(1)}%`}
+        />
+        <AdminKpiCard icon="people" label="Active Users" styles={styles} value={activeUsers} />
+        <AdminKpiCard icon="today" label="Sessions Today" styles={styles} value={sessionsToday} />
       </View>
 
       <View style={styles.chartsRow}>
         <GlassCard variant="medium" style={styles.chartCard} intensity={80}>
-          <Text style={styles.chartTitle}>Session Activity</Text>
+          <View style={styles.chartHeaderRow}>
+            <Text style={styles.chartTitle}>Session Trend</Text>
+            <Text style={styles.chartMeta}>{runningServices}/4 services running</Text>
+          </View>
           <SimpleLineChart
             data={sessionChartData}
-            color={auroraTheme.colors.primary[400]}
+            color={auroraTheme.colors.primary[500]}
             textColor={auroraTheme.colors.text.secondary}
             gridColor={auroraTheme.colors.border.light}
             axisColor={auroraTheme.colors.border.medium}
@@ -217,11 +137,106 @@ export function DashboardOverviewPanel({
         </GlassCard>
 
         <GlassCard variant="medium" style={styles.chartCard} intensity={80}>
-          <Text style={styles.chartTitle}>System Distribution</Text>
+          <View style={styles.chartHeaderRow}>
+            <Text style={styles.chartTitle}>Operation Split</Text>
+            <Text style={styles.chartMeta}>{healthScore || 0}% health</Text>
+          </View>
           <SimplePieChart data={statusChartData} showLegend={true} />
         </GlassCard>
       </View>
+
+      <GlassCard
+        variant="medium"
+        style={[styles.alertsPanel, issues.length > 0 && styles.alertsPanelWarning]}
+      >
+        <View style={styles.alertPanelHeader}>
+          <Ionicons
+            name={issues.length > 0 ? "warning" : "checkmark-circle"}
+            size={20}
+            color={
+              issues.length > 0 ? auroraTheme.colors.warning[600] : auroraTheme.colors.success[600]
+            }
+          />
+          <Text style={styles.alertPanelTitle}>
+            {issues.length > 0 ? "Alerts" : "No high-priority alerts"}
+          </Text>
+        </View>
+        {issues.length > 0 ? (
+          issues.slice(0, 3).map((issue, index) => (
+            <View key={issue.id || issue.title || index} style={styles.alertListRow}>
+              <Text style={styles.alertListTitle}>
+                {issue.title || issue.error_type || "System issue"}
+              </Text>
+              <Text style={styles.alertListBody} numberOfLines={2}>
+                {issue.description || issue.error_message || "Review diagnosis for details."}
+              </Text>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.alertListBody}>
+            System health and operations are within normal limits.
+          </Text>
+        )}
+      </GlassCard>
+
+      <View style={styles.quickLinksSection}>
+        <Text style={styles.sectionTitleCompact}>Quick Links</Text>
+        <View style={styles.toolsGrid}>
+          {quickLinks.map((tool, index) => (
+            <Animated.View
+              key={tool.key}
+              entering={FadeInDown.delay(120 + index * 40).springify()}
+              style={styles.toolCardWrapper}
+            >
+              <AnimatedPressable
+                style={styles.toolCardPressable}
+                onPress={tool.onPress}
+                testID={`admin-tool-${tool.key}`}
+              >
+                <GlassCard variant="medium" style={styles.toolCard}>
+                  <View style={styles.toolIcon}>
+                    <Ionicons name={tool.icon} size={22} color={auroraTheme.colors.primary[400]} />
+                  </View>
+                  <Text style={styles.toolTitle}>{tool.title}</Text>
+                  <Text style={styles.toolSubtitle}>{tool.subtitle}</Text>
+                </GlassCard>
+              </AnimatedPressable>
+            </Animated.View>
+          ))}
+        </View>
+      </View>
     </Animated.View>
+  );
+}
+
+function AdminKpiCard({
+  icon,
+  label,
+  styles,
+  tone = "primary",
+  value,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  styles: any;
+  tone?: "primary" | "success" | "warning";
+  value: number | string;
+}) {
+  const toneColor =
+    tone === "success"
+      ? auroraTheme.colors.success[600]
+      : tone === "warning"
+        ? auroraTheme.colors.warning[600]
+        : auroraTheme.colors.primary[600];
+
+  return (
+    <GlassCard variant="medium" style={styles.adminKpiCard}>
+      <View style={[styles.adminKpiIcon, { backgroundColor: `${toneColor}1A` }]}>
+        <Ionicons name={icon} size={20} color={toneColor} />
+      </View>
+      <Text style={[styles.adminKpiValue, { color: toneColor }]}>{value}</Text>
+      <Text style={styles.adminKpiLabel}>{label}</Text>
+    </GlassCard>
   );
 }
 
@@ -251,11 +266,7 @@ export function DashboardMonitoringPanel({
         <View style={styles.servicesList}>
           {servicesStatus &&
             Object.entries(servicesStatus).map(([key, service]: [string, any]) => (
-              <View
-                key={key}
-                style={styles.serviceRow}
-                testID={`service-row-${key}`}
-              >
+              <View key={key} style={styles.serviceRow} testID={`service-row-${key}`}>
                 <View style={styles.serviceInfo}>
                   <View
                     style={[
@@ -270,12 +281,8 @@ export function DashboardMonitoringPanel({
                   <Text style={styles.serviceName}>{key.toUpperCase()}</Text>
                 </View>
                 <View style={styles.serviceDetails}>
-                  <Text style={styles.serviceDetailText}>
-                    Port: {service.port || "N/A"}
-                  </Text>
-                  <Text style={styles.serviceDetailText}>
-                    PID: {service.pid || "-"}
-                  </Text>
+                  <Text style={styles.serviceDetailText}>Port: {service.port || "N/A"}</Text>
+                  <Text style={styles.serviceDetailText}>PID: {service.pid || "-"}</Text>
                 </View>
                 <View style={styles.serviceActions}>
                   <Text
@@ -298,9 +305,7 @@ export function DashboardMonitoringPanel({
                           ? styles.serviceActionButtonDanger
                           : styles.serviceActionButtonSuccess,
                       ]}
-                      onPress={() =>
-                        onServiceToggle(key as "backend" | "frontend", service)
-                      }
+                      onPress={() => onServiceToggle(key as "backend" | "frontend", service)}
                       disabled={serviceActionLoading === key}
                       testID={`service-toggle-${key}`}
                       accessibilityLabel={`${service.running ? "Stop" : "Start"} ${key} service`}
@@ -310,11 +315,7 @@ export function DashboardMonitoringPanel({
                       ) : (
                         <>
                           <Ionicons
-                            name={
-                              service.running
-                                ? "pause-circle-outline"
-                                : "play-circle-outline"
-                            }
+                            name={service.running ? "pause-circle-outline" : "play-circle-outline"}
                             size={14}
                             color="#fff"
                           />
@@ -455,22 +456,15 @@ export function DashboardAnalyticsPanel({
   styles,
 }: DashboardAnalyticsPanelProps) {
   return (
-    <Animated.View
-      entering={FadeInDown.delay(200).springify()}
-      style={styles.tabContent}
-    >
+    <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.tabContent}>
       <GlassCard variant="medium" style={styles.analyticsCard}>
         <View style={styles.analyticsHeader}>
           <Text style={styles.sectionTitle}>Performance Analytics</Text>
           <DateRangePicker
             startDate={analyticsDateRange.start}
             endDate={analyticsDateRange.end}
-            onStartDateChange={(start) =>
-              onChangeDateRange({ ...analyticsDateRange, start })
-            }
-            onEndDateChange={(end) =>
-              onChangeDateRange({ ...analyticsDateRange, end })
-            }
+            onStartDateChange={(start) => onChangeDateRange({ ...analyticsDateRange, start })}
+            onEndDateChange={(end) => onChangeDateRange({ ...analyticsDateRange, end })}
           />
         </View>
 
@@ -508,42 +502,26 @@ export function DashboardDiagnosisPanel({
         <View style={styles.diagnosisHeader}>
           <View>
             <Text style={styles.sectionTitle}>System Self-Diagnosis</Text>
-            <Text style={styles.sectionSubtitle}>
-              Automated health checks and issue resolution
-            </Text>
+            <Text style={styles.sectionSubtitle}>Automated health checks and issue resolution</Text>
           </View>
           <View style={styles.healthBadge}>
-            <Text style={styles.healthScoreText}>
-              {diagnosisHealth?.health_score || 0}%
-            </Text>
+            <Text style={styles.healthScoreText}>{diagnosisHealth?.health_score || 0}%</Text>
           </View>
         </View>
 
         <View style={styles.diagnosisStats}>
           <View style={styles.diagStatItem}>
-            <Text style={styles.diagStatValue}>
-              {diagnosisHealth?.total_issues || 0}
-            </Text>
+            <Text style={styles.diagStatValue}>{diagnosisHealth?.total_issues || 0}</Text>
             <Text style={styles.diagStatLabel}>Total Issues</Text>
           </View>
           <View style={styles.diagStatItem}>
-            <Text
-              style={[
-                styles.diagStatValue,
-                { color: auroraTheme.colors.error[500] },
-              ]}
-            >
+            <Text style={[styles.diagStatValue, { color: auroraTheme.colors.error[500] }]}>
               {diagnosisHealth?.critical_issues || 0}
             </Text>
             <Text style={styles.diagStatLabel}>Critical</Text>
           </View>
           <View style={styles.diagStatItem}>
-            <Text
-              style={[
-                styles.diagStatValue,
-                { color: auroraTheme.colors.success[500] },
-              ]}
-            >
+            <Text style={[styles.diagStatValue, { color: auroraTheme.colors.success[500] }]}>
               {diagnosisHealth?.auto_fixable_issues || 0}
             </Text>
             <Text style={styles.diagStatLabel}>Auto-Fixable</Text>
@@ -566,9 +544,7 @@ export function DashboardDiagnosisPanel({
                   ]}
                 >
                   <Ionicons
-                    name={
-                      issue.severity === "critical" ? "alert-circle" : "warning"
-                    }
+                    name={issue.severity === "critical" ? "alert-circle" : "warning"}
                     size={20}
                     color={
                       issue.severity === "critical"
@@ -578,17 +554,10 @@ export function DashboardDiagnosisPanel({
                   />
                 </View>
                 <View style={styles.issueInfo}>
-                  <Text style={styles.issueTitle}>
-                    {issue.title || issue.type}
-                  </Text>
-                  <Text style={styles.issueDesc}>
-                    {issue.description || issue.message}
-                  </Text>
+                  <Text style={styles.issueTitle}>{issue.title || issue.type}</Text>
+                  <Text style={styles.issueDesc}>{issue.description || issue.message}</Text>
                   {issue.auto_fix_available && (
-                    <TouchableOpacity
-                      style={styles.autoFixButton}
-                      onPress={() => onAutoFix(issue)}
-                    >
+                    <TouchableOpacity style={styles.autoFixButton} onPress={() => onAutoFix(issue)}>
                       <Ionicons
                         name="build-outline"
                         size={14}
@@ -610,11 +579,7 @@ export function DashboardDiagnosisPanel({
             ))
           ) : (
             <View style={styles.noIssues}>
-              <Ionicons
-                name="checkmark-circle"
-                size={48}
-                color={auroraTheme.colors.success[500]}
-              />
+              <Ionicons name="checkmark-circle" size={48} color={auroraTheme.colors.success[500]} />
               <Text style={styles.noIssuesText}>No system issues detected</Text>
             </View>
           )}
@@ -623,21 +588,16 @@ export function DashboardDiagnosisPanel({
         {diagnosisHealth?.recommendations?.length > 0 && (
           <View style={styles.recommendationsCard}>
             <Text style={styles.recommendationsTitle}>Recommended Actions</Text>
-            {diagnosisHealth.recommendations.map(
-              (recommendation: string, index: number) => (
-                <View
-                  key={`${recommendation}-${index}`}
-                  style={styles.recommendationRow}
-                >
-                  <Ionicons
-                    name="arrow-forward-circle"
-                    size={16}
-                    color={auroraTheme.colors.primary[400]}
-                  />
-                  <Text style={styles.recommendationText}>{recommendation}</Text>
-                </View>
-              ),
-            )}
+            {diagnosisHealth.recommendations.map((recommendation: string, index: number) => (
+              <View key={`${recommendation}-${index}`} style={styles.recommendationRow}>
+                <Ionicons
+                  name="arrow-forward-circle"
+                  size={16}
+                  color={auroraTheme.colors.primary[400]}
+                />
+                <Text style={styles.recommendationText}>{recommendation}</Text>
+              </View>
+            ))}
           </View>
         )}
       </GlassCard>

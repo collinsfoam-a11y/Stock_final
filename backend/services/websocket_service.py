@@ -49,7 +49,7 @@ class ConnectionManager:
             for connection in self.active_connections[user_id]:
                 try:
                     await connection.send_json(message)
-                except Exception as e:
+                except (RuntimeError, TypeError, ValueError, OSError) as e:
                     logger.error(f"Error sending personal message to {user_id}: {e}")
 
     async def broadcast(self, message: dict):
@@ -58,7 +58,7 @@ class ConnectionManager:
             for connection in connections:
                 try:
                     await connection.send_json(message)
-                except Exception as e:
+                except (RuntimeError, TypeError, ValueError, OSError) as e:
                     logger.error(f"Error broadcasting to {user_id}: {e}")
 
     async def broadcast_to_role(self, message: dict, role: str):

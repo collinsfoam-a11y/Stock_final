@@ -43,10 +43,36 @@ async def test_pi_status_online():
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_pi_status_without_api_key_uses_unauthenticated_mode(monkeypatch):
+    """Pi sidecar remains usable when no optional API key is configured."""
+    from backend.api import pi_api
+
+    app.dependency_overrides[get_current_user] = get_mock_admin
+    monkeypatch.setattr(settings, "PI_SERVER_API_KEY", None)
+    monkeypatch.setattr(pi_api, "_PI_AUTH_WARNING_EMITTED", False)
+
+    def handler(request):
+        assert "authorization" not in request.headers
+        return httpx.Response(status_code=200, json={"models": []})
+
+    respx.get(f"{settings.PI_SERVER_URL}/models").mock(side_effect=handler)
+
+    response = client.get("/api/pi/status")
+
+    assert response.status_code == 200
+    assert response.json()["active"] is True
+    assert pi_api._PI_AUTH_WARNING_EMITTED is True
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_pi_status_offline():
     """Test the status endpoint when pi-server is unreachable."""
     app.dependency_overrides[get_current_user] = get_mock_admin
-    respx.get(f"{settings.PI_SERVER_URL}/models").mock(side_effect=Exception("Connection error"))
+    respx.get(f"{settings.PI_SERVER_URL}/models").mock(
+        side_effect=httpx.ConnectError("Connection error")
+    )
 
     response = client.get("/api/pi/status")
     assert response.status_code == 200

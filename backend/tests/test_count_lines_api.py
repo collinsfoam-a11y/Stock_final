@@ -25,6 +25,7 @@ from backend.api.count_lines_routes import (
     verify_stock,
 )
 from backend.api.schemas import CountLineCreate
+from backend.services.count_query_service import CountQueryService
 
 
 class AsyncIter:
@@ -39,6 +40,13 @@ class AsyncIter:
                 yield item
 
         return gen()
+
+
+def _patch_count_query_service(mock_db):
+    return patch(
+        "backend.api.count_lines_routes.get_count_query_service",
+        side_effect=lambda database=None: CountQueryService(database or mock_db),
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -62,7 +70,7 @@ class TestCheckSerialUniqueness:
 
     @pytest.mark.asyncio
     async def test_returns_false_when_serial_not_found(self, mock_db):
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with _patch_count_query_service(mock_db):
             result = await check_serial_uniqueness(
                 session_id="sess_1",
                 serial_number="ABC123",
@@ -83,7 +91,7 @@ class TestCheckSerialUniqueness:
         }
         mock_db.count_lines.find_one = AsyncMock(side_effect=[None, record])
 
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with _patch_count_query_service(mock_db):
             result = await check_serial_uniqueness(
                 session_id="sess_1",
                 serial_number="abc123",
@@ -333,7 +341,7 @@ class TestCreateCountLine:
         mock_db.count_lines.insert_one = AsyncMock()
         mock_db.sessions.update_one = AsyncMock()
 
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with _patch_count_query_service(mock_db):
             result = await create_count_line(
                 request=AsyncMock(),
                 line_data=line_data,
@@ -367,7 +375,7 @@ class TestCreateCountLine:
         mock_db.sessions.update_one = AsyncMock()
 
         with (
-            patch("backend.api.count_lines_routes.get_db", return_value=mock_db),
+            _patch_count_query_service(mock_db),
             patch("backend.api.count_lines_routes.manager") as mock_manager,
         ):
             mock_manager.broadcast_to_roles = AsyncMock()
@@ -388,7 +396,7 @@ class TestCreateCountLine:
         """Test count line creation with non-existent session"""
         mock_db.sessions.find_one.return_value = None
 
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with _patch_count_query_service(mock_db):
             with pytest.raises(HTTPException) as exc_info:
                 await create_count_line(
                     request=AsyncMock(),
@@ -408,7 +416,7 @@ class TestCreateCountLine:
         }
         mock_db.erp_items.find_one.return_value = None
 
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with _patch_count_query_service(mock_db):
             with pytest.raises(HTTPException) as exc_info:
                 await create_count_line(
                     request=AsyncMock(),
@@ -430,7 +438,7 @@ class TestCreateCountLine:
         }
         mock_db.erp_items.find_one.return_value = erp_item
 
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with _patch_count_query_service(mock_db):
             with pytest.raises(HTTPException) as exc_info:
                 await create_count_line(
                     request=AsyncMock(),
@@ -490,7 +498,7 @@ class TestCreateCountLine:
         mock_db.count_lines.count_documents = AsyncMock(return_value=0)  # No duplicate
         mock_db.count_lines.find_one = AsyncMock(return_value=None)  # No existing count
 
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with _patch_count_query_service(mock_db):
             result = await create_count_line(
                 request=AsyncMock(),
                 line_data=line_data,
@@ -520,7 +528,7 @@ class TestCreateCountLine:
             "items": [{"item_code": "ITEM001", "stock_qty": None}],
         }
 
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with _patch_count_query_service(mock_db):
             result = await create_count_line(
                 request=AsyncMock(),
                 line_data=line_data,
@@ -589,7 +597,7 @@ class TestCreateCountLine:
 
     @pytest.mark.asyncio
     async def test_save_count_line_draft_persists(self, mock_db, line_data):
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with _patch_count_query_service(mock_db):
             result = await save_count_line_draft(
                 request=AsyncMock(),
                 line_data=line_data,
@@ -611,7 +619,7 @@ class TestCreateCountLine:
             rack_no="R1",
         )
 
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with _patch_count_query_service(mock_db):
             result = await save_count_line_draft(
                 request=AsyncMock(),
                 line_data=line_data,
@@ -635,7 +643,7 @@ class TestCreateCountLine:
             return_value={"item_code": "ITEM001", "item_name": "ERP Draft Name"}
         )
 
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with _patch_count_query_service(mock_db):
             result = await save_count_line_draft(
                 request=AsyncMock(),
                 line_data=line_data,
@@ -648,7 +656,7 @@ class TestCreateCountLine:
 
     @pytest.mark.asyncio
     async def test_save_count_line_draft_sets_index_identity_fields(self, mock_db, line_data):
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with _patch_count_query_service(mock_db):
             await save_count_line_draft(
                 request=AsyncMock(),
                 line_data=line_data,
@@ -668,7 +676,7 @@ class TestCreateCountLine:
             side_effect=DuplicateKeyError("duplicate key")
         )
 
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        with _patch_count_query_service(mock_db):
             result = await save_count_line_draft(
                 request=AsyncMock(),
                 line_data=line_data,
@@ -1139,7 +1147,7 @@ class TestCountLinesAPIEdgeCases:
             patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db),
             patch(
                 "backend.api.count_lines_routes.recompute_session_totals",
-                AsyncMock(side_effect=Exception("Database error")),
+                AsyncMock(side_effect=RuntimeError("Database error")),
             ),
         ):
             # Should still succeed despite stats update error

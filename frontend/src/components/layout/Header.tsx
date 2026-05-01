@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
+import { createShadow } from "@/theme/shadowUtils";
 
 interface HeaderProps {
   title: string;
@@ -90,10 +91,7 @@ const styles = StyleSheet.create({
     paddingTop: 48,
     minHeight: 80,
     elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    ...createShadow({ color: "#000", offsetX: 0, offsetY: 2, opacity: 0.25, radius: 3.84 }),
   },
   leftContainer: {
     width: 40,

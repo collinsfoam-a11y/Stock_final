@@ -53,7 +53,7 @@ def get_mongodb_status() -> dict[str, Any]:
             "is_running": mongo_status["is_running"],
             "url": mongo_status["url"],
         }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error checking MongoDB status: %s", sanitize_for_logging(str(e)))
         return {"status": "error", "port": 27017, "is_running": False, "error": str(e)}
 
@@ -88,7 +88,7 @@ async def _check_mongodb_health(checks: dict[str, Any]) -> None:
         checks["mongodb"] = mongo_result.get("status") == "healthy"
         if not checks["mongodb"]:
             checks["mongodb_error"] = mongo_result.get("error")
-    except Exception as exc:
+    except (RuntimeError, TypeError, ValueError, OSError) as exc:
         logger.error("MongoDB health check failed: %s", sanitize_for_logging(str(exc)))
         checks["mongodb_error"] = str(exc)
 
@@ -106,7 +106,7 @@ async def _check_sql_server_health(checks: dict[str, Any]) -> None:
         checks["sql_server"] = sql_result.get("status") == "healthy"
         if sql_result.get("status") != "healthy":
             checks["sql_server_error"] = sql_result.get("error")
-    except Exception as exc:
+    except (RuntimeError, TypeError, ValueError, OSError) as exc:
         logger.error("SQL Server health check failed: %s", sanitize_for_logging(str(exc)))
         checks["sql_server_error"] = str(exc)
 
@@ -127,8 +127,8 @@ async def _check_redis_health(checks: dict[str, Any]) -> None:
         elif hasattr(cache_service, "use_redis") and cache_service.use_redis:
             checks["redis"] = True
         else:
-            checks["redis"] = True  # In-memory fallback is always "available"
-    except Exception as exc:
+            checks["redis"] = True  # In-memory cache mode is always "available"
+    except (RuntimeError, TypeError, ValueError, OSError) as exc:
         logger.warning("Redis health check failed: %s", sanitize_for_logging(str(exc)))
         checks["redis"] = False
         checks["redis_error"] = str(exc)
@@ -145,7 +145,7 @@ def _check_system_resources_health(checks: dict[str, Any]) -> None:
             checks["disk_error"] = "Disk space critical"
         else:
             checks["disk_space"] = True
-    except Exception as exc:
+    except (RuntimeError, TypeError, ValueError, OSError) as exc:
         logger.warning("System resource check failed: %s", sanitize_for_logging(str(exc)))
         checks["system_resources_error"] = str(exc)
 
@@ -166,13 +166,13 @@ async def _build_startup_checks() -> dict[str, Any]:
     try:
         mongo_result = await database_health_service.check_mongo_health()
         checks["mongodb"] = mongo_result.get("status") == "healthy"
-    except Exception as exc:
+    except (RuntimeError, TypeError, ValueError, OSError) as exc:
         logger.error("MongoDB startup check failed: %s", sanitize_for_logging(str(exc)))
 
     try:
         sql_result = await database_health_service.check_sql_server_health()
         checks["sql_server"] = sql_result.get("status") == "healthy"
-    except Exception as exc:
+    except (RuntimeError, TypeError, ValueError, OSError) as exc:
         logger.error("SQL Server startup check failed: %s", sanitize_for_logging(str(exc)))
 
     return checks
@@ -194,7 +194,7 @@ def _gather_system_resources() -> dict[str, Any]:
 
     try:
         uptime_seconds = max(0.0, time.time() - process.create_time())
-    except Exception as exc:
+    except (RuntimeError, TypeError, ValueError, OSError) as exc:
         logger.warning("Uptime calculation failed: %s", sanitize_for_logging(str(exc)))
         uptime_seconds = 0.0
 
@@ -203,7 +203,7 @@ def _gather_system_resources() -> dict[str, Any]:
         disk_free_gb = disk_usage.free / (1024**3)
         disk_total_gb = disk_usage.total / (1024**3)
         disk_percent = disk_usage.percent
-    except Exception as exc:
+    except (RuntimeError, TypeError, ValueError, OSError) as exc:
         logger.warning("Disk usage check failed: %s", sanitize_for_logging(str(exc)))
         disk_free_gb = 0
         disk_total_gb = 0
@@ -238,7 +238,7 @@ def _augment_sql_pool_stats(connection_pool, connection_pools: dict[str, Any]) -
             "checked_out": pool_stats.get("checked_out", 0),
             "utilization_percent": pool_stats.get("utilization_percent", 0),
         }
-    except Exception as exc:
+    except (RuntimeError, TypeError, ValueError, OSError) as exc:
         connection_pools["sql_server"] = {
             "initialized": True,
             "error": str(exc),
@@ -265,7 +265,7 @@ async def get_version() -> dict[str, Any]:
         }
 
         return version_info
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error getting version: %s", sanitize_for_logging(str(e)))
         return {
             "version": "unknown",
@@ -427,9 +427,9 @@ async def detailed_health_check() -> dict[str, Any]:
                 redis_health = {
                     "status": "healthy" if cache_service.use_redis else "degraded",
                     "type": "in_memory" if not cache_service.use_redis else "redis",
-                    "fallback": not cache_service.use_redis,
+                    "using_in_memory_cache": not cache_service.use_redis,
                 }
-        except Exception as exc:
+        except (RuntimeError, TypeError, ValueError, OSError) as exc:
             redis_health = {"status": "unhealthy", "error": str(exc)}
 
     # Build WebSocket health info
@@ -442,7 +442,7 @@ async def detailed_health_check() -> dict[str, Any]:
                 "active_connections": len(ws_connections) if ws_connections else 0,
                 "rooms": len(getattr(websocket_manager, "rooms", {}) or {}),
             }
-        except Exception as exc:
+        except (RuntimeError, TypeError, ValueError, OSError) as exc:
             ws_health = {"status": "degraded", "error": str(exc)}
 
     # Build SQL Server connection status
@@ -455,7 +455,7 @@ async def detailed_health_check() -> dict[str, Any]:
                 "status": "healthy",
                 "is_connected": True,
             }
-    except Exception as exc:
+    except (RuntimeError, TypeError, ValueError, OSError) as exc:
         sql_health = {"status": "unavailable", "error": str(exc)}
 
     health_data: dict[str, Any] = {
@@ -573,7 +573,7 @@ async def check_version(
         result["changelog"] = None
 
         return result
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error checking version: %s", sanitize_for_logging(str(e)))
         # Return a safe default that doesn't force updates on error
         return {

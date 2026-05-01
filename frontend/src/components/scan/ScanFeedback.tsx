@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { SCANNER_CONFIG } from "../../config/scannerConfig";
+import { createShadow } from "@/theme/shadowUtils";
 
 interface ScanFeedbackProps {
   /** Type of feedback to display */
@@ -305,10 +306,7 @@ const styles = StyleSheet.create({
     maxWidth: SCREEN_WIDTH - 40,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        ...createShadow({ color: "#000", offsetX: 0, offsetY: 4, opacity: 0.3, radius: 8 }),
       },
       android: {
         elevation: 8,
@@ -356,10 +354,7 @@ const styles = StyleSheet.create({
     zIndex: 1001,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
+        ...createShadow({ color: "#000", offsetX: 0, offsetY: 2, opacity: 0.25, radius: 4 }),
       },
       android: {
         elevation: 6,

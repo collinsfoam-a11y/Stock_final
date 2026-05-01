@@ -22,6 +22,7 @@ import {
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { auroraTheme } from "../../src/theme/auroraTheme";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { createShadow } from "../../src/theme/shadowUtils";
 
 const isWeb = Platform.OS === "web";
 
@@ -440,11 +441,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: auroraTheme.borderRadius.md,
-    shadowColor: auroraTheme.colors.primary[500],
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    ...(Platform.OS === "web"
+      ? {
+          boxShadow: "0px 4px 8px rgba(59, 130, 246, 0.3)",
+        }
+      : {
+          ...createShadow({ color: auroraTheme.colors.primary[500], offsetX: 0, offsetY: 4, opacity: 0.3, radius: 8, elevation: 4 }),
+        }),
   },
   disabledButton: {
     opacity: 0.5,

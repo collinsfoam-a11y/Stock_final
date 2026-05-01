@@ -43,20 +43,20 @@ async def get_connection_pool_metrics(current_user: dict = Depends(get_current_u
             message="Connection pool metrics retrieved successfully",
         )
 
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         return ApiResponse.error_response(
             error_code="METRICS_ERROR",
             error_message=f"Failed to get connection pool metrics: {str(e)}",
         )
 
 
-def _safe_get_metrics(obj: Any, method_name: str, fallback_name: str) -> dict[str, Any]:
+def _safe_get_metrics(obj: Any, method_name: str, default_name: str) -> dict[str, Any]:
     """Safely call a metrics method on an object."""
     if not hasattr(obj, method_name):
         return {}
     try:
         return getattr(obj, method_name)()
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         return {"error": str(e)}
 
 
@@ -95,7 +95,7 @@ async def get_system_metrics(current_user: dict = Depends(get_current_user)):
             message="System metrics retrieved successfully",
         )
 
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         return ApiResponse.error_response(
             error_code="SYSTEM_METRICS_ERROR",
             error_message=f"Failed to get system metrics: {str(e)}",

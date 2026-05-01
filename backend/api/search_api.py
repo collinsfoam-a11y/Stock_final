@@ -14,11 +14,11 @@ import logging
 from typing import Any, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pymongo.errors import PyMongoError
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.api.response_models import ApiResponse
 from backend.auth.dependencies import get_current_user_async as get_current_user
-from backend.db.runtime import get_db
 from backend.services.search_service import SearchResult, get_search_service
 from backend.utils.api_utils import sanitize_for_logging
 
@@ -212,7 +212,7 @@ async def search_optimized(
             status_code=503,
             detail="Search service unavailable",
         )
-    except Exception as e:
+    except (PyMongoError, RuntimeError, TypeError, ValueError) as e:
         logger.error("Search failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=500,
@@ -280,7 +280,7 @@ async def get_suggestions(
             status_code=503,
             detail="Search service unavailable",
         )
-    except Exception as e:
+    except (PyMongoError, RuntimeError, TypeError, ValueError) as e:
         logger.error("Suggestions failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=500,
@@ -299,16 +299,8 @@ async def get_search_filters(
 ) -> ApiResponse[SearchFiltersResponse]:
     """Return distinct values for search filters."""
     try:
-        db = get_db()
-        categories = await db.erp_items.distinct("category")
-        warehouses = await db.erp_items.distinct("warehouse")
-
-        categories_clean = sorted(
-            {c.strip() for c in categories if isinstance(c, str) and c.strip()}
-        )
-        warehouses_clean = sorted(
-            {w.strip() for w in warehouses if isinstance(w, str) and w.strip()}
-        )
+        search_service = get_search_service()
+        categories_clean, warehouses_clean = await search_service.get_filter_values()
 
         return ApiResponse.success_response(
             data=SearchFiltersResponse(
@@ -323,7 +315,7 @@ async def get_search_filters(
             status_code=503,
             detail="Search filters unavailable",
         )
-    except Exception as e:
+    except (PyMongoError, RuntimeError, TypeError, ValueError) as e:
         logger.error("Failed to load search filters: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=500,

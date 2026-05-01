@@ -375,6 +375,41 @@ class Settings(PydanticBaseSettings):
         default=False,
         description="Read report endpoints from V3 projection collections only.",
     )
+    SHADOW_READ_ENABLED: bool = Field(
+        default=False,
+        description="Run hidden read-only projection parity comparisons.",
+    )
+    SHADOW_READ_SAMPLE_RATE: float = Field(default=0.10, ge=0.0, le=1.0)
+    SHADOW_READ_TIMEOUT_SECONDS: float = Field(default=2.0, ge=0.1, le=30.0)
+    SHADOW_READ_VARIANCE_ABS_TOLERANCE: float = Field(default=1.0, ge=0.0)
+    SHADOW_READ_VARIANCE_REL_TOLERANCE: float = Field(default=0.005, ge=0.0)
+    SHADOW_AUTO_DECISION_ENABLED: bool = Field(
+        default=True,
+        description="Evaluate shadow-read rollout decisions in the background.",
+    )
+    SHADOW_DECISION_WINDOW_SECONDS: int = Field(default=7200, ge=60)
+    SHADOW_MIN_STABLE_WINDOW_MINUTES: int = Field(default=120, ge=1)
+    SHADOW_EVAL_INTERVAL_SECONDS: int = Field(default=300, ge=30)
+    SHADOW_MIN_SAMPLES: int = Field(default=500, ge=1)
+    SHADOW_MIN_SAMPLES_PER_ENDPOINT: int = Field(default=50, ge=1)
+    SHADOW_RECENT_WINDOW_MINUTES: int = Field(default=15, ge=1)
+    SHADOW_MAX_CLOCK_SKEW_SECONDS: int = Field(default=5, ge=0)
+    SHADOW_MONITOR_INTERVAL_SECONDS: int = Field(default=600, ge=60)
+    SHADOW_MISMATCH_THRESHOLD: float = Field(default=0.001, ge=0.0, le=1.0)
+    SHADOW_TIMEOUT_THRESHOLD: float = Field(default=0.01, ge=0.0, le=1.0)
+    SHADOW_ERROR_THRESHOLD: float = Field(default=0.0, ge=0.0, le=1.0)
+    ROLLOUT_STAGE: int = Field(default=0, ge=0, le=3)
+    ROLLOUT_COOLDOWN_MINUTES: int = Field(default=30, ge=0)
+    SHADOW_ALERT_DEDUPE_SECONDS: int = Field(default=600, ge=0)
+    AUTO_ROLLBACK_ENABLED: bool = Field(default=True)
+    AUTO_ROLLBACK_MISMATCH_RATE: float = Field(default=0.005, ge=0.0, le=1.0)
+    AUTO_ROLLBACK_TIMEOUT_RATE: float = Field(default=0.01, ge=0.0, le=1.0)
+    DEPLOYMENT_DECISION_STORE_PATH: str = Field(
+        default=".agent/reports/deployment-decisions.jsonl"
+    )
+    DEPLOYMENT_DECISION_HISTORY_LIMIT: int = Field(default=500, ge=1)
+    DEPLOYMENT_DECISION_MAX_BYTES: int = Field(default=50_000_000, ge=1024)
+    DEPLOYMENT_DECISION_RETENTION_DAYS: int = Field(default=14, ge=1)
 
     @field_validator("ERP_SYNC_INTERVAL", "CHANGE_DETECTION_INTERVAL")
     @classmethod
@@ -543,6 +578,34 @@ class Settings(PydanticBaseSettings):
         env_value = _env_first("V3_PROJECTION_REPORT_READS")
         return _parse_bool(env_value if env_value is not None else v, default=False)
 
+    @field_validator("SHADOW_READ_ENABLED", mode="before")
+    @classmethod
+    def resolve_shadow_read_enabled(cls, v: object) -> bool:
+        env_value = _env_first("SHADOW_READ_ENABLED")
+        return _parse_bool(env_value if env_value is not None else v, default=False)
+
+    @field_validator("SHADOW_AUTO_DECISION_ENABLED", mode="before")
+    @classmethod
+    def resolve_shadow_auto_decision_enabled(cls, v: object) -> bool:
+        env_value = _env_first("SHADOW_AUTO_DECISION_ENABLED")
+        return _parse_bool(env_value if env_value is not None else v, default=True)
+
+    @field_validator("AUTO_ROLLBACK_ENABLED", mode="before")
+    @classmethod
+    def resolve_auto_rollback_enabled(cls, v: object) -> bool:
+        env_value = _env_first("AUTO_ROLLBACK_ENABLED")
+        return _parse_bool(env_value if env_value is not None else v, default=True)
+
+    @field_validator("SHADOW_MISMATCH_THRESHOLD", mode="before")
+    @classmethod
+    def resolve_shadow_mismatch_threshold(cls, v: object) -> object:
+        return _env_first("SHADOW_MISMATCH_THRESHOLD") or v
+
+    @field_validator("SHADOW_TIMEOUT_THRESHOLD", mode="before")
+    @classmethod
+    def resolve_shadow_timeout_threshold(cls, v: object) -> object:
+        return _env_first("SHADOW_TIMEOUT_THRESHOLD") or v
+
     PROJECTION_READINESS_COLLECTION: str = Field(
         default="projection_readiness",
         description="Collection containing out-of-band projection readiness status.",
@@ -557,7 +620,7 @@ class Settings(PydanticBaseSettings):
     PROJECTION_MAX_LAG_SECONDS: float = Field(5.0, ge=0.0)
     PROJECTION_FRESHNESS_SECONDS: int = Field(300, ge=1, le=86400)
     PROJECTION_DRIFT_COOLDOWN_SECONDS: int = Field(300, ge=0, le=86400)
-    PROJECTION_ALERT_READINESS_FALSE_SECONDS: int = Field(300, ge=1, le=86400)
+    PROJECTION_ALERT_READINESS_FALSE_SECONDS: int = Field(60, ge=1, le=86400)
     PROJECTION_ALERT_SYNC_FAILURE_RATE: float = Field(0.10, ge=0.0, le=1.0)
     SESSION_CLIENT_ID_TTL_HOURS: int = Field(48, ge=1, le=168)
 
@@ -663,6 +726,85 @@ except Exception as e:
                 os.getenv("V3_PROJECTION_REPORT_READS"),
                 default=False,
             )
+            self.SHADOW_READ_ENABLED = _parse_bool(
+                os.getenv("SHADOW_READ_ENABLED"),
+                default=False,
+            )
+            self.SHADOW_READ_SAMPLE_RATE = float(
+                os.getenv("SHADOW_READ_SAMPLE_RATE", 0.10)
+            )
+            self.SHADOW_READ_TIMEOUT_SECONDS = float(
+                os.getenv("SHADOW_READ_TIMEOUT_SECONDS", 2.0)
+            )
+            self.SHADOW_READ_VARIANCE_ABS_TOLERANCE = float(
+                os.getenv("SHADOW_READ_VARIANCE_ABS_TOLERANCE", 1.0)
+            )
+            self.SHADOW_READ_VARIANCE_REL_TOLERANCE = float(
+                os.getenv("SHADOW_READ_VARIANCE_REL_TOLERANCE", 0.005)
+            )
+            self.SHADOW_AUTO_DECISION_ENABLED = _parse_bool(
+                os.getenv("SHADOW_AUTO_DECISION_ENABLED"),
+                default=True,
+            )
+            self.SHADOW_DECISION_WINDOW_SECONDS = int(
+                os.getenv("SHADOW_DECISION_WINDOW_SECONDS", 7200)
+            )
+            self.SHADOW_MIN_STABLE_WINDOW_MINUTES = int(
+                os.getenv("SHADOW_MIN_STABLE_WINDOW_MINUTES", 120)
+            )
+            self.SHADOW_EVAL_INTERVAL_SECONDS = int(
+                os.getenv("SHADOW_EVAL_INTERVAL_SECONDS", 300)
+            )
+            self.SHADOW_MIN_SAMPLES = int(os.getenv("SHADOW_MIN_SAMPLES", 500))
+            self.SHADOW_MIN_SAMPLES_PER_ENDPOINT = int(
+                os.getenv("SHADOW_MIN_SAMPLES_PER_ENDPOINT", 50)
+            )
+            self.SHADOW_RECENT_WINDOW_MINUTES = int(
+                os.getenv("SHADOW_RECENT_WINDOW_MINUTES", 15)
+            )
+            self.SHADOW_MAX_CLOCK_SKEW_SECONDS = int(
+                os.getenv("SHADOW_MAX_CLOCK_SKEW_SECONDS", 5)
+            )
+            self.SHADOW_MONITOR_INTERVAL_SECONDS = int(
+                os.getenv("SHADOW_MONITOR_INTERVAL_SECONDS", 600)
+            )
+            self.SHADOW_MISMATCH_THRESHOLD = float(
+                _env_first("SHADOW_MISMATCH_THRESHOLD") or 0.001
+            )
+            self.SHADOW_TIMEOUT_THRESHOLD = float(
+                _env_first("SHADOW_TIMEOUT_THRESHOLD") or 0.01
+            )
+            self.SHADOW_ERROR_THRESHOLD = float(os.getenv("SHADOW_ERROR_THRESHOLD", 0.0))
+            self.ROLLOUT_STAGE = int(os.getenv("ROLLOUT_STAGE", 0))
+            self.ROLLOUT_COOLDOWN_MINUTES = int(
+                os.getenv("ROLLOUT_COOLDOWN_MINUTES", 30)
+            )
+            self.SHADOW_ALERT_DEDUPE_SECONDS = int(
+                os.getenv("SHADOW_ALERT_DEDUPE_SECONDS", 600)
+            )
+            self.AUTO_ROLLBACK_ENABLED = _parse_bool(
+                os.getenv("AUTO_ROLLBACK_ENABLED"),
+                default=True,
+            )
+            self.AUTO_ROLLBACK_MISMATCH_RATE = float(
+                os.getenv("AUTO_ROLLBACK_MISMATCH_RATE", 0.005)
+            )
+            self.AUTO_ROLLBACK_TIMEOUT_RATE = float(
+                os.getenv("AUTO_ROLLBACK_TIMEOUT_RATE", 0.01)
+            )
+            self.DEPLOYMENT_DECISION_STORE_PATH = os.getenv(
+                "DEPLOYMENT_DECISION_STORE_PATH",
+                ".agent/reports/deployment-decisions.jsonl",
+            )
+            self.DEPLOYMENT_DECISION_HISTORY_LIMIT = int(
+                os.getenv("DEPLOYMENT_DECISION_HISTORY_LIMIT", 500)
+            )
+            self.DEPLOYMENT_DECISION_MAX_BYTES = int(
+                os.getenv("DEPLOYMENT_DECISION_MAX_BYTES", 50_000_000)
+            )
+            self.DEPLOYMENT_DECISION_RETENTION_DAYS = int(
+                os.getenv("DEPLOYMENT_DECISION_RETENTION_DAYS", 14)
+            )
             # New settings for rate limiting and CORS
             self.RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("RATE_LIMIT_MAX_ATTEMPTS", 5))
             self.RATE_LIMIT_TTL_SECONDS = int(os.getenv("RATE_LIMIT_TTL_SECONDS", 300))
@@ -700,7 +842,7 @@ except Exception as e:
                 os.getenv("PROJECTION_DRIFT_COOLDOWN_SECONDS", 300)
             )
             self.PROJECTION_ALERT_READINESS_FALSE_SECONDS = int(
-                os.getenv("PROJECTION_ALERT_READINESS_FALSE_SECONDS", 300)
+                os.getenv("PROJECTION_ALERT_READINESS_FALSE_SECONDS", 60)
             )
             self.PROJECTION_ALERT_SYNC_FAILURE_RATE = float(
                 os.getenv("PROJECTION_ALERT_SYNC_FAILURE_RATE", 0.10)

@@ -355,7 +355,7 @@ def _install_collection_proxy(db: Any, collection_name: str, collection: Any) ->
     try:
         setattr(db, collection_name, proxy)
         return proxy
-    except Exception:
+    except (RuntimeError, TypeError, ValueError, OSError):
         return collection
 
 

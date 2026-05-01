@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 # ruff: noqa: E402
 import asyncio
 import logging
@@ -8,23 +9,15 @@ import threading
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
-try:
-    from tenacity import retry, stop_after_attempt, wait_exponential
-except ImportError:
-    # Dummy decorators if tenacity is not installed
-    def retry(*args, **kwargs):
-        def decorator(func):
-            return func
-        return decorator
-
-    def stop_after_attempt(*args, **kwargs):
-        pass
-
-    def wait_exponential(*args, **kwargs):
-        pass
-
 from backend.db_mapping_config import SQL_TEMPLATES, get_active_mapping
-from backend.services.dependency_manager import DependencyManager, pyodbc
+from backend.services.dependency_manager import (
+    DependencyManager,
+    DependencyUnavailable,
+    optional_retry as retry,
+    optional_stop_after_attempt as stop_after_attempt,
+    optional_wait_exponential as wait_exponential,
+    pyodbc,
+)
 from backend.utils.db_connection import SQLServerConnectionBuilder
 
 # Add project root to path for direct execution (debugging)
@@ -34,6 +27,12 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 logger = logging.getLogger(__name__)
+
+
+def _require_sql_dependency():
+    if not DependencyManager.has_sql():
+        return DependencyManager.require_sql(pyodbc)
+    return DependencyManager.require_sql()
 
 
 class DatabaseConnectionError(Exception):
@@ -407,6 +406,11 @@ class SQLServerConnector:
         Supports both Windows Authentication and SQL Server Authentication
         Automatically tries multiple connection methods if initial attempt fails
         """
+        try:
+            _require_sql_dependency()
+        except DependencyUnavailable as exc:
+            raise DependencyUnavailable("SQL not available: pyodbc is not installed") from exc
+
         # Cache provided configuration so background services can retry later if needed
         self.config = {
             "host": host,
@@ -521,7 +525,7 @@ class SQLServerConnector:
     def _attempt_connection_method(self, method: dict[str, Any]) -> bool:
         """Attempt connection using a specific method"""
         try:
-            DependencyManager.require_sql(pyodbc)
+            _require_sql_dependency()
             port_param = self._normalize_port_value(method.get("port"))
 
             self.connection = SQLServerConnectionBuilder.create_optimized_connection(
@@ -542,6 +546,8 @@ class SQLServerConnector:
             self._store_successful_config(method)
             return True
 
+        except DependencyUnavailable:
+            raise
         except Exception as e:
             logger.debug(f"❌ {method['name']} failed: {str(e)[:100]}")
             self.connection_methods.append(

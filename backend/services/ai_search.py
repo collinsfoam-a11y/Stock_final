@@ -45,7 +45,7 @@ class AISearchService:
         except ImportError:
             logger.error("sentence-transformers not installed. Semantic search disabled.")
             self._model = None
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Failed to load semantic model: {e}")
             self._model = None
 
@@ -59,7 +59,7 @@ class AISearchService:
 
         try:
             return self._model.encode(text, convert_to_numpy=True)
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Encoding error: {e}")
             return None
 
@@ -105,7 +105,7 @@ class AISearchService:
             # Return top_k
             return [x[1] for x in scored_candidates[:top_k]]
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Semantic reranking failed: {e}")
             return candidates[:top_k]
 

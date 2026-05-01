@@ -190,7 +190,7 @@ class EnterpriseSecurityService:
             logger.info(f"Added {ip_address} to {list_type.value}")
             return True
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Failed to add IP to list: {e}")
             return False
 
@@ -208,7 +208,7 @@ class EnterpriseSecurityService:
                 self._blacklist_cache.discard(ip_address)
 
             return True
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Failed to remove IP from list: {e}")
             return False
 
@@ -339,7 +339,7 @@ class EnterpriseSecurityService:
             )
 
             return True
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Failed to unlock account: {e}")
             return False
 
@@ -493,7 +493,7 @@ class EnterpriseSecurityService:
                     "details": details or {},
                 }
             )
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Failed to log security event: {e}")
 
     async def get_security_events(

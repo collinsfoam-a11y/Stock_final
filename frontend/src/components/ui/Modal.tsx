@@ -27,6 +27,7 @@ import Animated, {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
 import { BlurView } from "expo-blur";
+import { createShadow } from "@/theme/shadowUtils";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -243,10 +244,7 @@ const styles = StyleSheet.create({
       },
       default: {
         elevation: 8,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        ...createShadow({ color: "#000", offsetX: 0, offsetY: 4, opacity: 0.3, radius: 8 }),
       },
     }),
   },

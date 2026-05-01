@@ -10,15 +10,19 @@ from pathlib import Path
 from typing import Any, Optional
 from typing import cast
 
+from bson.errors import InvalidId
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from pydantic import BaseModel
+from pymongo.errors import PyMongoError
 
 from backend.api.response_models import ApiResponse, PaginatedResponse
 from backend.auth.dependencies import get_current_user_async as get_current_user
-from backend.db.runtime import get_db
 from backend.services.ai_search import ai_search_service
+from backend.services.enhanced_item_query_service import (
+    EnhancedItemQueryService,
+    get_enhanced_item_query_service,
+)
 from backend.services.sql_verification_service import sql_verification_service
-from backend.utils.erp_utils import _get_barcode_variations
 
 # Add project root to path for direct execution (debugging)
 # This allows the file to be run directly for testing/debugging
@@ -28,6 +32,7 @@ if str(project_root) not in sys.path:
 
 
 router = APIRouter()
+ITEM_ENDPOINT_ERRORS = (ImportError, InvalidId, OSError, PyMongoError, RuntimeError, TypeError, ValueError)
 
 
 class ItemResponse(BaseModel):
@@ -78,7 +83,7 @@ def _extract_image_identifiers(file_bytes: bytes) -> list[str]:
 
         image = Image.open(io.BytesIO(file_bytes))
         image.load()
-    except Exception:
+    except (ImportError, OSError, ValueError):
         return []
 
     try:
@@ -87,7 +92,7 @@ def _extract_image_identifiers(file_bytes: bytes) -> list[str]:
         for decoded in decode_barcodes(image):
             if decoded.data:
                 identifiers.append(decoded.data.decode("utf-8", errors="ignore"))
-    except Exception:
+    except (AttributeError, ImportError, OSError, ValueError):
         pass
 
     try:
@@ -95,58 +100,22 @@ def _extract_image_identifiers(file_bytes: bytes) -> list[str]:
 
         ocr_text = pytesseract.image_to_string(image)
         identifiers.extend(_extract_identifiers_from_text(ocr_text))
-    except Exception:
+    except (ImportError, OSError, RuntimeError, TypeError, ValueError):
         pass
 
     return _dedupe_preserve_order(identifiers)
 
 
 async def _lookup_identified_items(
-    db: Any, identifiers: list[str], limit: int = 5
+    item_service: EnhancedItemQueryService, identifiers: list[str], limit: int = 5
 ) -> tuple[list[dict[str, Any]], list[str]]:
-    matched_terms = _dedupe_preserve_order(identifiers)
-    if not matched_terms:
-        return [], []
-
-    exact_terms: list[str] = []
-    for term in matched_terms:
-        exact_terms.extend(_get_barcode_variations(term))
-    exact_terms = _dedupe_preserve_order(exact_terms)
-
-    exact_matches = (
-        await db.erp_items.find(
-            {
-                "$or": [
-                    {"barcode": {"$in": exact_terms}},
-                    {"manual_barcode": {"$in": exact_terms}},
-                    {"item_code": {"$in": exact_terms}},
-                ]
-            }
-        )
-        .limit(limit)
-        .to_list(length=limit)
+    if not hasattr(item_service, "lookup_identified_items"):
+        item_service = EnhancedItemQueryService(item_service)
+    return await item_service.lookup_identified_items(
+        identifiers,
+        limit=limit,
+        reranker=ai_search_service,
     )
-    if exact_matches:
-        return exact_matches, exact_terms
-
-    primary_query = " ".join(matched_terms[:3])
-    regex_clauses = []
-    for term in matched_terms[:5]:
-        regex_clauses.extend(
-            [
-                {"item_name": {"$regex": re.escape(term), "$options": "i"}},
-                {"item_code": {"$regex": re.escape(term), "$options": "i"}},
-                {"barcode": {"$regex": re.escape(term), "$options": "i"}},
-                {"category": {"$regex": re.escape(term), "$options": "i"}},
-            ]
-        )
-
-    candidates = await db.erp_items.find({"$or": regex_clauses}).limit(250).to_list(length=250)
-    if not candidates:
-        return [], matched_terms
-
-    reranked = ai_search_service.search_rerank(primary_query, candidates, top_k=limit)
-    return reranked, matched_terms
 
 
 @router.get("/", response_model=ApiResponse[PaginatedResponse[ItemResponse]])
@@ -155,13 +124,13 @@ async def get_items_v2(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     current_user: dict[str, Any] = Depends(get_current_user),
+    item_service: EnhancedItemQueryService = Depends(get_enhanced_item_query_service),
 ) -> ApiResponse[PaginatedResponse[ItemResponse]]:
     """
     Get items with pagination (v2)
     Returns standardized paginated response
     """
     try:
-        db = get_db()
         from rapidfuzz import fuzz
 
         # 1. Fetch Candidates (Hybrid Strategy)
@@ -185,47 +154,13 @@ async def get_items_v2(
         # A) If searching: Fetch ALL candidates (limit 100-200), Rank, Slice.
         # B) If NOT searching: Use standard DB pagination.
 
-        item_responses = []
-        total = 0
-
-        if not search:
-            # Case B: Standard Pagination
-            total = await db.erp_items.count_documents(query)
-            skip = (page - 1) * page_size
-            items_cursor = db.erp_items.find(query).skip(skip).limit(page_size)
-            items = await items_cursor.to_list(length=page_size)
-            sorted_items = items
-        else:
-            # Case A: Fuzzy Search
-            # Limit candidate pool to 200 for performance
-            items_cursor = db.erp_items.find(query).limit(200)
-            candidates = await items_cursor.to_list(length=200)
-            total = len(candidates)
-
-            # Scoring
-            scored_candidates = []
-            for item in candidates:
-                # Weighted Score:
-                # Name match is worth most (weight 1.0)
-                # Barcode match is critical (weight 1.2)
-                # Code match is high (1.1)
-
-                name_score = fuzz.partial_ratio(search.lower(), item.get("item_name", "").lower())
-                code_score = fuzz.ratio(search.lower(), str(item.get("item_code", "")).lower())
-                barcode_score = fuzz.ratio(search.lower(), str(item.get("barcode", "")).lower())
-
-                # Boost exact matches
-                final_score = max(name_score, code_score * 1.1, barcode_score * 1.2)
-
-                scored_candidates.append((final_score, item))
-
-            # Sort by score descending
-            scored_candidates.sort(key=lambda x: x[0], reverse=True)
-
-            # Pagination on results
-            start_idx = (page - 1) * page_size
-            end_idx = start_idx + page_size
-            sorted_items = [x[1] for x in scored_candidates[start_idx:end_idx]]
+        sorted_items, total = await item_service.list_items(
+            query,
+            page=page,
+            page_size=page_size,
+            search=search,
+            scorer=fuzz,
+        )
 
         # Convert to response models
         item_responses = [
@@ -256,7 +191,7 @@ async def get_items_v2(
             message=f"Retrieved {len(item_responses)} items",
         )
 
-    except Exception as e:
+    except ITEM_ENDPOINT_ERRORS as e:
         return ApiResponse.error_response(
             error_code="ITEMS_FETCH_ERROR",
             error_message=f"Failed to fetch items: {str(e)}",
@@ -268,13 +203,13 @@ async def search_items_semantic(
     query: str = Query(..., min_length=2, description="Semantic search query"),
     limit: int = Query(20, ge=1, le=50, description="Max results"),
     current_user: dict[str, Any] = Depends(get_current_user),
+    item_service: EnhancedItemQueryService = Depends(get_enhanced_item_query_service),
 ) -> ApiResponse[PaginatedResponse[ItemResponse]]:
     """
     Semantic Search (AI-Powered)
     Uses sentence-transformers to find items by meaning/context.
     """
     try:
-        db = get_db()
         # 1. Fetch a broad set of candidates (e.g., all active items or recent ones)
         # In a real vector DB, we'd query the vector index.
         # Here, we'll fetch items and rely on the service to rerank/filter.
@@ -282,8 +217,7 @@ async def search_items_semantic(
 
         # Fetching top 500 items for re-ranking context
         # This is a compromise for "Local AI" without a Vector DB
-        items_cursor = db.erp_items.find({}).limit(500)
-        candidates = await items_cursor.to_list(length=500)
+        candidates = await item_service.semantic_candidates()
 
         if not candidates:
             return ApiResponse.success_response(
@@ -317,7 +251,7 @@ async def search_items_semantic(
             message=f"Found top {len(item_responses)} semantic matches",
         )
 
-    except Exception as e:
+    except ITEM_ENDPOINT_ERRORS as e:
         return ApiResponse.error_response(
             error_code="SEMANTIC_SEARCH_ERROR",
             error_message=f"Semantic search failed: {str(e)}",
@@ -328,16 +262,14 @@ async def search_items_semantic(
 async def get_item_v2(
     item_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
+    item_service: EnhancedItemQueryService = Depends(get_enhanced_item_query_service),
 ) -> ApiResponse[ItemResponse]:
     """
     Get a single item by ID (v2)
     Returns standardized response
     """
     try:
-        db = get_db()
-        from bson import ObjectId
-
-        item = await db.erp_items.find_one({"_id": ObjectId(item_id)})
+        item = await item_service.get_item_by_object_id(item_id)
 
         if not item:
             return ApiResponse.error_response(
@@ -363,7 +295,7 @@ async def get_item_v2(
             message="Item retrieved successfully",
         )
 
-    except Exception as e:
+    except ITEM_ENDPOINT_ERRORS as e:
         return ApiResponse.error_response(
             error_code="ITEM_FETCH_ERROR",
             error_message=f"Failed to fetch item: {str(e)}",
@@ -374,13 +306,13 @@ async def get_item_v2(
 async def identify_item(
     file: UploadFile = File(...),
     current_user: dict[str, Any] = Depends(get_current_user),
+    item_service: EnhancedItemQueryService = Depends(get_enhanced_item_query_service),
 ) -> ApiResponse[PaginatedResponse[ItemResponse]]:
     """
     Visual Search / Identify Item
     Accepts an image, extracts machine-readable identifiers, and returns matching items.
     """
     try:
-        db = get_db()
         file_bytes = await file.read()
         if not file_bytes:
             return ApiResponse.error_response(
@@ -395,7 +327,7 @@ async def identify_item(
                 error_message="Could not detect a barcode or readable label in the image",
             )
 
-        results, matched_terms = await _lookup_identified_items(db, identifiers, limit=5)
+        results, matched_terms = await _lookup_identified_items(item_service, identifiers, limit=5)
         if not results:
             return ApiResponse.error_response(
                 error_code="IDENTIFY_NO_MATCH",
@@ -425,7 +357,7 @@ async def identify_item(
             message=f"Matched using: {', '.join(matched_terms[:3])}",
         )
 
-    except Exception as e:
+    except ITEM_ENDPOINT_ERRORS as e:
         return ApiResponse.error_response(
             error_code="VISUAL_SEARCH_ERROR",
             error_message=f"Identification failed: {str(e)}",
@@ -437,18 +369,15 @@ async def get_item_details(
     item_code: str,
     verify_sql: bool = Query(False, description="Verify against SQL Server"),
     current_user: dict[str, Any] = Depends(get_current_user),
+    item_service: EnhancedItemQueryService = Depends(get_enhanced_item_query_service),
 ) -> ApiResponse[ItemResponse]:
     """
     Get item details with optional SQL verification
     When verify_sql=true, triggers SQL quantity verification and updates MongoDB
     """
     try:
-        db = get_db()
-
         # Get item from MongoDB (search by item_code OR barcode)
-        item = await db.erp_items.find_one(
-            {"$or": [{"item_code": item_code}, {"barcode": item_code}]}
-        )
+        item = await item_service.get_item_by_code_or_barcode(item_code)
         if not item:
             return ApiResponse.error_response(
                 error_code="ITEM_NOT_FOUND",
@@ -461,10 +390,10 @@ async def get_item_details(
                 verification_result = await sql_verification_service.verify_item_quantity(item_code)
                 if verification_result["success"]:
                     # Refresh item data after verification
-                    refreshed_item = await db.erp_items.find_one({"item_code": item_code})
+                    refreshed_item = await item_service.get_item_by_code(item_code)
                     if refreshed_item:
                         item = refreshed_item
-            except Exception as e:
+            except ITEM_ENDPOINT_ERRORS as e:
                 # Log error but don't fail the request
                 import logging
                 from backend.utils.api_utils import sanitize_for_logging
@@ -502,7 +431,7 @@ async def get_item_details(
             message=f"Retrieved item details for {item_code}",
         )
 
-    except Exception as e:
+    except ITEM_ENDPOINT_ERRORS as e:
         return ApiResponse.error_response(
             error_code="INTERNAL_ERROR",
             error_message=f"Failed to get item details: {str(e)}",

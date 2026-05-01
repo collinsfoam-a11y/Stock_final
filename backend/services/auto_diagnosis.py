@@ -15,9 +15,11 @@ from typing import Any, Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from backend.db.runtime import get_db
 from backend.utils.result_types import Result
 
 logger = logging.getLogger(__name__)
+_diagnosis_service: "AutoDiagnosisService | None" = None
 
 
 class ErrorCategory(Enum):
@@ -577,7 +579,7 @@ class AutoDiagnosisService:
             if isinstance(result, Result):
                 return result
             return Result.success(result)
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Auto-fix failed: {str(e)}")
             return Result.error(e, f"Auto-fix execution failed: {str(e)}")
 
@@ -647,7 +649,7 @@ class AutoDiagnosisService:
             try:
                 check_result = await check_func()
                 health_report["checks"][check_func.__name__] = check_result
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 diagnosis = await self.diagnose_error(e)
                 health_report["diagnoses"].append(diagnosis.to_dict())
                 health_report["status"] = "degraded"
@@ -694,6 +696,14 @@ async def run_nightly_diagnosis():
         logger.warning("System health is degraded!")
         for diagnosis in report["diagnoses"]:
             logger.warning(f" - {diagnosis['category']}: {diagnosis['root_cause']}")
+
+
+def get_auto_diagnosis_service() -> AutoDiagnosisService:
+    """Get global auto-diagnosis service instance."""
+    global _diagnosis_service
+    if _diagnosis_service is None:
+        _diagnosis_service = AutoDiagnosisService(mongo_db=get_db())
+    return _diagnosis_service
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ from backend.api.preferences_api import (
     update_my_preferences,
 )
 from backend.models.preferences import UserPreferencesBase
+from backend.services.user_preferences_service import UserPreferencesService
 
 VALID_USER_ID = "507f1f77bcf86cd799439011"
 VALID_PREF_ID = "507f1f77bcf86cd799439012"
@@ -26,7 +27,7 @@ async def test_get_preferences_defaults():
     # Mock find_one to return None (no existing prefs)
     mock_db.user_preferences.find_one.return_value = None
 
-    response = await get_my_preferences(mock_user, mock_db)
+    response = await get_my_preferences(mock_user, UserPreferencesService(mock_db))
 
     assert isinstance(response, UserPreferencesBase)
     assert response.theme == "system"
@@ -50,7 +51,7 @@ async def test_get_preferences_existing():
     }
     mock_db.user_preferences.find_one.return_value = existing_prefs
 
-    response = await get_my_preferences(mock_user, mock_db)
+    response = await get_my_preferences(mock_user, UserPreferencesService(mock_db))
 
     assert response.theme == "dark"
     assert response.font_scale == 1.2
@@ -80,7 +81,9 @@ async def test_update_preferences_create_new():
 
     update_data = UserPreferencesUpdate(theme="dark")
 
-    response = await update_my_preferences(update_data, mock_user, mock_db)
+    response = await update_my_preferences(
+        update_data, mock_user, UserPreferencesService(mock_db)
+    )
 
     # Verify insert was called
     mock_db.user_preferences.insert_one.assert_called_once()
@@ -112,7 +115,9 @@ async def test_update_preferences_update_existing():
 
     update_data = UserPreferencesUpdate(font_scale=1.5)
 
-    response = await update_my_preferences(update_data, mock_user, mock_db)
+    response = await update_my_preferences(
+        update_data, mock_user, UserPreferencesService(mock_db)
+    )
 
     # Verify update was called
     mock_db.user_preferences.update_one.assert_called_once()

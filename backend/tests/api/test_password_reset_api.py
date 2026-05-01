@@ -3,6 +3,7 @@ import pytest
 
 from backend.api import auth_routes
 from backend.server import app
+from backend.services.auth_service import AuthService
 
 
 class _FakeUsersCollection:
@@ -89,7 +90,7 @@ def clear_dependency_overrides():
 async def test_password_reset_request_fails_when_delivery_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    monkeypatch.setattr(auth_routes, "get_db", lambda: _FakeDB())
+    monkeypatch.setattr(auth_routes, "get_auth_service", lambda: AuthService(_FakeDB()))
     monkeypatch.setattr(auth_routes, "OTPService", _FakeOTPService)
     monkeypatch.setattr(auth_routes, "WhatsAppService", lambda: _DisabledWhatsAppService())
 
@@ -112,7 +113,7 @@ async def test_password_reset_request_fails_when_delivery_unavailable(
 async def test_password_reset_verify_accepts_phone_number(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    monkeypatch.setattr(auth_routes, "get_db", lambda: _FakeDB())
+    monkeypatch.setattr(auth_routes, "get_auth_service", lambda: AuthService(_FakeDB()))
     monkeypatch.setattr(auth_routes, "OTPService", _FakeOTPService)
     monkeypatch.setattr("backend.services.audit_service.AuditService", _FakeAuditService)
 

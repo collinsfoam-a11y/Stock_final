@@ -18,7 +18,7 @@ import logging  # noqa: E402
 from backend.utils.api_utils import sanitize_for_logging
 import os  # noqa: E402
 from collections.abc import Callable, Iterable
-from datetime import datetime, timedelta  # noqa: E402
+from datetime import datetime  # noqa: E402
 from typing import Any, Optional, TypedDict  # noqa: E402, Optional
 
 import psutil  # noqa: E402
@@ -27,11 +27,8 @@ from fastapi.responses import Response, StreamingResponse  # noqa: E402
 
 # Import auth
 from backend.auth import get_current_user  # noqa: E402
-from backend.auth.dependencies import auth_deps  # noqa: E402
 from backend.config import settings  # noqa: E402
-from backend.db.runtime import get_db  # noqa: E402
-from backend.services.system_report_service import SystemReportService  # noqa: E402
-from backend.services.watchdog_service import WatchdogService  # noqa: E402
+from backend.services.admin_control_service import get_admin_control_service  # noqa: E402
 from backend.sql_server_connector import sql_connector  # noqa: E402
 from backend.utils.port_detector import PortDetector  # noqa: E402
 from backend.utils.service_manager import ServiceManager  # noqa: E402
@@ -214,8 +211,7 @@ def _get_frontend_status() -> ServiceStatus:
 async def _get_mongodb_status() -> ServiceStatus:
     # Try using existing connection first
     try:
-        if auth_deps._initialized:
-            await auth_deps.db.command("ping")
+        if await get_admin_control_service().ping_auth_database():
             mongo_status = PortDetector.get_mongo_status()
             return {
                 "running": True,
@@ -223,7 +219,7 @@ async def _get_mongodb_status() -> ServiceStatus:
                 "url": mongo_status.get("url"),
                 "status": "connected",
             }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.warning("Direct MongoDB check failed, falling back to PortDetector: %s", sanitize_for_logging(str(e)))
 
     mongo_status = PortDetector.get_mongo_status()
@@ -240,7 +236,7 @@ async def _get_mongodb_status() -> ServiceStatus:
 def _test_sql_connection() -> Optional[bool]:
     try:
         return sql_connector.test_connection()
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("SQL connection test failed: %s", sanitize_for_logging(str(e)))
         return False
 
@@ -390,7 +386,7 @@ async def get_services_status(current_user: dict = Depends(require_admin)):
     try:
         services: ServicesStatusMap = await _gather_all_services_status()
         return _format_services_response(services)
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error getting services status: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -416,7 +412,7 @@ def _find_running_backend_process() -> Optional[dict[str, Any]]:
                     "port": port,
                     "pid": pid,
                 }
-        except Exception:
+        except (RuntimeError, TypeError, ValueError, OSError):
             pass
     return None
 
@@ -436,7 +432,7 @@ async def start_backend(current_user: dict = Depends(require_admin)):
             "message": "Backend start command issued. Check status for updates.",
             "note": "Backend should be started using scripts/start_backend.sh or scripts/start_backend.ps1",
         }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error starting backend: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -464,7 +460,7 @@ async def stop_backend(current_user: dict = Depends(require_admin)):
     try:
         killed = _terminate_backend_processes()
         return _create_stop_response(killed)
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error stopping backend: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -491,7 +487,7 @@ async def start_frontend(current_user: dict = Depends(require_admin)):
                                 "port": port,
                                 "pid": pid,
                             }
-                    except Exception:
+                    except (RuntimeError, TypeError, ValueError, OSError):
                         pass
 
         return {
@@ -499,7 +495,7 @@ async def start_frontend(current_user: dict = Depends(require_admin)):
             "message": "Frontend start command issued. Check status for updates.",
             "note": "Frontend should be started using scripts/start_frontend.sh or scripts/start_frontend.ps1",
         }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error starting frontend: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -525,7 +521,7 @@ async def stop_frontend(current_user: dict = Depends(require_admin)):
             "success": True,
             "message": f"Stopped {killed} frontend process(es)",
         }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error stopping frontend: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -560,7 +556,7 @@ async def get_system_issues(current_user: dict = Depends(require_admin)):
     try:
         issues = _collect_system_issues()
         return _format_issues_response(issues)
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error getting system issues: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -572,25 +568,8 @@ async def get_system_issues(current_user: dict = Depends(require_admin)):
 async def get_login_devices(current_user: dict = Depends(require_admin)):
     """Get list of devices that have logged in"""
     try:
-        db = get_db()
-
         # Get recent login sessions
-        sessions = (
-            await db.sessions.find(
-                {},
-                {
-                    "_id": 0,
-                    "user": 1,
-                    "device_info": 1,
-                    "ip_address": 1,
-                    "last_activity": 1,
-                    "created_at": 1,
-                },
-            )
-            .sort("last_activity", -1)
-            .limit(100)
-            .to_list(length=100)
-        )
+        sessions = await get_admin_control_service().get_recent_login_sessions()
 
         devices = []
         seen_devices = set()
@@ -617,7 +596,7 @@ async def get_login_devices(current_user: dict = Depends(require_admin)):
                 "count": len(devices),
             },
         }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error getting devices: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -677,11 +656,12 @@ async def generate_report(
 ):
     """Generate a report"""
     try:
-        db = get_db()
-
-        service = SystemReportService(db)
-
-        data = await service.generate_report(report_id, start_date, end_date, format)
+        data = await get_admin_control_service().generate_report(
+            report_id,
+            start_date,
+            end_date,
+            format,
+        )
 
         if format == "json":
             return {
@@ -715,7 +695,7 @@ async def generate_report(
                 },
             )
 
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error generating report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -734,7 +714,7 @@ def _parse_log_line(line: str) -> Optional[dict[str, Optional[str]]]:
                 "level": parts[2],
                 "message": parts[3],
             }
-    except Exception:
+    except (RuntimeError, TypeError, ValueError, OSError):
         pass
     return None
 
@@ -771,7 +751,7 @@ def _read_log_file(
                         continue
 
                 logs.append(log_entry)
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error reading log file: %s", sanitize_for_logging(str(e)))
 
     return logs
@@ -826,7 +806,7 @@ async def get_service_logs(
                 "filtered_by_level": level,
             },
         }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error getting logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -850,7 +830,7 @@ async def clear_service_logs(
                     f.write("")
 
         return {"success": True, "message": f"Logs for {service} cleared successfully"}
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error clearing logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -903,7 +883,7 @@ async def update_sql_server_config(
             "data": {k: v for k, v in sql_connector.config.items() if k != "password"},
         }
 
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error updating SQL Server config: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -937,7 +917,7 @@ async def test_sql_server_connection(
                 "success": success,
                 "message": ("Connection is active" if success else "Connection is inactive"),
             }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         return {"success": False, "message": f"Connection failed: {str(e)}"}
 
 
@@ -962,7 +942,7 @@ async def get_system_health_score(current_user: dict = Depends(require_admin)):
                 final_score, running_critical, running_optional, critical_issues
             ),
         }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error calculating health score: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -974,16 +954,11 @@ async def get_system_health_score(current_user: dict = Depends(require_admin)):
 async def get_system_stats(current_user: dict = Depends(require_admin)):
     """Get system statistics summary"""
     try:
-        db = get_db()
-
         # Get basic stats
-        total_users = await db.users.count_documents({})
-        total_sessions = await db.sessions.count_documents({})
-        # last_activity assumed to be an ISO string or timestamp; convert comparison appropriately
-        active_threshold = datetime.now() - timedelta(hours=1)
-        active_sessions = await db.sessions.count_documents(
-            {"last_activity": {"$gte": active_threshold}}
-        )
+        stats_counts = await get_admin_control_service().get_system_stats_counts()
+        total_users = stats_counts["total_users"]
+        total_sessions = stats_counts["total_sessions"]
+        active_sessions = stats_counts["active_sessions"]
 
         # Get services status
         services_status = await get_services_status(current_user)
@@ -1001,7 +976,7 @@ async def get_system_stats(current_user: dict = Depends(require_admin)):
                 "timestamp": datetime.now().isoformat(),
             },
         }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error getting system stats: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1016,16 +991,14 @@ async def run_watchdog_checks(current_user: dict = Depends(require_admin)):
     Scans for velocity anomalies, brute force attacks, and system health issues.
     """
     try:
-        db = get_db()
-        watchdog = WatchdogService(db)
-        await watchdog.run_all_checks()
+        await get_admin_control_service().run_watchdog_checks()
 
         return {
             "success": True,
             "message": "Watchdog checks completed. Check audit logs for any alerts.",
             "timestamp": datetime.now().isoformat(),
         }
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error running watchdog: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

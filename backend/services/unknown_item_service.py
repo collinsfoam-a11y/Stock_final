@@ -9,6 +9,7 @@ from typing import Any, Optional
 from bson import ObjectId
 from fastapi import HTTPException
 
+from backend.db.runtime import get_db
 from backend.services.concurrency import build_version_filter, coerce_version
 from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.governance_audit_service import GovernanceAuditService
@@ -282,6 +283,18 @@ class UnknownItemService:
             )
             return refreshed or dict(existing)
 
+    async def list_unknown_items(
+        self,
+        query: dict[str, Any],
+        *,
+        skip: int,
+        limit: int,
+    ) -> tuple[list[dict[str, Any]], int]:
+        cursor = self.db.unknown_items.find(query).sort("reported_at", -1).skip(skip).limit(limit)
+        items = await cursor.to_list(length=limit)
+        total = await self.db.unknown_items.count_documents(query)
+        return items, total
+
     async def escalate_for_review(
         self,
         *,
@@ -486,3 +499,7 @@ class UnknownItemService:
                 db_session=tx,
             )
             return resolved_doc
+
+
+def get_unknown_item_service() -> UnknownItemService:
+    return UnknownItemService(get_db())

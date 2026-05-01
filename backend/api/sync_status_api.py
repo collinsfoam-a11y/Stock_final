@@ -34,7 +34,7 @@ async def get_sync_status() -> dict[str, Any]:
     try:
         status_data = _auto_sync_manager.get_status()
         return {"success": True, "data": status_data}
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error getting sync status: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
@@ -51,7 +51,7 @@ async def get_sync_stats() -> dict[str, Any]:
     try:
         stats = _auto_sync_manager.get_stats()
         return {"success": True, "data": stats}
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error getting sync stats: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
@@ -68,6 +68,6 @@ async def trigger_manual_sync() -> dict[str, Any]:
     try:
         result = await _auto_sync_manager.trigger_manual_sync()
         return cast(dict[str, Any], result)
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, OSError) as e:
         logger.error("Error triggering manual sync: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

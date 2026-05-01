@@ -13,15 +13,11 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { createShadow } from "../../src/theme/shadowUtils";
 
 import { ItemVerificationAPI } from "../../src/domains/inventory/services/itemVerificationApi";
 import { getAssignableStaffUsers } from "../../src/services/api/api";
-import {
-  ScreenContainer,
-  GlassCard,
-  StatsCard,
-  AnimatedPressable,
-} from "../../src/components/ui";
+import { ScreenContainer, GlassCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import RecountAssignmentModal, {
   type AssignableStaffUser,
@@ -38,9 +34,7 @@ export default function VarianceDetailsScreen() {
   const [itemDetails, setItemDetails] = useState<any>(null);
   const [processing, setProcessing] = useState(false);
   const [recountModalVisible, setRecountModalVisible] = useState(false);
-  const [assignableStaff, setAssignableStaff] = useState<AssignableStaffUser[]>(
-    [],
-  );
+  const [assignableStaff, setAssignableStaff] = useState<AssignableStaffUser[]>([]);
   const [staffLoading, setStaffLoading] = useState(false);
 
   const loadDetails = useCallback(async () => {
@@ -65,8 +59,7 @@ export default function VarianceDetailsScreen() {
         router.back();
       }
     } catch (error: any) {
-      if (Platform.OS !== "web")
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       show(error.message || "Failed to load details", "error");
     } finally {
       setLoading(false);
@@ -105,8 +98,7 @@ export default function VarianceDetailsScreen() {
       return;
     }
 
-    if (Platform.OS !== "web")
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert(
       "Confirm Approval",
       "Are you sure you want to approve this variance? This will update the system stock.",
@@ -119,13 +111,9 @@ export default function VarianceDetailsScreen() {
             try {
               setProcessing(true);
               if (itemDetails?.count_line_id) {
-                await ItemVerificationAPI.approveVariance(
-                  itemDetails.count_line_id,
-                );
+                await ItemVerificationAPI.approveVariance(itemDetails.count_line_id);
                 if (Platform.OS !== "web")
-                  Haptics.notificationAsync(
-                    Haptics.NotificationFeedbackType.Success,
-                  );
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 show("Variance approved successfully", "success");
                 router.back();
               } else {
@@ -133,16 +121,14 @@ export default function VarianceDetailsScreen() {
               }
             } catch (error: any) {
               if (Platform.OS !== "web")
-                Haptics.notificationAsync(
-                  Haptics.NotificationFeedbackType.Error,
-                );
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
               show(error.message || "Failed to approve variance", "error");
             } finally {
               setProcessing(false);
             }
           },
         },
-      ],
+      ]
     );
   };
 
@@ -161,13 +147,7 @@ export default function VarianceDetailsScreen() {
     }
   };
 
-  const handleSubmitRecount = async ({
-    notes,
-    assignTo,
-  }: {
-    notes: string;
-    assignTo?: string;
-  }) => {
+  const handleSubmitRecount = async ({ notes, assignTo }: { notes: string; assignTo?: string }) => {
     if (offlineMode) {
       show("Recount requests require a live connection", "warning");
       return;
@@ -179,15 +159,13 @@ export default function VarianceDetailsScreen() {
         await ItemVerificationAPI.requestRecount(
           itemDetails.count_line_id,
           notes || undefined,
-          assignTo,
+          assignTo
         );
         if (Platform.OS !== "web")
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         show(
-          assignTo
-            ? `Recount assigned to ${assignTo}`
-            : "Recount requested successfully",
-          "success",
+          assignTo ? `Recount assigned to ${assignTo}` : "Recount requested successfully",
+          "success"
         );
         setRecountModalVisible(false);
         router.back();
@@ -195,8 +173,7 @@ export default function VarianceDetailsScreen() {
         throw new Error("Count line ID not found");
       }
     } catch (error: any) {
-      if (Platform.OS !== "web")
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       show(error.message || "Failed to request recount", "error");
     } finally {
       setProcessing(false);
@@ -219,20 +196,14 @@ export default function VarianceDetailsScreen() {
         <View style={styles.centered}>
           <GlassCard intensity={15} padding={theme.spacing.xl}>
             <View style={{ alignItems: "center", gap: theme.spacing.md }}>
-              <Ionicons
-                name="alert-circle-outline"
-                size={48}
-                color={theme.colors.text.tertiary}
-              />
+              <Ionicons name="alert-circle-outline" size={48} color={theme.colors.text.tertiary} />
               <Text style={{ color: theme.colors.text.secondary }}>
                 {offlineMode
                   ? "Variance details are unavailable in offline mode"
                   : "Item not found"}
               </Text>
               <AnimatedPressable onPress={() => router.back()}>
-                <Text style={{ color: theme.colors.primary[500] }}>
-                  Go Back
-                </Text>
+                <Text style={{ color: theme.colors.primary[500] }}>Go Back</Text>
               </AnimatedPressable>
             </View>
           </GlassCard>
@@ -246,20 +217,10 @@ export default function VarianceDetailsScreen() {
       <StatusBar style="light" />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View
-          entering={FadeInDown.delay(100).springify()}
-          style={styles.header}
-        >
+        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
           <View style={styles.headerLeft}>
-            <AnimatedPressable
-              onPress={() => router.back()}
-              style={styles.backButton}
-            >
-              <Ionicons
-                name="arrow-back"
-                size={24}
-                color={theme.colors.text.primary}
-              />
+            <AnimatedPressable onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
             </AnimatedPressable>
             <Text style={styles.headerTitle}>Variance Details</Text>
           </View>
@@ -276,11 +237,7 @@ export default function VarianceDetailsScreen() {
             >
               <View style={styles.itemHeader}>
                 <View style={styles.itemIcon}>
-                  <Ionicons
-                    name="cube-outline"
-                    size={32}
-                    color={theme.colors.primary[500]}
-                  />
+                  <Ionicons name="cube-outline" size={32} color={theme.colors.primary[500]} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.itemName}>{itemDetails.item_name}</Text>
@@ -291,10 +248,7 @@ export default function VarianceDetailsScreen() {
           </Animated.View>
 
           {/* Stats Row */}
-          <Animated.View
-            entering={FadeInDown.delay(300).springify()}
-            style={styles.statsRow}
-          >
+          <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.statsRow}>
             <StatsCard
               title="System Qty"
               value={itemDetails.system_qty?.toString() || "0"}
@@ -303,7 +257,7 @@ export default function VarianceDetailsScreen() {
               style={{ flex: 1 }}
             />
             <StatsCard
-              title="Verified Qty"
+              title="Counted Qty"
               value={itemDetails.verified_qty?.toString() || "0"}
               icon="checkmark-circle-outline"
               variant="success"
@@ -335,20 +289,14 @@ export default function VarianceDetailsScreen() {
                       size={18}
                       color={theme.colors.text.secondary}
                     />
-                    <Text style={styles.detailValue}>
-                      {itemDetails.verified_by || "Unknown"}
-                    </Text>
+                    <Text style={styles.detailValue}>{itemDetails.verified_by || "Unknown"}</Text>
                   </View>
                 </View>
 
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Time</Text>
                   <View style={styles.detailValueRow}>
-                    <Ionicons
-                      name="time-outline"
-                      size={18}
-                      color={theme.colors.text.secondary}
-                    />
+                    <Ionicons name="time-outline" size={18} color={theme.colors.text.secondary} />
                     <Text style={styles.detailValue}>
                       {itemDetails.verified_at
                         ? new Date(itemDetails.verified_at).toLocaleString()
@@ -359,9 +307,7 @@ export default function VarianceDetailsScreen() {
               </View>
 
               {(itemDetails.floor || itemDetails.rack) && (
-                <View
-                  style={[styles.detailRow, { marginTop: theme.spacing.md }]}
-                >
+                <View style={[styles.detailRow, { marginTop: theme.spacing.md }]}>
                   <View style={styles.detailItem}>
                     <Text style={styles.detailLabel}>Location</Text>
                     <View style={styles.detailValueRow}>
@@ -383,15 +329,8 @@ export default function VarianceDetailsScreen() {
         </ScrollView>
 
         {/* Footer Actions */}
-        <Animated.View
-          entering={FadeInDown.delay(500).springify()}
-          style={styles.footer}
-        >
-          <GlassCard
-            intensity={15}
-            padding={theme.spacing.md}
-            style={styles.footerInner}
-          >
+        <Animated.View entering={FadeInDown.delay(500).springify()} style={styles.footer}>
+          <GlassCard intensity={15} padding={theme.spacing.md} style={styles.footerInner}>
             <View style={styles.actionsContainer}>
               <AnimatedPressable
                 onPress={() => void handleOpenRecount()}
@@ -562,10 +501,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: theme.colors.error.main,
-    shadowColor: theme.colors.error.main,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    ...createShadow({ color: theme.colors.error.main, offsetX: 0, offsetY: 4, opacity: 0.3, radius: 8 }),
   },
   primaryButtonText: {
     color: "#fff",

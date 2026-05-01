@@ -51,7 +51,7 @@ class PubSubService:
             self._listen_task = asyncio.create_task(self._listen())
             logger.info("✓ Pub/Sub service started")
 
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Failed to start Pub/Sub: {str(e)}")
             raise
 
@@ -84,10 +84,10 @@ class PubSubService:
                     await self._process_next_message()
                 except asyncio.CancelledError:
                     break
-                except Exception as e:
+                except (RuntimeError, TypeError, ValueError, OSError) as e:
                     logger.error(f"Error in pub/sub listener: {str(e)}")
                     await asyncio.sleep(1)
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             logger.error(f"Pub/Sub listener crashed: {str(e)}")
         finally:
             self._is_listening = False
@@ -105,7 +105,7 @@ class PubSubService:
 
         try:
             message = await self.pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError, OSError) as e:
             # If we're not actually subscribed yet, just wait
             if "not set" in str(e).lower():
                 await asyncio.sleep(1.0)
@@ -127,7 +127,7 @@ class PubSubService:
                     await handler(channel, data)
                 else:
                     handler(channel, data)
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError) as e:
                 logger.error(f"Error in message handler for {channel}: {str(e)}")
 
     async def subscribe(self, channel: str, handler: Callable) -> None:

@@ -1,12 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import React from "react";
-import {
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import {
   colors,
@@ -65,21 +59,12 @@ export function CountQuantitySection({
     <View style={styles.sectionCard}>
       <View style={styles.header}>
         <View style={styles.headerText}>
-          <Text
-            style={[styles.sectionTitle, { color: TEXT_STRONG, marginBottom: 2 }]}
-          >
-            Count
-          </Text>
+          <Text style={[styles.sectionTitle, { color: TEXT_STRONG, marginBottom: 2 }]}>Count</Text>
           <View style={styles.metaRow}>
             <View style={styles.modeBadge}>
               <Text style={styles.modeBadgeText}>{uomLabel} Mode</Text>
             </View>
-            <Text
-              style={[
-                styles.sectionMeta,
-                { color: TEXT_MUTED, fontSize: 12 },
-              ]}
-            >
+            <Text style={[styles.sectionMeta, { color: TEXT_MUTED, fontSize: 12 }]}>
               Unit: {uomUnit}
             </Text>
           </View>
@@ -91,12 +76,7 @@ export function CountQuantitySection({
             size={14}
             color={isSplitMode ? colors.white : ACCENT}
           />
-          <Text
-            style={[
-              styles.toggleButtonText,
-              { color: isSplitMode ? colors.white : ACCENT },
-            ]}
-          >
+          <Text style={[styles.toggleButtonText, { color: isSplitMode ? colors.white : ACCENT }]}>
             {isSplitMode ? "Piece Count" : "Split Count"}
           </Text>
         </TouchableOpacity>
@@ -107,9 +87,7 @@ export function CountQuantitySection({
           style={[
             styles.qtyButton,
             {
-              backgroundColor: isSplitMode
-                ? "#e2e8f0"
-                : "#dfe8e5",
+              backgroundColor: isSplitMode ? "#e2e8f0" : "#dfe8e5",
             },
           ]}
           onPress={onDecrement}
@@ -119,9 +97,7 @@ export function CountQuantitySection({
           <Ionicons
             name="remove"
             size={28}
-            color={
-              isSplitMode ? colors.neutral[300] : TEXT_STRONG
-            }
+            color={isSplitMode ? colors.neutral[300] : TEXT_STRONG}
           />
         </TouchableOpacity>
 
@@ -138,19 +114,20 @@ export function CountQuantitySection({
             style={[
               styles.qtyText,
               {
-                color: isSplitMode
-                  ? ACCENT
-                  : TEXT_STRONG,
+                color: isSplitMode ? ACCENT : TEXT_STRONG,
               },
             ]}
             value={quantity}
             onChangeText={onQuantityChange}
             editable={!isSplitMode}
+            autoFocus={!isSplitMode}
             onBlur={onQuantityBlur}
             keyboardType={isWeightBasedUOM ? "decimal-pad" : "number-pad"}
+            returnKeyType="done"
             selectTextOnFocus
             placeholder="0"
             placeholderTextColor={semanticColors.text.disabled}
+            accessibilityLabel="Counted quantity"
           />
         </View>
 
@@ -158,20 +135,14 @@ export function CountQuantitySection({
           style={[
             styles.qtyButton,
             {
-              backgroundColor: isSplitMode
-                ? "#e2e8f0"
-                : ACCENT,
+              backgroundColor: isSplitMode ? "#e2e8f0" : ACCENT,
             },
           ]}
           onPress={onIncrement}
           disabled={isSplitMode}
           activeOpacity={0.7}
         >
-          <Ionicons
-            name="add"
-            size={28}
-            color={isSplitMode ? colors.neutral[300] : colors.white}
-          />
+          <Ionicons name="add" size={28} color={isSplitMode ? colors.neutral[300] : colors.white} />
         </TouchableOpacity>
       </View>
 
@@ -190,9 +161,7 @@ export function CountQuantitySection({
               <TextInput
                 style={styles.splitInput}
                 value={value}
-                onChangeText={(nextValue) =>
-                  onSplitCountChange(index, nextValue)
-                }
+                onChangeText={(nextValue) => onSplitCountChange(index, nextValue)}
                 onBlur={() => onSplitCountBlur(index)}
                 keyboardType={isWeightBasedUOM ? "decimal-pad" : "number-pad"}
                 placeholder="0"
@@ -203,11 +172,7 @@ export function CountQuantitySection({
                 onPress={() => onRemoveSplitCount(index)}
                 style={styles.removeButton}
               >
-                <Ionicons
-                  name="remove-circle"
-                  size={24}
-                  color={colors.error[400]}
-                />
+                <Ionicons name="remove-circle" size={24} color={colors.error[400]} />
               </TouchableOpacity>
             </View>
           ))}
@@ -222,11 +187,7 @@ export function CountQuantitySection({
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.clearButton} onPress={onClearSplitCounts}>
-              <Ionicons
-                name="trash-outline"
-                size={20}
-                color={colors.error[500]}
-              />
+              <Ionicons name="trash-outline" size={20} color={colors.error[500]} />
             </TouchableOpacity>
           </View>
         </View>
