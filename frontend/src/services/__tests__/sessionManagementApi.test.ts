@@ -229,7 +229,7 @@ describe("sessionManagementApi.getSession", () => {
     );
   });
 
-  it("persists client session identity before API request and reuses it after timeout", async () => {
+  it("rotates client session identity after offline fallback and uses a fresh id on retry", async () => {
     const localStorageMock = installLocalStorageMock();
     let httpClient: any;
     let offlineStorage: any;
@@ -272,13 +272,19 @@ describe("sessionManagementApi.getSession", () => {
     await createSession("WH-ONLINE");
     await createSession("WH-ONLINE");
 
-    const storedClientSessionId = localStorageMock.setItem.mock.calls[0]?.[1];
-    expect(storedClientSessionId).toBeTruthy();
+    const firstClientSessionId = localStorageMock.setItem.mock.calls[0]?.[1];
+    const secondClientSessionId = localStorageMock.setItem.mock.calls[1]?.[1];
+    expect(firstClientSessionId).toBeTruthy();
+    expect(secondClientSessionId).toBeTruthy();
+    expect(secondClientSessionId).not.toBe(firstClientSessionId);
     expect(localStorageMock.setItem.mock.invocationCallOrder[0]).toBeLessThan(
       httpClient.post.mock.invocationCallOrder[0],
     );
-    expect(httpClient.post.mock.calls[0][1].client_session_id).toBe(storedClientSessionId);
-    expect(httpClient.post.mock.calls[1][1].client_session_id).toBe(storedClientSessionId);
+    expect(localStorageMock.setItem.mock.invocationCallOrder[1]).toBeLessThan(
+      httpClient.post.mock.invocationCallOrder[1],
+    );
+    expect(httpClient.post.mock.calls[0][1].client_session_id).toBe(firstClientSessionId);
+    expect(httpClient.post.mock.calls[1][1].client_session_id).toBe(secondClientSessionId);
     expect(localStorageMock.removeItem).toHaveBeenCalledWith("client_session_id");
   });
 

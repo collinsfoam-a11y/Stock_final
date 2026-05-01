@@ -299,6 +299,7 @@ export const createSession = async (params: string | CreateSessionParams) => {
         type: config.sessionType,
       });
       const offlineSession = await persistOfflineSession(buildOfflineSession(config));
+      clearSessionIdentity();
       log.debug("Created offline session", {
         id: offlineSession.id,
         source: offlineSession._source,
@@ -339,6 +340,7 @@ export const createSession = async (params: string | CreateSessionParams) => {
     });
 
     const offlineSession = await persistOfflineSession(buildOfflineSession(config));
+    clearSessionIdentity();
     log.debug("Created offline session after API error", {
       id: offlineSession.id,
       source: offlineSession._source,

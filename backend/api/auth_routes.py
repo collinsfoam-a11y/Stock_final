@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from pymongo.errors import PyMongoError
 
 from backend.api.schemas import (
     ApiResponse,
@@ -595,7 +596,7 @@ async def login(
 
     except HTTPException:
         raise  # Let HTTPException pass through with proper status code
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except (RuntimeError, TypeError, ValueError, OSError, PyMongoError) as e:
         logger.exception("Login failed unexpectedly")
         return Fail(e)
 
