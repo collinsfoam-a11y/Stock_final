@@ -15,9 +15,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 import { useAuthStore } from "../../store/authStore";
 import { useRouter } from "expo-router";
-import { haptics } from "../../services/haptics";
 
 import {
   colors,
@@ -92,10 +92,7 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
     !!user && showSettingsButton && rightAction?.icon !== "settings-outline";
 
   const handleHapticFeedback = () => {
-    if (!haptics.isAvailable()) {
-      return;
-    }
-    void haptics.light();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const onPressSettings = () => {
