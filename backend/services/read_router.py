@@ -387,35 +387,60 @@ class InventoryReadRouter:
         batch_totals = await self._projection_batch_totals(
             session_id=session_id, item_code=item_code
         )
-        location_qty = total_qty
-        floor_no = snapshot.get("floor_no") or snapshot.get("floor_id")
-        rack_no = snapshot.get("rack_no") or snapshot.get("rack_id")
-        counted_by = snapshot.get("counted_by") or snapshot.get("updated_by")
-        counted_at = (
-            snapshot.get("counted_at")
-            or snapshot.get("last_event_at")
-            or snapshot.get("updated_at")
+        active_lines = await self._active_count_lines(
+            session_id=session_id,
+            item_code=item_code,
         )
 
-        locations: list[dict[str, Any]] = []
-        if floor_no or rack_no or total_qty:
-            locations.append(
-                {
-                    "floor_no": floor_no,
-                    "rack_no": rack_no,
-                    "counted_qty": location_qty,
-                    "counted_by": counted_by,
-                    "counted_at": counted_at,
-                }
+        locations: list[dict[str, Any]] = [
+            {
+                "floor_no": line.get("floor_no"),
+                "rack_no": line.get("rack_no"),
+                "counted_qty": _as_float(line.get("counted_qty")),
+                "counted_by": line.get("counted_by"),
+                "counted_at": line.get("counted_at"),
+            }
+            for line in active_lines
+        ]
+        if not locations:
+            floor_no = snapshot.get("floor_no") or snapshot.get("floor_id")
+            rack_no = snapshot.get("rack_no") or snapshot.get("rack_id")
+            counted_by = snapshot.get("counted_by") or snapshot.get("updated_by")
+            counted_at = (
+                snapshot.get("counted_at")
+                or snapshot.get("last_event_at")
+                or snapshot.get("updated_at")
             )
+            if floor_no or rack_no or total_qty:
+                locations.append(
+                    {
+                        "floor_no": floor_no,
+                        "rack_no": rack_no,
+                        "counted_qty": total_qty,
+                        "counted_by": counted_by,
+                        "counted_at": counted_at,
+                    }
+                )
 
         return {
-            "scanned": total_qty > 0,
+            # Snapshot presence indicates at least one scan event was processed,
+            # including valid zero-quantity counts.
+            "scanned": True,
             "total_qty": total_qty,
             "locations": locations,
             "batch_totals": batch_totals,
             "source": "projection",
         }
+
+    async def _active_count_lines(
+        self,
+        *,
+        session_id: str,
+        item_code: str,
+    ) -> list[dict[str, Any]]:
+        cursor = self.db.count_lines.find({"session_id": session_id, "item_code": item_code})
+        count_lines = await cursor.to_list(None)
+        return [line for line in count_lines if not is_superseded_count_line(line)]
 
     async def _projection_batch_totals(
         self,
@@ -443,10 +468,7 @@ class InventoryReadRouter:
         session_id: str,
         item_code: str,
     ) -> dict[str, Any]:
-        cursor = self.db.count_lines.find({"session_id": session_id, "item_code": item_code})
-        count_lines = await cursor.to_list(None)
-
-        active_lines = [line for line in count_lines if not is_superseded_count_line(line)]
+        active_lines = await self._active_count_lines(session_id=session_id, item_code=item_code)
         if not active_lines:
             return {
                 "scanned": False,

@@ -644,6 +644,7 @@ class CountLineWriteService:
         set_doc = update_doc.setdefault("$set", {})
         if not isinstance(set_doc, dict):
             raise GovernanceViolation("CRITICAL: update_one requires a '$set' document")
+        non_set_fields = CountLineWriteService._fields_touched_by_non_set_operators(update_doc)
         for field_name in (
             "counted_qty",
             "input_qty",
@@ -657,8 +658,22 @@ class CountLineWriteService:
             "serial_numbers",
             "is_serial_item",
         ):
-            if field_name in source:
+            if field_name in source and field_name not in non_set_fields:
                 set_doc[field_name] = source[field_name]
+
+    @staticmethod
+    def _fields_touched_by_non_set_operators(update_doc: dict[str, Any]) -> set[str]:
+        blocked: set[str] = set()
+        if not isinstance(update_doc, dict):
+            return blocked
+        for operator_name, operator_doc in update_doc.items():
+            if operator_name == "$set":
+                continue
+            if not isinstance(operator_name, str) or not operator_name.startswith("$"):
+                continue
+            if isinstance(operator_doc, dict):
+                blocked.update(str(field_name) for field_name in operator_doc.keys())
+        return blocked
 
     async def _load_post_write_documents(
         self,

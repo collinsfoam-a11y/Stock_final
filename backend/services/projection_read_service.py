@@ -193,6 +193,7 @@ class ProjectionReadService:
         current_user: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         rows = await self._list_documents("session_dashboard_projection")
+        has_viewer_context = isinstance(current_user, dict)
         viewer_role = str((current_user or {}).get("role") or "").strip().lower()
         viewer_username = _normalize_string((current_user or {}).get("username"))
 
@@ -204,7 +205,12 @@ class ProjectionReadService:
                 continue
             if user_id and row_user != _normalize_string(user_id):
                 continue
-            if not user_id and viewer_role not in {"supervisor", "admin"} and row_user != viewer_username:
+            if (
+                not user_id
+                and has_viewer_context
+                and viewer_role not in {"supervisor", "admin"}
+                and row_user != viewer_username
+            ):
                 continue
             filtered.append(row)
         filtered.sort(
@@ -425,10 +431,11 @@ class ProjectionReadService:
         rows: list[dict[str, Any]],
         *,
         sort_by: Optional[str],
-        sort_order: str,
+        sort_order: Any,
     ) -> list[dict[str, Any]]:
         key_name = _normalize_string(sort_by) or "counted_at"
-        reverse = str(sort_order or "desc").lower() != "asc"
+        normalized_sort_order = getattr(sort_order, "value", sort_order)
+        reverse = str(normalized_sort_order or "desc").lower() != "asc"
 
         def sort_key(row: dict[str, Any]) -> Any:
             value = row.get(key_name)

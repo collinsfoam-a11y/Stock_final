@@ -1544,20 +1544,19 @@ async def get_session_stats(
             items_per_minute=0,
         )
 
+    session = await find_session(db, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+
+    viewer_role = str(current_user.get("role") or "").strip().lower()
+    if viewer_role not in {"supervisor", "admin"} and _session_owner(session) != current_user["username"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
     projection_reads = ProjectionReadService(db)
     if await projection_reads.dashboard_reads_enabled():
         projected = await projection_reads.get_session_stats(session_id)
         if projected is not None:
             return SessionStats(**projected)
-
-    session = await find_session(db, session_id)
-
-    if not session:
-        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
-
-    # Check access
-    if current_user["role"] != "supervisor" and _session_owner(session) != current_user["username"]:
-        raise HTTPException(status_code=403, detail="Access denied")
 
     line_summary = await _get_session_line_summary(db, session_id)
     total_items = int(line_summary.get("item_count", 0) or 0)

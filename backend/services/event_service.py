@@ -482,7 +482,6 @@ class EventService:
                         event_type="COUNT_VERIFIED",
                     ),
                     db_session=db_session,
-                    apply_projection=False,
                 )
             )
 
@@ -498,7 +497,6 @@ class EventService:
                         event_type="COUNT_UNVERIFIED",
                     ),
                     db_session=db_session,
-                    apply_projection=False,
                 )
             )
 

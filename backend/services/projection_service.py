@@ -273,6 +273,8 @@ class ProjectionService:
                 "COUNT_LINE_REMOVED",
                 "COUNT_LINE_MERGED",
                 "COUNT_LINE_SUPERSEDED",
+                "COUNT_VERIFIED",
+                "COUNT_UNVERIFIED",
             }:
                 await self._project_inventory_event(event, payload, db_session=db_session)
 
