@@ -1133,11 +1133,12 @@ const StaffHome = React.memo(function StaffHome() {
                     Use the exact rack code visible to staff on the floor.
                   </Text>
                   <ModernInput
-                    label="Rack / shelf code"
+                    label="Rack / Shelf Number"
                     placeholder="e.g. A-123"
                     value={rackName}
                     onChangeText={setRackName}
                     autoCapitalize="characters"
+                    showClearButton
                     containerStyle={styles.modalInputField}
                   />
                 </Animated.View>
