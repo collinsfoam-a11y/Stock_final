@@ -65,14 +65,40 @@ jest.mock(
   "@react-native-async-storage/async-storage",
   () =>
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require("@react-native-async-storage/async-storage/jest/async-storage-mock")
-      .default,
+    require("@react-native-async-storage/async-storage/jest/async-storage-mock").default
 );
 
 // Mock API functions before importing syncService
 jest.mock("../api/api", () => ({
   isOnline: jest.fn(),
   syncBatch: jest.fn(),
+}));
+
+jest.mock("../control-plane/countLineControlPlane", () => ({
+  syncPendingCountLineEvents: jest.fn().mockResolvedValue({
+    success: 0,
+    failed: 0,
+    total: 0,
+    errors: [],
+  }),
+}));
+
+jest.mock("../control-plane/countLineReviewControlPlane", () => ({
+  syncPendingCountLineReviewEvents: jest.fn().mockResolvedValue({
+    success: 0,
+    failed: 0,
+    total: 0,
+    errors: [],
+  }),
+}));
+
+jest.mock("../control-plane/sessionControlPlane", () => ({
+  syncPendingSessionEvents: jest.fn().mockResolvedValue({
+    success: 0,
+    failed: 0,
+    total: 0,
+    errors: [],
+  }),
 }));
 
 // Mock offline storage before importing syncService
@@ -91,7 +117,13 @@ import { initializeSyncService, syncOfflineQueue } from "../syncService";
 // eslint-disable-next-line import/first
 import * as api from "../api/api";
 // eslint-disable-next-line import/first
+import * as countLineControlPlane from "../control-plane/countLineControlPlane";
+// eslint-disable-next-line import/first
+import * as countLineReviewControlPlane from "../control-plane/countLineReviewControlPlane";
+// eslint-disable-next-line import/first
 import * as offlineStorage from "../offline/offlineStorage";
+// eslint-disable-next-line import/first
+import * as sessionControlPlane from "../control-plane/sessionControlPlane";
 // eslint-disable-next-line import/first
 import { useNetworkStore } from "../../store/networkStore";
 
@@ -118,9 +150,7 @@ describe("syncOfflineQueue", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Default mock implementations
-    (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue(
-      mockOperations,
-    );
+    (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue(mockOperations);
     (offlineStorage.getCacheStats as jest.Mock).mockResolvedValue({
       queuedOperations: 1,
     });
@@ -128,19 +158,17 @@ describe("syncOfflineQueue", () => {
     (api.syncBatch as jest.Mock).mockResolvedValue({
       results: [{ id: "op_1", success: true }],
     });
-    (offlineStorage.removeManyFromOfflineQueue as jest.Mock).mockResolvedValue(
-      undefined,
-    );
-    (offlineStorage.updateQueueItemRetries as jest.Mock).mockResolvedValue(
-      undefined,
-    );
-    (offlineStorage.updateOfflineQueueItem as jest.Mock).mockResolvedValue(
-      undefined,
-    );
+    (offlineStorage.removeManyFromOfflineQueue as jest.Mock).mockResolvedValue(undefined);
+    (offlineStorage.updateQueueItemRetries as jest.Mock).mockResolvedValue(undefined);
+    (offlineStorage.updateOfflineQueueItem as jest.Mock).mockResolvedValue(undefined);
   });
 
   it("should sync operations from offline queue", async () => {
     const result = await syncOfflineQueue();
+
+    expect(sessionControlPlane.syncPendingSessionEvents).toHaveBeenCalled();
+    expect(countLineControlPlane.syncPendingCountLineEvents).toHaveBeenCalled();
+    expect(countLineReviewControlPlane.syncPendingCountLineReviewEvents).toHaveBeenCalled();
 
     // Verify API called with transformed operations
     expect(api.syncBatch).toHaveBeenCalledWith([
@@ -158,9 +186,7 @@ describe("syncOfflineQueue", () => {
     // Verify success handling
     expect(result.success).toBe(1);
     expect(result.failed).toBe(0);
-    expect(offlineStorage.removeManyFromOfflineQueue).toHaveBeenCalledWith([
-      "op_1",
-    ]);
+    expect(offlineStorage.removeManyFromOfflineQueue).toHaveBeenCalledWith(["op_1"]);
   });
 
   it("should handle ignored operations (empty queue)", async () => {
@@ -185,7 +211,7 @@ describe("syncOfflineQueue", () => {
       expect.objectContaining({
         id: "op_1",
         error: "Duplicate record",
-      }),
+      })
     );
     // Should NOT remove failed items
     expect(offlineStorage.removeManyFromOfflineQueue).not.toHaveBeenCalled();
@@ -195,7 +221,7 @@ describe("syncOfflineQueue", () => {
       expect.objectContaining({
         error: "Duplicate record",
         status: "blocked_conflict",
-      }),
+      })
     );
   });
 
@@ -219,7 +245,7 @@ describe("syncOfflineQueue", () => {
       expect.objectContaining({
         error: "Server timeout",
         status: "failed_manual_review",
-      }),
+      })
     );
     expect(offlineStorage.removeManyFromOfflineQueue).not.toHaveBeenCalled();
   });
@@ -242,7 +268,7 @@ describe("syncOfflineQueue", () => {
       expect.objectContaining({
         status: "pending_retry",
         last_error: "Unauthorized",
-      }),
+      })
     );
     expect(offlineStorage.removeManyFromOfflineQueue).not.toHaveBeenCalled();
   });
@@ -261,21 +287,13 @@ describe("initializeSyncService", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
-    (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue(
-      mockOperations,
-    );
+    (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue(mockOperations);
     (offlineStorage.getCacheStats as jest.Mock).mockResolvedValue({
       queuedOperations: 1,
     });
-    (offlineStorage.removeManyFromOfflineQueue as jest.Mock).mockResolvedValue(
-      undefined,
-    );
-    (offlineStorage.updateQueueItemRetries as jest.Mock).mockResolvedValue(
-      undefined,
-    );
-    (offlineStorage.updateOfflineQueueItem as jest.Mock).mockResolvedValue(
-      undefined,
-    );
+    (offlineStorage.removeManyFromOfflineQueue as jest.Mock).mockResolvedValue(undefined);
+    (offlineStorage.updateQueueItemRetries as jest.Mock).mockResolvedValue(undefined);
+    (offlineStorage.updateOfflineQueueItem as jest.Mock).mockResolvedValue(undefined);
     (api.isOnline as jest.Mock).mockReturnValue(true);
     (api.syncBatch as jest.Mock).mockResolvedValue({
       results: [{ id: "op_1", success: true }],

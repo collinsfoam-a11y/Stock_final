@@ -10,7 +10,7 @@ import {
   modernColors,
   modernShadows,
   modernBorderRadius,
-} from "@/styles/modernDesignSystem";
+} from "@/styles/unifiedSystem";
 
 interface SystemStatus {
   api_health: string;

@@ -31,12 +31,15 @@ from backend.services.count_line_write_service import (
     CountLineGovernanceDecision,
     CountLineWriteService,
 )
+from backend.services.governance_guard import GovernanceViolation
 from backend.services.lock_service import LockService, ResourceLockedError
 from backend.services.logic_guard import build_request_context, enforce_session_logic
 from backend.services.notification_service import NotificationService
+from backend.services.read_router import InventoryReadRouter, ProjectionReadError
 from backend.services.snapshot_service import SnapshotService
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.transaction_manager import mongo_transaction
+from backend.services.validation_service import ValidationService
 from backend.services.variant_service import VariantService
 from backend.sql_server_connector import SQLServerConnector
 from backend.utils.api_utils import sanitize_for_logging
@@ -63,8 +66,32 @@ def _normalize_idempotency_key(value: Any) -> Optional[str]:
     return normalized or None
 
 
+BACKEND_RULE_ERROR_MAP: dict[str, tuple[int, str]] = {
+    "SERIAL_DUPLICATE": (409, "Serial already exists for this item."),
+    "FRACTION_NOT_ALLOWED": (400, "Fractional quantity is not allowed for this item."),
+    "PRECISION_EXCEEDED": (400, "Quantity precision exceeds the allowed limit for this item."),
+    "INVALID_UOM_CONVERSION": (400, "A valid base-UOM conversion is required."),
+    "SERIAL_QTY_MISMATCH": (400, "Serialized counts must match the number of serials provided."),
+    "SERIAL_QTY_MUST_BE_ONE": (400, "Serialized items must be counted as a quantity of one."),
+}
+
+
+def _raise_backend_rule_http_error(exc: GovernanceViolation) -> NoReturn:
+    raw_message = str(exc).strip()
+    code = raw_message.split(":", 1)[0].strip().upper()
+    status_code, message = BACKEND_RULE_ERROR_MAP.get(code, (409, raw_message))
+    raise HTTPException(status_code=status_code, detail=message) from exc
+
+
 def _raise_count_lines_internal_error(detail: str, exc: Exception) -> NoReturn:
     raise HTTPException(status_code=500, detail=detail) from exc
+
+
+def _raise_projection_read_http_error(exc: ProjectionReadError) -> NoReturn:
+    raise HTTPException(
+        status_code=503,
+        detail=(f"Projection state unavailable for authoritative read ({exc.reason})"),
+    ) from exc
 
 
 class CountLineApprovalRequest(BaseModel):
@@ -124,11 +151,19 @@ def _get_db_client(db_override=None):
         raise HTTPException(status_code=500, detail="Database is not initialized")
 
 
+def _get_read_router(db: Any) -> InventoryReadRouter:
+    return InventoryReadRouter(db)
+
+
 def _get_count_line_write_service(db: Any) -> CountLineWriteService:
     return CountLineWriteService(
         db,
         snapshot_service=_snapshot_service,
     )
+
+
+def _get_validation_service(db: Any) -> ValidationService:
+    return ValidationService(db)
 
 
 def _require_supervisor(current_user: dict):
@@ -463,6 +498,23 @@ async def _get_erp_item_for_existing_count_line(
     }
 
 
+async def _normalize_line_data_for_backend_rules(
+    db: Any,
+    line_data: CountLineCreate,
+    *,
+    erp_item: dict[str, Any],
+) -> CountLineCreate:
+    validation_service = _get_validation_service(db)
+    try:
+        normalized = await validation_service.enforce_count_line_business_rules(
+            line_data.model_dump(mode="json"),
+            item=erp_item,
+        )
+    except GovernanceViolation as exc:
+        _raise_backend_rule_http_error(exc)
+    return CountLineCreate.model_validate(normalized["document"])
+
+
 async def _resolve_snapshot_baseline(
     line_data: CountLineCreate,
     erp_item: dict[str, Any],
@@ -645,9 +697,27 @@ def _build_count_line_document(
         "item_code": line_data.item_code,
         "barcode": line_data.barcode or erp_item.get("barcode"),
         "item_name": erp_item.get("item_name", "Unknown"),
+        "batch_id": line_data.batch_id,
+        "batch_no": (
+            line_data.batches[0].get("batch_no")
+            if (
+                isinstance(line_data.batches, list)
+                and line_data.batches
+                and isinstance(line_data.batches[0], dict)
+            )
+            else None
+        ),
+        "batches": line_data.batches,
         "erp_qty": erp_qty,
         "baseline_hash": baseline_hash,
         "counted_qty": line_data.counted_qty,
+        "input_qty": line_data.input_qty or line_data.counted_qty,
+        "input_uom": line_data.input_uom or line_data.uom_code or line_data.uom_name,
+        "base_uom": line_data.base_uom or erp_item.get("base_uom") or erp_item.get("uom_code"),
+        "uom_code": line_data.uom_code or erp_item.get("uom_code"),
+        "uom_name": line_data.uom_name or erp_item.get("uom_name"),
+        "conversion_factor": line_data.conversion_factor or 1.0,
+        "quantity_precision": line_data.quantity_precision,
         "variance": governance.variance,
         "variance_reason": line_data.variance_reason,
         "variance_note": line_data.variance_note,
@@ -1120,6 +1190,7 @@ async def create_count_line(
         return existing_idempotent
 
     erp_item = await _get_erp_item_for_count_line(db, line_data)
+    line_data = await _normalize_line_data_for_backend_rules(db, line_data, erp_item=erp_item)
     erp_qty, baseline_hash = await write_service.resolve_baseline(
         session_id=line_data.session_id,
         item_code=line_data.item_code,
@@ -1249,6 +1320,8 @@ async def verify_stock(
         context={
             "session_id": str(count_line.get("session_id") or ""),
             "governance_mode": "mutable_session",
+            "transition": "verify",
+            "username": current_user["username"],
         },
     )
     if update_result.modified_count == 0:
@@ -1307,6 +1380,8 @@ async def unverify_stock(
         context={
             "session_id": str(count_line.get("session_id") or ""),
             "governance_mode": "mutable_session",
+            "transition": "unverify",
+            "username": current_user["username"],
         },
     )
     if update_result.modified_count == 0:
@@ -1531,6 +1606,9 @@ async def approve_count_line(
             context={
                 "session_id": str(count_line.get("session_id") or ""),
                 "governance_mode": "mutable_session",
+                "transition": "approve",
+                "username": current_user["username"],
+                "approval_note": request.notes if request else None,
             },
         )
 
@@ -1638,12 +1716,19 @@ async def reject_count_line(
                         "recount_requested_at": rejected_at,
                         "recount_requested_by": current_user["username"],
                         "assigned_to": assigned_to,
+                        "blind_recount_required": True,
+                        "dual_verification_required": True,
+                        "original_count_hidden": True,
                     }
                 },
             },
             context={
                 "session_id": str(count_line.get("session_id") or ""),
                 "governance_mode": "mutable_session",
+                "transition": "reject",
+                "username": current_user["username"],
+                "assigned_to": assigned_to,
+                "rejection_reason": rejection_reason,
             },
         )
 
@@ -1742,6 +1827,13 @@ async def check_item_counted(
     """Check if an item has already been counted in the session"""
     db = _get_db_client()
     try:
+        read_router = _get_read_router(db)
+        aggregate_status = await read_router.get_session_item_totals(
+            session_id=session_id,
+            item_code=item_code,
+            endpoint="count-lines/check",
+        )
+
         # Find all count lines for this item in this session
         cursor = db.count_lines.find({"session_id": session_id, "item_code": item_code})
         count_lines = await cursor.to_list(length=None)
@@ -1752,7 +1844,18 @@ async def check_item_counted(
             # Frontend expects a stable `line_id` field for follow-up actions (add qty, etc).
             line.setdefault("line_id", line.get("id") or line["_id"])
 
-        return {"already_counted": len(count_lines) > 0, "count_lines": count_lines}
+        return {
+            "already_counted": bool(aggregate_status.get("scanned")) or len(count_lines) > 0,
+            "count_lines": count_lines,
+            "item_totals": {
+                "total_qty": aggregate_status.get("total_qty", 0.0),
+                "source": aggregate_status.get("source", "legacy"),
+            },
+            "batch_totals": aggregate_status.get("batch_totals", []),
+            "aggregate_source": aggregate_status.get("source", "legacy"),
+        }
+    except ProjectionReadError as exc:
+        _raise_projection_read_http_error(exc)
     except Exception as e:
         logger.error(
             "Error checking item count: %s",
@@ -1766,6 +1869,7 @@ async def check_serial_uniqueness(
     session_id: str,
     serial_number: str,
     current_user: dict = Depends(get_current_user),
+    item_code: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Check whether a serial number has already been counted within a session.
@@ -1778,32 +1882,15 @@ async def check_serial_uniqueness(
     if not normalized:
         raise HTTPException(status_code=400, detail="serial_number is required")
 
-    candidates = {normalized, normalized.upper()}
-    projection = {
-        "_id": 0,
-        "item_code": 1,
-        "item_name": 1,
-        "counted_by": 1,
-        "floor_no": 1,
-        "rack_no": 1,
-        "status": 1,
-    }
-
-    for candidate in candidates:
-        existing = await db.count_lines.find_one(
-            {
-                "session_id": session_id,
-                "$or": [
-                    {"serial_numbers": candidate},
-                    {"serial_entries.serial_number": candidate},
-                ],
-            },
-            projection,
-        )
-        if existing:
-            return {"exists": True, **existing}
-
-    return {"exists": False}
+    validation_service = _get_validation_service(db)
+    conflict = await validation_service.find_serial_conflict(normalized, item_code=item_code)
+    if conflict:
+        return {
+            "exists": True,
+            "scope": "item" if item_code else "global",
+            **conflict,
+        }
+    return {"exists": False, "scope": "item" if item_code else "global"}
 
 
 @router.get("/count-lines/session/{session_id}")
@@ -2113,30 +2200,15 @@ async def check_item_scan_status(
 ):
     """Check if item has been scanned in this session and where"""
     db = _get_db_client()
-
-    # Find all count lines for this item in this session
-    cursor = db.count_lines.find({"session_id": session_id, "item_code": item_code})
-
-    count_lines = await cursor.to_list(None)
-
-    if not count_lines:
-        return {"scanned": False, "total_qty": 0, "locations": []}
-
-    total_qty = sum(line.get("counted_qty", 0) for line in count_lines)
-
-    locations = []
-    for line in count_lines:
-        locations.append(
-            {
-                "floor_no": line.get("floor_no"),
-                "rack_no": line.get("rack_no"),
-                "counted_qty": line.get("counted_qty"),
-                "counted_by": line.get("counted_by"),
-                "counted_at": line.get("counted_at"),
-            }
+    read_router = _get_read_router(db)
+    try:
+        return await read_router.get_session_item_scan_status(
+            session_id=session_id,
+            item_code=item_code,
+            endpoint="scan-status",
         )
-
-    return {"scanned": True, "total_qty": total_qty, "locations": locations}
+    except ProjectionReadError as exc:
+        _raise_projection_read_http_error(exc)
 
 
 @router.post("/count-lines/bulk/approve")
@@ -2257,6 +2329,12 @@ async def create_count_lines_batch(
                         or f"batch_{datetime.now(timezone.utc).replace(tzinfo=None).isoformat()}"
                     ),
                 }
+            )
+            erp_item = await _get_erp_item_for_count_line(db, enriched_line)
+            enriched_line = await _normalize_line_data_for_backend_rules(
+                db,
+                enriched_line,
+                erp_item=erp_item,
             )
             (
                 count_line,

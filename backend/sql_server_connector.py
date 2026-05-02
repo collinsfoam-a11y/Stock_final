@@ -5,16 +5,18 @@ import logging
 import re
 import sys
 import threading
+import unittest.mock
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
-import unittest.mock
 try:
     import pyodbc
+    _PYODBC_AVAILABLE = True
 except ImportError:
     pyodbc = unittest.mock.MagicMock()
     pyodbc.Error = type("Error", (Exception,), {})
     pyodbc.Connection = type("Connection", (), {})
+    _PYODBC_AVAILABLE = False
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from backend.db_mapping_config import SQL_TEMPLATES, get_active_mapping
@@ -400,6 +402,11 @@ class SQLServerConnector:
         Supports both Windows Authentication and SQL Server Authentication
         Automatically tries multiple connection methods if initial attempt fails
         """
+        if not _PYODBC_AVAILABLE:
+            raise DatabaseConnectionError(
+                "SQL Server connectivity is unavailable because pyodbc is not installed."
+            )
+
         # Cache provided configuration so background services can retry later if needed
         self.config = {
             "host": host,
@@ -527,7 +534,7 @@ class SQLServerConnector:
 
             # Verify connection using shared utility
             if not SQLServerConnectionBuilder.is_connection_valid(self.connection):
-                raise pyodbc.Error("Connection validation failed")
+                raise DatabaseConnectionError("Connection validation failed")
 
             # Success - store config and log
             self._reset_dynamic_metadata()

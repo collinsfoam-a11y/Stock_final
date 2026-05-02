@@ -16,7 +16,7 @@ import {
   normalizeScanValue,
   scoreCandidate,
 } from "@/scanner/serialScanRules";
-import { colors } from "@/theme/modernDesign";
+import { colors } from "@/theme/unified";
 import ModernButton from "@/components/ui/ModernButton";
 import ModernHeader from "@/components/ui/ModernHeader";
 

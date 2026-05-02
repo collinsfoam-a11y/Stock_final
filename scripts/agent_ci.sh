@@ -32,7 +32,7 @@ run_step() {
     shift
 
     local log_file
-    log_file="$(mktemp "${TMP_DIR%/}/agent-ci.${name}.XXXXXX.log")"
+    log_file="$(mktemp "${TMP_DIR%/}/agent-ci.${name}.XXXXXX")"
     LOG_FILES+=("$log_file")
 
     if (cd "$ROOT_DIR" && "$@") >"$log_file" 2>&1; then

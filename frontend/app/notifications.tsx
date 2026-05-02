@@ -23,7 +23,7 @@ import {
   spacing,
   typography,
   borderRadius,
-} from "../src/theme/modernDesign";
+} from "../src/theme/unified";
 
 export default function NotificationsScreen() {
   const router = useRouter();

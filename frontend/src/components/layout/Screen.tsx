@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/useTheme";
+import { operationalTheme } from "@/theme/operationalTheme";
 import { layout } from "../../styles/globalStyles";
 
 export type ScreenVariant = "default" | "scrollable" | "fullscreen";
@@ -42,15 +43,13 @@ export const Screen: React.FC<ScreenProps> = ({
   testID,
 }) => {
   const theme = useTheme();
-  const bgColor = backgroundColor || theme.colors.background;
+  const bgColor =
+    backgroundColor || (theme.isDark ? theme.colors.background : operationalTheme.background);
 
   // Fullscreen variant (for scanner, modals)
   if (variant === "fullscreen") {
     return (
-      <View
-        style={[styles.fullscreen, { backgroundColor: bgColor }, style]}
-        testID={testID}
-      >
+      <View style={[styles.fullscreen, { backgroundColor: bgColor }, style]} testID={testID}>
         {children}
       </View>
     );
@@ -61,11 +60,7 @@ export const Screen: React.FC<ScreenProps> = ({
     const content = (
       <ScrollView
         style={[styles.container, { backgroundColor: bgColor }, style]}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { padding },
-          contentContainerStyle,
-        ]}
+        contentContainerStyle={[styles.scrollContent, { padding }, contentContainerStyle]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         testID={testID}
@@ -91,10 +86,7 @@ export const Screen: React.FC<ScreenProps> = ({
 
   // Default variant (flex container)
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: bgColor }, style]}
-      testID={testID}
-    >
+    <SafeAreaView style={[styles.container, { backgroundColor: bgColor }, style]} testID={testID}>
       <View style={[styles.content, { padding }]}>{children}</View>
     </SafeAreaView>
   );

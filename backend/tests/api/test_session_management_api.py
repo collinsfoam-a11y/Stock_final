@@ -1058,6 +1058,9 @@ class TestSessionIdentifierFallbacks:
         mock_db.verification_sessions.update_one = AsyncMock(
             return_value=MagicMock(modified_count=1)
         )
+        mock_db.event_log = MagicMock()
+        mock_db.event_log.find_one = AsyncMock(return_value=None)
+        mock_db.event_log.insert_one = AsyncMock(return_value=MagicMock(inserted_id="evt-1"))
 
         mock_redis = MagicMock()
         mock_lock_manager = MagicMock()

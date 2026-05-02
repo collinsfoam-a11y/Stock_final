@@ -4,7 +4,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { AnimatedPressable, GlassCard, LiveIndicator } from "@/components/ui";
-import { theme } from "@/styles/modernDesignSystem";
+import { theme } from "@/styles/unifiedSystem";
 import { colors as unifiedColors } from "@/theme/unified";
 
 export interface OverviewAction {

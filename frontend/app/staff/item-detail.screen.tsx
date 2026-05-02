@@ -41,22 +41,14 @@ import { useItemEvidenceState } from "@/domains/inventory/hooks/scan/useItemEvid
 import { useItemMetadataState } from "@/domains/inventory/hooks/scan/useItemMetadataState";
 import { useQuantityCountManager } from "@/domains/inventory/hooks/scan/useQuantityCountManager";
 import { useSerialEntryManager } from "@/domains/inventory/hooks/scan/useSerialEntryManager";
-import {
-  colors,
-  semanticColors,
-  spacing,
-  fontSize,
-  fontWeight,
-} from "@/theme/unified";
+import { colors, semanticColors, spacing, fontSize, fontWeight } from "@/theme/unified";
 
 export default function ItemDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ barcode: string; sessionId: string }>();
   const { barcode, sessionId } = params;
-  const normalizedSessionId = Array.isArray(sessionId)
-    ? sessionId[0]
-    : sessionId;
+  const normalizedSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId;
   const { currentFloor, currentRack } = useScanSessionStore();
   const { settings } = useSettingsStore();
 
@@ -92,10 +84,13 @@ export default function ItemDetailScreen() {
     loading,
     mrpVariants,
     rawVariantsCount,
+    recountBlockedReason,
+    recountTargetId,
     sameNameVariants,
     selectedMrpVariant,
     setShowZeroStock,
     showZeroStock,
+    blindRecountRequired,
   } = useItemDetailData({
     barcode,
     sessionId,
@@ -240,6 +235,9 @@ export default function ItemDetailScreen() {
       hasExpiryDate,
       itemExpiryDate,
       itemExpiryDateFormat,
+      recountTargetId,
+      blindRecountRequired,
+      recountBlockedReason,
       onSuccess: handleBackPress,
     });
   useItemDraftAutosave({
@@ -257,11 +255,7 @@ export default function ItemDetailScreen() {
   if (loading) {
     return (
       <ThemedScreen>
-        <ModernHeader
-          title="Verify Item"
-          showBackButton
-          onBackPress={handleBackPress}
-        />
+        <ModernHeader title="Verify Item" showBackButton onBackPress={handleBackPress} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary[600]} />
           <Text style={{ marginTop: 12, color: semanticColors.text.secondary }}>
@@ -275,17 +269,9 @@ export default function ItemDetailScreen() {
   if (!item) {
     return (
       <ThemedScreen>
-        <ModernHeader
-          title="Verify Item"
-          showBackButton
-          onBackPress={handleBackPress}
-        />
+        <ModernHeader title="Verify Item" showBackButton onBackPress={handleBackPress} />
         <View style={styles.errorContainer}>
-          <Ionicons
-            name="alert-circle-outline"
-            size={64}
-            color={colors.error[500]}
-          />
+          <Ionicons name="alert-circle-outline" size={64} color={colors.error[500]} />
           <Text style={styles.errorTitle}>Item Not Found</Text>
           <Text style={styles.errorText}>
             We couldn't retrieve details for the scanned barcode.
@@ -302,11 +288,7 @@ export default function ItemDetailScreen() {
 
   return (
     <ThemedScreen>
-      <ModernHeader
-        title="Verify Item"
-        showBackButton
-        onBackPress={handleBackPress}
-      />
+      <ModernHeader title="Verify Item" showBackButton onBackPress={handleBackPress} />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -396,9 +378,7 @@ export default function ItemDetailScreen() {
                 onAddSerial={handleAddSerial}
                 onOpenScanner={() => setShowSerialScanner(true)}
                 onRemoveSerial={handleRemoveSerial}
-                onSerialChange={(index, text) =>
-                  handleSerialChange(index, "serial_number", text)
-                }
+                onSerialChange={(index, text) => handleSerialChange(index, "serial_number", text)}
                 onSerializedChange={setIsSerializedItem}
               />
 

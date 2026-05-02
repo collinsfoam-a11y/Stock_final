@@ -7,19 +7,21 @@ Upgraded SQL Server connection pooling with retry logic, health monitoring, and 
 import logging
 import threading
 import time
+import unittest.mock
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from queue import Empty, Queue
 from typing import Any, Optional
 
-import unittest.mock
 try:
     import pyodbc
+    _PYODBC_AVAILABLE = True
 except ImportError:
     pyodbc = unittest.mock.MagicMock()
     pyodbc.Error = type("Error", (Exception,), {})
     pyodbc.Connection = type("Connection", (), {})
+    _PYODBC_AVAILABLE = False
 
 from ..utils.db_connection import SQLServerConnectionBuilder
 
@@ -69,6 +71,10 @@ class EnhancedSQLServerConnectionPool:
         retry_delay: float = 1.0,
         health_check_interval: int = 60,
     ):
+        if not _PYODBC_AVAILABLE:
+            raise RuntimeError(
+                "Enhanced SQL connection pool is unavailable because pyodbc is not installed."
+            )
         self.host = host
         self.port = port
         self.database = database

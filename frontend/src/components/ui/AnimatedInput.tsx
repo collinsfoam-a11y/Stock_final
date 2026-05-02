@@ -19,7 +19,7 @@ import * as Haptics from "expo-haptics";
 import {
   modernColors,
   modernBorderRadius,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 
 interface AnimatedInputProps extends TextInputProps {
   label?: string;

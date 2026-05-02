@@ -32,8 +32,20 @@ from backend.services.redis_service import get_redis
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.sync_conflicts_service import SyncConflictsService
 from backend.services.transaction_manager import mongo_transaction
+from backend.services.validation_service import ValidationService
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_serial_numbers(values: list[str]) -> list[str]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        serial = str(value or "").strip().upper()
+        if serial and serial not in seen:
+            seen.add(serial)
+            normalized.append(serial)
+    return normalized
 
 
 class LegacySyncOperation(BaseModel):
@@ -158,10 +170,16 @@ async def validate_record(
     Returns:
         SyncConflict if validation fails, None if valid
     """
+    normalized_serials = _normalize_serial_numbers(record.serial_numbers)
+
     # Check for duplicate serial numbers
-    if record.serial_numbers:
-        for serial in record.serial_numbers:
-            existing = await db.item_serials.find_one({"serial_number": serial})
+    if normalized_serials:
+        validation_service = ValidationService(db)
+        for serial in normalized_serials:
+            existing = await validation_service.find_serial_conflict(
+                serial,
+                item_code=record.item_code,
+            )
             if existing and existing.get("client_record_id") != record.client_record_id:
                 conflict_id = None
                 if sync_service and user_id:
@@ -184,11 +202,14 @@ async def validate_record(
                 return SyncConflict(
                     client_record_id=record.client_record_id,
                     conflict_type="duplicate_serial",
-                    message=f"Serial number '{serial}' already exists",
+                    message="Serial already exists for this item.",
                     details={
                         "serial": serial,
-                        "existing_record": str(existing.get("_id")),
+                        "existing_record": str(
+                            existing.get("count_line_id") or existing.get("_id")
+                        ),
                         "conflict_id": conflict_id,
+                        "item_code": existing.get("item_code"),
                     },
                 )
 
@@ -258,6 +279,7 @@ async def sync_single_record(
         updated_at = datetime.fromisoformat(record.updated_at.replace("Z", "+00:00")).replace(
             tzinfo=None
         )
+        serial_numbers = _normalize_serial_numbers(record.serial_numbers)
         doc = {
             "id": str(uuid.uuid4()),
             "client_record_id": record.client_record_id,
@@ -271,7 +293,7 @@ async def sync_single_record(
             "item_code": record.item_code,
             "counted_qty": record.verified_qty,
             "damaged_qty": record.damaged_qty,
-            "serial_numbers": record.serial_numbers,
+            "serial_numbers": serial_numbers,
             "manufacturing_date": record.mfg_date,
             "mrp": record.mrp,
             "uom": record.uom,
@@ -317,35 +339,18 @@ async def sync_single_record(
                 context={"session": session, "username": user_id},
             )
 
-        # Insert serial numbers
-        if record.serial_numbers:
-            serial_docs = [
-                {
-                    "serial_number": serial,
-                    "item_code": record.item_code,
-                    "session_id": record.session_id,
-                    "rack_id": record.rack_id,
-                    "client_record_id": record.client_record_id,
-                    "created_at": time.time(),
-                }
-                for serial in record.serial_numbers
-            ]
-
-            # Insert with ignore duplicates
-            try:
-                await db.item_serials.insert_many(serial_docs, ordered=False)
-            except Exception as e:
-                # Ignore duplicate key errors
-                if "duplicate key" not in str(e).lower():
-                    raise
-
         return True, None
 
     except GovernanceViolation as e:
-        logger.error("Governance violation syncing record {record.client_record_id}: %s", sanitize_for_logging(str(e)))
+        logger.error(
+            "Governance violation syncing record {record.client_record_id}: %s",
+            sanitize_for_logging(str(e)),
+        )
         return False, str(e)
     except Exception as e:
-        logger.error("Error syncing record {record.client_record_id}: %s", sanitize_for_logging(str(e)))
+        logger.error(
+            "Error syncing record {record.client_record_id}: %s", sanitize_for_logging(str(e))
+        )
         return False, str(e)
 
 

@@ -26,13 +26,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuthStore } from "@/store/authStore";
 import { useNotificationStore } from "@/store/notificationStore";
+import { useOfflineStore } from "@/store/offlineStore";
+import { useNetworkStore } from "@/store/networkStore";
 import { useScanSessionStore } from "@/store/scanSessionStore";
+import { useSettingsStore } from "@/store/settingsStore";
 import { useSessionsQuery } from "@/hooks/useSessionsQuery";
-import {
-  createSession,
-  getZones,
-  getWarehouses,
-} from "@/services/api/api";
+import { createSession, getZones, getWarehouses } from "@/services/api/api";
 import { SESSION_PAGE_SIZE } from "@/constants/config";
 import { toastService } from "@/services/toastService";
 
@@ -41,12 +40,7 @@ import ModernCard from "@/components/ui/ModernCard";
 import ModernButton from "@/components/ui/ModernButton";
 import ModernInput from "@/components/ui/ModernInput";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
-import {
-  colors,
-  spacing,
-  typography,
-  borderRadius,
-} from "@/theme/modernDesign";
+import { colors, spacing, typography, borderRadius } from "@/theme/unified";
 
 interface Zone {
   id: string;
@@ -57,6 +51,18 @@ interface Warehouse {
   id: string;
   warehouse_name: string;
 }
+
+const operationalPalette = {
+  background: "#FAF9F6",
+  surface: "#FFFFFF",
+  surfaceMuted: "#F4F3F1",
+  border: "#E2E2E2",
+  primary: "#007B83",
+  primaryStrong: "#006067",
+  primaryTint: "#E4F5F6",
+  ink: "#1A1C1A",
+  muted: "#586377",
+};
 
 const toDate = (value: unknown): Date | null => {
   if (value instanceof Date) {
@@ -141,6 +147,90 @@ const normalizeWarehouse = (value: unknown): string => {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
 };
 
+const getWarehouseParts = (warehouse: unknown) => {
+  if (typeof warehouse !== "string" || !warehouse.trim()) {
+    return {
+      zone: "Unassigned",
+      area: "Unknown area",
+      rack: "",
+    };
+  }
+
+  const parts = warehouse
+    .split(" - ")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return {
+    zone: parts[0] || "Location",
+    area: parts[1] || parts[0] || warehouse,
+    rack: parts.length > 2 ? parts.slice(2).join(" • ") : "",
+  };
+};
+
+const getSessionProgress = (session: any) => {
+  const scanned = getScannedCount(session);
+  const totalRaw = session?.total_items ?? session?.expected_items ?? 0;
+  const total = Number.isFinite(Number(totalRaw)) ? Number(totalRaw) : 0;
+
+  if (total <= 0) {
+    return {
+      scanned,
+      total,
+      percent: scanned > 0 ? 100 : 0,
+      label: scanned > 0 ? "Captured lines" : "Waiting for first scan",
+    };
+  }
+
+  const percent = Math.min(100, Math.round((scanned / total) * 100));
+  return {
+    scanned,
+    total,
+    percent,
+    label: `${scanned} of ${total} scanned`,
+  };
+};
+
+const getSessionStatusStyle = (status: unknown) => {
+  const normalized = String(status || "OPEN")
+    .trim()
+    .toUpperCase();
+
+  switch (normalized) {
+    case "ACTIVE":
+    case "OPEN":
+      return {
+        label: normalized,
+        backgroundColor: operationalPalette.primaryTint,
+        borderColor: "#BEE7E9",
+        textColor: operationalPalette.primaryStrong,
+      };
+    case "RECONCILE":
+    case "PENDING":
+      return {
+        label: normalized,
+        backgroundColor: colors.warning[50],
+        borderColor: colors.warning[200],
+        textColor: colors.warning[700],
+      };
+    case "COMPLETED":
+    case "CLOSED":
+      return {
+        label: normalized,
+        backgroundColor: colors.success[50],
+        borderColor: colors.success[200],
+        textColor: colors.success[700],
+      };
+    default:
+      return {
+        label: normalized,
+        backgroundColor: colors.gray[100],
+        borderColor: colors.gray[200],
+        textColor: colors.gray[700],
+      };
+  }
+};
+
 const StaffHome = React.memo(function StaffHome() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -148,9 +238,10 @@ const StaffHome = React.memo(function StaffHome() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const unreadCount = useNotificationStore((state) => state.unreadCount);
-  const fetchUnreadCount = useNotificationStore(
-    (state) => state.fetchUnreadCount,
-  );
+  const fetchUnreadCount = useNotificationStore((state) => state.fetchUnreadCount);
+  const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
+  const isOnline = useNetworkStore((state) => state.isOnline);
+  const queuedOperations = useOfflineStore((state) => state.syncQueue.length);
 
   // Check for PIN setup
   useEffect(() => {
@@ -166,7 +257,7 @@ const StaffHome = React.memo(function StaffHome() {
               text: "Set PIN",
               onPress: () => router.push("/staff/settings"),
             },
-          ],
+          ]
         );
       }, 1000);
       return () => clearTimeout(timer);
@@ -188,10 +279,7 @@ const StaffHome = React.memo(function StaffHome() {
       return true;
     };
 
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      backAction,
-    );
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
 
     return () => backHandler.remove();
   }, []);
@@ -199,7 +287,7 @@ const StaffHome = React.memo(function StaffHome() {
   useFocusEffect(
     useCallback(() => {
       void fetchUnreadCount();
-    }, [fetchUnreadCount]),
+    }, [fetchUnreadCount])
   );
 
   // State
@@ -227,7 +315,7 @@ const StaffHome = React.memo(function StaffHome() {
 
   const sessions = useMemo(
     () => (Array.isArray(sessionsData?.items) ? sessionsData.items : []),
-    [sessionsData?.items],
+    [sessionsData?.items]
   );
 
   const activeSessions = useMemo(() => {
@@ -245,6 +333,32 @@ const StaffHome = React.memo(function StaffHome() {
         return bDate - aDate;
       });
   }, [sessions]);
+
+  const isSessionLocationComplete = Boolean(locationType && selectedFloor && rackName.trim());
+
+  const readinessItems = useMemo(
+    () => [
+      {
+        id: "zone",
+        done: Boolean(locationType),
+        label: "Location type",
+        value: locationType || "Choose a zone",
+      },
+      {
+        id: "floor",
+        done: Boolean(selectedFloor),
+        label: "Floor or area",
+        value: selectedFloor || "Choose a floor",
+      },
+      {
+        id: "rack",
+        done: Boolean(rackName.trim()),
+        label: "Rack or shelf",
+        value: rackName.trim() || "Enter rack code",
+      },
+    ],
+    [locationType, rackName, selectedFloor]
+  );
 
   const uniqueActiveSessions = useMemo(() => {
     const seen = new Set<string>();
@@ -274,11 +388,47 @@ const StaffHome = React.memo(function StaffHome() {
       const status = String(s.status || "")
         .trim()
         .toUpperCase();
-      return (
-        status === "CLOSED" || status === "COMPLETED" || status === "RECONCILE"
-      );
+      return status === "CLOSED" || status === "COMPLETED" || status === "RECONCILE";
     });
   }, [sessions]);
+
+  const activeIssueCount = useMemo(
+    () =>
+      uniqueActiveSessions.reduce(
+        (total, session) => total + Number(session?.discrepancy_count ?? 0),
+        0
+      ),
+    [uniqueActiveSessions]
+  );
+
+  const activeScanCount = useMemo(
+    () => uniqueActiveSessions.reduce((total, session) => total + getScannedCount(session), 0),
+    [uniqueActiveSessions]
+  );
+
+  const liveStatus = useMemo(() => {
+    if (offlineMode) {
+      return {
+        icon: "cloud-offline-outline" as const,
+        label: queuedOperations > 0 ? `${queuedOperations} queued` : "Offline mode",
+        tone: "warning" as const,
+      };
+    }
+
+    if (!isOnline) {
+      return {
+        icon: "alert-circle-outline" as const,
+        label: "Connection paused",
+        tone: "neutral" as const,
+      };
+    }
+
+    return {
+      icon: "radio-outline" as const,
+      label: queuedOperations > 0 ? `${queuedOperations} pending sync` : "Live sync",
+      tone: "success" as const,
+    };
+  }, [isOnline, offlineMode, queuedOperations]);
 
   // Fetch Zones
   useEffect(() => {
@@ -350,18 +500,14 @@ const StaffHome = React.memo(function StaffHome() {
 
     const trimmedRack = rackName.trim();
     if (!/^[a-zA-Z0-9\-_]+$/.test(trimmedRack)) {
-      Alert.alert(
-        "Invalid Rack Name",
-        "Only letters, numbers, dashes, and underscores allowed",
-      );
+      Alert.alert("Invalid Rack Name", "Only letters, numbers, dashes, and underscores allowed");
       return;
     }
 
     const warehouseName = `${locationType} - ${selectedFloor} - ${trimmedRack.toUpperCase()}`;
     const normalizedWarehouse = normalizeWarehouse(warehouseName);
     const existingSession = activeSessions.find(
-      (session: any) =>
-        normalizeWarehouse(session.warehouse) === normalizedWarehouse,
+      (session: any) => normalizeWarehouse(session.warehouse) === normalizedWarehouse
     );
     if (existingSession) {
       Alert.alert(
@@ -373,7 +519,7 @@ const StaffHome = React.memo(function StaffHome() {
             text: "Resume",
             onPress: () => handleResumeSession(existingSession),
           },
-        ],
+        ]
       );
       return;
     }
@@ -393,17 +539,13 @@ const StaffHome = React.memo(function StaffHome() {
       }
 
       // Optimistic update
-      queryClient.setQueryData(
-        ["sessions", 1, SESSION_PAGE_SIZE],
-        (old: any) => {
-          const existing = Array.isArray(old?.items) ? old.items : [];
-          const filtered = existing.filter(
-            (item: any) =>
-              (item?.id || item?._id || item?.session_id) !== sessionId,
-          );
-          return { ...old, items: [session, ...filtered] };
-        },
-      );
+      queryClient.setQueryData(["sessions", 1, SESSION_PAGE_SIZE], (old: any) => {
+        const existing = Array.isArray(old?.items) ? old.items : [];
+        const filtered = existing.filter(
+          (item: any) => (item?.id || item?._id || item?.session_id) !== sessionId
+        );
+        return { ...old, items: [session, ...filtered] };
+      });
 
       // Reset and navigate
       setShowCreateModal(false);
@@ -420,8 +562,7 @@ const StaffHome = React.memo(function StaffHome() {
         params: { sessionId },
       } as any);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to create session";
+      const errorMessage = error instanceof Error ? error.message : "Failed to create session";
       toastService.showError(errorMessage);
     } finally {
       setIsCreating(false);
@@ -472,93 +613,215 @@ const StaffHome = React.memo(function StaffHome() {
     } as any);
   };
 
-  const renderSessionCard = (
-    session: any,
-    onPress: (session: any) => void = handleResumeSession,
-  ) => (
-    <ModernCard
-      key={session.id || session._id}
-      style={styles.sessionCard}
-      padding={spacing.md}
-      onPress={() => onPress(session)}
-    >
-      <View style={styles.sessionHeader}>
-        <View style={styles.sessionIcon}>
-          <Ionicons name="cube-outline" size={24} color={colors.primary[600]} />
-        </View>
-        <View style={styles.sessionInfo}>
-          <Text style={styles.warehouseText}>{session.warehouse}</Text>
-          <Text style={styles.dateText}>
-            Last used: {formatSessionDateTime(session)}
+  const renderStatusSignal = () => {
+    if (liveStatus.tone === "warning") {
+      return (
+        <View style={[styles.heroSignalPill, styles.heroSignalWarning]}>
+          <Ionicons name={liveStatus.icon} size={14} color={colors.warning[700]} />
+          <Text style={[styles.heroSignalText, styles.heroSignalWarningText]}>
+            {liveStatus.label}
           </Text>
         </View>
-        <View style={styles.chevron}>
-          <Ionicons name="chevron-forward" size={20} color={colors.gray[400]} />
+      );
+    }
+
+    if (liveStatus.tone === "success") {
+      return (
+        <View style={[styles.heroSignalPill, styles.heroSignalSuccess]}>
+          <Ionicons name={liveStatus.icon} size={14} color={colors.success[700]} />
+          <Text style={[styles.heroSignalText, styles.heroSignalSuccessText]}>
+            {liveStatus.label}
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={[styles.heroSignalPill, styles.heroSignalNeutral]}>
+        <Ionicons name={liveStatus.icon} size={14} color={colors.gray[700]} />
+        <Text style={[styles.heroSignalText, styles.heroSignalNeutralText]}>
+          {liveStatus.label}
+        </Text>
+      </View>
+    );
+  };
+
+  const renderSessionCard = (
+    session: any,
+    onPress: (session: any) => void = handleResumeSession
+  ) => {
+    const progress = getSessionProgress(session);
+    const statusStyle = getSessionStatusStyle(session?.status);
+    const location = getWarehouseParts(session?.warehouse);
+    const issueCount = Number(session?.discrepancy_count ?? 0);
+
+    return (
+      <ModernCard
+        key={session.id || session._id}
+        variant="outlined"
+        style={styles.sessionCard}
+        padding={spacing.md}
+        onPress={() => onPress(session)}
+      >
+        <View style={styles.sessionTopRow}>
+          <View style={styles.sessionIdentityBlock}>
+            <View style={styles.sessionMetaRow}>
+              <View style={styles.sessionLocationPill}>
+                <Ionicons
+                  name="navigate-outline"
+                  size={14}
+                  color={operationalPalette.primaryStrong}
+                />
+                <Text style={styles.sessionLocationPillText}>{location.zone}</Text>
+              </View>
+              <View
+                style={[
+                  styles.sessionStatusBadge,
+                  {
+                    backgroundColor: statusStyle.backgroundColor,
+                    borderColor: statusStyle.borderColor,
+                  },
+                ]}
+              >
+                <Text style={[styles.sessionStatusBadgeText, { color: statusStyle.textColor }]}>
+                  {statusStyle.label}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.warehouseText}>{location.area}</Text>
+            <Text style={styles.dateText}>
+              {location.rack ? `Rack ${location.rack} • ` : ""}
+              Last used {formatSessionDateTime(session)}
+            </Text>
+          </View>
+
+          <View style={styles.chevron}>
+            <Ionicons name="chevron-forward" size={20} color={colors.gray[400]} />
+          </View>
+        </View>
+
+        <View style={styles.progressHeader}>
+          <Text style={styles.progressLabel}>{progress.label}</Text>
+          <Text style={styles.progressPercent}>{progress.percent}%</Text>
+        </View>
+        <View style={styles.progressTrack}>
+          <View
+            style={[
+              styles.progressFill,
+              { width: `${Math.max(progress.percent, progress.percent === 0 ? 0 : 6)}%` },
+            ]}
+          />
+        </View>
+
+        <View style={styles.sessionStats}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{progress.scanned}</Text>
+            <Text style={styles.statLabel}>Scanned</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text
+              style={[
+                styles.statValue,
+                issueCount > 0 ? styles.statValueDanger : styles.statValueSuccess,
+              ]}
+            >
+              {issueCount}
+            </Text>
+            <Text style={styles.statLabel}>Issues</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{progress.total > 0 ? progress.total : "--"}</Text>
+            <Text style={styles.statLabel}>Target</Text>
+          </View>
+        </View>
+      </ModernCard>
+    );
+  };
+
+  const renderDashboardHero = (mode: "active" | "history") => (
+    <ModernCard variant="outlined" style={styles.heroCard} padding={spacing.lg}>
+      <View style={styles.heroHeader}>
+        <View style={styles.heroCopy}>
+          <Text style={styles.heroEyebrow}>
+            {mode === "active" ? "Operational Snapshot" : "Session History"}
+          </Text>
+          <Text style={styles.heroTitle}>
+            {mode === "active"
+              ? "Keep location counts moving with fewer handoff mistakes."
+              : "Review completed areas without losing audit context."}
+          </Text>
+          <Text style={styles.heroSubtitle}>
+            {mode === "active"
+              ? "Start a fresh verification or continue the most recent open location."
+              : "Completed sessions stay visible here for quick traceability and follow-up."}
+          </Text>
+        </View>
+        {renderStatusSignal()}
+      </View>
+
+      <View style={styles.heroMetricGrid}>
+        <View style={styles.heroMetricCard}>
+          <Text style={styles.heroMetricValue}>
+            {mode === "active" ? uniqueActiveSessions.length : finishedSessions.length}
+          </Text>
+          <Text style={styles.heroMetricLabel}>
+            {mode === "active" ? "Open locations" : "Completed sessions"}
+          </Text>
+        </View>
+        <View style={styles.heroMetricCard}>
+          <Text style={styles.heroMetricValue}>
+            {mode === "active" ? activeScanCount : unreadCount}
+          </Text>
+          <Text style={styles.heroMetricLabel}>
+            {mode === "active" ? "Captured scans" : "Unread alerts"}
+          </Text>
+        </View>
+        <View style={styles.heroMetricCard}>
+          <Text
+            style={[styles.heroMetricValue, activeIssueCount > 0 && styles.heroMetricValueWarning]}
+          >
+            {mode === "active" ? activeIssueCount : queuedOperations}
+          </Text>
+          <Text style={styles.heroMetricLabel}>
+            {mode === "active" ? "Variance flags" : "Queued sync"}
+          </Text>
         </View>
       </View>
 
-      <View style={styles.sessionStats}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{getScannedCount(session)}</Text>
-          <Text style={styles.statLabel}>Scanned</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text
-            style={[
-              styles.statValue,
-              {
-                color:
-                  session.discrepancy_count > 0
-                    ? colors.error[500]
-                    : colors.success[600],
-              },
-            ]}
-          >
-            {session.discrepancy_count || 0}
-          </Text>
-          <Text style={styles.statLabel}>Issues</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{session.status}</Text>
-          <Text style={styles.statLabel}>Status</Text>
-        </View>
-      </View>
+      {mode === "active" ? (
+        <ModernButton
+          title="Start New Session"
+          icon="add-circle-outline"
+          onPress={() => setShowCreateModal(true)}
+          style={styles.createButton}
+          fullWidth
+        />
+      ) : null}
     </ModernCard>
   );
 
   const renderContent = () => {
     if (activeTab === "active") {
       return (
-        <Animated.View
-          entering={
-            prefersReducedMotion ? undefined : FadeInDown.duration(500)
-          }
-        >
-          <ModernButton
-            title="Start New Session"
-            icon="add-circle-outline"
-            onPress={() => setShowCreateModal(true)}
-            style={styles.createButton}
-          />
+        <Animated.View entering={prefersReducedMotion ? undefined : FadeInDown.duration(500)}>
+          {renderDashboardHero("active")}
+
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionHeaderTitle}>Continue active locations</Text>
+            <Text style={styles.sectionHeaderMeta}>{uniqueActiveSessions.length} active</Text>
+          </View>
 
           {uniqueActiveSessions.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons
-                name="clipboard-outline"
-                size={48}
-                color={colors.gray[300]}
-              />
+              <Ionicons name="clipboard-outline" size={48} color={colors.gray[300]} />
               <Text style={styles.emptyText}>No active sessions</Text>
-              <Text style={styles.emptySubtext}>
-                Start a new session to begin scanning
-              </Text>
+              <Text style={styles.emptySubtext}>Start a new session to begin scanning</Text>
             </View>
           ) : (
-            uniqueActiveSessions.map((session) =>
-              renderSessionCard(session, handleResumeSession),
-            )
+            uniqueActiveSessions.map((session) => renderSessionCard(session, handleResumeSession))
           )}
         </Animated.View>
       );
@@ -566,24 +829,21 @@ const StaffHome = React.memo(function StaffHome() {
 
     if (activeTab === "history") {
       return (
-        <Animated.View
-          entering={
-            prefersReducedMotion ? undefined : FadeInDown.duration(500)
-          }
-        >
+        <Animated.View entering={prefersReducedMotion ? undefined : FadeInDown.duration(500)}>
+          {renderDashboardHero("history")}
+
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionHeaderTitle}>Recent completed sessions</Text>
+            <Text style={styles.sectionHeaderMeta}>{finishedSessions.length} saved</Text>
+          </View>
+
           {finishedSessions.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons
-                name="time-outline"
-                size={48}
-                color={colors.gray[300]}
-              />
+              <Ionicons name="time-outline" size={48} color={colors.gray[300]} />
               <Text style={styles.emptyText}>No history yet</Text>
             </View>
           ) : (
-            finishedSessions.map((session) =>
-              renderSessionCard(session, handleOpenSessionHistory),
-            )
+            finishedSessions.map((session) => renderSessionCard(session, handleOpenSessionHistory))
           )}
         </Animated.View>
       );
@@ -622,9 +882,7 @@ const StaffHome = React.memo(function StaffHome() {
           icon: "log-out-outline",
           onPress: () => {
             if (Platform.OS === "web" && typeof window !== "undefined") {
-              const confirmed = window.confirm(
-                "Are you sure you want to logout?",
-              );
+              const confirmed = window.confirm("Are you sure you want to logout?");
               if (confirmed) {
                 logout().finally(() => {
                   router.replace("/welcome" as any);
@@ -660,12 +918,12 @@ const StaffHome = React.memo(function StaffHome() {
           accessibilityState={{ selected: activeTab === "active" }}
           accessibilityLabel={`Active sessions, ${uniqueActiveSessions.length} items`}
         >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "active" && styles.activeTabText,
-            ]}
-          >
+          <Ionicons
+            name="radio-outline"
+            size={16}
+            color={activeTab === "active" ? operationalPalette.primaryStrong : colors.gray[600]}
+          />
+          <Text style={[styles.tabText, activeTab === "active" && styles.activeTabText]}>
             Active ({uniqueActiveSessions.length})
           </Text>
         </TouchableOpacity>
@@ -676,12 +934,12 @@ const StaffHome = React.memo(function StaffHome() {
           accessibilityState={{ selected: activeTab === "history" }}
           accessibilityLabel={`Session history, ${finishedSessions.length} items`}
         >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "history" && styles.activeTabText,
-            ]}
-          >
+          <Ionicons
+            name="time-outline"
+            size={16}
+            color={activeTab === "history" ? operationalPalette.primaryStrong : colors.gray[600]}
+          />
+          <Text style={[styles.tabText, activeTab === "history" && styles.activeTabText]}>
             History
           </Text>
         </TouchableOpacity>
@@ -694,9 +952,7 @@ const StaffHome = React.memo(function StaffHome() {
         nestedScrollEnabled
         bounces={true}
         alwaysBounceVertical={true}
-        refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
       >
         {renderContent()}
       </ScrollView>
@@ -705,131 +961,201 @@ const StaffHome = React.memo(function StaffHome() {
       <Modal
         visible={showCreateModal}
         animationType={prefersReducedMotion ? "none" : "slide"}
-        presentationStyle="pageSheet"
+        transparent
         onRequestClose={() => setShowCreateModal(false)}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.modalContainer}
         >
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>New Session</Text>
-            <TouchableOpacity
-              onPress={() => setShowCreateModal(false)}
-              style={styles.modalCloseButton}
-              accessibilityRole="button"
-              accessibilityLabel="Close new session modal"
-            >
-              <Ionicons name="close" size={24} color={colors.gray[500]} />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowCreateModal(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Close new session modal"
+          />
 
-          <ScrollView
-            contentContainerStyle={styles.modalContent}
-            keyboardShouldPersistTaps="always"
-            keyboardDismissMode="none"
-            nestedScrollEnabled
-          >
-            <Text style={styles.sectionLabel}>Select Location</Text>
-            <View
-              style={styles.chipContainer}
-              accessibilityRole="radiogroup"
-              accessibilityLabel="Select location"
-            >
-              {zones.map((zone) => (
-                <TouchableOpacity
-                  key={zone.id}
-                  style={[
-                    styles.chip,
-                    locationType === zone.zone_name && styles.chipActive,
-                  ]}
-                  onPress={() => setLocationType(zone.zone_name)}
-                  accessibilityRole="radio"
-                  accessibilityState={{
-                    selected: locationType === zone.zone_name,
-                  }}
-                  accessibilityLabel={`Location ${zone.zone_name}`}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      locationType === zone.zone_name && styles.chipTextActive,
-                    ]}
-                  >
-                    {zone.zone_name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+          <View style={styles.modalSheet}>
+            <View style={styles.sheetHandle} />
+
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderText}>
+                <Text style={styles.modalEyebrow}>Start Verification</Text>
+                <Text style={styles.modalTitle}>New Session</Text>
+                <Text style={styles.modalSubtitle}>
+                  Select the location, confirm the count area, and then begin scanning.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowCreateModal(false)}
+                style={styles.modalCloseButton}
+                accessibilityRole="button"
+                accessibilityLabel="Close new session modal"
+              >
+                <Ionicons name="close" size={22} color={colors.gray[600]} />
+              </TouchableOpacity>
             </View>
 
-            {locationType && (
-              <Animated.View
-                entering={
-                  prefersReducedMotion ? undefined : FadeInUp.duration(250)
-                }
+            <View
+              style={[
+                styles.statusPill,
+                isSessionLocationComplete ? styles.statusPillReady : styles.statusPillPending,
+              ]}
+            >
+              <View
+                style={[
+                  styles.statusDot,
+                  isSessionLocationComplete ? styles.statusDotReady : styles.statusDotPending,
+                ]}
+              />
+              <Text
+                style={[
+                  styles.statusPillText,
+                  isSessionLocationComplete
+                    ? styles.statusPillTextReady
+                    : styles.statusPillTextPending,
+                ]}
               >
-                <Text style={styles.sectionLabel}>Select Floor / Area</Text>
-                <View
-                  style={styles.chipContainer}
-                  accessibilityRole="radiogroup"
-                  accessibilityLabel="Select floor or area"
-                >
-                  {warehouses.map((wh) => (
-                    <TouchableOpacity
-                      key={wh.id}
+                {isSessionLocationComplete ? "Ready to start" : "Setup required"}
+              </Text>
+            </View>
+
+            <ScrollView
+              contentContainerStyle={styles.modalContent}
+              keyboardShouldPersistTaps="always"
+              keyboardDismissMode="none"
+              nestedScrollEnabled
+            >
+              <View style={styles.readinessCard}>
+                <Text style={styles.readinessTitle}>Session setup</Text>
+                <Text style={styles.readinessSubtitle}>
+                  Keep the location details explicit so the session opens in the correct zone.
+                </Text>
+
+                {readinessItems.map((item) => (
+                  <View key={item.id} style={styles.readinessRow}>
+                    <View
                       style={[
-                        styles.chip,
-                        selectedFloor === wh.warehouse_name &&
-                        styles.chipActive,
+                        styles.readinessIcon,
+                        item.done ? styles.readinessIconDone : styles.readinessIconPending,
                       ]}
-                      onPress={() => setSelectedFloor(wh.warehouse_name)}
-                      accessibilityRole="radio"
-                      accessibilityState={{
-                        selected: selectedFloor === wh.warehouse_name,
-                      }}
-                      accessibilityLabel={`Floor or area ${wh.warehouse_name}`}
                     >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          selectedFloor === wh.warehouse_name &&
-                          styles.chipTextActive,
-                        ]}
-                      >
-                        {wh.warehouse_name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </Animated.View>
-            )}
+                      <Ionicons
+                        name={item.done ? "checkmark" : "ellipse-outline"}
+                        size={14}
+                        color={item.done ? colors.success[600] : colors.gray[500]}
+                      />
+                    </View>
 
-            {selectedFloor && (
-              <Animated.View
-                entering={
-                  prefersReducedMotion ? undefined : FadeInUp.duration(250)
-                }
+                    <View style={styles.readinessTextGroup}>
+                      <Text style={styles.readinessLabel}>{item.label}</Text>
+                      <Text style={styles.readinessValue}>{item.value}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              <Text style={styles.sectionLabel}>Select Location</Text>
+              <Text style={styles.sectionHelper}>
+                Choose the zone or location type for this count session.
+              </Text>
+              <View
+                style={styles.chipContainer}
+                accessibilityRole="radiogroup"
+                accessibilityLabel="Select location"
               >
-                <ModernInput
-                  label="Rack / Shelf Number"
-                  placeholder="e.g. A-123"
-                  value={rackName}
-                  onChangeText={setRackName}
-                  autoCapitalize="characters"
-                  showClearButton
-                />
-              </Animated.View>
-            )}
-          </ScrollView>
+                {zones.map((zone) => (
+                  <TouchableOpacity
+                    key={zone.id}
+                    style={[styles.chip, locationType === zone.zone_name && styles.chipActive]}
+                    onPress={() => setLocationType(zone.zone_name)}
+                    accessibilityRole="radio"
+                    accessibilityState={{
+                      selected: locationType === zone.zone_name,
+                    }}
+                    accessibilityLabel={`Location ${zone.zone_name}`}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        locationType === zone.zone_name && styles.chipTextActive,
+                      ]}
+                    >
+                      {zone.zone_name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-          <View style={styles.modalFooter}>
-            <ModernButton
-              title="Start Session"
-              onPress={handleStartSession}
-              loading={isCreating}
-              disabled={!locationType || !selectedFloor || !rackName.trim()}
-              fullWidth
-            />
+              {locationType && (
+                <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(250)}>
+                  <Text style={styles.sectionLabel}>Select Floor / Area</Text>
+                  <Text style={styles.sectionHelper}>
+                    Narrow the session to the correct floor or operational area.
+                  </Text>
+                  <View
+                    style={styles.chipContainer}
+                    accessibilityRole="radiogroup"
+                    accessibilityLabel="Select floor or area"
+                  >
+                    {warehouses.map((wh) => (
+                      <TouchableOpacity
+                        key={wh.id}
+                        style={[
+                          styles.chip,
+                          selectedFloor === wh.warehouse_name && styles.chipActive,
+                        ]}
+                        onPress={() => setSelectedFloor(wh.warehouse_name)}
+                        accessibilityRole="radio"
+                        accessibilityState={{
+                          selected: selectedFloor === wh.warehouse_name,
+                        }}
+                        accessibilityLabel={`Floor or area ${wh.warehouse_name}`}
+                      >
+                        <Text
+                          style={[
+                            styles.chipText,
+                            selectedFloor === wh.warehouse_name && styles.chipTextActive,
+                          ]}
+                        >
+                          {wh.warehouse_name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </Animated.View>
+              )}
+
+              {selectedFloor && (
+                <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(250)}>
+                  <Text style={styles.sectionLabel}>Rack / Shelf Number</Text>
+                  <Text style={styles.sectionHelper}>
+                    Use the exact rack code visible to staff on the floor.
+                  </Text>
+                  <ModernInput
+                    label="Rack / Shelf Number"
+                    placeholder="e.g. A-123"
+                    value={rackName}
+                    onChangeText={setRackName}
+                    autoCapitalize="characters"
+                    showClearButton
+                    containerStyle={styles.modalInputField}
+                  />
+                </Animated.View>
+              )}
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <ModernButton
+                title="Start Session"
+                onPress={handleStartSession}
+                loading={isCreating}
+                disabled={!locationType || !selectedFloor || !rackName.trim()}
+                icon="play"
+                fullWidth
+              />
+            </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -840,74 +1166,220 @@ const StaffHome = React.memo(function StaffHome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.gray[50],
+    backgroundColor: operationalPalette.background,
   },
   tabs: {
     flexDirection: "row",
     paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
     marginBottom: spacing.md,
     gap: spacing.sm,
+    backgroundColor: operationalPalette.background,
   },
   tab: {
     flex: 1,
     minHeight: 44,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.gray[200],
+    borderRadius: borderRadius.lg,
+    backgroundColor: operationalPalette.surface,
+    borderWidth: 1,
+    borderColor: operationalPalette.border,
+    flexDirection: "row",
+    gap: spacing.xs,
     alignItems: "center",
     justifyContent: "center",
   },
   activeTab: {
-    backgroundColor: colors.primary[600],
+    backgroundColor: operationalPalette.primaryTint,
+    borderColor: "#BEE7E9",
   },
   tabText: {
     fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.gray[600],
   },
   activeTabText: {
-    color: colors.white,
+    color: operationalPalette.primaryStrong,
   },
   scrollContent: {
     padding: spacing.lg,
     paddingTop: 0,
+    paddingBottom: spacing["2xl"],
   },
   createButton: {
-    marginBottom: spacing.lg,
+    marginTop: spacing.md,
+    backgroundColor: operationalPalette.primary,
   },
   sessionCard: {
     marginBottom: spacing.md,
+    backgroundColor: operationalPalette.surface,
+    borderColor: operationalPalette.border,
   },
-  sessionHeader: {
+  heroCard: {
+    backgroundColor: operationalPalette.surface,
+    borderColor: operationalPalette.border,
+    marginBottom: spacing.lg,
+  },
+  heroHeader: {
+    gap: spacing.md,
+  },
+  heroCopy: {
+    gap: spacing.xs,
+  },
+  heroEyebrow: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: operationalPalette.primaryStrong,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  heroTitle: {
+    fontSize: typography.fontSize["2xl"],
+    fontWeight: typography.fontWeight.bold,
+    color: operationalPalette.ink,
+    lineHeight: 30,
+  },
+  heroSubtitle: {
+    fontSize: typography.fontSize.sm,
+    color: operationalPalette.muted,
+    lineHeight: 20,
+  },
+  heroSignalPill: {
+    minHeight: 36,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.full,
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: spacing.sm,
+    gap: spacing.xs,
+    alignSelf: "flex-start",
   },
-  sessionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primary[50],
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: spacing.sm,
+  heroSignalSuccess: {
+    backgroundColor: colors.success[50],
   },
-  sessionInfo: {
-    flex: 1,
+  heroSignalWarning: {
+    backgroundColor: colors.warning[50],
   },
-  warehouseText: {
+  heroSignalNeutral: {
+    backgroundColor: colors.gray[100],
+  },
+  heroSignalText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[900],
+  },
+  heroSignalSuccessText: {
+    color: colors.success[700],
+  },
+  heroSignalWarningText: {
+    color: colors.warning[700],
+  },
+  heroSignalNeutralText: {
+    color: colors.gray[700],
+  },
+  heroMetricGrid: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  heroMetricCard: {
+    flex: 1,
+    backgroundColor: operationalPalette.surfaceMuted,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: operationalPalette.border,
+    padding: spacing.md,
+    gap: 4,
+  },
+  heroMetricValue: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: operationalPalette.ink,
+  },
+  heroMetricValueWarning: {
+    color: colors.warning[700],
+  },
+  heroMetricLabel: {
+    fontSize: typography.fontSize.xs,
+    color: operationalPalette.muted,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
+  },
+  sectionHeaderTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    color: operationalPalette.ink,
+  },
+  sectionHeaderMeta: {
+    fontSize: typography.fontSize.sm,
+    color: operationalPalette.muted,
+  },
+  sessionTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  sessionIdentityBlock: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  sessionMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  sessionLocationPill: {
+    minHeight: 28,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.full,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: operationalPalette.primaryTint,
+  },
+  sessionLocationPillText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: operationalPalette.primaryStrong,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  sessionStatusBadge: {
+    minHeight: 28,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sessionStatusBadgeText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  warehouseText: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: operationalPalette.ink,
   },
   dateText: {
-    fontSize: typography.fontSize.xs,
-    color: colors.gray[500],
-    marginTop: 2,
+    fontSize: typography.fontSize.sm,
+    color: operationalPalette.muted,
   },
   chevron: {
-    marginLeft: spacing.sm,
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: operationalPalette.surfaceMuted,
   },
   headerIconButton: {
     width: 44,
@@ -916,7 +1388,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.xs,
-    backgroundColor: colors.gray[100],
+    backgroundColor: operationalPalette.surface,
+    borderWidth: 1,
+    borderColor: operationalPalette.border,
   },
   notificationBadge: {
     position: "absolute",
@@ -937,62 +1411,139 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: typography.fontWeight.bold,
   },
+  progressHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.xs,
+  },
+  progressLabel: {
+    fontSize: typography.fontSize.sm,
+    color: operationalPalette.muted,
+  },
+  progressPercent: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.bold,
+    color: operationalPalette.primaryStrong,
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: borderRadius.full,
+    backgroundColor: operationalPalette.surfaceMuted,
+    overflow: "hidden",
+    marginBottom: spacing.md,
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: borderRadius.full,
+    backgroundColor: operationalPalette.primary,
+  },
   sessionStats: {
     flexDirection: "row",
-    backgroundColor: colors.gray[50],
-    borderRadius: borderRadius.md,
-    padding: spacing.xs,
+    backgroundColor: operationalPalette.surfaceMuted,
+    borderRadius: borderRadius.lg,
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: operationalPalette.border,
   },
   statItem: {
     flex: 1,
     alignItems: "center",
+    gap: 2,
   },
   statDivider: {
     width: 1,
-    backgroundColor: colors.gray[200],
+    backgroundColor: operationalPalette.border,
   },
   statValue: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: operationalPalette.ink,
+  },
+  statValueSuccess: {
+    color: colors.success[700],
+  },
+  statValueDanger: {
+    color: colors.error[600],
   },
   statLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray[500],
+    color: operationalPalette.muted,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: spacing["3xl"],
+    backgroundColor: operationalPalette.surface,
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    borderColor: operationalPalette.border,
   },
   emptyText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.medium,
-    color: colors.gray[900],
+    color: operationalPalette.ink,
     marginTop: spacing.md,
   },
   emptySubtext: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    color: operationalPalette.muted,
     marginTop: spacing.xs,
   },
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: colors.white,
+    justifyContent: "flex-end",
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(26, 28, 26, 0.22)",
+  },
+  modalSheet: {
+    maxHeight: "88%",
+    backgroundColor: operationalPalette.background,
+    borderTopLeftRadius: borderRadius["3xl"],
+    borderTopRightRadius: borderRadius["3xl"],
+    paddingTop: spacing.sm,
+  },
+  sheetHandle: {
+    alignSelf: "center",
+    width: 56,
+    height: 5,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.gray[200],
+    marginBottom: spacing.sm,
   },
   modalHeader: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[100],
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
+  },
+  modalHeaderText: {
+    flex: 1,
+  },
+  modalEyebrow: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[700],
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: spacing.xs,
   },
   modalTitle: {
-    fontSize: typography.fontSize.xl,
+    fontSize: typography.fontSize["2xl"],
     fontWeight: typography.fontWeight.bold,
     color: colors.gray[900],
+  },
+  modalSubtitle: {
+    marginTop: spacing.xs,
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[500],
+    lineHeight: 20,
   },
   modalCloseButton: {
     width: 44,
@@ -1000,9 +1551,102 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: operationalPalette.surface,
+    borderWidth: 1,
+    borderColor: operationalPalette.border,
+  },
+  statusPill: {
+    marginTop: spacing.md,
+    marginHorizontal: spacing.lg,
+    minHeight: 40,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.full,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    alignSelf: "flex-start",
+  },
+  statusPillReady: {
+    backgroundColor: colors.success[50],
+  },
+  statusPillPending: {
+    backgroundColor: colors.warning[50],
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: borderRadius.full,
+  },
+  statusDotReady: {
+    backgroundColor: colors.success[600],
+  },
+  statusDotPending: {
+    backgroundColor: colors.warning[600],
+  },
+  statusPillText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  statusPillTextReady: {
+    color: colors.success[600],
+  },
+  statusPillTextPending: {
+    color: colors.warning[600],
   },
   modalContent: {
     padding: spacing.lg,
+  },
+  readinessCard: {
+    padding: spacing.lg,
+    borderRadius: borderRadius.xl,
+    backgroundColor: operationalPalette.surface,
+    borderWidth: 1,
+    borderColor: operationalPalette.border,
+    marginBottom: spacing.lg,
+  },
+  readinessTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.gray[900],
+  },
+  readinessSubtitle: {
+    marginTop: spacing.xs,
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[500],
+    lineHeight: 20,
+    marginBottom: spacing.md,
+  },
+  readinessRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  readinessIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: borderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  readinessIconDone: {
+    backgroundColor: colors.success[50],
+  },
+  readinessIconPending: {
+    backgroundColor: colors.gray[100],
+  },
+  readinessTextGroup: {
+    flex: 1,
+  },
+  readinessLabel: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.gray[700],
+  },
+  readinessValue: {
+    marginTop: 2,
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[500],
   },
   sectionLabel: {
     fontSize: typography.fontSize.sm,
@@ -1010,6 +1654,12 @@ const styles = StyleSheet.create({
     color: colors.gray[700],
     marginBottom: spacing.sm,
     marginTop: spacing.md,
+  },
+  sectionHelper: {
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[500],
+    marginBottom: spacing.sm,
+    lineHeight: 20,
   },
   chipContainer: {
     flexDirection: "row",
@@ -1021,30 +1671,35 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.gray[100],
+    borderRadius: borderRadius.lg,
+    backgroundColor: operationalPalette.surface,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: operationalPalette.border,
     alignItems: "center",
     justifyContent: "center",
   },
   chipActive: {
-    backgroundColor: colors.primary[50],
-    borderColor: colors.primary[500],
+    backgroundColor: operationalPalette.primaryTint,
+    borderColor: operationalPalette.primary,
   },
   chipText: {
     fontSize: typography.fontSize.sm,
     color: colors.gray[700],
+    fontWeight: typography.fontWeight.medium,
   },
   chipTextActive: {
-    color: colors.primary[700],
-    fontWeight: typography.fontWeight.medium,
+    color: operationalPalette.primaryStrong,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  modalInputField: {
+    marginBottom: spacing.sm,
   },
   modalFooter: {
     padding: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: colors.gray[100],
+    borderTopColor: operationalPalette.border,
     paddingBottom: Platform.OS === "ios" ? spacing["2xl"] : spacing.lg,
+    backgroundColor: operationalPalette.surface,
   },
 });
 

@@ -12,6 +12,10 @@ import { useNetworkStore } from "../store/networkStore";
 import { useAuthStore } from "../store/authStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { createLogger } from "./logging";
+import { syncPendingCountLineEvents } from "./control-plane/countLineControlPlane";
+import { syncPendingCountLineReviewEvents } from "./control-plane/countLineReviewControlPlane";
+import { controlPlaneEventBus } from "./control-plane/controlPlaneEventBus";
+import { syncPendingSessionEvents } from "./control-plane/sessionControlPlane";
 
 const log = createLogger("syncService");
 
@@ -108,10 +112,7 @@ const toErrorMessage = (error: unknown, fallback = "Unknown batch error") =>
 const shouldRetryAfterAuth = (error: unknown) =>
   (error as { response?: { status?: number } })?.response?.status === 401;
 
-const removeSyncedSessionsFromCache = async (
-  batch: OfflineQueueItem[],
-  successIds: string[],
-) => {
+const removeSyncedSessionsFromCache = async (batch: OfflineQueueItem[], successIds: string[]) => {
   const successSet = new Set(successIds);
   for (const item of batch) {
     if (!successSet.has(item.id) || item.type !== "session") {
@@ -135,7 +136,7 @@ const removeSyncedSessionsFromCache = async (
 
 const handleBatchResults = async (
   batch: OfflineQueueItem[],
-  results: { success: boolean; id: string; message?: string }[],
+  results: { success: boolean; id: string; message?: string }[]
 ) => {
   const queueItemsById = new Map(batch.map((item) => [item.id, item]));
   const successIds: string[] = [];
@@ -162,7 +163,7 @@ const handleBatchResults = async (
         error: errorMessage,
         status: deriveFailureStatus(errorMessage, nextRetryCount),
         attemptedAt: new Date().toISOString(),
-      }),
+      })
     );
   }
 
@@ -187,11 +188,11 @@ const handleBatchFailure = async (batch: OfflineQueueItem[], batchError: unknown
     await Promise.all(
       batch.map((item) =>
         updateOfflineQueueItem(item.id, {
-        status: "pending_retry",
-        last_error: errorMessage,
-        last_attempted_at: new Date().toISOString(),
-        }),
-      ),
+          status: "pending_retry",
+          last_error: errorMessage,
+          last_attempted_at: new Date().toISOString(),
+        })
+      )
     );
     return {
       failedCount: batch.length,
@@ -208,7 +209,7 @@ const handleBatchFailure = async (batch: OfflineQueueItem[], batchError: unknown
         status: deriveFailureStatus(errorMessage, nextRetryCount),
         attemptedAt: new Date().toISOString(),
       });
-    }),
+    })
   );
 
   return {
@@ -254,11 +255,7 @@ export const initializeSyncService = () => {
 
     if (state.isOnline && !wasOnline) {
       const settings = useSettingsStore.getState().settings;
-      if (
-        settings.offlineMode ||
-        !settings.autoSyncEnabled ||
-        !settings.syncOnReconnect
-      ) {
+      if (settings.offlineMode || !settings.autoSyncEnabled || !settings.syncOnReconnect) {
         log.debug("Reconnect sync disabled by user settings");
         return;
       }
@@ -309,18 +306,39 @@ export const getSyncStatus = async () => {
 /**
  * Flushes queued offline operations in batches when auth and connectivity allow it.
  */
-export const syncOfflineQueue = async (
-  options?: SyncOptions,
-): Promise<SyncResult> => {
+export const syncOfflineQueue = async (options?: SyncOptions): Promise<SyncResult> => {
   const skipped = shouldSkipSync(options);
   if (skipped) return skipped;
 
   isSyncing = true;
 
   try {
+    const sessionControlPlaneResult = await syncPendingSessionEvents();
+    const countLineControlPlaneResult = await syncPendingCountLineEvents();
+    const reviewControlPlaneResult = await syncPendingCountLineReviewEvents();
     const queue = await getOfflineQueue();
     if (queue.length === 0) {
-      return EMPTY_SYNC_RESULT;
+      const result = {
+        success:
+          sessionControlPlaneResult.success +
+          countLineControlPlaneResult.success +
+          reviewControlPlaneResult.success,
+        failed:
+          sessionControlPlaneResult.failed +
+          countLineControlPlaneResult.failed +
+          reviewControlPlaneResult.failed,
+        total:
+          sessionControlPlaneResult.total +
+          countLineControlPlaneResult.total +
+          reviewControlPlaneResult.total,
+        errors: [
+          ...sessionControlPlaneResult.errors,
+          ...countLineControlPlaneResult.errors,
+          ...reviewControlPlaneResult.errors,
+        ],
+      };
+      controlPlaneEventBus.publish("sync.completed", result);
+      return result;
     }
 
     const total = queue.length;
@@ -329,9 +347,19 @@ export const syncOfflineQueue = async (
     // Process in batches of 50 to avoid payload size issues
     const BATCH_SIZE = 50;
     let processed = 0;
-    let successCount = 0;
-    let failedCount = 0;
-    const errors: { id: string; error: string }[] = [];
+    let successCount =
+      sessionControlPlaneResult.success +
+      countLineControlPlaneResult.success +
+      reviewControlPlaneResult.success;
+    let failedCount =
+      sessionControlPlaneResult.failed +
+      countLineControlPlaneResult.failed +
+      reviewControlPlaneResult.failed;
+    const errors: { id: string; error: string }[] = [
+      ...sessionControlPlaneResult.errors,
+      ...countLineControlPlaneResult.errors,
+      ...reviewControlPlaneResult.errors,
+    ];
 
     for (let i = 0; i < total; i += BATCH_SIZE) {
       const batch = queue.slice(i, i + BATCH_SIZE);
@@ -344,32 +372,36 @@ export const syncOfflineQueue = async (
       options?.onProgress?.(processed, total);
     }
 
-    log.info(
-      `Sync complete: ${successCount} succeeded, ${failedCount} failed`,
-      {
-        total,
-        successCount,
-        failedCount,
-        errorCount: errors.length,
-      },
-    );
+    log.info(`Sync complete: ${successCount} succeeded, ${failedCount} failed`, {
+      total,
+      successCount,
+      failedCount,
+      errorCount: errors.length,
+    });
 
-    return {
+    const result = {
       success: successCount,
       failed: failedCount,
-      total,
+      total:
+        total +
+        sessionControlPlaneResult.total +
+        countLineControlPlaneResult.total +
+        reviewControlPlaneResult.total,
       errors,
     };
+    controlPlaneEventBus.publish("sync.completed", result);
+    return result;
   } catch (error: unknown) {
     log.error("Sync process error", error as Record<string, unknown>);
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown sync error";
-    return {
+    const errorMessage = error instanceof Error ? error.message : "Unknown sync error";
+    const result = {
       success: 0,
       failed: 0,
       total: 0,
       errors: [{ id: "general", error: errorMessage }],
     };
+    controlPlaneEventBus.publish("sync.completed", result);
+    return result;
   } finally {
     isSyncing = false;
   }

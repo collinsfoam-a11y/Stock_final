@@ -12,7 +12,12 @@ import Animated, {
   withSpring,
   interpolateColor,
 } from "react-native-reanimated";
-import { colorPalette } from "@/theme/designTokens";
+import {
+  colors,
+  semanticColors,
+  shadows,
+  hitSlop,
+} from "@/theme/unified";
 
 export type SwitchSize = "sm" | "md" | "lg";
 
@@ -40,8 +45,8 @@ export const Switch: React.FC<SwitchProps> = ({
   onValueChange,
   size = "md",
   disabled = false,
-  activeColor = colorPalette.primary[500],
-  inactiveColor = colorPalette.neutral[400],
+  activeColor = semanticColors.interactive.default,
+  inactiveColor = semanticColors.border.strong,
   style,
 }) => {
   const sizes = sizeStyles[size];
@@ -59,6 +64,11 @@ export const Switch: React.FC<SwitchProps> = ({
       progress.value,
       [0, 1],
       [inactiveColor, activeColor],
+    ),
+    borderColor: interpolateColor(
+      progress.value,
+      [0, 1],
+      [semanticColors.border.strong, activeColor],
     ),
   }));
 
@@ -82,6 +92,9 @@ export const Switch: React.FC<SwitchProps> = ({
       disabled={disabled}
       activeOpacity={0.8}
       style={[styles.container, style]}
+      hitSlop={hitSlop.small}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value, disabled }}
     >
       <Animated.View
         style={[
@@ -118,13 +131,10 @@ const styles = StyleSheet.create({
   track: {
     justifyContent: "center",
     padding: 2,
+    borderWidth: 1,
   },
   thumb: {
-    backgroundColor: colorPalette.neutral[0],
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: colors.white,
+    ...shadows.xs,
   },
 });

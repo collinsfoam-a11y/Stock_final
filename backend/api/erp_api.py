@@ -166,7 +166,9 @@ async def get_item_by_barcode(barcode: str, current_user: dict = Depends(get_cur
     )
     if not item:
         error = get_error_message("DB_ITEM_NOT_FOUND", {"barcode": barcode})
-        logger.warning("Item not found in MongoDB: barcode=%s", sanitize_for_logging(normalized_barcode))
+        logger.warning(
+            "Item not found in MongoDB: barcode=%s", sanitize_for_logging(normalized_barcode)
+        )
         raise HTTPException(
             status_code=error["status_code"],
             detail={
@@ -293,7 +295,11 @@ async def get_item_batches(
                     batches = sql_batches
                     source = "sql_server"
         except Exception as sql_err:
-            logger.warning("SQL batch fetch failed for '%s': %s", sanitize_for_logging(normalized_code), sanitize_for_logging(str(sql_err)))
+            logger.warning(
+                "SQL batch fetch failed for '%s': %s",
+                sanitize_for_logging(normalized_code),
+                sanitize_for_logging(str(sql_err)),
+            )
 
     if not batches:
         regex_match = {"$regex": f"^{re.escape(normalized_code)}$", "$options": "i"}
