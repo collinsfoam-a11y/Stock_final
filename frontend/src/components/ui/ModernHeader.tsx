@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 import { useAuthStore } from "../../store/authStore";
 import { useRouter } from "expo-router";
 
@@ -37,6 +38,7 @@ interface ModernHeaderProps {
     icon: keyof typeof Ionicons.glyphMap;
     onPress: () => void;
   };
+  rightActionAccessibilityLabel?: string;
   showSettingsButton?: boolean;
   subtitle?: string;
   style?: ViewStyle;
@@ -78,6 +80,7 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
   onBackPress,
   rightComponent,
   rightAction,
+  rightActionAccessibilityLabel,
   showSettingsButton = true,
   subtitle,
   style,
@@ -88,7 +91,12 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
   const shouldShowSettings =
     !!user && showSettingsButton && rightAction?.icon !== "settings-outline";
 
+  const handleHapticFeedback = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
   const onPressSettings = () => {
+    handleHapticFeedback();
     const role = user?.role;
     const target =
       role === "admin" || role === "supervisor" || role === "staff"
@@ -110,9 +118,14 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
         <View style={styles.leftSection}>
           {showBackButton ? (
             <TouchableOpacity
-              onPress={onBackPress}
+              onPress={() => {
+                handleHapticFeedback();
+                onBackPress?.();
+              }}
               style={styles.backButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
             >
               <Ionicons name="arrow-back" size={24} color={colors.gray[700]} />
             </TouchableOpacity>
@@ -157,6 +170,8 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
               onPress={onPressSettings}
               style={styles.backButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Open settings"
             >
               <Ionicons
                 name="settings-outline"
@@ -167,9 +182,17 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
           )}
           {rightAction && (
             <TouchableOpacity
-              onPress={rightAction.onPress}
+              onPress={() => {
+                handleHapticFeedback();
+                rightAction.onPress();
+              }}
               style={styles.backButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel={
+                rightActionAccessibilityLabel ||
+                `${rightAction.icon.replace("-outline", "").replace(/-/g, " ")} action`
+              }
             >
               <Ionicons
                 name={rightAction.icon}
