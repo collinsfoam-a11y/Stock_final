@@ -17,7 +17,7 @@ import {
   modernColors,
   modernBorderRadius,
   modernShadows,
-} from "@/styles/modernDesignSystem";
+} from "@/styles/unifiedSystem";
 
 interface PerformanceDataPoint {
   timestamp: string;

@@ -2,8 +2,8 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { OperationalCard, StatsCard } from "@/components/ui";
-import { theme } from "@/styles/modernDesignSystem";
+import { GlassCard, ProgressRing, StatsCard } from "@/components/ui";
+import { theme } from "@/styles/unifiedSystem";
 import { DashboardStats } from "@/components/supervisor/dashboard/supervisorDashboardShared";
 
 interface SupervisorStatsSectionProps {

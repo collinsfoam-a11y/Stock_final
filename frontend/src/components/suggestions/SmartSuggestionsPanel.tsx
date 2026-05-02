@@ -15,7 +15,7 @@ import {
   modernColors,
   modernSpacing,
   modernBorderRadius,
-} from "@/styles/modernDesignSystem";
+} from "@/styles/unifiedSystem";
 import {
   SuggestionItem,
   smartSuggestionsService,

@@ -12,8 +12,12 @@ import Animated, {
   withSpring,
   interpolateColor,
 } from "react-native-reanimated";
-import { colorPalette } from "@/theme/designTokens";
-import { createShadow } from "@/theme/shadowUtils";
+import {
+  colors,
+  semanticColors,
+  shadows,
+  hitSlop,
+} from "@/theme/unified";
 
 export type SwitchSize = "sm" | "md" | "lg";
 
@@ -41,8 +45,8 @@ export const Switch: React.FC<SwitchProps> = ({
   onValueChange,
   size = "md",
   disabled = false,
-  activeColor = colorPalette.primary[500],
-  inactiveColor = colorPalette.neutral[400],
+  activeColor = semanticColors.interactive.default,
+  inactiveColor = semanticColors.border.strong,
   style,
 }) => {
   const sizes = sizeStyles[size];
@@ -60,6 +64,11 @@ export const Switch: React.FC<SwitchProps> = ({
       progress.value,
       [0, 1],
       [inactiveColor, activeColor],
+    ),
+    borderColor: interpolateColor(
+      progress.value,
+      [0, 1],
+      [semanticColors.border.strong, activeColor],
     ),
   }));
 
@@ -83,6 +92,9 @@ export const Switch: React.FC<SwitchProps> = ({
       disabled={disabled}
       activeOpacity={0.8}
       style={[styles.container, style]}
+      hitSlop={hitSlop.small}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value, disabled }}
     >
       <Animated.View
         style={[
@@ -119,15 +131,10 @@ const styles = StyleSheet.create({
   track: {
     justifyContent: "center",
     padding: 2,
+    borderWidth: 1,
   },
   thumb: {
-    backgroundColor: colorPalette.neutral[0],
-    ...(Platform.OS === "web"
-      ? {
-          boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.2)",
-        }
-      : {
-          ...createShadow({ color: "#000", offsetX: 0, offsetY: 2, opacity: 0.2, radius: 2, elevation: 2 }),
-        }),
+    backgroundColor: colors.white,
+    ...shadows.xs,
   },
 });

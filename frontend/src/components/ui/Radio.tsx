@@ -12,11 +12,13 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import {
-  colorPalette,
+  colors,
+  semanticColors,
   spacing,
-  typography,
+  textStyles,
   touchTargets,
-} from "@/theme/designTokens";
+  hitSlop,
+} from "@/theme/unified";
 
 export interface RadioOption {
   value: string;
@@ -84,19 +86,24 @@ const RadioItem: React.FC<RadioItemProps> = ({
       style={styles.item}
       onPress={onSelect}
       disabled={disabled}
-      activeOpacity={0.7}
+      activeOpacity={0.8}
+      hitSlop={hitSlop.small}
+      accessibilityRole="radio"
+      accessibilityState={{ selected, disabled }}
     >
       <View
         style={[
           styles.radio,
           selected && styles.radioSelected,
           disabled && styles.radioDisabled,
+          disabled && selected && styles.radioDisabledSelected,
         ]}
       >
         <Animated.View
           style={[
             styles.radioInner,
             selected && styles.radioInnerSelected,
+            disabled && selected && styles.radioInnerDisabledSelected,
             innerCircleStyle,
           ]}
         />
@@ -108,7 +115,11 @@ const RadioItem: React.FC<RadioItemProps> = ({
         </Text>
 
         {option.description && (
-          <Text style={styles.description}>{option.description}</Text>
+          <Text
+            style={[styles.description, disabled && styles.descriptionDisabled]}
+          >
+            {option.description}
+          </Text>
         )}
       </View>
     </TouchableOpacity>
@@ -130,18 +141,22 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: colorPalette.neutral[400],
+    borderColor: semanticColors.input.border,
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.sm,
     marginTop: 2,
+    backgroundColor: semanticColors.input.background,
   },
   radioSelected: {
-    borderColor: colorPalette.primary[500],
+    borderColor: semanticColors.interactive.default,
   },
   radioDisabled: {
-    borderColor: colorPalette.neutral[300],
-    backgroundColor: colorPalette.neutral[100],
+    borderColor: colors.neutral[300],
+    backgroundColor: colors.neutral[100],
+  },
+  radioDisabledSelected: {
+    borderColor: colors.neutral[400],
   },
   radioInner: {
     width: 10,
@@ -150,22 +165,29 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   radioInnerSelected: {
-    backgroundColor: colorPalette.primary[500],
+    backgroundColor: semanticColors.interactive.default,
+  },
+  radioInnerDisabledSelected: {
+    backgroundColor: colors.neutral[500],
   },
   labelContainer: {
     flex: 1,
+    paddingTop: 1,
   },
   label: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium,
-    color: colorPalette.neutral[900],
+    ...textStyles.bodySmall,
+    fontWeight: "500",
+    color: semanticColors.text.primary,
   },
   labelDisabled: {
-    color: colorPalette.neutral[400],
+    color: semanticColors.text.disabled,
   },
   description: {
-    fontSize: typography.fontSize.sm,
-    color: colorPalette.neutral[600],
+    ...textStyles.caption,
+    color: semanticColors.text.secondary,
     marginTop: spacing.xs,
+  },
+  descriptionDisabled: {
+    color: semanticColors.text.disabled,
   },
 });

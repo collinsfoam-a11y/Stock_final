@@ -13,8 +13,12 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
 import { useSettingsStore } from "../../src/store/settingsStore";
-import { ScreenContainer, GlassCard, AnimatedPressable } from "../../src/components/ui";
-import { theme } from "../../src/styles/modernDesignSystem";
+import {
+  ScreenContainer,
+  GlassCard,
+  AnimatedPressable,
+} from "../../src/components/ui";
+import { theme } from "../../src/styles/unifiedSystem";
 import {
   ChangePasswordModal,
   SettingsSyncStatus,

@@ -18,15 +18,13 @@ import {
   getMetricsHealth,
   getMetricsStats,
   getServicesStatus,
-  getSessions,
-  getSessionsAnalytics,
   getSystemHealthScore,
   getSystemIssues,
-  getSystemStats,
   startService,
   stopService,
 } from "../../src/services/api";
-import { OperationalCard } from "../../src/components/ui";
+import { dashboardReadService } from "../../src/services/dashboardReadService";
+import { GlassCard } from "../../src/components/ui";
 import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
 import {
   DashboardAnalyticsPanel,
@@ -125,33 +123,28 @@ export default function DashboardWeb() {
 
         const [
           servicesRes,
-          statsRes,
           metricsRes,
           _healthRes,
           _reportsRes,
           issuesRes,
           healthScoreRes,
-          _sessionsRes,
-          analyticsRes,
           diagnosisHealthRes,
+          businessSnapshot,
         ] = await Promise.allSettled([
           getServicesStatus().catch(() => ({ data: null })),
-          getSystemStats().catch(() => ({ data: null })),
           getMetricsStats().catch(() => ({ data: null })),
           getMetricsHealth().catch(() => ({ data: null })),
           fetchAvailableReports(),
           getSystemIssues().catch(() => ({ data: { issues: [] } })),
           getSystemHealthScore().catch(() => ({ data: null })),
-          getSessions(1, 100).catch(() => ({ data: { sessions: [] } })),
-          getSessionsAnalytics().catch(() => ({ data: null })),
           getDiagnosisHealth().catch(() => null),
+          dashboardReadService
+            .getAdminBusinessSnapshot()
+            .catch(() => ({ systemStats: null, sessionsAnalytics: null, overlayCount: 0 })),
         ]);
 
         if (servicesRes.status === "fulfilled") {
           setServicesStatus(servicesRes.value?.data);
-        }
-        if (statsRes.status === "fulfilled") {
-          setSystemStats(statsRes.value?.data);
         }
         if (metricsRes.status === "fulfilled") {
           setMetrics(normalizeDashboardMetrics(metricsRes.value));
@@ -162,11 +155,12 @@ export default function DashboardWeb() {
         if (healthScoreRes.status === "fulfilled") {
           setHealthScore(healthScoreRes.value?.data?.score);
         }
-        if (analyticsRes.status === "fulfilled") {
-          setSessionsAnalytics(analyticsRes.value?.data);
-        }
         if (diagnosisHealthRes.status === "fulfilled") {
           setDiagnosisHealth(diagnosisHealthRes.value);
+        }
+        if (businessSnapshot.status === "fulfilled") {
+          setSystemStats(businessSnapshot.value?.systemStats);
+          setSessionsAnalytics(businessSnapshot.value?.sessionsAnalytics);
         }
 
         setLastUpdate(new Date());
@@ -189,6 +183,12 @@ export default function DashboardWeb() {
     const interval = setInterval(() => loadDashboardData(), 30000);
     return () => clearInterval(interval);
   }, [loadDashboardData, offlineMode]);
+
+  useEffect(() => {
+    return dashboardReadService.subscribeToDashboardInvalidation(() => {
+      void loadDashboardData();
+    });
+  }, [loadDashboardData]);
 
   useEffect(() => {
     if (isDashboardTab(tab)) {
@@ -465,7 +465,7 @@ export default function DashboardWeb() {
           }
         >
           {offlineMode && (
-            <OperationalCard style={styles.offlineNotice}>
+            <GlassCard style={styles.offlineNotice}>
               <Text style={styles.offlineNoticeTitle}>Admin dashboard is in offline mode</Text>
               <Text style={styles.offlineNoticeBody}>
                 Monitoring, reports, diagnosis, and service controls require a live backend

@@ -381,8 +381,10 @@ async def reset_user_settings(
             data=_build_user_settings(None),
         )
 
-    except USER_SETTINGS_ERRORS as e:
-        logger.error("Error resetting settings for user {user_id}: %s", sanitize_for_logging(str(e)))
+    except Exception as e:
+        logger.error(
+            "Error resetting settings for user {user_id}: %s", sanitize_for_logging(str(e))
+        )
         raise HTTPException(
             status_code=500,
             detail="Error resetting user settings",

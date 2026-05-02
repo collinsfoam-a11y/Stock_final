@@ -13,9 +13,10 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import PyMongoError
 
 from backend.services.count_line_write_service import CountLineWriteService
+from backend.services.event_service import EventService
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.transaction_manager import mongo_transaction
-from backend.services.governance_guard import write_authority
+from backend.services.validation_service import ValidationService
 
 UTC = timezone.utc
 
@@ -55,6 +56,35 @@ class SyncConflictsService:
         self.db = db
         self.count_line_write_service = CountLineWriteService(db)
         self.lifecycle_service = SessionLifecycleService(db)
+        self.validation_service = ValidationService(db)
+        self.event_service = EventService(db)
+
+    @staticmethod
+    def _normalize_serials(data: dict[str, Any]) -> list[str]:
+        serials: list[str] = []
+        seen: set[str] = set()
+        for raw in data.get("serial_numbers") or []:
+            serial = str(raw).strip().upper()
+            if serial and serial not in seen:
+                seen.add(serial)
+                serials.append(serial)
+        return serials
+
+    @staticmethod
+    def _normalize_batches(data: dict[str, Any]) -> list[dict[str, Any]]:
+        normalized: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for batch in data.get("batches") or []:
+            if not isinstance(batch, dict):
+                continue
+            batch_id = (
+                str(batch.get("batch_id") or batch.get("batch_no") or "").strip() or "NO_BATCH"
+            )
+            if batch_id in seen:
+                continue
+            seen.add(batch_id)
+            normalized.append({**batch, "batch_id": batch_id})
+        return normalized
 
     async def detect_conflict(
         self,
@@ -104,6 +134,24 @@ class SyncConflictsService:
 
         result = await self.db.sync_conflicts.insert_one(conflict_doc)
         conflict_id = str(result.inserted_id)
+        try:
+            await self.event_service.record_sync_queue_event(
+                event_type="SYNC_CONFLICT_RECORDED",
+                session_id=session_id,
+                item_code=str(local_data.get("item_code") or server_data.get("item_code") or ""),
+                strategy="pending_review",
+                details={
+                    "conflict_id": conflict_id,
+                    "entity_type": entity_type,
+                    "entity_id": entity_id,
+                    "fields": conflicts,
+                },
+                resolved_by=user,
+            )
+        except Exception:
+            logger.debug(
+                "Sync queue projection skipped for conflict %s", conflict_id, exc_info=True
+            )
 
         logger.warning(
             f"Sync conflict detected for {entity_type} {entity_id}: "
@@ -380,14 +428,54 @@ class SyncConflictsService:
                     logger.warning("Count-line conflict target not found: %s", entity_id)
                     return
 
+                raw_data = dict(data)
                 fields = self._sanitize_count_line_resolution_fields(dict(data))
+                current_qty = float(count_line.get("counted_qty") or 0.0)
+                incoming_qty = (
+                    float(raw_data.get("counted_qty"))
+                    if raw_data.get("counted_qty") is not None
+                    else current_qty
+                )
+                current_serials = set(self._normalize_serials(count_line))
+                incoming_serials = set(self._normalize_serials(fields))
+                if incoming_serials and incoming_serials != current_serials:
+                    raise ValueError(
+                        "SERIAL_CONFLICT_REJECTED: serial conflicts require client retry"
+                    )
+                fields.pop("serial_numbers", None)
+                fields.pop("serial_entries", None)
+
+                existing_batches = self._normalize_batches(count_line)
+                incoming_batches = self._normalize_batches(fields)
+                strategy = "quantity_merge"
+                merged_batches = existing_batches
+                if incoming_batches:
+                    existing_batch_ids = {
+                        str(batch.get("batch_id") or batch.get("batch_no") or "").strip()
+                        for batch in existing_batches
+                    }
+                    additive_batches = [
+                        batch
+                        for batch in incoming_batches
+                        if str(batch.get("batch_id") or batch.get("batch_no") or "").strip()
+                        not in existing_batch_ids
+                    ]
+                    if additive_batches:
+                        strategy = "batch_split"
+                        merged_batches = [*existing_batches, *additive_batches]
+                        fields["batches"] = merged_batches
+
+                delta_qty = incoming_qty if incoming_qty != current_qty else 0.0
                 fields["updated_at"] = datetime.now(UTC)
                 fields["conflict_resolved"] = True
+                update_doc: dict[str, Any] = {"$set": fields}
+                if delta_qty != 0.0:
+                    update_doc["$inc"] = {"counted_qty": delta_qty}
                 await self.count_line_write_service.process_write(
                     {
                         "operation": "update_one",
                         "filter": _entity_lookup(entity_id),
-                        "update": {"$set": fields},
+                        "update": update_doc,
                     },
                     context={
                         "session_id": str(count_line.get("session_id") or ""),
@@ -395,6 +483,22 @@ class SyncConflictsService:
                         "db_session": db_session,
                         "governance_mode": "mutable_session",
                     },
+                )
+                await self.event_service.record_sync_queue_event(
+                    event_type="SYNC_CONFLICT_RESOLVED",
+                    session_id=str(count_line.get("session_id") or ""),
+                    item_code=str(count_line.get("item_code") or ""),
+                    strategy=strategy,
+                    details={
+                        "entity_id": entity_id,
+                        "merged_qty": current_qty + delta_qty,
+                        "delta_qty": delta_qty,
+                        "incoming_qty": incoming_qty,
+                        "current_qty": current_qty,
+                        "merged_batches": merged_batches,
+                    },
+                    resolved_by="conflict_resolver",
+                    db_session=db_session,
                 )
                 logger.info("Applied resolved data to count_line %s", entity_id)
                 return

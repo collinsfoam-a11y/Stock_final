@@ -27,7 +27,6 @@ tokens:
       secondary: "#475569"
       muted: "#94A3B8"
       inverse: "#FFFFFF"
-
   spacing:
     base: 4
     xs: 4
@@ -37,7 +36,6 @@ tokens:
     xl: 20
     "2xl": 24
     "3xl": 32
-
   radius:
     none: 0
     xs: 4
@@ -46,7 +44,6 @@ tokens:
     lg: 16
     xl: 20
     full: 9999
-
   typography:
     family:
       sans: "System"

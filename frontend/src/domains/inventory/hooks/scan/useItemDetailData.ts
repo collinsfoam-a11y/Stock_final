@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
 
-import { checkItemScanStatus, getItemByBarcode, searchItems } from "@/services/api/api";
+import {
+  checkItemCounted,
+  checkItemScanStatus,
+  getItemByBarcode,
+  searchItems,
+} from "@/services/api/api";
 import { localDb } from "@/db/localDb";
 import apiClient from "@/services/httpClient";
+import { RecentItemsService } from "@/services/enhancedFeatures";
+import { useAuthStore } from "@/store/authStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { toastService } from "@/services/toastService";
 import { Item } from "@/types/scan";
@@ -18,6 +25,16 @@ type MrpVariant = Record<string, any> & {
 type ItemDetailItem = Item & {
   components?: Record<string, any>[];
   is_bundle?: boolean;
+};
+
+const isBlindRecountLine = (line: Record<string, any> | null | undefined) =>
+  Boolean(
+    line?.original_count_hidden || line?.blind_recount_required || line?.dual_verification_required
+  );
+
+const resolveRecountTargetId = (line: Record<string, any> | null | undefined): string | null => {
+  const candidate = line?.recount_of_id || line?.id || line?.line_id || line?._id;
+  return typeof candidate === "string" && candidate.trim() ? candidate : null;
 };
 
 interface UseItemDetailDataParams {
@@ -40,6 +57,7 @@ export const useItemDetailData = ({
   onQuantityChange,
 }: UseItemDetailDataParams) => {
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
+  const currentUsername = useAuthStore((state) => state.user?.username || "");
   const [loading, setLoading] = useState(false);
   const [item, setItem] = useState<ItemDetailItem | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -49,6 +67,9 @@ export const useItemDetailData = ({
   const [showZeroStock, setShowZeroStock] = useState(false);
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchError, setBatchError] = useState<string | null>(null);
+  const [recountTargetId, setRecountTargetId] = useState<string | null>(null);
+  const [blindRecountRequired, setBlindRecountRequired] = useState(false);
+  const [recountBlockedReason, setRecountBlockedReason] = useState<string | null>(null);
 
   const applyInitialMrpState = useCallback(
     (nextItem: ItemDetailItem) => {
@@ -125,20 +146,43 @@ export const useItemDetailData = ({
 
       setItem(itemData);
       applyInitialMrpState(itemData);
+      setRecountTargetId(null);
+      setBlindRecountRequired(false);
+      setRecountBlockedReason(null);
 
       if (sessionId && !offlineMode) {
         try {
-          const scanStatus = await checkItemScanStatus(sessionId, itemData.item_code || barcode);
+          const countCheck = await checkItemCounted(sessionId, itemData.item_code || barcode);
+          const blindLine = (countCheck.count_lines || []).find((line: any) =>
+            isBlindRecountLine(line)
+          );
 
-          if (scanStatus.scanned) {
-            const existing = scanStatus.locations.find(
-              (location: any) =>
-                location.floor_no === currentFloor && location.rack_no === currentRack
-            );
+          if (blindLine) {
+            const assignedTo =
+              typeof blindLine.assigned_to === "string" ? blindLine.assigned_to.trim() : "";
+            setBlindRecountRequired(true);
+            setRecountTargetId(resolveRecountTargetId(blindLine));
 
-            if (existing) {
-              onQuantityChange(String(existing.counted_qty));
-              toastService.show("Loaded existing count", { type: "info" });
+            if (assignedTo && currentUsername && assignedTo !== currentUsername) {
+              setRecountBlockedReason(`This recount is assigned to ${assignedTo}.`);
+            } else {
+              toastService.show("Blind recount active: previous count is hidden.", {
+                type: "info",
+              });
+            }
+          } else {
+            const scanStatus = await checkItemScanStatus(sessionId, itemData.item_code || barcode);
+
+            if (scanStatus.scanned) {
+              const existing = scanStatus.locations.find(
+                (location: any) =>
+                  location.floor_no === currentFloor && location.rack_no === currentRack
+              );
+
+              if (existing) {
+                onQuantityChange(String(existing.counted_qty));
+                toastService.show("Loaded existing count", { type: "info" });
+              }
             }
           }
         } catch {
@@ -162,6 +206,7 @@ export const useItemDetailData = ({
     barcode,
     currentFloor,
     currentRack,
+    currentUsername,
     offlineMode,
     onBackPress,
     onQuantityChange,
@@ -282,9 +327,12 @@ export const useItemDetailData = ({
     loading,
     mrpVariants,
     rawVariantsCount: rawVariants.length,
+    recountBlockedReason,
+    recountTargetId,
     sameNameVariants,
     selectedMrpVariant,
     setShowZeroStock,
     showZeroStock,
+    blindRecountRequired,
   };
 };

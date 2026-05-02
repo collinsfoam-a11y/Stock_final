@@ -8,8 +8,6 @@
  * - Password visibility toggle
  * - Character counter
  * - Animated focus states
- *
- * Inspired by react-native-design-kit Input patterns
  */
 
 import React, { useState, useRef, useCallback } from "react";
@@ -31,86 +29,63 @@ import Animated, {
   withTiming,
   interpolate,
 } from "react-native-reanimated";
-import { useThemeContext } from "@/context/ThemeContext";
 import {
-  ComponentSizes,
-  BorderRadius,
-  FontSizes,
-  FontWeights,
-  Spacing,
-  AnimationTimings,
-} from "@/theme/uiConstants";
+  colors,
+  semanticColors,
+  spacing,
+  radius,
+  fontSize,
+  textStyles,
+  touchTargets,
+  hitSlop,
+  duration,
+} from "@/theme/unified";
 
-/**
- * Shared size options for the enhanced text input.
- */
 export type InputSize = "sm" | "md" | "lg";
-
-/**
- * Supported label layouts for the enhanced text input.
- */
 export type LabelPosition = "floating" | "fixed" | "none";
 
-/**
- * Props for the themed enhanced text input component.
- */
 export interface EnhancedInputProps extends Omit<TextInputProps, "style"> {
-  /** Input label */
   label?: string;
-  /** Label behavior */
   labelPosition?: LabelPosition;
-  /** Helper text below input */
   helperText?: string;
-  /** Error message (shows error state) */
   error?: string;
-  /** Success state */
   success?: boolean;
-  /** Success message */
   successMessage?: string;
-  /** Left icon */
   leftIcon?: keyof typeof Ionicons.glyphMap;
-  /** Right icon */
   rightIcon?: keyof typeof Ionicons.glyphMap;
-  /** Right icon press handler */
   onRightIconPress?: () => void;
-  /** Input size */
   size?: InputSize;
-  /** Show character counter */
   showCounter?: boolean;
-  /** Maximum characters */
   maxLength?: number;
-  /** Container style */
   containerStyle?: StyleProp<ViewStyle>;
-  /** Input style */
   inputStyle?: StyleProp<TextStyle>;
-  /** Whether input is disabled */
   disabled?: boolean;
-  /** Full width */
   fullWidth?: boolean;
 }
 
 const AnimatedText = Animated.createAnimatedComponent(Text);
+
 const SIZE_CONFIG: Record<
   InputSize,
   { height: number; fontSize: number; iconSize: number; paddingHorizontal: number }
 > = {
   sm: {
-    height: ComponentSizes.input.sm,
-    fontSize: FontSizes.sm,
-    iconSize: ComponentSizes.icon.sm,
-    paddingHorizontal: Spacing.md,
+    height: touchTargets.minimum,
+    fontSize: fontSize.md,
+    iconSize: 18,
+    paddingHorizontal: spacing.md,
   },
   md: {
-    height: ComponentSizes.input.md,
-    fontSize: FontSizes.md,
-    iconSize: ComponentSizes.icon.md,
-    paddingHorizontal: Spacing.base,
+    height: 48,
+    fontSize: fontSize.lg,
+    iconSize: 20,
+    paddingHorizontal: spacing.lg,
   },
   lg: {
-    height: ComponentSizes.input.lg,
-    fontSize: FontSizes.lg,
-    iconSize: ComponentSizes.icon.lg,
-    paddingHorizontal: Spacing.lg,
+    height: touchTargets.large,
+    fontSize: fontSize.xl,
+    iconSize: 24,
+    paddingHorizontal: spacing.lg,
   },
 };
 
@@ -118,31 +93,31 @@ const resolveBorderColor = (
   error: string | undefined,
   success: boolean | undefined,
   isFocused: boolean,
-  themeLegacy: any
 ) => {
-  if (error) return themeLegacy.colors.error || "#DC2626";
-  if (success) return themeLegacy.colors.success || "#16A34A";
-  if (isFocused) return themeLegacy.colors.primary;
-  return themeLegacy.colors.border || "rgba(0, 0, 0, 0.1)";
+  if (error) return semanticColors.status.error;
+  if (success) return semanticColors.status.success;
+  if (isFocused) return semanticColors.input.focus;
+  return semanticColors.input.border;
 };
 
 const resolveIconColor = (
   error: string | undefined,
   success: boolean | undefined,
   isFocused: boolean,
-  themeLegacy: any
+  disabled: boolean,
 ) => {
-  if (error) return themeLegacy.colors.error || "#DC2626";
-  if (success) return themeLegacy.colors.success || "#16A34A";
-  if (isFocused) return themeLegacy.colors.primary;
-  return themeLegacy.colors.textSecondary || "#888";
+  if (disabled) return semanticColors.text.disabled;
+  if (error) return semanticColors.status.error;
+  if (success) return semanticColors.status.success;
+  if (isFocused) return semanticColors.interactive.default;
+  return semanticColors.input.placeholder;
 };
 
 const getHelperMessage = (
   error: string | undefined,
   success: boolean | undefined,
   successMessage: string | undefined,
-  helperText: string | undefined
+  helperText: string | undefined,
 ) => {
   if (error) {
     return { text: error, colorKey: "error" as const };
@@ -158,18 +133,21 @@ const getHelperMessage = (
 
 const resolveFloatingLabelColor = (
   error: string | undefined,
+  success: boolean | undefined,
   isFocused: boolean,
-  themeLegacy: any
+  disabled: boolean,
 ) => {
-  if (error) return themeLegacy.colors.error;
-  if (isFocused) return themeLegacy.colors.primary;
-  return themeLegacy.colors.textSecondary;
+  if (disabled) return semanticColors.text.disabled;
+  if (error) return semanticColors.status.error;
+  if (success) return semanticColors.status.success;
+  if (isFocused) return semanticColors.interactive.default;
+  return semanticColors.text.secondary;
 };
 
 const resolveRightIconName = (
   isPassword: boolean,
   isPasswordVisible: boolean,
-  rightIcon?: keyof typeof Ionicons.glyphMap
+  rightIcon?: keyof typeof Ionicons.glyphMap,
 ) => {
   if (isPassword) {
     return isPasswordVisible ? ("eye-off" as const) : ("eye" as const);
@@ -180,13 +158,13 @@ const resolveRightIconName = (
 const resolveFixedLabel = (labelPosition: LabelPosition, label?: string) =>
   labelPosition === "fixed" ? label : undefined;
 
-const resolveContainerBackground = (disabled: boolean, backgroundColor: string) =>
-  disabled ? "rgba(0, 0, 0, 0.05)" : backgroundColor;
+const resolveContainerBackground = (disabled: boolean) =>
+  disabled ? colors.neutral[50] : semanticColors.input.background;
 
 const resolveRightActionHandler = (
   isPassword: boolean,
   togglePasswordVisibility: () => void,
-  onRightIconPress?: () => void
+  onRightIconPress?: () => void,
 ) => (isPassword ? togglePasswordVisibility : onRightIconPress);
 
 const buildInputStyles = (
@@ -194,7 +172,7 @@ const buildInputStyles = (
   textColor: string,
   hasLeftIcon: boolean,
   hasRightAction: boolean,
-  inputStyle?: StyleProp<TextStyle>
+  inputStyle?: StyleProp<TextStyle>,
 ) => {
   const resolvedStyles: StyleProp<TextStyle>[] = [
     styles.input,
@@ -228,12 +206,16 @@ const FloatingLabel = ({
   visible,
   color,
   backgroundColor,
+  left,
+  top,
   animatedStyle,
 }: {
   label?: string;
   visible: boolean;
   color: string;
   backgroundColor: string;
+  left: number;
+  top: number;
   animatedStyle: any;
 }) => {
   if (!label || !visible) return null;
@@ -241,7 +223,7 @@ const FloatingLabel = ({
     <AnimatedText
       style={[
         styles.floatingLabel,
-        { color, backgroundColor },
+        { color, backgroundColor, left, top },
         animatedStyle,
       ]}
     >
@@ -268,7 +250,8 @@ const RightAction = ({
     <TouchableOpacity
       onPress={onPress}
       style={styles.rightIcon}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      hitSlop={hitSlop.small}
+      accessibilityRole="button"
     >
       <Ionicons name={iconName} size={iconSize} color={iconColor} />
     </TouchableOpacity>
@@ -280,18 +263,23 @@ const HelperRow = ({
   showCounter,
   charCount,
   maxLength,
-  themeLegacy,
 }: {
   helper: { text: string; colorKey: "error" | "success" | "textSecondary" } | null;
   showCounter: boolean;
   charCount: number;
   maxLength?: number;
-  themeLegacy: any;
 }) => (
   <View style={styles.bottomRow}>
     <View style={styles.helperContainer}>
       {helper ? (
-        <Text style={[styles.helperText, { color: themeLegacy.colors[helper.colorKey] }]}>
+        <Text
+          style={[
+            styles.helperText,
+            helper.colorKey === "error" && styles.helperTextError,
+            helper.colorKey === "success" && styles.helperTextSuccess,
+            helper.colorKey === "textSecondary" && styles.helperTextSecondary,
+          ]}
+        >
           {helper.text}
         </Text>
       ) : null}
@@ -301,8 +289,8 @@ const HelperRow = ({
       <Text
         style={[
           styles.counter,
-          { color: themeLegacy.colors.textSecondary },
-          charCount >= maxLength && { color: themeLegacy.colors.error },
+          styles.helperTextSecondary,
+          charCount >= maxLength && styles.helperTextError,
         ]}
       >
         {charCount}/{maxLength}
@@ -311,37 +299,6 @@ const HelperRow = ({
   </View>
 );
 
-/**
- * EnhancedInput - Beautiful text input with animations
- *
- * @example
- * // Basic usage
- * <EnhancedInput
- *   label="Email"
- *   placeholder="Enter your email"
- *   keyboardType="email-address"
- * />
- *
- * @example
- * // With error state
- * <EnhancedInput
- *   label="Password"
- *   secureTextEntry
- *   error="Password must be at least 8 characters"
- * />
- *
- * @example
- * // With icons
- * <EnhancedInput
- *   label="Search"
- *   leftIcon="search"
- *   rightIcon="close-circle"
- *   onRightIconPress={() => setValue('')}
- * />
- */
-/**
- * Renders a themed text input with validation, icons, and animated labels.
- */
 export const EnhancedInput: React.FC<EnhancedInputProps> = ({
   label,
   labelPosition = "floating",
@@ -365,90 +322,115 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
   secureTextEntry,
   ...rest
 }) => {
-  const { themeLegacy } = useThemeContext();
   const inputRef = useRef<TextInput>(null);
   const [isFocused, setIsFocused] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const focusProgress = useSharedValue(0);
+  const labelProgress = useSharedValue(value?.length ? 1 : 0);
+  const isMultiline = Boolean(rest.multiline);
 
-  const shouldFloat = isFocused || (value?.length ?? 0) > 0;
   const config = SIZE_CONFIG[size];
-  const borderColor = resolveBorderColor(error, success, isFocused, themeLegacy);
-  const iconColor = resolveIconColor(error, success, isFocused, themeLegacy);
+  const borderColor = resolveBorderColor(error, success, isFocused);
+  const iconColor = resolveIconColor(error, success, isFocused, disabled);
   const helper = getHelperMessage(error, success, successMessage, helperText);
-  const backgroundColor = themeLegacy.colors.surface || themeLegacy.colors.background;
   const isPassword = Boolean(secureTextEntry);
   const showRightAction = Boolean(rightIcon || isPassword);
-  const rightIconName = resolveRightIconName(isPassword, isPasswordVisible, rightIcon);
+  const rightIconName = resolveRightIconName(
+    isPassword,
+    isPasswordVisible,
+    rightIcon,
+  );
   const finalSecureEntry = isPassword && !isPasswordVisible;
   const charCount = value?.length || 0;
   const showCounterText = Boolean(showCounter && maxLength);
   const fixedLabel = resolveFixedLabel(labelPosition, label);
-  const fixedLabelColor = error ? themeLegacy.colors.error : themeLegacy.colors.text;
-  const floatingLabelColor = resolveFloatingLabelColor(error, isFocused, themeLegacy);
-  const containerBackground = resolveContainerBackground(disabled, backgroundColor);
+  const fixedLabelColor = error
+    ? semanticColors.status.error
+    : success
+      ? semanticColors.status.success
+      : semanticColors.text.primary;
+  const floatingLabelColor = resolveFloatingLabelColor(
+    error,
+    success,
+    isFocused,
+    disabled,
+  );
+  const containerBackground = resolveContainerBackground(disabled);
   const inputStyles = buildInputStyles(
     config,
-    themeLegacy.colors.text,
+    disabled ? semanticColors.text.disabled : semanticColors.input.text,
     Boolean(leftIcon),
     showRightAction,
-    inputStyle
+    inputStyle,
   );
+  const floatingLabelLeft =
+    config.paddingHorizontal + (leftIcon ? config.iconSize + spacing.sm : 0);
+  const floatingLabelTop = Math.max(
+    spacing.sm,
+    (config.height - fontSize.md) / 2 - spacing.xs,
+  );
+  const borderWidth = isFocused && !error && !success ? 2 : 1;
 
-  // Handlers
+  React.useEffect(() => {
+    labelProgress.value = withTiming(
+      isFocused || (value?.length ?? 0) > 0 ? 1 : 0,
+      { duration: duration.fast },
+    );
+  }, [isFocused, labelProgress, value]);
+
   const handleFocus = useCallback(
     (e: any) => {
       setIsFocused(true);
-      focusProgress.value = withTiming(1, { duration: AnimationTimings.fast });
       onFocus?.(e);
     },
-    [onFocus, focusProgress],
+    [onFocus],
   );
 
   const handleBlur = useCallback(
     (e: any) => {
       setIsFocused(false);
-      focusProgress.value = withTiming(0, { duration: AnimationTimings.fast });
       onBlur?.(e);
     },
-    [onBlur, focusProgress],
+    [onBlur],
   );
 
   const togglePasswordVisibility = useCallback(() => {
     setIsPasswordVisible((prev) => !prev);
   }, []);
+
   const rightActionPress = resolveRightActionHandler(
     isPassword,
     togglePasswordVisibility,
-    onRightIconPress
+    onRightIconPress,
   );
 
-  // Animated label style
   const labelAnimatedStyle = useAnimatedStyle(() => {
     if (labelPosition !== "floating") return {};
 
-    const translateY = interpolate(
-      shouldFloat ? 1 : focusProgress.value,
-      [0, 1],
-      [0, -(config.height / 2 + 4)],
-    );
-    const scale = interpolate(
-      shouldFloat ? 1 : focusProgress.value,
-      [0, 1],
-      [1, 0.85],
-    );
-
     return {
-      transform: [{ translateY }, { scale }],
+      transform: [
+        {
+          translateY: interpolate(
+            labelProgress.value,
+            [0, 1],
+            [0, -(config.height / 2) + spacing.sm],
+          ),
+        },
+        {
+          scale: interpolate(labelProgress.value, [0, 1], [1, 0.85]),
+        },
+      ],
     };
   });
 
   return (
-    <View style={[styles.container, fullWidth ? styles.fullWidth : undefined, containerStyle]}>
-      <FixedLabel
-        label={fixedLabel}
-        color={fixedLabelColor}
-      />
+    <View
+      style={[
+        styles.container,
+        fullWidth ? styles.fullWidth : undefined,
+        containerStyle,
+      ]}
+    >
+      <FixedLabel label={fixedLabel} color={fixedLabelColor} />
 
       <View
         style={[
@@ -456,8 +438,11 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
           {
             minHeight: config.height,
             paddingHorizontal: config.paddingHorizontal,
+            paddingVertical: isMultiline ? spacing.sm : 0,
             borderColor,
+            borderWidth,
             backgroundColor: containerBackground,
+            alignItems: isMultiline ? "flex-start" : "center",
           },
         ]}
       >
@@ -465,23 +450,25 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
           label={label}
           visible={labelPosition === "floating"}
           color={floatingLabelColor}
-          backgroundColor={backgroundColor}
+          backgroundColor={containerBackground}
+          left={floatingLabelLeft}
+          top={floatingLabelTop}
           animatedStyle={labelAnimatedStyle}
         />
 
-        {leftIcon && (
+        {leftIcon ? (
           <Ionicons
             name={leftIcon}
             size={config.iconSize}
             color={iconColor}
             style={styles.leftIcon}
           />
-        )}
+        ) : null}
 
         <TextInput
           ref={inputRef}
           style={inputStyles}
-          placeholderTextColor={themeLegacy.colors.textSecondary || "#888"}
+          placeholderTextColor={semanticColors.input.placeholder}
           editable={!disabled}
           value={value}
           onFocus={handleFocus}
@@ -507,7 +494,6 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
         showCounter={showCounterText}
         charCount={charCount}
         maxLength={maxLength}
-        themeLegacy={themeLegacy}
       />
     </View>
   );
@@ -515,39 +501,39 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: Spacing.md,
+    marginBottom: spacing.md,
   },
   fullWidth: {
     width: "100%",
   },
   fixedLabel: {
-    fontSize: FontSizes.sm,
-    fontWeight: FontWeights.medium,
-    marginBottom: Spacing.xs,
+    ...textStyles.label,
+    marginBottom: spacing.xs,
   },
   inputContainer: {
     flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderRadius: BorderRadius.md,
+    borderRadius: radius.sm,
     position: "relative",
   },
   floatingLabel: {
+    ...textStyles.label,
     position: "absolute",
-    left: Spacing.md,
-    fontSize: FontSizes.md,
-    paddingHorizontal: Spacing.xs,
+    fontSize: fontSize.md,
+    paddingHorizontal: spacing.xs,
+    zIndex: 1,
   },
   leftIcon: {
-    marginRight: Spacing.sm,
+    marginRight: spacing.sm,
+    marginTop: spacing.xs,
   },
   rightIcon: {
-    marginLeft: Spacing.sm,
-    padding: Spacing.xs,
+    marginLeft: spacing.sm,
+    padding: spacing.xs,
   },
   input: {
+    ...textStyles.body,
     flex: 1,
-    paddingVertical: Spacing.md,
+    paddingVertical: spacing.md,
   },
   inputWithLeftIcon: {
     paddingLeft: 0,
@@ -558,18 +544,27 @@ const styles = StyleSheet.create({
   bottomRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: Spacing.xs,
-    paddingHorizontal: Spacing.xs,
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.xs,
   },
   helperContainer: {
     flex: 1,
   },
   helperText: {
-    fontSize: FontSizes.xs,
+    ...textStyles.captionSmall,
+  },
+  helperTextError: {
+    color: semanticColors.status.error,
+  },
+  helperTextSuccess: {
+    color: semanticColors.status.success,
+  },
+  helperTextSecondary: {
+    color: semanticColors.text.secondary,
   },
   counter: {
-    fontSize: FontSizes.xs,
-    marginLeft: Spacing.sm,
+    ...textStyles.captionSmall,
+    marginLeft: spacing.sm,
   },
 });
 

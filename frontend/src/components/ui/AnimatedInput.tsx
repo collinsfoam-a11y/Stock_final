@@ -19,8 +19,7 @@ import * as Haptics from "expo-haptics";
 import {
   modernColors,
   modernBorderRadius,
-} from "../../styles/modernDesignSystem";
-import { createShadow } from "@/theme/shadowUtils";
+} from "../../styles/unifiedSystem";
 
 interface AnimatedInputProps extends TextInputProps {
   label?: string;

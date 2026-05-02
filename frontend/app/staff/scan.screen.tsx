@@ -59,7 +59,13 @@ import { FinishRackModal } from "../../src/components/scan/FinishRackModal";
 import { ScanCameraOverlay } from "../../src/components/scan/ScanCameraOverlay";
 import { ScanLookupPanel } from "../../src/components/scan/ScanLookupPanel";
 import { ScanStatsCard } from "../../src/components/scan/ScanStatsCard";
-import { colors, spacing, typography, borderRadius, shadows } from "../../src/theme/modernDesign";
+import {
+  colors,
+  spacing,
+  typography,
+  borderRadius,
+  shadows,
+} from "../../src/theme/unified";
 
 import { useAuthStore } from "../../src/store/authStore";
 

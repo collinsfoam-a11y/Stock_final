@@ -3,8 +3,8 @@ import { StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { AnimatedPressable, LiveIndicator, OperationalCard } from "@/components/ui";
-import { theme } from "@/styles/modernDesignSystem";
+import { AnimatedPressable, GlassCard, LiveIndicator } from "@/components/ui";
+import { theme } from "@/styles/unifiedSystem";
 import { colors as unifiedColors } from "@/theme/unified";
 
 export interface OverviewAction {

@@ -16,7 +16,10 @@ import { useNetworkStore } from "../store/networkStore";
 import { useAuthStore } from "../store/authStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { createLogger } from "./logging";
-import type { SyncRecord, SyncResult as ApiSyncResult } from "../types/sync";
+import { syncPendingCountLineEvents } from "./control-plane/countLineControlPlane";
+import { syncPendingCountLineReviewEvents } from "./control-plane/countLineReviewControlPlane";
+import { controlPlaneEventBus } from "./control-plane/controlPlaneEventBus";
+import { syncPendingSessionEvents } from "./control-plane/sessionControlPlane";
 
 const log = createLogger("syncService");
 
@@ -574,9 +577,32 @@ export const syncOfflineQueue = async (options?: SyncOptions): Promise<SyncResul
   isSyncing = true;
 
   try {
+    const sessionControlPlaneResult = await syncPendingSessionEvents();
+    const countLineControlPlaneResult = await syncPendingCountLineEvents();
+    const reviewControlPlaneResult = await syncPendingCountLineReviewEvents();
     const queue = await getOfflineQueue();
     if (queue.length === 0) {
-      return EMPTY_SYNC_RESULT;
+      const result = {
+        success:
+          sessionControlPlaneResult.success +
+          countLineControlPlaneResult.success +
+          reviewControlPlaneResult.success,
+        failed:
+          sessionControlPlaneResult.failed +
+          countLineControlPlaneResult.failed +
+          reviewControlPlaneResult.failed,
+        total:
+          sessionControlPlaneResult.total +
+          countLineControlPlaneResult.total +
+          reviewControlPlaneResult.total,
+        errors: [
+          ...sessionControlPlaneResult.errors,
+          ...countLineControlPlaneResult.errors,
+          ...reviewControlPlaneResult.errors,
+        ],
+      };
+      controlPlaneEventBus.publish("sync.completed", result);
+      return result;
     }
 
     const total = queue.length;
@@ -585,9 +611,19 @@ export const syncOfflineQueue = async (options?: SyncOptions): Promise<SyncResul
     // Process in batches of 50 to avoid payload size issues
     const BATCH_SIZE = 50;
     let processed = 0;
-    let successCount = 0;
-    let failedCount = 0;
-    const errors: { id: string; error: string }[] = [];
+    let successCount =
+      sessionControlPlaneResult.success +
+      countLineControlPlaneResult.success +
+      reviewControlPlaneResult.success;
+    let failedCount =
+      sessionControlPlaneResult.failed +
+      countLineControlPlaneResult.failed +
+      reviewControlPlaneResult.failed;
+    const errors: { id: string; error: string }[] = [
+      ...sessionControlPlaneResult.errors,
+      ...countLineControlPlaneResult.errors,
+      ...reviewControlPlaneResult.errors,
+    ];
 
     for (let i = 0; i < total; i += BATCH_SIZE) {
       const batch = queue.slice(i, i + BATCH_SIZE);
@@ -607,21 +643,29 @@ export const syncOfflineQueue = async (options?: SyncOptions): Promise<SyncResul
       errorCount: errors.length,
     });
 
-    return {
+    const result = {
       success: successCount,
       failed: failedCount,
-      total,
+      total:
+        total +
+        sessionControlPlaneResult.total +
+        countLineControlPlaneResult.total +
+        reviewControlPlaneResult.total,
       errors,
     };
+    controlPlaneEventBus.publish("sync.completed", result);
+    return result;
   } catch (error: unknown) {
     log.error("Sync process error", error as Record<string, unknown>);
     const errorMessage = error instanceof Error ? error.message : "Unknown sync error";
-    return {
+    const result = {
       success: 0,
       failed: 0,
       total: 0,
       errors: [{ id: "general", error: errorMessage }],
     };
+    controlPlaneEventBus.publish("sync.completed", result);
+    return result;
   } finally {
     isSyncing = false;
   }

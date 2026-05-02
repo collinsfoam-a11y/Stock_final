@@ -9,7 +9,7 @@ import {
   GlassCard,
 } from "@/components/ui";
 import { ActivityItem } from "@/components/supervisor/dashboard/supervisorDashboardShared";
-import { theme } from "@/styles/modernDesignSystem";
+import { theme } from "@/styles/unifiedSystem";
 
 interface SupervisorActivitySectionProps {
   activities: ActivityItem[];

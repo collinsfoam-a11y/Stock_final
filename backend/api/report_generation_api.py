@@ -16,13 +16,8 @@ from pydantic import BaseModel, Field
 from pymongo.errors import PyMongoError
 
 from backend.auth.dependencies import get_current_user, require_role
-from backend.services.query_utils import build_mongo_date_filter
-from backend.services.report_generation_service import (
-    ReportGenerationService,
-    get_report_generation_service,
-)
-from backend.utils.api_utils import sanitize_for_logging
-from backend.utils.request_context import get_request_id
+from backend.db.runtime import get_db
+from backend.services.projection_read_service import ProjectionReadService
 
 logger = logging.getLogger(__name__)
 
@@ -134,12 +129,170 @@ def _write_xlsx_data(ws: Any, data: list[dict], headers: list[str]) -> None:
 
 async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
     """Generate stock summary report data."""
-    return await ReportGenerationService(db).generate_stock_summary(filters)
+    projection_reads = ProjectionReadService(db)
+    if await projection_reads.report_reads_enabled():
+        return await projection_reads.generate_stock_summary(filters)
+
+    item_query: dict[str, Any] = {}
+    if filters.warehouse:
+        item_query["warehouse"] = filters.warehouse
+    if filters.floor:
+        item_query["floor"] = filters.floor
+    if filters.category:
+        item_query["category"] = filters.category
+
+    items_cursor = db.erp_items.find(item_query)
+    items: list[dict[str, Any]] = [item async for item in items_cursor]
+    item_codes = [item.get("item_code") for item in items if item.get("item_code")]
+    if (filters.warehouse or filters.floor or filters.category) and not item_codes:
+        return []
+
+    line_query: dict[str, Any] = {}
+    if item_codes:
+        line_query["item_code"] = {"$in": item_codes}
+    if filters.user_id:
+        line_query["counted_by"] = filters.user_id
+    if filters.status:
+        line_query["status"] = filters.status.lower()
+
+    date_filter = build_date_filter(filters.date_from, filters.date_to)
+    if date_filter:
+        line_query["counted_at"] = date_filter
+
+    line_summary: dict[str, dict[str, Any]] = {}
+    lines_cursor = db.count_lines.find(line_query)
+    async for line in lines_cursor:
+        item_code = line.get("item_code")
+        if not item_code:
+            continue
+        summary = line_summary.setdefault(
+            item_code,
+            {
+                "verification_count": 0,
+                "finalized_count": 0,
+                "finalized_qty": 0.0,
+                "last_verified": None,
+            },
+        )
+        summary["verification_count"] += 1
+        if str(line.get("status", "")).lower() == "locked":
+            summary["finalized_count"] += 1
+            summary["finalized_qty"] += float(line.get("counted_qty") or 0.0)
+            last_verified = (
+                line.get("finalized_at") or line.get("verified_at") or line.get("counted_at")
+            )
+            if last_verified and (
+                summary["last_verified"] is None or last_verified > summary["last_verified"]
+            ):
+                summary["last_verified"] = last_verified
+
+    results: list[dict[str, Any]] = []
+    for item in items:
+        item_code = item.get("item_code")
+        item_code_key = str(item_code) if item_code is not None else ""
+        summary = line_summary.get(item_code_key, {})
+        price = float(item.get("price") or 0.0)
+        stock_qty = float(item.get("stock_qty") or 0.0)
+        results.append(
+            {
+                "item_code": item_code_key,
+                "item_name": item.get("item_name"),
+                "category": item.get("category"),
+                "warehouse": item.get("warehouse"),
+                "floor": item.get("floor"),
+                "stock_qty": stock_qty,
+                "price": price,
+                "stock_value": stock_qty * price,
+                "verification_count": int(summary.get("verification_count", 0) or 0),
+                "finalized_count": int(summary.get("finalized_count", 0) or 0),
+                "finalized_qty": float(summary.get("finalized_qty", 0.0) or 0.0),
+                "last_verified": summary.get("last_verified"),
+                "is_verified": bool(
+                    summary.get("finalized_count", 0) or summary.get("verification_count", 0)
+                ),
+            }
+        )
+
+    results.sort(key=lambda row: str(row.get("item_code") or ""))
+    return results[:10000]
 
 
 async def generate_variance_report(db, filters: ReportFilter) -> list[dict]:
     """Generate variance report data."""
-    return await ReportGenerationService(db).generate_variance_report(filters)
+    projection_reads = ProjectionReadService(db)
+    if await projection_reads.report_reads_enabled():
+        return await projection_reads.generate_variance_report(filters)
+
+    line_query: dict[str, Any] = {"variance": {"$ne": 0}}
+    if filters.status:
+        line_query["status"] = filters.status.lower()
+    if filters.user_id:
+        line_query["counted_by"] = filters.user_id
+
+    date_filter = build_date_filter(filters.date_from, filters.date_to)
+    if date_filter:
+        line_query["counted_at"] = date_filter
+
+    item_query: dict[str, Any] = {}
+    if filters.warehouse:
+        item_query["warehouse"] = filters.warehouse
+    if filters.floor:
+        item_query["floor"] = filters.floor
+    if filters.category:
+        item_query["category"] = filters.category
+
+    item_docs = {
+        item.get("item_code"): item
+        async for item in db.erp_items.find(item_query)
+        if item.get("item_code")
+    }
+    if (filters.warehouse or filters.floor or filters.category) and not item_docs:
+        return []
+
+    results: list[dict[str, Any]] = []
+    lines_cursor = db.count_lines.find(line_query)
+    async for line in lines_cursor:
+        item_info = item_docs.get(line.get("item_code")) or {}
+        if filters.warehouse and item_info.get("warehouse") != filters.warehouse:
+            continue
+        if filters.floor and item_info.get("floor") != filters.floor:
+            continue
+        if filters.category and item_info.get("category") != filters.category:
+            continue
+
+        expected_qty = float(line.get("erp_qty") or 0.0)
+        variance = float(line.get("variance") or 0.0)
+        variance_percentage = 100.0
+        if expected_qty != 0:
+            variance_percentage = (variance / abs(expected_qty)) * 100
+
+        results.append(
+            {
+                "item_code": line.get("item_code"),
+                "item_name": line.get("item_name") or item_info.get("item_name") or "Unknown",
+                "expected_qty": expected_qty,
+                "counted_qty": float(line.get("counted_qty") or 0.0),
+                "variance": variance,
+                "variance_percentage": variance_percentage,
+                "status": line.get("status"),
+                "approval_status": line.get("approval_status"),
+                "counted_by": line.get("counted_by"),
+                "warehouse": item_info.get("warehouse"),
+                "location": "/".join(
+                    part
+                    for part in [line.get("floor_no"), line.get("rack_no")]
+                    if isinstance(part, str) and part
+                ),
+                "counted_at": line.get("counted_at"),
+                "approved_by": line.get("approved_by"),
+                "approved_at": line.get("approved_at"),
+                "finalized_at": line.get("finalized_at"),
+                "finalized_by": line.get("finalized_by"),
+            }
+        )
+
+    results.sort(key=lambda row: abs(float(row.get("variance_percentage") or 0.0)), reverse=True)
+    return results[:10000]
 
 
 async def generate_user_activity_report(db, filters: ReportFilter) -> list[dict]:
@@ -149,7 +302,79 @@ async def generate_user_activity_report(db, filters: ReportFilter) -> list[dict]
 
 async def generate_session_history_report(db, filters: ReportFilter) -> list[dict]:
     """Generate session history report data."""
-    return await ReportGenerationService(db).generate_session_history_report(filters)
+    projection_reads = ProjectionReadService(db)
+    if await projection_reads.report_reads_enabled():
+        return await projection_reads.generate_session_history_report(filters)
+
+    query: dict[str, Any] = {}
+
+    if filters.status:
+        query["status"] = filters.status.upper()
+    if filters.user_id:
+        query["staff_user"] = filters.user_id
+
+    date_filter = build_date_filter(filters.date_from, filters.date_to)
+    if date_filter:
+        query["started_at"] = date_filter
+
+    sessions = [
+        session async for session in db.sessions.find(query).sort("started_at", -1).limit(5000)
+    ]
+    session_ids = [
+        str(session.get("id") or session.get("session_id"))
+        for session in sessions
+        if session.get("id") or session.get("session_id")
+    ]
+    lines_by_session: dict[str, list[dict[str, Any]]] = {
+        session_id: [] for session_id in session_ids
+    }
+    if session_ids:
+        async for line in db.count_lines.find(
+            {"session_id": {"$in": session_ids}},
+            {"_id": 0, "session_id": 1, "verified": 1, "status": 1},
+        ):
+            session_id = str(line.get("session_id") or "")
+            if session_id in lines_by_session:
+                lines_by_session[session_id].append(line)
+
+    results: list[dict[str, Any]] = []
+    for session in sessions:
+        session_id = str(session.get("id") or session.get("session_id"))
+        lines = lines_by_session.get(session_id, [])
+        started_at = session.get("started_at")
+        completed_at = (
+            session.get("finalized_at") or session.get("completed_at") or session.get("closed_at")
+        )
+        duration_minutes = None
+        if isinstance(started_at, datetime) and isinstance(completed_at, datetime):
+            duration_minutes = (completed_at - started_at).total_seconds() / 60
+
+        results.append(
+            {
+                "session_id": session_id,
+                "username": session.get("staff_user"),
+                "staff_name": session.get("staff_name"),
+                "warehouse": session.get("warehouse"),
+                "rack_id": session.get("rack_no"),
+                "floor": session.get("location_name"),
+                "status": session.get("status"),
+                "finalization_status": session.get("finalization_status"),
+                "started_at": started_at,
+                "completed_at": completed_at,
+                "duration_minutes": duration_minutes,
+                "items_scanned": len(lines),
+                "items_verified": sum(
+                    1
+                    for line in lines
+                    if bool(line.get("verified")) or str(line.get("status", "")).lower() == "locked"
+                ),
+                "total_variance": float(session.get("total_variance") or 0.0),
+                "finalized_by": session.get("finalized_by"),
+                "finalized_at": session.get("finalized_at"),
+            }
+        )
+
+    return results
 
 
 async def generate_audit_trail_report(db, filters: ReportFilter) -> list[dict]:
@@ -372,11 +597,57 @@ async def get_report_filter_options(
     Returns distinct values for filterable fields.
     """
     if report_type not in REPORT_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid report type"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid report type")
+
+    db = get_db()
+    projection_reads = ProjectionReadService(db)
 
     try:
+        if await projection_reads.report_reads_enabled():
+            projection_filters = await projection_reads.get_report_filter_options()
+            users = []
+            if current_user.get("role") in ["admin", "supervisor"]:
+                users = [
+                    {
+                        "id": username,
+                        "username": username,
+                        "role": "staff",
+                    }
+                    for username in projection_filters["users"]
+                ]
+
+            return {
+                "report_type": report_type,
+                "filters": {
+                    "warehouses": projection_filters["warehouses"],
+                    "floors": projection_filters["floors"],
+                    "categories": projection_filters["categories"],
+                    "statuses": projection_filters["statuses"],
+                    "users": users,
+                },
+            }
+
+        # Get distinct values for common filters
+        warehouses = await db.erp_items.distinct("warehouse")
+        floors = await db.erp_items.distinct("floor")
+        categories = await db.erp_items.distinct("category")
+        count_line_statuses = await db.count_lines.distinct("status")
+        session_statuses = await db.sessions.distinct("status")
+        statuses = sorted(set(count_line_statuses) | set(session_statuses))
+
+        # Get user list for admin/supervisor
+        users = []
+        if current_user.get("role") in ["admin", "supervisor"]:
+            user_cursor = db.users.find({}, {"_id": 1, "username": 1, "role": 1})
+            users = [
+                {
+                    "id": str(u["_id"]),
+                    "username": u["username"],
+                    "role": u.get("role", "staff"),
+                }
+                async for u in user_cursor
+            ]
+
         return {
             "report_type": report_type,
             "filters": await report_service.get_filter_options(current_user),

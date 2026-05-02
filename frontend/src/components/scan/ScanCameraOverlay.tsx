@@ -17,7 +17,7 @@ import {
   colors,
   spacing,
   typography,
-} from "@/theme/modernDesign";
+} from "@/theme/unified";
 
 interface ScanCameraOverlayProps {
   animatedCorners: any;

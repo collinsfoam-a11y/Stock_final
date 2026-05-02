@@ -16,7 +16,7 @@ import {
   WarehouseOption,
   ZoneOption,
 } from "@/components/supervisor/dashboard/supervisorDashboardShared";
-import { theme } from "@/styles/modernDesignSystem";
+import { theme } from "@/styles/unifiedSystem";
 
 interface CreateSessionModalProps {
   isCreatingSession: boolean;

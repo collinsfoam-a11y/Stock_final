@@ -5,15 +5,12 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import ModernCard from "@/components/ui/ModernCard";
 import ModernInput from "@/components/ui/ModernInput";
 import { getStockQty } from "@/utils/itemBatchUtils";
-import { borderRadius, colors, shadows, spacing, typography } from "@/theme/modernDesign";
-
-const SURFACE_CARD = "#ffffff";
-const SURFACE_BORDER = "#d9e5e2";
-const SURFACE_MUTED = "#f8fafc";
-const ACCENT = "#0f766e";
-const ACCENT_SOFT = "#ecf7f4";
-const TEXT_STRONG = "#0f172a";
-const TEXT_MUTED = "#475569";
+import {
+  borderRadius,
+  colors,
+  spacing,
+  typography,
+} from "@/theme/unified";
 
 type ScanLookupItem = {
   _id?: string | number;
@@ -145,26 +142,41 @@ export function ScanLookupPanel({
 }: ScanLookupPanelProps) {
   return (
     <>
-      <View style={styles.searchSectionCard}>
-        <Text style={styles.panelKicker}>Find an item</Text>
-        <Text style={styles.panelTitle}>Scan item now</Text>
-        <Text style={styles.panelCopy}>
-          Use the camera first. Type the barcode or item code only when the label is worn or
-          unavailable.
-        </Text>
+      <ModernCard variant="outlined" elevation="none" style={styles.commandCard}>
+        <View style={styles.commandHeader}>
+          <View style={styles.commandCopy}>
+            <Text style={styles.commandEyebrow}>Scan or Search</Text>
+            <Text style={styles.commandTitle}>
+              Capture a barcode fast or enter an item code for manual lookup
+            </Text>
+          </View>
 
-        <TouchableOpacity
-          style={[styles.primaryScanButton, loading && styles.searchButtonDisabled]}
-          onPress={onOpenScanner}
-          disabled={loading}
-          activeOpacity={0.75}
-          accessibilityRole="button"
-          accessibilityLabel="Open barcode scanner"
-        >
-          <Ionicons name="scan" size={24} color={colors.white} />
-          <Text style={styles.primaryScanButtonText}>Scan Item</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.commandScanButton}
+            onPress={onOpenScanner}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Open barcode scanner"
+          >
+            <Ionicons name="scan" size={22} color={colors.white} />
+          </TouchableOpacity>
+        </View>
 
+        <View style={styles.commandStatusRow}>
+          <View style={styles.commandStatusChip}>
+            <Ionicons
+              name="layers-outline"
+              size={14}
+              color={colors.primary[700]}
+            />
+            <Text style={styles.commandStatusText}>
+              Recent scans stay available for quick re-entry
+            </Text>
+          </View>
+        </View>
+      </ModernCard>
+
+      <View style={styles.searchSection}>
         <View style={styles.searchRow}>
           <View style={styles.searchInputWrapper}>
             <ModernInput
@@ -210,9 +222,9 @@ export function ScanLookupPanel({
 
       {searchResults.length === 0 && (
         <View style={styles.recentSection}>
-          <Text style={styles.sectionTitle}>Last 3 saved scans</Text>
-          <Text style={styles.sectionCopy}>
-            Reopen the latest counted items without scanning them again.
+          <Text style={styles.sectionTitle}>Recent Items</Text>
+          <Text style={styles.sectionSubtitle}>
+            Reopen the last few items without rescanning them.
           </Text>
 
           {initialLoading ? (
@@ -260,7 +272,62 @@ export function ScanLookupPanel({
 }
 
 const styles = StyleSheet.create({
-  searchSectionCard: {
+  commandCard: {
+    marginBottom: spacing.lg,
+    borderRadius: borderRadius.xl,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+  },
+  commandHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md,
+  },
+  commandCopy: {
+    flex: 1,
+  },
+  commandEyebrow: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[700],
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: spacing.xs,
+  },
+  commandTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.gray[900],
+    lineHeight: 22,
+  },
+  commandScanButton: {
+    width: 52,
+    height: 52,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.primary[700],
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  commandStatusRow: {
+    marginTop: spacing.md,
+  },
+  commandStatusChip: {
+    minHeight: 36,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primary[50],
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    alignSelf: "flex-start",
+  },
+  commandStatusText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[700],
+  },
+  searchSection: {
     marginBottom: spacing.xl,
     padding: spacing.lg,
     backgroundColor: SURFACE_CARD,
@@ -312,35 +379,33 @@ const styles = StyleSheet.create({
   },
   searchInputWrapper: {
     flex: 1,
-    backgroundColor: SURFACE_CARD,
-    borderRadius: 14,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
   },
   searchButton: {
     width: 56,
     height: 56,
-    borderRadius: 14,
-    backgroundColor: ACCENT,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.primary[600],
     alignItems: "center",
     justifyContent: "center",
-    ...shadows.md,
   },
   searchButtonDisabled: {
     backgroundColor: colors.gray[300],
-    boxShadow: "none",
   },
   searchResultsContainer: {
     marginTop: spacing.md,
     paddingVertical: spacing.xs,
-    backgroundColor: SURFACE_MUTED,
-    borderRadius: 18,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
-    zIndex: 200,
-    elevation: 10,
+    borderColor: colors.gray[200],
   },
   searchResultSeparator: {
     height: 1,
-    backgroundColor: colors.gray[100],
+    backgroundColor: colors.gray[200],
   },
   resultItem: {
     flexDirection: "row",
@@ -383,18 +448,26 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: "700",
-    color: TEXT_STRONG,
+    color: colors.gray[600],
     marginBottom: spacing.xs,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginLeft: spacing.xs,
+  },
+  sectionSubtitle: {
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[500],
+    marginBottom: spacing.md,
+    marginLeft: spacing.xs,
   },
   recentCard: {
     marginBottom: spacing.sm,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
-    borderRadius: 18,
-    backgroundColor: SURFACE_CARD,
-    ...shadows.sm,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: colors.gray[200],
   },
   recentRow: {
     flexDirection: "row",
@@ -446,8 +519,7 @@ const styles = StyleSheet.create({
     backgroundColor: SURFACE_CARD,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderStyle: "dashed",
+    borderColor: colors.gray[200],
   },
   emptyIconContainer: {
     width: 64,

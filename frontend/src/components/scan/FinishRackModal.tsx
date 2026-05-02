@@ -15,7 +15,7 @@ import {
   shadows,
   spacing,
   typography,
-} from "@/theme/modernDesign";
+} from "@/theme/unified";
 
 interface ScanStats {
   pendingItems: number;

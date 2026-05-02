@@ -19,6 +19,34 @@ jest.mock("../../httpClient", () => ({
   },
 }));
 
+jest.mock("../sessionManagementApi", () => ({
+  __esModule: true,
+  finalizeSession: jest.fn(),
+  isOnline: jest.fn(),
+  shouldAttemptReadApi: jest.fn(() => false),
+  updateSessionStatus: jest.fn(),
+}));
+
+jest.mock("../../control-plane/countLineControlPlane", () => {
+  class ProjectionReadError extends Error {}
+  return {
+    __esModule: true,
+    ProjectionReadError,
+    getProjectedCountLinesForSession: jest.fn(async () => []),
+    getProjectedScanStatusRead: jest.fn(async () => null),
+    submitCountLineCommand: jest.fn(),
+  };
+});
+
+jest.mock("../../control-plane/countLineReviewControlPlane", () => ({
+  __esModule: true,
+  approveCountLineCommand: jest.fn(),
+  overlayCountLineReviewState: jest.fn(async (lines) => lines),
+  rejectCountLineCommand: jest.fn(),
+  unverifyStockCommand: jest.fn(),
+  verifyStockCommand: jest.fn(),
+}));
+
 describe("getCountLines item name hydration", () => {
   beforeEach(() => {
     jest.clearAllMocks();

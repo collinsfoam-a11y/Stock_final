@@ -14,7 +14,9 @@ from enum import Enum
 from typing import Any, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel
 from pymongo.errors import DuplicateKeyError, PyMongoError
 
@@ -35,10 +37,13 @@ from backend.services.canonical_inventory import (
     is_session_finalized,
     normalize_session_status as normalize_canonical_session_status,
 )
+from backend.services.event_service import EventService
 from backend.services.governance_guard import (
     normalize_session_status as normalize_session_status_canonical,
 )
-from backend.services.metrics import increment_session_duplicate_attempts
+from backend.services.projection_read_service import ProjectionReadService
+from backend.services.session_lifecycle_service import SessionLifecycleService
+from backend.services.transaction_manager import mongo_transaction
 from backend.services.redis_service import get_redis
 from backend.services.runtime import get_refresh_token_service
 from backend.services.session_query_service import (
@@ -70,6 +75,21 @@ def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
     return sanitize_for_logging(
         "" if value is None else str(value), max_length=max_length
     )
+
+
+def _build_session_location_key(
+    warehouse: str,
+    location_type: Optional[str],
+    location_name: Optional[str],
+    rack_no: Optional[str],
+) -> str:
+    parts = [
+        warehouse.strip().upper(),
+        (_normalize_location_value(location_type) or "WAREHOUSE").upper(),
+        (_normalize_location_value(location_name) or "UNSCOPED").upper(),
+        (_normalize_location_value(rack_no) or "NO_RACK").upper(),
+    ]
+    return "|".join(parts)
 
 
 # Models
@@ -245,9 +265,9 @@ INACTIVE_SESSION_SLA_MINUTES = 10
 
 
 def _normalize_location_value(value: Any) -> Optional[str]:
-    if not isinstance(value, str):
+    if value is None:
         return None
-    normalized = value.strip()
+    normalized = str(value).strip()
     return normalized or None
 
 
@@ -954,9 +974,49 @@ async def _find_existing_session_for_warehouse(
     return existing_session
 
 
-async def _close_existing_user_sessions(
-    session_service: SessionQueryService, username: str
-) -> None:
+async def _find_active_session_for_location(
+    db: AsyncIOMotorDatabase,
+    *,
+    warehouse: str,
+    location_type: Optional[str],
+    location_name: Optional[str],
+    rack_no: Optional[str],
+) -> Optional[dict[str, Any]]:
+    location_key = _build_session_location_key(warehouse, location_type, location_name, rack_no)
+    legacy_match: dict[str, Any] = {
+        "warehouse": {"$regex": f"^{re.escape(warehouse)}$", "$options": "i"},
+    }
+    if location_type:
+        legacy_match["location_type"] = location_type
+    if location_name:
+        legacy_match["location_name"] = location_name
+    if rack_no:
+        legacy_match["rack_no"] = rack_no
+    session = await db.sessions.find_one(
+        {
+            "status": {"$in": ACTIVE_SESSION_STATUSES},
+            "$or": [
+                {"location_key": location_key},
+                legacy_match,
+            ],
+            "$and": [
+                {
+                    "$or": [
+                        {"finalized_at": {"$exists": False}},
+                        {"finalized_at": {"$in": [None, ""]}},
+                    ]
+                },
+                {"$or": [{"closed_at": {"$exists": False}}, {"closed_at": {"$in": [None, ""]}}]},
+            ],
+        }
+    )
+    if isinstance(session, dict) and "_id" in session and "id" not in session:
+        session["id"] = str(session["_id"])
+        del session["_id"]
+    return session
+
+
+async def _close_existing_user_sessions(db: AsyncIOMotorDatabase, username: str) -> None:
     # Governance: auto-close is forbidden outside canonical finalize path.
     logger.info(
         "Skipping auto-close for existing sessions (user=%s)", _safe_log_value(username)
@@ -978,11 +1038,12 @@ def _build_new_session(
     rack_no: Optional[str],
 ) -> Session:
     now = datetime.now(timezone.utc)
+    location_key = _build_session_location_key(warehouse, location_type, location_name, rack_no)
     return Session(
         id=str(uuid.uuid4()),
         warehouse=warehouse,
-        client_session_id=session_data.client_session_id,
-        offline_id=session_data.offline_id or session_data.client_session_id,
+        location_id=location_key,
+        location_key=location_key,
         location_type=location_type,
         location_name=location_name,
         rack_no=rack_no,
@@ -1009,6 +1070,7 @@ async def _persist_session_snapshot(
     location_name: Optional[str],
     rack_no: Optional[str],
     username: str,
+    db_session: Optional[Any] = None,
 ) -> None:
     from backend.core.schemas.snapshot import SessionSnapshot
 
@@ -1036,6 +1098,7 @@ async def _persist_session_snapshot(
         session_id=session.id,
         snapshot_doc=snapshot.model_dump(),
         actor=username,
+        db_session=db_session,
     )
     session.snapshot_items_ref = snapshot.id
 
@@ -1044,27 +1107,22 @@ async def _insert_session_documents(
     session_service: SessionQueryService,
     session: Session,
     username: str,
+    db_session: Optional[Any] = None,
 ) -> None:
     lifecycle_service = session_service.lifecycle_service()
     session_doc = session.model_dump()
     session_doc["session_id"] = session.id
-    created_at = (
-        session.started_at.replace(tzinfo=None)
-        if session.started_at.tzinfo
-        else session.started_at
+    await lifecycle_service.create_session(
+        session_doc=session_doc,
+        username=username,
+        db_session=db_session,
     )
-    session_doc["created_at"] = created_at
-    session_doc["client_session_identity_key"] = _session_identity_key(
-        username,
-        str(session.client_session_id),
-        created_at,
-    )
-    await lifecycle_service.create_session(session_doc=session_doc, username=username)
     await lifecycle_service.transition_session(
         session_id=session.id,
         target_status="ACTIVE",
         actor=username,
         note="Session activated on creation",
+        db_session=db_session,
     )
 
 
@@ -1373,6 +1431,22 @@ async def get_sessions(
     """
     Get all sessions with pagination
     """
+    projection_reads = ProjectionReadService(db)
+    if await projection_reads.dashboard_reads_enabled():
+        projection_page = await projection_reads.get_sessions_page(
+            page=page,
+            page_size=page_size,
+            status=status,
+            user_id=user_id,
+            current_user=current_user,
+        )
+        return PaginatedResponse.create(
+            items=[Session(**item) for item in projection_page["items"]],
+            total=int(projection_page["total"]),
+            page=page,
+            page_size=page_size,
+        )
+
     # Build query
     query = {}
     if status:
@@ -1437,38 +1511,25 @@ async def create_session(
     warehouse, location_type, location_name, rack_no = _validate_session_create_request(
         session_data
     )
-    expected_payload = _session_identity_payload(
+    event_service = EventService(db)
+    active_location_session = await _find_active_session_for_location(
+        db,
         warehouse=warehouse,
-        session_type=session_data.type,
         location_type=location_type,
         location_name=location_name,
         rack_no=rack_no,
     )
-    try:
-        existing_client_session = await _find_existing_session_for_client_identity(
-            session_service, session_data, current_user["username"], expected_payload
-        )
-    except SessionConflictError as exc:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "SESSION_ID_COLLISION",
-                "message": "client_session_id is already bound to a different session payload",
-            },
-        ) from exc
-
-    if existing_client_session:
-        logger.info(
-            "session_create_duplicate_reused",
-            extra={
-                "request_id": request_id,
-                "user": _safe_log_value(current_user["username"]),
-                "endpoint": "/api/sessions",
-                "status": "reused",
-                "session_id": existing_client_session.get("id"),
-            },
-        )
-        return Session(**existing_client_session)
+    if active_location_session:
+        active_owner = active_location_session.get("staff_user")
+        if active_owner == current_user["username"]:
+            return Session(**active_location_session)
+        if await event_service.is_enabled("V3_ENFORCE_LOCATION_SESSION_LOCK", default=True):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "SESSION_LOCATION_LOCKED: another active session already owns this location"
+                ),
+            )
 
     existing_session = await _find_existing_session_for_warehouse(
         session_service, current_user["username"], warehouse
@@ -1494,42 +1555,41 @@ async def create_session(
         location_name,
         rack_no,
     )
-    session.config_version_id = await _get_latest_session_config_version_id(session_service)
-    await _persist_session_snapshot(
-        session_service,
-        session,
-        warehouse,
-        location_type,
-        location_name,
-        rack_no,
-        current_user["username"],
-    )
+    session.config_version_id = await _get_latest_session_config_version_id(db)
     try:
-        await _insert_session_documents(session_service, session, current_user["username"])
+        async with mongo_transaction(db.client) as tx:
+            await _persist_session_snapshot(
+                db,
+                session,
+                warehouse,
+                location_type,
+                location_name,
+                rack_no,
+                current_user["username"],
+                db_session=tx,
+            )
+            await _insert_session_documents(
+                db,
+                session,
+                current_user["username"],
+                db_session=tx,
+            )
     except DuplicateKeyError as exc:
-        existing_after_duplicate = await _find_existing_session_for_client_identity(
-            session_service, session_data, current_user["username"], expected_payload
-        )
-        if existing_after_duplicate:
-            return Session(**existing_after_duplicate)
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "SESSION_ID_COLLISION",
-                "message": "client_session_id collided with an existing session",
-            },
-        ) from exc
-
-    logger.info(
-        "session_created",
-        extra={
-            "request_id": request_id,
-            "user": _safe_log_value(current_user["username"]),
-            "endpoint": "/api/sessions",
-            "status": "created",
-            "session_id": session.id,
-        },
-    )
+        if "location_key" in str(exc):
+            conflicting = await _find_active_session_for_location(
+                db,
+                warehouse=warehouse,
+                location_type=location_type,
+                location_name=location_name,
+                rack_no=rack_no,
+            )
+            if conflicting and conflicting.get("staff_user") == current_user["username"]:
+                return Session(**conflicting)
+            raise HTTPException(
+                status_code=409,
+                detail="SESSION_LOCATION_LOCKED: another active session already owns this location",
+            ) from exc
+        raise
 
     return session
 
@@ -1637,8 +1697,11 @@ async def get_sessions_analytics(
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     try:
-        return {"success": True, "data": await _build_sessions_analytics_payload(session_service)}
-    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        projection_reads = ProjectionReadService(db)
+        if await projection_reads.dashboard_reads_enabled():
+            return {"success": True, "data": await projection_reads.get_sessions_analytics()}
+        return {"success": True, "data": await _build_sessions_analytics_payload(db)}
+    except Exception as e:
         logger.error("Analytics error: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -1684,19 +1747,21 @@ async def get_session_stats(
             items_per_minute=0,
         )
 
-    session = await find_session(session_service.database, session_id)
-
+    session = await find_session(db, session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
-    # Check access
-    if (
-        current_user["role"] != "supervisor"
-        and _session_owner(session) != current_user["username"]
-    ):
+    viewer_role = str(current_user.get("role") or "").strip().lower()
+    if viewer_role not in {"supervisor", "admin"} and _session_owner(session) != current_user["username"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    line_summary = await _get_session_line_summary(session_service, session_id)
+    projection_reads = ProjectionReadService(db)
+    if await projection_reads.dashboard_reads_enabled():
+        projected = await projection_reads.get_session_stats(session_id)
+        if projected is not None:
+            return SessionStats(**projected)
+
+    line_summary = await _get_session_line_summary(db, session_id)
     total_items = int(line_summary.get("item_count", 0) or 0)
     verified_items = int(line_summary.get("verified_count", 0) or 0)
     damage_items = int(line_summary.get("damage_items", 0) or 0)
@@ -1782,6 +1847,14 @@ async def session_heartbeat(
     await lifecycle_service.update_session_fields(
         session_id,
         {"last_heartbeat": heartbeat_at},
+        actor=user_id,
+        event_type="SESSION_HEARTBEAT",
+        event_payload={
+            "rack_lock_renewed": rack_lock_renewed,
+            "lock_ttl_remaining": lock_ttl_remaining,
+            "updated_at": heartbeat_at,
+        },
+        event_metadata={"user_id": user_id},
     )
 
     logger.debug(

@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  LayoutChangeEvent,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -18,11 +19,14 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import {
-  colorPalette,
+  colors,
+  semanticColors,
   spacing,
-  typography,
-  borderRadius,
-} from "@/theme/designTokens";
+  radius,
+  textStyles,
+  touchTargets,
+  hitSlop,
+} from "@/theme/unified";
 
 export interface Tab {
   key: string;
@@ -46,9 +50,9 @@ export const Tabs: React.FC<TabsProps> = ({
   variant = "default",
   scrollable = false,
 }) => {
-  const [tabLayouts, setTabLayouts] = useState<{
-    [key: string]: { x: number; width: number };
-  }>({});
+  const [tabLayouts, setTabLayouts] = useState<Record<string, { x: number; width: number }>>(
+    {},
+  );
   const indicatorPosition = useSharedValue(0);
   const indicatorWidth = useSharedValue(0);
 
@@ -64,40 +68,44 @@ export const Tabs: React.FC<TabsProps> = ({
         stiffness: 150,
       });
     }
-  }, [activeTab, tabLayouts, indicatorPosition, indicatorWidth]);
+  }, [activeTab, indicatorPosition, indicatorWidth, tabLayouts]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: indicatorPosition.value }],
     width: indicatorWidth.value,
   }));
 
-  const handleTabLayout = (key: string, x: number, width: number) => {
+  const handleTabLayout = (
+    key: string,
+    event: LayoutChangeEvent,
+  ) => {
+    const { x, width } = event.nativeEvent.layout;
     setTabLayouts((prev) => ({
       ...prev,
       [key]: { x, width },
     }));
   };
 
-  const renderTab = (tab: Tab, _index: number) => {
+  const renderTab = (tab: Tab) => {
     const isActive = tab.key === activeTab;
 
     return (
       <TouchableOpacity
         key={tab.key}
         onPress={() => onTabChange(tab.key)}
-        onLayout={(e) => {
-          const { x, width } = e.nativeEvent.layout;
-          handleTabLayout(tab.key, x, width);
-        }}
+        onLayout={(event) => handleTabLayout(tab.key, event)}
         style={[
           styles.tab,
+          !scrollable && styles.tabFlex,
           variant === "pills" && styles.tabPill,
           variant === "pills" && isActive && styles.tabPillActive,
-          !scrollable && styles.tabFlex,
         ]}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
+        hitSlop={hitSlop.small}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: isActive }}
       >
-        {tab.icon && <View style={styles.tabIcon}>{tab.icon}</View>}
+        {tab.icon ? <View style={styles.tabIcon}>{tab.icon}</View> : null}
 
         <Text
           style={[
@@ -109,36 +117,35 @@ export const Tabs: React.FC<TabsProps> = ({
           {tab.label}
         </Text>
 
-        {tab.badge !== undefined && tab.badge > 0 && (
+        {tab.badge !== undefined && tab.badge > 0 ? (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>
               {tab.badge > 99 ? "99+" : tab.badge}
             </Text>
           </View>
-        )}
+        ) : null}
       </TouchableOpacity>
     );
   };
 
-  const Container = scrollable ? ScrollView : View;
-  const containerProps = scrollable
-    ? {
-        horizontal: true,
-        showsHorizontalScrollIndicator: false,
-        contentContainerStyle: styles.scrollContent,
-      }
-    : { style: styles.container };
-
   return (
     <View style={styles.wrapper}>
-      <Container {...containerProps}>
-        {tabs.map((tab, _index) => renderTab(tab, _index))}
-      </Container>
-
-      {/* Indicator */}
-      {variant === "underline" && (
-        <Animated.View style={[styles.indicator, indicatorStyle]} />
+      {scrollable ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          style={styles.container}
+        >
+          {tabs.map(renderTab)}
+        </ScrollView>
+      ) : (
+        <View style={styles.container}>{tabs.map(renderTab)}</View>
       )}
+
+      {variant === "underline" ? (
+        <Animated.View style={[styles.indicator, indicatorStyle]} />
+      ) : null}
     </View>
   );
 };
@@ -149,7 +156,9 @@ const styles = StyleSheet.create({
   },
   container: {
     flexDirection: "row",
-    backgroundColor: colorPalette.neutral[0],
+    backgroundColor: semanticColors.background.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: semanticColors.border.subtle,
   },
   scrollContent: {
     paddingHorizontal: spacing.sm,
@@ -158,56 +167,57 @@ const styles = StyleSheet.create({
   tab: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: spacing.base,
+    justifyContent: "center",
+    minHeight: touchTargets.minimum,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     gap: spacing.xs,
   },
   tabFlex: {
     flex: 1,
-    justifyContent: "center",
   },
   tabPill: {
-    borderRadius: borderRadius.full,
-    backgroundColor: colorPalette.neutral[100],
+    borderRadius: radius.full,
+    backgroundColor: semanticColors.background.tertiary,
   },
   tabPillActive: {
-    backgroundColor: colorPalette.primary[500],
+    backgroundColor: semanticColors.interactive.default,
   },
   tabIcon: {
-    marginRight: spacing.xs,
+    alignItems: "center",
+    justifyContent: "center",
   },
   tabLabel: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium,
-    color: colorPalette.neutral[600],
+    ...textStyles.bodySmall,
+    fontWeight: "500",
+    color: semanticColors.text.secondary,
   },
   tabLabelActive: {
-    color: colorPalette.primary[500],
-    fontWeight: typography.fontWeight.semibold,
+    color: semanticColors.interactive.default,
+    fontWeight: "600",
   },
   tabLabelPillActive: {
-    color: colorPalette.neutral[0],
+    color: colors.white,
   },
   badge: {
-    backgroundColor: colorPalette.error[500],
-    borderRadius: borderRadius.full,
+    backgroundColor: semanticColors.status.error,
+    borderRadius: radius.full,
     paddingHorizontal: spacing.xs,
     paddingVertical: 2,
     minWidth: 20,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: spacing.xs,
   },
   badgeText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
-    color: colorPalette.neutral[0],
+    ...textStyles.captionSmall,
+    fontWeight: "600",
+    color: colors.white,
   },
   indicator: {
     position: "absolute",
     bottom: 0,
     height: 3,
-    backgroundColor: colorPalette.primary[500],
-    borderRadius: borderRadius.sm,
+    backgroundColor: semanticColors.interactive.default,
+    borderRadius: radius.xs,
   },
 });

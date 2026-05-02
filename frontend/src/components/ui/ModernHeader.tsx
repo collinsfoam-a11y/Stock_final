@@ -4,27 +4,16 @@
  */
 
 import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  StatusBar,
-  ViewStyle,
-} from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar, ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuthStore } from "../../store/authStore";
 import { useRouter } from "expo-router";
+import { haptics } from "../../services/haptics";
 
-import {
-  colors,
-  spacing,
-  typography,
-  shadows,
-  gradients,
-} from "../../theme/modernDesign";
+import { colors, spacing, typography, shadows } from "../../theme/unified";
+import { operationalGradients, operationalTheme } from "../../theme/operationalTheme";
 import { BrandLogo } from "../branding/BrandLogo";
 
 interface ModernHeaderProps {
@@ -37,6 +26,7 @@ interface ModernHeaderProps {
     icon: keyof typeof Ionicons.glyphMap;
     onPress: () => void;
   };
+  rightActionAccessibilityLabel?: string;
   showSettingsButton?: boolean;
   subtitle?: string;
   style?: ViewStyle;
@@ -44,7 +34,7 @@ interface ModernHeaderProps {
 
 const LogoWithBorder = ({ size = 40 }: { size?: number }) => (
   <LinearGradient
-    colors={gradients.primary}
+    colors={operationalGradients.primary}
     style={{
       width: size,
       height: size,
@@ -78,6 +68,7 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
   onBackPress,
   rightComponent,
   rightAction,
+  rightActionAccessibilityLabel,
   showSettingsButton = true,
   subtitle,
   style,
@@ -88,7 +79,15 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
   const shouldShowSettings =
     !!user && showSettingsButton && rightAction?.icon !== "settings-outline";
 
+  const handleHapticFeedback = () => {
+    if (!haptics.isAvailable()) {
+      return;
+    }
+    void haptics.light();
+  };
+
   const onPressSettings = () => {
+    handleHapticFeedback();
     const role = user?.role;
     const target =
       role === "admin" || role === "supervisor" || role === "staff"
@@ -101,7 +100,7 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
     <SafeAreaView style={[styles.safeArea, style]}>
       <StatusBar
         barStyle="dark-content"
-        backgroundColor={colors.white}
+        backgroundColor={operationalTheme.background}
         translucent={false}
       />
 
@@ -110,9 +109,14 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
         <View style={styles.leftSection}>
           {showBackButton ? (
             <TouchableOpacity
-              onPress={onBackPress}
+              onPress={() => {
+                handleHapticFeedback();
+                onBackPress?.();
+              }}
               style={styles.backButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
             >
               <Ionicons name="arrow-back" size={24} color={colors.gray[700]} />
             </TouchableOpacity>
@@ -157,25 +161,27 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
               onPress={onPressSettings}
               style={styles.backButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Open settings"
             >
-              <Ionicons
-                name="settings-outline"
-                size={24}
-                color={colors.gray[700]}
-              />
+              <Ionicons name="settings-outline" size={24} color={colors.gray[700]} />
             </TouchableOpacity>
           )}
           {rightAction && (
             <TouchableOpacity
-              onPress={rightAction.onPress}
+              onPress={() => {
+                handleHapticFeedback();
+                rightAction.onPress();
+              }}
               style={styles.backButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel={
+                rightActionAccessibilityLabel ||
+                `${rightAction.icon.replace("-outline", "").replace(/-/g, " ")} action`
+              }
             >
-              <Ionicons
-                name={rightAction.icon}
-                size={24}
-                color={colors.gray[700]}
-              />
+              <Ionicons name={rightAction.icon} size={24} color={colors.gray[700]} />
             </TouchableOpacity>
           )}
         </View>
@@ -186,18 +192,18 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: colors.white,
-    ...shadows.sm,
+    backgroundColor: operationalTheme.background,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    height: 60,
+    minHeight: 64,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.white,
+    paddingBottom: spacing.sm,
+    backgroundColor: operationalTheme.background,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    borderBottomColor: operationalTheme.border,
   },
   leftSection: {
     flex: 1,
@@ -214,9 +220,18 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     justifyContent: "center",
     flexDirection: "row",
+    gap: spacing.xs,
   },
   backButton: {
-    padding: spacing.xs,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: operationalTheme.surface,
+    borderWidth: 1,
+    borderColor: operationalTheme.border,
+    ...shadows.sm,
   },
   logoContainer: {
     alignItems: "center",
@@ -232,19 +247,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[900],
+    color: operationalTheme.text,
     textAlign: "center",
   },
   brandName: {
     fontSize: typography.fontSize.base,
     fontWeight: "800",
-    color: colors.primary[600],
+    color: operationalTheme.primaryStrong,
     textAlign: "center",
     letterSpacing: 0.5,
   },
   userName: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray[500],
+    color: operationalTheme.textSecondary,
     marginTop: 2,
     textAlign: "center",
     fontWeight: "500",
@@ -252,7 +267,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.normal,
-    color: colors.gray[500],
+    color: operationalTheme.textSecondary,
     marginTop: 2,
     textAlign: "center",
   },

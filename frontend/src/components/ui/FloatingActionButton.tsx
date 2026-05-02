@@ -33,7 +33,7 @@ import {
   modernSpacing,
   modernBorderRadius,
   modernShadows,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);

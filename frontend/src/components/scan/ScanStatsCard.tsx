@@ -1,15 +1,15 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import ModernCard from "@/components/ui/ModernCard";
 import {
   borderRadius,
   colors,
-  shadows,
   spacing,
   typography,
-} from "@/theme/modernDesign";
+} from "@/theme/unified";
 
 const SURFACE_CARD = "#ffffff";
 const SURFACE_BORDER = "#d9e5e2";
@@ -44,9 +44,12 @@ export function ScanStatsCard({
   initialLoading,
   sessionStats,
 }: ScanStatsCardProps) {
+  const readyToFinish =
+    sessionStats.scannedItems > 0 && sessionStats.pendingItems === 0;
+
   if (initialLoading) {
     return (
-      <ModernCard style={styles.statsCard} contentStyle={styles.statsContent}>
+      <ModernCard variant="outlined" elevation="none" style={styles.statsCard}>
         <View style={styles.statsRow}>
           {[0, 1, 2].map((index) => (
             <View key={index} style={styles.statTile}>
@@ -69,14 +72,36 @@ export function ScanStatsCard({
   }
 
   return (
-    <ModernCard style={styles.statsCard} contentStyle={styles.statsContent}>
-      <View style={styles.headerRow}>
+    <ModernCard variant="outlined" elevation="none" style={styles.statsCard}>
+      <View style={styles.cardHeader}>
         <View>
-          <Text style={styles.kicker}>Live progress</Text>
-          <Text style={styles.heading}>Current rack totals</Text>
+          <Text style={styles.cardEyebrow}>Rack Progress</Text>
+          <Text style={styles.cardTitle}>
+            Keep the rack clean before submitting it for review
+          </Text>
         </View>
-        <View style={styles.statusBadge}>
-          <Text style={styles.statusBadgeText}>Live</Text>
+
+        <View
+          style={[
+            styles.statusChip,
+            readyToFinish ? styles.statusChipReady : styles.statusChipPending,
+          ]}
+        >
+          <Ionicons
+            name={readyToFinish ? "checkmark-circle" : "time-outline"}
+            size={14}
+            color={readyToFinish ? colors.success[600] : colors.warning[600]}
+          />
+          <Text
+            style={[
+              styles.statusChipText,
+              readyToFinish
+                ? styles.statusChipTextReady
+                : styles.statusChipTextPending,
+            ]}
+          >
+            {readyToFinish ? "Ready" : `${sessionStats.pendingItems} pending`}
+          </Text>
         </View>
       </View>
 
@@ -86,13 +111,13 @@ export function ScanStatsCard({
           <Text style={styles.statLabel}>Scanned</Text>
         </View>
         <View style={styles.statTile}>
-          <Text style={[styles.statValue, styles.verifiedValue]}>
+          <Text style={[styles.statValue, { color: colors.success[600] }]}>
             {sessionStats.verifiedItems}
           </Text>
           <Text style={styles.statLabel}>Verified</Text>
         </View>
         <View style={styles.statTile}>
-          <Text style={[styles.statValue, styles.pendingValue]}>
+          <Text style={[styles.statValue, { color: colors.warning[600] }]}>
             {sessionStats.pendingItems}
           </Text>
           <Text style={styles.statLabel}>Pending</Text>
@@ -105,11 +130,57 @@ export function ScanStatsCard({
 const styles = StyleSheet.create({
   statsCard: {
     marginBottom: spacing.xl,
-    backgroundColor: SURFACE_CARD,
-    borderRadius: 24,
+    padding: spacing.lg,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
     borderWidth: 1,
-    borderColor: SURFACE_BORDER,
-    ...shadows.md,
+    borderColor: colors.gray[200],
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  cardEyebrow: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[700],
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: spacing.xs,
+  },
+  cardTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.gray[900],
+    lineHeight: 22,
+    maxWidth: 220,
+  },
+  statusChip: {
+    minHeight: 34,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.full,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  statusChipReady: {
+    backgroundColor: colors.success[50],
+  },
+  statusChipPending: {
+    backgroundColor: colors.warning[50],
+  },
+  statusChipText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  statusChipTextReady: {
+    color: colors.success[600],
+  },
+  statusChipTextPending: {
+    color: colors.warning[600],
   },
   statsContent: {
     padding: spacing.lg,
@@ -150,23 +221,21 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: "row",
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   statTile: {
     flex: 1,
-    alignItems: "center",
+    minHeight: 96,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.gray[50],
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    borderRadius: 18,
-    backgroundColor: SURFACE_MUTED,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
+    justifyContent: "space-between",
   },
   statValue: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: "800",
-    color: TEXT_STRONG,
-    marginBottom: spacing.xs,
+    color: colors.gray[900],
     fontVariant: ["tabular-nums"],
   },
   verifiedValue: {
@@ -177,9 +246,9 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: typography.fontSize.xs,
-    color: TEXT_MUTED,
+    color: colors.gray[600],
     textTransform: "uppercase",
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     fontWeight: "600",
   },
   skeleton: {

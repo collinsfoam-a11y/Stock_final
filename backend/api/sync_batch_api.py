@@ -33,10 +33,31 @@ from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.sync_batch_service import SyncBatchService, get_sync_batch_service
 from backend.services.sync_conflicts_service import SyncConflictsService
 from backend.services.transaction_manager import mongo_transaction
-from backend.utils.api_utils import sanitize_for_logging
-from backend.utils.request_context import get_request_id
+from backend.services.validation_service import ValidationService
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_serial_numbers(values: list[str]) -> list[str]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        serial = str(value or "").strip().upper()
+        if serial and serial not in seen:
+            seen.add(serial)
+            normalized.append(serial)
+    return normalized
+
+
+class LegacySyncOperation(BaseModel):
+    """Legacy offline queue operation structure"""
+
+    id: str
+    type: str
+    data: dict[str, Any]
+    timestamp: Optional[str] = None
+
+    model_config = ConfigDict(extra="allow")
 
 
 router = APIRouter(prefix="/api/sync", tags=["Sync"])
@@ -207,39 +228,16 @@ async def validate_record(
     Returns:
         SyncConflict if validation fails, None if valid
     """
-    if not all(
-        [
-            str(record.location_id or "").strip(),
-            str(record.floor_id or "").strip(),
-            str(record.rack_id or "").strip(),
-        ]
-    ):
-        return SyncConflict(
-            client_record_id=record.client_record_id,
-            conflict_type="INVALID_LOCATION",
-            message="Missing required location hierarchy",
-            details={"required_fields": ["location_id", "floor_id", "rack_id"]},
-        )
-
-    if not str(record.item_code or "").strip():
-        return SyncConflict(
-            client_record_id=record.client_record_id,
-            conflict_type="UNKNOWN_ITEM_CODE",
-            message="Missing item_code",
-        )
-
-    if not await _record_item_code_is_known(sync_batch_service, record):
-        return SyncConflict(
-            client_record_id=record.client_record_id,
-            conflict_type="UNKNOWN_ITEM_CODE",
-            message=f"Unknown item_code '{record.item_code}'",
-            details={"item_code": record.item_code},
-        )
+    normalized_serials = _normalize_serial_numbers(record.serial_numbers)
 
     # Check for duplicate serial numbers
-    if record.serial_numbers:
-        for serial in record.serial_numbers:
-            existing = await sync_batch_service.find_item_serial(serial)
+    if normalized_serials:
+        validation_service = ValidationService(db)
+        for serial in normalized_serials:
+            existing = await validation_service.find_serial_conflict(
+                serial,
+                item_code=record.item_code,
+            )
             if existing and existing.get("client_record_id") != record.client_record_id:
                 conflict_id = None
                 if sync_service and user_id:
@@ -262,11 +260,14 @@ async def validate_record(
                 return SyncConflict(
                     client_record_id=record.client_record_id,
                     conflict_type="duplicate_serial",
-                    message=f"Serial number '{serial}' already exists",
+                    message="Serial already exists for this item.",
                     details={
                         "serial": serial,
-                        "existing_record": str(existing.get("_id")),
+                        "existing_record": str(
+                            existing.get("count_line_id") or existing.get("_id")
+                        ),
                         "conflict_id": conflict_id,
+                        "item_code": existing.get("item_code"),
                     },
                 )
 
@@ -338,6 +339,7 @@ async def sync_single_record(
         updated_at = datetime.fromisoformat(record.updated_at.replace("Z", "+00:00")).replace(
             tzinfo=None
         )
+        serial_numbers = _normalize_serial_numbers(record.serial_numbers)
         doc = {
             "id": str(uuid.uuid4()),
             "record_id": record.record_id,
@@ -352,7 +354,7 @@ async def sync_single_record(
             "item_code": record.item_code,
             "counted_qty": record.verified_qty,
             "damaged_qty": record.damaged_qty,
-            "serial_numbers": record.serial_numbers,
+            "serial_numbers": serial_numbers,
             "manufacturing_date": record.mfg_date,
             "mrp": record.mrp,
             "uom": record.uom,
@@ -398,37 +400,17 @@ async def sync_single_record(
                 context={"session": session, "username": user_id},
             )
 
-        # Insert serial numbers
-        if record.serial_numbers:
-            serial_docs = [
-                {
-                    "serial_number": serial,
-                    "item_code": record.item_code,
-                    "session_id": record.session_id,
-                    "rack_id": record.rack_id,
-                    "client_record_id": record.client_record_id,
-                    "created_at": time.time(),
-                }
-                for serial in record.serial_numbers
-            ]
-
-            # Insert with ignore duplicates
-            await sync_batch_service.insert_item_serials_ignore_duplicates(serial_docs)
-
         return True, None
 
     except GovernanceViolation as e:
         logger.error(
-            "Governance violation syncing record %s: %s",
-            record.client_record_id,
+            "Governance violation syncing record {record.client_record_id}: %s",
             sanitize_for_logging(str(e)),
         )
         return False, str(e)
-    except (PyMongoError, RuntimeError, TypeError, ValueError) as e:
+    except Exception as e:
         logger.error(
-            "Error syncing record %s: %s",
-            record.client_record_id,
-            sanitize_for_logging(str(e)),
+            "Error syncing record {record.client_record_id}: %s", sanitize_for_logging(str(e))
         )
         return False, str(e)
 

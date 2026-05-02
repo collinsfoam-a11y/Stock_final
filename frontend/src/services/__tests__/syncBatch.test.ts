@@ -75,6 +75,33 @@ jest.mock("../api/api", () => ({
   syncBatch: jest.fn(),
 }));
 
+jest.mock("../control-plane/countLineControlPlane", () => ({
+  syncPendingCountLineEvents: jest.fn().mockResolvedValue({
+    success: 0,
+    failed: 0,
+    total: 0,
+    errors: [],
+  }),
+}));
+
+jest.mock("../control-plane/countLineReviewControlPlane", () => ({
+  syncPendingCountLineReviewEvents: jest.fn().mockResolvedValue({
+    success: 0,
+    failed: 0,
+    total: 0,
+    errors: [],
+  }),
+}));
+
+jest.mock("../control-plane/sessionControlPlane", () => ({
+  syncPendingSessionEvents: jest.fn().mockResolvedValue({
+    success: 0,
+    failed: 0,
+    total: 0,
+    errors: [],
+  }),
+}));
+
 // Mock offline storage before importing syncService
 jest.mock("../offline/offlineStorage", () => ({
   getOfflineQueue: jest.fn(),
@@ -94,7 +121,13 @@ import { initializeSyncService, syncOfflineQueue } from "../syncService";
 // eslint-disable-next-line import/first
 import * as api from "../api/api";
 // eslint-disable-next-line import/first
+import * as countLineControlPlane from "../control-plane/countLineControlPlane";
+// eslint-disable-next-line import/first
+import * as countLineReviewControlPlane from "../control-plane/countLineReviewControlPlane";
+// eslint-disable-next-line import/first
 import * as offlineStorage from "../offline/offlineStorage";
+// eslint-disable-next-line import/first
+import * as sessionControlPlane from "../control-plane/sessionControlPlane";
 // eslint-disable-next-line import/first
 import { useNetworkStore } from "../../store/networkStore";
 // eslint-disable-next-line import/first
@@ -137,17 +170,16 @@ describe("syncOfflineQueue", () => {
     (offlineStorage.removeManyFromOfflineQueue as jest.Mock).mockResolvedValue(undefined);
     (offlineStorage.updateQueueItemRetries as jest.Mock).mockResolvedValue(undefined);
     (offlineStorage.updateOfflineQueueItem as jest.Mock).mockResolvedValue(undefined);
-    (offlineStorage.getMappedSessionId as jest.Mock).mockResolvedValue(null);
-    (offlineStorage.cacheSession as jest.Mock).mockResolvedValue(undefined);
-    (offlineStorage.setSessionIdMapping as jest.Mock).mockResolvedValue(undefined);
-    (apiClient.post as jest.Mock).mockResolvedValue({
-      data: { id: "server-session-1", session_id: "server-session-1" },
-    });
   });
 
   it("should sync count-line records from offline queue", async () => {
     const result = await syncOfflineQueue();
 
+    expect(sessionControlPlane.syncPendingSessionEvents).toHaveBeenCalled();
+    expect(countLineControlPlane.syncPendingCountLineEvents).toHaveBeenCalled();
+    expect(countLineReviewControlPlane.syncPendingCountLineReviewEvents).toHaveBeenCalled();
+
+    // Verify API called with transformed operations
     expect(api.syncBatch).toHaveBeenCalledWith([
       expect.objectContaining({
         record_id: "op_1",
@@ -165,89 +197,6 @@ describe("syncOfflineQueue", () => {
     expect(result.success).toBe(1);
     expect(result.failed).toBe(0);
     expect(offlineStorage.removeManyFromOfflineQueue).toHaveBeenCalledWith(["op_1"]);
-  });
-
-  it("should sync queued sessions before dependent count-line records", async () => {
-    const mockCountLine = mockOperations[0]!;
-    (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue([
-      {
-        id: "session:offline_sess_1",
-        type: "session",
-        data: {
-          id: "offline_sess_1",
-          warehouse: "Showroom - Ground - R1",
-          location_type: "Showroom",
-          location_name: "Ground",
-          rack_no: "R1",
-        },
-        timestamp: "2023-01-01T00:00:00Z",
-        retries: 0,
-        status: "pending",
-      },
-      {
-        ...mockCountLine,
-        data: {
-          ...mockCountLine.data,
-          session_id: "offline_sess_1",
-        },
-      },
-    ]);
-    (offlineStorage.getMappedSessionId as jest.Mock)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce("server-session-1");
-
-    const result = await syncOfflineQueue();
-
-    expect(apiClient.post).toHaveBeenCalledWith(
-      "/api/sessions",
-      expect.objectContaining({
-        client_session_id: "offline_sess_1",
-        offline_id: "offline_sess_1",
-      }),
-      expect.objectContaining({ skipOfflineQueue: true })
-    );
-    expect(offlineStorage.setSessionIdMapping).toHaveBeenCalledWith(
-      "offline_sess_1",
-      "server-session-1"
-    );
-    expect(api.syncBatch).toHaveBeenCalledWith([
-      expect.objectContaining({ session_id: "server-session-1" }),
-    ]);
-    expect(result.success).toBe(2);
-  });
-
-  it("should post unknown items directly to the unknown-items endpoint", async () => {
-    (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue([
-      {
-        id: "unknown:sess_1:999",
-        type: "unknown_item",
-        data: {
-          session_id: "sess_1",
-          location_id: "showroom",
-          floor_id: "F1",
-          rack_id: "R1",
-          barcode: "999",
-        },
-        timestamp: "2023-01-01T00:00:00Z",
-        retries: 0,
-        status: "pending",
-      },
-    ]);
-
-    const result = await syncOfflineQueue();
-
-    expect(api.syncBatch).not.toHaveBeenCalled();
-    expect(apiClient.post).toHaveBeenCalledWith(
-      "/api/unknown-items",
-      expect.objectContaining({
-        session_id: "sess_1",
-        location_id: "showroom",
-        floor_id: "F1",
-        rack_id: "R1",
-      }),
-      expect.objectContaining({ skipOfflineQueue: true })
-    );
-    expect(result.success).toBe(1);
   });
 
   it("should handle ignored operations (empty queue)", async () => {

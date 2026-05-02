@@ -4,8 +4,17 @@ import hashlib
 import logging
 import re
 from datetime import datetime
+import unittest.mock
 from typing import Any, Optional
 
+try:
+    import pyodbc
+    _PYODBC_AVAILABLE = True
+except ImportError:
+    pyodbc = unittest.mock.MagicMock()
+    pyodbc.Error = type("Error", (Exception,), {})
+    pyodbc.Connection = type("Connection", (), {})
+    _PYODBC_AVAILABLE = False
 from fastapi import APIRouter, Depends, HTTPException
 from pymongo.errors import PyMongoError
 from pydantic import BaseModel, Field
@@ -98,6 +107,11 @@ def _sql_error_types() -> tuple[type[BaseException], ...]:
 
 
 def get_connection(conn_string):
+    if not _PYODBC_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="SQL mapping service is unavailable because pyodbc is not installed.",
+        )
     try:
         sql = require_sql()
         return sql.connect(conn_string, timeout=5)

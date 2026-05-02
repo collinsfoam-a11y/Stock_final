@@ -10,11 +10,7 @@ function formatStorageError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function logStorageError(
-  message: string,
-  error: unknown,
-  context?: Record<string, unknown>,
-): void {
+function logStorageError(message: string, error: unknown, context?: Record<string, unknown>): void {
   log.error(message, {
     ...context,
     error: formatStorageError(error),
@@ -52,10 +48,7 @@ export interface CacheResult<T> {
  */
 export function isCacheStale(
   cachedAt: string | null,
-  maxAgeMs: number = useSettingsStore.getState().settings.cacheExpiration *
-    60 *
-    60 *
-    1000,
+  maxAgeMs: number = useSettingsStore.getState().settings.cacheExpiration * 60 * 60 * 1000
 ): boolean {
   if (!cachedAt) return true;
   const cacheTime = new Date(cachedAt).getTime();
@@ -90,11 +83,7 @@ export interface OfflineQueueItem {
   data: Record<string, unknown>;
   timestamp: string;
   retries: number;
-  status:
-    | "pending"
-    | "pending_retry"
-    | "blocked_conflict"
-    | "failed_manual_review";
+  status: "pending" | "pending_retry" | "blocked_conflict" | "failed_manual_review";
   idempotency_key?: string;
   last_error?: string | null;
   last_attempted_at?: string | null;
@@ -110,10 +99,23 @@ export interface CachedSession {
   started_at: string;
   closed_at?: string;
   reconciled_at?: string;
+  finalized_at?: string;
   total_items?: number;
   total_variance?: number;
   notes?: string;
   cached_at: string;
+  location_type?: string;
+  location_name?: string;
+  rack_no?: string;
+  last_heartbeat?: string;
+  finalization_status?: string;
+  verified_items?: number;
+  pending_items?: number;
+  damage_items?: number;
+  _local_session_id?: string;
+  _server_session_id?: string | null;
+  _projection?: boolean;
+  _sync_status?: string;
   // Legacy fields fallback
   session_id?: string;
   created_by?: string;
@@ -286,10 +288,7 @@ export const clearItemsCache = async () => {
 };
 
 // Offline Queue Operations
-const buildQueueItemId = (
-  type: OfflineQueueItem["type"],
-  idempotencyKey?: string
-) =>
+const buildQueueItemId = (type: OfflineQueueItem["type"], idempotencyKey?: string) =>
   idempotencyKey
     ? `${type}:${idempotencyKey}`
     : `${type}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
@@ -353,15 +352,12 @@ const normalizeQueueItem = (item: OfflineQueueItem): OfflineQueueItem => {
     "blocked_conflict",
     "failed_manual_review",
   ];
-  const normalizedStatus = allowedStatuses.includes(item.status)
-    ? item.status
-    : "pending";
+  const normalizedStatus = allowedStatuses.includes(item.status) ? item.status : "pending";
 
   return {
     ...item,
     status: normalizedStatus,
-    idempotency_key:
-      item.idempotency_key || resolveIdempotencyKey(item.type, item.data),
+    idempotency_key: item.idempotency_key || resolveIdempotencyKey(item.type, item.data),
     last_error: item.last_error ?? null,
     last_attempted_at: item.last_attempted_at ?? null,
   };
@@ -376,10 +372,7 @@ export const addToOfflineQueue = async (
     const idempotencyKey = resolveIdempotencyKey(type, data);
     const existingIndex =
       idempotencyKey !== undefined
-        ? queue.findIndex(
-            (item) =>
-              item.type === type && item.idempotency_key === idempotencyKey
-          )
+        ? queue.findIndex((item) => item.type === type && item.idempotency_key === idempotencyKey)
         : -1;
     const queueItem: OfflineQueueItem = {
       id: buildQueueItemId(type, idempotencyKey),
@@ -483,8 +476,7 @@ export const updateQueueItemRetries = async (
             retries: item.retries + 1,
             status: options?.status || "pending_retry",
             last_error: options?.error ?? item.last_error ?? null,
-            last_attempted_at:
-              options?.attemptedAt || new Date().toISOString(),
+            last_attempted_at: options?.attemptedAt || new Date().toISOString(),
           }
         : item
     );
@@ -494,10 +486,7 @@ export const updateQueueItemRetries = async (
   }
 };
 
-export const updateOfflineQueueItem = async (
-  id: string,
-  patch: Partial<OfflineQueueItem>
-) => {
+export const updateOfflineQueueItem = async (id: string, patch: Partial<OfflineQueueItem>) => {
   try {
     const queue = await getOfflineQueue();
     const updatedQueue = queue.map((item) =>
@@ -567,9 +556,13 @@ export const cacheSession = async (
   session: Omit<CachedSession, "cached_at"> | any // Use any to allow backend objects to be passed in
 ) => {
   try {
+    const displayId =
+      session.id || session._id || session.server_session_id || session._server_session_id;
+    const localSessionId =
+      session._local_session_id || session.local_session_id || session.session_id || displayId;
     // Normalization logic
     const normalizedSession: CachedSession = {
-      id: session.id || session.session_id || `temp_${Date.now()}`,
+      id: displayId || `temp_${Date.now()}`,
       warehouse: session.warehouse,
       status: session.status,
       type: session.type || "STANDARD",
@@ -578,9 +571,28 @@ export const cacheSession = async (
       started_at: session.started_at || session.created_at || new Date().toISOString(),
       closed_at: session.closed_at,
       reconciled_at: session.reconciled_at,
+      finalized_at: session.finalized_at,
+      location_type: session.location_type,
+      location_name: session.location_name,
+      rack_no: session.rack_no,
+      last_heartbeat: session.last_heartbeat,
+      finalization_status: session.finalization_status,
       total_items: session.total_items,
       total_variance: session.total_variance,
+      verified_items: session.verified_items,
+      pending_items: session.pending_items,
+      damage_items: session.damage_items,
       notes: session.notes,
+      session_id: localSessionId,
+      _local_session_id: localSessionId,
+      _server_session_id:
+        session._server_session_id ||
+        session.server_session_id ||
+        session.id ||
+        session._id ||
+        null,
+      _projection: Boolean(session._projection),
+      _sync_status: session._sync_status,
       cached_at: new Date().toISOString(),
     };
 
@@ -626,7 +638,10 @@ export const cacheSessions = async (sessions: (Omit<CachedSession, "cached_at"> 
     const now = new Date().toISOString();
 
     for (const session of sessions) {
-      const id = session.id || session.session_id || `temp_${Date.now()}`;
+      const id =
+        session.id || session._id || session.server_session_id || session._server_session_id;
+      const localSessionId =
+        session._local_session_id || session.local_session_id || session.session_id || id;
       if (!id || id === "undefined") continue;
 
       updatedCache[id] = {
@@ -639,9 +654,28 @@ export const cacheSessions = async (sessions: (Omit<CachedSession, "cached_at"> 
         started_at: session.started_at || session.created_at || now,
         closed_at: session.closed_at,
         reconciled_at: session.reconciled_at,
+        finalized_at: session.finalized_at,
+        location_type: session.location_type,
+        location_name: session.location_name,
+        rack_no: session.rack_no,
+        last_heartbeat: session.last_heartbeat,
+        finalization_status: session.finalization_status,
         total_items: session.total_items,
         total_variance: session.total_variance,
+        verified_items: session.verified_items,
+        pending_items: session.pending_items,
+        damage_items: session.damage_items,
         notes: session.notes,
+        session_id: localSessionId,
+        _local_session_id: localSessionId,
+        _server_session_id:
+          session._server_session_id ||
+          session.server_session_id ||
+          session.id ||
+          session._id ||
+          null,
+        _projection: Boolean(session._projection),
+        _sync_status: session._sync_status,
         cached_at: now,
       };
     }
@@ -700,7 +734,18 @@ export const getSessionsCache = async (): Promise<Record<string, CachedSession>>
 export const getSessionFromCache = async (sessionId: string): Promise<CachedSession | null> => {
   try {
     const cache = await getSessionsCache();
-    return cache[sessionId] || null;
+    if (cache[sessionId]) {
+      return cache[sessionId] || null;
+    }
+
+    return (
+      Object.values(cache).find(
+        (session) =>
+          session.session_id === sessionId ||
+          session._local_session_id === sessionId ||
+          session._server_session_id === sessionId
+      ) || null
+    );
   } catch (error) {
     logStorageError("Error getting session from cache", error, { sessionId });
     return null;
@@ -818,16 +863,46 @@ export const getCountLinesCache = async (): Promise<Record<string, CachedCountLi
 };
 
 export const getCountLinesBySessionFromCache = async (
-  sessionId: string
+  sessionId: string | string[]
 ): Promise<CachedCountLine[]> => {
   try {
     const cache = await getCountLinesCache();
-    return cache[sessionId] || [];
+    const sessionIds = Array.isArray(sessionId) ? sessionId : [sessionId];
+    return sessionIds.flatMap((id) => cache[id] || []);
   } catch (error) {
     logStorageError("Error getting count lines by session from cache", error, {
       sessionId,
     });
     return [];
+  }
+};
+
+export const removeCountLineFromCache = async (
+  sessionId: string,
+  lineId: string
+): Promise<void> => {
+  try {
+    const cache = await getCountLinesCache();
+    const sessionLines = cache[sessionId] || [];
+    if (sessionLines.length === 0) {
+      return;
+    }
+
+    const filteredLines = sessionLines.filter((line) => line._id !== lineId);
+    if (filteredLines.length === sessionLines.length) {
+      return;
+    }
+
+    const updatedCache: Record<string, CachedCountLine[]> = {
+      ...cache,
+      [sessionId]: filteredLines,
+    };
+    await storage.set(STORAGE_KEYS.COUNT_LINES_CACHE, updatedCache);
+  } catch (error) {
+    logStorageError("Error removing count line from cache", error, {
+      sessionId,
+      lineId,
+    });
   }
 };
 

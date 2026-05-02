@@ -6,21 +6,12 @@
  */
 
 import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-} from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { colors as unifiedColors, radius, spacing } from "@/theme/unified";
 import { useThemeContext } from "@/context/ThemeContext";
-import {
-  getDefaultInventoryTabs,
-  NavTab,
-  NavTabId,
-} from "./bottomNavShared";
+import { operationalTheme } from "@/theme/operationalTheme";
+import { getDefaultInventoryTabs, NavTab, NavTabId } from "./bottomNavShared";
 
 interface BottomNavBarProps {
   tabs: NavTab[];
@@ -28,11 +19,7 @@ interface BottomNavBarProps {
   onTabChange?: (tabId: NavTabId) => void;
 }
 
-export const BottomNavBar: React.FC<BottomNavBarProps> = ({
-  tabs,
-  activeTabId,
-  onTabChange,
-}) => {
+export const BottomNavBar: React.FC<BottomNavBarProps> = ({ tabs, activeTabId, onTabChange }) => {
   const { themeLegacy: appTheme, isDark } = useThemeContext();
   const { colors } = appTheme;
 
@@ -48,9 +35,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
       style={[
         styles.bottomNavigation,
         {
-          backgroundColor: isDark
-            ? unifiedColors.neutral[900]
-            : unifiedColors.white,
+          backgroundColor: isDark ? unifiedColors.neutral[900] : operationalTheme.surface,
           borderTopColor: colors.border,
         },
       ]}
@@ -72,7 +57,9 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             <View
               style={[
                 styles.bottomNavIconContainer,
-                isActive && { backgroundColor: activeColor + "15" },
+                isActive && {
+                  backgroundColor: isDark ? activeColor + "15" : operationalTheme.primarySoft,
+                },
               ]}
             >
               <Ionicons
@@ -82,10 +69,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
               />
             </View>
             <Text
-              style={[
-                styles.bottomNavLabel,
-                { color: isActive ? activeColor : inactiveColor },
-              ]}
+              style={[styles.bottomNavLabel, { color: isActive ? activeColor : inactiveColor }]}
             >
               {tab.label}
             </Text>

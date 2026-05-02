@@ -32,17 +32,15 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import {
-  modernColors,
-  modernSpacing,
-  modernBorderRadius,
-  modernShadows,
-  modernAnimations,
-} from "../../styles/modernDesignSystem";
-import {
+  borderRadius,
   colors,
+  duration,
+  gradients,
+  opacity as opacityTokens,
+  shadows,
   semanticColors,
-  radius,
   spacing,
+  springConfigs,
   textStyles,
   touchTargets,
 } from "../../theme/unified";
@@ -97,7 +95,7 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   accessibilityHint,
 }) => {
   const themeContext = useThemeContextSafe();
-  const theme = themeContext?.themeLegacy;
+  const theme = themeContext?.theme;
 
   // Animation values
   const scale = useSharedValue(1);
@@ -114,38 +112,33 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   // Press handlers with animations
   const handlePressIn = () => {
     if (!disabled && !loading) {
-      scale.value = withSpring(modernAnimations.scale.pressed, {
-        damping: modernAnimations.easing.spring.damping,
-        stiffness: modernAnimations.easing.spring.stiffness,
-      });
-      opacity.value = withTiming(modernAnimations.opacity.pressed, {
-        duration: modernAnimations.duration.fast,
+      scale.value = withSpring(0.95, springConfigs.stiff);
+      opacity.value = withTiming(opacityTokens.pressed, {
+        duration: duration.fast,
       });
     }
   };
 
   const handlePressOut = () => {
     if (!disabled && !loading) {
-      scale.value = withSpring(1, {
-        damping: modernAnimations.easing.spring.damping,
-        stiffness: modernAnimations.easing.spring.stiffness,
-      });
+      scale.value = withSpring(1, springConfigs.stiff);
       opacity.value = withTiming(1, {
-        duration: modernAnimations.duration.fast,
+        duration: duration.fast,
       });
     }
   };
 
   // Get button styles based on variant and size
   const getButtonStyles = (): ViewStyle => {
+    const sizeConfig = getSizeConfig();
     const baseStyle: ViewStyle = {
-      borderRadius: radius.sm,
+      borderRadius: borderRadius.button,
       alignItems: "center",
       justifyContent: "center",
       flexDirection: "row",
       gap: spacing.sm,
-      minHeight: getSizeConfig().height,
-      paddingHorizontal: getSizeConfig().paddingHorizontal,
+      minHeight: sizeConfig.height,
+      paddingHorizontal: sizeConfig.paddingHorizontal,
       ...(fullWidth && { width: "100%" }),
       ...(disabled && { opacity: 0.5 }),
     };
@@ -154,11 +147,11 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
     const variantStyles: Record<ButtonVariant, ViewStyle> = {
       primary: {
         backgroundColor: semanticColors.button.primary,
-        ...modernShadows.sm,
+        ...shadows.sm,
       },
       secondary: {
         backgroundColor: semanticColors.button.secondary,
-        ...modernShadows.sm,
+        ...shadows.sm,
       },
       outline: {
         backgroundColor: "transparent",
@@ -170,7 +163,7 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
       },
       danger: {
         backgroundColor: semanticColors.status.error,
-        ...modernShadows.sm,
+        ...shadows.sm,
       },
       glass: {
         backgroundColor: "transparent",
@@ -262,10 +255,12 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
           size="small"
           color={
             variant === "outline" || variant === "ghost"
-              ? theme
-                ? theme.colors.accent
-                : modernColors.primary[500]
-              : "#FFFFFF"
+              ? semanticColors.text.link
+              : variant === "secondary"
+                ? semanticColors.button.secondaryText
+                : variant === "glass"
+                  ? semanticColors.text.primary
+                  : colors.white
           }
         />
       );
@@ -321,13 +316,18 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
     const props = isWeb ? webProps : nativeProps;
 
     if (variant === "gradient") {
-      const colors =
-        gradientColors ||
-        (theme ? theme.gradients.primary : modernColors.gradients.primary);
+      const gradientPalette =
+        gradientColors || (theme ? theme.gradients.primary : gradients.primary);
       return (
         <Component {...props}>
           <LinearGradient
-            colors={colors as unknown as readonly [string, string, ...string[]]}
+            colors={
+              gradientPalette as unknown as readonly [
+                string,
+                string,
+                ...string[],
+              ]
+            }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.gradient}
@@ -368,25 +368,25 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
 const styles = StyleSheet.create({
   gradient: {
     flex: 1,
-    borderRadius: modernBorderRadius.button,
+    borderRadius: borderRadius.button,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    gap: modernSpacing.sm,
+    gap: spacing.sm,
     minHeight: "100%",
     width: "100%",
   },
   blur: {
     flex: 1,
-    borderRadius: modernBorderRadius.button,
+    borderRadius: borderRadius.button,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    gap: modernSpacing.sm,
+    gap: spacing.sm,
     minHeight: "100%",
     width: "100%",
-    paddingHorizontal: modernSpacing.lg,
-    paddingVertical: modernSpacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.1)",
   },

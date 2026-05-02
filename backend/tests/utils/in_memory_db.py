@@ -25,6 +25,26 @@ def _normalize_value(val: Any) -> Any:
     return val
 
 
+def _resolve_field_value(document: dict[str, Any], key: str) -> Any:
+    """Resolve simple dotted paths and list membership lookups."""
+    if "." not in key:
+        return document.get(key)
+
+    current: Any = document
+    for part in key.split("."):
+        if isinstance(current, list):
+            values: list[Any] = []
+            for item in current:
+                if isinstance(item, dict) and part in item:
+                    values.append(item.get(part))
+            current = values
+            continue
+        if not isinstance(current, dict):
+            return None
+        current = current.get(part)
+    return current
+
+
 def _match_condition(value: Any, condition: dict[str, Any]) -> bool:
     """Evaluate comparison operators."""
     # Handle regex with options if present
@@ -116,13 +136,17 @@ def _match_filter(document: dict[str, Any], filter_query: dict[str, Optional[Any
                 return False
             continue
 
-        doc_value = document.get(key)
+        doc_value = _resolve_field_value(document, key)
         if isinstance(value, dict):
             if not _match_condition(doc_value, value):
                 return False
         else:
             value = _normalize_value(value)
-            if doc_value != value:
+            if isinstance(doc_value, list):
+                normalized_values = [_normalize_value(item) for item in doc_value]
+                if value not in normalized_values:
+                    return False
+            elif doc_value != value:
                 return False
     return True
 
@@ -209,6 +233,7 @@ class InMemoryCursor:
 class InMemoryCollection:
     def __init__(self):
         self._documents: list[dict[str, Any]] = []
+        self._indexes: list[dict[str, Any]] = []
 
     def _ensure_id(self, document: dict[str, Any]) -> None:
         # Use 24-char hex string to mimic ObjectId
@@ -238,6 +263,19 @@ class InMemoryCollection:
         self._ensure_id(doc_copy)
         self._documents.append(doc_copy)
         return InsertOneResult(inserted_id=doc_copy["_id"])
+
+    async def create_index(self, field_spec: Any, **options) -> str:
+        self._indexes.append({"key": field_spec, **options})
+        return options.get("name") or str(field_spec)
+
+    def list_indexes(self) -> InMemoryCursor:
+        return InMemoryCursor(list(self._indexes))
+
+    async def drop_index(self, name: str) -> None:
+        self._indexes = [index for index in self._indexes if index.get("name") != name]
+
+    async def drop_indexes(self) -> None:
+        self._indexes = []
 
     async def insert_many(
         self,
@@ -431,13 +469,30 @@ class InMemoryDatabase:
         self.items = InMemoryCollection()
         self.variances = InMemoryCollection()
         self.sync_conflicts = InMemoryCollection()
+        self.sync_queue = InMemoryCollection()
         self.verification_conflicts = InMemoryCollection()
         self.idempotency_operations = InMemoryCollection()
         self.user_settings = InMemoryCollection()
         self.chat_history = InMemoryCollection()
         self.audit_logs = InMemoryCollection()
         self.system_events = InMemoryCollection()
+        self.audit_projection_fallbacks = InMemoryCollection()
         self.item_serials = InMemoryCollection()
+        self.serial_registry = InMemoryCollection()
+        self.event_log = InMemoryCollection()
+        self.event_applied = InMemoryCollection()
+        self.items_snapshot = InMemoryCollection()
+        self.batch_records = InMemoryCollection()
+        self.serial_records = InMemoryCollection()
+        self.damage_logs = InMemoryCollection()
+        self.variance_logs = InMemoryCollection()
+        self.approvals = InMemoryCollection()
+        self.erp_snapshot = InMemoryCollection()
+        self.session_dashboard_projection = InMemoryCollection()
+        self.verified_items_projection = InMemoryCollection()
+        self.variance_summary_projection = InMemoryCollection()
+        self.financial_projection = InMemoryCollection()
+        self.feature_flags = InMemoryCollection()
         self.variance_threshold_configs = InMemoryCollection()
 
         # Governance Collections

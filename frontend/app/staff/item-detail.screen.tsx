@@ -42,15 +42,7 @@ import { useItemEvidenceState } from "@/domains/inventory/hooks/scan/useItemEvid
 import { useItemMetadataState } from "@/domains/inventory/hooks/scan/useItemMetadataState";
 import { useQuantityCountManager } from "@/domains/inventory/hooks/scan/useQuantityCountManager";
 import { useSerialEntryManager } from "@/domains/inventory/hooks/scan/useSerialEntryManager";
-import { colors, spacing, fontSize, fontWeight } from "@/theme/unified";
-
-const SURFACE_BG = "#f4f7f6";
-const SURFACE_CARD = "#ffffff";
-const SURFACE_BORDER = "#d9e5e2";
-const SURFACE_MUTED = "#f8fafc";
-const ACCENT = "#0f766e";
-const TEXT_STRONG = "#0f172a";
-const TEXT_MUTED = "#475569";
+import { colors, semanticColors, spacing, fontSize, fontWeight } from "@/theme/unified";
 
 export default function ItemDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -94,10 +86,13 @@ export default function ItemDetailScreen() {
     loading,
     mrpVariants,
     rawVariantsCount,
+    recountBlockedReason,
+    recountTargetId,
     sameNameVariants,
     selectedMrpVariant,
     setShowZeroStock,
     showZeroStock,
+    blindRecountRequired,
   } = useItemDetailData({
     barcode,
     sessionId,
@@ -242,7 +237,9 @@ export default function ItemDetailScreen() {
       hasExpiryDate,
       itemExpiryDate,
       itemExpiryDateFormat,
-      countdownSeconds: 2,
+      recountTargetId,
+      blindRecountRequired,
+      recountBlockedReason,
       onSuccess: handleBackPress,
     });
   useItemDraftAutosave({
@@ -259,15 +256,8 @@ export default function ItemDetailScreen() {
   // Sync quantity with serial entries count for serialized items
   if (loading) {
     return (
-      <ThemedScreen showPattern={false} style={styles.screen}>
-        <ModernHeader
-          title="Verify Item"
-          subtitle={locationLabel || "Item details"}
-          showBackButton
-          onBackPress={handleBackPress}
-          showSettingsButton={false}
-          style={styles.headerShell}
-        />
+      <ThemedScreen>
+        <ModernHeader title="Verify Item" showBackButton onBackPress={handleBackPress} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary[600]} />
           <Text style={styles.loadingText}>Loading item details...</Text>
@@ -278,15 +268,8 @@ export default function ItemDetailScreen() {
 
   if (!item) {
     return (
-      <ThemedScreen showPattern={false} style={styles.screen}>
-        <ModernHeader
-          title="Verify Item"
-          subtitle={locationLabel || "Item details"}
-          showBackButton
-          onBackPress={handleBackPress}
-          showSettingsButton={false}
-          style={styles.headerShell}
-        />
+      <ThemedScreen>
+        <ModernHeader title="Verify Item" showBackButton onBackPress={handleBackPress} />
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color={colors.error[500]} />
           <Text style={styles.errorTitle}>Item Not Found</Text>
@@ -304,15 +287,8 @@ export default function ItemDetailScreen() {
   }
 
   return (
-    <ThemedScreen showPattern={false} style={styles.screen}>
-      <ModernHeader
-        title="Verify item"
-        subtitle={locationLabel || "Detail review"}
-        showBackButton
-        onBackPress={handleBackPress}
-        showSettingsButton={false}
-        style={styles.headerShell}
-      />
+    <ThemedScreen>
+      <ModernHeader title="Verify Item" showBackButton onBackPress={handleBackPress} />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}

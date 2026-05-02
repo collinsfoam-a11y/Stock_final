@@ -14,6 +14,8 @@ from backend.api.count_lines_routes import (
     CountLineRejectRequest,
     _require_supervisor,
     approve_count_line,
+    check_item_counted,
+    check_item_scan_status,
     calculate_financial_impact,
     check_serial_uniqueness,
     create_count_line,
@@ -24,6 +26,7 @@ from backend.api.count_lines_routes import (
     unverify_stock,
     verify_stock,
 )
+from backend.tests.utils.in_memory_db import InMemoryDatabase
 from backend.api.schemas import CountLineCreate
 from backend.services.count_query_service import CountQueryService
 
@@ -65,6 +68,8 @@ class TestCheckSerialUniqueness:
     @pytest.fixture
     def mock_db(self):
         db = AsyncMock()
+        db.serial_registry.find_one = AsyncMock(return_value=None)
+        db.item_serials.find_one = AsyncMock(return_value=None)
         db.count_lines.find_one = AsyncMock(return_value=None)
         return db
 
@@ -77,7 +82,7 @@ class TestCheckSerialUniqueness:
                 current_user={"username": "staff1", "role": "staff"},
             )
 
-        assert result == {"exists": False}
+        assert result == {"exists": False, "scope": "global"}
 
     @pytest.mark.asyncio
     async def test_returns_details_when_serial_found(self, mock_db):
@@ -89,7 +94,7 @@ class TestCheckSerialUniqueness:
             "rack_no": "A1",
             "status": "pending",
         }
-        mock_db.count_lines.find_one = AsyncMock(side_effect=[None, record])
+        mock_db.count_lines.find_one = AsyncMock(return_value=record)
 
         with _patch_count_query_service(mock_db):
             result = await check_serial_uniqueness(
@@ -99,8 +104,150 @@ class TestCheckSerialUniqueness:
             )
 
         assert result["exists"] is True
+        assert result["scope"] == "global"
         for key, value in record.items():
             assert result[key] == value
+
+    @pytest.mark.asyncio
+    async def test_allows_same_serial_for_different_item_when_item_scope_is_used(self, mock_db):
+        mock_db.count_lines.find_one = AsyncMock(side_effect=[None, None])
+        mock_db.serial_registry.find_one = AsyncMock(return_value=None)
+        mock_db.item_serials.find_one = AsyncMock(return_value=None)
+
+        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+            result = await check_serial_uniqueness(
+                session_id="sess_1",
+                serial_number="abc123",
+                current_user={"username": "staff1", "role": "staff"},
+                item_code="ITEM002",
+            )
+
+        assert result == {"exists": False, "scope": "item"}
+
+
+class TestProjectionReadRouting:
+    @pytest.mark.asyncio
+    async def test_scan_status_route_reads_projection_when_flag_enabled(self, monkeypatch):
+        db = InMemoryDatabase()
+        await db.items_snapshot.insert_one(
+            {
+                "session_id": "sess-1",
+                "item_code": "ITEM-1",
+                "counted_qty": 6.0,
+                "floor_no": "F1",
+                "rack_no": "R1",
+                "counted_by": "staff-1",
+            }
+        )
+        await db.batch_records.insert_one(
+            {
+                "session_id": "sess-1",
+                "item_code": "ITEM-1",
+                "batch_id": "B1",
+                "batch_no": "B1",
+                "counted_qty": 6.0,
+                "damaged_qty": 0.0,
+            }
+        )
+
+        monkeypatch.setenv("V3_PROJECTION_READS", "true")
+        with patch("backend.api.count_lines_routes.get_db", return_value=db):
+            result = await check_item_scan_status(
+                session_id="sess-1",
+                item_code="ITEM-1",
+                current_user={"username": "staff1", "role": "staff"},
+            )
+
+        assert result["source"] == "projection"
+        assert result["total_qty"] == 6.0
+        assert result["batch_totals"] == [
+            {"batch_id": "B1", "batch_no": "B1", "counted_qty": 6.0, "damaged_qty": 0.0}
+        ]
+
+    @pytest.mark.asyncio
+    async def test_check_item_counted_preserves_legacy_lines_and_adds_projection_aggregates(
+        self, monkeypatch
+    ):
+        db = InMemoryDatabase()
+        await db.count_lines.insert_one(
+            {
+                "_id": "mongo-line-1",
+                "id": "line-1",
+                "session_id": "sess-1",
+                "item_code": "ITEM-1",
+                "counted_qty": 2.0,
+                "floor_no": "F1",
+                "rack_no": "R1",
+                "counted_by": "staff-1",
+                "status": "pending",
+            }
+        )
+        await db.items_snapshot.insert_one(
+            {
+                "session_id": "sess-1",
+                "item_code": "ITEM-1",
+                "counted_qty": 2.0,
+                "floor_no": "F1",
+                "rack_no": "R1",
+                "counted_by": "staff-1",
+            }
+        )
+        await db.batch_records.insert_one(
+            {
+                "session_id": "sess-1",
+                "item_code": "ITEM-1",
+                "batch_id": "B1",
+                "batch_no": "B1",
+                "counted_qty": 2.0,
+                "damaged_qty": 0.0,
+            }
+        )
+
+        monkeypatch.setenv("V3_PROJECTION_READS", "true")
+        with patch("backend.api.count_lines_routes.get_db", return_value=db):
+            result = await check_item_counted(
+                session_id="sess-1",
+                item_code="ITEM-1",
+                current_user={"username": "staff1", "role": "staff"},
+            )
+
+        assert result["already_counted"] is True
+        assert result["aggregate_source"] == "projection"
+        assert result["item_totals"] == {"total_qty": 2.0, "source": "projection"}
+        assert result["batch_totals"] == [
+            {"batch_id": "B1", "batch_no": "B1", "counted_qty": 2.0, "damaged_qty": 0.0}
+        ]
+        assert result["count_lines"][0]["line_id"] == "line-1"
+
+    @pytest.mark.asyncio
+    async def test_check_item_counted_returns_503_in_projection_strict_mode(self, monkeypatch):
+        db = InMemoryDatabase()
+        await db.count_lines.insert_one(
+            {
+                "_id": "mongo-line-1",
+                "id": "line-1",
+                "session_id": "sess-1",
+                "item_code": "ITEM-1",
+                "counted_qty": 2.0,
+                "floor_no": "F1",
+                "rack_no": "R1",
+                "counted_by": "staff-1",
+                "status": "pending",
+            }
+        )
+
+        monkeypatch.setenv("V3_PROJECTION_READS", "true")
+        monkeypatch.setenv("V3_PROJECTION_STRICT_MODE", "true")
+        with patch("backend.api.count_lines_routes.get_db", return_value=db):
+            with pytest.raises(HTTPException) as exc_info:
+                await check_item_counted(
+                    session_id="sess-1",
+                    item_code="ITEM-1",
+                    current_user={"username": "staff1", "role": "staff"},
+                )
+
+        assert exc_info.value.status_code == 503
+        assert "Projection state unavailable for authoritative read" in exc_info.value.detail
 
 
 class TestCountLinesAPIHelpers:

@@ -2,8 +2,12 @@ import React, { useState } from "react";
 import { View, Text, TextInput, StyleSheet, ScrollView, Alert } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Modal } from "../ui/Modal";
-import { OperationalButton } from "../ui/OperationalSurface";
-import { modernColors, modernTypography, modernSpacing } from "@/styles/modernDesignSystem";
+import { PremiumButton } from "../premium/PremiumButton";
+import {
+  modernColors,
+  modernTypography,
+  modernSpacing,
+} from "@/styles/unifiedSystem";
 
 interface BulkEntryModalProps {
   visible: boolean;

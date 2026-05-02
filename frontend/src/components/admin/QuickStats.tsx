@@ -1,7 +1,11 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { ModernCard } from "../ui/ModernCard";
-import { modernColors, modernTypography, modernSpacing } from "../../styles/modernDesignSystem";
+import {
+  modernColors,
+  modernTypography,
+  modernSpacing,
+} from "../../styles/unifiedSystem";
 
 interface QuickStatsProps {
   metrics?: any;

@@ -7,7 +7,8 @@ import {
   modernTypography,
   modernSpacing,
   modernBorderRadius,
-} from "../../styles/modernDesignSystem";
+  modernShadows,
+} from "../../styles/unifiedSystem";
 import { useScanSessionStore } from "../../store/scanSessionStore";
 
 export const ActiveSectionHeader: React.FC = () => {

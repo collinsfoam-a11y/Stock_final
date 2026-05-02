@@ -240,6 +240,13 @@ class CountLineCreate(BaseModel):
     mrp_source: Optional[str] = None
     condition_details: Optional[str] = None
     counted_qty: float
+    input_qty: Optional[float] = None
+    input_uom: Optional[str] = None
+    base_uom: Optional[str] = None
+    uom_code: Optional[str] = None
+    uom_name: Optional[str] = None
+    conversion_factor: Optional[float] = 1.0
+    quantity_precision: Optional[int] = None
     damaged_qty: Optional[float] = 0
     non_returnable_damaged_qty: Optional[float] = 0
     damage_included: Optional[bool] = None
@@ -305,8 +312,8 @@ class BulkCountLineUpdate(BaseModel):
 class Session(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     warehouse: str
-    client_session_id: Optional[str] = None
-    offline_id: Optional[str] = None
+    location_id: Optional[str] = None
+    location_key: Optional[str] = None
     location_type: Optional[str] = None
     location_name: Optional[str] = None
     rack_no: Optional[str] = None

@@ -4,11 +4,8 @@
  * Phase 0: Advanced Analytics Dashboard
  */
 
-import {
-  getSessionsAnalytics,
-  getSystemStats,
-  getSystemIssues,
-} from "./api/api";
+import { getSystemIssues } from "./api/api";
+import { dashboardReadService } from "./dashboardReadService";
 
 export interface AnalyticsMetric {
   label: string;
@@ -59,17 +56,13 @@ class AnalyticsService {
   /**
    * Get dashboard analytics data
    */
-  async getDashboardData(
-    _timeRange: "24h" | "7d" | "30d" = "7d",
-  ): Promise<AnalyticsDashboardData> {
+  async getDashboardData(_timeRange: "24h" | "7d" | "30d" = "7d"): Promise<AnalyticsDashboardData> {
     try {
-      const [analyticsRes, statsRes] = await Promise.all([
-        getSessionsAnalytics(),
-        getSystemStats(),
-      ]);
+      const { sessionsAnalytics, systemStats } =
+        await dashboardReadService.getAdminBusinessSnapshot();
 
-      const analytics = analyticsRes.data || {};
-      const stats = statsRes.data || {};
+      const analytics = sessionsAnalytics || {};
+      const stats = systemStats || {};
 
       return {
         overview: [
@@ -101,15 +94,12 @@ class AnalyticsService {
         sessionAnalytics: {
           totalSessions: analytics.total_sessions || 0,
           activeSessions: stats.active_sessions || 0,
-          completedSessions:
-            (analytics.total_sessions || 0) - (stats.active_sessions || 0),
+          completedSessions: (analytics.total_sessions || 0) - (stats.active_sessions || 0),
           averageDuration: 0,
           totalItemsScanned: analytics.total_items || 0,
           varianceRate: analytics.avg_variance || 0,
         },
-        varianceTrends: this.mapSessionsToTrends(
-          analytics.sessions_by_date || {},
-        ),
+        varianceTrends: this.mapSessionsToTrends(analytics.sessions_by_date || {}),
         topPerformers: [],
         recentActivity: [],
       };
@@ -119,9 +109,7 @@ class AnalyticsService {
     }
   }
 
-  private mapSessionsToTrends(
-    sessionsByDate: Record<string, number>,
-  ): VarianceTrend[] {
+  private mapSessionsToTrends(sessionsByDate: Record<string, number>): VarianceTrend[] {
     return Object.entries(sessionsByDate)
       .map(([date, count]) => ({
         date,
@@ -153,8 +141,8 @@ class AnalyticsService {
    */
   async getVarianceTrends(days: number = 7): Promise<VarianceTrend[]> {
     try {
-      const analyticsRes = await getSessionsAnalytics();
-      const sessionsByDate = analyticsRes.data?.sessions_by_date || {};
+      const { sessionsAnalytics } = await dashboardReadService.getAdminBusinessSnapshot();
+      const sessionsByDate = sessionsAnalytics?.sessions_by_date || {};
       return this.mapSessionsToTrends(sessionsByDate).slice(-days);
     } catch (error) {
       console.error("Failed to fetch variance trends:", error);
@@ -191,7 +179,7 @@ class AnalyticsService {
    */
   async getActiveUsers(): Promise<any[]> {
     try {
-      const _statsRes = await getSystemStats();
+      await dashboardReadService.getAdminBusinessSnapshot();
       // This is a simplification, real active users would come from a different endpoint
       return [];
     } catch {

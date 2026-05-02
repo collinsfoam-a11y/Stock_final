@@ -29,15 +29,12 @@ import Animated, {
 } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-  modernColors,
-  modernSpacing,
-  modernShadows,
-  modernAnimations,
-} from "../../styles/modernDesignSystem";
-import {
+  borderRadius,
+  duration,
+  shadows,
   semanticColors,
-  radius as unifiedRadius,
-  spacing as unifiedSpacing,
+  spacing,
+  springConfigs,
   textStyles,
 } from "../../theme/unified";
 import { useThemeContextSafe } from "../../context/ThemeContext";
@@ -113,7 +110,8 @@ export const ModernCard: React.FC<ModernCardProps> = ({
       ? padding
       : theme
         ? theme.spacing.md
-        : modernSpacing.cardPadding;
+        : spacing.md;
+  const activeRadius = theme?.borderRadius?.md ?? borderRadius.md;
 
   // Animation values
   const scale = useSharedValue(1);
@@ -130,36 +128,29 @@ export const ModernCard: React.FC<ModernCardProps> = ({
   // Press handlers
   const handlePressIn = () => {
     if (onPress) {
-      scale.value = withSpring(0.98, {
-        damping: modernAnimations.easing.spring.damping,
-        stiffness: modernAnimations.easing.spring.stiffness,
-      });
+      scale.value = withSpring(0.98, springConfigs.gentle);
       opacity.value = withTiming(0.9, {
-        duration: modernAnimations.duration.fast,
+        duration: duration.fast,
       });
     }
   };
 
   const handlePressOut = () => {
     if (onPress) {
-      scale.value = withSpring(1, {
-        damping: modernAnimations.easing.spring.damping,
-        stiffness: modernAnimations.easing.spring.stiffness,
-      });
+      scale.value = withSpring(1, springConfigs.gentle);
       opacity.value = withTiming(1, {
-        duration: modernAnimations.duration.fast,
+        duration: duration.fast,
       });
     }
   };
 
   // Memoized dynamic styles aligned with DESIGN.md
   const dynamicStyles = React.useMemo(() => {
-    const spacing = unifiedSpacing;
-    const shadowMap = modernShadows;
+    const shadowMap = shadows;
 
     return StyleSheet.create({
       card: {
-        borderRadius: unifiedRadius.md,
+        borderRadius: activeRadius,
         overflow: "hidden",
       },
       content: {
@@ -213,7 +204,7 @@ export const ModernCard: React.FC<ModernCardProps> = ({
         marginRight: spacing.sm,
       },
     });
-  }, [elevation, actualPadding]);
+  }, [activeRadius, actualPadding, elevation]);
 
   // Render card content
   const renderContent = () => {
@@ -276,13 +267,21 @@ export const ModernCard: React.FC<ModernCardProps> = ({
     };
 
     if (variant === "gradient") {
-      const colors =
+      const gradientPalette =
         gradientColors ||
-        (theme ? theme.gradients.surface : modernColors.gradients.surface);
+        (theme
+          ? theme.gradients.surface
+          : ([semanticColors.background.paper, semanticColors.background.secondary] as const));
       return (
         <Component {...props}>
           <LinearGradient
-            colors={colors as unknown as readonly [string, string, ...string[]]}
+            colors={
+              gradientPalette as unknown as readonly [
+                string,
+                string,
+                ...string[],
+              ]
+            }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.gradient}

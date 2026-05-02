@@ -1,8 +1,8 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { OperationalInput } from "@/components/ui/OperationalSurface";
-import { modernColors } from "@/styles/modernDesignSystem";
+import { PremiumInput } from "@/components/premium/PremiumInput";
+import { modernColors } from "@/styles/unifiedSystem";
 import { DEFAULT_FLOOR_OPTIONS } from "@/config/location";
 
 export type LocationVerificationSectionProps = {

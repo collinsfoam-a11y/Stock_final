@@ -30,11 +30,7 @@ from backend.services.advanced_report_service import (
     ReportFilters,
     SortOrder,
 )
-from backend.services.realtime_dashboard_service import (
-    RealtimeDashboardService,
-    get_realtime_dashboard_service,
-)
-from backend.utils.request_context import get_request_id
+from backend.services.projection_read_service import ProjectionReadService
 from backend.utils.tracing import trace_dashboard_query, trace_span
 
 logger = logging.getLogger(__name__)
@@ -259,8 +255,19 @@ async def get_item_details(
     dashboard_service: RealtimeDashboardService = Depends(get_realtime_dashboard_service),
 ):
     """Get detailed information for a specific item."""
-    result = await dashboard_service.get_item_details(item_id)
-    if not result:
+    db = get_db()
+    projection_reads = ProjectionReadService(db)
+
+    if await projection_reads.dashboard_reads_enabled():
+        result = await projection_reads.get_dashboard_item_details(item_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="Item not found")
+        return result
+
+    with trace_span("mongodb.count_lines.find_one", {"item_id": item_id}):
+        item = await db.count_lines.find_one({"id": item_id})
+
+    if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     return result
 
@@ -272,7 +279,112 @@ async def get_dashboard_stats(
     dashboard_service: RealtimeDashboardService = Depends(get_realtime_dashboard_service),
 ):
     """Get real-time dashboard statistics."""
-    return await dashboard_service.get_dashboard_stats()
+    db = get_db()
+    projection_reads = ProjectionReadService(db)
+
+    if await projection_reads.dashboard_reads_enabled():
+        return await projection_reads.get_dashboard_stats()
+
+    with trace_span("calculate_dashboard_stats"):
+        # Run aggregations in parallel
+        stats_pipeline = [
+            {
+                "$facet": {
+                    "total": [{"$count": "count"}],
+                    "verified": [
+                        {"$match": {"verified": True}},
+                        {"$count": "count"},
+                    ],
+                    "pending": [
+                        {"$match": {"verified": False}},
+                        {"$count": "count"},
+                    ],
+                    "variance_stats": [
+                        {
+                            "$group": {
+                                "_id": None,
+                                "total_variance": {"$sum": "$variance"},
+                                "positive": {
+                                    "$sum": {
+                                        "$cond": [
+                                            {"$gt": ["$variance", 0]},
+                                            "$variance",
+                                            0,
+                                        ]
+                                    }
+                                },
+                                "negative": {
+                                    "$sum": {
+                                        "$cond": [
+                                            {"$lt": ["$variance", 0]},
+                                            "$variance",
+                                            0,
+                                        ]
+                                    }
+                                },
+                                "avg_variance": {"$avg": "$variance"},
+                            }
+                        }
+                    ],
+                    "today_activity": [
+                        {
+                            "$match": {
+                                "counted_at": {
+                                    "$gte": datetime.now(timezone.utc)
+                                    .replace(tzinfo=None)
+                                    .replace(hour=0, minute=0, second=0)
+                                }
+                            }
+                        },
+                        {"$count": "count"},
+                    ],
+                    "by_warehouse": [
+                        {"$group": {"_id": "$warehouse", "count": {"$sum": 1}}},
+                        {"$sort": {"count": -1}},
+                        {"$limit": 10},
+                    ],
+                    "by_status": [
+                        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+                    ],
+                }
+            }
+        ]
+
+        result = await db.count_lines.aggregate(stats_pipeline).to_list(1)
+
+    stats = result[0] if result else {}
+
+    def get_count(key: str) -> int:
+        data = stats.get(key, [])
+        return data[0]["count"] if data else 0
+
+    variance_stats = stats.get("variance_stats", [{}])[0] if stats.get("variance_stats") else {}
+
+    return {
+        "success": True,
+        "stats": {
+            "total_items": get_count("total"),
+            "verified_items": get_count("verified"),
+            "pending_items": get_count("pending"),
+            "today_activity": get_count("today_activity"),
+            "total_variance": variance_stats.get("total_variance", 0),
+            "positive_variance": variance_stats.get("positive", 0),
+            "negative_variance": variance_stats.get("negative", 0),
+            "avg_variance": variance_stats.get("avg_variance", 0),
+            "verification_rate": (
+                (get_count("verified") / get_count("total") * 100) if get_count("total") > 0 else 0
+            ),
+        },
+        "by_warehouse": [
+            {"warehouse": item["_id"] or "Unknown", "count": item["count"]}
+            for item in stats.get("by_warehouse", [])
+        ],
+        "by_status": [
+            {"status": item["_id"] or "Unknown", "count": item["count"]}
+            for item in stats.get("by_status", [])
+        ],
+        "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+    }
 
 
 @realtime_dashboard_router.get("/filters/options")
@@ -281,7 +393,30 @@ async def get_filter_options(
     dashboard_service: RealtimeDashboardService = Depends(get_realtime_dashboard_service),
 ):
     """Get available filter options (distinct values)."""
-    return await dashboard_service.get_filter_options()
+    db = get_db()
+    projection_reads = ProjectionReadService(db)
+
+    if await projection_reads.dashboard_reads_enabled():
+        return await projection_reads.get_dashboard_filter_options()
+
+    with trace_span("fetch_filter_options"):
+        warehouses = await db.count_lines.distinct("warehouse")
+        floors = await db.count_lines.distinct("floor")
+        categories = await db.count_lines.distinct("category")
+        statuses = await db.count_lines.distinct("status")
+        users = await db.count_lines.distinct("counted_by")
+
+    return {
+        "success": True,
+        "options": {
+            "warehouses": [w for w in warehouses if w],
+            "floors": [f for f in floors if f],
+            "categories": [c for c in categories if c],
+            "statuses": [s for s in statuses if s],
+            "users": [u for u in users if u],
+            "verified": [True, False],
+        },
+    }
 
 
 # ==========================================
@@ -410,7 +545,17 @@ async def _ws_handle_get_item_details(
     """Handle get_item_details message."""
     item_id = data.get("item_id")
     if item_id:
-        item = await service.get_ws_item_details(item_id)
+        projection_reads = ProjectionReadService(db)
+        if await projection_reads.dashboard_reads_enabled():
+            result = await projection_reads.get_dashboard_item_details(item_id)
+            if result:
+                await manager.send_personal_message(
+                    {"type": "item_details", "payload": result.get("item")},
+                    user_id,
+                )
+            return
+
+        item = await db.count_lines.find_one({"id": item_id})
         if item:
             await manager.send_personal_message(
                 {"type": "item_details", "payload": item}, user_id

@@ -1,13 +1,5 @@
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  Platform,
-  Modal,
-  ScrollView,
-} from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, Platform } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { FlashList } from "@shopify/flash-list";
@@ -17,6 +9,7 @@ import * as Haptics from "expo-haptics";
 
 import { Screen } from "@/components/layout/Screen";
 import ModernCard from "@/components/ui/ModernCard";
+import ModernInput from "@/components/ui/ModernInput";
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 import RecountAssignmentModal, {
   type AssignableStaffUser,
@@ -25,7 +18,7 @@ import { useToast } from "@/components/feedback/ToastProvider";
 import { useIdleProbe } from "@/hooks/useIdleProbe";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useSettingsStore } from "@/store/settingsStore";
-import { colors, spacing, typography, borderRadius, shadows } from "@/theme/modernDesign";
+import { colors, spacing, typography, borderRadius, shadows } from "@/theme/unified";
 import {
   getSession,
   getCountLines,
@@ -39,6 +32,18 @@ import {
 } from "@/services/api/api";
 
 type BadgeTone = "neutral" | "success" | "warning" | "error" | "info";
+
+const operationalPalette = {
+  background: "#FAF9F6",
+  surface: "#FFFFFF",
+  surfaceMuted: "#F4F3F1",
+  border: "#E2E2E2",
+  primary: "#007B83",
+  primaryStrong: "#006067",
+  primaryTint: "#E4F5F6",
+  ink: "#1A1C1A",
+  muted: "#586377",
+};
 
 const badgeToneStyles = {
   neutral: {
@@ -102,6 +107,96 @@ const getLineStatusTone = (status: string): BadgeTone => {
   }
 };
 
+const toDate = (value: unknown): Date | null => {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value === "number") {
+    const ms = value < 1e12 ? value * 1000 : value;
+    const parsed = new Date(ms);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  return null;
+};
+
+const getLastSessionTimestamp = (session: any): Date | null => {
+  const candidates = [
+    session?.updated_at,
+    session?.last_activity,
+    session?.verified_at,
+    session?.started_at,
+    session?.created_at,
+  ];
+
+  let latest: Date | null = null;
+  for (const value of candidates) {
+    const date = toDate(value);
+    if (!date) continue;
+    if (!latest || date.getTime() > latest.getTime()) {
+      latest = date;
+    }
+  }
+
+  return latest;
+};
+
+const formatRelativeUpdate = (session: any): string => {
+  const date = getLastSessionTimestamp(session);
+  if (!date) {
+    return "Update time unavailable";
+  }
+
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.max(0, Math.round(diffMs / 60000));
+
+  if (diffMinutes < 1) {
+    return "Updated just now";
+  }
+
+  if (diffMinutes < 60) {
+    return `Updated ${diffMinutes} min ago`;
+  }
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `Updated ${diffHours} hr ago`;
+  }
+
+  return `Updated ${date.toLocaleDateString()}`;
+};
+
+const getLineSurfaceTone = (item: any, activeTab: "toVerify" | "verified") => {
+  const variance = Number(item?.variance ?? 0);
+  if (variance !== 0) {
+    return {
+      backgroundColor: colors.warning[50],
+      borderColor: colors.warning[200],
+      accentColor: colors.warning[700],
+    };
+  }
+
+  if (activeTab === "verified" || item?.verified) {
+    return {
+      backgroundColor: colors.success[50],
+      borderColor: colors.success[200],
+      accentColor: colors.success[700],
+    };
+  }
+
+  return {
+    backgroundColor: operationalPalette.surface,
+    borderColor: operationalPalette.border,
+    accentColor: operationalPalette.primaryStrong,
+  };
+};
+
 export default function SessionDetail() {
   const { id, sessionId } = useLocalSearchParams();
   const targetSessionId = (id || sessionId) as string;
@@ -116,8 +211,8 @@ export default function SessionDetail() {
   const [verifiedLines, setVerifiedLines] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [sessionMissing, setSessionMissing] = React.useState(false);
-  const [activeFilter, setActiveFilter] = React.useState<"all" | "variance" | "errors">("all");
-  const [selectedLine, setSelectedLine] = React.useState<any | null>(null);
+  const [activeTab, setActiveTab] = React.useState<"toVerify" | "verified">("toVerify");
+  const [searchQuery, setSearchQuery] = React.useState("");
   const [verifying, setVerifying] = React.useState<string | null>(null);
   const [assignableStaff, setAssignableStaff] = React.useState<AssignableStaffUser[]>([]);
   const [staffLoading, setStaffLoading] = React.useState(false);
@@ -273,6 +368,7 @@ export default function SessionDetail() {
       await rejectCountLine(pendingRejectLine.id, {
         notes: notes || undefined,
         assign_to: assignTo,
+        session_id: pendingRejectLine.session_id,
       });
       setRecountModalVisible(false);
       setPendingRejectLine(null);
@@ -386,9 +482,62 @@ export default function SessionDetail() {
     }
   };
 
+  const switchTab = (tab: "toVerify" | "verified") => {
+    if (activeTab === tab) return;
+    if (Platform.OS !== "web") {
+      Haptics.selectionAsync();
+    }
+    setActiveTab(tab);
+  };
+
+  const allLines = React.useMemo(
+    () => [...toVerifyLines, ...verifiedLines],
+    [toVerifyLines, verifiedLines]
+  );
+  const currentLines = activeTab === "toVerify" ? toVerifyLines : verifiedLines;
+  const filteredLines = React.useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) {
+      return currentLines;
+    }
+
+    return currentLines.filter((item) =>
+      [item?.item_name, item?.item_code, item?.barcode].some(
+        (value) => typeof value === "string" && value.toLowerCase().includes(query)
+      )
+    );
+  }, [currentLines, searchQuery]);
+  const totalVariance = Number(session?.total_variance ?? 0);
+  const totalLineCount = allLines.length;
+  const varianceCount = allLines.filter((line) => Number(line?.variance ?? 0) !== 0).length;
+  const matchedCount = allLines.filter((line) => Number(line?.variance ?? 0) === 0).length;
+  const progressPercent =
+    totalLineCount > 0
+      ? Math.min(100, Math.round((verifiedLines.length / totalLineCount) * 100))
+      : 0;
+  const pendingCount = Math.max(totalLineCount - verifiedLines.length, 0);
+  const sessionStatusLabel = String(session?.status || "Unknown");
+  const lastUpdateLabel = formatRelativeUpdate(session);
+  const sessionFinalized =
+    session?.status === "COMPLETED" || session?.finalization_status === "FINALIZED";
+  const stickyAction =
+    !offlineMode && !sessionFinalized && session?.status === "OPEN"
+      ? {
+          title: "Review line approvals before handoff",
+          action: "Move to Reconcile",
+          onPress: () => handleUpdateStatus("RECONCILE"),
+        }
+      : !offlineMode && !sessionFinalized && session?.status === "RECONCILE"
+        ? {
+            title: "Ready for final lock and audit handoff",
+            action: "Finalize Session",
+            onPress: () => void handleFinalizeSession(),
+          }
+        : null;
+
   if (!loading && sessionMissing) {
     return (
-      <Screen padding={0} backgroundColor={colors.gray[50]}>
+      <Screen padding={0} backgroundColor={operationalPalette.background}>
         <StatusBar style="dark" />
         <View style={styles.header}>
           <AnimatedPressable
@@ -426,7 +575,7 @@ export default function SessionDetail() {
 
   if (loading || !session) {
     return (
-      <Screen padding={0} backgroundColor={colors.gray[50]}>
+      <Screen padding={0} backgroundColor={operationalPalette.background}>
         <StatusBar style="dark" />
         <View style={styles.header}>
           <AnimatedPressable
@@ -449,80 +598,91 @@ export default function SessionDetail() {
     );
   }
 
-  const allLines = [
-    ...toVerifyLines.map((line) => ({ ...line, __source: "pending" })),
-    ...verifiedLines.map((line) => ({ ...line, __source: "verified" })),
-  ];
-  const varianceCount = allLines.filter((line) => Number(line.variance ?? 0) !== 0).length;
-  const errorCount = allLines.filter((line) =>
-    ["rejected", "failed", "error"].includes(String(line.status || "").toLowerCase())
-  ).length;
-  const pendingCount =
-    Number(session?.pending_items ?? 0) ||
-    toVerifyLines.length ||
-    Math.max(allLines.length - verifiedLines.length, 0);
-  const progressTotal = allLines.length || Number(session?.total_items ?? 0);
-  const progressDone = verifiedLines.length || Number(session?.verified_items ?? 0);
-  const completionPercentage =
-    progressTotal > 0
-      ? Math.round((Math.min(progressDone, progressTotal) / progressTotal) * 100)
-      : 0;
-  const currentLines = allLines.filter((line) => {
-    if (activeFilter === "variance") return Number(line.variance ?? 0) !== 0;
-    if (activeFilter === "errors") {
-      return ["rejected", "failed", "error"].includes(String(line.status || "").toLowerCase());
-    }
-    return true;
-  });
-  const totalVariance = Number(session?.total_variance ?? 0);
-  const sessionFinalized =
-    session?.status === "COMPLETED" || session?.finalization_status === "FINALIZED";
+  const ListHeader = () => (
+    <View>
+      <Animated.View entering={getFadeInDown(100)}>
+        <ModernCard variant="outlined" style={styles.sessionInfoCard}>
+          <View style={styles.sessionInfoHeader}>
+            <View style={styles.sessionIdentity}>
+              <Text style={styles.sectionLabel}>Active session</Text>
+              <Text style={styles.sessionTitle} numberOfLines={2}>
+                {session.warehouse || "Unknown warehouse"}
+              </Text>
+              <Text style={styles.sessionSubtitle}>
+                Counted by {session.staff_name || "Unassigned staff"}
+              </Text>
+            </View>
+            {renderBadge(sessionStatusLabel, getSessionStatusTone(sessionStatusLabel))}
+          </View>
 
-  const ListHeader = () => {
-    const rackLabel =
-      [session.location_name, session.rack_no].filter(Boolean).join(" | ") ||
-      session.warehouse ||
-      "Session";
-    const rackProgressLabel = session.rack_no
-      ? `Rack ${session.rack_no}`
-      : session.location_name
-        ? `Rack ${session.location_name}`
-        : "Rack progress";
-    const boundedCompletion = Math.max(0, Math.min(completionPercentage, 100));
-    const primarySessionAction =
-      session.status === "OPEN" && !offlineMode ? (
-        <AnimatedPressable
-          style={[styles.primaryActionButton, styles.warningActionButton]}
-          onPress={() => handleUpdateStatus("RECONCILE")}
-          accessibilityRole="button"
-          accessibilityLabel="Move session to reconcile"
-        >
-          <Text style={styles.buttonText}>Move to Reconcile</Text>
-        </AnimatedPressable>
-      ) : session.status === "RECONCILE" && !offlineMode ? (
-        <AnimatedPressable
-          style={[styles.primaryActionButton, styles.successActionButton]}
-          onPress={() => void handleFinalizeSession()}
-          accessibilityRole="button"
-          accessibilityLabel="Finalize session"
-        >
-          <Text style={styles.buttonText}>Finalize Session</Text>
-        </AnimatedPressable>
-      ) : null;
+          <View style={styles.progressSummaryRow}>
+            <View>
+              <Text style={styles.progressSummaryLabel}>Progress</Text>
+              <Text style={styles.progressSummaryValue}>{progressPercent}% complete</Text>
+            </View>
+            <Text style={styles.progressSummaryMeta}>
+              {verifiedLines.length}/{totalLineCount || 0} verified
+            </Text>
+          </View>
+          <View style={styles.progressTrack}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${Math.max(progressPercent, progressPercent === 0 ? 0 : 6)}%` },
+              ]}
+            />
+          </View>
 
-    return (
-      <View>
-        <Animated.View entering={getFadeInDown(100)}>
-          <ModernCard variant="elevated" style={styles.sessionInfoCard}>
-            <View style={styles.sessionInfoHeader}>
-              <View style={styles.sessionIdentity}>
-                <Text style={styles.sectionLabel}>Session</Text>
-                <Text style={styles.sessionTitle} numberOfLines={2}>
-                  {rackLabel}
-                </Text>
-                <Text style={styles.sessionSubtitle}>
-                  {session.staff_name || "Unassigned staff"} |{" "}
-                  {session.warehouse || "Unknown warehouse"}
+          <View style={styles.metricRow}>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricLabel}>Matched</Text>
+              <Text style={styles.metricValue}>{matchedCount}</Text>
+            </View>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricLabel}>Variance</Text>
+              <Text style={[styles.metricValue, varianceCount > 0 && styles.metricValueWarning]}>
+                {varianceCount}
+              </Text>
+            </View>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricLabel}>Pending</Text>
+              <Text style={styles.metricValue}>{pendingCount}</Text>
+            </View>
+          </View>
+
+          <View style={styles.signalRow}>
+            <View style={styles.syncPill}>
+              <Ionicons
+                name={offlineMode ? "cloud-offline-outline" : "sync-outline"}
+                size={14}
+                color={offlineMode ? colors.warning[700] : operationalPalette.primaryStrong}
+              />
+              <Text style={[styles.syncPillText, offlineMode && styles.syncPillTextWarning]}>
+                {offlineMode ? "Offline cache active" : lastUpdateLabel}
+              </Text>
+            </View>
+
+            <View style={styles.variancePill}>
+              <Text
+                style={[styles.variancePillText, totalVariance !== 0 && styles.metricValueDanger]}
+              >
+                Total variance {totalVariance.toFixed(2)}
+              </Text>
+            </View>
+          </View>
+        </ModernCard>
+      </Animated.View>
+
+      {sessionFinalized ? (
+        <Animated.View entering={getFadeInDown(220)}>
+          <View style={[styles.noticeCard, styles.noticeSuccess]}>
+            <View style={styles.noticeRow}>
+              <Ionicons name="lock-closed-outline" size={18} color={colors.success[600]} />
+              <View style={styles.noticeCopy}>
+                <Text style={styles.noticeTitle}>Session finalized</Text>
+                <Text style={styles.noticeBody}>
+                  Finalized sessions are locked for audit integrity. Count lines can be reviewed,
+                  but approvals and edits are disabled.
                 </Text>
               </View>
               {renderBadge(
@@ -531,27 +691,16 @@ export default function SessionDetail() {
               )}
             </View>
 
-            <View style={styles.progressMetaRow}>
-              <Text style={styles.progressMetaLabel}>{rackProgressLabel}</Text>
-              <Text style={styles.progressMetaValue}>{boundedCompletion}%</Text>
-            </View>
-            <View style={styles.progressTrackLarge}>
-              <View style={[styles.progressFillLarge, { width: `${boundedCompletion}%` }]} />
-            </View>
-
-            {primarySessionAction ? (
-              <View style={styles.actionButtonsInline}>{primarySessionAction}</View>
-            ) : null}
-
-            <View style={styles.metricRow}>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>Items</Text>
-                <Text style={styles.metricValue}>{session.total_items ?? allLines.length}</Text>
-              </View>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>Variance</Text>
-                <Text style={[styles.metricValue, totalVariance !== 0 && styles.metricValueDanger]}>
-                  {totalVariance.toFixed(2)}
+      {offlineMode ? (
+        <Animated.View entering={getFadeInDown(220)}>
+          <View style={[styles.noticeCard, styles.noticeWarning]}>
+            <View style={styles.noticeRow}>
+              <Ionicons name="cloud-offline-outline" size={18} color={colors.warning[600]} />
+              <View style={styles.noticeCopy}>
+                <Text style={styles.noticeTitle}>Viewing cached session data</Text>
+                <Text style={styles.noticeBody}>
+                  Count lines and session details can be reviewed offline, but approvals, recounts,
+                  verification changes, and status updates require a live connection.
                 </Text>
               </View>
               <View style={styles.metricCard}>
@@ -562,22 +711,42 @@ export default function SessionDetail() {
           </ModernCard>
         </Animated.View>
 
-        {sessionFinalized ? (
-          <Animated.View entering={getFadeInDown(220)}>
-            <View style={[styles.noticeCard, styles.noticeSuccess]}>
-              <View style={styles.noticeRow}>
-                <Ionicons name="lock-closed-outline" size={18} color={colors.success[600]} />
-                <View style={styles.noticeCopy}>
-                  <Text style={styles.noticeTitle}>Session finalized</Text>
-                  <Text style={styles.noticeBody}>
-                    Finalized sessions are locked for audit integrity. Count lines can be reviewed,
-                    but approvals and edits are disabled.
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </Animated.View>
-        ) : null}
+      <Animated.View entering={getFadeInDown(240)}>
+        <ModernInput
+          placeholder={`Search ${activeTab === "toVerify" ? "pending" : "verified"} items`}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          icon="search-outline"
+          rightIcon={searchQuery ? "close-circle" : undefined}
+          onRightIconPress={searchQuery ? () => setSearchQuery("") : undefined}
+          containerStyle={styles.searchFieldContainer}
+          style={styles.searchField}
+          inputStyle={styles.searchInput}
+        />
+      </Animated.View>
+
+      <Animated.View
+        entering={getFadeInDown(300)}
+        style={styles.tabContainer}
+        accessibilityRole="tablist"
+        accessibilityLabel="Session detail sections"
+      >
+        <AnimatedPressable
+          style={[styles.tab, activeTab === "toVerify" && styles.tabActive]}
+          onPress={() => switchTab("toVerify")}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === "toVerify" }}
+          accessibilityLabel={`To verify tab, ${toVerifyLines.length} items`}
+        >
+          <Ionicons
+            name="list-outline"
+            size={18}
+            color={activeTab === "toVerify" ? operationalPalette.primaryStrong : colors.gray[600]}
+          />
+          <Text style={[styles.tabText, activeTab === "toVerify" && styles.tabTextActive]}>
+            To Verify ({toVerifyLines.length})
+          </Text>
+        </AnimatedPressable>
 
         {offlineMode ? (
           <Animated.View entering={getFadeInDown(220)}>
@@ -602,31 +771,18 @@ export default function SessionDetail() {
           accessibilityRole="tablist"
           accessibilityLabel="Session item filters"
         >
-          <FilterChip
-            active={activeFilter === "all"}
-            count={allLines.length}
-            icon="list-outline"
-            label="All"
-            onPress={() => setActiveFilter("all")}
+          <Ionicons
+            name="checkmark-circle-outline"
+            size={18}
+            color={activeTab === "verified" ? operationalPalette.primaryStrong : colors.gray[600]}
           />
-          <FilterChip
-            active={activeFilter === "variance"}
-            count={varianceCount}
-            icon="alert-circle-outline"
-            label="Variance"
-            onPress={() => setActiveFilter("variance")}
-          />
-          <FilterChip
-            active={activeFilter === "errors"}
-            count={errorCount}
-            icon="warning-outline"
-            label="Errors"
-            onPress={() => setActiveFilter("errors")}
-          />
-        </Animated.View>
-      </View>
-    );
-  };
+          <Text style={[styles.tabText, activeTab === "verified" && styles.tabTextActive]}>
+            Verified ({verifiedLines.length})
+          </Text>
+        </AnimatedPressable>
+      </Animated.View>
+    </View>
+  );
 
   const renderItem = ({ item }: { item: any }) => {
     const normalizedStatus = String(item.status || "").toLowerCase();
@@ -635,43 +791,57 @@ export default function SessionDetail() {
     const verifiedAtLabel = item.verified_at
       ? new Date(item.verified_at).toLocaleString()
       : "Unknown time";
+    const surfaceTone = getLineSurfaceTone(item, activeTab);
 
     return (
-      <AnimatedPressable
-        onPress={() => setSelectedLine(item)}
-        accessibilityRole="button"
-        accessibilityLabel={`Open details for ${item.item_name || item.item_code}`}
+      <ModernCard
+        variant="outlined"
+        style={[
+          styles.lineCard,
+          {
+            backgroundColor: surfaceTone.backgroundColor,
+            borderColor: surfaceTone.borderColor,
+            borderLeftWidth: 4,
+            borderLeftColor: surfaceTone.accentColor,
+          },
+        ]}
       >
-        <ModernCard variant="elevated" style={styles.lineCard}>
-          <View style={styles.lineHeader}>
-            <Text style={styles.lineName} numberOfLines={2}>
-              {item.item_name}
-            </Text>
-            <View style={styles.badgeContainer}>
-              {item.verified ? renderBadge("Verified", "success", "checkmark-circle") : null}
-              {renderBadge(
-                (normalizedStatus || "pending").toUpperCase(),
-                getLineStatusTone(normalizedStatus)
-              )}
-            </View>
+        <View style={styles.lineHeader}>
+          <Text style={styles.lineName} numberOfLines={2}>
+            {item.item_name}
+          </Text>
+          <View style={styles.badgeContainer}>
+            {item.verified ? renderBadge("Verified", "success", "checkmark-circle") : null}
+            {renderBadge(
+              (normalizedStatus || "pending").toUpperCase(),
+              getLineStatusTone(normalizedStatus)
+            )}
+          </View>
+        </View>
+
+        <Text style={styles.lineCode}>Code: {item.item_code}</Text>
+        {item.barcode ? <Text style={styles.lineCode}>Barcode: {item.barcode}</Text> : null}
+
+        <View style={styles.qtyRow}>
+          <View style={styles.qtyItem}>
+            <Text style={styles.qtyLabel}>ERP</Text>
+            <Text style={styles.qtyValue}>{item.erp_qty}</Text>
+          </View>
+          <View style={styles.qtyItem}>
+            <Text style={styles.qtyLabel}>Counted</Text>
+            <Text style={styles.qtyValue}>{item.counted_qty}</Text>
+          </View>
+          <View style={styles.qtyItem}>
+            <Text style={styles.qtyLabel}>Variance</Text>
+            <Text style={[styles.qtyValue, { color: varianceColor }]}>{item.variance}</Text>
           </View>
 
-          <Text style={styles.lineCode}>Code: {item.item_code}</Text>
-          {item.barcode ? <Text style={styles.lineCode}>Barcode: {item.barcode}</Text> : null}
-
-          <View style={styles.qtyRow}>
-            <View style={styles.qtyItem}>
-              <Text style={styles.qtyLabel}>ERP</Text>
-              <Text style={styles.qtyValue}>{item.erp_qty}</Text>
-            </View>
-            <View style={styles.qtyItem}>
-              <Text style={styles.qtyLabel}>Counted</Text>
-              <Text style={styles.qtyValue}>{item.counted_qty}</Text>
-            </View>
-            <View style={styles.qtyItem}>
-              <Text style={styles.qtyLabel}>Variance</Text>
-              <Text style={[styles.qtyValue, { color: varianceColor }]}>{item.variance}</Text>
-            </View>
+        {item.variance_reason ? (
+          <View style={styles.reasonBox}>
+            <Text style={styles.reasonLabel}>Reason: {item.variance_reason}</Text>
+            {item.variance_note ? (
+              <Text style={styles.reasonNote}>{item.variance_note}</Text>
+            ) : null}
           </View>
 
           {item.variance_reason ? (
@@ -683,7 +853,14 @@ export default function SessionDetail() {
             </View>
           ) : null}
 
-          {item.remark ? <Text style={styles.remark}>Remark: {item.remark}</Text> : null}
+        {item.verified && item.verified_by ? (
+          <View style={styles.verifiedInfo}>
+            <Ionicons name="checkmark-circle" size={16} color={colors.success[600]} />
+            <Text style={styles.verifiedInfoText}>
+              Verified by {item.verified_by} on {verifiedAtLabel}
+            </Text>
+          </View>
+        ) : null}
 
           {item.verified && item.verified_by ? (
             <View style={styles.verifiedInfo}>
@@ -764,17 +941,63 @@ export default function SessionDetail() {
                     </>
                   )}
                 </AnimatedPressable>
-              ) : null}
-            </View>
-          ) : null}
-        </ModernCard>
-      </AnimatedPressable>
+              </>
+            ) : null}
+
+            {requiresSupervisorReview && activeTab === "toVerify" && !item.verified ? (
+              <AnimatedPressable
+                style={[
+                  styles.inlineActionButton,
+                  styles.primaryActionFill,
+                  verifying === item.id && styles.buttonDisabled,
+                ]}
+                onPress={() => handleVerifyStock(item.id)}
+                disabled={verifying === item.id}
+                accessibilityRole="button"
+                accessibilityLabel={`Verify stock for ${item.item_name}`}
+              >
+                {verifying === item.id ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle-outline" size={20} color={colors.white} />
+                    <Text style={styles.actionButtonText}>Verify Stock</Text>
+                  </>
+                )}
+              </AnimatedPressable>
+            ) : null}
+
+            {activeTab === "verified" && item.verified ? (
+              <AnimatedPressable
+                style={[
+                  styles.inlineActionButton,
+                  styles.warningActionButton,
+                  verifying === item.id && styles.buttonDisabled,
+                ]}
+                onPress={() => handleUnverifyStock(item.id)}
+                disabled={verifying === item.id}
+                accessibilityRole="button"
+                accessibilityLabel={`Remove verification for ${item.item_name}`}
+              >
+                {verifying === item.id ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <>
+                    <Ionicons name="close-circle-outline" size={20} color={colors.white} />
+                    <Text style={styles.actionButtonText}>Unverify</Text>
+                  </>
+                )}
+              </AnimatedPressable>
+            ) : null}
+          </View>
+        ) : null}
+      </ModernCard>
     );
   };
 
   const renderEmpty = () => (
     <ModernCard
-      variant="elevated"
+      variant="outlined"
       style={styles.emptyContainer}
       contentStyle={styles.emptyCardContent}
     >
@@ -784,10 +1007,11 @@ export default function SessionDetail() {
         color={colors.gray[300]}
       />
       <Text style={styles.emptyText}>
-        {activeFilter === "all" ? "No items found" : `No ${activeFilter} items`}
-      </Text>
-      <Text style={styles.emptySubtext}>
-        {activeFilter === "all" ? "Count lines will appear here." : "Everything is up to date"}
+        {searchQuery
+          ? "No items match this search"
+          : activeTab === "toVerify"
+            ? "No items to verify"
+            : "No verified items"}
       </Text>
     </ModernCard>
   );
@@ -874,7 +1098,7 @@ export default function SessionDetail() {
   };
 
   return (
-    <Screen padding={0} backgroundColor={colors.gray[50]}>
+    <Screen padding={0} backgroundColor={operationalPalette.background}>
       <StatusBar style="dark" />
 
       <Animated.View entering={getFadeInDown(50)} style={styles.header}>
@@ -892,17 +1116,36 @@ export default function SessionDetail() {
 
       <View style={styles.listContainer}>
         <FlashList
-          data={currentLines}
+          data={filteredLines}
           renderItem={renderItem}
           // @ts-ignore
           estimatedItemSize={260}
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={renderEmpty}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            stickyAction ? styles.listContentWithFooter : null,
+          ]}
+          keyboardShouldPersistTaps="handled"
+          keyExtractor={(item, index) =>
+            String(item?.id || item?._id || `${item?.item_code || "item"}-${index}`)
+          }
         />
       </View>
 
-      {renderDetailDrawer()}
+      {stickyAction ? (
+        <View style={styles.stickyActionBar}>
+          <Text style={styles.stickyActionTitle}>{stickyAction.title}</Text>
+          <AnimatedPressable
+            style={[styles.primaryActionButton, styles.footerPrimaryButton]}
+            onPress={stickyAction.onPress}
+            accessibilityRole="button"
+            accessibilityLabel={stickyAction.action}
+          >
+            <Text style={styles.buttonText}>{stickyAction.action}</Text>
+          </AnimatedPressable>
+        </View>
+      ) : null}
 
       <RecountAssignmentModal
         visible={recountModalVisible}
@@ -986,17 +1229,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
-    backgroundColor: colors.gray[50],
+    backgroundColor: operationalPalette.background,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    borderBottomColor: operationalPalette.border,
   },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.white,
+    backgroundColor: operationalPalette.surface,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: operationalPalette.border,
     alignItems: "center",
     justifyContent: "center",
     ...shadows.sm,
@@ -1010,7 +1253,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: operationalPalette.ink,
   },
   loadingContainer: {
     flex: 1,
@@ -1040,8 +1283,13 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing["2xl"],
   },
+  listContentWithFooter: {
+    paddingBottom: 140,
+  },
   sessionInfoCard: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+    backgroundColor: operationalPalette.surface,
+    borderColor: operationalPalette.border,
   },
   sessionInfoHeader: {
     flexDirection: "row",
@@ -1057,18 +1305,49 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.gray[500],
+    color: operationalPalette.primaryStrong,
     textTransform: "uppercase",
     letterSpacing: 0.6,
   },
   sessionTitle: {
-    fontSize: typography.fontSize.xl,
+    fontSize: typography.fontSize["2xl"],
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: operationalPalette.ink,
   },
   sessionSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[600],
+    color: operationalPalette.muted,
+  },
+  progressSummaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.xs,
+  },
+  progressSummaryLabel: {
+    fontSize: typography.fontSize.sm,
+    color: operationalPalette.muted,
+  },
+  progressSummaryValue: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: operationalPalette.primaryStrong,
+  },
+  progressSummaryMeta: {
+    fontSize: typography.fontSize.sm,
+    color: operationalPalette.muted,
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: borderRadius.full,
+    backgroundColor: operationalPalette.surfaceMuted,
+    overflow: "hidden",
+    marginBottom: spacing.md,
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: borderRadius.full,
+    backgroundColor: operationalPalette.primary,
   },
   metricRow: {
     flexDirection: "row",
@@ -1077,61 +1356,69 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     flex: 1,
-    minWidth: 96,
-    backgroundColor: colors.gray[50],
+    backgroundColor: operationalPalette.surfaceMuted,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.gray[200],
-    padding: spacing.sm,
+    borderColor: operationalPalette.border,
+    padding: spacing.md,
   },
   metricLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    color: operationalPalette.muted,
     marginBottom: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   metricValue: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: operationalPalette.ink,
   },
   metricValueDanger: {
     color: colors.error[600],
   },
-  progressTrackLarge: {
-    height: 10,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.gray[200],
-    overflow: "hidden",
-    marginBottom: spacing.md,
+  metricValueWarning: {
+    color: colors.warning[700],
   },
-  progressFillLarge: {
-    height: "100%",
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.success[600],
-  },
-  progressMetaRow: {
+  signalRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: spacing.md,
-    marginBottom: spacing.xs,
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    flexWrap: "wrap",
   },
-  progressMetaLabel: {
-    flex: 1,
+  syncPill: {
+    minHeight: 34,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.full,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: operationalPalette.primaryTint,
+  },
+  syncPillText: {
     fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.gray[700],
+    fontWeight: typography.fontWeight.semibold,
+    color: operationalPalette.primaryStrong,
   },
-  progressMetaValue: {
+  syncPillTextWarning: {
+    color: colors.warning[700],
+  },
+  variancePill: {
+    minHeight: 34,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.gray[100],
+    justifyContent: "center",
+  },
+  variancePillText: {
     fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.success[600],
-  },
-  actionButtonsInline: {
-    marginBottom: spacing.md,
+    fontWeight: typography.fontWeight.semibold,
+    color: operationalPalette.ink,
   },
   primaryActionButton: {
-    minHeight: 48,
+    minHeight: 56,
     borderRadius: borderRadius.lg,
     alignItems: "center",
     justifyContent: "center",
@@ -1140,7 +1427,7 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   primaryActionFill: {
-    backgroundColor: colors.primary[600],
+    backgroundColor: operationalPalette.primary,
   },
   successActionButton: {
     backgroundColor: colors.success[600],
@@ -1191,12 +1478,12 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: "row",
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.xl,
+    backgroundColor: operationalPalette.surface,
+    borderRadius: borderRadius.lg,
     padding: 4,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: operationalPalette.border,
   },
   tab: {
     flex: 1,
@@ -1209,15 +1496,15 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
   },
   tabActive: {
-    backgroundColor: colors.primary[600],
+    backgroundColor: operationalPalette.primaryTint,
   },
   tabText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[600],
+    color: operationalPalette.muted,
   },
   tabTextActive: {
-    color: colors.white,
+    color: operationalPalette.primaryStrong,
     fontWeight: typography.fontWeight.bold,
   },
   filterChips: {
@@ -1265,6 +1552,8 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     marginTop: spacing.xl,
+    backgroundColor: operationalPalette.surface,
+    borderColor: operationalPalette.border,
   },
   emptyCardContent: {
     paddingVertical: spacing["2xl"],
@@ -1297,7 +1586,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: operationalPalette.ink,
   },
   badgeContainer: {
     flexDirection: "row",
@@ -1307,7 +1596,7 @@ const styles = StyleSheet.create({
   },
   lineCode: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[600],
+    color: operationalPalette.muted,
     marginBottom: spacing.md,
   },
   qtyRow: {
@@ -1316,9 +1605,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     padding: spacing.sm,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.gray[50],
+    backgroundColor: operationalPalette.surface,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: operationalPalette.border,
   },
   qtyItem: {
     flex: 1,
@@ -1326,13 +1615,15 @@ const styles = StyleSheet.create({
   },
   qtyLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray[500],
+    color: operationalPalette.muted,
     marginBottom: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
   },
   qtyValue: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: operationalPalette.ink,
   },
   reasonBox: {
     backgroundColor: colors.warning[50],
@@ -1354,7 +1645,7 @@ const styles = StyleSheet.create({
   },
   remark: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[700],
+    color: operationalPalette.muted,
     fontStyle: "italic",
     marginBottom: spacing.sm,
   },
@@ -1381,7 +1672,7 @@ const styles = StyleSheet.create({
   inlineActionButton: {
     flex: 1,
     minWidth: 120,
-    minHeight: 44,
+    minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1399,99 +1690,36 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.bold,
   },
-  drawerOverlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(15, 23, 42, 0.35)",
+  searchFieldContainer: {
+    marginBottom: spacing.lg,
   },
-  drawerScrim: {
-    ...StyleSheet.absoluteFillObject,
+  searchField: {
+    backgroundColor: operationalPalette.surface,
+    borderColor: operationalPalette.border,
+    minHeight: 52,
   },
-  detailDrawer: {
-    maxHeight: "82%",
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    paddingTop: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-  },
-  drawerHandle: {
-    alignSelf: "center",
-    width: 44,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: colors.gray[300],
-    marginBottom: spacing.sm,
-  },
-  drawerHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
-  },
-  drawerTitleBlock: {
-    flex: 1,
-  },
-  drawerTitle: {
-    color: colors.gray[900],
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-  },
-  drawerSubtitle: {
-    marginTop: 3,
-    color: colors.gray[600],
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-  },
-  drawerCloseButton: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.full,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    backgroundColor: colors.gray[50],
-  },
-  drawerBody: {
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  drawerQtyGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  detailField: {
-    flex: 1,
-    minWidth: 120,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    backgroundColor: colors.gray[50],
-  },
-  detailFieldLabel: {
-    color: colors.gray[500],
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.bold,
-    textTransform: "uppercase",
-  },
-  detailFieldValue: {
-    marginTop: 5,
-    color: colors.gray[900],
+  searchInput: {
+    color: operationalPalette.ink,
     fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
   },
-  detailFieldSuccess: {
-    color: colors.success[600],
+  stickyActionBar: {
+    position: "absolute",
+    left: spacing.lg,
+    right: spacing.lg,
+    bottom: Platform.OS === "ios" ? spacing.lg : spacing.md,
+    backgroundColor: operationalPalette.surface,
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    borderColor: operationalPalette.border,
+    padding: spacing.md,
+    gap: spacing.sm,
+    ...shadows.md,
   },
-  detailFieldDanger: {
-    color: colors.error[600],
+  stickyActionTitle: {
+    fontSize: typography.fontSize.sm,
+    color: operationalPalette.muted,
+  },
+  footerPrimaryButton: {
+    backgroundColor: operationalPalette.primary,
   },
 });

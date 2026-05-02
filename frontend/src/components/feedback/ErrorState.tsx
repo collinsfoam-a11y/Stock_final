@@ -19,7 +19,7 @@ import {
   modernTypography,
   modernSpacing,
   modernBorderRadius,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 
 export type ErrorType = "network" | "validation" | "server" | "general";
 

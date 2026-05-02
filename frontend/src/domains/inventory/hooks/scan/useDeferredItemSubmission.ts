@@ -40,6 +40,9 @@ interface UseDeferredItemSubmissionParams {
   hasExpiryDate: boolean;
   itemExpiryDate: string;
   itemExpiryDateFormat: DateFormatType;
+  recountTargetId?: string | null;
+  blindRecountRequired?: boolean;
+  recountBlockedReason?: string | null;
   onSuccess: () => void;
   countdownSeconds?: number;
 }
@@ -121,6 +124,7 @@ type SubmissionPayloadContext = {
   itemExpiryDateFormat: DateFormatType;
   itemPhotos: string[];
   damagePhoto: string | null;
+  recountTargetId?: string | null;
 };
 
 const resolveItemCode = (item: Item, barcode?: string) => {
@@ -193,6 +197,7 @@ const buildCountLinePayload = (context: SubmissionPayloadContext): CreateCountLi
 
   return {
     session_id: sessionId,
+    recount_of_id: context.recountTargetId || undefined,
     item_code: resolveItemCode(item, barcode),
     item_name: resolveItemName(item, barcode),
     counted_qty: parseFloat(quantity),
@@ -262,6 +267,9 @@ export const useDeferredItemSubmission = ({
   hasExpiryDate,
   itemExpiryDate,
   itemExpiryDateFormat,
+  recountTargetId,
+  blindRecountRequired,
+  recountBlockedReason,
   onSuccess,
   countdownSeconds = 5,
 }: UseDeferredItemSubmissionParams) => {
@@ -271,6 +279,19 @@ export const useDeferredItemSubmission = ({
 
   const validateBeforeSubmit = useCallback(() => {
     if (!item || !sessionId) return false;
+
+    if (recountBlockedReason) {
+      Alert.alert("Recount Locked", recountBlockedReason);
+      return false;
+    }
+
+    if (blindRecountRequired && !recountTargetId) {
+      Alert.alert(
+        "Blind Recount Unavailable",
+        "This item requires a blind recount, but the recount target could not be resolved. Refresh the item and try again."
+      );
+      return false;
+    }
 
     const qty = parseFloat(quantity);
     if (Number.isNaN(qty) || qty <= 0) {
@@ -306,10 +327,13 @@ export const useDeferredItemSubmission = ({
   }, [
     damagePhoto,
     damageQty,
+    blindRecountRequired,
     isDamageEnabled,
     isSerializedItem,
     item,
     quantity,
+    recountBlockedReason,
+    recountTargetId,
     serialEntries,
     serialValidationErrors,
     sessionId,
@@ -349,6 +373,7 @@ export const useDeferredItemSubmission = ({
         itemExpiryDateFormat,
         itemPhotos,
         damagePhoto,
+        recountTargetId,
       });
       const result = await createCountLine(payload);
       await RecentItemsService.addRecent(itemCode, {
@@ -387,6 +412,7 @@ export const useDeferredItemSubmission = ({
     mrp,
     onSuccess,
     quantity,
+    recountTargetId,
     remark,
     serialEntries,
     serialNumbers,

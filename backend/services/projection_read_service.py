@@ -1,815 +1,912 @@
-"""Projection-authoritative read adapter for dashboard and report cutover."""
-
 from __future__ import annotations
 
-from datetime import date, datetime, time, timezone
+import logging
+import os
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import HTTPException
+from backend.services.observability import metrics
 
-from backend.services.projection_readiness_gate import (
-    ProjectionGateCache,
-    get_projection_gate_cache,
-)
-from backend.services.query_utils import (
-    date_match,
-    escaped_regex_filter,
-    normalize_datetime,
-    normalize_sort_key,
-)
+logger = logging.getLogger(__name__)
 
-_VERIFIED_QTY_FIELD = "verified" + "_qty"
-_PROJECTION_SCAN_LIMIT = 10000
+FLAG_PROJECTION_DASHBOARD_READS = "V3_PROJECTION_DASHBOARD_READS"
+FLAG_PROJECTION_REPORT_READS = "V3_PROJECTION_REPORT_READS"
+PROJECTION_GAP_COUNTER = "projection_gap_count"
+PROJECTION_DRIFT_COUNTER = "projection_drift_count"
+PROJECTION_HIT_COUNTER = "projection_hit_count"
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _as_bool(value: Any, *, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "true", "yes", "y", "on", "enabled"}:
+        return True
+    if normalized in {"0", "false", "no", "n", "off", "disabled"}:
+        return False
+    return default
+
+
+def _as_float(value: Any, default: float = 0.0) -> float:
+    try:
+        if value in (None, ""):
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _normalize_string(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def _coerce_datetime(value: Any) -> Optional[datetime]:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str) and value.strip():
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
+        except ValueError:
+            return None
+    return None
+
+
+def _sort_datetime_key(value: Any) -> datetime:
+    return _coerce_datetime(value) or datetime.min
+
+
+def _line_verified(document: dict[str, Any]) -> bool:
+    if document.get("verified") is True:
+        return True
+    status = str(document.get("status") or "").strip().lower()
+    approval_status = str(document.get("approval_status") or "").strip().upper()
+    return status in {"locked", "approved"} or approval_status == "APPROVED"
+
+
+def _line_active(document: dict[str, Any]) -> bool:
+    if document.get("is_removed") is True:
+        return False
+    status = str(document.get("status") or "").strip().lower()
+    return status not in {"superseded", "removed", "deleted"}
+
+
+def _variance_pending(document: dict[str, Any]) -> bool:
+    approval_status = str(document.get("approval_status") or "").strip().upper()
+    status = str(document.get("status") or "").strip().upper()
+    if approval_status in {"APPROVED", "RESOLVED"}:
+        return False
+    return status in {
+        "PENDING",
+        "PENDING_APPROVAL",
+        "NEEDS_REVIEW",
+        "RECOUNT_REQUESTED",
+        "REJECTED",
+        "RECOUNT",
+    } or approval_status in {"", "PENDING", "NEEDS_REVIEW", "RECOUNT_REQUESTED", "REJECTED"}
+
+
+@dataclass(frozen=True)
+class ProjectionReadFlags:
+    dashboard_reads: bool
+    report_reads: bool
+
+
+class ProjectionReadError(RuntimeError):
+    def __init__(self, *, endpoint: str, reason: str, context: Optional[dict[str, Any]] = None):
+        self.endpoint = endpoint
+        self.reason = reason
+        self.context = context or {}
+        super().__init__(f"Projection read failed for {endpoint}: {reason}")
 
 
 class ProjectionReadService:
-    """Read dashboard/report shapes from V3 projection collections only."""
-
-    SESSION_COLLECTION = "session_dashboard_projection"
-    VERIFIED_COLLECTION = "verified_items_projection"
-    VARIANCE_COLLECTION = "variance_summary_projection"
-    FINANCIAL_COLLECTION = "financial_projection"
-    BATCH_COLLECTION = "batch_records"
-
-    def __init__(
-        self,
-        db: Any,
-        *,
-        enforce_readiness: bool = False,
-        gate_cache: Optional[ProjectionGateCache] = None,
-    ) -> None:
+    def __init__(self, db: Any) -> None:
         self.db = db
-        self.enforce_readiness = enforce_readiness
-        self.gate_cache = gate_cache or (
-            get_projection_gate_cache(db) if enforce_readiness else None
-        )
 
-    async def _ensure_collection(self, collection_name: str) -> Any:
-        if self.enforce_readiness and self.gate_cache is not None:
-            await self.gate_cache.require_ready()
-        return self.db[collection_name]
+    async def _feature_flag_enabled(self, flag_name: str) -> bool:
+        env_value = os.getenv(flag_name)
+        if env_value is not None:
+            return _as_bool(env_value, default=False)
 
-    @staticmethod
-    async def _find_page(
-        collection: Any,
-        query: dict[str, Any],
-        *,
-        sort_field: str,
-        sort_direction: int,
-        skip: int,
-        limit: int,
-    ) -> list[dict[str, Any]]:
-        cursor = (
-            collection.find(query)
-            .sort(sort_field, sort_direction)
-            .skip(skip)
-            .limit(limit)
-        )
-        return await cursor.to_list(length=limit)
-
-    @staticmethod
-    async def _find_limited(
-        collection: Any,
-        query: dict[str, Any],
-        *,
-        sort_field: str = "updated_at",
-        sort_direction: int = -1,
-        limit: int = _PROJECTION_SCAN_LIMIT,
-    ) -> list[dict[str, Any]]:
-        cursor = collection.find(query).sort(sort_field, sort_direction).limit(limit)
-        return await cursor.to_list(length=limit)
-
-    @staticmethod
-    def _first(document: dict[str, Any], *field_names: str) -> Any:
-        for field_name in field_names:
-            value = document.get(field_name)
-            if value not in (None, ""):
-                return value
-        return None
-
-    @staticmethod
-    def _to_float(value: Any, default: float = 0.0) -> float:
-        if value in (None, ""):
-            return default
         try:
-            return float(value)
-        except (TypeError, ValueError):
-            return default
+            collection = getattr(self.db, "feature_flags", None) or self.db["feature_flags"]
+            doc = await collection.find_one({"key": flag_name})
+        except Exception:
+            return False
 
-    @staticmethod
-    def _to_int(value: Any, default: int = 0) -> int:
-        if value in (None, ""):
-            return default
+        if not isinstance(doc, dict):
+            return False
+        if "enabled" in doc:
+            return _as_bool(doc.get("enabled"), default=False)
+        return _as_bool(doc.get("state"), default=False)
+
+    async def get_flags(self) -> ProjectionReadFlags:
+        return ProjectionReadFlags(
+            dashboard_reads=await self._feature_flag_enabled(FLAG_PROJECTION_DASHBOARD_READS),
+            report_reads=await self._feature_flag_enabled(FLAG_PROJECTION_REPORT_READS),
+        )
+
+    async def dashboard_reads_enabled(self) -> bool:
+        return (await self.get_flags()).dashboard_reads
+
+    async def report_reads_enabled(self) -> bool:
+        return (await self.get_flags()).report_reads
+
+    async def _record_hit(self, endpoint: str) -> None:
         try:
-            return int(float(value))
-        except (TypeError, ValueError):
-            return default
+            await metrics.increment(PROJECTION_HIT_COUNTER, labels={"endpoint": endpoint})
+        except Exception:
+            logger.debug("Failed to record projection hit", exc_info=True)
 
-    _normalize_datetime = staticmethod(normalize_datetime)
-    _normalize_sort_key = staticmethod(normalize_sort_key)
-    _date_match = staticmethod(date_match)
+    async def _record_gap(
+        self,
+        *,
+        endpoint: str,
+        reason: str,
+        context: Optional[dict[str, Any]] = None,
+    ) -> None:
+        try:
+            await metrics.increment(
+                PROJECTION_GAP_COUNTER,
+                labels={"endpoint": endpoint, "reason": reason},
+            )
+        except Exception:
+            logger.debug("Failed to record projection gap", exc_info=True)
+        logger.error("PROJECTION_GAP endpoint=%s reason=%s context=%s", endpoint, reason, context)
 
-    @classmethod
-    def _projection_item_is_verified(cls, row: dict[str, Any]) -> bool:
-        if bool(row.get("verified")):
-            return True
-        approval = str(row.get("approval_status") or "").upper()
-        status = str(row.get("status") or "").lower()
-        return approval == "APPROVED" or status in {"approved", "locked", "verified"}
+    async def record_drift(self, *, scope: str, detail: str) -> None:
+        try:
+            await metrics.increment(PROJECTION_DRIFT_COUNTER, labels={"scope": scope})
+        except Exception:
+            logger.debug("Failed to record projection drift", exc_info=True)
+        logger.error("PROJECTION_DRIFT scope=%s detail=%s", scope, detail)
 
-    @classmethod
-    def _financial_value(cls, row: dict[str, Any]) -> float:
-        direct = cls._first(
-            row, "financial_impact", "net_financial_impact", "variance_value"
-        )
-        if direct not in (None, ""):
-            return cls._to_float(direct)
-        counted = cls._first(row, "total_counted_value", "counted_value")
-        stock = cls._first(row, "total_stock_value", "stock_value")
-        if counted not in (None, "") or stock not in (None, ""):
-            return cls._to_float(counted) - cls._to_float(stock)
-        return cls._to_float(row.get("overage_value")) - cls._to_float(
-            row.get("shortage_value")
-        )
+    async def _raise_gap(
+        self,
+        *,
+        endpoint: str,
+        reason: str,
+        context: Optional[dict[str, Any]] = None,
+    ) -> None:
+        await self._record_gap(endpoint=endpoint, reason=reason, context=context)
+        raise ProjectionReadError(endpoint=endpoint, reason=reason, context=context)
 
-    @classmethod
-    def _map_verified_item(cls, row: dict[str, Any]) -> dict[str, Any]:
-        stock_qty = cls._to_float(
-            cls._first(row, "stock_qty", "erp_qty", "expected_qty")
+    async def _list_documents(self, collection_name: str, query: Optional[dict[str, Any]] = None):
+        cursor = self.db[collection_name].find(query or {})
+        return [document async for document in cursor]
+
+    async def _get_session_projection_docs(
+        self,
+        *,
+        status: Optional[str] = None,
+        user_id: Optional[str] = None,
+        current_user: Optional[dict[str, Any]] = None,
+    ) -> list[dict[str, Any]]:
+        rows = await self._list_documents("session_dashboard_projection")
+        has_viewer_context = isinstance(current_user, dict)
+        viewer_role = str((current_user or {}).get("role") or "").strip().lower()
+        viewer_username = _normalize_string((current_user or {}).get("username"))
+
+        filtered: list[dict[str, Any]] = []
+        for row in rows:
+            row_status = str(row.get("status") or "").strip().upper()
+            row_user = _normalize_string(row.get("staff_user"))
+            if status and row_status != str(status).strip().upper():
+                continue
+            if user_id and row_user != _normalize_string(user_id):
+                continue
+            if (
+                not user_id
+                and has_viewer_context
+                and viewer_role not in {"supervisor", "admin"}
+                and row_user != viewer_username
+            ):
+                continue
+            filtered.append(row)
+        filtered.sort(
+            key=lambda row: (
+                _sort_datetime_key(row.get("started_at")),
+                str(row.get("session_id") or ""),
+            ),
+            reverse=True,
         )
-        counted_qty = cls._to_float(
-            cls._first(row, "counted_qty", _VERIFIED_QTY_FIELD, "qty")
-        )
-        variance = cls._to_float(cls._first(row, "variance", "total_variance"))
-        variance_percentage = (
-            0.0 if stock_qty == 0 else (variance / abs(stock_qty)) * 100
-        )
-        row_id = cls._first(row, "id", "count_line_id", "client_record_id", "_id")
+        return filtered
+
+    def _session_projection_to_response(self, row: dict[str, Any]) -> dict[str, Any]:
         return {
-            "id": str(row_id) if row_id is not None else "",
-            "item_code": cls._first(row, "item_code", "code"),
-            "item_name": cls._first(row, "item_name", "name"),
-            "barcode": row.get("barcode"),
-            "category": cls._first(
-                row, "category_correction", "category_erp", "category"
-            ),
-            "warehouse": row.get("warehouse"),
-            "floor": cls._first(row, "floor", "floor_no"),
-            "rack_id": cls._first(row, "rack_id", "rack_no", "rack"),
-            "stock_qty": stock_qty,
-            "counted_qty": counted_qty,
-            "variance": variance,
-            "variance_percentage": variance_percentage,
-            "mrp": cls._to_float(cls._first(row, "mrp", "mrp_erp", "mrp_counted")),
-            "verified": cls._projection_item_is_verified(row),
-            "verified_by": cls._first(row, "verified_by", "approved_by"),
-            "verified_at": cls._first(
-                row, "verified_at", "approved_at", "finalized_at"
-            ),
-            "counted_by": cls._first(row, "counted_by", "username", "staff_user"),
-            "counted_at": cls._first(row, "counted_at", "created_at", "updated_at"),
-            "session_id": row.get("session_id"),
-            "notes": cls._first(row, "notes", "remark", "variance_note"),
-            "status": row.get("status"),
-            "approval_status": row.get("approval_status"),
-            "financial_impact": cls._financial_value(row),
-        }
-
-    @staticmethod
-    def _regex(value: str) -> dict[str, Any]:
-        return escaped_regex_filter(value)
-
-    @classmethod
-    def _map_session(cls, row: dict[str, Any]) -> dict[str, Any]:
-        started_at = cls._first(row, "started_at", "created_at")
-        completed_at = cls._first(row, "finalized_at", "completed_at", "closed_at")
-        started_dt = cls._normalize_datetime(started_at)
-        completed_dt = cls._normalize_datetime(completed_at)
-        duration_minutes = (
-            (completed_dt - started_dt).total_seconds() / 60
-            if started_dt and completed_dt
-            else None
-        )
-        return {
-            "session_id": cls._first(row, "session_id", "id"),
-            "rack_id": cls._first(row, "rack_id", "rack_no", "rack"),
-            "floor": cls._first(row, "floor", "floor_no", "location_name"),
-            "username": cls._first(row, "username", "staff_user", "user_id"),
-            "staff_name": cls._first(row, "staff_name", "username", "staff_user"),
-            "warehouse": row.get("warehouse"),
-            "status": row.get("status"),
-            "finalization_status": row.get("finalization_status"),
-            "started_at": started_at,
-            "completed_at": completed_at,
-            "total_items": cls._to_int(cls._first(row, "total_items", "item_count")),
-            "verified_items": cls._to_int(
-                cls._first(row, "verified_items", "verified_count")
-            ),
-            "total_variance": cls._to_float(
-                cls._first(row, "total_variance", "variance_total")
-            ),
-            "duration_minutes": duration_minutes,
-            "finalized_by": row.get("finalized_by"),
+            "id": str(row.get("session_id") or row.get("id") or ""),
+            "warehouse": row.get("warehouse") or "",
+            "location_id": row.get("location_id"),
+            "location_key": row.get("location_key"),
+            "location_type": row.get("location_type"),
+            "location_name": row.get("location_name"),
+            "rack_no": row.get("rack_no"),
+            "staff_user": row.get("staff_user") or "",
+            "staff_name": row.get("staff_name") or "",
+            "status": row.get("status") or "OPEN",
+            "type": row.get("type") or "STANDARD",
+            "started_at": row.get("started_at") or _utc_now(),
+            "last_heartbeat": row.get("last_heartbeat"),
+            "closed_at": row.get("closed_at"),
+            "completed_at": row.get("completed_at"),
+            "reconciled_at": row.get("reconciled_at"),
             "finalized_at": row.get("finalized_at"),
+            "finalized_by": row.get("finalized_by"),
+            "finalization_status": row.get("finalization_status"),
+            "total_items": int(row.get("total_items") or 0),
+            "total_variance": _as_float(row.get("total_variance")),
+            "verified_items": int(row.get("verified_items") or 0),
+            "pending_items": int(row.get("pending_items") or 0),
+            "damage_items": int(row.get("damage_items") or 0),
+            "notes": row.get("notes"),
+            "barcode": row.get("barcode"),
         }
 
-    def _build_verified_query(self, filters: Any) -> dict[str, Any]:
-        query: dict[str, Any] = {"is_removed": {"$ne": True}}
-        if not filters:
-            return query
-        if getattr(filters, "verified", None) is not None:
-            query["verified"] = filters.verified
-        if getattr(filters, "warehouse", None):
-            query["warehouse"] = filters.warehouse
-        if getattr(filters, "floor", None):
-            query["$or"] = [{"floor": filters.floor}, {"floor_no": filters.floor}]
-        if getattr(filters, "rack_id", None):
-            query.setdefault("$and", []).append(
-                {"$or": [{"rack_id": filters.rack_id}, {"rack_no": filters.rack_id}]}
+    async def get_sessions_page(
+        self,
+        *,
+        page: int,
+        page_size: int,
+        status: Optional[str],
+        user_id: Optional[str],
+        current_user: dict[str, Any],
+    ) -> dict[str, Any]:
+        rows = await self._get_session_projection_docs(
+            status=status,
+            user_id=user_id,
+            current_user=current_user,
+        )
+        await self._record_hit("sessions/list")
+        total = len(rows)
+        skip = max((page - 1) * page_size, 0)
+        paged = rows[skip : skip + page_size]
+        return {
+            "items": [self._session_projection_to_response(row) for row in paged],
+            "total": total,
+        }
+
+    async def get_session_stats(self, session_id: str) -> Optional[dict[str, Any]]:
+        row = await self.db.session_dashboard_projection.find_one({"session_id": session_id})
+        if not isinstance(row, dict):
+            return None
+        await self._record_hit("sessions/stats")
+        started_at = _coerce_datetime(row.get("started_at"))
+        last_point = (
+            _coerce_datetime(row.get("finalized_at"))
+            or _coerce_datetime(row.get("completed_at"))
+            or _coerce_datetime(row.get("closed_at"))
+            or _coerce_datetime(row.get("last_heartbeat"))
+        )
+        duration_seconds = 0.0
+        if started_at and last_point:
+            duration_seconds = max((last_point - started_at).total_seconds(), 0.0)
+        verified_items = int(row.get("verified_items") or 0)
+        pending_items = int(row.get("pending_items") or 0)
+        scanned_items = int(row.get("scanned_items") or row.get("total_items") or 0)
+        return {
+            "id": session_id,
+            "total_items": int(row.get("total_items") or scanned_items),
+            "verified_items": verified_items,
+            "damage_items": int(row.get("damage_items") or 0),
+            "pending_items": pending_items,
+            "duration_seconds": duration_seconds,
+            "items_per_minute": (scanned_items / (duration_seconds / 60.0)) if duration_seconds > 0 else 0,
+            "scanned_items": scanned_items,
+            "remaining_items": max(int(row.get("total_items") or 0) - scanned_items, 0),
+            "completion_percent": _as_float(row.get("completion_percent")),
+            "estimated_time_remaining": 0.0,
+        }
+
+    async def get_sessions_analytics(self) -> dict[str, Any]:
+        rows = await self._get_session_projection_docs()
+        if rows:
+            await self._record_hit("sessions/analytics")
+
+        total_sessions = len(rows)
+        total_items = sum(int(row.get("total_items") or 0) for row in rows)
+        total_variance = sum(_as_float(row.get("total_variance")) for row in rows)
+        avg_variance = (total_variance / total_sessions) if total_sessions else 0.0
+        positive_variance = 0.0
+        negative_variance = 0.0
+        high_risk_sessions = 0
+
+        sessions_by_date: dict[str, int] = {}
+        sessions_by_status: dict[str, int] = {}
+        variance_by_warehouse: dict[str, float] = {}
+        items_by_staff: dict[str, int] = {}
+
+        for row in rows:
+            started_at = _coerce_datetime(row.get("started_at"))
+            if started_at:
+                date_key = started_at.date().isoformat()
+                sessions_by_date[date_key] = sessions_by_date.get(date_key, 0) + 1
+            status_key = str(row.get("status") or "").strip().upper() or "UNKNOWN"
+            sessions_by_status[status_key] = sessions_by_status.get(status_key, 0) + 1
+            session_variance = _as_float(row.get("total_variance"))
+            positive_variance += max(session_variance, 0.0)
+            negative_variance += min(session_variance, 0.0)
+            if abs(session_variance) > 1000:
+                high_risk_sessions += 1
+            warehouse = _normalize_string(row.get("warehouse")) or "Unknown"
+            variance_by_warehouse[warehouse] = variance_by_warehouse.get(warehouse, 0.0) + abs(
+                session_variance
             )
-        if getattr(filters, "category", None):
-            query["category"] = filters.category
-        if getattr(filters, "session_id", None):
-            query["session_id"] = filters.session_id
-        if getattr(filters, "user_id", None):
-            query["counted_by"] = filters.user_id
-        if getattr(filters, "item_code", None):
-            query["item_code"] = self._regex(filters.item_code)
-        if getattr(filters, "search_query", None):
-            query.setdefault("$and", []).append(
-                {
-                    "$or": [
-                        {"item_code": self._regex(filters.search_query)},
-                        {"item_name": self._regex(filters.search_query)},
-                        {"barcode": self._regex(filters.search_query)},
-                    ]
-                }
+            staff_name = _normalize_string(row.get("staff_name")) or "Unknown"
+            items_by_staff[staff_name] = items_by_staff.get(staff_name, 0) + int(
+                row.get("total_items") or 0
             )
-        return query
+
+        return {
+            "overall": {
+                "_id": None,
+                "total_sessions": total_sessions,
+                "total_items": total_items,
+                "total_variance": total_variance,
+                "avg_variance": avg_variance,
+                "positive_variance": positive_variance,
+                "negative_variance": negative_variance,
+                "high_risk_sessions": high_risk_sessions,
+                "sessions_by_status": [
+                    {"status": status, "count": count}
+                    for status, count in sorted(sessions_by_status.items())
+                ],
+            },
+            "sessions_by_date": dict(sorted(sessions_by_date.items())),
+            "variance_by_warehouse": dict(sorted(variance_by_warehouse.items())),
+            "items_by_staff": dict(sorted(items_by_staff.items())),
+            "total_sessions": total_sessions,
+        }
+
+    async def _filtered_verified_items(self, filters: Any) -> list[dict[str, Any]]:
+        rows = await self._list_documents("verified_items_projection")
+        filtered: list[dict[str, Any]] = []
+        for row in rows:
+            if not _line_active(row):
+                continue
+            if filters:
+                warehouse = getattr(filters, "warehouse", None)
+                floor = getattr(filters, "floor", None)
+                rack_id = getattr(filters, "rack_id", None)
+                category = getattr(filters, "category", None)
+                verified = getattr(filters, "verified", None)
+                session_id = getattr(filters, "session_id", None)
+                user_id = getattr(filters, "user_id", None)
+                search_query = _normalize_string(getattr(filters, "search_query", None))
+                variance_min = getattr(filters, "variance_min", None)
+                variance_max = getattr(filters, "variance_max", None)
+                date_from = getattr(filters, "date_from", None)
+                date_to = getattr(filters, "date_to", None)
+
+                if warehouse and row.get("warehouse") != warehouse:
+                    continue
+                if floor and row.get("floor") != floor:
+                    continue
+                if rack_id and row.get("rack_id") != rack_id:
+                    continue
+                if category and row.get("category") != category:
+                    continue
+                if verified is not None and bool(row.get("verified")) != bool(verified):
+                    continue
+                if session_id and row.get("session_id") != session_id:
+                    continue
+                if user_id and row.get("counted_by") != user_id:
+                    continue
+                variance_value = _as_float(row.get("variance"))
+                if variance_min is not None and variance_value < _as_float(variance_min):
+                    continue
+                if variance_max is not None and variance_value > _as_float(variance_max):
+                    continue
+                counted_at = _coerce_datetime(row.get("counted_at"))
+                if date_from and counted_at and counted_at.date() < date_from:
+                    continue
+                if date_to and counted_at and counted_at.date() > date_to:
+                    continue
+                if search_query:
+                    haystack = " ".join(
+                        [
+                            str(row.get("item_code") or ""),
+                            str(row.get("item_name") or ""),
+                            str(row.get("barcode") or ""),
+                            str(row.get("counted_by") or ""),
+                        ]
+                    ).lower()
+                    if search_query.lower() not in haystack:
+                        continue
+
+            filtered.append(row)
+        return filtered
+
+    @staticmethod
+    def _sort_verified_items(
+        rows: list[dict[str, Any]],
+        *,
+        sort_by: Optional[str],
+        sort_order: Any,
+    ) -> list[dict[str, Any]]:
+        key_name = _normalize_string(sort_by) or "counted_at"
+        normalized_sort_order = getattr(sort_order, "value", sort_order)
+        reverse = str(normalized_sort_order or "desc").lower() != "asc"
+
+        def sort_key(row: dict[str, Any]) -> Any:
+            value = row.get(key_name)
+            if key_name in {"counted_at", "verified_at", "approved_at", "updated_at"}:
+                return _sort_datetime_key(value)
+            if isinstance(value, (int, float)):
+                return value
+            return str(value or "")
+
+        return sorted(rows, key=sort_key, reverse=reverse)
 
     async def generate_verified_items_report(
         self,
         config: Any,
         *,
         columns: list[Any],
-        summary_model: Any,
     ) -> dict[str, Any]:
-        collection = await self._ensure_collection(self.VERIFIED_COLLECTION)
-        start_time = datetime.now(timezone.utc).replace(tzinfo=None)
-        filters = config.filters
-        query = self._build_verified_query(filters)
-        total_records = await collection.count_documents({"is_removed": {"$ne": True}})
-        sort_order = getattr(config.sort_order, "value", config.sort_order)
-        sort_direction = -1 if str(sort_order) == "desc" else 1
-        skip = (config.page - 1) * config.page_size
+        rows = await self._filtered_verified_items(config.filters)
+        rows = self._sort_verified_items(rows, sort_by=config.sort_by, sort_order=config.sort_order)
+        total_records = len(await self._list_documents("verified_items_projection"))
+        filtered_records = len(rows)
+        skip = max((int(config.page) - 1) * int(config.page_size), 0)
+        paged_rows = rows[skip : skip + int(config.page_size)]
 
-        rows = await self._find_limited(
-            collection,
-            query,
-            sort_field="updated_at",
-            sort_direction=sort_direction,
+        total_variance = sum(_as_float(row.get("variance")) for row in rows)
+        positive_variance = sum(max(_as_float(row.get("variance")), 0.0) for row in rows)
+        negative_variance = sum(min(_as_float(row.get("variance")), 0.0) for row in rows)
+        verified_count = sum(1 for row in rows if _line_verified(row))
+        total_value = sum(_as_float(row.get("counted_qty")) * _as_float(row.get("mrp")) for row in rows)
+        variance_value = sum(
+            _as_float(row.get("variance")) * _as_float(row.get("mrp")) for row in rows
         )
-        rows = self._apply_verified_raw_filters(rows, filters)
-        data = [self._map_verified_item(row) for row in rows]
-        filtered_records = len(data)
-        page_data = data[skip : skip + config.page_size]
-        aggregations = (
-            self._verified_aggregations(data) if config.include_aggregations else {}
-        )
-        end_time = datetime.now(timezone.utc).replace(tzinfo=None)
 
-        return {
-            "success": True,
-            "data": page_data,
-            "columns": [col.model_dump() for col in columns],
-            "summary": summary_model(
-                total_records=total_records,
-                filtered_records=filtered_records,
-                aggregations=aggregations,
-                generated_at=end_time,
-                generation_time_ms=(end_time - start_time).total_seconds() * 1000,
-                filters_applied=(
-                    filters.model_dump(exclude_none=True) if filters else {}
-                ),
-                report_type="verified_items",
-                report_name="Verified Items Report",
-            ).model_dump(),
-            "pagination": {
-                "page": config.page,
-                "page_size": config.page_size,
-                "total_pages": (filtered_records + config.page_size - 1)
-                // config.page_size,
-                "has_next": skip + config.page_size < filtered_records,
-                "has_prev": config.page > 1,
-            },
-        }
-
-    @classmethod
-    def _apply_verified_raw_filters(
-        cls, rows: list[dict[str, Any]], filters: Any
-    ) -> list[dict[str, Any]]:
-        if not filters:
-            return rows
-        result: list[dict[str, Any]] = []
-        for row in rows:
-            if getattr(filters, "date_from", None) or getattr(filters, "date_to", None):
-                if not cls._date_match(
-                    cls._first(row, "counted_at", "created_at", "updated_at"),
-                    filters.date_from,
-                    filters.date_to,
-                ):
-                    continue
-            variance = cls._to_float(cls._first(row, "variance", "total_variance"))
-            if (
-                getattr(filters, "variance_min", None) is not None
-                and variance < filters.variance_min
-            ):
-                continue
-            if (
-                getattr(filters, "variance_max", None) is not None
-                and variance > filters.variance_max
-            ):
-                continue
-            result.append(row)
-        return result
-
-    @classmethod
-    def _apply_verified_python_filters(
-        cls, rows: list[dict[str, Any]], filters: Any
-    ) -> list[dict[str, Any]]:
-        return rows
-
-    @staticmethod
-    def _verified_aggregations(rows: list[dict[str, Any]]) -> dict[str, Any]:
-        return {
-            "total_items": len(rows),
-            "total_variance": sum(row.get("variance", 0) for row in rows),
-            "avg_variance": (
-                sum(row.get("variance", 0) for row in rows) / len(rows) if rows else 0
-            ),
-            "total_value": sum(
-                row.get("counted_qty", 0) * row.get("mrp", 0) for row in rows
-            ),
-            "variance_value": sum(row.get("financial_impact", 0) for row in rows),
-            "verified_count": sum(1 for row in rows if row.get("verified")),
-            "positive_variance": sum(
-                row.get("variance", 0) for row in rows if row.get("variance", 0) > 0
-            ),
-            "negative_variance": sum(
-                row.get("variance", 0) for row in rows if row.get("variance", 0) < 0
-            ),
-        }
-
-    async def get_dashboard_stats(self) -> dict[str, Any]:
-        collection = await self._ensure_collection(self.VERIFIED_COLLECTION)
-        rows = await self._find_limited(collection, {"is_removed": {"$ne": True}})
-        items = [self._map_verified_item(row) for row in rows]
-        today_start = datetime.now(timezone.utc).replace(
-            tzinfo=None, hour=0, minute=0, second=0, microsecond=0
-        )
-        today_count = sum(
-            1
-            for item in items
-            if (self._normalize_datetime(item.get("counted_at")) or datetime.min)
-            >= today_start
-        )
-        verified_count = sum(1 for item in items if item.get("verified"))
-        total_count = len(items)
-        by_warehouse: dict[str, int] = {}
-        by_status: dict[str, int] = {}
-        for item in items:
-            by_warehouse[str(item.get("warehouse") or "Unknown")] = (
-                by_warehouse.get(str(item.get("warehouse") or "Unknown"), 0) + 1
-            )
-            by_status[str(item.get("status") or "Unknown")] = (
-                by_status.get(str(item.get("status") or "Unknown"), 0) + 1
-            )
-
-        total_variance = sum(item.get("variance", 0) for item in items)
-        return {
-            "success": True,
-            "stats": {
-                "total_items": total_count,
-                "verified_items": verified_count,
-                "pending_items": max(total_count - verified_count, 0),
-                "today_activity": today_count,
-                "total_variance": total_variance,
-                "positive_variance": sum(
-                    item.get("variance", 0)
-                    for item in items
-                    if item.get("variance", 0) > 0
-                ),
-                "negative_variance": sum(
-                    item.get("variance", 0)
-                    for item in items
-                    if item.get("variance", 0) < 0
-                ),
-                "avg_variance": total_variance / total_count if total_count else 0,
-                "verification_rate": (
-                    (verified_count / total_count * 100) if total_count else 0
-                ),
-            },
-            "by_warehouse": [
-                {"warehouse": key, "count": value}
-                for key, value in sorted(
-                    by_warehouse.items(), key=lambda item: item[1], reverse=True
-                )
-            ],
-            "by_status": [
-                {"status": key, "count": value} for key, value in by_status.items()
-            ],
-            "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
-        }
-
-    async def generate_variance_analysis_report(
-        self,
-        config: Any,
-        *,
-        columns: list[Any],
-        summary_model: Any,
-    ) -> dict[str, Any]:
-        collection = await self._ensure_collection(self.VARIANCE_COLLECTION)
-        start_time = datetime.now(timezone.utc).replace(tzinfo=None)
-        rows = await self._find_limited(collection, {"is_removed": {"$ne": True}})
-        filters = config.filters
+        await self._record_hit("dashboard/data")
+        now_iso = _utc_now().isoformat()
         data = []
-        for row in rows:
-            mapped = self._map_verified_item(row)
-            if mapped["variance"] == 0:
-                continue
-            if filters:
-                if filters.warehouse and mapped.get("warehouse") != filters.warehouse:
-                    continue
-                if filters.category and mapped.get("category") != filters.category:
-                    continue
-                if filters.date_from or filters.date_to:
-                    if not self._date_match(
-                        mapped.get("counted_at"), filters.date_from, filters.date_to
-                    ):
-                        continue
-            value_impact = mapped.get("financial_impact", 0.0)
-            abs_variance = abs(mapped["variance"])
-            abs_value = abs(value_impact)
-            risk_level = (
-                "Critical"
-                if abs_variance >= 100 or abs_value >= 10000
-                else (
-                    "High"
-                    if abs_variance >= 50 or abs_value >= 5000
-                    else "Medium" if abs_variance >= 10 else "Low"
-                )
-            )
+        for row in paged_rows:
             data.append(
                 {
-                    **mapped,
-                    "value_impact": value_impact,
-                    "risk_level": risk_level,
+                    "id": row.get("count_line_id"),
+                    "item_code": row.get("item_code"),
+                    "item_name": row.get("item_name"),
+                    "barcode": row.get("barcode"),
+                    "category": row.get("category"),
+                    "warehouse": row.get("warehouse"),
+                    "floor": row.get("floor"),
+                    "rack_id": row.get("rack_id"),
+                    "stock_qty": _as_float(row.get("stock_qty")),
+                    "counted_qty": _as_float(row.get("counted_qty")),
+                    "variance": _as_float(row.get("variance")),
+                    "variance_percentage": _as_float(row.get("variance_percentage")),
+                    "mrp": _as_float(row.get("mrp")),
+                    "verified": bool(row.get("verified")),
+                    "verified_by": row.get("verified_by"),
+                    "verified_at": row.get("verified_at"),
+                    "counted_by": row.get("counted_by"),
+                    "counted_at": row.get("counted_at"),
+                    "session_id": row.get("session_id"),
+                    "notes": row.get("notes"),
+                    "status": row.get("status"),
+                    "approval_status": row.get("approval_status"),
                 }
             )
 
-        filtered_records = len(data)
-        skip = (config.page - 1) * config.page_size
-        page_data = data[skip : skip + config.page_size]
-        aggregations = (
-            self._verified_aggregations(data) if config.include_aggregations else {}
-        )
-        end_time = datetime.now(timezone.utc).replace(tzinfo=None)
-
         return {
             "success": True,
-            "data": page_data,
-            "columns": [col.model_dump() for col in columns],
-            "summary": summary_model(
-                total_records=len(rows),
-                filtered_records=filtered_records,
-                aggregations=aggregations,
-                generated_at=end_time,
-                generation_time_ms=(end_time - start_time).total_seconds() * 1000,
-                filters_applied=(
-                    filters.model_dump(exclude_none=True) if filters else {}
+            "data": data,
+            "columns": [col.model_dump() if hasattr(col, "model_dump") else col for col in columns],
+            "summary": {
+                "total_records": total_records,
+                "filtered_records": filtered_records,
+                "aggregations": {
+                    "total_items": filtered_records,
+                    "total_variance": total_variance,
+                    "avg_variance": (total_variance / filtered_records) if filtered_records else 0.0,
+                    "total_value": total_value,
+                    "variance_value": variance_value,
+                    "verified_count": verified_count,
+                    "positive_variance": positive_variance,
+                    "negative_variance": negative_variance,
+                },
+                "generated_at": now_iso,
+                "generation_time_ms": 0.0,
+                "filters_applied": (
+                    config.filters.model_dump(exclude_none=True)
+                    if getattr(config, "filters", None) is not None
+                    else {}
                 ),
-                report_type="variance_analysis",
-                report_name="Variance Analysis Report",
-            ).model_dump(),
+                "report_type": "verified_items",
+                "report_name": "Verified Items Report",
+            },
             "pagination": {
-                "page": config.page,
-                "page_size": config.page_size,
-                "total_pages": (filtered_records + config.page_size - 1)
-                // config.page_size,
-                "has_next": skip + config.page_size < filtered_records,
-                "has_prev": config.page > 1,
+                "page": int(config.page),
+                "page_size": int(config.page_size),
+                "total_pages": (filtered_records + int(config.page_size) - 1) // int(config.page_size)
+                if int(config.page_size) > 0
+                else 1,
+                "has_next": skip + int(config.page_size) < filtered_records,
+                "has_prev": int(config.page) > 1,
             },
         }
 
-    async def generate_session_summary_report(
-        self,
-        config: Any,
-        *,
-        columns: list[Any],
-        summary_model: Any,
-    ) -> dict[str, Any]:
-        collection = await self._ensure_collection(self.SESSION_COLLECTION)
-        start_time = datetime.now(timezone.utc).replace(tzinfo=None)
-        rows = await self._find_limited(collection, {}, sort_field="started_at")
-        filters = config.filters
-        data = []
+    async def get_dashboard_stats(self) -> dict[str, Any]:
+        rows = await self._filtered_verified_items(None)
+        await self._record_hit("dashboard/stats")
+        today_start = _utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
+        by_warehouse: dict[str, int] = {}
+        by_status: dict[str, int] = {}
+        today_activity = 0
+        verified_count = 0
+        total_variance = 0.0
+        positive_variance = 0.0
+        negative_variance = 0.0
+
         for row in rows:
-            mapped = self._map_session(row)
-            if filters:
-                if filters.status and mapped.get("status") != filters.status:
-                    continue
-                if filters.user_id and mapped.get("username") != filters.user_id:
-                    continue
-                if filters.floor and mapped.get("floor") != filters.floor:
-                    continue
-                if filters.date_from or filters.date_to:
-                    if not self._date_match(
-                        mapped.get("started_at"), filters.date_from, filters.date_to
-                    ):
-                        continue
-            data.append(mapped)
+            warehouse = _normalize_string(row.get("warehouse")) or "Unknown"
+            by_warehouse[warehouse] = by_warehouse.get(warehouse, 0) + 1
+            status = _normalize_string(row.get("status")) or "Unknown"
+            by_status[status] = by_status.get(status, 0) + 1
 
-        filtered_records = len(data)
-        skip = (config.page - 1) * config.page_size
-        page_data = data[skip : skip + config.page_size]
-        end_time = datetime.now(timezone.utc).replace(tzinfo=None)
+            counted_at = _coerce_datetime(row.get("counted_at"))
+            if counted_at and counted_at >= today_start:
+                today_activity += 1
+            variance = _as_float(row.get("variance"))
+            total_variance += variance
+            positive_variance += max(variance, 0.0)
+            negative_variance += min(variance, 0.0)
+            if _line_verified(row):
+                verified_count += 1
 
+        total_items = len(rows)
         return {
             "success": True,
-            "data": page_data,
-            "columns": [col.model_dump() for col in columns],
-            "summary": summary_model(
-                total_records=len(rows),
-                filtered_records=filtered_records,
-                aggregations={},
-                generated_at=end_time,
-                generation_time_ms=(end_time - start_time).total_seconds() * 1000,
-                filters_applied=(
-                    filters.model_dump(exclude_none=True) if filters else {}
-                ),
-                report_type="session_summary",
-                report_name="Session Summary Report",
-            ).model_dump(),
-            "pagination": {
-                "page": config.page,
-                "page_size": config.page_size,
-                "total_pages": (filtered_records + config.page_size - 1)
-                // config.page_size,
-                "has_next": skip + config.page_size < filtered_records,
-                "has_prev": config.page > 1,
+            "stats": {
+                "total_items": total_items,
+                "verified_items": verified_count,
+                "pending_items": max(total_items - verified_count, 0),
+                "today_activity": today_activity,
+                "total_variance": total_variance,
+                "positive_variance": positive_variance,
+                "negative_variance": negative_variance,
+                "avg_variance": (total_variance / total_items) if total_items else 0.0,
+                "verification_rate": (verified_count / total_items * 100) if total_items else 0.0,
             },
+            "by_warehouse": [
+                {"warehouse": warehouse, "count": count}
+                for warehouse, count in sorted(by_warehouse.items())
+            ],
+            "by_status": [
+                {"status": status, "count": count} for status, count in sorted(by_status.items())
+            ],
+            "timestamp": _utc_now().isoformat(),
         }
 
-    async def get_filter_options(self) -> dict[str, Any]:
-        collection = await self._ensure_collection(self.VERIFIED_COLLECTION)
-        warehouses = await collection.distinct("warehouse")
-        floors = sorted(
-            set(await collection.distinct("floor"))
-            | set(await collection.distinct("floor_no")),
-            key=self._normalize_sort_key,
-        )
-        categories = await collection.distinct("category")
-        statuses = await collection.distinct("status")
-        users = await collection.distinct("counted_by")
-        return {
-            "success": True,
-            "options": {
-                "warehouses": [value for value in warehouses if value],
-                "floors": [value for value in floors if value],
-                "categories": [value for value in categories if value],
-                "statuses": [value for value in statuses if value],
-                "users": [value for value in users if value],
-                "verified": [True, False],
-            },
+    async def get_dashboard_filter_options(self) -> dict[str, Any]:
+        rows = await self._filtered_verified_items(None)
+        await self._record_hit("dashboard/filter-options")
+        options = {
+            "warehouses": sorted({row.get("warehouse") for row in rows if row.get("warehouse")}),
+            "floors": sorted({row.get("floor") for row in rows if row.get("floor")}),
+            "categories": sorted({row.get("category") for row in rows if row.get("category")}),
+            "statuses": sorted({row.get("status") for row in rows if row.get("status")}),
+            "users": sorted({row.get("counted_by") for row in rows if row.get("counted_by")}),
+            "verified": [True, False],
         }
+        return {"success": True, "options": options}
 
-    async def get_item_details(self, item_id: str) -> dict[str, Any]:
-        collection = await self._ensure_collection(self.VERIFIED_COLLECTION)
-        row = await collection.find_one(
+    async def get_report_filter_options(self) -> dict[str, Any]:
+        dashboard_options = await self.get_dashboard_filter_options()
+        session_rows = await self._get_session_projection_docs(current_user={"role": "admin"})
+        users = sorted(
             {
-                "$or": [
-                    {"id": item_id},
-                    {"count_line_id": item_id},
-                    {"client_record_id": item_id},
-                ]
+                _normalize_string(row.get("staff_user"))
+                for row in session_rows
+                if _normalize_string(row.get("staff_user"))
             }
         )
-        if not row:
-            raise HTTPException(status_code=404, detail="Item not found")
-        row.pop("_id", None)
+        statuses = sorted(
+            {
+                str(row.get("status") or "").strip()
+                for row in session_rows
+                if str(row.get("status") or "").strip()
+            }
+            | set(dashboard_options["options"].get("statuses", []))
+        )
+        await self._record_hit("reports/filter-options")
+        return {
+            "warehouses": dashboard_options["options"].get("warehouses", []),
+            "floors": dashboard_options["options"].get("floors", []),
+            "categories": dashboard_options["options"].get("categories", []),
+            "statuses": statuses,
+            "users": users,
+        }
+
+    async def get_dashboard_item_details(self, item_id: str) -> Optional[dict[str, Any]]:
+        row = await self.db.verified_items_projection.find_one({"count_line_id": item_id})
+        if not isinstance(row, dict):
+            row = await self.db.verified_items_projection.find_one({"id": item_id})
+        if not isinstance(row, dict):
+            return None
+        await self._record_hit("dashboard/item-details")
+        audit_trail = []
+        cursor = self.db.audit_logs.find({"entity_id": item_id, "entity_type": "count_line"}).sort(
+            "timestamp", -1
+        )
+        async for log in cursor.limit(50):
+            record = dict(log)
+            record.pop("_id", None)
+            timestamp = record.get("timestamp")
+            if isinstance(timestamp, datetime):
+                record["timestamp"] = timestamp.isoformat()
+            audit_trail.append(record)
         return {
             "success": True,
-            "item": self._map_verified_item(row),
-            "audit_trail": [],
+            "item": {
+                "id": row.get("count_line_id"),
+                "item_code": row.get("item_code"),
+                "item_name": row.get("item_name"),
+                "barcode": row.get("barcode"),
+                "category": row.get("category"),
+                "warehouse": row.get("warehouse"),
+                "floor": row.get("floor"),
+                "rack_id": row.get("rack_id"),
+                "stock_qty": _as_float(row.get("stock_qty")),
+                "counted_qty": _as_float(row.get("counted_qty")),
+                "variance": _as_float(row.get("variance")),
+                "variance_percentage": _as_float(row.get("variance_percentage")),
+                "mrp": _as_float(row.get("mrp")),
+                "verified": bool(row.get("verified")),
+                "verified_by": row.get("verified_by"),
+                "verified_at": row.get("verified_at"),
+                "counted_by": row.get("counted_by"),
+                "counted_at": row.get("counted_at"),
+                "session_id": row.get("session_id"),
+                "notes": row.get("notes"),
+                "status": row.get("status"),
+                "approval_status": row.get("approval_status"),
+            },
+            "audit_trail": audit_trail,
         }
 
-    async def get_admin_kpis(self, *, active_users: int) -> dict[str, Any]:
-        sessions = await self._ensure_collection(self.SESSION_COLLECTION)
-        financial = await self._ensure_collection(self.FINANCIAL_COLLECTION)
-        verified = await self._ensure_collection(self.VERIFIED_COLLECTION)
-        variance = await self._ensure_collection(self.VARIANCE_COLLECTION)
-
-        session_rows = await self._find_limited(sessions, {}, sort_field="started_at")
-        financial_rows = await self._find_limited(financial, {})
-        active_statuses = {"OPEN", "ACTIVE", "PAUSED", "RECONCILE"}
+    async def get_system_stats_business(self) -> dict[str, Any]:
+        rows = await self._get_session_projection_docs()
+        await self._record_hit("admin/system-stats")
+        total_sessions = len(rows)
         active_sessions = sum(
             1
-            for row in session_rows
-            if str(row.get("status") or "").upper() in active_statuses
+            for row in rows
+            if str(row.get("status") or "").strip().upper() in {"OPEN", "ACTIVE", "PAUSED", "RECONCILE"}
         )
-        total_items = sum(
-            self._to_int(self._first(row, "total_items", "item_count"))
-            for row in session_rows
-        )
-        verified_items = sum(
-            self._to_int(self._first(row, "verified_items", "verified_count"))
-            for row in session_rows
-        )
-        verified_rows = await self._find_limited(verified, {"is_removed": {"$ne": True}})
-        today_start = datetime.now(timezone.utc).replace(
-            tzinfo=None, hour=0, minute=0, second=0, microsecond=0
-        )
-
         return {
-            "total_stock_value": sum(
-                self._to_float(self._first(row, "total_stock_value", "stock_value"))
-                for row in financial_rows
-            ),
-            "verified_stock_value": sum(
-                self._to_float(self._first(row, "total_counted_value", "counted_value"))
-                for row in financial_rows
-            ),
-            "verification_percentage": round(
-                (verified_items / total_items * 100) if total_items else 0.0,
-                2,
-            ),
+            "total_sessions": total_sessions,
             "active_sessions": active_sessions,
-            "active_users": active_users,
-            "pending_variances": await variance.count_documents(
-                {"is_removed": {"$ne": True}}
-            ),
-            "items_verified_today": sum(
-                1
-                for row in verified_rows
-                if self._projection_item_is_verified(row)
-                and (
-                    self._normalize_datetime(
-                        self._first(row, "verified_at", "counted_at", "updated_at")
-                    )
-                    or datetime.min
-                )
-                >= today_start
-            ),
-            "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
         }
 
-    @staticmethod
-    def report_date_bounds(
-        date_from: Optional[date], date_to: Optional[date]
-    ) -> tuple[Optional[datetime], Optional[datetime]]:
-        start = datetime.combine(date_from, time.min) if date_from else None
-        end = datetime.combine(date_to, time.max) if date_to else None
-        return start, end
-
     async def generate_stock_summary(self, filters: Any) -> list[dict[str, Any]]:
-        collection = await self._ensure_collection(self.VERIFIED_COLLECTION)
-        rows = await self._find_limited(collection, {"is_removed": {"$ne": True}})
-        start, end = self.report_date_bounds(filters.date_from, filters.date_to)
-        grouped: dict[str, dict[str, Any]] = {}
+        rows = await self._filtered_verified_items(filters)
+        await self._record_hit("reports/stock-summary")
+        by_item: dict[tuple[str, str, str], dict[str, Any]] = {}
         for row in rows:
-            mapped = self._map_verified_item(row)
-            if filters.warehouse and mapped.get("warehouse") != filters.warehouse:
-                continue
-            if filters.floor and mapped.get("floor") != filters.floor:
-                continue
-            if filters.category and mapped.get("category") != filters.category:
-                continue
-            if filters.user_id and mapped.get("counted_by") != filters.user_id:
-                continue
-            if (
-                filters.status
-                and str(mapped.get("status") or "").lower() != filters.status.lower()
-            ):
-                continue
-            if (start or end) and not self._date_match(
-                mapped.get("counted_at"), start, end
-            ):
-                continue
-            key = str(mapped.get("item_code") or "")
-            target = grouped.setdefault(
+            item_code = str(row.get("item_code") or "")
+            key = (item_code, str(row.get("warehouse") or ""), str(row.get("floor") or ""))
+            summary = by_item.setdefault(
                 key,
                 {
-                    "item_code": key,
-                    "item_name": mapped.get("item_name"),
-                    "category": mapped.get("category"),
-                    "warehouse": mapped.get("warehouse"),
-                    "floor": mapped.get("floor"),
-                    "stock_qty": mapped.get("stock_qty", 0.0),
-                    "price": mapped.get("mrp", 0.0),
-                    "stock_value": mapped.get("stock_qty", 0.0)
-                    * mapped.get("mrp", 0.0),
+                    "item_code": item_code,
+                    "item_name": row.get("item_name"),
+                    "category": row.get("category"),
+                    "warehouse": row.get("warehouse"),
+                    "floor": row.get("floor"),
+                    "stock_qty": _as_float(row.get("stock_qty")),
+                    "price": _as_float(row.get("mrp")),
+                    "stock_value": _as_float(row.get("stock_qty")) * _as_float(row.get("mrp")),
                     "verification_count": 0,
                     "finalized_count": 0,
                     "finalized_qty": 0.0,
                     "last_verified": None,
-                    "is_verified": False,
                 },
             )
-            target["verification_count"] += 1
-            if mapped.get("verified"):
-                target["finalized_count"] += 1
-                target["finalized_qty"] += mapped.get("counted_qty", 0.0)
-                target["is_verified"] = True
-                verified_at = mapped.get("verified_at") or mapped.get("counted_at")
-                verified_dt = self._normalize_datetime(verified_at)
-                last_verified_dt = self._normalize_datetime(target["last_verified"])
-                if verified_at and (
-                    target["last_verified"] is None
-                    or (
-                        verified_dt is not None
-                        and (last_verified_dt is None or verified_dt > last_verified_dt)
-                    )
+            summary["verification_count"] += 1
+            if _line_verified(row):
+                summary["finalized_count"] += 1
+                summary["finalized_qty"] += _as_float(row.get("counted_qty"))
+                last_verified = row.get("verified_at") or row.get("counted_at")
+                if last_verified and (
+                    summary["last_verified"] is None or str(last_verified) > str(summary["last_verified"])
                 ):
-                    target["last_verified"] = verified_at
-        return sorted(
-            grouped.values(), key=lambda row: str(row.get("item_code") or "")
-        )[:10000]
+                    summary["last_verified"] = last_verified
 
-    async def generate_variance_report(self, filters: Any) -> list[dict[str, Any]]:
-        collection = await self._ensure_collection(self.VARIANCE_COLLECTION)
-        rows = await self._find_limited(collection, {"is_removed": {"$ne": True}})
-        start, end = self.report_date_bounds(filters.date_from, filters.date_to)
-        results: list[dict[str, Any]] = []
-        for row in rows:
-            mapped = self._map_verified_item(row)
-            if mapped["variance"] == 0:
-                continue
-            if filters.warehouse and mapped.get("warehouse") != filters.warehouse:
-                continue
-            if filters.floor and mapped.get("floor") != filters.floor:
-                continue
-            if filters.category and mapped.get("category") != filters.category:
-                continue
-            if filters.user_id and mapped.get("counted_by") != filters.user_id:
-                continue
-            if (
-                filters.status
-                and str(mapped.get("status") or "").lower() != filters.status.lower()
-            ):
-                continue
-            if (start or end) and not self._date_match(
-                mapped.get("counted_at"), start, end
-            ):
-                continue
+        results = []
+        for value in by_item.values():
             results.append(
                 {
-                    "item_code": mapped.get("item_code"),
-                    "item_name": mapped.get("item_name") or "Unknown",
-                    "expected_qty": mapped.get("stock_qty", 0.0),
-                    "counted_qty": mapped.get("counted_qty", 0.0),
-                    "variance": mapped.get("variance", 0.0),
-                    "variance_percentage": mapped.get("variance_percentage", 0.0),
-                    "status": mapped.get("status"),
-                    "approval_status": mapped.get("approval_status"),
-                    "counted_by": mapped.get("counted_by"),
-                    "warehouse": mapped.get("warehouse"),
-                    "location": "/".join(
-                        part
-                        for part in [mapped.get("floor"), mapped.get("rack_id")]
-                        if part
-                    ),
-                    "counted_at": mapped.get("counted_at"),
-                    "approved_by": mapped.get("verified_by"),
-                    "approved_at": mapped.get("verified_at"),
-                    "finalized_at": mapped.get("verified_at"),
-                    "finalized_by": mapped.get("verified_by"),
+                    **value,
+                    "is_verified": bool(value["finalized_count"] or value["verification_count"]),
                 }
             )
+        results.sort(key=lambda row: str(row.get("item_code") or ""))
         return results[:10000]
 
-    async def generate_session_history(self, filters: Any) -> list[dict[str, Any]]:
-        collection = await self._ensure_collection(self.SESSION_COLLECTION)
-        rows = await self._find_limited(collection, {}, sort_field="started_at")
-        start, end = self.report_date_bounds(filters.date_from, filters.date_to)
+    async def generate_variance_report(self, filters: Any) -> list[dict[str, Any]]:
+        rows = await self._list_documents("variance_summary_projection")
+        await self._record_hit("reports/variance-report")
         results: list[dict[str, Any]] = []
         for row in rows:
-            mapped = self._map_session(row)
-            if (
+            variance = _as_float(row.get("variance"))
+            if abs(variance) <= 1e-9:
+                continue
+            if getattr(filters, "status", None) and str(row.get("status") or "").lower() != str(
                 filters.status
-                and str(mapped.get("status") or "").upper() != filters.status.upper()
-            ):
+            ).lower():
                 continue
-            if filters.user_id and mapped.get("username") != filters.user_id:
+            if getattr(filters, "user_id", None) and row.get("counted_by") != filters.user_id:
                 continue
-            if (start or end) and not self._date_match(
-                mapped.get("started_at"), start, end
-            ):
+            if getattr(filters, "warehouse", None) and row.get("warehouse") != filters.warehouse:
                 continue
+            if getattr(filters, "floor", None) and row.get("floor") != filters.floor:
+                continue
+            if getattr(filters, "category", None) and row.get("category") != filters.category:
+                continue
+
+            counted_at = _coerce_datetime(row.get("counted_at"))
+            if getattr(filters, "date_from", None) and counted_at and counted_at.date() < filters.date_from:
+                continue
+            if getattr(filters, "date_to", None) and counted_at and counted_at.date() > filters.date_to:
+                continue
+
             results.append(
                 {
-                    **mapped,
-                    "items_scanned": mapped.get("total_items", 0),
-                    "items_verified": mapped.get("verified_items", 0),
+                    "item_code": row.get("item_code"),
+                    "item_name": row.get("item_name") or "Unknown",
+                    "expected_qty": _as_float(row.get("stock_qty")),
+                    "counted_qty": _as_float(row.get("counted_qty")),
+                    "variance": variance,
+                    "variance_percentage": _as_float(row.get("variance_percentage")),
+                    "status": row.get("status"),
+                    "approval_status": row.get("approval_status"),
+                    "counted_by": row.get("counted_by"),
+                    "warehouse": row.get("warehouse"),
+                    "location": "/".join(
+                        part
+                        for part in [row.get("floor"), row.get("rack_id")]
+                        if isinstance(part, str) and part
+                    ),
+                    "counted_at": row.get("counted_at"),
+                    "approved_by": row.get("approved_by"),
+                    "approved_at": row.get("approved_at"),
+                    "finalized_at": row.get("verified_at"),
+                    "finalized_by": row.get("verified_by"),
                 }
             )
-        return results[:5000]
+
+        results.sort(key=lambda row: abs(_as_float(row.get("variance_percentage"))), reverse=True)
+        return results[:10000]
+
+    async def generate_session_history_report(self, filters: Any) -> list[dict[str, Any]]:
+        rows = await self._get_session_projection_docs(
+            status=getattr(filters, "status", None),
+            user_id=getattr(filters, "user_id", None),
+            current_user={"role": "admin"},
+        )
+        await self._record_hit("reports/session-history")
+        results: list[dict[str, Any]] = []
+        for row in rows:
+            started_at = _coerce_datetime(row.get("started_at"))
+            if getattr(filters, "date_from", None) and started_at and started_at.date() < filters.date_from:
+                continue
+            if getattr(filters, "date_to", None) and started_at and started_at.date() > filters.date_to:
+                continue
+            completed_at = (
+                _coerce_datetime(row.get("finalized_at"))
+                or _coerce_datetime(row.get("completed_at"))
+                or _coerce_datetime(row.get("closed_at"))
+            )
+            duration_minutes = None
+            if started_at and completed_at:
+                duration_minutes = (completed_at - started_at).total_seconds() / 60.0
+
+            results.append(
+                {
+                    "session_id": row.get("session_id"),
+                    "username": row.get("staff_user"),
+                    "staff_name": row.get("staff_name"),
+                    "warehouse": row.get("warehouse"),
+                    "rack_id": row.get("rack_no"),
+                    "floor": row.get("location_name"),
+                    "status": row.get("status"),
+                    "finalization_status": row.get("finalization_status"),
+                    "started_at": row.get("started_at"),
+                    "completed_at": completed_at,
+                    "duration_minutes": duration_minutes,
+                    "items_scanned": int(row.get("scanned_items") or row.get("total_items") or 0),
+                    "items_verified": int(row.get("verified_items") or 0),
+                    "total_variance": _as_float(row.get("total_variance")),
+                    "finalized_by": row.get("finalized_by"),
+                    "finalized_at": row.get("finalized_at"),
+                }
+            )
+        return results
+
+    async def build_projection_validation_report(self) -> dict[str, Any]:
+        legacy_sessions = await self._list_documents("sessions")
+        legacy_lines = await self._list_documents("count_lines")
+        projection_sessions = await self._list_documents("session_dashboard_projection")
+        projection_items = await self._list_documents("verified_items_projection")
+        financial_rows = await self._list_documents("financial_projection")
+        variance_rows = await self._list_documents("variance_summary_projection")
+
+        legacy_total_sessions = len(legacy_sessions)
+        projection_total_sessions = len(projection_sessions)
+        legacy_verified_items = sum(
+            1
+            for row in legacy_lines
+            if str(row.get("status") or "").strip().lower() not in {"superseded", "removed"}
+        )
+        projection_verified_items = sum(1 for row in projection_items if _line_active(row))
+        legacy_variance_total = sum(_as_float(row.get("variance")) for row in legacy_lines)
+        projection_variance_total = sum(_as_float(row.get("variance")) for row in variance_rows)
+        legacy_financial_total = sum(
+            _as_float(row.get("counted_qty")) * _as_float(row.get("mrp_counted") or row.get("mrp_erp"))
+            for row in legacy_lines
+        )
+        projection_financial_total = sum(
+            _as_float(row.get("total_counted_value")) for row in financial_rows
+        )
+
+        mismatches: list[dict[str, Any]] = []
+        tolerance = 1e-6
+
+        if legacy_total_sessions != projection_total_sessions:
+            mismatches.append(
+                {
+                    "scope": "session_totals",
+                    "legacy": legacy_total_sessions,
+                    "projection": projection_total_sessions,
+                }
+            )
+        if legacy_verified_items != projection_verified_items:
+            mismatches.append(
+                {
+                    "scope": "verified_items",
+                    "legacy": legacy_verified_items,
+                    "projection": projection_verified_items,
+                }
+            )
+        if abs(legacy_variance_total - projection_variance_total) > tolerance:
+            mismatches.append(
+                {
+                    "scope": "variance_totals",
+                    "legacy": legacy_variance_total,
+                    "projection": projection_variance_total,
+                }
+            )
+        if abs(legacy_financial_total - projection_financial_total) > tolerance:
+            mismatches.append(
+                {
+                    "scope": "financial_totals",
+                    "legacy": legacy_financial_total,
+                    "projection": projection_financial_total,
+                }
+            )
+
+        for mismatch in mismatches:
+            await self.record_drift(scope=mismatch["scope"], detail=str(mismatch))
+
+        return {
+            "summary": {
+                "drift_count": len(mismatches),
+                "gap_count": 0,
+                "is_consistent": len(mismatches) == 0,
+                "validated_at": _utc_now().isoformat(),
+            },
+            "mismatches": mismatches,
+        }

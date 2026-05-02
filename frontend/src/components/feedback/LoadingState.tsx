@@ -35,8 +35,7 @@ import {
   modernSpacing,
   modernBorderRadius,
   modernAnimations,
-} from "../../styles/modernDesignSystem";
-import { createShadow } from "@/theme/shadowUtils";
+} from "../../styles/unifiedSystem";
 
 // ==========================================
 // LOADING SPINNER
