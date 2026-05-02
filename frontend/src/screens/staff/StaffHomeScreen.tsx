@@ -645,6 +645,7 @@ const StaffHome = React.memo(function StaffHome() {
             ]);
           },
         }}
+        rightActionAccessibilityLabel="Logout"
       />
 
       <View
