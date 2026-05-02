@@ -816,6 +816,7 @@ const StaffHome = React.memo(function StaffHome() {
                   value={rackName}
                   onChangeText={setRackName}
                   autoCapitalize="characters"
+                  showClearButton
                 />
               </Animated.View>
             )}

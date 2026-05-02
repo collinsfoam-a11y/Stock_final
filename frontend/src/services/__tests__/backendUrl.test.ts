@@ -53,7 +53,10 @@ describe("backendUrl resolution", () => {
       "https://stock-verify.example.com/api/health",
       expect.objectContaining({ method: "GET" }),
     );
-    expect((global.fetch as jest.Mock).mock.calls.some(([url]) =>
-      String(url).includes("backend_port.json"))).toBe(false);
+    expect(
+      (global.fetch as jest.Mock).mock.calls.some((url: any) =>
+        String(url).includes("backend_port.json"),
+      ),
+    ).toBe(false);
   });
 });

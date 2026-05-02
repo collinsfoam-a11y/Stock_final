@@ -8,11 +8,13 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package.json package-lock.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm install -g pnpm@10
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
 COPY . .
-RUN npm run build:web
+RUN pnpm run build:web
 
 
 FROM nginx:1.27-alpine AS runtime

@@ -32,14 +32,22 @@ describe("httpClient unauthorized recovery", () => {
       interceptors: {
         request: { use: jest.fn() },
         response: {
-          handlers: [] as { fulfilled?: unknown; rejected?: any }[],
-          use: jest.fn((fulfilled, rejected) => {
-            axiosInstance.interceptors.response.handlers.push({
-              fulfilled,
-              rejected,
-            });
-            return 0;
-          }),
+          handlers: [] as {
+            fulfilled?: (value: any) => any;
+            rejected?: (error: any) => any;
+          }[],
+          use: jest.fn(
+            (
+              fulfilled?: (value: any) => any,
+              rejected?: (error: any) => any,
+            ) => {
+              axiosInstance.interceptors.response.handlers.push({
+                fulfilled,
+                rejected,
+              });
+              return 0;
+            },
+          ),
         },
       },
       get: jest.fn(),
@@ -150,14 +158,22 @@ describe("httpClient unauthorized recovery", () => {
       interceptors: {
         request: { use: jest.fn() },
         response: {
-          handlers: [] as { fulfilled?: unknown; rejected?: any }[],
-          use: jest.fn((fulfilled, rejected) => {
-            axiosInstance.interceptors.response.handlers.push({
-              fulfilled,
-              rejected,
-            });
-            return 0;
-          }),
+          handlers: [] as {
+            fulfilled?: (value: any) => any;
+            rejected?: (error: any) => any;
+          }[],
+          use: jest.fn(
+            (
+              fulfilled?: (value: any) => any,
+              rejected?: (error: any) => any,
+            ) => {
+              axiosInstance.interceptors.response.handlers.push({
+                fulfilled,
+                rejected,
+              });
+              return 0;
+            },
+          ),
         },
       },
       get: jest.fn(),
