@@ -7,14 +7,12 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Optional, cast
 
-from bson import ObjectId
-from bson.errors import InvalidId
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, EmailStr, Field
 
 from backend.auth.dependencies import get_current_user, require_admin
 from backend.auth.permissions import ROLE_PERMISSIONS, Permission, has_permission
-from backend.services.auth_service import AuthService, get_auth_service
+from backend.db.runtime import get_db
 from backend.utils.api_utils import sanitize_for_logging
 from backend.utils.auth_utils import get_password_hash
 from backend.utils.crypto_utils import get_pin_lookup_hash
@@ -237,12 +235,12 @@ def _apply_active_update(
 
 
 async def _apply_email_update(
-    update: dict[str, Any], auth_service: AuthService, oid: Any, request: UpdateUserRequest
+    update: dict[str, Any], db: Any, oid: Any, request: UpdateUserRequest
 ) -> None:
     if request.email is None:
         return
     if request.email:
-        dup = await auth_service.find_user_by_email(request.email, exclude_id=oid)
+        dup = await db.users.find_one({"email": request.email, "_id": {"$ne": oid}})
         if dup:
             _raise_http_error(status.HTTP_409_CONFLICT, "Email already exists", "DUPLICATE_EMAIL")
     update["email"] = request.email
@@ -267,14 +265,14 @@ def _apply_permissions_update(update: dict[str, Any], request: UpdateUserRequest
 
 
 async def _build_update_payload(
-    auth_service: AuthService,
+    db: Any,
     oid: Any,
     request: UpdateUserRequest,
     existing: dict[str, Any],
     current_user: dict[str, Any],
 ) -> dict[str, Any]:
     update: dict[str, Any] = {"updated_at": datetime.now(timezone.utc).replace(tzinfo=None)}
-    await _apply_email_update(update, auth_service, oid, request)
+    await _apply_email_update(update, db, oid, request)
     _apply_profile_update(update, request)
     _apply_role_update(update, request, existing, current_user)
     _apply_active_update(update, request, existing, current_user)
@@ -282,15 +280,15 @@ async def _build_update_payload(
     return update
 
 
-async def _resolve_user_or_raise(
-    auth_service: AuthService, user_id: str
-) -> tuple[Any, dict[str, Any]]:
+async def _resolve_user_or_raise(db: Any, user_id: str) -> tuple[Any, dict[str, Any]]:
+    from bson import ObjectId
+
     try:
         oid = ObjectId(user_id)
-    except (InvalidId, TypeError):
+    except Exception:
         _raise_http_error(status.HTTP_400_BAD_REQUEST, "Invalid user ID", "INVALID_ID")
 
-    user = await auth_service.get_user_by_object_id(oid)
+    user = await db.users.find_one({"_id": oid})
     if not user:
         _raise_http_error(status.HTTP_404_NOT_FOUND, "User not found", "NOT_FOUND")
 
@@ -321,12 +319,13 @@ async def list_users(
         description="Sort order (asc/desc)",
     ),
     current_user: dict = Depends(require_admin),
-    auth_service: AuthService = Depends(get_auth_service),
 ):
     """
     List all users with pagination and filtering.
     Requires admin role.
     """
+    db = get_db()
+
     # Build filter query
     query: dict[str, Any] = {}
 
@@ -344,7 +343,7 @@ async def list_users(
         query["is_active"] = is_active
 
     # Count total
-    total = await auth_service.count_users_by_query(query)
+    total = await db.users.count_documents(query)
 
     # Sort
     sort_direction = 1 if sort_order == "asc" else -1
@@ -352,13 +351,9 @@ async def list_users(
 
     # Paginate
     skip = (page - 1) * page_size
-    users = await auth_service.list_users(
-        query,
-        sort_field=sort_field,
-        sort_direction=sort_direction,
-        skip=skip,
-        limit=page_size,
-    )
+    cursor = db.users.find(query).sort(sort_field, sort_direction).skip(skip).limit(page_size)
+
+    users = await cursor.to_list(length=page_size)
 
     return UserListResponse(
         users=[_user_to_list_item(u) for u in users],
@@ -372,7 +367,6 @@ async def list_users(
 @user_management_router.get("/assignable/staff", response_model=list[AssignableUserItem])
 async def list_assignable_staff(
     current_user: dict = Depends(get_current_user),
-    auth_service: AuthService = Depends(get_auth_service),
 ):
     """
     List active staff users available for recount assignment.
@@ -395,7 +389,11 @@ async def list_assignable_staff(
             },
         )
 
-    users = await auth_service.list_active_staff()
+    db = get_db()
+    users = await db.users.find(
+        {"role": "staff", "is_active": True},
+        {"username": 1, "full_name": 1},
+    ).to_list(length=200)
     users.sort(
         key=lambda user: (
             (user.get("full_name") or "").strip().lower(),
@@ -416,16 +414,19 @@ async def list_assignable_staff(
 async def get_user(
     user_id: str,
     current_user: dict = Depends(require_admin),
-    auth_service: AuthService = Depends(get_auth_service),
 ):
     """
     Get detailed information about a specific user.
     Requires admin role.
     """
+    from bson import ObjectId
+
+    db = get_db()
+
     # Validate ObjectId
     try:
         oid = ObjectId(user_id)
-    except (InvalidId, TypeError):
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
@@ -437,7 +438,7 @@ async def get_user(
             },
         )
 
-    user = await auth_service.get_user_by_object_id(oid)
+    user = await db.users.find_one({"_id": oid})
 
     if not user:
         raise HTTPException(
@@ -462,14 +463,15 @@ async def get_user(
 async def create_user(
     request: CreateUserRequest,
     current_user: dict = Depends(require_admin),
-    auth_service: AuthService = Depends(get_auth_service),
 ):
     """
     Create a new user.
     Requires admin role.
     """
+    db = get_db()
+
     # Check if username exists
-    existing = await auth_service.get_user(request.username)
+    existing = await db.users.find_one({"username": request.username})
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -484,7 +486,7 @@ async def create_user(
 
     # Check if email exists (if provided)
     if request.email:
-        existing_email = await auth_service.find_user_by_email(request.email)
+        existing_email = await db.users.find_one({"email": request.email})
         if existing_email:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -533,7 +535,7 @@ async def create_user(
         user_doc["pin_hash"] = get_password_hash(request.pin)
         user_doc["pin_lookup_hash"] = get_pin_lookup_hash(request.pin)
 
-    result = await auth_service.create_user(user_doc)
+    result = await db.users.insert_one(user_doc)
     user_doc["_id"] = result.inserted_id
 
     logger.info(
@@ -553,24 +555,27 @@ async def update_user(
     user_id: str,
     request: UpdateUserRequest,
     current_user: dict = Depends(require_admin),
-    auth_service: AuthService = Depends(get_auth_service),
 ):
     """
     Update an existing user.
     Requires admin role.
     """
+    from bson import ObjectId
+
+    db = get_db()
+
     try:
         oid = ObjectId(user_id)
-    except (InvalidId, TypeError):
+    except Exception:
         _raise_http_error(status.HTTP_400_BAD_REQUEST, "Invalid user ID", "INVALID_ID")
 
-    existing = await auth_service.get_user_by_object_id(oid)
+    existing = await db.users.find_one({"_id": oid})
     if not existing:
         _raise_http_error(status.HTTP_404_NOT_FOUND, "User not found", "NOT_FOUND")
 
-    update = await _build_update_payload(auth_service, oid, request, existing, current_user)
-    await auth_service.update_user_by_object_id(oid, update)
-    updated = await auth_service.get_user_by_object_id(oid)
+    update = await _build_update_payload(db, oid, request, existing, current_user)
+    await db.users.update_one({"_id": oid}, {"$set": update})
+    updated = await db.users.find_one({"_id": oid})
 
     logger.info(
         "User updated: %s by %s",
@@ -591,16 +596,19 @@ async def update_user(
 async def delete_user(
     user_id: str,
     current_user: dict = Depends(require_admin),
-    auth_service: AuthService = Depends(get_auth_service),
 ):
     """
     Delete a user.
     Requires admin role.
     """
+    from bson import ObjectId
+
+    db = get_db()
+
     # Validate ObjectId
     try:
         oid = ObjectId(user_id)
-    except (InvalidId, TypeError):
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
@@ -613,7 +621,7 @@ async def delete_user(
         )
 
     # Check if user exists
-    existing = await auth_service.get_user_by_object_id(oid)
+    existing = await db.users.find_one({"_id": oid})
     if not existing:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -639,7 +647,7 @@ async def delete_user(
             },
         )
 
-    await auth_service.delete_user_by_object_id(oid)
+    await db.users.delete_one({"_id": oid})
 
     logger.info(
         "User deleted: %s by %s",
@@ -652,12 +660,14 @@ async def delete_user(
 async def bulk_user_action(
     request: BulkUserAction,
     current_user: dict = Depends(require_admin),
-    auth_service: AuthService = Depends(get_auth_service),
 ):
     """
     Perform bulk actions on users.
     Requires admin role.
     """
+    from bson import ObjectId
+
+    db = get_db()
     current_user_id = str(current_user.get("_id", ""))
 
     success_count = 0
@@ -672,27 +682,36 @@ async def bulk_user_action(
                 failed_ids.append(user_id)
                 continue
 
-            user = await auth_service.get_user_by_object_id(oid)
+            user = await db.users.find_one({"_id": oid})
             if not user:
                 failed_ids.append(user_id)
                 continue
 
             if request.action == "activate":
-                await auth_service.update_user_by_object_id(oid, {"is_active": True})
+                await db.users.update_one(
+                    {"_id": oid},
+                    {"$set": {"is_active": True}},
+                )
             elif request.action == "deactivate":
-                await auth_service.update_user_by_object_id(oid, {"is_active": False})
+                await db.users.update_one(
+                    {"_id": oid},
+                    {"$set": {"is_active": False}},
+                )
             elif request.action == "delete":
-                await auth_service.delete_user_by_object_id(oid)
+                await db.users.delete_one({"_id": oid})
             elif request.action == "change_role":
                 if request.role:
-                    await auth_service.update_user_by_object_id(oid, {"role": request.role})
+                    await db.users.update_one(
+                        {"_id": oid},
+                        {"$set": {"role": request.role}},
+                    )
                 else:
                     failed_ids.append(user_id)
                     continue
 
             success_count += 1
 
-        except (InvalidId, TypeError, ValueError, RuntimeError) as e:
+        except Exception as e:
             logger.error(
                 "Bulk action failed for user %s: %s",
                 user_id,
@@ -765,15 +784,23 @@ async def reset_user_password(
     user_id: str,
     new_password: str = Query(..., min_length=6, max_length=128),
     current_user: dict = Depends(require_admin),
-    auth_service: AuthService = Depends(get_auth_service),
 ):
     """
     Reset a user's password.
     Requires admin role.
     """
-    oid, user = await _resolve_user_or_raise(auth_service, user_id)
+    db = get_db()
+    oid, user = await _resolve_user_or_raise(db, user_id)
 
-    await auth_service.update_user_password_by_object_id(oid, get_password_hash(new_password))
+    await db.users.update_one(
+        {"_id": oid},
+        {
+            "$set": {
+                "hashed_password": get_password_hash(new_password),
+                "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            }
+        },
+    )
 
     logger.info(
         "Password reset for user: %s by %s",
@@ -789,18 +816,23 @@ async def reset_user_pin(
     user_id: str,
     new_pin: str = Query(..., pattern=r"^\d{4}$"),
     current_user: dict = Depends(require_admin),
-    auth_service: AuthService = Depends(get_auth_service),
 ):
     """
     Reset a user's PIN.
     Requires admin role.
     """
-    oid, user = await _resolve_user_or_raise(auth_service, user_id)
+    db = get_db()
+    oid, user = await _resolve_user_or_raise(db, user_id)
 
-    await auth_service.update_user_pin_by_object_id(
-        oid,
-        get_password_hash(new_pin),
-        get_pin_lookup_hash(new_pin),
+    await db.users.update_one(
+        {"_id": oid},
+        {
+            "$set": {
+                "pin_hash": get_password_hash(new_pin),
+                "pin_lookup_hash": get_pin_lookup_hash(new_pin),
+                "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            }
+        },
     )
 
     logger.info(

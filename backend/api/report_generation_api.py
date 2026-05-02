@@ -7,13 +7,13 @@ import csv
 import io
 import json
 import logging
+from backend.utils.api_utils import sanitize_for_logging
 from datetime import date, datetime, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from pymongo.errors import PyMongoError
 
 from backend.auth.dependencies import get_current_user, require_role
 from backend.db.runtime import get_db
@@ -90,7 +90,15 @@ def build_date_filter(
     date_from: Optional[date], date_to: Optional[date]
 ) -> Optional[dict[str, Any]]:
     """Build MongoDB date range filter."""
-    return build_mongo_date_filter(date_from, date_to, end_of_day=True)
+    date_filter: dict[str, Any] = {}
+
+    if date_from:
+        date_filter["$gte"] = datetime.combine(date_from, datetime.min.time())
+
+    if date_to:
+        date_filter["$lte"] = datetime.combine(date_to, datetime.max.time())
+
+    return date_filter if date_filter else None
 
 
 def sanitize_for_csv(value: Any) -> str:
@@ -297,7 +305,56 @@ async def generate_variance_report(db, filters: ReportFilter) -> list[dict]:
 
 async def generate_user_activity_report(db, filters: ReportFilter) -> list[dict]:
     """Generate user activity report data."""
-    return await ReportGenerationService(db).generate_user_activity_report(filters)
+    query: dict[str, Any] = {}
+
+    if filters.user_id:
+        query["user_id"] = filters.user_id
+
+    date_filter = build_date_filter(filters.date_from, filters.date_to)
+    if date_filter:
+        query["timestamp"] = date_filter
+
+    pipeline = [
+        {"$match": query},
+        {
+            "$group": {
+                "_id": "$user_id",
+                "total_actions": {"$sum": 1},
+                "scans": {"$sum": {"$cond": [{"$eq": ["$action", "scan"]}, 1, 0]}},
+                "verifications": {"$sum": {"$cond": [{"$eq": ["$action", "verify"]}, 1, 0]}},
+                "approvals": {"$sum": {"$cond": [{"$eq": ["$action", "approve"]}, 1, 0]}},
+                "first_action": {"$min": "$timestamp"},
+                "last_action": {"$max": "$timestamp"},
+            }
+        },
+        {
+            "$lookup": {
+                "from": "users",
+                "localField": "_id",
+                "foreignField": "_id",
+                "as": "user_info",
+            }
+        },
+        {"$unwind": {"path": "$user_info", "preserveNullAndEmptyArrays": True}},
+        {
+            "$project": {
+                "_id": 0,
+                "user_id": "$_id",
+                "username": {"$ifNull": ["$user_info.username", "Unknown"]},
+                "role": {"$ifNull": ["$user_info.role", "Unknown"]},
+                "total_actions": 1,
+                "scans": 1,
+                "verifications": 1,
+                "approvals": 1,
+                "first_action": 1,
+                "last_action": 1,
+            }
+        },
+        {"$sort": {"total_actions": -1}},
+        {"$limit": 1000},
+    ]
+
+    return await db.audit_logs.aggregate(pipeline).to_list(1000)
 
 
 async def generate_session_history_report(db, filters: ReportFilter) -> list[dict]:
@@ -379,7 +436,45 @@ async def generate_session_history_report(db, filters: ReportFilter) -> list[dic
 
 async def generate_audit_trail_report(db, filters: ReportFilter) -> list[dict]:
     """Generate audit trail report data."""
-    return await ReportGenerationService(db).generate_audit_trail_report(filters)
+    query: dict[str, Any] = {}
+
+    if filters.user_id:
+        query["user_id"] = filters.user_id
+
+    date_filter = build_date_filter(filters.date_from, filters.date_to)
+    if date_filter:
+        query["timestamp"] = date_filter
+
+    pipeline = [
+        {"$match": query},
+        {
+            "$lookup": {
+                "from": "users",
+                "localField": "user_id",
+                "foreignField": "_id",
+                "as": "user_info",
+            }
+        },
+        {"$unwind": {"path": "$user_info", "preserveNullAndEmptyArrays": True}},
+        {
+            "$project": {
+                "_id": 0,
+                "timestamp": 1,
+                "action": 1,
+                "user_id": 1,
+                "username": {"$ifNull": ["$user_info.username", "System"]},
+                "role": {"$ifNull": ["$user_info.role", "system"]},
+                "target_type": 1,
+                "target_id": 1,
+                "details": 1,
+                "ip_address": 1,
+            }
+        },
+        {"$sort": {"timestamp": -1}},
+        {"$limit": 10000},
+    ]
+
+    return await db.audit_logs.aggregate(pipeline).to_list(10000)
 
 
 # Report Generator Dispatch
@@ -406,42 +501,28 @@ async def get_report_types(current_user: dict = Depends(get_current_user)):
 
 @report_generation_router.post("/generate", response_model=ReportResponse)
 async def generate_report(
-    report_request: ReportRequest,
-    http_request: Request,
+    request: ReportRequest,
     current_user: dict = Depends(require_role("admin", "supervisor")),
-    report_service: ReportGenerationService = Depends(get_report_generation_service),
 ):
     """
     Generate a report with specified filters.
     Returns data in JSON format by default.
     """
-    request_id = get_request_id(http_request.headers)
-    if report_request.report_type not in REPORT_TYPES:
+    if request.report_type not in REPORT_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid report type. Valid types: {list(REPORT_TYPES.keys())}",
         )
 
-    filters = report_request.filters or ReportFilter()
+    db = get_db()
+    filters = request.filters or ReportFilter()
 
     # Generate report data
-    generator = REPORT_GENERATORS[report_request.report_type]
+    generator = REPORT_GENERATORS[request.report_type]
     try:
-        data = await getattr(report_service, generator.__name__)(filters)
-    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
-        logger.error(
-            "report_generation_failed",
-            extra={
-                "request_id": request_id,
-                "user": sanitize_for_logging(
-                    str(current_user.get("username", "unknown"))
-                ),
-                "endpoint": "/reports/generate",
-                "status": "failed",
-                "report_type": sanitize_for_logging(report_request.report_type),
-                "error": sanitize_for_logging(str(e)),
-            },
-        )
+        data = await generator(db, filters)
+    except Exception as e:
+        logger.error("Error generating report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate report",
@@ -454,19 +535,8 @@ async def generate_report(
         total_records=len(data),
         generated_at=datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
         filters_applied=filters_applied,
-        report_type=report_request.report_type,
-        report_name=REPORT_TYPES[report_request.report_type]["name"],
-    )
-    logger.info(
-        "report_generated",
-        extra={
-            "request_id": request_id,
-            "user": sanitize_for_logging(str(current_user.get("username", "unknown"))),
-            "endpoint": "/reports/generate",
-            "status": "completed",
-            "report_type": sanitize_for_logging(report_request.report_type),
-            "total_records": len(data),
-        },
+        report_type=request.report_type,
+        report_name=REPORT_TYPES[request.report_type]["name"],
     )
 
     return ReportResponse(summary=summary, data=data)
@@ -476,23 +546,21 @@ async def generate_report(
 async def export_report_csv(
     request: ReportRequest,
     current_user: dict = Depends(require_role("admin", "supervisor")),
-    report_service: ReportGenerationService = Depends(get_report_generation_service),
 ):
     """
     Export report as CSV file.
     """
     if request.report_type not in REPORT_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid report type"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid report type")
 
+    db = get_db()
     filters = request.filters or ReportFilter()
 
     # Generate report data
     generator = REPORT_GENERATORS[request.report_type]
     try:
-        data = await getattr(report_service, generator.__name__)(filters)
-    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        data = await generator(db, filters)
+    except Exception as e:
         logger.error("Error generating report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -529,7 +597,6 @@ async def export_report_csv(
 async def export_report_xlsx(
     request: ReportRequest,
     current_user: dict = Depends(require_role("admin", "supervisor")),
-    report_service: ReportGenerationService = Depends(get_report_generation_service),
 ):
     """
     Export report as Excel XLSX file.
@@ -543,16 +610,15 @@ async def export_report_xlsx(
         )
 
     if request.report_type not in REPORT_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid report type"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid report type")
 
+    db = get_db()
     filters = request.filters or ReportFilter()
 
     generator = REPORT_GENERATORS[request.report_type]
     try:
-        data = await getattr(report_service, generator.__name__)(filters)
-    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        data = await generator(db, filters)
+    except Exception as e:
         logger.error("Error generating report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -588,9 +654,7 @@ async def export_report_xlsx(
 
 @report_generation_router.get("/filters/{report_type}")
 async def get_report_filter_options(
-    report_type: str,
-    current_user: dict = Depends(get_current_user),
-    report_service: ReportGenerationService = Depends(get_report_generation_service),
+    report_type: str, current_user: dict = Depends(get_current_user)
 ):
     """
     Get available filter options for a specific report type.
@@ -650,10 +714,16 @@ async def get_report_filter_options(
 
         return {
             "report_type": report_type,
-            "filters": await report_service.get_filter_options(current_user),
+            "filters": {
+                "warehouses": warehouses,
+                "floors": floors,
+                "categories": categories,
+                "statuses": statuses,
+                "users": users,
+            },
         }
 
-    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+    except Exception as e:
         logger.error("Error fetching filter options: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

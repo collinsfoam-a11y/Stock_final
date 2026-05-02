@@ -1,5 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { supervisorFeatureFlags } from "../../constants/roleFeatureFlags";
+import {
+  supervisorFeatureFlags,
+} from "../../constants/roleFeatureFlags";
 
 export interface AdminNavItem {
   key: string;
@@ -67,8 +69,8 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         ? [
             {
               key: "sync-conflicts",
-              label: "Sync Differences",
-              subtitle: "Review system-versus-count differences before upload",
+              label: "Sync Issues",
+              subtitle: "Resolve data mismatches before they spread",
               icon: "sync",
               route: "/supervisor/sync-conflicts",
             } satisfies AdminNavItem,

@@ -1,6 +1,19 @@
+/**
+ * GlassCard Component - Enhanced v2.0
+ *
+ * Glassmorphism card with backdrop blur effect
+ * Features:
+ * - Translucent background with blur
+ * - Gradient border option
+ * - Shadow and elevation
+ * - Customizable variants
+ */
+
 import React from "react";
-import { StyleProp, ViewStyle } from "react-native";
-import { OperationalCard } from "./OperationalSurface";
+import { View, StyleSheet, ViewStyle, StyleProp, Platform } from "react-native";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
+import { useThemeContextSafe } from "../../context/ThemeContext";
 
 export type GlassVariant = "light" | "medium" | "strong" | "dark" | "modal";
 export type GlassElevation = "none" | "xs" | "sm" | "md" | "lg" | "xl";
@@ -19,19 +32,16 @@ interface GlassCardProps {
   accessibilityHint?: string;
 }
 
-/**
- * Compatibility surface for old GlassCard call sites.
- *
- * The public API is retained while rendering a plain utility card that matches
- * the operational UI direction: solid surface, subtle border, restrained shadow.
- */
 export const GlassCard = ({
   children,
   style,
   variant = "medium",
+  intensity = 20,
+  tint = "dark",
   borderRadius,
   padding,
-  elevation = "sm",
+  withGradientBorder = false,
+  elevation = "md",
   accessibilityLabel,
   accessibilityHint,
 }: GlassCardProps) => {
@@ -132,16 +142,63 @@ export const GlassCard = ({
   }
 
   return (
-    <OperationalCard
-      variant={variant}
-      borderRadius={borderRadius}
-      padding={padding}
-      elevation={elevation}
-      style={style}
+    <View
+      style={[
+        styles.container,
+        glassStyle,
+        shadowStyle,
+        { borderRadius: activeBorderRadius },
+        style,
+      ]}
+      accessible={true}
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
     >
-      {children}
-    </OperationalCard>
+      {useBlur ? (
+        <BlurView
+          intensity={intensity}
+          tint={activeTint}
+          style={[styles.blur, { borderRadius: activeBorderRadius }]}
+        >
+          <View style={[styles.content, { padding: activePadding }]}>
+            {children}
+          </View>
+        </BlurView>
+      ) : (
+        <View
+          style={[
+            styles.webFallbackSurface,
+            {
+              backgroundColor: fallbackBackground,
+              borderRadius: activeBorderRadius,
+            },
+          ]}
+        >
+          <View style={[styles.content, { padding: activePadding }]}>
+            {children}
+          </View>
+        </View>
+      )}
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    overflow: "hidden",
+    // Base styles
+  },
+  gradientBorder: {
+    overflow: "hidden",
+  },
+  blur: {
+    // Let blur view size itself based on content
+    overflow: "hidden",
+  },
+  webFallbackSurface: {
+    // Web safe fallback when native blur isn't available
+  },
+  content: {
+    // Padding applied dynamically
+  },
+});

@@ -50,7 +50,7 @@ class LockManager:
                 logger.warning(f"✗ Rack lock failed: {rack_id} already locked by {current_owner}")
                 return False
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error acquiring rack lock {rack_id}: {str(e)}")
             return False
 
@@ -100,7 +100,7 @@ class LockManager:
                 )
                 return False
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error releasing rack lock {rack_id}: {str(e)}")
             return False
 
@@ -133,7 +133,7 @@ class LockManager:
                 )
                 return False
 
-        except (AttributeError, RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error renewing rack lock {rack_id}: {str(e)}")
             return False
 
@@ -242,7 +242,7 @@ class LockManager:
                 logger.warning(f"Session lock already exists for {session_id}")
             return bool(result)
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error creating session {session_id}: {str(e)}")
             return False
 

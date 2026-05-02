@@ -21,7 +21,6 @@ import { useSettingsStore } from "@/store/settingsStore";
 import { ItemVerificationAPI } from "@/domains/inventory/services/itemVerificationApi";
 import { getRackProgress } from "@/services/api/api";
 import { RackProgressCard } from "@/components/scan/RackProgressCard";
-import { createShadow } from "@/theme/shadowUtils";
 
 export interface FilterValues {
   category?: string;
@@ -491,7 +490,10 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     ...Platform.select({
       ios: {
-        ...createShadow({ color: "#000", offsetX: 0, offsetY: 2, opacity: 0.1, radius: 4 }),
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
       },
       android: {
         elevation: 2,

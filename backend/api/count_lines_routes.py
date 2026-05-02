@@ -1,3 +1,4 @@
+import inspect
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -5,11 +6,13 @@ from typing import Any, NoReturn, Optional
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel
 
 from backend.api.schemas import BulkCountLineUpdate, CountLineCreate
 from backend.auth.dependencies import get_current_user
 from backend.core.websocket_manager import manager
+from backend.db.runtime import get_db
 from backend.models.audit import AuditEventType, AuditLogStatus
 from backend.services.activity_log import ActivityLogService
 from backend.services.canonical_inventory import (
@@ -19,6 +22,7 @@ from backend.services.canonical_inventory import (
     find_duplicate_count_line,
     find_session,
     is_count_line_locked,
+    is_count_line_effectively_reviewed,
     is_session_finalized,
     materialize_count_line_review_state,
     recompute_session_totals,
@@ -127,7 +131,7 @@ def init_count_lines_api(
     global _activity_log_service, _lock_service, _snapshot_service, _variant_service, _sql_connector
     if snapshot_service is None:
         try:
-            snapshot_service = SnapshotService(get_count_query_service().database)
+            snapshot_service = SnapshotService(get_db())
         except RuntimeError:
             snapshot_service = None
     _activity_log_service = activity_log_service
@@ -142,7 +146,7 @@ def _get_db_client(db_override=None):
     if db_override:
         return db_override
     try:
-        return get_count_query_service().database
+        return get_db()
     except RuntimeError:
         raise HTTPException(status_code=500, detail="Database is not initialized")
 
@@ -349,7 +353,20 @@ def _build_legacy_count_line_draft_filter(
 
 
 async def _resolve_item_name_for_draft(db: Any, line_data: CountLineCreate) -> Optional[str]:
-    return await _get_count_query_service(db).resolve_item_name_for_draft(line_data)
+    if line_data.item_name:
+        return line_data.item_name
+
+    erp_item = None
+    if line_data.barcode:
+        result = db.erp_items.find_one({"barcode": line_data.barcode})
+        erp_item = await result if inspect.isawaitable(result) else result
+
+    if not erp_item and line_data.item_code:
+        result = db.erp_items.find_one({"item_code": line_data.item_code})
+        erp_item = await result if inspect.isawaitable(result) else result
+
+    item_name = erp_item.get("item_name") if erp_item else None
+    return item_name or None
 
 
 def _build_dashboard_refresh_message(
@@ -399,7 +416,7 @@ async def _broadcast_dashboard_refresh(
             ),
             roles={"supervisor", "admin"},
         )
-    except (RuntimeError, TypeError, ValueError, OSError) as exc:
+    except Exception as exc:
         logger.warning(
             "Failed to broadcast dashboard refresh event: %s",
             _safe_log_value(exc, max_length=200),
@@ -421,9 +438,11 @@ async def _find_idempotent_count_line(
     if not idempotency_key:
         return None
 
-    existing_idempotent = await _get_count_query_service(db).find_idempotent_count_line(
-        line_data.session_id,
-        idempotency_key,
+    existing_idempotent = await db.count_lines.find_one(
+        {
+            "session_id": line_data.session_id,
+            "idempotency_key": idempotency_key,
+        }
     )
     if existing_idempotent:
         existing_idempotent.pop("_id", None)
@@ -433,10 +452,16 @@ async def _find_idempotent_count_line(
 async def _find_erp_item_for_count_line(
     db: Any, line_data: CountLineCreate
 ) -> Optional[dict[str, Any]]:
-    return await _get_count_query_service(db).find_erp_item(
-        barcode=line_data.barcode,
-        item_code=line_data.item_code,
-    )
+    erp_item = None
+    if line_data.barcode:
+        result_item = db.erp_items.find_one({"barcode": line_data.barcode})
+        erp_item = await result_item if inspect.isawaitable(result_item) else result_item
+
+    if not erp_item:
+        result_item = db.erp_items.find_one({"item_code": line_data.item_code})
+        erp_item = await result_item if inspect.isawaitable(result_item) else result_item
+
+    return erp_item
 
 
 async def _get_erp_item_for_count_line(db: Any, line_data: CountLineCreate) -> dict[str, Any]:
@@ -449,7 +474,28 @@ async def _get_erp_item_for_count_line(db: Any, line_data: CountLineCreate) -> d
 async def _get_erp_item_for_existing_count_line(
     db: Any, count_line: dict[str, Any]
 ) -> dict[str, Any]:
-    return await _get_count_query_service(db).get_erp_item_for_existing_count_line(count_line)
+    barcode = count_line.get("barcode")
+    if barcode:
+        result_item = db.erp_items.find_one({"barcode": barcode})
+        erp_item = await result_item if inspect.isawaitable(result_item) else result_item
+        if erp_item:
+            return erp_item
+
+    item_code = count_line.get("item_code")
+    if item_code:
+        result_item = db.erp_items.find_one({"item_code": item_code})
+        erp_item = await result_item if inspect.isawaitable(result_item) else result_item
+        if erp_item:
+            return erp_item
+
+    return {
+        "item_code": item_code,
+        "item_name": count_line.get("item_name"),
+        "category": count_line.get("category_correction"),
+        "mrp": count_line.get("mrp_erp"),
+        "sale_price": count_line.get("mrp_erp"),
+        "sales_price": count_line.get("mrp_erp"),
+    }
 
 
 async def _normalize_line_data_for_backend_rules(
@@ -760,7 +806,7 @@ async def _persist_count_line_document(
     write_service: CountLineWriteService,
     session: dict[str, Any],
 ) -> None:
-    async with write_service.transaction() as tx:
+    async with mongo_transaction(db.client) as tx:
         write_context = {
             "session": session,
             "username": username,
@@ -806,11 +852,19 @@ async def _persist_count_line_document(
                 "updated_at": counted_at,
             }
         }
-        await write_service.mark_count_line_drafts_submitted(
-            draft_query=draft_query,
-            draft_update=draft_update_doc,
-            db_session=tx,
-        )
+        try:
+            draft_update_result = db.count_line_drafts.update_many(
+                draft_query,
+                draft_update_doc,
+                session=tx,
+            )
+        except TypeError:
+            draft_update_result = db.count_line_drafts.update_many(
+                draft_query,
+                draft_update_doc,
+            )
+        if inspect.isawaitable(draft_update_result):
+            await draft_update_result
 
 
 async def _create_and_persist_count_line(
@@ -938,7 +992,7 @@ async def _broadcast_scan_created(
             },
             session_id=line_data.session_id,
         )
-    except (RuntimeError, TypeError, ValueError, OSError) as exc:
+    except Exception as exc:
         logger.warning("Failed to broadcast scan event: %s", _safe_log_value(exc, max_length=200))
 
 
@@ -959,7 +1013,7 @@ async def _maybe_update_session_barcode(db: Any, line_data: CountLineCreate) -> 
                 _safe_log_value(line_data.session_id),
                 _safe_log_value(line_data.barcode),
             )
-    except (RuntimeError, TypeError, ValueError, OSError) as exc:
+    except Exception as exc:
         logger.error("Failed to update session barcode: %s", _safe_log_value(exc, max_length=200))
 
 
@@ -1001,7 +1055,7 @@ async def _record_high_risk_correction(
                 "financial_impact": financial_impact,
             },
         )
-    except (RuntimeError, TypeError, ValueError, OSError) as exc:
+    except Exception as exc:
         logger.error("Failed to write audit log: %s", _safe_log_value(exc, max_length=200))
 
 
@@ -1016,7 +1070,6 @@ async def save_count_line_draft(
     Upserts the current autosave payload into count_line_drafts.
     """
     db = _get_db_client()
-    write_service = _get_count_line_write_service(db)
     session = await find_session(db, line_data.session_id)
     if isinstance(session, dict):
         await _enforce_count_line_session_logic(
@@ -1043,12 +1096,60 @@ async def save_count_line_draft(
         "updated_at": now,
     }
 
-    draft_id = await write_service.save_count_line_draft(
-        draft_filter=draft_filter,
-        legacy_draft_filter=legacy_draft_filter,
-        draft_payload=draft_payload,
-        created_at=now,
+    existing_draft_result = db.count_line_drafts.find_one(draft_filter)
+    existing_draft = (
+        await existing_draft_result
+        if inspect.isawaitable(existing_draft_result)
+        else existing_draft_result
     )
+    if not existing_draft:
+        # Backward compatibility: upgrade older draft identity to indexed identity.
+        legacy_draft_result = db.count_line_drafts.find_one(legacy_draft_filter)
+        existing_draft = (
+            await legacy_draft_result
+            if inspect.isawaitable(legacy_draft_result)
+            else legacy_draft_result
+        )
+
+    if existing_draft:
+        update_result = db.count_line_drafts.update_one(
+            {"_id": existing_draft["_id"]},
+            {"$set": draft_payload},
+        )
+        if inspect.isawaitable(update_result):
+            await update_result
+        draft_id = str(existing_draft["_id"])
+    else:
+        draft_payload["created_at"] = now
+        try:
+            insert_result = db.count_line_drafts.insert_one(draft_payload)
+            result = await insert_result if inspect.isawaitable(insert_result) else insert_result
+            draft_id = str(result.inserted_id)
+        except DuplicateKeyError:
+            # Recover from concurrent insert/legacy key collision.
+            conflicting_draft_result = db.count_line_drafts.find_one(draft_filter)
+            conflicting_draft = (
+                await conflicting_draft_result
+                if inspect.isawaitable(conflicting_draft_result)
+                else conflicting_draft_result
+            )
+            if not conflicting_draft:
+                legacy_conflicting_result = db.count_line_drafts.find_one(legacy_draft_filter)
+                conflicting_draft = (
+                    await legacy_conflicting_result
+                    if inspect.isawaitable(legacy_conflicting_result)
+                    else legacy_conflicting_result
+                )
+            if not conflicting_draft:
+                raise HTTPException(status_code=409, detail="Draft conflict detected")
+
+            update_result = db.count_line_drafts.update_one(
+                {"_id": conflicting_draft["_id"]},
+                {"$set": draft_payload},
+            )
+            if inspect.isawaitable(update_result):
+                await update_result
+            draft_id = str(conflicting_draft["_id"])
 
     logger.debug(
         "Draft saved for item %s: %s",
@@ -1155,7 +1256,7 @@ async def create_count_line(
 
     try:
         await recompute_session_totals(db, line_data.session_id)
-    except (RuntimeError, TypeError, ValueError, OSError) as exc:
+    except Exception as exc:
         logger.error("Failed to update session stats: %s", _safe_log_value(exc, max_length=200))
 
     await _maybe_update_session_barcode(db, line_data)
@@ -1337,12 +1438,56 @@ async def get_count_lines(
     db_override=None,
 ):
     """Get count lines with pagination. Shared between routes and tests."""
-    return await _get_count_query_service(db_override).get_count_lines(
-        session_id=session_id,
-        page=page,
-        page_size=page_size,
-        verified=verified,
+    db_client = _get_db_client(db_override)
+    if verified is None:
+        skip = (page - 1) * page_size
+        total = await db_client.count_lines.count_documents({"session_id": session_id})
+        lines_cursor = (
+            db_client.count_lines.find({"session_id": session_id}, {"_id": 0})
+            .sort("counted_at", -1)
+            .skip(skip)
+            .limit(page_size)
+        )
+        lines = await lines_cursor.to_list(length=page_size)
+        projected_lines = [materialize_count_line_review_state(line) for line in lines]
+        return {
+            "items": projected_lines,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total": total,
+                "total_pages": (total + page_size - 1) // page_size if page_size else 0,
+                "has_next": skip + page_size < total,
+                "has_prev": page > 1,
+            },
+        }
+
+    lines_cursor = db_client.count_lines.find({"session_id": session_id}, {"_id": 0}).sort(
+        "counted_at", -1
     )
+    lines = await lines_cursor.to_list(length=None)
+    projected_lines = [materialize_count_line_review_state(line) for line in lines]
+
+    if verified is not None:
+        projected_lines = [
+            line for line in projected_lines if is_count_line_effectively_reviewed(line) == verified
+        ]
+
+    total = len(projected_lines)
+    skip = (page - 1) * page_size
+    lines_page = projected_lines[skip : skip + page_size]
+
+    return {
+        "items": lines_page,
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "total_pages": (total + page_size - 1) // page_size,
+            "has_next": skip + page_size < total,
+            "has_prev": page > 1,
+        },
+    }
 
 
 @router.get("/count-lines")
@@ -1354,6 +1499,7 @@ async def list_count_lines(
     page_size: int = Query(50, ge=1, le=200),
     limit: Optional[int] = Query(None, ge=1, le=200),
 ):
+    db_client = _get_db_client()
     filter_query: dict[str, Any] = {}
     if session_id:
         filter_query["session_id"] = session_id
@@ -1361,11 +1507,31 @@ async def list_count_lines(
         filter_query["item_code"] = item_code
 
     effective_page_size = limit if limit is not None else page_size
-    return await _get_count_query_service().list_count_lines(
-        filter_query=filter_query,
-        page=page,
-        page_size=effective_page_size,
+    skip = (page - 1) * effective_page_size
+    total = await db_client.count_lines.count_documents(filter_query)
+    lines_cursor = (
+        db_client.count_lines.find(filter_query, {"_id": 0})
+        .sort("counted_at", -1)
+        .skip(skip)
+        .limit(effective_page_size)
     )
+    lines = await lines_cursor.to_list(effective_page_size)
+    lines = [materialize_count_line_review_state(line) for line in lines]
+    total_pages = (
+        (total + effective_page_size - 1) // effective_page_size if effective_page_size else 0
+    )
+
+    return {
+        "items": lines,
+        "pagination": {
+            "page": page,
+            "page_size": effective_page_size,
+            "total": total,
+            "total_pages": total_pages,
+            "has_next": skip + effective_page_size < total,
+            "has_prev": page > 1,
+        },
+    }
 
 
 @router.get("/count-lines/{line_id}")
@@ -1481,7 +1647,7 @@ async def approve_count_line(
                 resource_id=line_id,
                 details={"action": "approve_count_line", "line_id": line_id},
             )
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(
                 "Failed to write audit log: %s",
                 _safe_log_value(e, max_length=200),
@@ -1490,7 +1656,7 @@ async def approve_count_line(
         return {"success": True, "message": "Count line approved"}
     except HTTPException:
         raise
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error(
             "Error approving count line %s: %s",
             _safe_log_value(line_id),
@@ -1613,7 +1779,7 @@ async def reject_count_line(
         }
     except HTTPException:
         raise
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error(
             "Error rejecting count line %s: %s",
             _safe_log_value(line_id),
@@ -1669,10 +1835,8 @@ async def check_item_counted(
         )
 
         # Find all count lines for this item in this session
-        count_lines = await _get_count_query_service(db).list_count_lines_for_item(
-            session_id,
-            item_code,
-        )
+        cursor = db.count_lines.find({"session_id": session_id, "item_code": item_code})
+        count_lines = await cursor.to_list(length=None)
 
         # Convert ObjectId to string
         for line in count_lines:
@@ -1748,7 +1912,13 @@ async def get_count_lines_route(
 
 async def _find_count_line(db, line_id: str) -> Optional[dict]:
     """Find a count line by id or _id."""
-    return await _get_count_query_service(db).find_count_line(line_id)
+    count_line = await db.count_lines.find_one({"id": line_id})
+    if count_line:
+        return count_line
+    try:
+        return await db.count_lines.find_one({"_id": ObjectId(line_id)})
+    except Exception:
+        return None
 
 
 def _current_timestamp() -> datetime:
@@ -1823,7 +1993,7 @@ async def add_quantity_to_count_line(
 
     try:
         await recompute_session_totals(db, str(count_line.get("session_id") or ""))
-    except (RuntimeError, TypeError, ValueError, OSError) as exc:
+    except Exception as exc:
         logger.warning(
             "Failed to recompute session totals after add-quantity: %s",
             _safe_log_value(exc, max_length=200),
@@ -1917,7 +2087,7 @@ async def update_count_line(
 
     try:
         await recompute_session_totals(db, str(count_line.get("session_id") or ""))
-    except (RuntimeError, TypeError, ValueError, OSError) as exc:
+    except Exception as exc:
         logger.warning(
             "Failed to recompute session totals after count-line update: %s",
             _safe_log_value(exc, max_length=200),
@@ -1936,7 +2106,7 @@ async def _recalculate_session_stats(db, session_id: str) -> None:
     """Re-calculate session stats after line deletion."""
     try:
         await recompute_session_totals(db, session_id)
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error(
             "Failed to update session stats after delete: %s",
             _safe_log_value(e, max_length=200),
@@ -2013,7 +2183,7 @@ async def delete_count_line(
 
     except HTTPException:
         raise
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error(
             "Error deleting count line %s: %s",
             _safe_log_value(line_id),
@@ -2059,10 +2229,7 @@ async def bulk_approve_count_lines(
         object_ids = [ObjectId(i) for i in ids if ObjectId.is_valid(i)]
 
         query = {"$or": [{"id": {"$in": ids}}, {"_id": {"$in": object_ids}}]}
-        candidate_lines = await _get_count_query_service(db).find_count_lines_by_query(
-            query,
-            length=max(len(ids), 1),
-        )
+        candidate_lines = await db.count_lines.find(query).to_list(length=max(len(ids), 1))
         for candidate in candidate_lines:
             await _ensure_count_line_mutable(db, candidate)
             await _enforce_count_line_logic_from_line(
@@ -2116,7 +2283,7 @@ async def bulk_approve_count_lines(
             "message": f"Approved {result.modified_count} items",
             "modified_count": result.modified_count,
         }
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Error bulk approving: %s", _safe_log_value(e, max_length=200))
         _raise_count_lines_internal_error("Failed to bulk approve count lines", e)
 
@@ -2183,7 +2350,7 @@ async def create_count_lines_batch(
                 write_service=write_service,
             )
             results.append({"index": idx, "id": str(count_line.get("id") or ""), "success": True})
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             errors.append({"index": idx, "error": str(e)})
 
     await recompute_session_totals(db, batch_data.session_id)
@@ -2215,10 +2382,7 @@ async def bulk_reject_count_lines(
         object_ids = [ObjectId(i) for i in ids if ObjectId.is_valid(i)]
 
         query = {"$or": [{"id": {"$in": ids}}, {"_id": {"$in": object_ids}}]}
-        candidate_lines = await _get_count_query_service(db).find_count_lines_by_query(
-            query,
-            length=max(len(ids), 1),
-        )
+        candidate_lines = await db.count_lines.find(query).to_list(length=max(len(ids), 1))
         for candidate in candidate_lines:
             await _ensure_count_line_mutable(db, candidate)
             await _enforce_count_line_logic_from_line(
@@ -2270,7 +2434,7 @@ async def bulk_reject_count_lines(
             "message": f"Rejected {result.modified_count} items",
             "modified_count": result.modified_count,
         }
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Error bulk rejecting: %s", _safe_log_value(e, max_length=200))
         _raise_count_lines_internal_error("Failed to bulk reject count lines", e)
 
@@ -2356,7 +2520,7 @@ def _load_batches_from_sql(
             "SQL connector available but not connected for '%s'",
             _safe_log_value(item_identifier),
         )
-    except (RuntimeError, TypeError, ValueError, OSError) as sql_err:
+    except Exception as sql_err:
         logger.warning(
             "SQL Server batch fetch failed for '%s': %s",
             _safe_log_value(item_identifier),
@@ -2371,12 +2535,11 @@ async def _load_batches_from_mongo(
     item_identifier: str,
 ) -> list[dict[str, Any]]:
     logger.info(
-        "Using MongoDB offline cache for item batches: %s",
+        "Using MongoDB fallback for item batches: %s",
         _safe_log_value(item_identifier),
     )
-    mongo_items = await _get_count_query_service(db).load_item_batches(
-        _build_mongo_item_batch_query(item_identifier)
-    )
+    cursor = db.erp_items.find(_build_mongo_item_batch_query(item_identifier))
+    mongo_items = await cursor.to_list(length=100)
     return [_mongo_item_to_batch(item) for item in mongo_items]
 
 
@@ -2393,7 +2556,7 @@ async def get_item_batches(
     try:
         db = _get_db_client(db_override)
         batches, fetched_from_sql = _load_batches_from_sql(item_identifier, _sql_connector)
-        source = "sql_server" if fetched_from_sql else "mongodb_offline_cache"
+        source = "sql_server" if fetched_from_sql else "mongodb_offline_fallback"
         if not fetched_from_sql:
             batches = await _load_batches_from_mongo(db, item_identifier)
 
@@ -2409,7 +2572,7 @@ async def get_item_batches(
             "item_identifier": item_identifier,
         }
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error(
             "Error fetching item batches: %s",
             _safe_log_value(e, max_length=200),
@@ -2439,9 +2602,8 @@ async def merge_count_lines(
     db = _get_db_client(db_override)
     results: dict[str, list[Any]] = {"merged": [], "failed": []}
     write_service = _get_count_line_write_service(db)
-    query_service = _get_count_query_service(db)
 
-    target_line = await query_service.find_count_line_by_id_field(payload.target_line_id)
+    target_line = await db.count_lines.find_one({"id": payload.target_line_id})
     if not target_line:
         raise HTTPException(status_code=404, detail="Target count line not found")
     await _enforce_count_line_logic_from_line(
@@ -2461,7 +2623,7 @@ async def merge_count_lines(
         if source_id == payload.target_line_id:
             continue
 
-        source_line = await query_service.find_count_line_by_id_field(source_id)
+        source_line = await db.count_lines.find_one({"id": source_id})
         if not source_line:
             results["failed"].append({"id": source_id, "error": "Not found"})
             continue
@@ -2489,7 +2651,7 @@ async def merge_count_lines(
                 merged_qty = float(source_line.get("counted_qty", 0) or 0) + target_qty
 
             erp_item = await _get_erp_item_for_existing_count_line(db, target_line)
-            async with write_service.transaction() as tx:
+            async with mongo_transaction(db.client) as tx:
                 await write_service.process_write(
                     {
                         "operation": "update_one",
@@ -2533,13 +2695,13 @@ async def merge_count_lines(
             target_line["counted_qty"] = merged_qty
             merged_count += 1
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             results["failed"].append({"id": source_id, "error": str(e)})
 
     if merged_count > 0 and target_session_id:
         try:
             await recompute_session_totals(db, target_session_id)
-        except (RuntimeError, TypeError, ValueError, OSError) as exc:
+        except Exception as exc:
             logger.warning(
                 "Failed to recompute session totals after merge: %s",
                 _safe_log_value(exc, max_length=200),

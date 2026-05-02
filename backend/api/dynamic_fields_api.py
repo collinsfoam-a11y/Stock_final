@@ -11,10 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.auth import get_current_user
-from backend.services.dynamic_fields_service import (
-    DynamicFieldsService,
-    create_dynamic_fields_service,
-)
+from backend.db.runtime import get_db
+from backend.services.dynamic_fields_service import DynamicFieldsService
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +26,7 @@ def get_dynamic_fields_service() -> DynamicFieldsService:
     """Get global dynamic fields service instance"""
     global _dynamic_fields_service
     if _dynamic_fields_service is None:
-        _dynamic_fields_service = create_dynamic_fields_service()
+        _dynamic_fields_service = DynamicFieldsService(get_db())
     return _dynamic_fields_service
 
 
@@ -137,7 +135,7 @@ async def create_field_definition(
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Error creating field definition: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -163,7 +161,7 @@ async def get_field_definitions(
 
         return {"success": True, "count": len(fields), "fields": fields}
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Error getting field definitions: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -197,7 +195,7 @@ async def update_field_definition(
 
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Error updating field definition: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -221,7 +219,7 @@ async def delete_field_definition(
         else:
             raise HTTPException(status_code=404, detail="Field definition not found")
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Error deleting field definition: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -260,7 +258,7 @@ async def set_field_value(
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Error setting field value: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -301,7 +299,7 @@ async def set_field_values_bulk(
                         set_by=current_user.get("username"),
                     )
                     results.append(result)
-                except (RuntimeError, TypeError, ValueError, OSError) as e:
+                except Exception as e:
                     errors.append(
                         {
                             "item_code": item_code,
@@ -318,7 +316,7 @@ async def set_field_values_bulk(
             "errors": errors if errors else None,
         }
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Error setting bulk field values: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -358,7 +356,7 @@ async def get_item_field_values(
             "fields": values,
         }
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Error getting item field values: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -394,7 +392,7 @@ async def get_items_with_fields(
 
         return {"success": True, "count": len(items), "items": items}
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Error getting items with fields: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -420,6 +418,6 @@ async def get_field_statistics(
 
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Error getting field statistics: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")

@@ -5,7 +5,7 @@
  */
 
 import React from "react";
-import { TouchableOpacity, StyleSheet, ViewStyle, Platform } from "react-native";
+import { TouchableOpacity, StyleSheet, ViewStyle } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,

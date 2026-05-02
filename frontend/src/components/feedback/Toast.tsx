@@ -9,7 +9,6 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { createShadow } from "@/theme/shadowUtils";
 
 interface ToastProps {
   message: string;
@@ -149,7 +148,10 @@ const styles = StyleSheet.create({
       },
       default: {
         elevation: 5,
-        ...createShadow({ color: "#000", offsetX: 0, offsetY: 2, opacity: 0.25, radius: 4 }),
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
       },
     }),
   },

@@ -5,19 +5,16 @@ Endpoints for creating and generating custom reports
 
 import io
 import logging
+from backend.utils.api_utils import sanitize_for_logging
 from typing import Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from pymongo.errors import PyMongoError
 
 from backend.auth import get_current_user
-from backend.services.dynamic_report_service import (
-    DynamicReportService,
-    create_dynamic_report_service,
-)
-from backend.utils.api_utils import sanitize_for_logging
+from backend.db.runtime import get_db
+from backend.services.dynamic_report_service import DynamicReportService
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +29,7 @@ def get_dynamic_report_service() -> DynamicReportService:
     """Get global dynamic report service instance"""
     global _dynamic_report_service
     if _dynamic_report_service is None:
-        _dynamic_report_service = create_dynamic_report_service()
+        _dynamic_report_service = DynamicReportService(get_db())
     return _dynamic_report_service
 
 
@@ -132,7 +129,7 @@ async def create_report_template(
             "template": template,
         }
 
-    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+    except Exception as e:
         logger.error("Error creating report template: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -154,7 +151,7 @@ async def get_report_templates(
 
         return {"success": True, "count": len(templates), "templates": templates}
 
-    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+    except Exception as e:
         logger.error("Error getting report templates: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -232,7 +229,7 @@ async def generate_report(
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except (KeyError, PyMongoError, RuntimeError, TypeError) as e:
+    except Exception as e:
         logger.error("Error generating report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -261,7 +258,7 @@ async def get_generated_reports(
 
         return {"success": True, "count": len(reports), "reports": reports}
 
-    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+    except Exception as e:
         logger.error("Error getting generated reports: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -291,7 +288,7 @@ async def download_report(
 
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except (KeyError, PyMongoError, RuntimeError, TypeError) as e:
+    except Exception as e:
         logger.error("Error downloading report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -312,7 +309,8 @@ async def quick_report_items_with_fields(
     """
     try:
         # Create quick template
-        dynamic_fields = await service.get_enabled_dynamic_fields()
+        fields_service = service.db.dynamic_field_definitions
+        dynamic_fields = await fields_service.find({"enabled": True}).to_list(length=None)
 
         fields: list[dict[str, Any]] = [
             {"name": "item_code", "label": "Item Code", "source": "database"},
@@ -352,7 +350,7 @@ async def quick_report_items_with_fields(
             headers={"Content-Disposition": f"attachment; filename={file_name}"},
         )
 
-    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+    except Exception as e:
         logger.error("Error generating quick report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -417,6 +415,6 @@ async def quick_report_variance_summary(
             headers={"Content-Disposition": f"attachment; filename={file_name}"},
         )
 
-    except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+    except Exception as e:
         logger.error("Error generating variance summary: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error")

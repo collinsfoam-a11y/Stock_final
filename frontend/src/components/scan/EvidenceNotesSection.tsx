@@ -8,15 +8,10 @@ import {
   colors,
   fontSize,
   fontWeight,
+  radius as borderRadius,
+  semanticColors,
   spacing,
 } from "@/theme/unified";
-
-const SURFACE_CARD = "#ffffff";
-const SURFACE_BORDER = "#d9e5e2";
-const SURFACE_MUTED = "#f8fafc";
-const ACCENT = "#0f766e";
-const TEXT_STRONG = "#0f172a";
-const TEXT_MUTED = "#475569";
 
 type DamageType = "returnable" | "nonreturnable";
 
@@ -59,9 +54,7 @@ export function EvidenceNotesSection({
 }: EvidenceNotesSectionProps) {
   return (
     <>
-      <ModernCard style={styles.sectionCard} contentStyle={styles.sectionCardContent}>
-        <Text style={styles.sectionKicker}>Evidence</Text>
-        <Text style={styles.sectionHeading}>Damage and proof collection</Text>
+      <View style={styles.section}>
         <View style={styles.toggleRow}>
           <View style={styles.toggleLabelContainer}>
             <Ionicons
@@ -69,7 +62,14 @@ export function EvidenceNotesSection({
               size={20}
               color={colors.error[600]}
             />
-            <Text style={styles.toggleLabel}>Is Damaged Item</Text>
+            <Text
+              style={[
+                styles.toggleLabel,
+                { color: semanticColors.text.primary },
+              ]}
+            >
+              Is Damaged Item
+            </Text>
           </View>
           <Switch
             value={isDamageEnabled}
@@ -84,7 +84,17 @@ export function EvidenceNotesSection({
 
         {isDamageEnabled && (
           <View style={styles.damageContainer}>
-            <Text style={styles.damageHeader}>Select Damage Type</Text>
+            <Text
+              style={[
+                styles.detailLabel,
+                {
+                  color: colors.error[700],
+                  fontWeight: fontWeight.bold,
+                },
+              ]}
+            >
+              Select Damage Type
+            </Text>
 
             <View style={styles.damageTypeContainer}>
               <TouchableOpacity
@@ -132,14 +142,14 @@ export function EvidenceNotesSection({
                 style={[
                   styles.damageQtyInput,
                   {
-                    color: TEXT_STRONG,
+                    color: semanticColors.text.primary,
                   },
                 ]}
                 value={damageQty}
                 onChangeText={onDamageQtyChange}
                 keyboardType="numeric"
                 placeholder="0"
-                placeholderTextColor={TEXT_MUTED}
+                placeholderTextColor={semanticColors.text.disabled}
               />
             </View>
 
@@ -182,13 +192,16 @@ export function EvidenceNotesSection({
             </View>
           </View>
         )}
-      </ModernCard>
+      </View>
 
-      <ModernCard style={styles.sectionCard} contentStyle={styles.sectionCardContent}>
-        <Text style={styles.sectionKicker}>Photos</Text>
-        <Text style={styles.sectionTitle}>Item Photos (Optional)</Text>
-        <Text style={styles.sectionSubtitle}>
-          Capture additional pack evidence when labels, dates, or damage need visual proof.
+      <View style={styles.section}>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: semanticColors.text.primary },
+          ]}
+        >
+          Item Photos (Optional)
         </Text>
 
         <View style={styles.itemPhotosRow}>
@@ -219,29 +232,24 @@ export function EvidenceNotesSection({
               <Ionicons
                 name="add-circle-outline"
                 size={32}
-                color={ACCENT}
+                color={colors.primary[600]}
               />
               <Text style={styles.addPhotoSubtext}>Add Photo</Text>
             </TouchableOpacity>
           )}
         </View>
-      </ModernCard>
+      </View>
 
-      <ModernCard style={styles.sectionCard} contentStyle={styles.sectionCardContent}>
-        <Text style={styles.sectionKicker}>Notes</Text>
-        <Text style={styles.sectionTitle}>Variance remark</Text>
+      <View style={styles.section}>
         <ModernInput
           value={varianceRemark}
           onChangeText={onVarianceRemarkChange}
           placeholder="Variance reason (if any)"
           label="Variance Remark"
-          containerStyle={styles.inputContainer}
         />
-      </ModernCard>
+      </View>
 
-      <ModernCard style={styles.sectionCard} contentStyle={styles.sectionCardContent}>
-        <Text style={styles.sectionKicker}>Notes</Text>
-        <Text style={styles.sectionTitle}>Operator remarks</Text>
+      <View style={styles.section}>
         <ModernInput
           value={remark}
           onChangeText={onRemarkChange}
@@ -249,9 +257,8 @@ export function EvidenceNotesSection({
           label="Remarks"
           multiline
           numberOfLines={3}
-          containerStyle={styles.inputContainer}
         />
-      </ModernCard>
+      </View>
     </>
   );
 }
@@ -259,9 +266,9 @@ export function EvidenceNotesSection({
 const styles = StyleSheet.create({
   addPhotoCard: {
     alignItems: "center",
-    backgroundColor: SURFACE_MUTED,
-    borderColor: SURFACE_BORDER,
-    borderRadius: 18,
+    backgroundColor: colors.primary[50],
+    borderColor: colors.primary[200],
+    borderRadius: borderRadius.md,
     borderStyle: "dashed",
     borderWidth: 2,
     height: 100,
@@ -269,7 +276,7 @@ const styles = StyleSheet.create({
     width: 100,
   },
   addPhotoSubtext: {
-    color: ACCENT,
+    color: colors.primary[600],
     fontSize: fontSize.xs,
     fontWeight: fontWeight.medium,
     marginTop: 4,
@@ -277,35 +284,29 @@ const styles = StyleSheet.create({
   damageContainer: {
     backgroundColor: colors.error[50],
     borderColor: colors.error[200],
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     marginTop: spacing.sm,
     padding: spacing.md,
-    borderRadius: 20,
-  },
-  damageHeader: {
-    color: colors.error[700],
-    fontSize: fontSize.sm,
-    fontWeight: "700",
   },
   damageQtyInput: {
     borderColor: colors.error[200],
-    borderRadius: 16,
+    borderRadius: 8,
     borderWidth: 1,
     fontSize: 24,
     fontWeight: fontWeight.bold,
-    height: 56,
+    height: 50,
     marginTop: 4,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.white,
   },
   damageTypeButton: {
     alignItems: "center",
     backgroundColor: colors.white,
     borderColor: colors.error[200],
-    borderRadius: 16,
+    borderRadius: borderRadius.sm,
     borderWidth: 1,
     flex: 1,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
   },
   damageTypeContainer: {
     flexDirection: "row",
@@ -327,12 +328,8 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     color: colors.neutral[500],
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    marginBottom: 4,
-  },
-  inputContainer: {
-    marginBottom: 0,
+    fontSize: fontSize.xs,
+    marginBottom: 2,
   },
   itemPhotoCard: {
     alignItems: "center",
@@ -341,10 +338,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     position: "relative",
     width: 100,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: SURFACE_BORDER,
-    backgroundColor: SURFACE_MUTED,
   },
   itemPhotoWrapper: {
     marginRight: spacing.sm,
@@ -358,7 +351,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.white,
     borderColor: colors.error[300],
-    borderRadius: 18,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
@@ -380,7 +373,7 @@ const styles = StyleSheet.create({
   },
   photoPreviewText: {
     color: colors.success[700],
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     fontWeight: fontWeight.medium,
   },
   photoPreviewWrapper: {
@@ -399,46 +392,17 @@ const styles = StyleSheet.create({
     right: 6,
     top: 6,
   },
-  sectionCard: {
+  section: {
     marginBottom: spacing.xl,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: SURFACE_BORDER,
-    backgroundColor: SURFACE_CARD,
-  },
-  sectionCardContent: {
-    padding: spacing.lg,
-  },
-  sectionHeading: {
-    color: TEXT_STRONG,
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: spacing.md,
-  },
-  sectionKicker: {
-    color: ACCENT,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.1,
-    textTransform: "uppercase",
-    marginBottom: spacing.xs,
-  },
-  sectionSubtitle: {
-    color: TEXT_MUTED,
-    fontSize: fontSize.sm,
-    lineHeight: 20,
-    marginBottom: spacing.md,
   },
   sectionTitle: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.semiBold,
-    color: TEXT_STRONG,
     marginBottom: spacing.sm,
   },
   toggleLabel: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.medium,
-    color: TEXT_STRONG,
   },
   toggleLabelContainer: {
     alignItems: "center",
@@ -449,6 +413,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    minHeight: 44,
   },
 });

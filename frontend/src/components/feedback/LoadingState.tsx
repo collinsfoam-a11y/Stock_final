@@ -371,7 +371,11 @@ const styles = StyleSheet.create({
     backgroundColor: modernColors.background.paper,
     borderRadius: modernBorderRadius.lg,
     overflow: "hidden",
-    ...createShadow({ color: "#000", offsetX: 0, offsetY: 2, opacity: 0.1, radius: 4, elevation: 3 }),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   cardContent: {
     padding: modernSpacing.md,

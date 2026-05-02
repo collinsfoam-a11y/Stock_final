@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, StyleSheet, ScrollView, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  ScrollView,
+  Alert,
+} from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Modal } from "../ui/Modal";
 import { PremiumButton } from "../premium/PremiumButton";
@@ -15,7 +22,11 @@ interface BulkEntryModalProps {
   onSubmit: (barcodes: string[]) => void;
 }
 
-export const BulkEntryModal: React.FC<BulkEntryModalProps> = ({ visible, onClose, onSubmit }) => {
+export const BulkEntryModal: React.FC<BulkEntryModalProps> = ({
+  visible,
+  onClose,
+  onSubmit,
+}) => {
   const [inputText, setInputText] = useState("");
   const [step, setStep] = useState<"input" | "preview">("input");
   const [parsedItems, setParsedItems] = useState<string[]>([]);
@@ -79,40 +90,49 @@ export const BulkEntryModal: React.FC<BulkEntryModalProps> = ({ visible, onClose
               autoCorrect={false}
             />
             <View style={styles.footer}>
-              <OperationalButton
+              <PremiumButton
                 title="Cancel"
                 variant="secondary"
                 onPress={resetAndClose}
                 style={styles.button}
               />
-              <OperationalButton title="Preview" onPress={handleParse} style={styles.button} />
+              <PremiumButton
+                title="Preview"
+                onPress={handleParse}
+                style={styles.button}
+              />
             </View>
           </>
         ) : (
           <>
             <View style={styles.summaryContainer}>
               <Text style={styles.summaryText}>
-                Found <Text style={styles.highlight}>{parsedItems.length}</Text> unique items.
+                Found <Text style={styles.highlight}>{parsedItems.length}</Text>{" "}
+                unique items.
               </Text>
             </View>
 
             <ScrollView style={styles.listContainer}>
               {parsedItems.map((item, index) => (
                 <View key={index} style={styles.listItem}>
-                  <Ionicons name="barcode-outline" size={20} color={modernColors.primary[500]} />
+                  <Ionicons
+                    name="barcode-outline"
+                    size={20}
+                    color={modernColors.primary[500]}
+                  />
                   <Text style={styles.itemText}>{item}</Text>
                 </View>
               ))}
             </ScrollView>
 
             <View style={styles.footer}>
-              <OperationalButton
+              <PremiumButton
                 title="Back"
                 variant="secondary"
                 onPress={() => setStep("input")}
                 style={styles.button}
               />
-              <OperationalButton
+              <PremiumButton
                 title={`Add All (${parsedItems.length})`}
                 onPress={handleConfirm}
                 style={styles.button}

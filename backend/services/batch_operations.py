@@ -93,7 +93,7 @@ class BatchOperationsService:
             # Process batches concurrently
             tasks = [process_batch(batch, i + 1) for i, batch in enumerate(batches)]
             await asyncio.gather(*tasks, return_exceptions=True)
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             if ordered:
                 logger.error(f"Batch insert stopped due to error: {str(e)}", exc_info=True)
 
@@ -157,7 +157,7 @@ class BatchOperationsService:
 
                     if progress_callback:
                         progress_callback(total_updated, total)
-                except (RuntimeError, TypeError, ValueError, OSError) as e:
+                except Exception as e:
                     error_msg = f"Error updating batch {batch_num}: {str(e)}"
                     logger.error(error_msg, exc_info=True)
                     errors.append({"batch": batch_num, "error": error_msg})

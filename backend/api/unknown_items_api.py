@@ -6,10 +6,12 @@ import logging
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, ConfigDict
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
-from backend.services.unknown_item_service import UnknownItemService, get_unknown_item_service
+from backend.db.runtime import get_db
+from backend.services.unknown_item_service import UnknownItemService
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +62,8 @@ def _require_admin(current_user: dict = Depends(get_current_user)):
 @public_router.post("")
 async def report_unknown_item(
     request: UnknownItemReportRequest,
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(get_current_user),
-    service: UnknownItemService = Depends(get_unknown_item_service),
 ):
     """Create an unknown item report (staff/supervisor/admin)."""
     item_data: dict[str, Any] = request.model_dump(exclude_none=True)
@@ -69,6 +71,7 @@ async def report_unknown_item(
     item_data.pop("reported_by", None)
     item_data.pop("reported_at", None)
     item_data.pop("synced_at", None)
+    service = UnknownItemService(db)
     created = await service.register_unknown_item(
         payload=item_data,
         actor_id=str(current_user.get("username") or "system"),
@@ -83,8 +86,8 @@ async def list_unknown_items(
     include_dismissed: bool = False,
     limit: int = Query(50, ge=1, le=200),
     skip: int = Query(0, ge=0),
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(_require_admin),
-    service: UnknownItemService = Depends(get_unknown_item_service),
 ):
     """List all reported unknown items"""
     query: dict[str, Any] = {}
@@ -95,12 +98,15 @@ async def list_unknown_items(
     if not include_dismissed:
         query["status"] = {"$ne": "DISMISSED"}
 
-    items, total = await service.list_unknown_items(query, skip=skip, limit=limit)
+    cursor = db.unknown_items.find(query).sort("reported_at", -1).skip(skip).limit(limit)
+    items = await cursor.to_list(length=limit)
 
     # Simple conversion of ObjectId to string if any (though schemas.py uses UUID strings)
     for item in items:
         if "_id" in item:
             item["_id"] = str(item["_id"])
+
+    total = await db.unknown_items.count_documents(query)
 
     return {
         "success": True,
@@ -113,10 +119,11 @@ async def list_unknown_items(
 async def map_unknown_to_sku(
     item_id: str,
     request: MapUnknownItemRequest,
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(_require_admin),
-    service: UnknownItemService = Depends(get_unknown_item_service),
 ):
     """Map an unknown item report to an existing SKU in ERP"""
+    service = UnknownItemService(db)
     result = await service.resolve_to_known_item(
         item_id=item_id,
         item_code=request.item_code,
@@ -134,10 +141,11 @@ async def map_unknown_to_sku(
 async def create_sku_from_unknown(
     item_id: str,
     request: CreateSKUFromUnknownRequest,
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(_require_admin),
-    service: UnknownItemService = Depends(get_unknown_item_service),
 ):
     """Create a new Master SKU from an unknown item report"""
+    service = UnknownItemService(db)
     result = await service.create_manual_sku_and_resolve(
         item_id=item_id,
         item_code=request.item_code,
@@ -159,10 +167,11 @@ async def create_sku_from_unknown(
 @router.delete("/{item_id}")
 async def delete_unknown_item(
     item_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(_require_admin),
-    service: UnknownItemService = Depends(get_unknown_item_service),
 ):
     """Dismiss an unknown item report"""
+    service = UnknownItemService(db)
     dismissed = await service.dismiss_unknown_item(
         item_id=item_id,
         actor_id=str(current_user.get("username") or "system"),

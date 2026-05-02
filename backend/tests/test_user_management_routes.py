@@ -3,7 +3,6 @@ from fastapi import HTTPException
 
 from backend.api.user_management_api import list_assignable_staff
 from backend.auth.permissions import Permission
-from backend.services.auth_service import AuthService
 from backend.tests.utils.in_memory_db import InMemoryDatabase
 
 
@@ -39,13 +38,14 @@ async def test_list_assignable_staff_returns_active_staff_only(monkeypatch: pyte
         ]
     )
 
+    monkeypatch.setattr("backend.api.user_management_api.get_db", lambda: db)
+
     result = await list_assignable_staff(
         current_user={
             "username": "supervisor_1",
             "role": "supervisor",
             "permissions": [Permission.COUNT_LINE_REJECT.value],
-        },
-        auth_service=AuthService(db),
+        }
     )
 
     assert [user.username for user in result] == ["staff_a", "staff_b"]
@@ -57,14 +57,15 @@ async def test_list_assignable_staff_requires_recount_permission(
     monkeypatch: pytest.MonkeyPatch,
 ):
     db = InMemoryDatabase()
+    monkeypatch.setattr("backend.api.user_management_api.get_db", lambda: db)
+
     with pytest.raises(HTTPException) as exc_info:
         await list_assignable_staff(
             current_user={
                 "username": "staff_1",
                 "role": "staff",
                 "permissions": [],
-            },
-            auth_service=AuthService(db),
+            }
         )
 
     assert exc_info.value.status_code == 403

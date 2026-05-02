@@ -176,7 +176,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               <Ionicons
                 name="close"
                 size={24}
-                color={TEXT_STRONG}
+                color={modernColors.text.primary}
               />
             </TouchableOpacity>
           </View>
@@ -184,7 +184,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             <Ionicons
               name="camera-outline"
               size={64}
-              color={TEXT_MUTED}
+              color={modernColors.text.tertiary}
             />
             <Text style={styles.permissionText}>
               Camera permission is required to capture photos
@@ -234,7 +234,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             <Ionicons
               name="close"
               size={24}
-              color={TEXT_STRONG}
+              color={modernColors.text.primary}
             />
           </TouchableOpacity>
         </View>
@@ -296,71 +296,56 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: SURFACE_BG,
+    backgroundColor: modernColors.background.default,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: modernSpacing.md,
+    paddingVertical: modernSpacing.sm,
   },
   title: {
-    fontSize: fontSize.lg,
-    fontWeight: "700",
-    color: TEXT_STRONG,
+    ...modernTypography.h4,
+    color: modernColors.text.primary,
   },
   closeButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: SURFACE_BORDER,
+    padding: modernSpacing.xs,
   },
   permissionContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: spacing.xl,
+    padding: modernSpacing.xl,
   },
   permissionText: {
-    fontSize: fontSize.md,
-    color: TEXT_MUTED,
+    ...modernTypography.body.medium,
+    color: modernColors.text.secondary,
     textAlign: "center",
-    marginTop: spacing.md,
-    marginBottom: spacing.xl,
+    marginTop: modernSpacing.md,
+    marginBottom: modernSpacing.xl,
   },
   permissionButton: {
-    minHeight: 48,
-    backgroundColor: ACCENT,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: modernColors.primary[500],
+    paddingHorizontal: modernSpacing.xl,
+    paddingVertical: modernSpacing.md,
+    borderRadius: modernBorderRadius.md,
   },
   permissionButtonText: {
-    fontSize: fontSize.md,
-    fontWeight: "600",
-    color: colors.white,
+    ...modernTypography.button.medium,
+    color: "#fff",
   },
   permissionHelpText: {
-    fontSize: fontSize.sm,
-    color: TEXT_MUTED,
+    ...modernTypography.body.small,
+    color: modernColors.text.secondary,
     textAlign: "center",
-    marginBottom: spacing.md,
+    marginBottom: modernSpacing.md,
   },
   cameraContainer: {
     flex: 1,
     overflow: "hidden",
-    borderRadius: 24,
-    marginHorizontal: spacing.lg,
-    backgroundColor: SURFACE_CARD,
-    borderWidth: 1,
-    borderColor: SURFACE_BORDER,
+    borderRadius: modernBorderRadius.lg,
+    marginHorizontal: modernSpacing.md,
   },
   camera: {
     flex: 1,
@@ -378,45 +363,42 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
+    paddingVertical: modernSpacing.xl,
+    gap: modernSpacing.md,
   },
   captureButton: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.white,
+    backgroundColor: modernColors.background.paper,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 4,
-    borderColor: ACCENT,
+    borderColor: modernColors.primary[500],
   },
   captureButtonInner: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: ACCENT,
+    backgroundColor: modernColors.primary[500],
   },
   controlButton: {
     flexDirection: "row",
     alignItems: "center",
-    minHeight: 52,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: 18,
-    gap: spacing.xs,
+    paddingHorizontal: modernSpacing.lg,
+    paddingVertical: modernSpacing.md,
+    borderRadius: modernBorderRadius.md,
+    gap: modernSpacing.xs,
   },
   retakeButton: {
-    backgroundColor: TEXT_MUTED,
+    backgroundColor: modernColors.neutral[600],
   },
   confirmButton: {
-    backgroundColor: ACCENT,
+    backgroundColor: modernColors.success.main,
   },
   controlButtonText: {
-    fontSize: fontSize.md,
-    fontWeight: "600",
-    color: colors.white,
+    ...modernTypography.button.medium,
+    color: "#fff",
   },
 });
 

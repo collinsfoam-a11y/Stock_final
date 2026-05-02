@@ -143,7 +143,7 @@ class ErrorLogService:
                     stack_trace = "".join(
                         traceback.format_exception(type(error), error, error.__traceback__)
                     )
-                except (RuntimeError, TypeError, ValueError, OSError):
+                except Exception:
                     stack_trace = traceback.format_exc()
 
             # Create log entry
@@ -188,7 +188,7 @@ class ErrorLogService:
             )
 
             return str(result.inserted_id)
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Failed to log error: {str(e)}", exc_info=True)
             # Don't raise - error logging failures shouldn't break the app
             return ""
@@ -298,7 +298,7 @@ class ErrorLogService:
                     "has_prev": page > 1,
                 },
             }
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Failed to retrieve errors: {str(e)}")
             raise
 
@@ -312,7 +312,7 @@ class ErrorLogService:
                 error["id"] = str(error["_id"])
                 del error["_id"]
             return error
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Failed to retrieve error: {str(e)}")
             return None
 
@@ -335,7 +335,7 @@ class ErrorLogService:
                 },
             )
             return result.modified_count > 0
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Failed to mark error as resolved: {str(e)}")
             return False
 
@@ -425,7 +425,7 @@ class ErrorLogService:
                     {"endpoint": item["_id"], "count": item["count"]} for item in top_endpoints
                 ],
             }
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Failed to get statistics: {str(e)}")
             return {
                 "total": 0,

@@ -4,17 +4,14 @@ Master Settings API - Centralized system configuration
 
 import logging
 from backend.utils.api_utils import sanitize_for_logging
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pymongo.errors import PyMongoError
 from pydantic import BaseModel, Field
 
 from backend.auth.dependencies import require_admin
-from backend.services.master_settings_service import (
-    MasterSettingsService,
-    get_master_settings_service,
-)
+from backend.db.runtime import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -68,15 +65,16 @@ class SystemParameters(BaseModel):
 
 
 @master_settings_router.get("/parameters")
-async def get_system_parameters(
-    current_user: dict = Depends(require_admin),
-    settings_service: MasterSettingsService = Depends(get_master_settings_service),
-):
+async def get_system_parameters(current_user: dict = Depends(require_admin)):
     """Get all system parameters"""
     try:
-        settings_doc = await settings_service.get_parameters()
+        db = get_db()
+
+        # Get settings from database
+        settings_doc = await db.system_settings.find_one({"_id": "parameters"})
 
         if settings_doc:
+            settings_doc.pop("_id", None)
             return {
                 "success": True,
                 "data": settings_doc,
@@ -88,8 +86,9 @@ async def get_system_parameters(
                 "success": True,
                 "data": default_params.model_dump(),
             }
-    except (PyMongoError, RuntimeError, TypeError, ValueError) as e:
+    except Exception as e:
         logger.error("Error getting system parameters: %s", sanitize_for_logging(str(e)))
+        # Return defaults on error
         default_params = SystemParameters()
         return {
             "success": True,
@@ -99,16 +98,49 @@ async def get_system_parameters(
 
 @master_settings_router.put("/parameters")
 async def update_system_parameters(
-    parameters: SystemParameters,
-    current_user: dict = Depends(require_admin),
-    settings_service: MasterSettingsService = Depends(get_master_settings_service),
+    parameters: SystemParameters, current_user: dict = Depends(require_admin)
 ):
     """Update system parameters"""
     try:
+        db = get_db()
+
+        # Validate parameters
         params_dict = parameters.model_dump()
-        await settings_service.update_parameters(
-            params_dict=params_dict,
-            username=current_user.get("username", "admin"),
+        params_dict["_id"] = "parameters"
+        params_dict["updated_by"] = current_user.get("username", "admin")
+        params_dict["updated_at"] = datetime.now().isoformat()
+
+        # Save to database
+        await db.system_settings.replace_one({"_id": "parameters"}, params_dict, upsert=True)
+
+        # GOVERNANCE: Config Immutability
+        # Create a new version snapshot
+        import hashlib
+        import json
+        from backend.core.schemas.config_version import ConfigVersion
+
+        # Sort keys to ensure consistent hash
+        payload_str = json.dumps(params_dict, sort_keys=True, default=str)
+        version_hash = hashlib.sha256(payload_str.encode()).hexdigest()
+
+        config_version = ConfigVersion(
+            version_hash=version_hash,
+            payload=params_dict,
+            created_by=current_user.get("username", "admin"),
+            description="Manual update via Admin API",
+        )
+
+        await db.config_versions.insert_one(config_version.model_dump())
+
+        # Log the change
+        await db.audit_logs.insert_one(
+            {
+                "action": "update_system_parameters",
+                "user": current_user.get("username", "admin"),
+                "timestamp": datetime.now().isoformat(),
+                "changes": params_dict,
+                "config_version_id": config_version.id,
+            }
         )
 
         return {
@@ -117,7 +149,7 @@ async def update_system_parameters(
             "data": params_dict,
             "note": "Some changes may require backend restart to take effect",
         }
-    except (PyMongoError, RuntimeError, TypeError, ValueError) as e:
+    except Exception as e:
         logger.error("Error updating system parameters: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -187,24 +219,50 @@ async def get_settings_categories(current_user: dict = Depends(require_admin)):
 
 @master_settings_router.post("/reset")
 async def reset_to_defaults(
-    category: Optional[str] = None,
-    current_user: dict = Depends(require_admin),
-    settings_service: MasterSettingsService = Depends(get_master_settings_service),
+    category: Optional[str] = None, current_user: dict = Depends(require_admin)
 ):
     """Reset settings to defaults"""
     try:
-        default_params = SystemParameters().model_dump()
-        await settings_service.reset_parameters(
-            category=category,
-            default_params=default_params,
-            username=current_user.get("username", "admin"),
-        )
+        db = get_db()
+
+        if category:
+            # Reset specific category
+            default_params = SystemParameters()
+            params_dict = default_params.model_dump()
+
+            # Get current settings
+            current = await db.system_settings.find_one({"_id": "parameters"})
+            if current:
+                # Update only the category
+                for key, value in params_dict.items():
+                    if key.startswith(category + "_"):
+                        current[key] = value
+
+                current["updated_by"] = current_user.get("username", "admin")
+                current["updated_at"] = datetime.now().isoformat()
+
+                await db.system_settings.replace_one({"_id": "parameters"}, current)
+            else:
+                # Create new with defaults
+                params_dict["_id"] = "parameters"
+                params_dict["updated_by"] = current_user.get("username", "admin")
+                params_dict["updated_at"] = datetime.now().isoformat()
+                await db.system_settings.insert_one(params_dict)
+        else:
+            # Reset all to defaults
+            default_params = SystemParameters()
+            params_dict = default_params.model_dump()
+            params_dict["_id"] = "parameters"
+            params_dict["updated_by"] = current_user.get("username", "admin")
+            params_dict["updated_at"] = datetime.now().isoformat()
+
+            await db.system_settings.replace_one({"_id": "parameters"}, params_dict, upsert=True)
 
         return {
             "success": True,
             "message": f"Settings reset to defaults{' for ' + category if category else ''}",
         }
-    except (PyMongoError, RuntimeError, TypeError, ValueError) as e:
+    except Exception as e:
         logger.error("Error resetting settings: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

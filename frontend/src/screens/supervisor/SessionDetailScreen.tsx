@@ -15,7 +15,6 @@ import RecountAssignmentModal, {
   type AssignableStaffUser,
 } from "@/components/supervisor/RecountAssignmentModal";
 import { useToast } from "@/components/feedback/ToastProvider";
-import { useIdleProbe } from "@/hooks/useIdleProbe";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useSettingsStore } from "@/store/settingsStore";
 import { colors, spacing, typography, borderRadius, shadows } from "@/theme/unified";
@@ -204,7 +203,6 @@ export default function SessionDetail() {
   const router = useRouter();
   const { show } = useToast();
   const prefersReducedMotion = useReducedMotion();
-  const { markAction } = useIdleProbe("session_detail");
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [session, setSession] = React.useState<any>(null);
   const [toVerifyLines, setToVerifyLines] = React.useState<any[]>([]);
@@ -307,7 +305,6 @@ export default function SessionDetail() {
   }, [assignableStaff, offlineMode, show]);
 
   const handleApproveLine = async (lineId: string) => {
-    markAction();
     if (offlineMode) {
       show("Approvals require a live connection", "warning");
       return;
@@ -329,7 +326,6 @@ export default function SessionDetail() {
   };
 
   const handleRejectLine = async (line: any) => {
-    markAction();
     if (offlineMode) {
       show("Recount requests require a live connection", "warning");
       return;
@@ -385,7 +381,6 @@ export default function SessionDetail() {
   };
 
   const handleVerifyStock = async (lineId: string) => {
-    markAction();
     if (offlineMode) {
       show("Stock verification requires a live connection", "warning");
       return;
@@ -410,7 +405,6 @@ export default function SessionDetail() {
   };
 
   const handleUnverifyStock = async (lineId: string) => {
-    markAction();
     if (offlineMode) {
       show("Verification changes require a live connection", "warning");
       return;
@@ -435,7 +429,6 @@ export default function SessionDetail() {
   };
 
   const handleUpdateStatus = async (newStatus: string) => {
-    markAction();
     if (offlineMode) {
       show("Session status changes require a live connection", "warning");
       return;
@@ -457,7 +450,6 @@ export default function SessionDetail() {
   };
 
   const handleFinalizeSession = async () => {
-    markAction();
     if (offlineMode) {
       show("Session finalization requires a live connection", "warning");
       return;
@@ -592,7 +584,7 @@ export default function SessionDetail() {
 
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary[500]} />
-          <Text style={styles.loadingText}>Loading session...</Text>
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
       </Screen>
     );
@@ -685,11 +677,10 @@ export default function SessionDetail() {
                   but approvals and edits are disabled.
                 </Text>
               </View>
-              {renderBadge(
-                String(session.status || "Unknown"),
-                getSessionStatusTone(String(session.status || ""))
-              )}
             </View>
+          </View>
+        </Animated.View>
+      ) : null}
 
       {offlineMode ? (
         <Animated.View entering={getFadeInDown(220)}>
@@ -703,13 +694,10 @@ export default function SessionDetail() {
                   verification changes, and status updates require a live connection.
                 </Text>
               </View>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>Pending</Text>
-                <Text style={styles.metricValue}>{pendingCount}</Text>
-              </View>
             </View>
-          </ModernCard>
+          </View>
         </Animated.View>
+      ) : null}
 
       <Animated.View entering={getFadeInDown(240)}>
         <ModernInput
@@ -748,28 +736,12 @@ export default function SessionDetail() {
           </Text>
         </AnimatedPressable>
 
-        {offlineMode ? (
-          <Animated.View entering={getFadeInDown(220)}>
-            <View style={[styles.noticeCard, styles.noticeWarning]}>
-              <View style={styles.noticeRow}>
-                <Ionicons name="cloud-offline-outline" size={18} color={colors.warning[600]} />
-                <View style={styles.noticeCopy}>
-                  <Text style={styles.noticeTitle}>Viewing cached session data</Text>
-                  <Text style={styles.noticeBody}>
-                    Count lines and session details can be reviewed offline, but approvals,
-                    recounts, verification changes, and status updates require a live connection.
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </Animated.View>
-        ) : null}
-
-        <Animated.View
-          entering={getFadeInDown(300)}
-          style={styles.filterChips}
-          accessibilityRole="tablist"
-          accessibilityLabel="Session item filters"
+        <AnimatedPressable
+          style={[styles.tab, activeTab === "verified" && styles.tabActive]}
+          onPress={() => switchTab("verified")}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === "verified" }}
+          accessibilityLabel={`Verified tab, ${verifiedLines.length} items`}
         >
           <Ionicons
             name="checkmark-circle-outline"
@@ -835,6 +807,7 @@ export default function SessionDetail() {
             <Text style={styles.qtyLabel}>Variance</Text>
             <Text style={[styles.qtyValue, { color: varianceColor }]}>{item.variance}</Text>
           </View>
+        </View>
 
         {item.variance_reason ? (
           <View style={styles.reasonBox}>
@@ -843,15 +816,9 @@ export default function SessionDetail() {
               <Text style={styles.reasonNote}>{item.variance_note}</Text>
             ) : null}
           </View>
+        ) : null}
 
-          {item.variance_reason ? (
-            <View style={styles.reasonBox}>
-              <Text style={styles.reasonLabel}>Reason: {item.variance_reason}</Text>
-              {item.variance_note ? (
-                <Text style={styles.reasonNote}>{item.variance_note}</Text>
-              ) : null}
-            </View>
-          ) : null}
+        {item.remark ? <Text style={styles.remark}>Remark: {item.remark}</Text> : null}
 
         {item.verified && item.verified_by ? (
           <View style={styles.verifiedInfo}>
@@ -862,84 +829,28 @@ export default function SessionDetail() {
           </View>
         ) : null}
 
-          {item.verified && item.verified_by ? (
-            <View style={styles.verifiedInfo}>
-              <Ionicons name="checkmark-circle" size={16} color={colors.success[600]} />
-              <Text style={styles.verifiedInfoText}>
-                Verified by {item.verified_by} on {verifiedAtLabel}
-              </Text>
-            </View>
-          ) : null}
-
-          {!offlineMode && !sessionFinalized ? (
-            <View style={styles.lineActions}>
-              {requiresSupervisorReview && normalizedStatus === "pending" ? (
-                <>
-                  <AnimatedPressable
-                    style={[styles.inlineActionButton, styles.successActionButton]}
-                    onPress={() => handleApproveLine(item.id)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Approve ${item.item_name}`}
-                  >
-                    <Ionicons name="checkmark" size={20} color={colors.white} />
-                    <Text style={styles.actionButtonText}>Approve</Text>
-                  </AnimatedPressable>
-
-                  <AnimatedPressable
-                    style={[styles.inlineActionButton, styles.dangerActionButton]}
-                    onPress={() => void handleRejectLine(item)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Reject ${item.item_name}`}
-                  >
-                    <Ionicons name="close" size={20} color={colors.white} />
-                    <Text style={styles.actionButtonText}>Reject</Text>
-                  </AnimatedPressable>
-                </>
-              ) : null}
-
-              {requiresSupervisorReview && item.__source === "pending" && !item.verified ? (
+        {!offlineMode && !sessionFinalized ? (
+          <View style={styles.lineActions}>
+            {requiresSupervisorReview && normalizedStatus === "pending" ? (
+              <>
                 <AnimatedPressable
-                  style={[
-                    styles.inlineActionButton,
-                    styles.primaryActionFill,
-                    verifying === item.id && styles.buttonDisabled,
-                  ]}
-                  onPress={() => handleVerifyStock(item.id)}
-                  disabled={verifying === item.id}
+                  style={[styles.inlineActionButton, styles.successActionButton]}
+                  onPress={() => handleApproveLine(item.id)}
                   accessibilityRole="button"
-                  accessibilityLabel={`Verify stock for ${item.item_name}`}
+                  accessibilityLabel={`Approve ${item.item_name}`}
                 >
-                  {verifying === item.id ? (
-                    <ActivityIndicator size="small" color={colors.white} />
-                  ) : (
-                    <>
-                      <Ionicons name="checkmark-circle-outline" size={20} color={colors.white} />
-                      <Text style={styles.actionButtonText}>Verify Stock</Text>
-                    </>
-                  )}
+                  <Ionicons name="checkmark" size={20} color={colors.white} />
+                  <Text style={styles.actionButtonText}>Approve</Text>
                 </AnimatedPressable>
-              ) : null}
 
-              {item.__source === "verified" || item.verified ? (
                 <AnimatedPressable
-                  style={[
-                    styles.inlineActionButton,
-                    styles.warningActionButton,
-                    verifying === item.id && styles.buttonDisabled,
-                  ]}
-                  onPress={() => handleUnverifyStock(item.id)}
-                  disabled={verifying === item.id}
+                  style={[styles.inlineActionButton, styles.dangerActionButton]}
+                  onPress={() => void handleRejectLine(item)}
                   accessibilityRole="button"
-                  accessibilityLabel={`Remove verification for ${item.item_name}`}
+                  accessibilityLabel={`Reject ${item.item_name}`}
                 >
-                  {verifying === item.id ? (
-                    <ActivityIndicator size="small" color={colors.white} />
-                  ) : (
-                    <>
-                      <Ionicons name="close-circle-outline" size={20} color={colors.white} />
-                      <Text style={styles.actionButtonText}>Unverify</Text>
-                    </>
-                  )}
+                  <Ionicons name="close" size={20} color={colors.white} />
+                  <Text style={styles.actionButtonText}>Reject</Text>
                 </AnimatedPressable>
               </>
             ) : null}
@@ -1002,7 +913,7 @@ export default function SessionDetail() {
       contentStyle={styles.emptyCardContent}
     >
       <Ionicons
-        name={activeFilter === "all" ? "list-outline" : "checkmark-circle"}
+        name={activeTab === "toVerify" ? "list-outline" : "checkmark-circle"}
         size={64}
         color={colors.gray[300]}
       />
@@ -1015,87 +926,6 @@ export default function SessionDetail() {
       </Text>
     </ModernCard>
   );
-
-  const renderDetailDrawer = () => {
-    if (!selectedLine) return null;
-
-    const selectedVariance = Number(selectedLine.variance ?? 0);
-
-    return (
-      <Modal
-        visible={!!selectedLine}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelectedLine(null)}
-      >
-        <View style={styles.drawerOverlay}>
-          <AnimatedPressable
-            style={styles.drawerScrim}
-            onPress={() => setSelectedLine(null)}
-            accessibilityRole="button"
-            accessibilityLabel="Close item details"
-          >
-            <View />
-          </AnimatedPressable>
-          <View style={styles.detailDrawer}>
-            <View style={styles.drawerHandle} />
-            <View style={styles.drawerHeader}>
-              <View style={styles.drawerTitleBlock}>
-                <Text style={styles.drawerTitle} numberOfLines={2}>
-                  {selectedLine.item_name || "Item details"}
-                </Text>
-                <Text style={styles.drawerSubtitle} numberOfLines={1}>
-                  {selectedLine.item_code || "No item code"}
-                </Text>
-              </View>
-              <AnimatedPressable
-                onPress={() => setSelectedLine(null)}
-                style={styles.drawerCloseButton}
-                accessibilityRole="button"
-                accessibilityLabel="Close item details"
-              >
-                <Ionicons name="close" size={20} color={colors.gray[700]} />
-              </AnimatedPressable>
-            </View>
-
-            <ScrollView contentContainerStyle={styles.drawerBody}>
-              <View style={styles.drawerQtyGrid}>
-                <DetailField label="System" value={String(selectedLine.erp_qty ?? "-")} />
-                <DetailField label="Counted" value={String(selectedLine.counted_qty ?? "-")} />
-                <DetailField
-                  label="Variance"
-                  tone={selectedVariance === 0 ? "success" : "danger"}
-                  value={String(selectedLine.variance ?? "-")}
-                />
-              </View>
-
-              <DetailField label="Barcode" value={selectedLine.barcode || "-"} />
-              <DetailField label="Status" value={String(selectedLine.status || "pending")} />
-              {selectedLine.variance_reason ? (
-                <DetailField label="Reason" value={selectedLine.variance_reason} />
-              ) : null}
-              {selectedLine.variance_note ? (
-                <DetailField label="Note" value={selectedLine.variance_note} />
-              ) : null}
-              {selectedLine.remark ? (
-                <DetailField label="Remark" value={selectedLine.remark} />
-              ) : null}
-              {selectedLine.verified_by ? (
-                <DetailField
-                  label="Verified By"
-                  value={`${selectedLine.verified_by}${
-                    selectedLine.verified_at
-                      ? ` | ${new Date(selectedLine.verified_at).toLocaleString()}`
-                      : ""
-                  }`}
-                />
-              ) : null}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-    );
-  };
 
   return (
     <Screen padding={0} backgroundColor={operationalPalette.background}>
@@ -1166,60 +996,6 @@ export default function SessionDetail() {
   );
 }
 
-function FilterChip({
-  active,
-  count,
-  icon,
-  label,
-  onPress,
-}: {
-  active: boolean;
-  count: number;
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <AnimatedPressable
-      style={[styles.filterChip, active && styles.filterChipActive]}
-      onPress={onPress}
-      accessibilityRole="tab"
-      accessibilityState={{ selected: active }}
-      accessibilityLabel={`${label} filter, ${count} items`}
-    >
-      <Ionicons name={icon} size={16} color={active ? colors.white : colors.gray[600]} />
-      <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
-        {label} ({count})
-      </Text>
-    </AnimatedPressable>
-  );
-}
-
-function DetailField({
-  label,
-  tone = "neutral",
-  value,
-}: {
-  label: string;
-  tone?: "neutral" | "success" | "danger";
-  value: string;
-}) {
-  return (
-    <View style={styles.detailField}>
-      <Text style={styles.detailFieldLabel}>{label}</Text>
-      <Text
-        style={[
-          styles.detailFieldValue,
-          tone === "success" && styles.detailFieldSuccess,
-          tone === "danger" && styles.detailFieldDanger,
-        ]}
-      >
-        {value}
-      </Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
@@ -1280,7 +1056,7 @@ const styles = StyleSheet.create({
   listContent: {
     flexGrow: 1,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.md,
     paddingBottom: spacing["2xl"],
   },
   listContentWithFooter: {
@@ -1296,7 +1072,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: spacing.md,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   sessionIdentity: {
     flex: 1,
@@ -1352,7 +1128,6 @@ const styles = StyleSheet.create({
   metricRow: {
     flexDirection: "row",
     gap: spacing.sm,
-    flexWrap: "wrap",
   },
   metricCard: {
     flex: 1,
@@ -1507,36 +1282,6 @@ const styles = StyleSheet.create({
     color: operationalPalette.primaryStrong,
     fontWeight: typography.fontWeight.bold,
   },
-  filterChips: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  filterChip: {
-    minHeight: 44,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    backgroundColor: colors.white,
-  },
-  filterChipActive: {
-    borderColor: colors.primary[600],
-    backgroundColor: colors.primary[600],
-  },
-  filterChipText: {
-    color: colors.gray[600],
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-  },
-  filterChipTextActive: {
-    color: colors.white,
-  },
   badge: {
     flexDirection: "row",
     alignItems: "center",
@@ -1565,12 +1310,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: typography.fontSize.base,
     color: colors.gray[600],
-  },
-  emptySubtext: {
-    marginTop: spacing.xs,
-    textAlign: "center",
-    fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
   },
   lineCard: {
     marginBottom: spacing.md,

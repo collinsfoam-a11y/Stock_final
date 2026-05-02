@@ -3,9 +3,9 @@ Metrics API
 Prometheus-compatible metrics endpoint
 """
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Response
 
-from backend.services.metrics_query_service import MetricsQueryService, get_metrics_query_service
+from backend.db.runtime import get_db
 
 metrics_router = APIRouter(prefix="/metrics", tags=["metrics"])
 
@@ -95,16 +95,85 @@ async def get_health_metrics():
 
 
 @metrics_router.get("/stats")
-async def get_metrics_stats(
-    metrics_service: MetricsQueryService = Depends(get_metrics_query_service),
-):
+async def get_metrics_stats():
     """Get system statistics and metrics"""
-    return {"success": True, "data": await metrics_service.get_system_stats(_monitoring_service)}
+    import time
+
+    import psutil
+
+    db = get_db()
+
+    stats = {
+        "timestamp": time.time(),
+        "system": {
+            "cpu_percent": psutil.cpu_percent(interval=1),
+            "memory_percent": psutil.virtual_memory().percent,
+            "disk_percent": psutil.disk_usage("/").percent,
+        },
+        "mongodb": {"status": "unknown"},
+        "sql_server": {"status": "disabled"},
+        "services": {},
+    }
+
+    # Check MongoDB
+    try:
+        await db.command("ping")
+        stats["mongodb"] = {"status": "connected", "database": db.name}
+    except Exception as e:
+        stats["mongodb"] = {"status": "disconnected", "error": str(e)}
+
+    # Get monitoring service stats if available
+    if _monitoring_service is not None:
+        try:
+            monitoring_stats = await _monitoring_service.get_metrics()
+            stats["services"] = monitoring_stats
+        except Exception as e:
+            stats["services"] = {"error": str(e)}
+
+    return {"success": True, "data": stats}
 
 
 @metrics_router.get("/staff-performance")
-async def get_staff_performance(
-    metrics_service: MetricsQueryService = Depends(get_metrics_query_service),
-):
+async def get_staff_performance():
     """Get staff performance metrics"""
-    return {"success": True, "data": await metrics_service.get_staff_performance()}
+    db = get_db()
+
+    # Aggregate items scanned per user
+    pipeline = [
+        {
+            "$group": {
+                "_id": "$scanned_by",
+                "items_scanned": {"$sum": 1},
+                "last_scan": {"$max": "$timestamp"},
+            }
+        },
+        {"$sort": {"items_scanned": -1}},
+    ]
+
+    items_stats = await db.items.aggregate(pipeline).to_list(length=100)
+
+    # Aggregate variances found per user
+    variance_pipeline = [
+        {"$match": {"variance": {"$nin": [0, None]}}},
+        {"$group": {"_id": "$counted_by", "variances_found": {"$sum": 1}}},
+    ]
+    variance_stats = await db.count_lines.aggregate(variance_pipeline).to_list(length=100)
+    variance_map = {v["_id"]: v["variances_found"] for v in variance_stats}
+
+    # Combine data
+    performance_data = []
+    for stat in items_stats:
+        user_id = stat["_id"]
+        if not user_id:
+            continue
+
+        performance_data.append(
+            {
+                "user": user_id,
+                "items_scanned": stat["items_scanned"],
+                "variances_found": variance_map.get(user_id, 0),
+                "last_active": stat["last_scan"],
+            }
+        )
+
+    return {"success": True, "data": performance_data}

@@ -10,8 +10,6 @@ from typing import Any
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from passlib.context import CryptContext
 
-from backend.db.runtime import get_db
-
 logger = logging.getLogger(__name__)
 pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 
@@ -32,7 +30,7 @@ class PINAuthService:
             await self.collection.create_index("last_used")
             await self.collection.create_index("locked_until")
             logger.info("PIN authentication indexes created")
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error creating PIN indexes: {e}")
 
     async def set_pin(self, user_id: str, pin: str) -> bool:
@@ -67,7 +65,7 @@ class PINAuthService:
 
             logger.info(f"PIN set for user: {user_id}")
             return True
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error setting PIN: {e}")
             return False
 
@@ -136,7 +134,7 @@ class PINAuthService:
                 await self.collection.update_one({"user_id": user_id}, update_data)
                 return False
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error verifying PIN: {e}")
             return False
 
@@ -149,7 +147,7 @@ class PINAuthService:
             )
             logger.info(f"PIN disabled for user: {user_id}")
             return result.modified_count > 0
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error disabling PIN: {e}")
             return False
 
@@ -173,14 +171,10 @@ class PINAuthService:
                 "last_used": pin_record.get("last_used"),
                 "locked_until": pin_record.get("locked_until") if is_locked else None,
             }
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error getting PIN status: {e}")
             return {"enabled": False, "status": "error"}
 
     def _validate_pin_format(self, pin: str) -> bool:
         """Validate PIN format (4-6 digits)"""
         return isinstance(pin, str) and len(pin) >= 4 and len(pin) <= 6 and pin.isdigit()
-
-
-def get_pin_auth_service() -> PINAuthService:
-    return PINAuthService(get_db())

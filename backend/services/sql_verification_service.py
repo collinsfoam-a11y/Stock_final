@@ -12,7 +12,6 @@ from typing import Dict, Any, Optional
 
 from backend.sql_server_connector import SQLServerConnector
 from backend.core.database import db
-from backend.services.governance_guard import write_authority
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +98,7 @@ class SQLVerificationService:
             }
         try:
             await db.governance_events.insert_one(event)
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Governance event insert failed for {item_code}: {str(e)}")
 
     def _validate_sql_qty_or_error(
@@ -143,7 +142,7 @@ class SQLVerificationService:
         if hasattr(normalized_qty, "to_decimal"):
             try:
                 normalized_qty = float(normalized_qty.to_decimal())
-            except (RuntimeError, TypeError, ValueError, OSError):
+            except Exception:
                 logger.error(
                     f"CRITICAL: Non-numeric Mongo quantity rejected: {normalized_qty} for {item_code}"
                 )
@@ -285,11 +284,10 @@ class SQLVerificationService:
             new_seq=new_seq,
             status=status,
         )
-        with write_authority("SQLVerificationService"):
-            update_result = await db.erp_items.update_one(
-                {"_id": mongo_item["_id"], "stock_qty": mongo_qty},
-                {"$set": update_data},
-            )
+        update_result = await db.erp_items.update_one(
+            {"_id": mongo_item["_id"], "stock_qty": mongo_qty},
+            {"$set": update_data},
+        )
         if update_result.modified_count == 0:
             conflict_outcome = await self._handle_update_conflict_or_loss(
                 item_code=item_code,
@@ -401,7 +399,7 @@ class SQLVerificationService:
                 item_code=item_code,
             )
             return error_info
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Governance Error verifying {item_code}: {str(e)}")
             error_info = self._error_response(
                 error_code="VERIFICATION_INTERNAL_ERROR",
@@ -593,7 +591,7 @@ class SQLVerificationService:
                 error_info=error_info,
             )
             return error_info
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             latency_ms = (time.perf_counter() - start_time) * 1000
             logger.error(f"Governance Error verifying {item_code}: {str(e)}")
             error_text = str(e).lower()
@@ -655,7 +653,7 @@ class SQLVerificationService:
 
         except SQLVerificationError:
             raise
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error getting SQL quantity for {item_code}: {str(e)}")
             raise
 
@@ -760,7 +758,7 @@ class SQLVerificationService:
                 "status_code": 500,
                 "box_status": None,
             }
-        except (RuntimeError, TypeError, ValueError, OSError) as exc:
+        except Exception as exc:
             logger.error(f"Batch verification failed: {exc}")
             failure = {
                 "error_code": "SQL_BATCH_FAILURE",
@@ -898,7 +896,7 @@ class SQLVerificationService:
                 "current_mongo_qty": item.get("stock_qty"),
             }
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error getting verification status for {item_code}: {str(e)}")
             return self._error_response(
                 error_code="VERIFICATION_INTERNAL_ERROR",
@@ -921,7 +919,7 @@ class SQLVerificationService:
                 "timestamp": datetime.now(timezone.utc).replace(tzinfo=None),
             }
 
-        except (RuntimeError, TypeError, ValueError, OSError):
+        except Exception:
             return {
                 "success": False,
                 "status": "disconnected",

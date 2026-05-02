@@ -13,7 +13,6 @@ Run with: pytest backend/tests/evaluation/test_workflow.py -v
 
 import random
 import time
-from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -224,7 +223,6 @@ class TestSessionWorkflow:
             "warehouse": f"TEST-WH-{random.randint(1, 99)}",
             "floor": "1",
             "rack": "A1",
-            "client_session_id": str(uuid4()),
         }
 
         response = await async_client.post(
@@ -235,8 +233,7 @@ class TestSessionWorkflow:
 
         if response.status_code in [200, 201]:
             steps_completed += 1
-            response_data = response.json()
-            session_id = response_data.get("data", {}).get("id") or response_data.get("id")
+            session_id = response.json().get("data", {}).get("id")
 
         # Step 2: Get session details
         if session_id:
@@ -326,15 +323,13 @@ class TestVerificationWorkflow:
                 "warehouse": f"VERIFY-{random.randint(1, 99)}",
                 "floor": "1",
                 "rack": "A1",
-                "client_session_id": str(uuid4()),
             },
             headers=auth_headers,
         )
         session_id = None
         if response.status_code in [200, 201]:
             steps_completed += 1
-            response_data = response.json()
-            session_id = response_data.get("data", {}).get("id") or response_data.get("id")
+            session_id = response.json().get("data", {}).get("id")
 
         # Step 4: Submit count (would need valid item)
         if session_id:

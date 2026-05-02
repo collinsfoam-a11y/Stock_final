@@ -1,8 +1,8 @@
 /**
- * Admin Dashboard Web v2.0 - Operational UI
+ * Admin Dashboard Web v2.0 - Aurora Design System
  *
  * Owns dashboard state, data loading, tab routing, and report generation.
- * Shared styles/helpers live in dashboardWebShared.
+ * Shared Aurora styles/helpers live in dashboardWebShared.
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -434,7 +434,9 @@ export default function DashboardWeb() {
 
   return (
     <ScreenContainer
-      backgroundType="solid"
+      backgroundType="aurora"
+      auroraVariant="primary"
+      auroraIntensity="medium"
       header={{
         title: "Admin Dashboard",
         subtitle: "Simple control center for daily operations",
@@ -471,7 +473,7 @@ export default function DashboardWeb() {
                 Monitoring, reports, diagnosis, and service controls require a live backend
                 connection. Reconnect to refresh this dashboard.
               </Text>
-            </OperationalCard>
+            </GlassCard>
           )}
 
           {activeTab === "overview" && (
@@ -481,7 +483,6 @@ export default function DashboardWeb() {
               issues={issues}
               servicesStatus={servicesStatus}
               sessionChartData={sessionChartData}
-              sessionsAnalytics={sessionsAnalytics}
               statusChartData={statusChartData}
               styles={styles}
               systemStats={systemStats}

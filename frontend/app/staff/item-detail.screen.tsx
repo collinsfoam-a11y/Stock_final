@@ -23,7 +23,6 @@ import { useSettingsStore } from "@/store/settingsStore";
 
 import ModernHeader from "@/components/ui/ModernHeader";
 import ModernButton from "@/components/ui/ModernButton";
-import ModernCard from "@/components/ui/ModernCard";
 import { ThemedScreen } from "@/components/ui/ThemedScreen";
 import { BatchVariantsSection } from "@/components/scan/BatchVariantsSection";
 import { CountQuantitySection } from "@/components/scan/CountQuantitySection";
@@ -52,7 +51,6 @@ export default function ItemDetailScreen() {
   const normalizedSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId;
   const { currentFloor, currentRack } = useScanSessionStore();
   const { settings } = useSettingsStore();
-  const locationLabel = [currentFloor, currentRack].filter(Boolean).join(" • ");
 
   // Form State
   const [quantity, setQuantity] = useState("0");
@@ -260,7 +258,9 @@ export default function ItemDetailScreen() {
         <ModernHeader title="Verify Item" showBackButton onBackPress={handleBackPress} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary[600]} />
-          <Text style={styles.loadingText}>Loading item details...</Text>
+          <Text style={{ marginTop: 12, color: semanticColors.text.secondary }}>
+            Loading item details...
+          </Text>
         </View>
       </ThemedScreen>
     );
@@ -303,49 +303,6 @@ export default function ItemDetailScreen() {
           alwaysBounceVertical
           removeClippedSubviews={settings.lazyLoading}
         >
-          <ModernCard style={styles.contextCard} contentStyle={styles.contextCardContent}>
-            <View style={styles.contextHeader}>
-              <View style={styles.contextCopy}>
-                <Text style={styles.contextKicker}>Verification</Text>
-                <Text style={styles.contextTitle} numberOfLines={2}>
-                  {item.item_name || item.name || "Selected item"}
-                </Text>
-                <Text style={styles.contextSubtitle}>
-                  Confirm quantity, batch, serial, MRP, and evidence in one guided flow.
-                </Text>
-              </View>
-              <View style={styles.contextBadge}>
-                <Ionicons name="scan-outline" size={14} color={ACCENT} />
-                <Text style={styles.contextBadgeText}>
-                  {String(item.item_code || barcode || "ITEM").toUpperCase()}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.contextMetaRow}>
-              <View style={styles.contextMetaChip}>
-                <Ionicons name="barcode-outline" size={16} color={ACCENT} />
-                <Text style={styles.contextMetaText}>
-                  {String(item.barcode || barcode || "No barcode")}
-                </Text>
-              </View>
-              <View style={styles.contextMetaChip}>
-                <Ionicons name="layers-outline" size={16} color={ACCENT} />
-                <Text style={styles.contextMetaText}>{locationLabel || "Location pending"}</Text>
-              </View>
-              <View style={styles.contextMetaChip}>
-                <Ionicons
-                  name={settings.offlineMode ? "cloud-offline-outline" : "checkmark-done-outline"}
-                  size={16}
-                  color={settings.offlineMode ? colors.warning[600] : ACCENT}
-                />
-                <Text style={styles.contextMetaText}>
-                  {settings.offlineMode ? "Offline queue" : "Live validation"}
-                </Text>
-              </View>
-            </View>
-          </ModernCard>
-
           <ItemSummarySection
             barcode={Array.isArray(barcode) ? barcode[0] : barcode}
             isRefreshing={isRefreshing}
@@ -495,125 +452,30 @@ export default function ItemDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    backgroundColor: SURFACE_BG,
-  },
-  headerShell: {
-    backgroundColor: SURFACE_BG,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: spacing.xl,
-  },
-  loadingText: {
-    marginTop: 12,
-    color: TEXT_MUTED,
   },
   errorContainer: {
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: spacing.xl,
   },
   errorTitle: {
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
-    color: TEXT_STRONG,
+    color: colors.neutral[900],
     textAlign: "center",
     marginBottom: spacing.sm,
   },
   errorText: {
     fontSize: fontSize.sm,
-    color: TEXT_MUTED,
+    color: colors.neutral[600],
     textAlign: "center",
   },
   scrollContent: {
-    padding: spacing.lg,
+    padding: spacing.md,
     flexGrow: 1,
-    width: "100%",
-    maxWidth: 1040,
-    alignSelf: "center",
-  },
-  contextCard: {
-    marginBottom: spacing.lg,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: SURFACE_BORDER,
-    backgroundColor: SURFACE_CARD,
-  },
-  contextCardContent: {
-    padding: spacing.lg,
-  },
-  contextHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: spacing.md,
-    marginBottom: spacing.md,
-  },
-  contextCopy: {
-    flex: 1,
-  },
-  contextKicker: {
-    fontSize: fontSize.xs,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    color: ACCENT,
-    marginBottom: spacing.xs,
-  },
-  contextTitle: {
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: "700",
-    color: TEXT_STRONG,
-    marginBottom: spacing.xs,
-  },
-  contextSubtitle: {
-    fontSize: fontSize.sm,
-    lineHeight: 22,
-    color: TEXT_MUTED,
-  },
-  contextBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 999,
-    backgroundColor: "#ecf7f4",
-    borderWidth: 1,
-    borderColor: "#cae8df",
-  },
-  contextBadgeText: {
-    fontSize: fontSize.xs,
-    fontWeight: "700",
-    color: ACCENT,
-    letterSpacing: 0.8,
-  },
-  contextMetaRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  contextMetaChip: {
-    minHeight: 44,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 14,
-    backgroundColor: SURFACE_MUTED,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-  },
-  contextMetaText: {
-    fontSize: fontSize.sm,
-    fontWeight: "600",
-    color: TEXT_STRONG,
   },
   section: {
     marginBottom: spacing.xl,

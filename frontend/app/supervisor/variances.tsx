@@ -181,7 +181,7 @@ export default function VariancesScreen() {
         setRefreshing(false);
       }
     },
-    [filters, offlineMode, pagination.limit, pagination.skip]
+    [filters, offlineMode, pagination.limit, pagination.skip],
   );
 
   useEffect(() => {
@@ -252,7 +252,10 @@ export default function VariancesScreen() {
   const handleExport = async (format: "csv" | "xlsx") => {
     try {
       if (offlineMode) {
-        Alert.alert("Offline Mode", "Variance exports require a live connection.");
+        Alert.alert(
+          "Offline Mode",
+          "Variance exports require a live connection.",
+        );
         return;
       }
 
@@ -272,7 +275,7 @@ export default function VariancesScreen() {
           rack: filters.rack,
           warehouse: filters.warehouse,
         },
-        format
+        format,
       );
 
       const filename = `variances_erpnext_import_${new Date().toISOString().split("T")[0]}.${format}`;
@@ -282,7 +285,7 @@ export default function VariancesScreen() {
         filename,
         format === "csv"
           ? "text/csv"
-          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       );
     } catch (error: any) {
       Alert.alert(
@@ -902,10 +905,6 @@ const styles = StyleSheet.create({
   },
   itemTitleBlock: {
     flex: 1,
-  },
-  headerActions: {
-    alignItems: "flex-end",
-    gap: theme.spacing.xs,
   },
   itemName: {
     fontSize: typography.fontSize.lg,

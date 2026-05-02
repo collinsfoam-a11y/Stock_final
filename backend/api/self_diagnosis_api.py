@@ -11,7 +11,19 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
-from backend.services.auto_diagnosis import get_auto_diagnosis_service
+from backend.db.runtime import get_db
+from backend.services.auto_diagnosis import AutoDiagnosisService
+
+# Global instance
+_diagnosis_service = None
+
+
+def get_auto_diagnosis() -> AutoDiagnosisService:
+    """Get global auto-diagnosis service instance"""
+    global _diagnosis_service
+    if _diagnosis_service is None:
+        _diagnosis_service = AutoDiagnosisService(mongo_db=get_db())
+    return _diagnosis_service
 
 
 logger = logging.getLogger(__name__)
@@ -25,10 +37,10 @@ async def get_health_with_diagnosis(current_user: dict = Depends(get_current_use
     Get comprehensive health status with auto-diagnosis
     """
     try:
-        diagnosis_service = get_auto_diagnosis_service()
+        diagnosis_service = get_auto_diagnosis()
         health_report = await diagnosis_service.health_check()
         return health_report
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Health check failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
@@ -41,11 +53,11 @@ async def get_error_statistics(
     Get error statistics with analysis
     """
     try:
-        diagnosis_service = get_auto_diagnosis_service()
+        diagnosis_service = get_auto_diagnosis()
         time_window = timedelta(hours=hours)
         stats = await diagnosis_service.get_error_statistics(time_window)
         return stats
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Statistics retrieval failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=f"Statistics failed: {str(e)}")
 
@@ -84,11 +96,11 @@ async def diagnose_error_endpoint(
         exc_class = ALLOWED_EXCEPTIONS.get(error_type, Exception)
         error = exc_class(error_message)
 
-        diagnosis_service = get_auto_diagnosis_service()
+        diagnosis_service = get_auto_diagnosis()
         diagnosis = await diagnosis_service.diagnose_error(error, context)
 
         return diagnosis.to_dict()
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Error diagnosis failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=f"Diagnosis failed: {str(e)}")
 
@@ -129,7 +141,7 @@ async def attempt_auto_fix(
         exc_class = ALLOWED_EXCEPTIONS.get(error_type, Exception)
         error = exc_class(error_message)
 
-        diagnosis_service = get_auto_diagnosis_service()
+        diagnosis_service = get_auto_diagnosis()
         diagnosis = await diagnosis_service.diagnose_error(error, context)
 
         if not diagnosis.auto_fixable:
@@ -153,7 +165,7 @@ async def attempt_auto_fix(
             ),
             "diagnosis": diagnosis.to_dict(),
         }
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Auto-fix attempt failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=f"Auto-fix failed: {str(e)}")
 
@@ -164,12 +176,12 @@ async def get_error_patterns(current_user: dict = Depends(get_current_user)):
     Get known error patterns and their solutions
     """
     try:
-        diagnosis_service = get_auto_diagnosis_service()
+        diagnosis_service = get_auto_diagnosis()
         return {
             "patterns": diagnosis_service._error_patterns,
             "auto_fixes_available": list(diagnosis_service._auto_fix_registry.keys()),
             "pattern_count": len(diagnosis_service._error_patterns),
         }
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Pattern retrieval failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=f"Pattern retrieval failed: {str(e)}")

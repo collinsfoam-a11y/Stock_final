@@ -106,18 +106,10 @@ class MigrationManager:
         for field in simple_indexes:
             await self._create_index_safe(self.db.sessions, field, name=f"sessions.{field}")
 
-        await self._create_index_safe(
-            self.db.sessions,
-            "client_session_identity_key",
-            unique=True,
-            sparse=True,
-            name="sessions.client_session_identity_key",
-        )
         compound_indexes = [
             [("started_at", -1)],
             [("warehouse", 1), ("status", 1)],
             [("staff_user", 1), ("status", 1)],
-            [("staff_user", 1), ("client_session_id", 1), ("created_at", -1)],
             [("status", 1), ("started_at", -1)],
             [("created_at", -1)],
             [("status", 1), ("created_at", -1)],
@@ -145,13 +137,6 @@ class MigrationManager:
             unique=True,
             sparse=True,
             name="count_lines.idempotency_key",
-        )
-        await self._create_index_safe(
-            self.db.count_lines,
-            "record_id",
-            unique=True,
-            sparse=True,
-            name="count_lines.record_id",
         )
         await self._create_index_safe(
             self.db.count_lines,
@@ -566,20 +551,6 @@ class MigrationManager:
                 logger.error(f"✗ Migration {migration['name']} failed: {str(e)}")
                 raise
 
-    async def _repair_item_names_migration(self):
-        """Migration wrapper for repairing item names."""
-        from backend.scripts.repair_count_line_item_names import repair_item_names
-        logger.info("Running item names repair migration...")
-        stats = await repair_item_names(self.db, dry_run=False)
-        logger.info(f"Item names repair complete. Stats: {stats}")
-
-    async def _repair_legacy_approvals_migration(self):
-        """Migration wrapper for repairing legacy zero-variance approvals."""
-        from backend.scripts.repair_legacy_zero_variance_approvals import repair_legacy_zero_variance_approvals
-        logger.info("Running legacy zero-variance approvals repair migration...")
-        stats = await repair_legacy_zero_variance_approvals(self.db, dry_run=False)
-        logger.info(f"Legacy approvals repair complete. Stats: {stats}")
-
     async def _get_pending_migrations(self) -> list[dict[str, Any]]:
         """Get list of pending migrations"""
         all_migrations = [
@@ -589,18 +560,7 @@ class MigrationManager:
                 "description": "Create initial database indexes",
                 "func": self.ensure_indexes,
             },
-            {
-                "name": "repair_item_names_v1",
-                "version": 2,
-                "description": "Repair missing or invalid item names from ERP source",
-                "func": self._repair_item_names_migration,
-            },
-            {
-                "name": "repair_legacy_approvals_v1",
-                "version": 3,
-                "description": "Normalize legacy zero-variance approval requirements",
-                "func": self._repair_legacy_approvals_migration,
-            },
+            # Add more migrations here as needed
         ]
 
         # Get completed migrations

@@ -1,5 +1,11 @@
 import React from "react";
-import { Dimensions, Platform, StyleSheet, Text, View } from "react-native";
+import {
+  Dimensions,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { AnimatedPressable } from "@/components/ui";
@@ -34,6 +40,11 @@ interface UsersTableProps {
   totalPages: number;
   users: User[];
 }
+
+const formatDate = (dateString: string | null) => {
+  if (!dateString) return "-";
+  return new Date(dateString).toLocaleDateString();
+};
 
 export function UsersTable({
   onDeleteUser,
@@ -74,8 +85,15 @@ export function UsersTable({
               <SortableHeader
                 active={sortBy === "username"}
                 cellStyle={styles.usernameCell}
-                label="User"
+                label="Username"
                 onPress={() => onSort("username")}
+                sortOrder={sortOrder}
+              />
+              <SortableHeader
+                active={sortBy === "email"}
+                cellStyle={styles.emailCell}
+                label="Email"
+                onPress={() => onSort("email")}
                 sortOrder={sortOrder}
               />
               <SortableHeader
@@ -88,6 +106,13 @@ export function UsersTable({
               <View style={[styles.headerCell, styles.statusCell]}>
                 <Text style={styles.headerText}>Status</Text>
               </View>
+              <SortableHeader
+                active={sortBy === "created_at"}
+                cellStyle={styles.dateCell}
+                label="Created"
+                onPress={() => onSort("created_at")}
+                sortOrder={sortOrder}
+              />
               <View style={[styles.headerCell, styles.actionsCell]}>
                 <Text style={styles.headerText}>Actions</Text>
               </View>
@@ -127,7 +152,8 @@ export function UsersTable({
       {total > pageSize && (
         <View style={styles.pagination}>
           <Text style={styles.paginationText}>
-            Showing {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, total)} of {total}
+            Showing {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, total)} of{" "}
+            {total}
           </Text>
           <View style={styles.paginationButtons}>
             <PageButton
@@ -196,23 +222,8 @@ function DesktopUserRow({
   const statusBadge = getStatusStyle(user.isActive);
 
   return (
-    <AnimatedPressable
-      onPress={() => onEdit(user)}
-      style={[styles.tableRow, selected && styles.tableRowSelected]}
-      testID={`user-row-${user.username}`}
-      accessibilityRole="button"
-      accessibilityLabel={`Edit user ${user.username}`}
-    >
-      <AnimatedPressable
-        style={styles.checkboxCell}
-        onPress={(event) => {
-          event.stopPropagation?.();
-          onSelect(user.id);
-        }}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: selected }}
-        accessibilityLabel={`Select user ${user.username}`}
-      >
+    <View style={[styles.tableRow, selected && styles.tableRowSelected]} testID={`user-row-${user.username}`}>
+      <AnimatedPressable style={styles.checkboxCell} onPress={() => onSelect(user.id)}>
         <Ionicons
           name={selected ? "checkbox" : "square-outline"}
           size={20}
@@ -227,9 +238,11 @@ function DesktopUserRow({
           <View>
             <Text style={styles.username}>{user.username}</Text>
             {user.fullName && <Text style={styles.fullName}>{user.fullName}</Text>}
-            {user.email && <Text style={styles.secondaryLine}>{user.email}</Text>}
           </View>
         </View>
+      </View>
+      <View style={[styles.cell, styles.emailCell]}>
+        <Text style={styles.cellText}>{user.email || "-"}</Text>
       </View>
       <View style={[styles.cell, styles.roleCell]}>
         <View style={[styles.badge, { backgroundColor: roleBadge.bg }]}>
@@ -244,6 +257,9 @@ function DesktopUserRow({
             {user.isActive ? "Active" : "Inactive"}
           </Text>
         </View>
+      </View>
+      <View style={[styles.cell, styles.dateCell]}>
+        <Text style={styles.cellText}>{formatDate(user.createdAt)}</Text>
       </View>
       <View style={[styles.cell, styles.actionsCell]}>
         <View style={styles.actionButtons}>
@@ -260,7 +276,9 @@ function DesktopUserRow({
             onPress={() => onToggleStatus(user)}
             testID={`user-toggle-${user.username}`}
             color={
-              user.isActive ? auroraTheme.colors.warning[600] : auroraTheme.colors.success[600]
+              user.isActive
+                ? auroraTheme.colors.warning[600]
+                : auroraTheme.colors.success[600]
             }
           />
           <ActionButton
@@ -272,7 +290,7 @@ function DesktopUserRow({
           />
         </View>
       </View>
-    </AnimatedPressable>
+    </View>
   );
 }
 
@@ -291,12 +309,7 @@ function MobileUserCard({
   const statusBadge = getStatusStyle(user.isActive);
 
   return (
-    <AnimatedPressable
-      style={styles.mobileCard}
-      onPress={() => onEdit(user)}
-      accessibilityRole="button"
-      accessibilityLabel={`Edit user ${user.username}`}
-    >
+    <View style={styles.mobileCard}>
       <View style={styles.mobileCardHeader}>
         <View style={styles.userInfo}>
           <View style={styles.avatar}>
@@ -309,7 +322,9 @@ function MobileUserCard({
         </View>
         <View style={styles.mobileBadges}>
           <View style={[styles.badge, { backgroundColor: roleBadge.bg }]}>
-            <Text style={[styles.badgeText, { color: roleBadge.text }]}>{user.role}</Text>
+            <Text style={[styles.badgeText, { color: roleBadge.text }]}>
+              {user.role}
+            </Text>
           </View>
           <View style={[styles.badge, { backgroundColor: statusBadge.bg }]}>
             <Text style={[styles.badgeText, { color: statusBadge.text }]}>
@@ -329,7 +344,11 @@ function MobileUserCard({
           icon={user.isActive ? "pause-circle" : "play-circle"}
           label={user.isActive ? "Deactivate" : "Activate"}
           onPress={() => onToggleStatus(user)}
-          color={user.isActive ? auroraTheme.colors.warning[600] : auroraTheme.colors.success[600]}
+          color={
+            user.isActive
+              ? auroraTheme.colors.warning[600]
+              : auroraTheme.colors.success[600]
+          }
         />
         <MobileAction
           icon="trash"
@@ -338,7 +357,7 @@ function MobileUserCard({
           color={auroraTheme.colors.error[600]}
         />
       </View>
-    </AnimatedPressable>
+    </View>
   );
 }
 
@@ -358,10 +377,7 @@ function ActionButton({
   return (
     <AnimatedPressable
       style={styles.actionButton}
-      onPress={(event) => {
-        event.stopPropagation?.();
-        onPress();
-      }}
+      onPress={onPress}
       testID={testID}
       accessibilityLabel={label}
     >
@@ -382,13 +398,7 @@ function MobileAction({
   onPress: () => void;
 }) {
   return (
-    <AnimatedPressable
-      style={styles.mobileAction}
-      onPress={(event) => {
-        event.stopPropagation?.();
-        onPress();
-      }}
-    >
+    <AnimatedPressable style={styles.mobileAction} onPress={onPress}>
       <Ionicons name={icon} size={18} color={color} />
       <Text style={[styles.mobileActionText, color === auroraTheme.colors.error[600] && { color }]}>
         {label}
@@ -415,7 +425,11 @@ function PageButton({
       <Ionicons
         name={direction === "back" ? "chevron-back" : "chevron-forward"}
         size={20}
-        color={disabled ? auroraTheme.colors.neutral[300] : auroraTheme.colors.primary[600]}
+        color={
+          disabled
+            ? auroraTheme.colors.neutral[300]
+            : auroraTheme.colors.primary[600]
+        }
       />
     </AnimatedPressable>
   );
@@ -424,7 +438,11 @@ function PageButton({
 function EmptyUsersState() {
   return (
     <View style={styles.emptyState} testID="users-empty-state">
-      <Ionicons name="people-outline" size={48} color={auroraTheme.colors.neutral[300]} />
+      <Ionicons
+        name="people-outline"
+        size={48}
+        color={auroraTheme.colors.neutral[300]}
+      />
       <Text style={styles.emptyText}>No users found</Text>
     </View>
   );
@@ -478,7 +496,11 @@ const styles = StyleSheet.create({
   },
   usernameCell: {
     flex: 2,
-    minWidth: 220,
+    minWidth: 150,
+  },
+  emailCell: {
+    flex: 2,
+    minWidth: 180,
   },
   roleCell: {
     flex: 1,
@@ -521,11 +543,6 @@ const styles = StyleSheet.create({
   fullName: {
     ...userTextStyles.caption,
     color: auroraTheme.colors.text.secondary,
-  },
-  secondaryLine: {
-    ...userTextStyles.caption,
-    color: auroraTheme.colors.text.secondary,
-    marginTop: 2,
   },
   badge: {
     paddingHorizontal: auroraTheme.spacing.sm,

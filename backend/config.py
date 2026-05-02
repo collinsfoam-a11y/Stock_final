@@ -56,9 +56,7 @@ def _env_file_value(name: str) -> Optional[str]:
     try:
         value = resolved_path.read_text(encoding="utf-8").strip()
     except OSError as exc:
-        raise ValueError(
-            f"{file_var} points to an unreadable file: {resolved_path}"
-        ) from exc
+        raise ValueError(f"{file_var} points to an unreadable file: {resolved_path}") from exc
 
     if not value:
         raise ValueError(f"{file_var} points to an empty file: {resolved_path}")
@@ -149,23 +147,6 @@ class Settings(PydanticBaseSettings):
                     v,
                 )
                 return False
-            if normalized in (
-                "release",
-                "prod",
-                "production",
-                "stage",
-                "staging",
-                "test",
-                "testing",
-                "dev",
-                "development",
-            ):
-                logger.warning(
-                    "DEBUG env var has environment value '%s'; treating DEBUG as false. "
-                    "Use ENVIRONMENT instead.",
-                    v,
-                )
-                return False
         raise ValueError("DEBUG must be a boolean")
 
     @field_validator("MIN_CLIENT_VERSION")
@@ -182,9 +163,7 @@ class Settings(PydanticBaseSettings):
         # Allow formats like '1', '1.2', '1.2.3',
         # optionally with suffix '-beta' or '+meta'
         if not re.match(r"^\d+(\.\d+){0,2}([-+][\w.]+)?$", v_str):
-            raise ValueError(
-                "MIN_CLIENT_VERSION must be a semantic version like '1.2.3'"
-            )
+            raise ValueError("MIN_CLIENT_VERSION must be a semantic version like '1.2.3'")
         return v_str
 
     # MongoDB (with dynamic port detection)
@@ -201,9 +180,7 @@ class Settings(PydanticBaseSettings):
 
         # 1) Accept common environment aliases.
         # Prefer explicit env vars, then `_FILE` aliases for secret-mounted deployments.
-        resolved_mongo_url = _secret_env_first(
-            "MONGO_URL", "MONGODB_URI", "MONGODB_URL"
-        )
+        resolved_mongo_url = _secret_env_first("MONGO_URL", "MONGODB_URI", "MONGODB_URL")
         if resolved_mongo_url:
             v = resolved_mongo_url
 
@@ -264,9 +241,7 @@ class Settings(PydanticBaseSettings):
     )
     JWT_REFRESH_SECRET: Optional[str] = Field(
         default=None,
-        description=(
-            "JWT refresh token secret - must be set via JWT_REFRESH_SECRET env var"
-        ),
+        description=("JWT refresh token secret - must be set via JWT_REFRESH_SECRET env var"),
     )
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(15, ge=1)
@@ -367,49 +342,6 @@ class Settings(PydanticBaseSettings):
     ERP_SYNC_INTERVAL: int = Field(3600, ge=60)  # 1 hour
     CHANGE_DETECTION_SYNC_ENABLED: bool = True
     CHANGE_DETECTION_INTERVAL: int = Field(300, ge=60)  # 5 minutes
-    V3_PROJECTION_DASHBOARD_READS: bool = Field(
-        default=False,
-        description="Read dashboard endpoints from V3 projection collections only.",
-    )
-    V3_PROJECTION_REPORT_READS: bool = Field(
-        default=False,
-        description="Read report endpoints from V3 projection collections only.",
-    )
-    SHADOW_READ_ENABLED: bool = Field(
-        default=False,
-        description="Run hidden read-only projection parity comparisons.",
-    )
-    SHADOW_READ_SAMPLE_RATE: float = Field(default=0.10, ge=0.0, le=1.0)
-    SHADOW_READ_TIMEOUT_SECONDS: float = Field(default=2.0, ge=0.1, le=30.0)
-    SHADOW_READ_VARIANCE_ABS_TOLERANCE: float = Field(default=1.0, ge=0.0)
-    SHADOW_READ_VARIANCE_REL_TOLERANCE: float = Field(default=0.005, ge=0.0)
-    SHADOW_AUTO_DECISION_ENABLED: bool = Field(
-        default=True,
-        description="Evaluate shadow-read rollout decisions in the background.",
-    )
-    SHADOW_DECISION_WINDOW_SECONDS: int = Field(default=7200, ge=60)
-    SHADOW_MIN_STABLE_WINDOW_MINUTES: int = Field(default=120, ge=1)
-    SHADOW_EVAL_INTERVAL_SECONDS: int = Field(default=300, ge=30)
-    SHADOW_MIN_SAMPLES: int = Field(default=500, ge=1)
-    SHADOW_MIN_SAMPLES_PER_ENDPOINT: int = Field(default=50, ge=1)
-    SHADOW_RECENT_WINDOW_MINUTES: int = Field(default=15, ge=1)
-    SHADOW_MAX_CLOCK_SKEW_SECONDS: int = Field(default=5, ge=0)
-    SHADOW_MONITOR_INTERVAL_SECONDS: int = Field(default=600, ge=60)
-    SHADOW_MISMATCH_THRESHOLD: float = Field(default=0.001, ge=0.0, le=1.0)
-    SHADOW_TIMEOUT_THRESHOLD: float = Field(default=0.01, ge=0.0, le=1.0)
-    SHADOW_ERROR_THRESHOLD: float = Field(default=0.0, ge=0.0, le=1.0)
-    ROLLOUT_STAGE: int = Field(default=0, ge=0, le=3)
-    ROLLOUT_COOLDOWN_MINUTES: int = Field(default=30, ge=0)
-    SHADOW_ALERT_DEDUPE_SECONDS: int = Field(default=600, ge=0)
-    AUTO_ROLLBACK_ENABLED: bool = Field(default=True)
-    AUTO_ROLLBACK_MISMATCH_RATE: float = Field(default=0.005, ge=0.0, le=1.0)
-    AUTO_ROLLBACK_TIMEOUT_RATE: float = Field(default=0.01, ge=0.0, le=1.0)
-    DEPLOYMENT_DECISION_STORE_PATH: str = Field(
-        default=".agent/reports/deployment-decisions.jsonl"
-    )
-    DEPLOYMENT_DECISION_HISTORY_LIMIT: int = Field(default=500, ge=1)
-    DEPLOYMENT_DECISION_MAX_BYTES: int = Field(default=50_000_000, ge=1024)
-    DEPLOYMENT_DECISION_RETENTION_DAYS: int = Field(default=14, ge=1)
 
     @field_validator("ERP_SYNC_INTERVAL", "CHANGE_DETECTION_INTERVAL")
     @classmethod
@@ -430,12 +362,10 @@ class Settings(PydanticBaseSettings):
 
     # Error Tracking (Sentry)
     SENTRY_DSN: Optional[str] = Field(
-        default=None,
-        description="Sentry DSN for error tracking. Set via SENTRY_DSN env var.",
+        default=None, description="Sentry DSN for error tracking. Set via SENTRY_DSN env var."
     )
     SENTRY_ENVIRONMENT: Optional[str] = Field(
-        default="development",
-        description="Sentry environment (defaults to ENVIRONMENT setting)",
+        default="development", description="Sentry environment (defaults to ENVIRONMENT setting)"
     )
     SENTRY_TRACES_SAMPLE_RATE: float = Field(
         default=0.1,
@@ -444,10 +374,7 @@ class Settings(PydanticBaseSettings):
         description="Sentry performance monitoring sample rate (0.0-1.0)",
     )
     SENTRY_PROFILES_SAMPLE_RATE: float = Field(
-        default=0.1,
-        ge=0.0,
-        le=1.0,
-        description="Sentry profiling sample rate (0.0-1.0)",
+        default=0.1, ge=0.0, le=1.0, description="Sentry profiling sample rate (0.0-1.0)"
     )
 
     # Security
@@ -498,9 +425,7 @@ class Settings(PydanticBaseSettings):
             normalized = "WARNING"
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if normalized not in valid_levels:
-            raise ValueError(
-                f"LOG_LEVEL must be one of: {', '.join(valid_levels)} (WARN accepted)"
-            )
+            raise ValueError(f"LOG_LEVEL must be one of: {', '.join(valid_levels)} (WARN accepted)")
         return normalized
 
     @field_validator("AUTH_COOKIE_SAMESITE")
@@ -526,23 +451,12 @@ class Settings(PydanticBaseSettings):
             "Defaults include localhost variants."
         ),
     )
-    HOST: str = (
-        "0.0.0.0"  # nosec B104 - Binding to all interfaces is required for Docker and LAN access (React Native)
-    )
+    HOST: str = "0.0.0.0"  # nosec B104 - Binding to all interfaces is required for Docker and LAN access (React Native)
     PORT: int = Field(8001, ge=1, le=65535)
     WORKERS: int = Field(1, ge=1)
     PI_SERVER_URL: str = Field(
         default="http://localhost:8045/v1", description="URL for the pi-server sidecar"
     )
-    PI_SERVER_API_KEY: Optional[str] = Field(
-        default=None,
-        description="Bearer token used when calling the pi-server sidecar.",
-    )
-
-    @field_validator("PI_SERVER_API_KEY", mode="before")
-    @classmethod
-    def resolve_pi_server_api_key(cls, v: Optional[str]) -> Optional[str]:
-        return _secret_env_first("PI_SERVER_API_KEY") or v
 
     @field_validator("PORT")
     @classmethod
@@ -565,64 +479,6 @@ class Settings(PydanticBaseSettings):
     def resolve_metrics_enabled(cls, v: object) -> bool:
         env_value = _env_first("METRICS_ENABLED", "ENABLE_METRICS")
         return _parse_bool(env_value if env_value is not None else v, default=True)
-
-    @field_validator("V3_PROJECTION_DASHBOARD_READS", mode="before")
-    @classmethod
-    def resolve_projection_dashboard_reads(cls, v: object) -> bool:
-        env_value = _env_first("V3_PROJECTION_DASHBOARD_READS")
-        return _parse_bool(env_value if env_value is not None else v, default=False)
-
-    @field_validator("V3_PROJECTION_REPORT_READS", mode="before")
-    @classmethod
-    def resolve_projection_report_reads(cls, v: object) -> bool:
-        env_value = _env_first("V3_PROJECTION_REPORT_READS")
-        return _parse_bool(env_value if env_value is not None else v, default=False)
-
-    @field_validator("SHADOW_READ_ENABLED", mode="before")
-    @classmethod
-    def resolve_shadow_read_enabled(cls, v: object) -> bool:
-        env_value = _env_first("SHADOW_READ_ENABLED")
-        return _parse_bool(env_value if env_value is not None else v, default=False)
-
-    @field_validator("SHADOW_AUTO_DECISION_ENABLED", mode="before")
-    @classmethod
-    def resolve_shadow_auto_decision_enabled(cls, v: object) -> bool:
-        env_value = _env_first("SHADOW_AUTO_DECISION_ENABLED")
-        return _parse_bool(env_value if env_value is not None else v, default=True)
-
-    @field_validator("AUTO_ROLLBACK_ENABLED", mode="before")
-    @classmethod
-    def resolve_auto_rollback_enabled(cls, v: object) -> bool:
-        env_value = _env_first("AUTO_ROLLBACK_ENABLED")
-        return _parse_bool(env_value if env_value is not None else v, default=True)
-
-    @field_validator("SHADOW_MISMATCH_THRESHOLD", mode="before")
-    @classmethod
-    def resolve_shadow_mismatch_threshold(cls, v: object) -> object:
-        return _env_first("SHADOW_MISMATCH_THRESHOLD") or v
-
-    @field_validator("SHADOW_TIMEOUT_THRESHOLD", mode="before")
-    @classmethod
-    def resolve_shadow_timeout_threshold(cls, v: object) -> object:
-        return _env_first("SHADOW_TIMEOUT_THRESHOLD") or v
-
-    PROJECTION_READINESS_COLLECTION: str = Field(
-        default="projection_readiness",
-        description="Collection containing out-of-band projection readiness status.",
-    )
-    PROJECTION_READINESS_DOCUMENT_ID: str = Field(
-        default="current",
-        description="Document id/name containing current projection readiness status.",
-    )
-    PROJECTION_GATE_TTL_SECONDS: int = Field(30, ge=1, le=3600)
-    PROJECTION_GATE_RETRY_AFTER_SECONDS: int = Field(30, ge=1, le=3600)
-    PROJECTION_STABILITY_WINDOW_SECONDS: int = Field(60, ge=0, le=3600)
-    PROJECTION_MAX_LAG_SECONDS: float = Field(5.0, ge=0.0)
-    PROJECTION_FRESHNESS_SECONDS: int = Field(300, ge=1, le=86400)
-    PROJECTION_DRIFT_COOLDOWN_SECONDS: int = Field(300, ge=0, le=86400)
-    PROJECTION_ALERT_READINESS_FALSE_SECONDS: int = Field(60, ge=1, le=86400)
-    PROJECTION_ALERT_SYNC_FAILURE_RATE: float = Field(0.10, ge=0.0, le=1.0)
-    SESSION_CLIENT_ID_TTL_HOURS: int = Field(48, ge=1, le=168)
 
     # Enhanced Connection Pool Settings
     CONNECTION_RETRY_ATTEMPTS: int = Field(
@@ -694,9 +550,7 @@ except Exception as e:
                 "LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
             )
             self.LOG_FILE = os.getenv("LOG_FILE", "app.log")
-            self.USE_CONNECTION_POOL = (
-                os.getenv("USE_CONNECTION_POOL", "true").lower() == "true"
-            )
+            self.USE_CONNECTION_POOL = os.getenv("USE_CONNECTION_POOL", "true").lower() == "true"
             self.POOL_SIZE = int(os.getenv("POOL_SIZE", 10))
             self.MAX_OVERFLOW = int(os.getenv("MAX_OVERFLOW", 5))
             self.REDIS_URL = _secret_env_first("REDIS_URL")
@@ -705,106 +559,13 @@ except Exception as e:
             self.RATE_LIMIT_BURST = int(os.getenv("RATE_LIMIT_BURST", 20))
             self.MAX_CONCURRENT = int(os.getenv("MAX_CONCURRENT", 50))
             self.METRICS_HISTORY_SIZE = int(os.getenv("METRICS_HISTORY_SIZE", 1000))
-            self.ERP_SYNC_ENABLED = (
-                os.getenv("ERP_SYNC_ENABLED", "true").lower() == "true"
-            )
+            self.ERP_SYNC_ENABLED = os.getenv("ERP_SYNC_ENABLED", "true").lower() == "true"
             self.ERP_SYNC_INTERVAL = int(os.getenv("ERP_SYNC_INTERVAL", 3600))
-            self.AUTH_SINGLE_SESSION = (
-                os.getenv("AUTH_SINGLE_SESSION", "true").lower() == "true"
-            )
+            self.AUTH_SINGLE_SESSION = os.getenv("AUTH_SINGLE_SESSION", "true").lower() == "true"
             self.CHANGE_DETECTION_SYNC_ENABLED = (
                 os.getenv("CHANGE_DETECTION_SYNC_ENABLED", "true").lower() == "true"
             )
-            self.CHANGE_DETECTION_INTERVAL = int(
-                os.getenv("CHANGE_DETECTION_INTERVAL", 300)
-            )
-            self.V3_PROJECTION_DASHBOARD_READS = _parse_bool(
-                os.getenv("V3_PROJECTION_DASHBOARD_READS"),
-                default=False,
-            )
-            self.V3_PROJECTION_REPORT_READS = _parse_bool(
-                os.getenv("V3_PROJECTION_REPORT_READS"),
-                default=False,
-            )
-            self.SHADOW_READ_ENABLED = _parse_bool(
-                os.getenv("SHADOW_READ_ENABLED"),
-                default=False,
-            )
-            self.SHADOW_READ_SAMPLE_RATE = float(
-                os.getenv("SHADOW_READ_SAMPLE_RATE", 0.10)
-            )
-            self.SHADOW_READ_TIMEOUT_SECONDS = float(
-                os.getenv("SHADOW_READ_TIMEOUT_SECONDS", 2.0)
-            )
-            self.SHADOW_READ_VARIANCE_ABS_TOLERANCE = float(
-                os.getenv("SHADOW_READ_VARIANCE_ABS_TOLERANCE", 1.0)
-            )
-            self.SHADOW_READ_VARIANCE_REL_TOLERANCE = float(
-                os.getenv("SHADOW_READ_VARIANCE_REL_TOLERANCE", 0.005)
-            )
-            self.SHADOW_AUTO_DECISION_ENABLED = _parse_bool(
-                os.getenv("SHADOW_AUTO_DECISION_ENABLED"),
-                default=True,
-            )
-            self.SHADOW_DECISION_WINDOW_SECONDS = int(
-                os.getenv("SHADOW_DECISION_WINDOW_SECONDS", 7200)
-            )
-            self.SHADOW_MIN_STABLE_WINDOW_MINUTES = int(
-                os.getenv("SHADOW_MIN_STABLE_WINDOW_MINUTES", 120)
-            )
-            self.SHADOW_EVAL_INTERVAL_SECONDS = int(
-                os.getenv("SHADOW_EVAL_INTERVAL_SECONDS", 300)
-            )
-            self.SHADOW_MIN_SAMPLES = int(os.getenv("SHADOW_MIN_SAMPLES", 500))
-            self.SHADOW_MIN_SAMPLES_PER_ENDPOINT = int(
-                os.getenv("SHADOW_MIN_SAMPLES_PER_ENDPOINT", 50)
-            )
-            self.SHADOW_RECENT_WINDOW_MINUTES = int(
-                os.getenv("SHADOW_RECENT_WINDOW_MINUTES", 15)
-            )
-            self.SHADOW_MAX_CLOCK_SKEW_SECONDS = int(
-                os.getenv("SHADOW_MAX_CLOCK_SKEW_SECONDS", 5)
-            )
-            self.SHADOW_MONITOR_INTERVAL_SECONDS = int(
-                os.getenv("SHADOW_MONITOR_INTERVAL_SECONDS", 600)
-            )
-            self.SHADOW_MISMATCH_THRESHOLD = float(
-                _env_first("SHADOW_MISMATCH_THRESHOLD") or 0.001
-            )
-            self.SHADOW_TIMEOUT_THRESHOLD = float(
-                _env_first("SHADOW_TIMEOUT_THRESHOLD") or 0.01
-            )
-            self.SHADOW_ERROR_THRESHOLD = float(os.getenv("SHADOW_ERROR_THRESHOLD", 0.0))
-            self.ROLLOUT_STAGE = int(os.getenv("ROLLOUT_STAGE", 0))
-            self.ROLLOUT_COOLDOWN_MINUTES = int(
-                os.getenv("ROLLOUT_COOLDOWN_MINUTES", 30)
-            )
-            self.SHADOW_ALERT_DEDUPE_SECONDS = int(
-                os.getenv("SHADOW_ALERT_DEDUPE_SECONDS", 600)
-            )
-            self.AUTO_ROLLBACK_ENABLED = _parse_bool(
-                os.getenv("AUTO_ROLLBACK_ENABLED"),
-                default=True,
-            )
-            self.AUTO_ROLLBACK_MISMATCH_RATE = float(
-                os.getenv("AUTO_ROLLBACK_MISMATCH_RATE", 0.005)
-            )
-            self.AUTO_ROLLBACK_TIMEOUT_RATE = float(
-                os.getenv("AUTO_ROLLBACK_TIMEOUT_RATE", 0.01)
-            )
-            self.DEPLOYMENT_DECISION_STORE_PATH = os.getenv(
-                "DEPLOYMENT_DECISION_STORE_PATH",
-                ".agent/reports/deployment-decisions.jsonl",
-            )
-            self.DEPLOYMENT_DECISION_HISTORY_LIMIT = int(
-                os.getenv("DEPLOYMENT_DECISION_HISTORY_LIMIT", 500)
-            )
-            self.DEPLOYMENT_DECISION_MAX_BYTES = int(
-                os.getenv("DEPLOYMENT_DECISION_MAX_BYTES", 50_000_000)
-            )
-            self.DEPLOYMENT_DECISION_RETENTION_DAYS = int(
-                os.getenv("DEPLOYMENT_DECISION_RETENTION_DAYS", 14)
-            )
+            self.CHANGE_DETECTION_INTERVAL = int(os.getenv("CHANGE_DETECTION_INTERVAL", 300))
             # New settings for rate limiting and CORS
             self.RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("RATE_LIMIT_MAX_ATTEMPTS", 5))
             self.RATE_LIMIT_TTL_SECONDS = int(os.getenv("RATE_LIMIT_TTL_SECONDS", 300))
@@ -812,44 +573,8 @@ except Exception as e:
             self.APP_NAME = os.getenv("APP_NAME", "Stock Count API")
             self.APP_VERSION = os.getenv("APP_VERSION", "1.0.0")
             # Normalize MIN_CLIENT_VERSION: use default when env var is missing or empty, and strip whitespace
-            self.MIN_CLIENT_VERSION = (
-                os.getenv("MIN_CLIENT_VERSION") or "1.0.0"
-            ).strip()
+            self.MIN_CLIENT_VERSION = (os.getenv("MIN_CLIENT_VERSION") or "1.0.0").strip()
             self.PI_SERVER_URL = os.getenv("PI_SERVER_URL", "http://localhost:8045/v1")
-            self.PI_SERVER_API_KEY = _secret_env_first("PI_SERVER_API_KEY")
-            self.PROJECTION_READINESS_COLLECTION = os.getenv(
-                "PROJECTION_READINESS_COLLECTION", "projection_readiness"
-            )
-            self.PROJECTION_READINESS_DOCUMENT_ID = os.getenv(
-                "PROJECTION_READINESS_DOCUMENT_ID", "current"
-            )
-            self.PROJECTION_GATE_TTL_SECONDS = int(
-                os.getenv("PROJECTION_GATE_TTL_SECONDS", 30)
-            )
-            self.PROJECTION_GATE_RETRY_AFTER_SECONDS = int(
-                os.getenv("PROJECTION_GATE_RETRY_AFTER_SECONDS", 30)
-            )
-            self.PROJECTION_STABILITY_WINDOW_SECONDS = int(
-                os.getenv("PROJECTION_STABILITY_WINDOW_SECONDS", 60)
-            )
-            self.PROJECTION_MAX_LAG_SECONDS = float(
-                os.getenv("PROJECTION_MAX_LAG_SECONDS", 5)
-            )
-            self.PROJECTION_FRESHNESS_SECONDS = int(
-                os.getenv("PROJECTION_FRESHNESS_SECONDS", 300)
-            )
-            self.PROJECTION_DRIFT_COOLDOWN_SECONDS = int(
-                os.getenv("PROJECTION_DRIFT_COOLDOWN_SECONDS", 300)
-            )
-            self.PROJECTION_ALERT_READINESS_FALSE_SECONDS = int(
-                os.getenv("PROJECTION_ALERT_READINESS_FALSE_SECONDS", 60)
-            )
-            self.PROJECTION_ALERT_SYNC_FAILURE_RATE = float(
-                os.getenv("PROJECTION_ALERT_SYNC_FAILURE_RATE", 0.10)
-            )
-            self.SESSION_CLIENT_ID_TTL_HOURS = int(
-                os.getenv("SESSION_CLIENT_ID_TTL_HOURS", 48)
-            )
             self.ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS")
             self.ENABLE_LAN_ENFORCEMENT = (
                 os.getenv("ENABLE_LAN_ENFORCEMENT", "false").lower() == "true"
@@ -863,9 +588,7 @@ except Exception as e:
             self.AUTO_SEED_MOCK_ERP_DATA = (
                 os.getenv("AUTO_SEED_MOCK_ERP_DATA", "false").lower() == "true"
             )
-            self.AUTH_ACCESS_COOKIE_NAME = os.getenv(
-                "AUTH_ACCESS_COOKIE_NAME", "sv_access_token"
-            )
+            self.AUTH_ACCESS_COOKIE_NAME = os.getenv("AUTH_ACCESS_COOKIE_NAME", "sv_access_token")
             self.AUTH_REFRESH_COOKIE_NAME = os.getenv(
                 "AUTH_REFRESH_COOKIE_NAME", "sv_refresh_token"
             )
@@ -912,16 +635,12 @@ def perform_security_checks(settings_obj):
 
         if (is_production or is_staging) and not debug_mode:
             _validate_secret("JWT_SECRET", jwt_secret, placeholders, environment)
-            _validate_secret(
-                "JWT_REFRESH_SECRET", jwt_refresh, placeholders, environment
-            )
+            _validate_secret("JWT_REFRESH_SECRET", jwt_refresh, placeholders, environment)
             logger.info(f"✅ {environment.capitalize()} mode: Security checks passed")
         else:
             # Development mode - just warn
             if jwt_secret in placeholders:
-                logger.warning(
-                    "⚠️  DEVELOPMENT: Using default JWT_SECRET. Change for production!"
-                )
+                logger.warning("⚠️  DEVELOPMENT: Using default JWT_SECRET. Change for production!")
             if jwt_refresh in placeholders:
                 logger.warning(
                     "⚠️  DEVELOPMENT: Using default JWT_REFRESH_SECRET. Change for production!"
@@ -968,11 +687,7 @@ def _enforce_production_guards(settings_obj):
         )
 
     # Guard 4: DEBUG_ENDPOINTS must be disabled in production
-    debug_endpoints = os.getenv("DEBUG_ENDPOINTS", "false").lower() in (
-        "true",
-        "1",
-        "yes",
-    )
+    debug_endpoints = os.getenv("DEBUG_ENDPOINTS", "false").lower() in ("true", "1", "yes")
     if is_prod and debug_endpoints:
         raise RuntimeError(
             "CRITICAL: DEBUG_ENDPOINTS=true is not allowed in production. "

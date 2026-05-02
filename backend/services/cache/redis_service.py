@@ -24,7 +24,7 @@ class RedisCacheService:
             value = await self.redis.get(key)
             if value:
                 return json.loads(value)
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Redis get error: {e}")
         return None
 
@@ -33,7 +33,7 @@ class RedisCacheService:
             return
         try:
             await self.redis.set(key, json.dumps(value, default=str), ex=expire)
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Redis set error: {e}")
 
     async def delete(self, key: str):
@@ -41,7 +41,7 @@ class RedisCacheService:
             return
         try:
             await self.redis.delete(key)
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Redis delete error: {e}")
 
     async def clear_prefix(self, prefix: str):
@@ -51,7 +51,7 @@ class RedisCacheService:
             keys = await self.redis.keys(f"{prefix}*")
             if keys:
                 await self.redis.delete(*keys)
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Redis clear_prefix error: {e}")
 
     async def close(self):

@@ -9,7 +9,6 @@ export interface RecentItem extends Item {
   floor_no?: string;
   rack_no?: string;
   counted_qty?: number;
-  scan_status?: "saved" | "error";
 }
 
 /** Generic analytics data payload */
@@ -40,7 +39,9 @@ export const RecentItemsService = {
       const existingItems = await RecentItemsService.getRecent();
 
       // Remove duplicate if exists
-      const filtered = existingItems.filter((i) => (i.item_code || i.barcode) !== itemCode);
+      const filtered = existingItems.filter(
+        (i) => (i.item_code || i.barcode) !== itemCode,
+      );
 
       // Add new item to beginning
       const newItem: RecentItem = {

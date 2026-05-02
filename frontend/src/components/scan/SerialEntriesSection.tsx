@@ -2,21 +2,14 @@ import React, { useCallback } from "react";
 import { FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { SerialEntryData } from "@/types/scan";
-import ModernCard from "@/components/ui/ModernCard";
 import {
   colors,
   fontSize,
   fontWeight,
+  semanticColors,
   spacing,
 } from "@/theme/unified";
 import { SerialEntryCard } from "./SerialEntryCard";
-
-const SURFACE_CARD = "#ffffff";
-const SURFACE_BORDER = "#d9e5e2";
-const SURFACE_MUTED = "#f8fafc";
-const ACCENT = "#0f766e";
-const TEXT_STRONG = "#0f172a";
-const TEXT_MUTED = "#475569";
 
 interface SerialEntriesSectionProps {
   serialEntries: SerialEntryData[];
@@ -51,10 +44,10 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
   );
 
   return (
-    <ModernCard style={styles.sectionCard} contentStyle={styles.sectionCardContent}>
+    <View style={styles.section}>
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Ionicons name="barcode-outline" size={20} color={ACCENT} />
+          <Ionicons name="barcode-outline" size={20} color={colors.primary[600]} />
           <Text style={styles.title}>Serial Numbers</Text>
         </View>
         <Text style={styles.helperText}>
@@ -62,7 +55,7 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
         </Text>
       </View>
 
-      <TouchableOpacity style={styles.scanButton} onPress={onOpenScanner} activeOpacity={0.9}>
+      <TouchableOpacity style={styles.scanButton} onPress={onOpenScanner}>
         <Ionicons name="scan" size={24} color={colors.white} />
         <Text style={styles.scanButtonText}>Scan Serial Numbers</Text>
       </TouchableOpacity>
@@ -92,24 +85,17 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
         removeClippedSubviews={Platform.OS === "android"}
       />
 
-      <TouchableOpacity style={styles.addButton} onPress={onAddSerial} activeOpacity={0.85}>
-        <Ionicons name="add-circle-outline" size={20} color={ACCENT} />
+      <TouchableOpacity style={styles.addButton} onPress={onAddSerial}>
+        <Ionicons name="add-circle-outline" size={20} color={colors.primary[600]} />
         <Text style={styles.addButtonText}>Add Serial Manually</Text>
       </TouchableOpacity>
-    </ModernCard>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  sectionCard: {
+  section: {
     marginTop: spacing.md,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: SURFACE_BORDER,
-    backgroundColor: SURFACE_CARD,
-  },
-  sectionCardContent: {
-    padding: spacing.lg,
   },
   header: {
     marginBottom: spacing.md,
@@ -122,22 +108,21 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
     fontSize: fontSize.md,
     fontWeight: fontWeight.semiBold,
-    color: TEXT_STRONG,
+    color: semanticColors.text.primary,
   },
   helperText: {
     marginTop: spacing.xs,
     fontSize: fontSize.sm,
-    color: TEXT_MUTED,
+    color: semanticColors.text.secondary,
   },
   scanButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.sm,
-    minHeight: 52,
     paddingVertical: spacing.md,
-    borderRadius: 18,
-    backgroundColor: ACCENT,
+    borderRadius: 14,
+    backgroundColor: colors.primary[600],
   },
   scanButtonText: {
     fontSize: fontSize.md,
@@ -168,15 +153,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.sm,
-    minHeight: 48,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: SURFACE_BORDER,
-    backgroundColor: SURFACE_MUTED,
   },
   addButtonText: {
     fontSize: fontSize.sm,
     fontWeight: fontWeight.semiBold,
-    color: ACCENT,
+    color: colors.primary[600],
   },
 });

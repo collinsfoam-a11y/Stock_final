@@ -42,7 +42,7 @@ async def trigger_erp_sync(current_user: dict = Depends(get_current_user)):
 
     try:
         result = await _erp_sync_service.sync_now()
-    except (RuntimeError, TypeError, ValueError, OSError) as exc:
+    except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     return {"success": True, "data": result}

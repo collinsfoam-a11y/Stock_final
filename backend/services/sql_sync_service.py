@@ -11,7 +11,6 @@ from typing import Any, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from backend.sql_server_connector import SQLServerConnector
-from backend.services.governance_guard import write_authority
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ def _normalize_date(value: Any) -> Optional[str]:
         return datetime.combine(value, datetime.min.time()).isoformat()
     try:
         return str(value)
-    except (RuntimeError, TypeError, ValueError, OSError):
+    except Exception:
         return None
 
 
@@ -292,7 +291,7 @@ class SQLSyncService:
                 return await self.mongo_db.erp_items.find_one({"item_code": item_code})
             return None
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error syncing single item {barcode}: {e}")
             return None
 
@@ -370,20 +369,19 @@ class SQLSyncService:
                             stats["qty_changes_detected"] += 1  # Backwards-compatible
                             now = datetime.now(timezone.utc).replace(tzinfo=None)
 
-                            with write_authority("SQLSyncService"):
-                                await self.mongo_db.erp_items.update_one(
-                                    {"item_code": item_code},
-                                    {
-                                        "$set": {
-                                            "stock_qty": sql_qty,
-                                            "sql_server_qty": sql_qty,
-                                            "last_synced": now,
-                                            "qty_changed_at": now,
-                                            "qty_change_delta": sql_qty - mongo_qty,
-                                            "updated_at": now,
-                                        }
-                                    },
-                                )
+                            await self.mongo_db.erp_items.update_one(
+                                {"item_code": item_code},
+                                {
+                                    "$set": {
+                                        "stock_qty": sql_qty,
+                                        "sql_server_qty": sql_qty,
+                                        "last_synced": now,
+                                        "qty_changed_at": now,
+                                        "qty_change_delta": sql_qty - mongo_qty,
+                                        "updated_at": now,
+                                    }
+                                },
+                            )
                             stats["qty_updated"] += 1
 
                             logger.debug(
@@ -391,7 +389,7 @@ class SQLSyncService:
                                 f"(Δ {sql_qty - mongo_qty})"
                             )
 
-                except (RuntimeError, TypeError, ValueError, OSError) as e:
+                except Exception as e:
                     logger.error(f"Error syncing batch starting at index {i}: {e}")
                     stats["errors"] += 1
 
@@ -411,7 +409,7 @@ class SQLSyncService:
             await self._update_sync_metadata(stats)
             return stats
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Variance sync failed: {str(e)}")
             self._sync_stats["failed_syncs"] += 1
             stats["errors"] = 1
@@ -448,11 +446,10 @@ class SQLSyncService:
             try:
                 sql_qty = _coerce_qty(sql_item.get("stock_qty"))
                 new_item = _build_new_item_dict(sql_item, sql_qty, now)
-                with write_authority("SQLSyncService"):
-                    await self.mongo_db.erp_items.insert_one(new_item)
+                await self.mongo_db.erp_items.insert_one(new_item)
                 stats["items_discovered"] += 1
                 logger.debug(f"Created new item: {item_code}")
-            except (RuntimeError, TypeError, ValueError, OSError) as exc:
+            except Exception as exc:
                 logger.error(f"Error creating item {item_code}: {exc}")
                 stats["errors"] += 1
 
@@ -521,7 +518,7 @@ class SQLSyncService:
 
             return stats
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"New item discovery failed: {str(e)}")
             stats["errors"] = 1
             return stats
@@ -602,7 +599,7 @@ class SQLSyncService:
                 for sql_item in batch:
                     try:
                         await self._sync_single_item(sql_item, stats)
-                    except (RuntimeError, TypeError, ValueError, OSError) as e:
+                    except Exception as e:
                         logger.error(f"Error syncing item {sql_item.get('item_code')}: {e}")
                         stats["errors"] += 1
 
@@ -622,7 +619,7 @@ class SQLSyncService:
             await self._update_sync_metadata(stats)
             return stats
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Nightly sync failed: {str(e)}")
             stats["errors"] = 1
             return stats
@@ -663,7 +660,7 @@ class SQLSyncService:
                 for sql_item in batch:
                     try:
                         await self._sync_single_item(sql_item, stats)
-                    except (RuntimeError, TypeError, ValueError, OSError) as e:
+                    except Exception as e:
                         logger.error(f"Error syncing item {sql_item.get('item_code')}: {str(e)}")
                         stats["errors"] += 1
 
@@ -682,7 +679,7 @@ class SQLSyncService:
             await self._update_sync_metadata(stats)
             return stats
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"SQL qty sync failed: {str(e)}")
             self._sync_stats["failed_syncs"] += 1
             stats["errors"] = 1
@@ -700,8 +697,7 @@ class SQLSyncService:
         if not mongo_item:
             # New item - create with basic data
             new_item = _build_new_item_dict(sql_item, sql_qty, now)
-            with write_authority("SQLSyncService"):
-                await self.mongo_db.erp_items.insert_one(new_item)
+            await self.mongo_db.erp_items.insert_one(new_item)
             stats["items_created"] += 1
             logger.debug(f"Created new item: {item_code}")
         else:
@@ -758,11 +754,10 @@ class SQLSyncService:
         if metadata_updates:
             update_fields.update(metadata_updates)
 
-        with write_authority("SQLSyncService"):
-            await self.mongo_db.erp_items.update_one(
-                {"item_code": item_code},
-                {"$set": update_fields},
-            )
+        await self.mongo_db.erp_items.update_one(
+            {"item_code": item_code},
+            {"$set": update_fields},
+        )
 
     def _finalize_sync_stats(self, stats: dict[str, Any]) -> None:
         """Update backwards-compatible stats and internal tracking."""
@@ -802,7 +797,7 @@ class SQLSyncService:
                     },
                     upsert=True,
                 )
-            except (RuntimeError, TypeError, ValueError, OSError):
+            except Exception:
                 logger.warning(
                     "Failed to update sync_metadata collection during qty sync",
                     exc_info=True,
@@ -833,20 +828,19 @@ class SQLSyncService:
                     if sql_qty != mongo_qty:
                         # Update MongoDB cache
                         now = datetime.now(timezone.utc).replace(tzinfo=None)
-                        with write_authority("SQLSyncService"):
-                            await self.mongo_db.erp_items.update_one(
-                                {"item_code": item_code},
-                                {
-                                    "$set": {
-                                        "stock_qty": sql_qty,
-                                        "sql_server_qty": sql_qty,
-                                        "last_synced": now,
-                                        "qty_changed_at": now,
-                                        "updated_at": now,
-                                    }
-                                },
-                                upsert=True,
-                            )
+                        await self.mongo_db.erp_items.update_one(
+                            {"item_code": item_code},
+                            {
+                                "$set": {
+                                    "stock_qty": sql_qty,
+                                    "sql_server_qty": sql_qty,
+                                    "last_synced": now,
+                                    "qty_changed_at": now,
+                                    "updated_at": now,
+                                }
+                            },
+                            upsert=True,
+                        )
                         updated = True
 
                     return {
@@ -859,7 +853,7 @@ class SQLSyncService:
                         "source": "sql_server",
                         "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
                     }
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.warning(f"Real-time SQL check failed for {item_code}: {e}")
 
         # Fallback to MongoDB cache
@@ -914,7 +908,7 @@ class SQLSyncService:
                                 logger.info("🔍 Running new item discovery (every 30 min)...")
                                 await self.discover_new_items(limit=200)
 
-                except (RuntimeError, TypeError, ValueError, OSError) as e:
+                except Exception as e:
                     logger.error(f"Sync loop error: {str(e)}")
                     self._sync_stats["failed_syncs"] += 1
 
@@ -939,7 +933,7 @@ class SQLSyncService:
                 asyncio.to_thread(self.sql_connector.test_connection),
                 timeout=3,
             )
-        except (RuntimeError, TypeError, ValueError, OSError):
+        except Exception:
             is_connected = False
 
         if not is_connected:

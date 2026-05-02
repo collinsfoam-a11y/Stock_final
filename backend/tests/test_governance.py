@@ -1,6 +1,5 @@
 import pytest
 from datetime import datetime, timezone
-from uuid import uuid4
 
 from backend.auth.dependencies import get_current_user
 from backend.server import app
@@ -93,11 +92,7 @@ class TestGovernance:
         # 2. Create Session
         response = await async_client.post(
             "/api/sessions/",
-            json={
-                "warehouse": warehouse_name,
-                "type": "STANDARD",
-                "client_session_id": str(uuid4()),
-            },
+            json={"warehouse": warehouse_name, "type": "STANDARD"},
             headers=authenticated_headers,
         )
         assert response.status_code == 200

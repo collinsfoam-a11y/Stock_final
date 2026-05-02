@@ -1,5 +1,4 @@
 import api from "../httpClient";
-import type { SyncBatchResult, SyncRecord } from "../../types/sync";
 
 const unwrapApiPayload = <T>(payload: T | { data?: T } | null | undefined): T | null => {
   if (
@@ -14,16 +13,10 @@ const unwrapApiPayload = <T>(payload: T | { data?: T } | null | undefined): T | 
   return (payload as T | null | undefined) ?? null;
 };
 
-// Batch sync offline count-line records. Legacy operations payloads are disabled server-side.
-export const syncBatch = async (
-  records: SyncRecord[],
-  batchId?: string
-): Promise<SyncBatchResult> => {
+// Batch sync offline queue
+export const syncBatch = async (operations: Record<string, unknown>[]) => {
   try {
-    const response = await api.post("/api/sync/batch", {
-      records,
-      ...(batchId ? { batch_id: batchId } : {}),
-    });
+    const response = await api.post("/api/sync/batch", { operations });
     return response.data;
   } catch (error: unknown) {
     __DEV__ && console.warn("Sync batch error:", error);

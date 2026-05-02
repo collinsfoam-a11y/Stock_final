@@ -20,7 +20,6 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { useThemeContext } from "../../context/ThemeContext";
-import { createShadow } from "@/theme/shadowUtils";
 
 interface LiveIndicatorProps {
   label?: string;
@@ -105,7 +104,11 @@ export const LiveIndicator: React.FC<LiveIndicatorProps> = ({
               height: dotSize,
               borderRadius: dotSize / 2,
               backgroundColor: activeColor,
-              ...createShadow({ color: activeColor, offsetX: 0, offsetY: 1, opacity: 0.3, radius: 2, elevation: 2 }),
+              shadowColor: activeColor,
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.3,
+              shadowRadius: 2,
+              elevation: 2,
             },
           ]}
         />

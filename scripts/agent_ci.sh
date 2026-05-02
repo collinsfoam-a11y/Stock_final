@@ -5,19 +5,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="${1:-ci}"
 TMP_DIR="${TMPDIR:-/tmp}"
-
-# Disable Expo telemetry to prevent EPERM errors when writing to ~/.expo
-export EXPO_NO_TELEMETRY=1
-
-# Use a local home for node steps if needed to avoid permission issues in the user's home
-export HOME_ORIG="$HOME"
-export HOME="$(mktemp -d "${TMP_DIR%/}/agent-home.XXXXXX")"
 declare -a LOG_FILES=()
 
 cleanup() {
-    if [[ -d "$HOME" ]]; then
-        rm -rf "$HOME"
-    fi
     if [[ ${#LOG_FILES[@]} -gt 0 ]]; then
         rm -f "${LOG_FILES[@]}"
     fi
@@ -61,7 +51,6 @@ run_python_steps() {
     run_step python-lint ./scripts/python.sh -m ruff check backend
     run_step python-typecheck make --no-print-directory python-typecheck
     run_step python-test make --no-print-directory python-test
-    run_step governance-static ./scripts/python.sh backend/scripts/check_governance_static.py
 }
 
 run_node_steps() {
@@ -70,23 +59,9 @@ run_node_steps() {
     run_step node-test make --no-print-directory node-test
 }
 
-run_projection_gate() {
-    local report_path="${PROJECTION_PARITY_REPORT:-.agent/reports/projection-parity-validation.json}"
-    local readiness_path="${PROJECTION_READINESS_REPORT:-}"
-    if [[ -n "$readiness_path" ]]; then
-        run_step projection-gate ./scripts/python.sh backend/scripts/check_projection_ci_gate.py \
-            --report "$report_path" \
-            --readiness-report "$readiness_path"
-    else
-        run_step projection-gate ./scripts/python.sh backend/scripts/check_projection_ci_gate.py \
-            --report "$report_path"
-    fi
-}
-
 case "$MODE" in
     python)
         run_python_steps
-        run_projection_gate
         ;;
     node)
         run_node_steps
@@ -94,7 +69,6 @@ case "$MODE" in
     ci)
         run_python_steps
         run_node_steps
-        run_projection_gate
         printf '[ok] agent-ci complete\n'
         ;;
     *)

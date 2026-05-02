@@ -80,27 +80,6 @@ class ConnectionManager {
   private async detectAndSetConnection(): Promise<ConnectionInfo> {
     log.info("Starting backend connection detection...");
 
-    const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL?.trim();
-    if (Platform.OS === "web" && envUrl) {
-      try {
-        const explicitUrl = /^https?:\/\//i.test(envUrl) ? envUrl : `http://${envUrl}`;
-        const parsed = new URL(explicitUrl);
-        const explicitConnection: ConnectionInfo = {
-          backendUrl: explicitUrl.replace(/\/+$/, ""),
-          backendPort: this.getUrlPort(parsed),
-          backendIp: parsed.hostname,
-          lastChecked: new Date().toISOString(),
-          // Trust explicit web config to avoid cross-origin health probe noise.
-          isHealthy: true,
-        };
-        await this.setCurrentConnection(explicitConnection);
-        log.info("Using explicit web backend URL", explicitConnection);
-        return explicitConnection;
-      } catch (error) {
-        log.warn("Invalid EXPO_PUBLIC_BACKEND_URL; falling back to detection", { envUrl, error });
-      }
-    }
-
     const currentOrigin = this.getCurrentOrigin();
     if (currentOrigin) {
       const isCurrentOriginHealthy = await this.checkHealth(currentOrigin);
@@ -148,7 +127,6 @@ class ConnectionManager {
     if (envUrl) {
       candidates.push({ url: normalize(envUrl), priority: 10 });
     }
-    const shouldUseBroadPortScan = !(Platform.OS === "web" && envUrl?.trim());
 
     const currentOrigin = this.getCurrentOrigin();
     if (currentOrigin) {
@@ -176,24 +154,21 @@ class ConnectionManager {
       candidates.push({ url: "http://10.0.2.2:8001", priority: 5 });
     }
 
-    // 4. Common development ports. Skip broad web scans when an explicit
-    // backend URL is configured to avoid noisy browser console connection errors.
-    if (shouldUseBroadPortScan) {
-      const commonPorts = [8001, 8002, 8003, 8085];
-      const detectedIp = this.getDeviceIp();
+    // 4. Common development ports
+    const commonPorts = [8001, 8002, 8003, 8085];
+    const detectedIp = this.getDeviceIp();
 
-      for (const port of commonPorts) {
-        candidates.push({
-          url: `http://${detectedIp}:${port}`,
-          priority: port === 8001 ? 7 : 6,
-        });
-      }
+    for (const port of commonPorts) {
+      candidates.push({
+        url: `http://${detectedIp}:${port}`,
+        priority: port === 8001 ? 7 : 6,
+      });
+    }
 
-      // 5. Localhost fallback (safe for web/simulators; poor on real devices)
-      if (Platform.OS === "web" || Platform.OS === "ios") {
-        candidates.push({ url: "http://localhost:8001", priority: 3 });
-        candidates.push({ url: "http://127.0.0.1:8001", priority: 2 });
-      }
+    // 5. Localhost fallback (safe for web/simulators; poor on real devices)
+    if (Platform.OS === "web" || Platform.OS === "ios") {
+      candidates.push({ url: "http://localhost:8001", priority: 3 });
+      candidates.push({ url: "http://127.0.0.1:8001", priority: 2 });
     }
 
     // Remove duplicates and sort by priority

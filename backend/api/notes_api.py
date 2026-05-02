@@ -2,13 +2,11 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from bson import ObjectId
-from bson.errors import InvalidId
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pymongo.errors import PyMongoError
 from pydantic import BaseModel, Field
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
-from backend.services.notes_service import NotesService, get_notes_service
+from backend.db.runtime import get_db
 from backend.utils.api_utils import create_safe_error_response, sanitize_for_logging
 
 router = APIRouter()
@@ -51,9 +49,9 @@ async def list_notes(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
     current_user: dict[str, Any] = Depends(get_current_user),
-    notes_service: NotesService = Depends(get_notes_service),
 ):
     try:
+        coll = get_db()["notes"]
         created_by = current_user.get("username") or current_user.get("id")
         if not created_by:
             raise HTTPException(status_code=401, detail="Unauthenticated")
@@ -74,12 +72,12 @@ async def list_notes(
                 ]
             }
 
-        docs, total_items = await notes_service.list_notes(
-            query=query,
-            page=page,
-            page_size=page_size,
-        )
-        items: list[Note] = [_serialize_note(doc) for doc in docs]
+        total_items = await coll.count_documents(query)
+        skip = (page - 1) * page_size
+        limit = page_size
+
+        cursor = coll.find(query).sort("created_at", -1).skip(skip).limit(limit)
+        items: list[Note] = [_serialize_note(doc) async for doc in cursor]
 
         total_pages = (total_items + page_size - 1) // page_size if total_items > 0 else 0
 
@@ -94,7 +92,7 @@ async def list_notes(
             },
             "error": None,
         }
-    except (PyMongoError, RuntimeError, TypeError, ValueError) as e:
+    except Exception as e:
         raise create_safe_error_response(500, "Failed to fetch notes", "NOTES_LIST_ERROR", str(e))
 
 
@@ -102,16 +100,21 @@ async def list_notes(
 async def create_note(
     payload: NoteCreate,
     current_user: dict[str, Any] = Depends(get_current_user),
-    notes_service: NotesService = Depends(get_notes_service),
 ):
     try:
-        doc = await notes_service.create_note(
-            title=payload.title,
-            content=payload.content,
-            created_by=current_user.get("username") or current_user.get("id"),
-        )
+        coll = get_db()["notes"]
+        now = datetime.now(timezone.utc)
+        doc = {
+            "title": payload.title,
+            "content": payload.content,
+            "created_at": now,
+            "updated_at": None,
+            "created_by": current_user.get("username") or current_user.get("id"),
+        }
+        res = await coll.insert_one(doc)
+        doc["_id"] = res.inserted_id
         return {"success": True, "data": _serialize_note(doc), "error": None}
-    except (PyMongoError, RuntimeError, TypeError, ValueError) as e:
+    except Exception as e:
         raise create_safe_error_response(500, "Failed to create note", "NOTES_CREATE_ERROR", str(e))
 
 
@@ -119,15 +122,15 @@ async def create_note(
 async def delete_note(
     note_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
-    notes_service: NotesService = Depends(get_notes_service),
 ):
     try:
+        coll = get_db()["notes"]
         created_by = current_user.get("username") or current_user.get("id")
         if not created_by:
             raise HTTPException(status_code=401, detail="Unauthenticated")
         try:
             oid = ObjectId(note_id)
-        except (InvalidId, TypeError):
+        except Exception:
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -140,8 +143,8 @@ async def delete_note(
         if current_user.get("role") != "admin":
             delete_filter["created_by"] = created_by
 
-        deleted_count = await notes_service.delete_note(note_id=oid, delete_filter=delete_filter)
-        if deleted_count == 0:
+        res = await coll.delete_one(delete_filter)
+        if res.deleted_count == 0:
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -156,5 +159,5 @@ async def delete_note(
         }
     except HTTPException:
         raise
-    except (PyMongoError, RuntimeError, TypeError, ValueError) as e:
+    except Exception as e:
         raise create_safe_error_response(500, "Failed to delete note", "NOTES_DELETE_ERROR", str(e))

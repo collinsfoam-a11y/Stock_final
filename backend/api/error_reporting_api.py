@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from backend.auth import get_current_user
-from backend.services.error_reporting_service import get_error_reporting_service
+from backend.db.runtime import get_db
 from backend.utils.api_utils import sanitize_for_logging
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -152,7 +152,7 @@ async def report_error(
             }
         )
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Error reporting failed: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail="Failed to report error")
 
@@ -189,7 +189,7 @@ async def get_errors(
 
         return JSONResponse({"errors": errors, "count": len(errors)})
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Failed to fetch errors: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail="Failed to fetch errors")
 
@@ -251,7 +251,7 @@ async def get_error_dashboard(
 
         return JSONResponse(dashboard)
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Failed to get dashboard: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail="Failed to get dashboard")
 
@@ -277,7 +277,7 @@ async def get_error_detail(
 
     except HTTPException:
         raise
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Failed to get error detail: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail="Failed to get error detail")
 
@@ -323,7 +323,7 @@ async def update_error_status(
 
     except HTTPException:
         raise
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Failed to update error status: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail="Failed to update error status")
 
@@ -344,7 +344,7 @@ async def delete_error(
 
         return JSONResponse({"success": True, "message": "Error deleted successfully"})
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Failed to delete error: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail="Failed to delete error")
 
@@ -387,7 +387,7 @@ async def get_error_summary(
 
         return JSONResponse(summary)
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Failed to get error summary: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail="Failed to get error summary")
 
@@ -409,6 +409,12 @@ async def notify_admin_critical_error(error: ErrorReport):
             },
         )
 
+        # Persist a notification record for admin dashboards (best-effort).
+        try:
+            db = get_db()
+        except RuntimeError:
+            return
+
         context = error.context if error.context is not None else {}
         safe_context = {}
         for key, value in context.items():
@@ -417,17 +423,17 @@ async def notify_admin_critical_error(error: ErrorReport):
             else:
                 safe_context[key] = str(value)[:500]
 
-        try:
-            error_service = get_error_reporting_service()
-        except RuntimeError:
-            return
-        await error_service.persist_critical_error_event(
-            error_type=error.type,
-            message=error.message,
-            severity=error.severity,
-            user_id=error.user_id,
-            timestamp=error.timestamp,
-            context=safe_context,
+        await db.system_events.insert_one(
+            {
+                "event_type": "critical_error_reported",
+                "source": "frontend",
+                "error_type": error.type,
+                "message": error.message,
+                "severity": error.severity,
+                "user_id": error.user_id,
+                "timestamp": error.timestamp or datetime.now(timezone.utc).replace(tzinfo=None),
+                "context": safe_context,
+            }
         )
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Failed to notify admin: %s", _safe_log_value(e, max_length=200))

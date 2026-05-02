@@ -140,7 +140,7 @@ class TestCreateReportTemplateEndpoint:
     async def test_create_template_error(self, mock_user_supervisor, sample_report_template):
         """Test template creation error handling"""
         mock_service = MagicMock()
-        mock_service.create_report_template = AsyncMock(side_effect=RuntimeError("DB error"))
+        mock_service.create_report_template = AsyncMock(side_effect=Exception("DB error"))
 
         async def override_get_current_user():
             return mock_user_supervisor
@@ -547,7 +547,6 @@ class TestQuickReportEndpoints:
         )
 
         # Mock get_report_file
-        mock_service.get_enabled_dynamic_fields = AsyncMock(return_value=[])
         mock_service.get_report_file = AsyncMock(
             return_value=(
                 b"fake excel data",

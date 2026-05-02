@@ -670,30 +670,6 @@ export interface ItemScanStatus {
   }[];
 }
 
-const emptyItemScanStatus = (): ItemScanStatus => ({
-  scanned: false,
-  total_qty: 0,
-  locations: [],
-});
-
-const summarizeScanStatusError = (error: unknown) => {
-  if (!error || typeof error !== "object") {
-    return { message: String(error) };
-  }
-
-  const candidate = error as {
-    code?: string;
-    message?: string;
-    response?: { status?: number };
-  };
-
-  return {
-    code: candidate.code,
-    message: candidate.message || "Unknown scan status lookup error",
-    status: candidate.response?.status,
-  };
-};
-
 /**
  * Checks whether an item has already been scanned in the current session.
  */
@@ -712,7 +688,7 @@ export const checkItemScanStatus = async (
       const itemLines = cachedLines.filter((line) => line.item_code === itemCode);
 
       if (itemLines.length === 0) {
-        return emptyItemScanStatus();
+        return { scanned: false, total_qty: 0, locations: [] };
       }
 
       const totalQty = itemLines.reduce((sum, line) => sum + (line.counted_qty || 0), 0);
@@ -727,11 +703,7 @@ export const checkItemScanStatus = async (
       return { scanned: true, total_qty: totalQty, locations };
     }
 
-    const encodedSessionId = encodeURIComponent(sessionId);
-    const encodedItemCode = encodeURIComponent(itemCode);
-    const response = await api.get(
-      `/api/sessions/${encodedSessionId}/items/${encodedItemCode}/scan-status`
-    );
+    const response = await api.get(`/api/sessions/${sessionId}/items/${itemCode}/scan-status`);
     return response.data;
   } catch (error) {
     if (error instanceof ProjectionReadError) {

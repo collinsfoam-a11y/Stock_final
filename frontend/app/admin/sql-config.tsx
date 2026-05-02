@@ -22,7 +22,6 @@ import {
   updateSqlServerConfig,
   testSqlServerConnection,
 } from "../../src/services/api";
-import { createShadow } from "../../src/theme/shadowUtils";
 
 const isWeb = Platform.OS === "web";
 
@@ -484,7 +483,10 @@ const styles = StyleSheet.create({
     borderRadius: auroraTheme.borderRadius.md,
     gap: 12,
     elevation: 4,
-    ...createShadow({ color: "#000", offsetX: 0, offsetY: 4, opacity: 0.3, radius: 8 }),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   buttonDisabled: {
     opacity: 0.55,

@@ -3,27 +3,31 @@ Recount Request API - Enhanced recount workflow with notifications and staff ass
 """
 
 import logging
+import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pymongo.errors import PyMongoError
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 
 from backend.auth.dependencies import get_current_user
 from backend.auth.permissions import Permission, require_permission
+from backend.db.runtime import get_db
+from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.governance_guard import GovernanceViolation
 from backend.services.notification_service import (
     NotificationPriority,
+    NotificationService,
     NotificationType,
 )
-from backend.services.recount_service import RecountService, get_recount_service
+from backend.services.session_lifecycle_service import SessionLifecycleService
+from backend.services.transaction_manager import mongo_transaction
 from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/recount", tags=["Recount"])
-RECOUNT_ERRORS = (KeyError, PyMongoError, RuntimeError, TypeError, ValueError)
 
 
 class RecountPriority(str, Enum):
@@ -98,11 +102,11 @@ class RecountResponse(BaseModel):
 async def create_recount_request(
     request: RecountCreateRequest,
     current_user: dict = require_permission(Permission.COUNT_LINE_APPROVE),
-    recount_service: RecountService = Depends(get_recount_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Create a new recount request from a rejected count line."""
     try:
-        count_line = await recount_service.get_count_line(request.count_line_id)
+        count_line = await db.count_lines.find_one({"id": request.count_line_id})
         if not count_line:
             raise HTTPException(status_code=404, detail="Count line not found")
 
@@ -137,15 +141,17 @@ async def create_recount_request(
             "dual_verification_required": True,
             "original_counter": count_line.get("counted_by") or count_line.get("created_by"),
         }
-        recount_doc = await recount_service.lifecycle.create_recount_request(
+        lifecycle_service = SessionLifecycleService(db)
+        recount_doc = await lifecycle_service.create_recount_request(
             recount_doc=recount_doc,
             actor=current_user["username"],
         )
         recount_doc["id"] = str(recount_doc.get("_id") or recount_doc.get("id") or "")
 
+        notification_service = NotificationService(db)
         target_user = request.assign_to or count_line.get("counted_by")
         if target_user:
-            await recount_service.notifications.notify_recount_assigned(
+            await notification_service.notify_recount_assigned(
                 user_id=target_user,
                 count_line_id=request.count_line_id,
                 item_name=count_line.get("item_name", "Unknown"),
@@ -179,7 +185,7 @@ async def create_recount_request(
         raise
     except GovernanceViolation as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
-    except RECOUNT_ERRORS as e:
+    except Exception as e:
         logger.error("Error creating recount request: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -192,7 +198,7 @@ async def list_recount_requests(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(get_current_user),
-    recount_service: RecountService = Depends(get_recount_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """List recount requests with filters."""
     query = {}
@@ -203,11 +209,13 @@ async def list_recount_requests(
     if priority:
         query["priority"] = priority
 
-    requests, total = await recount_service.list_recount_requests(
-        query=query,
-        offset=offset,
-        limit=limit,
-    )
+    total = await db.recount_requests.count_documents(query)
+    cursor = db.recount_requests.find(query).sort("created_at", -1).skip(offset).limit(limit)
+    requests = await cursor.to_list(length=limit)
+
+    for req in requests:
+        req["_id"] = str(req["_id"])
+        req["id"] = req["_id"]
 
     return {
         "success": True,
@@ -222,10 +230,11 @@ async def list_recount_requests(
 async def get_recount_request(
     recount_id: str,
     current_user: dict = Depends(get_current_user),
-    recount_service: RecountService = Depends(get_recount_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Get single recount request details."""
-    recount = await recount_service.lifecycle.get_recount_request(recount_id)
+    lifecycle_service = SessionLifecycleService(db)
+    recount = await lifecycle_service.get_recount_request(recount_id)
     if not recount:
         raise HTTPException(status_code=404, detail="Recount request not found")
 
@@ -256,20 +265,21 @@ async def get_recount_request(
 async def assign_recount_request(
     request: RecountAssignRequest,
     current_user: dict = require_permission(Permission.COUNT_LINE_APPROVE),
-    recount_service: RecountService = Depends(get_recount_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Assign recount request to a staff member."""
     try:
-        recount = await recount_service.lifecycle.get_recount_request(request.recount_id)
+        lifecycle_service = SessionLifecycleService(db)
+        recount = await lifecycle_service.get_recount_request(request.recount_id)
         if not recount:
             raise HTTPException(status_code=404, detail="Recount request not found")
 
-        user = await recount_service.get_user(request.assign_to)
+        user = await db.users.find_one({"username": request.assign_to})
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
         now_dt = datetime.now(timezone.utc).replace(tzinfo=None)
-        await recount_service.lifecycle.transition_recount_request(
+        await lifecycle_service.transition_recount_request(
             recount_id=request.recount_id,
             target_status=RecountStatus.ASSIGNED.value,
             actor=current_user["username"],
@@ -282,7 +292,8 @@ async def assign_recount_request(
             },
         )
 
-        await recount_service.notifications.notify_recount_assigned(
+        notification_service = NotificationService(db)
+        await notification_service.notify_recount_assigned(
             user_id=request.assign_to,
             count_line_id=recount["count_line_id"],
             item_name=recount["item_name"],
@@ -300,7 +311,7 @@ async def assign_recount_request(
         raise
     except GovernanceViolation as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
-    except RECOUNT_ERRORS as e:
+    except Exception as e:
         logger.error("Error assigning recount: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -310,11 +321,12 @@ async def complete_recount_request(
     recount_id: str,
     request: RecountUpdateRequest,
     current_user: dict = Depends(get_current_user),
-    recount_service: RecountService = Depends(get_recount_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Complete a recount request with results."""
     try:
-        recount = await recount_service.lifecycle.get_recount_request(recount_id)
+        lifecycle_service = SessionLifecycleService(db)
+        recount = await lifecycle_service.get_recount_request(recount_id)
         if not recount:
             raise HTTPException(status_code=404, detail="Recount request not found")
 
@@ -343,7 +355,7 @@ async def complete_recount_request(
             update_data["completion_notes"] = request.notes
 
         if request.result_qty is None:
-            await recount_service.lifecycle.transition_recount_request(
+            await lifecycle_service.transition_recount_request(
                 recount_id=recount_id,
                 target_status=RecountStatus.COMPLETED.value,
                 actor=username,
@@ -351,13 +363,10 @@ async def complete_recount_request(
             )
         else:
             update_data["result_qty"] = request.result_qty
-            await recount_service.complete_with_result(
-                recount_id=recount_id,
-                recount=recount,
-                result_qty=request.result_qty,
-                update_data=update_data,
-                username=username,
-            )
+            async with mongo_transaction(db.client) as tx:
+                recount = await lifecycle_service.get_recount_request(recount_id, db_session=tx)
+                if not recount:
+                    raise HTTPException(status_code=404, detail="Recount request not found")
 
                 existing_line = await db.count_lines.find_one(
                     {"id": recount["count_line_id"]},
@@ -499,7 +508,7 @@ async def complete_recount_request(
         raise
     except GovernanceViolation as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
-    except RECOUNT_ERRORS as e:
+    except Exception as e:
         logger.error("Error completing recount: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -509,16 +518,17 @@ async def cancel_recount_request(
     recount_id: str,
     reason: Optional[str] = None,
     current_user: dict = require_permission(Permission.COUNT_LINE_APPROVE),
-    recount_service: RecountService = Depends(get_recount_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Cancel a recount request."""
     try:
-        recount = await recount_service.lifecycle.get_recount_request(recount_id)
+        lifecycle_service = SessionLifecycleService(db)
+        recount = await lifecycle_service.get_recount_request(recount_id)
         if not recount:
             raise HTTPException(status_code=404, detail="Recount request not found")
 
         now_dt = datetime.now(timezone.utc).replace(tzinfo=None)
-        await recount_service.lifecycle.transition_recount_request(
+        await lifecycle_service.transition_recount_request(
             recount_id=recount_id,
             target_status=RecountStatus.CANCELLED.value,
             actor=current_user["username"],
@@ -536,7 +546,7 @@ async def cancel_recount_request(
         raise
     except GovernanceViolation as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
-    except RECOUNT_ERRORS as e:
+    except Exception as e:
         logger.error("Error cancelling recount: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -544,18 +554,55 @@ async def cancel_recount_request(
 @router.get("/stats/summary")
 async def get_recount_summary(
     current_user: dict = Depends(get_current_user),
-    recount_service: RecountService = Depends(get_recount_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Get recount statistics summary."""
-    return await recount_service.get_summary()
+    pipeline = [
+        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+    ]
+    status_cursor = db.recount_requests.aggregate(pipeline)
+    status_counts = await status_cursor.to_list(length=10)
+
+    priority_pipeline = [
+        {"$group": {"_id": "$priority", "count": {"$sum": 1}}},
+    ]
+    priority_cursor = db.recount_requests.aggregate(priority_pipeline)
+    priority_counts = await priority_cursor.to_list(length=10)
+
+    total = await db.recount_requests.count_documents({})
+    overdue = await db.recount_requests.count_documents(
+        {
+            "status": {"$nin": [RecountStatus.COMPLETED.value, RecountStatus.CANCELLED.value]},
+            "due_date": {"$lt": datetime.now(timezone.utc).replace(tzinfo=None).isoformat()},
+        }
+    )
+
+    return {
+        "success": True,
+        "total": total,
+        "by_status": {s["_id"]: s["count"] for s in status_counts},
+        "by_priority": {p["_id"]: p["count"] for p in priority_counts},
+        "overdue": overdue,
+    }
 
 
 @router.get("/staff/{username}/tasks")
 async def get_staff_recount_tasks(
     username: str,
     current_user: dict = Depends(get_current_user),
-    recount_service: RecountService = Depends(get_recount_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Get recount tasks assigned to a staff member."""
-    tasks = await recount_service.get_staff_tasks(username)
+    cursor = db.recount_requests.find(
+        {
+            "assigned_to": username,
+            "status": {"$in": [RecountStatus.ASSIGNED.value, RecountStatus.IN_PROGRESS.value]},
+        }
+    ).sort("created_at", -1)
+    tasks = await cursor.to_list(length=50)
+
+    for task in tasks:
+        task["_id"] = str(task["_id"])
+        task["id"] = task["_id"]
+
     return {"success": True, "tasks": tasks, "count": len(tasks)}

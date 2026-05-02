@@ -1,5 +1,4 @@
 import { Appearance } from "react-native";
-import { createShadow } from "./shadowUtils";
 
 /**
  * Modern Design System for Lavanya Mart Stock Verify App
@@ -166,10 +165,37 @@ export const borderRadius = {
 
 // Modern Shadows - Subtle depth
 export const shadows = {
-  sm: createShadow({ color: "#000", offsetY: 1, opacity: 0.05, radius: 2, elevation: 1 }),
-  md: createShadow({ color: "#000", offsetY: 4, opacity: 0.1, radius: 6, elevation: 3 }),
-  lg: createShadow({ color: "#000", offsetY: 10, opacity: 0.15, radius: 15, elevation: 5 }),
-  xl: createShadow({ color: "#000", offsetY: 20, opacity: 0.25, radius: 25, elevation: 8 }),
+  sm: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+
+  md: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+
+  lg: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    elevation: 5,
+  },
+
+  xl: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.25,
+    shadowRadius: 25,
+    elevation: 8,
+  },
 } as const;
 
 // Animation Constants

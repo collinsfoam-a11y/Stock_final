@@ -47,7 +47,7 @@ export function RealtimeStatsStrip({ stats }: RealtimeStatsStripProps) {
           label="Verification Rate"
           value={stats.verification_rate}
           icon="trending-up"
-          color="#2563EB"
+          color="#9C27B0"
           format="percentage"
         />
         <StatsCard
@@ -61,7 +61,7 @@ export function RealtimeStatsStrip({ stats }: RealtimeStatsStripProps) {
           label="Today's Activity"
           value={stats.today_activity}
           icon="today"
-          color="#2563EB"
+          color="#00BCD4"
           format="number"
         />
       </ScrollView>

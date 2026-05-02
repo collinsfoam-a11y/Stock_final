@@ -1,12 +1,18 @@
 /**
- * ActivityFeedItem Component
+ * ActivityFeedItem Component - Aurora Design
  *
- * Compact operational activity row used in supervisor review surfaces.
+ * Animated activity feed item with glassmorphism
+ * Features:
+ * - Smooth entrance animation
+ * - Icon with gradient background
+ * - Timestamp formatting
+ * - Status indicators
  */
 
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInRight } from "react-native-reanimated";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { auroraTheme } from "@/theme/auroraTheme";
@@ -26,28 +32,23 @@ interface ActivityFeedItemProps {
 const activityConfig = {
   scan: {
     icon: "scan" as const,
-    background: auroraTheme.colors.primary[50],
-    color: auroraTheme.colors.primary[700],
+    gradient: auroraTheme.colors.aurora.primary,
   },
   session: {
     icon: "folder-open" as const,
-    background: auroraTheme.colors.secondary[100],
-    color: auroraTheme.colors.secondary[700],
+    gradient: auroraTheme.colors.aurora.secondary,
   },
   variance: {
     icon: "analytics" as const,
-    background: auroraTheme.colors.warning[100],
-    color: auroraTheme.colors.warning[700],
+    gradient: auroraTheme.colors.aurora.warm,
   },
   user: {
     icon: "person" as const,
-    background: auroraTheme.colors.success[100],
-    color: auroraTheme.colors.success[700],
+    gradient: auroraTheme.colors.aurora.success,
   },
   system: {
     icon: "settings" as const,
-    background: auroraTheme.colors.neutral[100],
-    color: auroraTheme.colors.text.secondary,
+    gradient: auroraTheme.colors.aurora.dark,
   },
 };
 
@@ -85,11 +86,24 @@ export const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   };
 
   const content = (
-    <Animated.View entering={FadeInRight.delay(delay).springify()} style={styles.container}>
+    <Animated.View
+      entering={FadeInRight.delay(delay).springify()}
+      style={styles.container}
+    >
       <View style={styles.content}>
-        <View style={[styles.iconContainer, { backgroundColor: config.background }]}>
-          <Ionicons name={config.icon} size={20} color={config.color} />
-        </View>
+        {/* Icon */}
+        <LinearGradient
+          colors={config.gradient as readonly [string, string, ...string[]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.iconContainer}
+        >
+          <Ionicons
+            name={config.icon}
+            size={20}
+            color={auroraTheme.colors.text.primary}
+          />
+        </LinearGradient>
 
         {/* Text Content */}
         <View style={styles.textContent}>
@@ -108,7 +122,12 @@ export const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
               {title}
             </Text>
             {status && (
-              <View style={[styles.statusDot, { backgroundColor: statusColors[status] }]} />
+              <View
+                style={[
+                  styles.statusDot,
+                  { backgroundColor: statusColors[status] },
+                ]}
+              />
             )}
           </View>
 
@@ -142,7 +161,11 @@ export const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
 
         {/* Chevron */}
         {onPress && (
-          <Ionicons name="chevron-forward" size={20} color={auroraTheme.colors.text.tertiary} />
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={auroraTheme.colors.text.tertiary}
+          />
         )}
       </View>
 
@@ -178,6 +201,7 @@ const styles = StyleSheet.create({
     borderRadius: auroraTheme.borderRadius.md,
     justifyContent: "center",
     alignItems: "center",
+    ...auroraTheme.shadows.sm,
   },
   textContent: {
     flex: 1,
@@ -196,6 +220,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+    ...auroraTheme.shadows.sm,
   },
   description: {
     lineHeight: 18,

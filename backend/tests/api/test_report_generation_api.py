@@ -2,9 +2,7 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
-from fastapi import HTTPException
 
-import backend.services.report_generation_service as report_generation_service
 from backend.api.report_generation_api import (
     ReportFilter,
     generate_session_history_report,
@@ -34,25 +32,6 @@ class _AsyncCursor:
             raise StopAsyncIteration from exc
 
 
-class _FailingProjectionReadService:
-    def __init__(self, _db, *, enforce_readiness: bool) -> None:
-        assert enforce_readiness is True
-
-    async def generate_stock_summary(self, _filters):
-        raise HTTPException(
-            status_code=503,
-            detail={"code": "PROJECTION_NOT_READY"},
-        )
-
-
-class _ProjectionReadServiceWithSessionHistory:
-    def __init__(self, _db, *, enforce_readiness: bool) -> None:
-        assert enforce_readiness is True
-
-    async def generate_session_history(self, _filters):
-        return [{"session_id": "projected-session"}]
-
-
 @pytest.mark.asyncio
 async def test_generate_stock_summary_short_circuits_when_item_filters_match_nothing():
     db = MagicMock()
@@ -71,29 +50,6 @@ async def test_generate_stock_summary_short_circuits_when_item_filters_match_not
     )
 
     assert result == []
-
-
-@pytest.mark.asyncio
-async def test_projection_report_failure_fails_closed_without_legacy_db_reads(monkeypatch):
-    monkeypatch.setattr(
-        report_generation_service.settings, "V3_PROJECTION_REPORT_READS", True
-    )
-    monkeypatch.setattr(
-        report_generation_service,
-        "ProjectionReadService",
-        _FailingProjectionReadService,
-    )
-    db = MagicMock()
-    db.erp_items.find.side_effect = AssertionError("legacy collection must not be read")
-    db.count_lines.find.side_effect = AssertionError("legacy collection must not be read")
-
-    with pytest.raises(HTTPException) as exc:
-        await generate_stock_summary(db, ReportFilter())
-
-    assert exc.value.status_code == 503
-    assert exc.value.detail["code"] == "PROJECTION_NOT_READY"
-    db.erp_items.find.assert_not_called()
-    db.count_lines.find.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -165,24 +121,3 @@ async def test_generate_session_history_report_fetches_count_lines_in_one_query(
     assert result[1]["session_id"] == "sess-2"
     assert result[1]["items_scanned"] == 1
     assert result[1]["items_verified"] == 0
-
-
-@pytest.mark.asyncio
-async def test_projection_session_history_uses_service_layer_only(monkeypatch):
-    monkeypatch.setattr(
-        report_generation_service.settings, "V3_PROJECTION_REPORT_READS", True
-    )
-    monkeypatch.setattr(
-        report_generation_service,
-        "ProjectionReadService",
-        _ProjectionReadServiceWithSessionHistory,
-    )
-    db = MagicMock()
-    db.sessions.find.side_effect = AssertionError("legacy collection must not be read")
-    db.count_lines.find.side_effect = AssertionError("legacy collection must not be read")
-
-    result = await generate_session_history_report(db, ReportFilter())
-
-    assert result == [{"session_id": "projected-session"}]
-    db.sessions.find.assert_not_called()
-    db.count_lines.find.assert_not_called()

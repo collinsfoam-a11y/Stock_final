@@ -22,7 +22,6 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { useThemeContext } from "../../context/ThemeContext";
-import { createShadow } from "@/theme/shadowUtils";
 
 interface Particle {
   id: number;
@@ -129,7 +128,10 @@ const ParticleElement: React.FC<{
           height: particle.size,
           borderRadius: particle.size / 2,
           backgroundColor: color,
-          ...createShadow({ color: color, offsetX: 0, offsetY: 0, opacity: 0.8, radius: particle.size }),
+          shadowColor: color,
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.8,
+          shadowRadius: particle.size,
         },
         Platform.OS !== "web" && animatedStyle,
       ]}

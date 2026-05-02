@@ -507,12 +507,11 @@ class SyncConflictsService:
                 payload = dict(data)
                 payload["updated_at"] = datetime.now(UTC)
                 payload["conflict_resolved"] = True
-                with write_authority("SyncConflictsService"):
-                    await self.db.erp_items.update_one(
-                        _entity_lookup(entity_id),
-                        {"$set": payload},
-                        **kwargs,
-                    )
+                await self.db.erp_items.update_one(
+                    _entity_lookup(entity_id),
+                    {"$set": payload},
+                    **kwargs,
+                )
                 logger.info("Applied resolved data to item %s", entity_id)
                 return
 

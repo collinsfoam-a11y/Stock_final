@@ -8,19 +8,16 @@ import io
 import json
 import logging
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from pymongo.errors import PyMongoError
 from pydantic import BaseModel
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.utils.api_utils import sanitize_for_logging
-from backend.services.governance_guard import write_authority
-from backend.services.item_verification_service import ItemVerificationService
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +25,6 @@ logger = logging.getLogger(__name__)
 db: AsyncIOMotorDatabase = cast(AsyncIOMotorDatabase, None)
 cache_service: Any = None
 sql_sync_service: Any = None
-ITEM_VERIFICATION_ERRORS = (KeyError, PyMongoError, RuntimeError, TypeError, ValueError)
 
 
 def init_verification_api(
@@ -42,10 +38,6 @@ def init_verification_api(
 
 
 verification_router = APIRouter(prefix="/api/v2/erp/items", tags=["Item Verification"])
-
-
-def _item_service() -> ItemVerificationService:
-    return ItemVerificationService(db)
 
 
 def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
@@ -291,7 +283,11 @@ def _not_found_error(barcode: str) -> HTTPException:
 
 
 async def _find_item_by_barcode_or_code(barcode: str) -> dict[str, Any]:
-    item = await _item_service().find_item_by_barcode_or_code(barcode)
+    item = await db.erp_items.find_one({"barcode": barcode})
+    if item:
+        return item
+
+    item = await db.erp_items.find_one({"item_code": barcode})
     if item:
         return item
 
@@ -299,15 +295,15 @@ async def _find_item_by_barcode_or_code(barcode: str) -> dict[str, Any]:
 
 
 def _resolve_item_identity(
-    item: dict[str, Any], default_barcode: str
+    item: dict[str, Any], fallback_barcode: str
 ) -> tuple[Optional[str], str, dict[str, Any]]:
     actual_barcode = item.get("barcode")
-    actual_item_code = item.get("item_code") or default_barcode
+    actual_item_code = item.get("item_code") or fallback_barcode
     if actual_item_code:
         return actual_barcode, actual_item_code, {"item_code": actual_item_code}
     if actual_barcode:
         return actual_barcode, actual_item_code, {"barcode": actual_barcode}
-    return actual_barcode, actual_item_code, {"barcode": default_barcode}
+    return actual_barcode, actual_item_code, {"barcode": fallback_barcode}
 
 
 def _build_master_update_doc(
@@ -355,7 +351,7 @@ async def _insert_master_update_audit_log(
     request: ItemUpdateRequest,
     current_user: dict[str, Any],
 ) -> None:
-    await _item_service().insert_master_update_audit_log(
+    await db.audit_logs.insert_one(
         {
             "action": "MASTER_UPDATE",
             "item_code": actual_item_code,
@@ -393,7 +389,7 @@ async def _fetch_item_with_optional_sql_refresh(barcode: str) -> dict[str, Any]:
                 refreshed_item = await sql_sync_service.sync_single_item_by_barcode(barcode)
                 if refreshed_item:
                     return refreshed_item
-        except (RuntimeError, OSError, TypeError, ValueError) as e:
+        except Exception as e:
             logger.warning(
                 "Failed to auto-refresh item %s from SQL: %s",
                 sanitize_for_logging(barcode),
@@ -427,7 +423,7 @@ async def _create_conflict_fork_response(
         reason=f"Attempted to overwrite APPROVED qty {existing_qty} with {request.verified_qty}",
     )
 
-    await _item_service().insert_conflict_fork(fork.model_dump())
+    await db.conflict_forks.insert_one(fork.model_dump())
     logger.warning(
         "Conflict detected for %s. Fork created: %s",
         _safe_log_value(barcode),
@@ -445,7 +441,9 @@ async def _create_conflict_fork_response(
 async def _fetch_updated_item(
     update_filter: dict[str, Any], actual_barcode: Optional[str]
 ) -> dict[str, Any]:
-    updated_item = await _item_service().fetch_updated_item(update_filter, actual_barcode)
+    updated_item = await db.erp_items.find_one(update_filter)
+    if not updated_item and actual_barcode:
+        updated_item = await db.erp_items.find_one({"barcode": actual_barcode})
     if not updated_item:
         raise HTTPException(status_code=500, detail="Verification updated item not found")
     updated_item["_id"] = str(updated_item["_id"])
@@ -464,11 +462,9 @@ async def update_item_master(
     try:
         item = await _find_item_by_barcode_or_code(barcode)
         actual_barcode, actual_item_code, update_filter = _resolve_item_identity(item, barcode)
-        with write_authority("ItemVerificationAPI"):
-            await _item_service().update_erp_item(
-                update_filter,
-                _build_master_update_doc(request, current_user),
-            )
+        await db.erp_items.update_one(
+            update_filter, _build_master_update_doc(request, current_user)
+        )
         await _invalidate_item_cache(
             actual_barcode=actual_barcode,
             actual_item_code=actual_item_code,
@@ -485,7 +481,7 @@ async def update_item_master(
 
     except HTTPException:
         raise
-    except ITEM_VERIFICATION_ERRORS as e:
+    except Exception as e:
         logger.error(
             "Error updating item master %s: %s",
             _safe_log_value(barcode),
@@ -549,7 +545,7 @@ async def refresh_item_qty_from_sql(
 
     except HTTPException:
         raise
-    except (RuntimeError, OSError, TypeError, ValueError) as e:
+    except Exception as e:
         logger.exception("Error refreshing SQL qty for %s", _safe_log_value(barcode))
         raise HTTPException(status_code=500, detail=f"Refresh failed: {str(e)}")
 
@@ -668,8 +664,7 @@ async def verify_item(
 
         variance = _calculate_variance(request, item.get("stock_qty", 0.0))
         update_doc = _build_item_update_doc(request, current_user, item)
-        with write_authority("ItemVerificationAPI"):
-            result = await _item_service().update_erp_item(update_filter, update_doc)
+        result = await db.erp_items.update_one(update_filter, update_doc)
         if result.matched_count == 0:
             logger.warning(
                 "Optimistic Lock Failed for %s. Expected qty: %s",
@@ -693,9 +688,9 @@ async def verify_item(
         verification_log = _build_verification_log_doc(
             request, current_user, item, variance, is_serialized_from_update
         )
-        await _item_service().insert_verification_log(verification_log)
+        await db.verification_logs.insert_one(verification_log)
         if variance is not None and variance != 0:
-            await _item_service().insert_item_variance(verification_log)
+            await db.item_variances.insert_one(verification_log)
 
         updated_item = await _fetch_updated_item(update_filter, actual_barcode)
         return {
@@ -707,7 +702,7 @@ async def verify_item(
 
     except HTTPException:
         raise
-    except ITEM_VERIFICATION_ERRORS as e:
+    except Exception as e:
         logger.error(
             "Error verifying item %s: %s",
             _safe_log_value(barcode),
@@ -748,11 +743,17 @@ async def get_filtered_items(
         verified_filter = deepcopy(filter_query)
         verified_filter["verified"] = True
 
-        items, total_count, verified_count = await _item_service().get_filtered_items(
-            filter_query=filter_query,
-            verified_filter=verified_filter,
-            skip=skip,
-            limit=limit,
+        items_task = (
+            db.erp_items.find(filter_query, {"_id": 0})  # Added projection to exclude _id
+            .skip(skip)
+            .limit(limit)
+            .to_list(length=limit)
+        )
+        total_count_task = db.erp_items.count_documents(filter_query)
+        verified_count_task = db.erp_items.count_documents(verified_filter)
+
+        items, total_count, verified_count = await asyncio.gather(
+            items_task, total_count_task, verified_count_task
         )
 
         items = [serialize_item_document(item) for item in items]
@@ -775,7 +776,7 @@ async def get_filtered_items(
             },
         }
 
-    except ITEM_VERIFICATION_ERRORS as e:
+    except Exception as e:
         logger.error("Error getting filtered items: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Failed to get items: {str(e)}")
 
@@ -815,11 +816,8 @@ async def sync_items_for_offline_cache(
             "last_scanned_at": 1,
         }
 
-        items = await _item_service().sync_items(
-            query=query,
-            projection=projection,
-            limit=limit,
-        )
+        cursor = db.erp_items.find(query, projection).sort("last_scanned_at", -1).limit(limit)
+        items = await cursor.to_list(length=limit)
         items = [serialize_item_document(item) for item in items]
 
         now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -831,7 +829,7 @@ async def sync_items_for_offline_cache(
             "server_time": now.isoformat(),
         }
 
-    except ITEM_VERIFICATION_ERRORS as e:
+    except Exception as e:
         logger.error("Error syncing items: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Failed to sync items: {str(e)}")
 
@@ -872,15 +870,18 @@ async def export_items_csv(
             output.seek(0)
             output.truncate(0)
 
-            async for item in _item_service().iter_item_export_rows(
-                filter_query=filter_query,
-                max_rows=max_rows,
-            ):
+            cursor = db.erp_items.find(filter_query).limit(max_rows)
+
+            count = 0
+            async for item in cursor:
+                if count >= max_rows:
+                    break
                 row = _build_erpnext_item_export_row(item)
                 writer.writerow(row)
                 yield output.getvalue()
                 output.seek(0)
                 output.truncate(0)
+                count += 1
 
         filename = (
             f"items_erpnext_import_"
@@ -893,7 +894,7 @@ async def export_items_csv(
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
-    except ITEM_VERIFICATION_ERRORS as e:
+    except Exception as e:
         logger.error("Error exporting items to CSV: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"CSV export failed: {str(e)}")
 
@@ -922,10 +923,7 @@ async def export_items_json(
             search=search,
         )
 
-        items = await _item_service().fetch_item_export_rows(
-            filter_query=filter_query,
-            max_rows=max_rows,
-        )
+        items = await db.erp_items.find(filter_query).limit(max_rows).to_list(length=max_rows)
         rows = [_build_erpnext_item_export_row(item) for item in items]
 
         filename = (
@@ -940,7 +938,7 @@ async def export_items_json(
         )
     except HTTPException:
         raise
-    except ITEM_VERIFICATION_ERRORS as e:
+    except Exception as e:
         logger.error("Error exporting items to JSON: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"JSON export failed: {str(e)}")
 
@@ -969,10 +967,7 @@ async def export_items_xlsx(
             search=search,
         )
 
-        items = await _item_service().fetch_item_export_rows(
-            filter_query=filter_query,
-            max_rows=max_rows,
-        )
+        items = await db.erp_items.find(filter_query).limit(max_rows).to_list(length=max_rows)
         rows = [_build_erpnext_item_export_row(item) for item in items]
         content = _render_xlsx_bytes(ITEM_EXPORT_FIELDNAMES, rows)
         filename = (
@@ -987,7 +982,7 @@ async def export_items_xlsx(
         )
     except HTTPException:
         raise
-    except ITEM_VERIFICATION_ERRORS as e:
+    except Exception as e:
         logger.error("Error exporting items to XLSX: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Excel export failed: {str(e)}")
 
@@ -1025,11 +1020,12 @@ async def get_variances(
         # Optionally, filter for only approved/active count lines if required by logic
         # filter_query["status"] = {"$in": ["approved", "pending"]}
 
-        variances, total_count = await _item_service().get_variances(
-            filter_query=filter_query,
-            skip=skip,
-            limit=limit,
-        )
+        # Get total count
+        total_count = await db.count_lines.count_documents(filter_query)
+
+        # Get variances
+        cursor = db.count_lines.find(filter_query).sort("counted_at", -1).skip(skip).limit(limit)
+        variances = await cursor.to_list(length=limit)
 
         # Convert ObjectId to string
         for variance in variances:
@@ -1053,7 +1049,7 @@ async def get_variances(
             },
         }
 
-    except ITEM_VERIFICATION_ERRORS as e:
+    except Exception as e:
         logger.error("Error getting variances: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Failed to get variances: {str(e)}")
 
@@ -1077,9 +1073,11 @@ async def _fetch_variance_export_rows(
     if warehouse:
         filter_query["warehouse"] = {"$regex": warehouse, "$options": "i"}
 
-    variances = await _item_service().fetch_variance_export_rows(
-        filter_query=filter_query,
-        max_rows=max_rows,
+    variances = await (
+        db.item_variances.find(filter_query)
+        .sort("verified_at", -1)
+        .limit(max_rows)
+        .to_list(length=max_rows)
     )
     return [_build_erpnext_variance_export_row(variance) for variance in variances]
 
@@ -1119,7 +1117,7 @@ async def export_variances_csv(
             media_type="text/csv",
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
-    except ITEM_VERIFICATION_ERRORS as e:
+    except Exception as e:
         logger.error(
             "Error exporting variances to CSV: %s",
             _safe_log_value(e, max_length=200),
@@ -1157,7 +1155,7 @@ async def export_variances_xlsx(
         )
     except HTTPException:
         raise
-    except ITEM_VERIFICATION_ERRORS as e:
+    except Exception as e:
         logger.error(
             "Error exporting variances to XLSX: %s",
             _safe_log_value(e, max_length=200),
@@ -1171,7 +1169,28 @@ async def get_live_users(current_user: dict = Depends(get_current_user)):
     Get list of currently active users (users who have verified items in last hour)
     """
     try:
-        users = await _item_service().get_live_users()
+        one_hour_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
+
+        # Get distinct users who verified items in last hour
+        pipeline: list[dict[str, Any]] = [
+            {
+                "$match": {
+                    "verified_at": {"$gte": one_hour_ago},
+                    "verified_by": {"$exists": True, "$ne": None},
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$verified_by",
+                    "last_activity": {"$max": "$verified_at"},
+                    "items_verified": {"$sum": 1},
+                }
+            },
+            {"$sort": {"last_activity": -1}},
+        ]
+
+        cursor = db.erp_items.aggregate(pipeline)
+        users = await cursor.to_list(length=None)
 
         result = [
             {
@@ -1188,7 +1207,7 @@ async def get_live_users(current_user: dict = Depends(get_current_user)):
 
         return {"success": True, "users": result, "count": len(result)}
 
-    except ITEM_VERIFICATION_ERRORS as e:
+    except Exception as e:
         logger.error("Error getting live users: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Failed to get live users: {str(e)}")
 
@@ -1202,7 +1221,19 @@ async def get_live_verifications(
     Get live feed of recent item verifications
     """
     try:
-        verifications = await _item_service().get_live_verifications(limit=limit)
+        # Get recent verifications
+        cursor = (
+            db.erp_items.find(
+                {
+                    "verified": True,
+                    "verified_at": {"$exists": True},
+                }
+            )
+            .sort("verified_at", -1)
+            .limit(limit)
+        )
+
+        verifications = await cursor.to_list(length=limit)
 
         result = []
         for item in verifications:
@@ -1223,7 +1254,7 @@ async def get_live_verifications(
 
         return {"success": True, "verifications": result, "count": len(result)}
 
-    except ITEM_VERIFICATION_ERRORS as e:
+    except Exception as e:
         logger.error(
             "Error getting live verifications: %s",
             _safe_log_value(e, max_length=200),

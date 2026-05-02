@@ -58,7 +58,7 @@ async def verify_item_quantity(
 
     except HTTPException:
         raise
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error(
             "Error verifying item %s: %s",
             _safe_log_value(item_code),

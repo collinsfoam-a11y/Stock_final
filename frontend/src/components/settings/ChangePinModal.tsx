@@ -21,7 +21,6 @@ import { useThemeContext } from "../../context/ThemeContext";
 import { typography } from "../../theme/designTokens";
 import { authApi } from "../../services/api/authApi";
 import * as Haptics from "expo-haptics";
-import { createShadow } from "@/theme/shadowUtils";
 
 interface ChangePinModalProps {
   visible: boolean;
@@ -163,7 +162,11 @@ export function ChangePinModal({
       padding: 24,
       width: "90%",
       maxWidth: 400,
-      ...createShadow({ color: "#000", offsetX: 0, offsetY: 4, opacity: 0.3, radius: 8, elevation: 8 }),
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
     },
     title: {
       fontSize: typography.fontSize.xl,

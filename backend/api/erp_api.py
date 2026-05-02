@@ -284,7 +284,7 @@ async def get_item_batches(
         raise HTTPException(status_code=503, detail="Service not initialized")
 
     normalized_code = _normalize_barcode_input(item_code, strict_numeric=False)
-    source = "mongodb_offline_cache"
+    source = "mongodb_offline_fallback"
     batches: list[dict[str, Any]] = []
 
     if _sql_connector is not None:
@@ -307,7 +307,7 @@ async def get_item_batches(
         cursor = _db.erp_items.find(query)
         mongo_batches = await cursor.to_list(length=100)
         batches = mongo_batches if isinstance(mongo_batches, list) else []
-        source = "mongodb_offline_cache"
+        source = "mongodb_offline_fallback"
 
     formatted_batches = []
     for batch in batches:

@@ -11,13 +11,6 @@ import {
   spacing,
 } from "@/theme/unified";
 
-const SURFACE_CARD = "#ffffff";
-const SURFACE_BORDER = "#d9e5e2";
-const SURFACE_MUTED = "#f8fafc";
-const ACCENT = "#0f766e";
-const TEXT_STRONG = "#0f172a";
-const TEXT_MUTED = "#475569";
-
 interface BatchVariantsSectionProps {
   variants: any[];
   rawVariantsCount: number;
@@ -42,7 +35,7 @@ export const BatchVariantsSection: React.FC<BatchVariantsSectionProps> = ({
   }
 
   return (
-    <ModernCard style={styles.sectionCard} contentStyle={styles.sectionCardContent}>
+    <View style={styles.section}>
       <View style={styles.header}>
         <Text style={styles.title}>Batches</Text>
         {loading && <ActivityIndicator size="small" color={colors.primary[600]} />}
@@ -114,20 +107,13 @@ export const BatchVariantsSection: React.FC<BatchVariantsSectionProps> = ({
           })}
         </View>
       )}
-    </ModernCard>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  sectionCard: {
+  section: {
     marginTop: spacing.md,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: SURFACE_BORDER,
-    backgroundColor: SURFACE_CARD,
-  },
-  sectionCardContent: {
-    padding: spacing.lg,
   },
   header: {
     flexDirection: "row",
@@ -138,7 +124,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.semiBold,
-    color: TEXT_STRONG,
+    color: semanticColors.text.primary,
     flex: 1,
   },
   toggle: {
@@ -148,7 +134,7 @@ const styles = StyleSheet.create({
   },
   toggleLabel: {
     fontSize: fontSize.sm,
-    color: TEXT_MUTED,
+    color: semanticColors.text.secondary,
     marginRight: spacing.xs,
   },
   toggleSwitch: {
@@ -161,10 +147,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   card: {
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    backgroundColor: SURFACE_MUTED,
+    borderRadius: borderRadius.lg,
   },
   row: {
     flexDirection: "row",
@@ -184,16 +167,16 @@ const styles = StyleSheet.create({
   batchTitle: {
     fontSize: fontSize.sm,
     fontWeight: fontWeight.semiBold,
-    color: TEXT_STRONG,
+    color: semanticColors.text.primary,
   },
   batchMrp: {
     fontSize: fontSize.sm,
-    color: TEXT_MUTED,
+    color: semanticColors.text.secondary,
   },
   meta: {
     marginTop: spacing.xs,
     fontSize: fontSize.xs,
-    color: TEXT_MUTED,
+    color: semanticColors.text.secondary,
   },
   stock: {
     alignItems: "flex-end",
@@ -201,7 +184,7 @@ const styles = StyleSheet.create({
   stockValue: {
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
-    color: ACCENT,
+    color: semanticColors.text.primary,
   },
   stockLabel: {
     fontSize: fontSize.xs,

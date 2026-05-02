@@ -45,12 +45,6 @@ import {
   radius as borderRadius,
 } from "../../theme/unified";
 
-const SURFACE_OVERLAY = "rgba(15, 23, 42, 0.54)";
-const PANEL_BG = "rgba(15, 23, 42, 0.74)";
-const PANEL_BORDER = "rgba(217, 229, 226, 0.22)";
-const PANEL_MUTED = "rgba(255, 255, 255, 0.08)";
-const ACCENT = "#0f766e";
-
 interface SerialScannerModalProps {
   visible: boolean;
   existingSerials: string[];
@@ -739,14 +733,13 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0f172a",
+    backgroundColor: colors.neutral[900],
   },
   permissionContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacing.xl,
-    backgroundColor: "#0f172a",
   },
   permissionTitle: {
     marginTop: spacing.md,
@@ -766,8 +759,8 @@ const styles = StyleSheet.create({
   permissionButton: {
     width: "100%",
     minHeight: 44,
-    borderRadius: 16,
-    backgroundColor: ACCENT,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary[600],
     alignItems: "center",
     justifyContent: "center",
     marginTop: spacing.sm,
@@ -789,7 +782,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: SURFACE_OVERLAY,
+    backgroundColor: "rgba(0,0,0,0.4)",
   },
   topBar: {
     flexDirection: "row",
@@ -801,9 +794,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: PANEL_BG,
-    borderWidth: 1,
-    borderColor: PANEL_BORDER,
+    backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -825,7 +816,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: ACCENT,
+    backgroundColor: colors.primary[600],
     alignItems: "center",
     justifyContent: "center",
   },
@@ -848,7 +839,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 40,
     height: 40,
-    borderColor: "#67c6bc",
+    borderColor: colors.primary[400],
     borderWidth: 3,
   },
   topLeft: {
@@ -939,11 +930,9 @@ const styles = StyleSheet.create({
   infoCard: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: PANEL_BG,
-    borderWidth: 1,
-    borderColor: PANEL_BORDER,
+    backgroundColor: "rgba(0,0,0,0.6)",
     padding: spacing.md,
-    borderRadius: 18,
+    borderRadius: borderRadius.md,
     marginBottom: spacing.md,
   },
   infoText: {
@@ -954,10 +943,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   detectedList: {
-    backgroundColor: PANEL_BG,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: PANEL_BORDER,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    borderRadius: borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
     gap: spacing.xs,
@@ -978,7 +965,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   detectedResetText: {
-    color: "#98e1d9",
+    color: colors.primary[300],
     fontSize: fontSize.xs,
     fontWeight: fontWeight.semiBold,
     textTransform: "uppercase",
@@ -987,10 +974,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: PANEL_MUTED,
-    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: borderRadius.sm,
     borderWidth: 1,
-    borderColor: PANEL_BORDER,
+    borderColor: "rgba(255,255,255,0.15)",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
   },
@@ -1033,11 +1020,9 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   serialsList: {
-    backgroundColor: PANEL_BG,
-    borderWidth: 1,
-    borderColor: PANEL_BORDER,
+    backgroundColor: "rgba(0,0,0,0.6)",
     padding: spacing.md,
-    borderRadius: 18,
+    borderRadius: borderRadius.md,
     marginBottom: spacing.md,
   },
   serialsLabel: {
@@ -1054,10 +1039,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 52,
-    backgroundColor: ACCENT,
+    backgroundColor: colors.primary[600],
     paddingVertical: spacing.md,
-    borderRadius: 18,
+    borderRadius: borderRadius.lg,
   },
   doneButtonText: {
     marginLeft: spacing.sm,
@@ -1067,7 +1051,7 @@ const styles = StyleSheet.create({
   },
   manualContainer: {
     flex: 1,
-    backgroundColor: "#f4f7f6",
+    backgroundColor: colors.white,
     paddingTop: Platform.OS === "ios" ? 20 : 0,
   },
   manualHeader: {
@@ -1076,16 +1060,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: "#d9e5e2",
+    borderBottomColor: colors.neutral[200],
   },
   manualTitle: {
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
-    color: "#0f172a",
+    color: colors.neutral[900],
   },
   manualHelperText: {
     padding: spacing.lg,
-    color: "#475569",
+    color: colors.neutral[500],
     fontSize: fontSize.sm,
   },
   manualInput: {
@@ -1093,13 +1077,11 @@ const styles = StyleSheet.create({
     margin: spacing.lg,
     marginTop: 0,
     borderWidth: 1,
-    borderColor: "#d9e5e2",
-    borderRadius: 18,
+    borderColor: colors.neutral[300],
+    borderRadius: borderRadius.md,
     padding: spacing.md,
     fontSize: fontSize.md,
     textAlignVertical: "top",
-    backgroundColor: colors.white,
-    color: "#0f172a",
   },
 });
 

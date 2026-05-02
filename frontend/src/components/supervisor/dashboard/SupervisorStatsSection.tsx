@@ -69,31 +69,34 @@ export function SupervisorStatsSection({
       </View>
 
       <Animated.View entering={FadeInDown.delay(300).springify()}>
-        <OperationalCard
-          variant="light"
+        <GlassCard
+          variant="medium"
+          intensity={25}
           borderRadius={theme.borderRadius.xl}
           padding={theme.spacing.lg}
-          elevation="sm"
+          withGradientBorder={true}
+          elevation="lg"
           style={styles.progressCard}
         >
           <View style={styles.progressContent}>
             <View style={styles.progressInfo}>
               <Text style={styles.progressTitle}>Session Completion</Text>
               <Text style={styles.progressSubtitle}>
-                {stats.closedSessions + stats.reconciledSessions} of {stats.totalSessions} completed
+                {stats.closedSessions + stats.reconciledSessions} of{" "}
+                {stats.totalSessions} completed
               </Text>
-              <View style={styles.progressTrack}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { width: `${Math.max(0, Math.min(completionPercentage, 100))}%` },
-                  ]}
-                />
-              </View>
             </View>
-            <Text style={styles.progressPercent}>{Math.round(completionPercentage)}%</Text>
+            <ProgressRing
+              progress={completionPercentage}
+              size={100}
+              strokeWidth={10}
+              colors={[
+                theme.colors.success.main,
+                theme.colors.success.main + "CC",
+              ]}
+            />
           </View>
-        </OperationalCard>
+        </GlassCard>
       </Animated.View>
     </>
   );
@@ -118,7 +121,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: theme.spacing.md,
   },
   progressInfo: {
     flex: 1,
@@ -132,24 +134,5 @@ const styles = StyleSheet.create({
   progressSubtitle: {
     fontSize: 14,
     color: theme.colors.text.secondary,
-  },
-  progressTrack: {
-    marginTop: theme.spacing.sm,
-    height: 10,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: "#e2e8f0",
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.success.main,
-  },
-  progressPercent: {
-    minWidth: 64,
-    textAlign: "right",
-    fontSize: 28,
-    fontWeight: "700",
-    color: theme.colors.text.primary,
   },
 });

@@ -78,15 +78,15 @@ export const SyncStatusPill = () => {
   const hasPending = status.queuedOperations > 0;
 
   let pillColor = modernColors.success.main;
-  let pillBg = "rgba(34, 197, 94, 0.15)";
+  let pillBg = "rgba(34, 197, 94, 0.15)"; // Green bg
   let iconName: keyof typeof Ionicons.glyphMap = "cloud-done";
   let label = "Synced";
 
   if (isOffline) {
-    pillColor = modernColors.error.main;
-    pillBg = "rgba(239, 68, 68, 0.14)";
+    pillColor = modernColors.warning.main;
+    pillBg = "rgba(234, 179, 8, 0.15)";
     iconName = "cloud-offline";
-    label = hasPending ? `Offline • ${status.queuedOperations} pending` : "Offline mode";
+    label = hasPending ? `Offline (${status.queuedOperations})` : "Offline";
   } else if (isSyncing) {
     pillColor = modernColors.primary[400];
     pillBg = "rgba(99, 102, 241, 0.15)";
@@ -96,7 +96,7 @@ export const SyncStatusPill = () => {
     pillColor = modernColors.warning.main;
     pillBg = "rgba(234, 179, 8, 0.15)";
     iconName = "cloud-upload";
-    label = `${status.queuedOperations} not saved yet`;
+    label = `${status.queuedOperations} Pending`;
   }
 
   return (
@@ -105,7 +105,12 @@ export const SyncStatusPill = () => {
       disabled={isOffline || isSyncing || (!hasPending && !isOffline)}
       activeOpacity={0.7}
     >
-      <View style={[styles.pill, { backgroundColor: pillBg, borderColor: pillColor }]}>
+      <View
+        style={[
+          styles.pill,
+          { backgroundColor: pillBg, borderColor: pillColor },
+        ]}
+      >
         <Animated.View style={isSyncing ? animatedIconStyle : undefined}>
           <Ionicons name={iconName} size={14} color={pillColor} />
         </Animated.View>

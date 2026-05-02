@@ -15,7 +15,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { colorPalette, spacing, typography } from "@/theme/designTokens";
 import type { ScanRegion } from "@/services/cameraEnhancementService";
-import { createShadow } from "@/theme/shadowUtils";
 
 interface ScanGuideOverlayProps {
   scanRegion: ScanRegion;
@@ -272,7 +271,10 @@ const styles = StyleSheet.create({
     right: 0,
     height: 2,
     backgroundColor: colorPalette.primary[500],
-    ...createShadow({ color: colorPalette.primary[500], offsetX: 0, offsetY: 0, opacity: 0.8, radius: 4 }),
+    shadowColor: colorPalette.primary[500],
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
   },
   messageContainer: {
     position: "absolute",

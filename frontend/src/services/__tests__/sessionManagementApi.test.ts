@@ -218,8 +218,7 @@ describe("sessionManagementApi.getSession", () => {
 
     const result = await createSession("WH-OFFLINE");
 
-    expect(result.id).toBeTruthy();
-    expect(result.client_session_id).toBe(result.id);
+    expect(result.id).toBe("offline_session_1");
     expect(result._createdOffline).toBe(true);
     expect(controlPlane.createSessionCommand).toHaveBeenCalledWith({
       warehouse: "WH-OFFLINE",
@@ -231,65 +230,6 @@ describe("sessionManagementApi.getSession", () => {
     expect(offlineStorage.cacheSession).toHaveBeenCalledWith(
       expect.objectContaining({ warehouse: "WH-OFFLINE" })
     );
-  });
-
-  it("rotates client session identity after offline fallback and uses a fresh id on retry", async () => {
-    const localStorageMock = installLocalStorageMock();
-    let httpClient: any;
-    let offlineStorage: any;
-    let network: any;
-    let createSession: any;
-
-    jest.isolateModules(() => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      httpClient = require("../httpClient").default;
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      offlineStorage = require("../offline/offlineStorage");
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      network = require("../../utils/network");
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      ({ createSession } = require("../api/sessionManagementApi"));
-    });
-
-    network.getNetworkStatus.mockReturnValue({
-      status: "ONLINE",
-      isOnline: true,
-      isInternetReachable: true,
-      connectionType: "wifi",
-    });
-    offlineStorage.cacheSession.mockResolvedValue(undefined);
-    offlineStorage.addToOfflineQueue.mockResolvedValue(undefined);
-    httpClient.post
-      .mockRejectedValueOnce(new Error("timeout"))
-      .mockResolvedValueOnce({
-        data: {
-          id: "server-session",
-          warehouse: "WH-ONLINE",
-          staff_user: "staff1",
-          staff_name: "Staff User",
-          status: "OPEN",
-          type: "STANDARD",
-          started_at: "2026-04-30T00:00:00Z",
-        },
-      });
-
-    await createSession("WH-ONLINE");
-    await createSession("WH-ONLINE");
-
-    const firstClientSessionId = localStorageMock.setItem.mock.calls[0]?.[1];
-    const secondClientSessionId = localStorageMock.setItem.mock.calls[1]?.[1];
-    expect(firstClientSessionId).toBeTruthy();
-    expect(secondClientSessionId).toBeTruthy();
-    expect(secondClientSessionId).not.toBe(firstClientSessionId);
-    expect(localStorageMock.setItem.mock.invocationCallOrder[0]).toBeLessThan(
-      httpClient.post.mock.invocationCallOrder[0],
-    );
-    expect(localStorageMock.setItem.mock.invocationCallOrder[1]).toBeLessThan(
-      httpClient.post.mock.invocationCallOrder[1],
-    );
-    expect(httpClient.post.mock.calls[0][1].client_session_id).toBe(firstClientSessionId);
-    expect(httpClient.post.mock.calls[1][1].client_session_id).toBe(secondClientSessionId);
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith("client_session_id");
   });
 
   it("merges visible cached sessions into API results", async () => {

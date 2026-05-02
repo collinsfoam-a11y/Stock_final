@@ -11,13 +11,6 @@ import {
   typography,
 } from "@/theme/unified";
 
-const SURFACE_CARD = "#ffffff";
-const SURFACE_BORDER = "#d9e5e2";
-const SURFACE_MUTED = "#f8fafc";
-const ACCENT = "#0f766e";
-const TEXT_STRONG = "#0f172a";
-const TEXT_MUTED = "#475569";
-
 interface ScanStats {
   pendingItems: number;
   scannedItems: number;
@@ -182,43 +175,6 @@ const styles = StyleSheet.create({
   statusChipTextPending: {
     color: colors.warning[600],
   },
-  statsContent: {
-    padding: spacing.lg,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  kicker: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    color: ACCENT,
-    marginBottom: spacing.xs,
-  },
-  heading: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: "700",
-    color: TEXT_STRONG,
-  },
-  statusBadge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    backgroundColor: "#ecf7f4",
-    borderWidth: 1,
-    borderColor: "#cae8df",
-  },
-  statusBadgeText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: "700",
-    color: ACCENT,
-    letterSpacing: 0.8,
-  },
   statsRow: {
     flexDirection: "row",
     gap: spacing.sm,
@@ -237,12 +193,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: colors.gray[900],
     fontVariant: ["tabular-nums"],
-  },
-  verifiedValue: {
-    color: ACCENT,
-  },
-  pendingValue: {
-    color: colors.warning[600],
   },
   statLabel: {
     fontSize: typography.fontSize.xs,

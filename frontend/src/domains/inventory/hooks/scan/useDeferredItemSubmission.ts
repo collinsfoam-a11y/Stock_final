@@ -3,10 +3,8 @@ import { Alert } from "react-native";
 import * as Haptics from "expo-haptics";
 
 import { createCountLine } from "@/services/api/api";
-import { RecentItemsService } from "@/services/enhancedFeatures";
 import { toastService } from "@/services/toastService";
 import { CreateCountLinePayload, DateFormatType, Item, SerialEntryData } from "@/types/scan";
-import { uxProbe } from "@/utils/uxProbe";
 import { normalizeSerialValue } from "@/utils/scanUtils";
 import { toBackendPhotoProofs } from "./submissionPayload";
 import { getReadableInventoryErrorMessage } from "./errorMessages";
@@ -73,7 +71,6 @@ const getValidSerialEntries = (isSerializedItem: boolean, serialEntries: SerialE
 const showSubmissionError = (error: any) => {
   const message = getReadableInventoryErrorMessage(error, "save-count");
   const status = error?.response?.status;
-  uxProbe({ t: "scan_error", reason: status ? `save_failed_${status}` : "save_failed" });
   if (status === 423) {
     toastService.show(message, { type: "warning" });
     return;
@@ -233,7 +230,7 @@ const handleSubmissionResult = async (
     return;
   }
 
-  toastService.show("Item added. Ready for next scan.", { type: "success" });
+  toastService.show("Item verified successfully", { type: "success" });
   onSuccess();
 };
 
@@ -347,7 +344,6 @@ export const useDeferredItemSubmission = ({
     setSubmitting(true);
 
     try {
-      const itemCode = resolveItemCode(item, barcode);
       const payload = buildCountLinePayload({
         barcode,
         sessionId,
@@ -376,14 +372,6 @@ export const useDeferredItemSubmission = ({
         recountTargetId,
       });
       const result = await createCountLine(payload);
-      await RecentItemsService.addRecent(itemCode, {
-        ...item,
-        counted_qty: parseFloat(quantity),
-        floor_no: currentFloor || undefined,
-        rack_no: currentRack || undefined,
-        scan_status: "saved",
-      } as Item);
-      uxProbe({ t: "save_next", itemCode });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await handleSubmissionResult(result, onSuccess);
     } catch (error: any) {

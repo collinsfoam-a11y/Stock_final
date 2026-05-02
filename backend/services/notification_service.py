@@ -15,9 +15,6 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import httpx
-from pymongo.errors import PyMongoError
-
-from backend.db.runtime import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +95,7 @@ class NotificationService:
 
         try:
             await self._send_push_notification(user_id, notification)
-        except (httpx.HTTPError, PyMongoError, RuntimeError, TypeError, ValueError) as exc:
+        except Exception as exc:
             logger.warning(f"Push notification delivery skipped for {user_id}: {exc}")
 
         return notification_id
@@ -398,7 +395,3 @@ class NotificationService:
                     }
                 },
             )
-
-
-def get_notification_service() -> NotificationService:
-    return NotificationService(get_db())

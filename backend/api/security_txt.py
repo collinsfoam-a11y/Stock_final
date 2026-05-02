@@ -50,11 +50,11 @@ async def get_security_txt():
 @security_txt_router.get(
     "/security.txt",
     response_class=PlainTextResponse,
-    summary="Security.txt root alias",
-    description="Root-level security.txt location",
+    summary="Security.txt (fallback)",
+    description="Fallback security.txt location",
 )
-async def get_security_txt_root_alias():
-    """Security.txt at root level."""
+async def get_security_txt_fallback():
+    """Fallback security.txt at root level"""
     return PlainTextResponse(
         content=SECURITY_TXT_CONTENT,
         media_type="text/plain",

@@ -16,17 +16,11 @@ except ImportError:
     pyodbc.Connection = type("Connection", (), {})
     _PYODBC_AVAILABLE = False
 from fastapi import APIRouter, Depends, HTTPException
-from pymongo.errors import PyMongoError
 from pydantic import BaseModel, Field
 
 from backend.auth.dependencies import get_current_user
 from backend.config import settings
-from backend.services.dependency_manager import (
-    DependencyUnavailable,
-    require_optional_attr,
-    require_sql,
-)
-from backend.services.mapping_config_service import MappingConfigService, get_mapping_config_service
+from backend.db.runtime import get_db
 
 router = APIRouter(prefix="/api/mapping", tags=["Database Mapping"])
 logger = logging.getLogger(__name__)
@@ -86,24 +80,14 @@ def _enforce_configured_sql_target(host: str, database: str, port: int) -> None:
 
 def get_connection_string(host, port, database, user, password):
     driver = "{ODBC Driver 17 for SQL Server}"
+    # Fallback to FreeTDS or other drivers if likely on Mac/Linux without official drivers
+    # BUT for now assume standard ODBC string
     conn_str = f"DRIVER={driver};SERVER={host},{port};DATABASE={database};"
     if user and password:
         conn_str += f"UID={user};PWD={password}"
     else:
         conn_str += "Trusted_Connection=yes"
     return conn_str
-
-
-def _sql_error_types() -> tuple[type[BaseException], ...]:
-    error_types: list[type[BaseException]] = [RuntimeError, OSError, TypeError, ValueError]
-    try:
-        sql = require_sql()
-        sql_error = getattr(sql, "Error", None)
-        if isinstance(sql_error, type) and issubclass(sql_error, BaseException):
-            error_types.append(sql_error)
-    except DependencyUnavailable:
-        error_types.append(DependencyUnavailable)
-    return tuple(dict.fromkeys(error_types))
 
 
 def get_connection(conn_string):
@@ -113,20 +97,14 @@ def get_connection(conn_string):
             detail="SQL mapping service is unavailable because pyodbc is not installed.",
         )
     try:
-        sql = require_sql()
-        return sql.connect(conn_string, timeout=5)
-    except DependencyUnavailable as exc:
-        raise HTTPException(
-            status_code=503,
-            detail="SQL Server connector dependency is unavailable",
-        ) from exc
-    except _sql_error_types() as exc:
+        return pyodbc.connect(conn_string, timeout=5)
+    except Exception as exc:
         logger.exception("Database connection failed")
         env = getattr(settings, "ENVIRONMENT", "development").lower()
         if env == "development":
             try:
-                drivers = list(require_sql().drivers())
-            except _sql_error_types():
+                drivers = list(pyodbc.drivers())
+            except Exception:
                 drivers = []
             raise HTTPException(
                 status_code=400,
@@ -167,8 +145,8 @@ def _encrypt_erp_password(password: str) -> str:
     Derives an encryption key from JWT_SECRET to avoid storing plaintext credentials in MongoDB.
     """
     try:
-        Fernet = require_optional_attr("cryptography.fernet", "Fernet")
-    except DependencyUnavailable as exc:
+        from cryptography.fernet import Fernet
+    except Exception as exc:
         raise HTTPException(
             status_code=500,
             detail=f"Password encryption is unavailable (missing cryptography): {exc}",
@@ -212,7 +190,7 @@ async def get_tables(
         return {"tables": tables, "count": len(tables)}
     except HTTPException:
         raise
-    except _sql_error_types() as e:
+    except Exception as e:
         logger.exception("Error fetching tables")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -257,7 +235,7 @@ async def get_columns(
         return {"columns": columns, "count": len(columns)}
     except HTTPException:
         raise
-    except _sql_error_types() as e:
+    except Exception as e:
         logger.exception("Error fetching columns")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -318,7 +296,7 @@ async def preview_mapping(
         return {"success": True, "sample_data": results}
     except HTTPException:
         raise
-    except _sql_error_types() as e:
+    except Exception as e:
         logger.exception("Error testing mapping")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -327,7 +305,7 @@ async def preview_mapping(
 async def save_mapping(
     data: dict[str, Any],
     current_user: dict = Depends(_require_mapping_admin),
-    mapping_service: MappingConfigService = Depends(get_mapping_config_service),
+    db=Depends(get_db),
 ):
     """
     Saves both connection parameters and mapping configuration.
@@ -361,16 +339,20 @@ async def save_mapping(
                 )
                 set_data["connection.has_password"] = True
 
-        await mapping_service.save_mapping(
-            mapping=mapping,
-            connection=connection,
-            username=current_user.get("username"),
-            encrypted_password=set_data.get("connection.password_encrypted"),
+        # Save to 'erp_mapping' document in config collection
+        update_op: dict[str, Any] = {"$set": set_data}
+        if connection.get("password"):
+            update_op["$unset"] = {"connection.password": ""}
+
+        await db.config.update_one(
+            {"_id": "erp_mapping"},
+            update_op,
+            upsert=True,
         )
         return {"success": True}
     except HTTPException:
         raise
-    except (DependencyUnavailable, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+    except Exception as e:
         logger.exception("Error saving mapping")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -378,10 +360,10 @@ async def save_mapping(
 @router.get("/current")
 async def get_current_mapping(
     current_user: dict = Depends(_require_mapping_admin),
-    mapping_service: MappingConfigService = Depends(get_mapping_config_service),
+    db=Depends(get_db),
 ):
     try:
-        doc = await mapping_service.get_current_mapping()
+        doc = await db.config.find_one({"_id": "erp_mapping"})
         if not doc:
             return {"mapping": None, "connection": None}
 
@@ -398,6 +380,6 @@ async def get_current_mapping(
             "connection": connection,
         }
         return result
-    except (PyMongoError, RuntimeError, TypeError, ValueError) as e:
+    except Exception as e:
         logger.exception("Error fetching current mapping")
         raise HTTPException(status_code=500, detail=str(e))

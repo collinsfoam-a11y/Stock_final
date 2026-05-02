@@ -196,7 +196,7 @@ class TestBatchUpdate:
         ]
 
         # Mock update to raise error
-        mock_db.test_collection.bulk_write.side_effect = RuntimeError("Update error")
+        mock_db.test_collection.bulk_write.side_effect = Exception("Update error")
 
         result = await batch_service.batch_update("test_collection", updates)
 

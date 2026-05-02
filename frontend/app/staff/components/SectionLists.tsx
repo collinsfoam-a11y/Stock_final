@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { createShadow } from "../../../src/theme/shadowUtils";
 
 import { ModernCard } from "../../../src/components/ui";
 import type { SessionType } from "../../../src/types";
@@ -427,7 +426,11 @@ const createStyles = (theme: AppTheme, isDark: boolean) =>
       justifyContent: "center",
       alignItems: "center",
       backgroundColor: theme.colors.accent,
-      ...createShadow({ color: theme.colors.accent, offsetX: 0, offsetY: 4, opacity: 0.3, radius: 8, elevation: 4 }),
+      shadowColor: theme.colors.accent,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 4,
     },
     searchToggleButton: {
       width: 36,

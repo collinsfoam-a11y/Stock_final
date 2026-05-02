@@ -6,13 +6,8 @@ from typing import Any, Optional
 
 import pandas as pd
 import psutil
-from pymongo.errors import PyMongoError
 
 logger = logging.getLogger(__name__)
-
-
-class SystemReportSourceUnavailable(RuntimeError):
-    """Raised when a report source collection cannot be read."""
 
 
 class SystemReportService:
@@ -257,7 +252,7 @@ class SystemReportService:
         mongodb_status = "connected"
         try:
             await self.db.command("ping")
-        except PyMongoError:
+        except Exception:
             mongodb_status = "disconnected"
 
         return self._serialize_row(
@@ -278,14 +273,12 @@ class SystemReportService:
         try:
             collection = self.db[collection_name]
             return await collection.find({}).limit(limit).to_list(length=limit)
-        except PyMongoError as exc:
-            logger.error(
+        except Exception as exc:
+            logger.warning(
                 "Failed to fetch report source collection",
                 extra={"collection": collection_name, "error": str(exc)},
             )
-            raise SystemReportSourceUnavailable(
-                f"Failed to fetch report source collection: {collection_name}"
-            ) from exc
+            return []
 
     async def _count_rows_in_range(
         self,

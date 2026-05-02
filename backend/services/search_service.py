@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from typing import Any, Optional, Union
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from pymongo.errors import PyMongoError
 from rapidfuzz import fuzz
 
 logger = logging.getLogger(__name__)
@@ -128,7 +127,7 @@ class SearchService:
                 if cached:
                     logger.debug(f"Cache hit for query: {query}")
                     return cached
-            except (PyMongoError, RuntimeError, TypeError, ValueError) as e:
+            except Exception as e:
                 logger.warning(f"Cache read failed: {e}")
 
         # Determine if this looks like a barcode (numeric, 6+ digits)
@@ -162,7 +161,7 @@ class SearchService:
         if self.cache and total > 0:
             try:
                 await self.cache.setex(cache_key, 60, response)  # 60 second TTL
-            except (PyMongoError, RuntimeError, TypeError, ValueError) as e:
+            except Exception as e:
                 logger.warning(f"Cache write failed: {e}")
 
         return response
@@ -214,7 +213,7 @@ class SearchService:
             cursor = self.db.erp_items.find(query).limit(self.MAX_CANDIDATES)
             candidates = await cursor.to_list(length=self.MAX_CANDIDATES)
             return candidates
-        except (PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        except Exception as e:
             logger.error(f"Failed to fetch candidates: {e}")
             return []
 
@@ -359,20 +358,9 @@ class SearchService:
             cursor = self.db.erp_items.aggregate(pipeline)
             results = await cursor.to_list(length=limit)
             return [r["_id"] for r in results]
-        except (PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        except Exception as e:
             logger.error(f"Failed to get suggestions: {e}")
             return []
-
-    async def get_filter_values(self) -> tuple[list[str], list[str]]:
-        categories = await self.db.erp_items.distinct("category")
-        warehouses = await self.db.erp_items.distinct("warehouse")
-        categories_clean = sorted(
-            {c.strip() for c in categories if isinstance(c, str) and c.strip()}
-        )
-        warehouses_clean = sorted(
-            {w.strip() for w in warehouses if isinstance(w, str) and w.strip()}
-        )
-        return categories_clean, warehouses_clean
 
 
 # Singleton instance (initialized with db in server startup)
@@ -397,7 +385,7 @@ def get_search_service() -> SearchService:
             db = get_db()
             _search_service = SearchService(db)
             logger.warning("SearchService lazily initialized at runtime")
-        except (PyMongoError, RuntimeError, TypeError, ValueError) as exc:
+        except Exception as exc:
             raise RuntimeError(
                 "SearchService not initialized. Call init_search_service first."
             ) from exc

@@ -145,7 +145,7 @@ class AIVarianceService:
 
             return float(stats["variance_count"]) / float(stats["total_counts"])
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error calculating historical risk for {item_code}: {e}")
             return 0.0
 
@@ -185,7 +185,7 @@ class AIVarianceService:
             # Hybrid: 40% heuristic, 60% historical
             return (heuristic * 0.4) + (historical * 0.6)
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error calculating category risk for {category}: {e}")
             return self.default_risk
 
@@ -226,7 +226,7 @@ class AIVarianceService:
             high_risk_items.sort(key=lambda x: x["risk_score"], reverse=True)
             return high_risk_items[:limit]
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error predicting session risks for {session_id}: {e}")
             return []
 

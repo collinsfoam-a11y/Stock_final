@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from bson import ObjectId
@@ -7,9 +7,8 @@ from bson.errors import InvalidId
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from backend.auth.dependencies import require_admin, require_permissions
+from backend.auth.dependencies import auth_deps, require_admin, require_permissions
 from backend.auth.permissions import Permission
-from backend.services.logs_service import LogsService, get_logs_service
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +84,6 @@ async def get_error_logs(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     current_user: dict = Depends(require_permissions([Permission.ERROR_LOG_READ])),
-    logs_service: LogsService = Depends(get_logs_service),
 ):
     query: dict[str, Any] = {}
     if severity:
@@ -101,12 +99,18 @@ async def get_error_logs(
     if date_query:
         query["timestamp"] = date_query
 
-    docs, total = await logs_service.list_error_logs(
-        query=query,
-        page=page,
-        page_size=page_size,
+    total = await auth_deps.db.error_logs.count_documents(query)
+    cursor = (
+        auth_deps.db.error_logs.find(query)
+        .sort("timestamp", -1)
+        .skip((page - 1) * page_size)
+        .limit(page_size)
     )
-    items = [ErrorLogModel(**doc) for doc in docs]
+
+    items = []
+    async for doc in cursor:
+        doc["id"] = str(doc.pop("_id"))
+        items.append(ErrorLogModel(**doc))
 
     return {
         "errors": items,
@@ -122,10 +126,9 @@ async def get_error_logs(
 @router.delete("/error-logs")
 async def delete_error_logs(
     current_user: dict = Depends(require_admin),  # Only admin can clear logs
-    logs_service: LogsService = Depends(get_logs_service),
 ):
     """Clear all error logs."""
-    await logs_service.delete_error_logs()
+    await auth_deps.db.error_logs.delete_many({})
     return {"success": True, "message": "All error logs cleared"}
 
 
@@ -134,30 +137,45 @@ async def get_error_stats(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     current_user: dict = Depends(require_permissions([Permission.ERROR_LOG_READ])),
-    logs_service: LogsService = Depends(get_logs_service),
 ):
     query: dict[str, Any] = {}
     date_query = build_date_query(start_date, end_date)
     if date_query:
         query["timestamp"] = date_query
 
-    return await logs_service.get_error_stats(query)
+    total = await auth_deps.db.error_logs.count_documents(query)
+    unresolved = await auth_deps.db.error_logs.count_documents({**query, "resolved": False})
+
+    pipeline = [
+        {"$match": query},
+        {"$group": {"_id": "$severity", "count": {"$sum": 1}}},
+    ]
+    severity_counts = {}
+    async for doc in auth_deps.db.error_logs.aggregate(pipeline):
+        severity_counts[doc["_id"]] = doc["count"]
+
+    return {
+        "total": total,
+        "unresolved": unresolved,
+        "by_severity": severity_counts,
+        "trend": [],
+    }
 
 
 @router.get("/error-logs/{log_id}")
 async def get_error_detail(
     log_id: str,
     current_user: dict = Depends(require_permissions([Permission.ERROR_LOG_READ])),
-    logs_service: LogsService = Depends(get_logs_service),
 ):
     try:
-        doc = await logs_service.get_error_detail(ObjectId(log_id))
+        doc = await auth_deps.db.error_logs.find_one({"_id": ObjectId(log_id)})
     except (InvalidId, TypeError):
         doc = None
 
     if not doc:
         raise HTTPException(status_code=404, detail="Error log not found")
 
+    doc["id"] = str(doc.pop("_id"))
     return ErrorLogModel(**doc)
 
 
@@ -166,7 +184,6 @@ async def resolve_error(
     log_id: str,
     body: dict[str, Any] = Body(...),
     current_user: dict = Depends(require_permissions([Permission.ERROR_LOG_READ])),
-    logs_service: LogsService = Depends(get_logs_service),
 ):
     try:
         oid = ObjectId(log_id)
@@ -175,13 +192,19 @@ async def resolve_error(
 
     resolution_note = body.get("resolution_note", "Resolved manually")
 
-    modified_count = await logs_service.resolve_error(
-        log_id=oid,
-        resolution_note=resolution_note,
-        resolved_by=current_user.get("username"),
+    result = await auth_deps.db.error_logs.update_one(
+        {"_id": oid},
+        {
+            "$set": {
+                "resolved": True,
+                "resolved_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                "resolved_by": current_user.get("username"),
+                "resolution_note": resolution_note,
+            }
+        },
     )
 
-    if modified_count == 0:
+    if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Log not found")
 
     return {"success": True, "message": "Error resolved"}
@@ -197,7 +220,6 @@ async def get_activity_logs(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     current_user: dict = Depends(require_permissions([Permission.ACTIVITY_LOG_READ])),
-    logs_service: LogsService = Depends(get_logs_service),
 ):
     query: dict[str, Any] = {}
     if user:
@@ -211,12 +233,18 @@ async def get_activity_logs(
     if date_query:
         query["timestamp"] = date_query
 
-    docs, total = await logs_service.list_activity_logs(
-        query=query,
-        page=page,
-        page_size=page_size,
+    total = await auth_deps.db.activity_logs.count_documents(query)
+    cursor = (
+        auth_deps.db.activity_logs.find(query)
+        .sort("timestamp", -1)
+        .skip((page - 1) * page_size)
+        .limit(page_size)
     )
-    items = [ActivityLogModel(**doc) for doc in docs]
+
+    items = []
+    async for doc in cursor:
+        doc["id"] = str(doc.pop("_id"))
+        items.append(ActivityLogModel(**doc))
 
     return {
         "activities": items,
@@ -234,11 +262,20 @@ async def get_activity_stats(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     current_user: dict = Depends(require_permissions([Permission.ACTIVITY_LOG_READ])),
-    logs_service: LogsService = Depends(get_logs_service),
 ):
     query: dict[str, Any] = {}
     date_query = build_date_query(start_date, end_date)
     if date_query:
         query["timestamp"] = date_query
 
-    return await logs_service.get_activity_stats(query)
+    total = await auth_deps.db.activity_logs.count_documents(query)
+
+    pipeline: list[dict[str, Any]] = [
+        {"$match": query},
+        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+    ]
+    status_counts: dict[str, int] = {}
+    async for doc in auth_deps.db.activity_logs.aggregate(pipeline):
+        status_counts[doc["_id"]] = doc["count"]
+
+    return {"total": total, "by_status": status_counts, "trend": []}

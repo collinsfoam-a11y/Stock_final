@@ -5,13 +5,9 @@ import {
   updateOfflineQueueItem,
   getCacheStats,
   OfflineQueueItem,
-  cacheSession,
-  getMappedSessionId,
   removeSessionFromCache,
-  setSessionIdMapping,
 } from "./offline/offlineStorage";
 import { syncBatch, isOnline } from "./api/api";
-import apiClient from "./httpClient";
 import { useNetworkStore } from "../store/networkStore";
 import { useAuthStore } from "../store/authStore";
 import { useSettingsStore } from "../store/settingsStore";
@@ -102,180 +98,16 @@ const shouldSkipSync = (options?: SyncOptions): SyncResult | null => {
   return null;
 };
 
-const stringValue = (value: unknown): string | undefined => {
-  if (typeof value !== "string" && typeof value !== "number") {
-    return undefined;
-  }
-  const normalized = String(value).trim();
-  return normalized || undefined;
-};
-
-const numberValue = (value: unknown, fallback = 0): number => {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-  }
-  return fallback;
-};
-
-const dateValue = (value: unknown, fallback: string): string => {
-  const normalized = stringValue(value);
-  if (!normalized) return fallback;
-  const parsed = new Date(normalized);
-  return Number.isNaN(parsed.getTime()) ? fallback : parsed.toISOString();
-};
-
-const listValue = (value: unknown): string[] => {
-  if (typeof value === "string" || typeof value === "number") {
-    const normalized = stringValue(value);
-    return normalized ? [normalized] : [];
-  }
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((entry) => {
-      if (typeof entry === "string" || typeof entry === "number") {
-        return String(entry);
-      }
-      if (entry && typeof entry === "object") {
-        const record = entry as Record<string, unknown>;
-        return stringValue(
-          record.url || record.uri || record.base64 || record.id || record.serial_number
-        );
-      }
-      return undefined;
-    })
-    .filter((entry): entry is string => !!entry);
-};
-
-const getNestedString = (data: Record<string, unknown>, objectKey: string, fieldKey: string) => {
-  const nested = data[objectKey];
-  if (!nested || typeof nested !== "object") {
-    return undefined;
-  }
-  return stringValue((nested as Record<string, unknown>)[fieldKey]);
-};
-
-const resolveMappedSessionId = async (rawSessionId: unknown): Promise<string | undefined> => {
-  const sessionId = stringValue(rawSessionId);
-  if (!sessionId) return undefined;
-  const mapped = await getMappedSessionId(sessionId);
-  return mapped || sessionId;
-};
-
-const resolveLocationContext = (data: Record<string, unknown>) => {
-  const floorId = stringValue(data.floor_id || data.floor_no);
-  const rackId = stringValue(data.rack_id || data.rack_no || data.rack);
-  const locationId = stringValue(data.location_id);
-
-  if (!locationId || !floorId || !rackId) {
-    throw new Error("Missing location_id, floor_id, or rack_id for records-based sync");
-  }
-
-  return { locationId, floorId, rackId };
-};
-
-const buildCountLineRecord = async (item: OfflineQueueItem): Promise<SyncRecord> => {
-  const data = item.data || {};
-  const sessionId = await resolveMappedSessionId(data.session_id || data.sessionId);
-  const itemCode = stringValue(data.item_code || data.itemCode);
-  if (!sessionId || !itemCode) {
-    throw new Error("Missing session_id or item_code for count-line sync");
-  }
-
-  const { locationId, floorId, rackId } = resolveLocationContext(data);
-  const now = new Date().toISOString();
-  const createdAt = dateValue(
-    data.counted_at ||
-      data.created_at ||
-      data.createdAt ||
-      getNestedString(data, "audit", "offline_created_at") ||
-      item.timestamp,
-    now
-  );
-
-  return {
-    record_id: item.id,
-    client_record_id: item.id,
-    session_id: sessionId,
-    location_id: locationId,
-    floor_id: floorId,
-    rack_id: rackId,
-    floor: stringValue(data.floor || data.floor_no || data.floor_id) || null,
-    item_code: itemCode,
-    verified_qty: numberValue(data.verified_qty ?? data.counted_qty),
-    damaged_qty: numberValue(data.damaged_qty),
-    serial_numbers: listValue(data.serial_numbers || data.serial_entries),
-    mfg_date:
-      stringValue(data.mfg_date || data.manufacturing_date || data.manufacturingDate) || null,
-    mrp:
-      data.mrp_counted !== undefined
-        ? numberValue(data.mrp_counted)
-        : data.mrp !== undefined
-          ? numberValue(data.mrp)
-          : null,
-    uom: stringValue(data.uom || data.uom_name || data.uom_code) || null,
-    category: stringValue(data.category || data.category_correction) || null,
-    subcategory: stringValue(data.subcategory || data.subcategory_correction) || null,
-    item_condition: stringValue(data.item_condition || data.condition) || null,
-    evidence_photos: listValue(data.evidence_photos || data.photo_proofs || data.photo_base64),
-    status: stringValue(data.status) || "finalized",
-    created_at: createdAt,
-    updated_at: dateValue(data.updated_at || data.updatedAt || createdAt, createdAt),
-  };
-};
-
-const normalizeSessionPayload = (data: Record<string, unknown>) => {
-  const offlineId = stringValue(
-    data.client_session_id || data.offline_id || data.id || data.session_id
-  );
-  const warehouse = stringValue(data.warehouse);
-  if (!offlineId || !warehouse) {
-    throw new Error("Missing offline session id or warehouse for session sync");
-  }
-
-  return {
-    offlineId,
-    payload: {
-      warehouse,
-      type: stringValue(data.type) || "STANDARD",
-      location_type: stringValue(data.location_type),
-      location_name: stringValue(data.location_name),
-      rack_no: stringValue(data.rack_no),
-      client_session_id: offlineId,
-      offline_id: offlineId,
-    },
-  };
-};
-
-const normalizeUnknownItemPayload = async (data: Record<string, unknown>) => {
-  const sessionId = await resolveMappedSessionId(data.session_id || data.sessionId);
-  if (!sessionId) {
-    throw new Error("Missing session_id for unknown-item sync");
-  }
-
-  const { locationId, floorId, rackId } = resolveLocationContext(data);
-  return {
-    ...data,
-    session_id: sessionId,
-    location_id: locationId,
-    floor_id: floorId,
-    rack_id: rackId,
-    floor_no: stringValue(data.floor_no || data.floor || floorId),
-    rack_no: stringValue(data.rack_no || data.rack || rackId),
-  };
-};
+const toSyncOperations = (batch: OfflineQueueItem[]) =>
+  batch.map((item: OfflineQueueItem) => ({
+    id: item.id,
+    type: item.type,
+    data: item.data,
+    timestamp: item.timestamp,
+  }));
 
 const toErrorMessage = (error: unknown, fallback = "Unknown batch error") =>
   error instanceof Error ? error.message : fallback;
-
-const resultFromError = (id: string, error: unknown): ApiSyncResult => ({
-  id,
-  success: false,
-  message: toErrorMessage(error),
-});
 
 const shouldRetryAfterAuth = (error: unknown) =>
   (error as { response?: { status?: number } })?.response?.status === 401;
@@ -386,118 +218,22 @@ const handleBatchFailure = async (batch: OfflineQueueItem[], batchError: unknown
   };
 };
 
-const syncSessionQueueItem = async (item: OfflineQueueItem): Promise<ApiSyncResult> => {
-  try {
-    const { offlineId, payload } = normalizeSessionPayload(item.data);
-    const existingServerId = await getMappedSessionId(offlineId);
-    if (existingServerId) {
-      return { id: item.id, success: true };
-    }
-
-    const response = await apiClient.post("/api/sessions", payload, {
-      timeout: 3000,
-      skipOfflineQueue: true,
-    } as any);
-    const responseData = response.data?.data ?? response.data;
-    const serverSessionId = stringValue(responseData?.id || responseData?.session_id);
-    if (!serverSessionId) {
-      throw new Error("Session sync response did not include a session id");
-    }
-
-    await setSessionIdMapping(offlineId, serverSessionId);
-    await cacheSession(responseData);
-    return { id: item.id, success: true };
-  } catch (error) {
-    return resultFromError(item.id, error);
-  }
-};
-
-const syncUnknownItemQueueItem = async (item: OfflineQueueItem): Promise<ApiSyncResult> => {
-  try {
-    const payload = await normalizeUnknownItemPayload(item.data);
-    await apiClient.post("/api/unknown-items", payload, {
-      timeout: 3000,
-      skipOfflineQueue: true,
-    } as any);
-    return { id: item.id, success: true };
-  } catch (error) {
-    return resultFromError(item.id, error);
-  }
-};
-
-const resultsFromBatchResponse = (
-  response: Awaited<ReturnType<typeof syncBatch>>
-): ApiSyncResult[] => {
-  if (Array.isArray(response.results) && response.results.length > 0) {
-    return response.results;
-  }
-
-  const okResults = (response.ok || []).map((id) => ({ id, success: true }));
-  const conflictResults = (response.conflicts || []).map((conflict) => ({
-    id: conflict.client_record_id,
-    success: false,
-    message: conflict.message,
-  }));
-  const errorResults = (response.errors || []).map((error) => ({
-    id: error.client_record_id,
-    success: false,
-    message: error.message,
-  }));
-  return [...okResults, ...conflictResults, ...errorResults];
-};
-
 const syncBatchChunk = async (batch: OfflineQueueItem[], batchIndex: number) => {
+  const operations = toSyncOperations(batch);
   log.debug(`Processing batch ${batchIndex + 1}`, {
     batchSize: batch.length,
-    items: batch.map((item) => ({
-      id: item.id,
-      type: item.type,
+    operations: operations.map((operation: Record<string, unknown>) => ({
+      id: operation.id,
+      type: operation.type,
     })),
   });
 
-  const directResults: ApiSyncResult[] = [];
-  const countLineItems: OfflineQueueItem[] = [];
-  const records: SyncRecord[] = [];
-
-  for (const item of batch.filter((entry) => entry.type === "session")) {
-    directResults.push(await syncSessionQueueItem(item));
-  }
-
-  for (const item of batch) {
-    if (item.type === "session") {
-      continue;
-    }
-    if (item.type === "unknown_item") {
-      directResults.push(await syncUnknownItemQueueItem(item));
-      continue;
-    }
-
-    try {
-      records.push(await buildCountLineRecord(item));
-      countLineItems.push(item);
-    } catch (error) {
-      directResults.push(resultFromError(item.id, error));
-    }
-  }
-
-  if (records.length === 0) {
-    return await handleBatchResults(batch, directResults);
-  }
-
   try {
-    const response = await syncBatch(records);
-    return await handleBatchResults(batch, [
-      ...directResults,
-      ...resultsFromBatchResponse(response),
-    ]);
+    const response = await syncBatch(operations);
+    return await handleBatchResults(batch, response.results || []);
   } catch (error: unknown) {
-    const directOutcome = await handleBatchResults(batch, directResults);
-    const failure = await handleBatchFailure(countLineItems, error);
-    return {
-      successCount: directOutcome.successCount,
-      failedCount: directOutcome.failedCount + failure.failedCount,
-      errors: [...directOutcome.errors, ...failure.errors],
-    };
+    const failure = await handleBatchFailure(batch, error);
+    return { successCount: 0, ...failure };
   }
 };
 

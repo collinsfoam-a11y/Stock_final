@@ -66,7 +66,7 @@ class RedisService:
                 f"pool_size={self.max_connections})"
             )
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.warning(f"Failed to connect to Redis: {str(e)}")
             self._is_connected = False
             raise
@@ -102,7 +102,7 @@ class RedisService:
                 "version": info.get("redis_version"),
             }
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Redis health check failed: {str(e)}")
             return {"status": "unhealthy", "error": str(e)}
 

@@ -25,7 +25,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { useThemeContext } from "../../context/ThemeContext";
 import { GlassCard } from "./GlassCard";
-import { createShadow } from "@/theme/shadowUtils";
 
 const SWIPE_THRESHOLD = 80;
 
@@ -153,7 +152,10 @@ const SwipeCard: React.FC<SwipeCardProps> = ({
     // theme.shadows.md is a string e.g. "0 4px 6px...", we might need to parse or use elevation if RN
     // For now, let's just use elevation 4 roughly equivalent to MD
     elevation: 4,
-    ...createShadow({ color: theme.colors.text, offsetX: 0, offsetY: 2, opacity: 0.1, radius: 4 }),
+    shadowColor: theme.colors.text,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   };
 
   const actionLabelStyle = {

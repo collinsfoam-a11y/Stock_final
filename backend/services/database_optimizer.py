@@ -139,12 +139,12 @@ class DatabaseOptimizer:
                     f"timeouts={self.server_selection_timeout_ms}ms/{self.connect_timeout_ms}ms"
                 )
                 logger.debug(f"Client optimization settings: {client_options}")
-            except (RuntimeError, TypeError, ValueError, OSError) as verify_error:
+            except Exception as verify_error:
                 logger.warning(f"Could not verify client configuration: {verify_error}")
 
             return self.mongo_client
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Failed to optimize MongoDB client: {str(e)}")
             return self.mongo_client
 
@@ -189,7 +189,7 @@ class DatabaseOptimizer:
 
                     return result
 
-                except (RuntimeError, TypeError, ValueError, OSError) as e:
+                except Exception as e:
                     execution_time = time.time() - start_time
                     logger.error(
                         f"Query failed: {query_key} after {execution_time:.3f}s - {str(e)}"
@@ -227,7 +227,7 @@ class DatabaseOptimizer:
         try:
             await asyncio.gather(*tasks, return_exceptions=True)
             logger.info("Connection warmup completed")
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.warning(f"Connection warmup had some issues: {str(e)}")
 
     async def optimize_indexes(self, db: AsyncIOMotorDatabase, collection_name: str):
@@ -253,7 +253,7 @@ class DatabaseOptimizer:
             else:
                 logger.debug(f"All indexes optimal for {collection_name}")
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Failed to optimize indexes for {collection_name}: {str(e)}")
 
     async def check_connection_health(self, db: AsyncIOMotorDatabase) -> dict[str, Any]:
@@ -290,7 +290,7 @@ class DatabaseOptimizer:
                 "error": str(e),
                 "ping_time_ms": (time.time() - start_time) * 1000,
             }
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Connection health check failed: {str(e)}")
             return {
                 "status": "error",

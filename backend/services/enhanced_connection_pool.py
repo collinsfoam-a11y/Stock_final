@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 """
 Enhanced Connection Pool Service
 Upgraded SQL Server connection pooling with retry logic, health monitoring, and metrics
@@ -27,12 +26,6 @@ except ImportError:
 from ..utils.db_connection import SQLServerConnectionBuilder
 
 logger = logging.getLogger(__name__)
-
-
-def _require_sql_module():
-    if not DependencyManager.has_sql():
-        return DependencyManager.require_sql(pyodbc)
-    return DependencyManager.require_sql()
 
 
 @dataclass
@@ -95,7 +88,6 @@ class EnhancedSQLServerConnectionPool:
         self.retry_delay = retry_delay
         self.health_check_interval = health_check_interval
 
-        _require_sql_module()
         self._pool: Queue = Queue(maxsize=pool_size + max_overflow)
         self._checked_out: set = set()
         self._created: int = 0
@@ -127,8 +119,7 @@ class EnhancedSQLServerConnectionPool:
             try:
                 start_time = time.time()
                 conn_str = self._build_connection_string()
-                sql = _require_sql_module()
-                conn = sql.connect(conn_str, timeout=self.timeout)
+                conn = pyodbc.connect(conn_str, timeout=self.timeout)
 
                 connection_time = time.time() - start_time
                 self._metrics.connection_times.append(connection_time)
@@ -155,7 +146,7 @@ class EnhancedSQLServerConnectionPool:
                     cursor.execute("SET CONCAT_NULL_YIELDS_NULL ON")
                     cursor.execute("SET QUOTED_IDENTIFIER ON")
                     cursor.execute("SET NOCOUNT ON")
-                except (RuntimeError, TypeError, ValueError, OSError) as e:
+                except Exception as e:
                     logger.debug(f"Could not set connection attributes: {str(e)}")
                 finally:
                     cursor.close()
@@ -170,7 +161,7 @@ class EnhancedSQLServerConnectionPool:
                 )
                 return conn
 
-            except (RuntimeError, TypeError, ValueError, OSError) as e:
+            except Exception as e:
                 last_error = str(e)
                 with self._lock:
                     self._metrics.total_errors += 1
@@ -229,7 +220,7 @@ class EnhancedSQLServerConnectionPool:
                 with self._lock:
                     self._created += 1
                     successful += 1
-            except (RuntimeError, TypeError, ValueError, OSError) as e:
+            except Exception as e:
                 logger.warning(f"Failed to pre-create connection {i + 1}/{initial_size}: {str(e)}")
 
         if successful > 0:
@@ -241,7 +232,7 @@ class EnhancedSQLServerConnectionPool:
         """Check if connection is still valid"""
         try:
             return SQLServerConnectionBuilder.is_connection_valid(conn)
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.debug(f"Connection validation failed: {str(e)}")
             return False
 
@@ -291,7 +282,7 @@ class EnhancedSQLServerConnectionPool:
         """Close connection ignoring errors"""
         try:
             conn.close()
-        except (RuntimeError, TypeError, ValueError, OSError):
+        except Exception:
             pass
 
     def _get_connection(self, timeout: Optional[float] = None) -> "pyodbc.Connection":
@@ -323,7 +314,7 @@ class EnhancedSQLServerConnectionPool:
                             conn = self._create_new_tracked_connection()
                             self._checked_out.add(id(conn))
                             return conn
-                        except (RuntimeError, TypeError, ValueError, OSError) as e:
+                        except Exception as e:
                             logger.warning(f"Failed to create new connection: {str(e)}")
                             # Continue to wait for available connection
 
@@ -354,11 +345,11 @@ class EnhancedSQLServerConnectionPool:
         if self._is_connection_valid(conn):
             try:
                 self._pool.put_nowait((conn, time.time()))
-            except (RuntimeError, TypeError, ValueError, OSError) as e:
+            except Exception as e:
                 logger.error(f"Failed to return connection to pool: {str(e)}")
                 try:
                     conn.close()
-                except (RuntimeError, TypeError, ValueError, OSError):
+                except Exception:
                     pass
                 with self._lock:
                     self._created -= 1
@@ -367,7 +358,7 @@ class EnhancedSQLServerConnectionPool:
             # Connection is dead, close it
             try:
                 conn.close()
-            except (RuntimeError, TypeError, ValueError, OSError):
+            except Exception:
                 pass
             with self._lock:
                 self._created -= 1
@@ -387,7 +378,7 @@ class EnhancedSQLServerConnectionPool:
         try:
             conn = self._get_connection(timeout)
             yield conn
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error in connection context: {str(e)}")
             raise
         finally:
@@ -442,7 +433,7 @@ class EnhancedSQLServerConnectionPool:
                 with self._lock:
                     self._metrics.total_closed += 1
                 health_status["connection_test"] = "passed"
-            except (RuntimeError, TypeError, ValueError, OSError) as e:
+            except Exception as e:
                 health_status["connection_test"] = f"failed: {str(e)}"
                 health_status["status"] = "unhealthy"
 
@@ -488,7 +479,7 @@ class EnhancedSQLServerConnectionPool:
                 conn, _ = self._pool.get_nowait()
                 conn.close()
                 closed_count += 1
-            except (RuntimeError, TypeError, ValueError, OSError):
+            except Exception:
                 pass
 
         with self._lock:

@@ -190,6 +190,8 @@ export const useItemDetailData = ({
         }
       }
 
+      await RecentItemsService.addRecent(itemData.item_code || barcode, itemData);
+
       if (offlineMode) {
         toastService.show("Offline mode enabled: showing cached item data", {
           type: "info",

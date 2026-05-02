@@ -5,7 +5,6 @@ Tests actual workflows: ERP sync, count lines, sessions, verification
 
 import logging
 import random
-from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -105,7 +104,6 @@ class TestSessionWorkflow:
             "warehouse": "Warehouse A",
             "session_type": "full_count",
             "notes": "Integration test session",
-            "client_session_id": str(uuid4()),
         }
 
         response = await async_client.post(

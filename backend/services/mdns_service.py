@@ -64,7 +64,7 @@ class MDNSService:
         except TimeoutError:
             logger.warning("mDNS registration timed out; continuing without blocking startup")
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Failed to register mDNS service: {e}", exc_info=True)
 
     async def unregister(self) -> None:
@@ -92,7 +92,7 @@ class MDNSService:
             ip = s.getsockname()[0]
             s.close()
             return ip
-        except (RuntimeError, TypeError, ValueError, OSError):
+        except Exception:
             return "127.0.0.1"
 
 

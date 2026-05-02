@@ -1,8 +1,7 @@
 export const API_TIMEOUT_MS =
   Number(process.env.EXPO_PUBLIC_API_TIMEOUT) || 10000;
-export const API_MAX_RETRIES = 5;
-export const API_RETRY_BACKOFF_MS = 1000;
-export const API_RETRY_MAX_BACKOFF_MS = 30000;
+export const API_MAX_RETRIES = 3;
+export const API_RETRY_BACKOFF_MS = 750;
 
 export const QUERY_STALE_TIME_MS = 1000 * 60 * 5;
 export const QUERY_CACHE_TIME_MS = 1000 * 60 * 30;

@@ -4,14 +4,21 @@
  */
 
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, StyleSheet, ScrollView, Alert, RefreshControl } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  RefreshControl,
+} from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { usePermission } from "../../src/hooks/usePermission";
 import {
   LoadingSpinner,
   AnimatedPressable,
-  OperationalCard,
+  GlassCard,
   ScreenContainer,
 } from "../../src/components/ui";
 import { UserFiltersBar } from "../../src/components/admin/users/UserFiltersBar";
@@ -87,9 +94,12 @@ export default function UsersScreen() {
 
         if (search) params.append("search", search);
         if (roleFilter) params.append("role", roleFilter);
-        if (activeFilter !== null) params.append("is_active", activeFilter.toString());
+        if (activeFilter !== null)
+          params.append("is_active", activeFilter.toString());
 
-        const response = await apiClient.get<UserListResponse>(`/api/users?${params.toString()}`);
+        const response = await apiClient.get<UserListResponse>(
+          `/api/users?${params.toString()}`,
+        );
 
         if (response.data) {
           // Normalize snake_case to camelCase
@@ -118,15 +128,17 @@ export default function UsersScreen() {
         setRefreshing(false);
       }
     },
-    [activeFilter, offlineMode, page, pageSize, roleFilter, search, sortBy, sortOrder]
+    [activeFilter, offlineMode, page, pageSize, roleFilter, search, sortBy, sortOrder],
   );
 
   // Check permissions
   useEffect(() => {
     if (!hasRole("admin")) {
-      Alert.alert("Access Denied", "You do not have permission to manage users.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      Alert.alert(
+        "Access Denied",
+        "You do not have permission to manage users.",
+        [{ text: "OK", onPress: () => router.back() }],
+      );
       return;
     }
     loadUsers();
@@ -163,7 +175,9 @@ export default function UsersScreen() {
     }
   };
 
-  const handleBulkAction = async (action: "activate" | "deactivate" | "delete") => {
+  const handleBulkAction = async (
+    action: "activate" | "deactivate" | "delete",
+  ) => {
     if (offlineMode) {
       Alert.alert("Offline Mode", "User management actions require a live connection.");
       return;
@@ -193,9 +207,15 @@ export default function UsersScreen() {
             });
             setSelectedUsers(new Set());
             loadUsers();
-            Alert.alert("Success", `Successfully ${actionText}d ${selectedUsers.size} user(s)`);
+            Alert.alert(
+              "Success",
+              `Successfully ${actionText}d ${selectedUsers.size} user(s)`,
+            );
           } catch (error: any) {
-            Alert.alert("Error", error.message || `Failed to ${actionText} users`);
+            Alert.alert(
+              "Error",
+              error.message || `Failed to ${actionText} users`,
+            );
           }
         },
       },
@@ -226,7 +246,7 @@ export default function UsersScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -287,7 +307,10 @@ export default function UsersScreen() {
     resetUserForm();
   };
 
-  const updateUserForm = <K extends keyof UserFormState>(key: K, value: UserFormState[K]) => {
+  const updateUserForm = <K extends keyof UserFormState>(
+    key: K,
+    value: UserFormState[K],
+  ) => {
     setUserForm((prev) => ({
       ...prev,
       [key]: value,
@@ -400,12 +423,18 @@ export default function UsersScreen() {
       <ScrollView
         style={styles.container}
         testID={loading ? "users-screen-loading" : "users-screen-ready"}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerTitle}>
-            <Ionicons name="people" size={28} color={auroraTheme.colors.primary[600]} />
+            <Ionicons
+              name="people"
+              size={28}
+              color={auroraTheme.colors.primary[600]}
+            />
             <Text style={styles.title}>User Management</Text>
           </View>
           <AnimatedPressable
@@ -419,13 +448,15 @@ export default function UsersScreen() {
         </View>
 
         {offlineMode && (
-          <OperationalCard variant="medium" style={styles.offlineNotice}>
-            <Text style={styles.offlineNoticeTitle}>User management is unavailable offline</Text>
-            <Text style={styles.offlineNoticeBody}>
-              User lists, account edits, and bulk actions require a live backend connection and are
-              not cached on this device.
+          <GlassCard variant="medium" style={styles.offlineNotice}>
+            <Text style={styles.offlineNoticeTitle}>
+              User management is unavailable offline
             </Text>
-          </OperationalCard>
+            <Text style={styles.offlineNoticeBody}>
+              User lists, account edits, and bulk actions require a live backend
+              connection and are not cached on this device.
+            </Text>
+          </GlassCard>
         )}
 
         {/* Stats */}
@@ -435,11 +466,15 @@ export default function UsersScreen() {
             <Text style={styles.statLabel}>Total Users</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{users.filter((u) => u.isActive).length}</Text>
+            <Text style={styles.statValue}>
+              {users.filter((u) => u.isActive).length}
+            </Text>
             <Text style={styles.statLabel}>Active</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{users.filter((u) => u.role === "admin").length}</Text>
+            <Text style={styles.statValue}>
+              {users.filter((u) => u.role === "admin").length}
+            </Text>
             <Text style={styles.statLabel}>Admins</Text>
           </View>
         </View>

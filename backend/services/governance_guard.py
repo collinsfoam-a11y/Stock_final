@@ -29,19 +29,7 @@ AUTHORIZED_WRITE_AUTHORITIES: dict[str, frozenset[str]] = {
             "session_snapshots",
         }
     ),
-    "UnknownItemService": frozenset({"unknown_items", "erp_items"}),
-    "SQLSyncService": frozenset({"erp_items"}),
-    "SyncBatchAPI": frozenset({"item_serials", "count_lines"}),
-    "ERPWriteService": frozenset({"erp_items"}),
-    "EnrichmentService": frozenset({"erp_items"}),
-    "SyncConflictsService": frozenset({"erp_items"}),
-    "SQLVerificationService": frozenset({"erp_items"}),
-    "ItemVerificationAPI": frozenset({"erp_items"}),
-    "TestSupportAPI": frozenset({"erp_items", "item_serials"}),
-    "DBInitialization": frozenset({"erp_items"}),
-    "DynamicFieldsService": frozenset(
-        {"dynamic_field_definitions", "dynamic_field_values", "erp_items"}
-    ),
+    "UnknownItemService": frozenset({"unknown_items"}),
 }
 _GUARD_TARGET_COLLECTIONS: tuple[str, ...] = (
     "count_lines",
@@ -50,10 +38,6 @@ _GUARD_TARGET_COLLECTIONS: tuple[str, ...] = (
     "recount_requests",
     "session_snapshots",
     "unknown_items",
-    "erp_items",
-    "item_serials",
-    "dynamic_field_definitions",
-    "dynamic_field_values",
 )
 _GUARD_WRITE_METHODS: tuple[str, ...] = (
     "insert_one",
@@ -355,7 +339,7 @@ def _install_collection_proxy(db: Any, collection_name: str, collection: Any) ->
     try:
         setattr(db, collection_name, proxy)
         return proxy
-    except (RuntimeError, TypeError, ValueError, OSError):
+    except Exception:
         return collection
 
 

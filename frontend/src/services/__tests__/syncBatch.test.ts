@@ -1,7 +1,6 @@
 jest.mock("../httpClient", () => ({
   __esModule: true,
   default: {
-    post: jest.fn(),
     defaults: {
       headers: {
         common: {},
@@ -106,11 +105,8 @@ jest.mock("../control-plane/sessionControlPlane", () => ({
 jest.mock("../offline/offlineStorage", () => ({
   getOfflineQueue: jest.fn(),
   getCacheStats: jest.fn(),
-  cacheSession: jest.fn(),
-  getMappedSessionId: jest.fn(),
   removeManyFromOfflineQueue: jest.fn(),
   removeSessionFromCache: jest.fn(),
-  setSessionIdMapping: jest.fn(),
   updateOfflineQueueItem: jest.fn(),
   updateQueueItemRetries: jest.fn(),
 }));
@@ -130,8 +126,6 @@ import * as offlineStorage from "../offline/offlineStorage";
 import * as sessionControlPlane from "../control-plane/sessionControlPlane";
 // eslint-disable-next-line import/first
 import { useNetworkStore } from "../../store/networkStore";
-// eslint-disable-next-line import/first
-import apiClient from "../httpClient";
 
 const flushAsyncWork = async (iterations = 5) => {
   for (let index = 0; index < iterations; index += 1) {
@@ -145,11 +139,8 @@ const mockOperations = [
     type: "count_line",
     data: {
       session_id: "sess_1",
-      location_id: "showroom",
-      floor_id: "F1",
-      rack_id: "R1",
       item_code: "ITEM001",
-      counted_qty: 10,
+      verified_qty: 10,
     },
     timestamp: "2023-01-01T00:00:00Z",
   },
@@ -172,7 +163,7 @@ describe("syncOfflineQueue", () => {
     (offlineStorage.updateOfflineQueueItem as jest.Mock).mockResolvedValue(undefined);
   });
 
-  it("should sync count-line records from offline queue", async () => {
+  it("should sync operations from offline queue", async () => {
     const result = await syncOfflineQueue();
 
     expect(sessionControlPlane.syncPendingSessionEvents).toHaveBeenCalled();
@@ -182,14 +173,13 @@ describe("syncOfflineQueue", () => {
     // Verify API called with transformed operations
     expect(api.syncBatch).toHaveBeenCalledWith([
       expect.objectContaining({
-        record_id: "op_1",
-        client_record_id: "op_1",
-        session_id: "sess_1",
-        location_id: "showroom",
-        floor_id: "F1",
-        rack_id: "R1",
-        item_code: "ITEM001",
-        verified_qty: 10,
+        id: "op_1",
+        type: "count_line",
+        data: expect.objectContaining({
+          session_id: "sess_1",
+          item_code: "ITEM001",
+          verified_qty: 10,
+        }),
       }),
     ]);
 
@@ -233,29 +223,6 @@ describe("syncOfflineQueue", () => {
         status: "blocked_conflict",
       })
     );
-  });
-
-  it("should not synthesize location ids from warehouse or floor aliases", async () => {
-    (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue([
-      {
-        ...mockOperations[0],
-        data: {
-          session_id: "sess_1",
-          warehouse: "showroom",
-          floor: "F1",
-          rack_id: "R1",
-          item_code: "ITEM001",
-          counted_qty: 10,
-        },
-      },
-    ]);
-
-    const result = await syncOfflineQueue();
-
-    expect(api.syncBatch).not.toHaveBeenCalled();
-    expect(result.failed).toBe(1);
-    expect(result.errors[0]?.error).toContain("Missing location_id");
-    expect(offlineStorage.removeManyFromOfflineQueue).not.toHaveBeenCalled();
   });
 
   it("should preserve repeated failures for manual review instead of deleting them", async () => {
@@ -331,7 +298,6 @@ describe("initializeSyncService", () => {
     (api.syncBatch as jest.Mock).mockResolvedValue({
       results: [{ id: "op_1", success: true }],
     });
-    (offlineStorage.getMappedSessionId as jest.Mock).mockResolvedValue(null);
     useNetworkStore.setState({
       isOnline: false,
       connectionType: "unknown",

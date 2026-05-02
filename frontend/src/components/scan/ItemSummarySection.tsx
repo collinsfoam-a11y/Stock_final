@@ -14,14 +14,6 @@ import {
   spacing,
 } from "@/theme/unified";
 
-const SURFACE_CARD = "#ffffff";
-const SURFACE_BORDER = "#d9e5e2";
-const SURFACE_MUTED = "#f8fafc";
-const ACCENT = "#0f766e";
-const ACCENT_SOFT = "#ecf7f4";
-const TEXT_STRONG = "#0f172a";
-const TEXT_MUTED = "#475569";
-
 interface BundleComponent {
   item_code?: string;
   item_name?: string;
@@ -67,11 +59,11 @@ const getSourceBadgeStyle = (source?: string) => {
     default:
       return {
         container: {
-          backgroundColor: ACCENT_SOFT,
-          borderColor: "#cae8df",
+          backgroundColor: colors.success[50],
+          borderColor: colors.success[200],
         },
-        text: { color: ACCENT },
-        label: "ERP",
+        text: { color: colors.success[700] },
+        label: "MongoDB",
       };
   }
 };
@@ -264,7 +256,6 @@ export function ItemSummarySection({
       {item.is_misplaced ? <MisplacedBanner expectedLocation={item.expected_location} /> : null}
 
       <ModernCard style={styles.itemCard}>
-        <Text style={styles.cardKicker}>Selected item</Text>
         <ItemHeader
           item={item}
           sourceBadge={sourceBadge}
@@ -315,9 +306,7 @@ export function ItemSummarySection({
 
 const styles = StyleSheet.create({
   misplacedBadge: {
-    backgroundColor: colors.error[50],
-    borderWidth: 1,
-    borderColor: colors.error[200],
+    backgroundColor: colors.error[500],
     flexDirection: "row",
     alignItems: "center",
     padding: spacing.md,
@@ -330,13 +319,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   misplacedTitle: {
-    color: colors.error[800],
+    color: colors.white,
     fontWeight: fontWeight.bold,
     fontSize: fontSize.sm,
     marginBottom: 2,
   },
   misplacedText: {
-    color: colors.error[700],
+    color: colors.white,
     fontSize: fontSize.xs,
   },
   misplacedHighlight: {
@@ -346,18 +335,6 @@ const styles = StyleSheet.create({
   itemCard: {
     marginBottom: spacing.lg,
     padding: spacing.md,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: SURFACE_BORDER,
-    backgroundColor: SURFACE_CARD,
-  },
-  cardKicker: {
-    fontSize: fontSize.xs,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    color: ACCENT,
-    marginBottom: spacing.sm,
   },
   itemHeader: {
     flexDirection: "row",
@@ -367,7 +344,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: borderRadius.md,
-    backgroundColor: ACCENT_SOFT,
+    backgroundColor: colors.primary[50],
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.md,
@@ -389,7 +366,7 @@ const styles = StyleSheet.create({
   },
   itemName: {
     flex: 1,
-    fontSize: fontSize.lg,
+    fontSize: fontSize.md,
     fontWeight: fontWeight.bold,
     marginBottom: 2,
   },
@@ -405,27 +382,21 @@ const styles = StyleSheet.create({
   },
   itemCode: {
     fontSize: fontSize.sm,
-    color: TEXT_MUTED,
+    color: colors.neutral[500],
   },
   detailsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     borderTopWidth: 1,
-    borderTopColor: "#eef2f4",
+    borderTopColor: colors.neutral[100],
     paddingTop: spacing.md,
-    gap: spacing.sm,
+    justifyContent: "space-between",
   },
   detailItem: {
-    flex: 1,
-    minWidth: 120,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.md,
-    alignItems: "flex-start",
-    marginBottom: spacing.xs,
-    borderRadius: 16,
-    backgroundColor: SURFACE_MUTED,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
+    minWidth: "30%",
+    paddingHorizontal: spacing.xs,
+    alignItems: "center",
+    marginBottom: spacing.sm,
   },
   detailHeader: {
     flexDirection: "row",
@@ -435,40 +406,35 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: fontSize.xs,
-    color: TEXT_MUTED,
+    color: colors.neutral[500],
     marginBottom: 2,
   },
   detailValue: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.semiBold,
-    color: TEXT_STRONG,
+    color: colors.neutral[900],
   },
   barcodeSection: {
-    alignItems: "flex-start",
+    alignItems: "center",
     marginBottom: spacing.md,
-    padding: spacing.md,
-    borderRadius: 18,
-    backgroundColor: SURFACE_CARD,
-    borderWidth: 1,
-    borderColor: SURFACE_BORDER,
   },
   barcodeLabel: {
     fontSize: fontSize.sm,
-    color: TEXT_MUTED,
+    color: semanticColors.text.secondary,
     marginBottom: 4,
   },
   barcodeValue: {
     fontSize: fontSize.xl,
     fontWeight: fontWeight.bold,
-    color: TEXT_STRONG,
+    color: semanticColors.text.primary,
     letterSpacing: 1,
   },
   bundleSection: {
-    backgroundColor: SURFACE_CARD,
+    backgroundColor: colors.primary[50],
     padding: spacing.md,
-    borderRadius: 18,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: SURFACE_BORDER,
+    borderColor: colors.primary[100],
     marginBottom: spacing.lg,
   },
   bundleTitle: {
@@ -476,7 +442,6 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
     marginBottom: spacing.sm,
     textTransform: "uppercase",
-    color: ACCENT,
   },
   bundleItem: {
     flexDirection: "row",
@@ -491,13 +456,12 @@ const styles = StyleSheet.create({
   bundleItemQty: {
     fontSize: fontSize.sm,
     fontWeight: fontWeight.bold,
-    color: ACCENT,
   },
   staleWarning: {
     flexDirection: "row",
-    backgroundColor: SURFACE_CARD,
+    backgroundColor: colors.warning[50],
     padding: spacing.md,
-    borderRadius: 18,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.warning[200],
     marginBottom: spacing.lg,

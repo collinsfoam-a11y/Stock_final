@@ -105,7 +105,7 @@ class RefreshTokenService:
 
             # Clean up old tokens
             await self._cleanup_expired_tokens()
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error storing refresh token: {str(e)}")
 
     async def _cleanup_expired_tokens(self):
@@ -116,7 +116,7 @@ class RefreshTokenService:
             )
             if result.deleted_count > 0:
                 logger.info(f"Cleaned up {result.deleted_count} expired/revoked tokens")
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error cleaning up tokens: {str(e)}")
 
     async def verify_refresh_token(self, token: str) -> Optional[dict[str, Optional[Any]]]:
@@ -162,7 +162,7 @@ class RefreshTokenService:
                         {"_id": stored_token["_id"]},
                         {"$set": {"token_hash": token_hash}, "$unset": {"token": ""}},
                     )
-                except (RuntimeError, TypeError, ValueError, OSError):
+                except Exception:
                     logger.debug("Failed to migrate refresh token to hashed storage")
 
             return payload
@@ -182,7 +182,7 @@ class RefreshTokenService:
                 {"$set": {"revoked": True, "revoked_at": datetime.now(timezone.utc)}},
             )
             return result.modified_count > 0
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error revoking token: {str(e)}")
             return False
 
@@ -200,7 +200,7 @@ class RefreshTokenService:
                 {"$set": update_data},
             )
             return result.modified_count
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Error revoking user tokens: {str(e)}")
             return 0
 
@@ -219,7 +219,7 @@ class RefreshTokenService:
         if username:
             try:
                 user_profile = await self.db.users.find_one({"username": username})
-            except (RuntimeError, TypeError, ValueError, OSError) as fetch_error:
+            except Exception as fetch_error:
                 logger.warning(
                     f"Failed to fetch user profile for refresh response: {str(fetch_error)}"
                 )

@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.auth.dependencies import get_current_user
-from backend.services.auth_service import AuthService, get_auth_service
+from backend.db.runtime import get_db
+from backend.services.activity_log import ActivityLogService
 from backend.utils.auth_utils import verify_password
 from backend.utils.api_utils import sanitize_for_logging
 
@@ -29,18 +30,18 @@ class PinVerificationRequest(BaseModel):
 
 @router.post("/supervisor/verify-pin")
 async def verify_supervisor_pin(
-    request: PinVerificationRequest,
-    current_user: dict = Depends(get_current_user),
-    auth_service: AuthService = Depends(get_auth_service),
+    request: PinVerificationRequest, current_user: dict = Depends(get_current_user)
 ):
     """
     Verify supervisor PIN and log the override action.
     """
+    db = get_db()
+
     # H7 fix: Rate limit PIN attempts per supervisor (max 5 attempts per 5 minutes)
     from datetime import datetime as dt, timezone as tz
 
     rate_key = f"pin_attempts:{request.supervisor_username}"
-    attempts_doc = await auth_service.get_rate_limit(rate_key)
+    attempts_doc = await db.rate_limits.find_one({"_id": rate_key})
     now = dt.now(tz.utc)
     window_seconds = 300  # 5 minutes
     max_attempts = 5
@@ -65,7 +66,7 @@ async def verify_supervisor_pin(
             attempts_doc = None
 
     # 1. Fetch the supervisor user
-    supervisor = await auth_service.get_user(request.supervisor_username)
+    supervisor = await db.users.find_one({"username": request.supervisor_username})
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found")
 
@@ -88,17 +89,28 @@ async def verify_supervisor_pin(
             _safe_log_value(request.supervisor_username),
         )
         # Record failed attempt (MM7 fix: use datetime for TTL compatibility)
-        await auth_service.increment_rate_limit_attempt(rate_key, now)
+        await db.rate_limits.update_one(
+            {"_id": rate_key},
+            {
+                "$inc": {"count": 1},
+                "$setOnInsert": {"window_start": now},
+            },
+            upsert=True,
+        )
         # Ensure window_start is reset if the doc was just created fresh
         if not attempts_doc:
-            await auth_service.set_rate_limit_window_start(rate_key, now)
+            await db.rate_limits.update_one(
+                {"_id": rate_key},
+                {"$set": {"window_start": now}},
+            )
         raise HTTPException(status_code=401, detail="Invalid PIN")
 
     # Reset rate limit on success
-    await auth_service.delete_rate_limit(rate_key)
+    await db.rate_limits.delete_one({"_id": rate_key})
 
     # 4. Log the Activity
-    await auth_service.log_activity(
+    log_service = ActivityLogService(db)
+    await log_service.log_activity(
         user=request.supervisor_username,
         role=supervisor.get("role"),
         action=f"override_{request.action}",

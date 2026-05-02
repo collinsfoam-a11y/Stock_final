@@ -31,8 +31,6 @@ export interface CreateSessionParams {
   location_type?: string;
   location_name?: string;
   rack_no?: string;
-  client_session_id?: string;
-  offline_id?: string;
 }
 
 export interface SessionStatsResponse {
@@ -52,8 +50,6 @@ type SessionCreateConfig = {
   locationType?: string;
   locationName?: string;
   rackNo?: string;
-  clientSessionId?: string;
-  offlineId?: string;
 };
 
 type SessionPage = {
@@ -68,56 +64,6 @@ type SessionPage = {
   };
 };
 
-const CLIENT_SESSION_ID_STORAGE_KEY = "client_session_id";
-let memoryClientSessionId: string | null = null;
-
-const getSessionIdentityStorage = () => {
-  if (typeof globalThis === "undefined" || !("localStorage" in globalThis)) {
-    return null;
-  }
-  return globalThis.localStorage;
-};
-
-const generateClientSessionId = () => {
-  const runtimeCrypto = globalThis.crypto as Crypto | undefined;
-  if (typeof runtimeCrypto?.randomUUID === "function") {
-    return runtimeCrypto.randomUUID();
-  }
-  return generateUUID();
-};
-
-export const ensureSessionIdentity = (requestedId?: string): string => {
-  const explicitId = requestedId?.trim();
-  const storage = getSessionIdentityStorage();
-
-  if (explicitId) {
-    storage?.setItem(CLIENT_SESSION_ID_STORAGE_KEY, explicitId);
-    memoryClientSessionId = explicitId;
-    return explicitId;
-  }
-
-  const storedId = storage?.getItem(CLIENT_SESSION_ID_STORAGE_KEY)?.trim();
-  if (storedId) {
-    memoryClientSessionId = storedId;
-    return storedId;
-  }
-
-  if (memoryClientSessionId) {
-    return memoryClientSessionId;
-  }
-
-  const generatedId = generateClientSessionId();
-  storage?.setItem(CLIENT_SESSION_ID_STORAGE_KEY, generatedId);
-  memoryClientSessionId = generatedId;
-  return generatedId;
-};
-
-const clearSessionIdentity = () => {
-  const storage = getSessionIdentityStorage();
-  storage?.removeItem(CLIENT_SESSION_ID_STORAGE_KEY);
-  memoryClientSessionId = null;
-};
-
 const normalizeCreateSessionParams = (
   params: string | CreateSessionParams
 ): SessionCreateConfig => ({
@@ -126,8 +72,6 @@ const normalizeCreateSessionParams = (
   locationType: typeof params !== "string" ? params.location_type : undefined,
   locationName: typeof params !== "string" ? params.location_name : undefined,
   rackNo: typeof params !== "string" ? params.rack_no : undefined,
-  clientSessionId: typeof params !== "string" ? params.client_session_id : undefined,
-  offlineId: typeof params !== "string" ? params.offline_id : undefined,
 });
 
 const paginateSessions = (sessions: Session[], page: number, pageSize: number): SessionPage => {
@@ -281,7 +225,7 @@ export const shouldAttemptReadApi = () => {
  * Creates a session online when possible and falls back to an offline placeholder otherwise.
  */
 export const createSession = async (params: string | CreateSessionParams) => {
-  const config = ensureSessionCreateIdentity(normalizeCreateSessionParams(params));
+  const config = normalizeCreateSessionParams(params);
   const networkStatus = getNetworkStatus();
 
   log.debug("Create session requested", {

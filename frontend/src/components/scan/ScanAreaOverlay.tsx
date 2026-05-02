@@ -12,7 +12,6 @@ import {
   Platform,
 } from "react-native";
 import { SCANNER_CONFIG } from "../../config/scannerConfig";
-import { createShadow } from "@/theme/shadowUtils";
 
 interface ScanAreaOverlayProps {
   /** Whether scanning is currently active */
@@ -336,7 +335,10 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     ...Platform.select({
       ios: {
-        ...createShadow({ color: "#3B82F6", offsetX: 0, offsetY: 0, opacity: 0.8, radius: 4 }),
+        shadowColor: "#3B82F6",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 4,
       },
       android: {
         elevation: 4,

@@ -281,7 +281,7 @@ class EnterpriseAuditService:
 
             return str(result.inserted_id)
 
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Failed to create audit log: {e}")
             # Audit failures should not break the application
             return ""

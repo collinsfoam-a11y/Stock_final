@@ -10,21 +10,14 @@ from backend.utils.api_utils import sanitize_for_logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    Query,
-    Request,
-    WebSocket,
-    WebSocketDisconnect,
-)
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from pymongo.errors import PyMongoError
 
 from backend.auth.dependencies import get_current_user, require_role
+from backend.db.runtime import get_db
 from backend.services.advanced_report_service import (
+    AdvancedReportService,
     ColumnConfig,
     ReportConfig,
     ReportFilters,
@@ -34,14 +27,6 @@ from backend.services.projection_read_service import ProjectionReadService
 from backend.utils.tracing import trace_dashboard_query, trace_span
 
 logger = logging.getLogger(__name__)
-REALTIME_ERROR_TYPES = (
-    PyMongoError,
-    RuntimeError,
-    TypeError,
-    ValueError,
-    KeyError,
-    AttributeError,
-)
 
 realtime_dashboard_router = APIRouter(prefix="/dashboard", tags=["Real-Time Dashboard"])
 
@@ -125,10 +110,8 @@ class ConnectionManager:
         if user_id in self.active_connections:
             try:
                 await self.active_connections[user_id].send_json(message)
-            except REALTIME_ERROR_TYPES as e:
-                logger.error(
-                    "Error sending to {user_id}: %s", sanitize_for_logging(str(e))
-                )
+            except Exception as e:
+                logger.error("Error sending to {user_id}: %s", sanitize_for_logging(str(e)))
                 self.disconnect(user_id)
 
     async def broadcast(self, message: dict):
@@ -136,7 +119,7 @@ class ConnectionManager:
         for user_id, connection in self.active_connections.items():
             try:
                 await connection.send_json(message)
-            except REALTIME_ERROR_TYPES:
+            except Exception:
                 disconnected.append(user_id)
 
         for user_id in disconnected:
@@ -187,10 +170,11 @@ def parse_filters(filters: Optional[dict[str, Any]]) -> ReportFilters:
 async def get_available_columns(
     report_type: str = Query(default="verified_items"),
     current_user: dict = Depends(get_current_user),
-    dashboard_service: RealtimeDashboardService = Depends(get_realtime_dashboard_service),
 ):
     """Get available columns for the dashboard table."""
-    columns = dashboard_service.get_column_config(report_type)
+    db = get_db()
+    service = AdvancedReportService(db)
+    columns = service.get_column_config(report_type)
 
     return {
         "success": True,
@@ -203,14 +187,14 @@ async def get_available_columns(
 @trace_dashboard_query("verified_items_table")
 async def get_dashboard_data(
     config: DashboardConfig,
-    http_request: Request,
     current_user: dict = Depends(get_current_user),
-    dashboard_service: RealtimeDashboardService = Depends(get_realtime_dashboard_service),
 ):
     """Get dashboard data with configured columns and filters."""
-    request_id = get_request_id(http_request.headers)
+    db = get_db()
+    service = AdvancedReportService(db)
+
     # Build column configs from preferences
-    default_columns = dashboard_service.get_column_config("verified_items")
+    default_columns = service.get_column_config("verified_items")
     if config.columns:
         visibility_map = {pref.field: pref.visible for pref in config.columns}
         for col in default_columns:
@@ -222,27 +206,14 @@ async def get_dashboard_data(
         filters=parse_filters(config.filters),
         columns=default_columns,
         sort_by=config.sort_by,
-        sort_order=(
-            SortOrder(config.sort_order) if config.sort_order else SortOrder.DESC
-        ),
+        sort_order=SortOrder(config.sort_order) if config.sort_order else SortOrder.DESC,
         page=config.page,
         page_size=config.page_size,
         include_aggregations=True,
         include_summary=True,
     )
 
-    result = await dashboard_service.generate_verified_items_report(report_config)
-    logger.info(
-        "dashboard_data_generated",
-        extra={
-            "request_id": request_id,
-            "user": sanitize_for_logging(str(current_user.get("username", "unknown"))),
-            "endpoint": "/dashboard/data",
-            "status": "completed",
-            "page": config.page,
-            "page_size": config.page_size,
-        },
-    )
+    result = await service.generate_verified_items_report(report_config)
 
     return result
 
@@ -252,7 +223,6 @@ async def get_dashboard_data(
 async def get_item_details(
     item_id: str,
     current_user: dict = Depends(get_current_user),
-    dashboard_service: RealtimeDashboardService = Depends(get_realtime_dashboard_service),
 ):
     """Get detailed information for a specific item."""
     db = get_db()
@@ -269,14 +239,34 @@ async def get_item_details(
 
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-    return result
+
+    # Get audit trail
+    with trace_span("mongodb.audit_logs.find", {"entity_id": item_id}):
+        audit_cursor = (
+            db.audit_logs.find({"entity_id": item_id, "entity_type": "count_line"})
+            .sort("timestamp", -1)
+            .limit(50)
+        )
+        audit_trail = await audit_cursor.to_list(50)
+
+    # Clean up for response
+    item.pop("_id", None)
+    for log in audit_trail:
+        log.pop("_id", None)
+        if "timestamp" in log and isinstance(log["timestamp"], datetime):
+            log["timestamp"] = log["timestamp"].isoformat()
+
+    return {
+        "success": True,
+        "item": item,
+        "audit_trail": audit_trail,
+    }
 
 
 @realtime_dashboard_router.get("/stats")
 @trace_dashboard_query("dashboard_stats")
 async def get_dashboard_stats(
     current_user: dict = Depends(get_current_user),
-    dashboard_service: RealtimeDashboardService = Depends(get_realtime_dashboard_service),
 ):
     """Get real-time dashboard statistics."""
     db = get_db()
@@ -390,7 +380,6 @@ async def get_dashboard_stats(
 @realtime_dashboard_router.get("/filters/options")
 async def get_filter_options(
     current_user: dict = Depends(get_current_user),
-    dashboard_service: RealtimeDashboardService = Depends(get_realtime_dashboard_service),
 ):
     """Get available filter options (distinct values)."""
     db = get_db()
@@ -434,7 +423,8 @@ async def dashboard_stream(
     """Server-Sent Events stream for real-time dashboard updates."""
 
     async def event_generator():
-        service = get_realtime_dashboard_service()
+        db = get_db()
+        service = AdvancedReportService(db)
 
         while True:
             try:
@@ -452,9 +442,7 @@ async def dashboard_stream(
                     {
                         "type": "data",
                         "payload": result,
-                        "timestamp": datetime.now(timezone.utc)
-                        .replace(tzinfo=None)
-                        .isoformat(),
+                        "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
                     }
                 )
                 yield f"data: {data}\n\n"
@@ -464,15 +452,13 @@ async def dashboard_stream(
             except asyncio.CancelledError:
                 logger.info("SSE stream cancelled")
                 break
-            except REALTIME_ERROR_TYPES as e:
+            except Exception as e:
                 logger.error("SSE stream error: %s", sanitize_for_logging(str(e)))
                 error_data = json.dumps(
                     {
                         "type": "error",
                         "message": str(e),
-                        "timestamp": datetime.now(timezone.utc)
-                        .replace(tzinfo=None)
-                        .isoformat(),
+                        "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
                     }
                 )
                 yield f"data: {error_data}\n\n"
@@ -494,7 +480,7 @@ async def dashboard_stream(
 # ==========================================
 
 
-async def _ws_get_report(service: RealtimeDashboardService, config: DashboardConfig) -> dict:
+async def _ws_get_report(service: AdvancedReportService, config: DashboardConfig) -> dict:
     """Generate report for WebSocket response."""
     return await service.generate_verified_items_report(
         ReportConfig(
@@ -503,9 +489,7 @@ async def _ws_get_report(service: RealtimeDashboardService, config: DashboardCon
             page=config.page,
             page_size=config.page_size,
             sort_by=config.sort_by,
-            sort_order=(
-                SortOrder(config.sort_order) if config.sort_order else SortOrder.DESC
-            ),
+            sort_order=SortOrder(config.sort_order) if config.sort_order else SortOrder.DESC,
         )
     )
 
@@ -513,35 +497,27 @@ async def _ws_get_report(service: RealtimeDashboardService, config: DashboardCon
 async def _ws_handle_config_update(
     data: dict,
     user_id: str,
-    service: RealtimeDashboardService,
+    service: AdvancedReportService,
 ) -> DashboardConfig:
     """Handle config_update message, return new config."""
     new_config = DashboardConfig(**data.get("config", {}))
     manager.set_config(user_id, new_config)
     result = await _ws_get_report(service, new_config)
-    await manager.send_personal_message(
-        {"type": "data_update", "payload": result}, user_id
-    )
+    await manager.send_personal_message({"type": "data_update", "payload": result}, user_id)
     return new_config
 
 
 async def _ws_handle_refresh(
     user_id: str,
-    service: RealtimeDashboardService,
+    service: AdvancedReportService,
     config: DashboardConfig,
 ) -> None:
     """Handle refresh message."""
     result = await _ws_get_report(service, config)
-    await manager.send_personal_message(
-        {"type": "data_update", "payload": result}, user_id
-    )
+    await manager.send_personal_message({"type": "data_update", "payload": result}, user_id)
 
 
-async def _ws_handle_get_item_details(
-    data: dict,
-    user_id: str,
-    service: RealtimeDashboardService,
-) -> None:
+async def _ws_handle_get_item_details(data: dict, user_id: str, db) -> None:
     """Handle get_item_details message."""
     item_id = data.get("item_id")
     if item_id:
@@ -557,29 +533,27 @@ async def _ws_handle_get_item_details(
 
         item = await db.count_lines.find_one({"id": item_id})
         if item:
-            await manager.send_personal_message(
-                {"type": "item_details", "payload": item}, user_id
-            )
+            item.pop("_id", None)
+            await manager.send_personal_message({"type": "item_details", "payload": item}, user_id)
 
 
 # ==========================================
 # WebSocket Endpoint
 async def _ws_handle_auto_refresh(
-    user_id: str, service: RealtimeDashboardService, config: DashboardConfig
+    user_id: str, service: AdvancedReportService, config: DashboardConfig
 ) -> None:
     """Handle auto-refresh on timeout."""
     if config.auto_refresh:
         result = await _ws_get_report(service, config)
-        await manager.send_personal_message(
-            {"type": "auto_refresh", "payload": result}, user_id
-        )
+        await manager.send_personal_message({"type": "auto_refresh", "payload": result}, user_id)
 
 
 async def _ws_process_message(
     data: dict,
     user_id: str,
-    service: RealtimeDashboardService,
+    service: AdvancedReportService,
     config: DashboardConfig,
+    db,
 ) -> DashboardConfig:
     """Process WebSocket message and return (potentially updated) config."""
     message_type = data.get("type")
@@ -589,7 +563,7 @@ async def _ws_process_message(
     elif message_type == "refresh":
         await _ws_handle_refresh(user_id, service, config)
     elif message_type == "get_item_details":
-        await _ws_handle_get_item_details(data, user_id, service)
+        await _ws_handle_get_item_details(data, user_id, db)
 
     return config
 
@@ -606,15 +580,14 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
     await manager.connect(websocket, user_id)
 
     try:
-        service = get_realtime_dashboard_service()
+        db = get_db()
+        service = AdvancedReportService(db)
         config = DashboardConfig()
         manager.set_config(user_id, config)
 
         # Send initial data
         result = await _ws_get_report(service, config)
-        await manager.send_personal_message(
-            {"type": "initial_data", "payload": result}, user_id
-        )
+        await manager.send_personal_message({"type": "initial_data", "payload": result}, user_id)
 
         # Listen for client messages
         while True:
@@ -622,13 +595,13 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                 data = await asyncio.wait_for(
                     websocket.receive_json(), timeout=config.refresh_interval_seconds
                 )
-                config = await _ws_process_message(data, user_id, service, config)
+                config = await _ws_process_message(data, user_id, service, config, db)
             except asyncio.TimeoutError:
                 await _ws_handle_auto_refresh(user_id, service, config)
 
     except WebSocketDisconnect:
         manager.disconnect(user_id)
-    except REALTIME_ERROR_TYPES as e:
+    except Exception as e:
         logger.error("WebSocket error for {user_id}: %s", sanitize_for_logging(str(e)))
         manager.disconnect(user_id)
 
@@ -642,9 +615,11 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
 async def export_dashboard_csv(
     config: DashboardConfig,
     current_user: dict = Depends(require_role("supervisor", "admin")),
-    dashboard_service: RealtimeDashboardService = Depends(get_realtime_dashboard_service),
 ):
     """Export current dashboard view as CSV."""
+    db = get_db()
+    service = AdvancedReportService(db)
+
     # Get all data (no pagination for export)
     report_config = ReportConfig(
         report_type="verified_items",
@@ -652,12 +627,10 @@ async def export_dashboard_csv(
         page=1,
         page_size=10000,  # Max export
         sort_by=config.sort_by,
-        sort_order=(
-            SortOrder(config.sort_order) if config.sort_order else SortOrder.DESC
-        ),
+        sort_order=SortOrder(config.sort_order) if config.sort_order else SortOrder.DESC,
     )
 
-    result = await dashboard_service.generate_verified_items_report(report_config)
+    result = await service.generate_verified_items_report(report_config)
     columns = [ColumnConfig(**col) for col in result["columns"]]
 
     # Apply visibility from config
@@ -667,7 +640,7 @@ async def export_dashboard_csv(
             if col.field in visibility_map:
                 col.visible = visibility_map[col.field]
 
-    csv_content = await dashboard_service.export_to_csv(result["data"], columns)
+    csv_content = await service.export_to_csv(result["data"], columns, erpnext_import=True)
 
     return StreamingResponse(
         iter([csv_content]),
@@ -685,21 +658,21 @@ async def export_dashboard_csv(
 async def export_dashboard_xlsx(
     config: DashboardConfig,
     current_user: dict = Depends(require_role("supervisor", "admin")),
-    dashboard_service: RealtimeDashboardService = Depends(get_realtime_dashboard_service),
 ):
     """Export current dashboard view as Excel."""
+    db = get_db()
+    service = AdvancedReportService(db)
+
     report_config = ReportConfig(
         report_type="verified_items",
         filters=parse_filters(config.filters),
         page=1,
         page_size=10000,
         sort_by=config.sort_by,
-        sort_order=(
-            SortOrder(config.sort_order) if config.sort_order else SortOrder.DESC
-        ),
+        sort_order=SortOrder(config.sort_order) if config.sort_order else SortOrder.DESC,
     )
 
-    result = await dashboard_service.generate_verified_items_report(report_config)
+    result = await service.generate_verified_items_report(report_config)
     columns = [ColumnConfig(**col) for col in result["columns"]]
 
     if config.columns:
@@ -708,7 +681,7 @@ async def export_dashboard_xlsx(
             if col.field in visibility_map:
                 col.visible = visibility_map[col.field]
 
-    xlsx_content = await dashboard_service.export_to_xlsx(result["data"], columns)
+    xlsx_content = await service.export_to_xlsx(result["data"], columns, erpnext_import=True)
 
     return StreamingResponse(
         iter([xlsx_content]),

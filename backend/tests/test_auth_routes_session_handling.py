@@ -7,7 +7,6 @@ from backend.api.auth_routes import (
     _ensure_single_session_for_login,
     get_active_session_record,
 )
-from backend.services.auth_service import AuthService
 from backend.utils.result import Ok
 
 
@@ -28,10 +27,7 @@ class _DummyDb:
 async def test_get_active_session_record_returns_empty_dict_when_no_active_session(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    monkeypatch.setattr(
-        "backend.api.auth_routes.get_auth_service",
-        lambda: AuthService(_DummyDb(None)),
-    )
+    monkeypatch.setattr("backend.api.auth_routes.get_db", lambda: _DummyDb(None))
     monkeypatch.setattr(
         "backend.api.auth_routes.settings",
         SimpleNamespace(AUTH_SINGLE_SESSION=True),

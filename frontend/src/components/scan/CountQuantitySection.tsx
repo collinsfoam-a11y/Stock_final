@@ -1,6 +1,12 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import React from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 import {
   colors,
@@ -9,14 +15,6 @@ import {
   semanticColors,
   spacing,
 } from "@/theme/unified";
-
-const SURFACE_CARD = "#ffffff";
-const SURFACE_BORDER = "#d9e5e2";
-const SURFACE_MUTED = "#f8fafc";
-const ACCENT = "#0f766e";
-const ACCENT_SOFT = "#ecf7f4";
-const TEXT_STRONG = "#0f172a";
-const TEXT_MUTED = "#475569";
 
 interface CountQuantitySectionProps {
   isSplitMode: boolean;
@@ -56,15 +54,27 @@ export function CountQuantitySection({
   onToggleSplitMode,
 }: CountQuantitySectionProps) {
   return (
-    <View style={styles.sectionCard}>
+    <>
       <View style={styles.header}>
         <View style={styles.headerText}>
-          <Text style={[styles.sectionTitle, { color: TEXT_STRONG, marginBottom: 2 }]}>Count</Text>
+          <Text
+            style={[
+              styles.sectionTitle,
+              { color: semanticColors.text.primary, marginBottom: 2 },
+            ]}
+          >
+            Count
+          </Text>
           <View style={styles.metaRow}>
             <View style={styles.modeBadge}>
               <Text style={styles.modeBadgeText}>{uomLabel} Mode</Text>
             </View>
-            <Text style={[styles.sectionMeta, { color: TEXT_MUTED, fontSize: 12 }]}>
+            <Text
+              style={[
+                styles.sectionMeta,
+                { color: semanticColors.text.secondary, fontSize: 12 },
+              ]}
+            >
               Unit: {uomUnit}
             </Text>
           </View>
@@ -74,9 +84,14 @@ export function CountQuantitySection({
           <Ionicons
             name={isSplitMode ? "grid" : "grid-outline"}
             size={14}
-            color={isSplitMode ? colors.white : ACCENT}
+            color={isSplitMode ? colors.white : colors.primary[600]}
           />
-          <Text style={[styles.toggleButtonText, { color: isSplitMode ? colors.white : ACCENT }]}>
+          <Text
+            style={[
+              styles.toggleButtonText,
+              { color: isSplitMode ? colors.white : colors.primary[600] },
+            ]}
+          >
             {isSplitMode ? "Piece Count" : "Split Count"}
           </Text>
         </TouchableOpacity>
@@ -87,7 +102,9 @@ export function CountQuantitySection({
           style={[
             styles.qtyButton,
             {
-              backgroundColor: isSplitMode ? "#e2e8f0" : "#dfe8e5",
+              backgroundColor: isSplitMode
+                ? colors.neutral[100]
+                : colors.neutral[200],
             },
           ]}
           onPress={onDecrement}
@@ -97,7 +114,9 @@ export function CountQuantitySection({
           <Ionicons
             name="remove"
             size={28}
-            color={isSplitMode ? colors.neutral[300] : TEXT_STRONG}
+            color={
+              isSplitMode ? colors.neutral[300] : semanticColors.text.primary
+            }
           />
         </TouchableOpacity>
 
@@ -105,8 +124,8 @@ export function CountQuantitySection({
           style={[
             styles.qtyDisplay,
             {
-              backgroundColor: SURFACE_CARD,
-              borderColor: isSplitMode ? "#cbd5e1" : "#bfe0d6",
+              backgroundColor: semanticColors.background.paper,
+              borderColor: colors.primary[200],
             },
           ]}
         >
@@ -114,20 +133,19 @@ export function CountQuantitySection({
             style={[
               styles.qtyText,
               {
-                color: isSplitMode ? ACCENT : TEXT_STRONG,
+                color: isSplitMode
+                  ? colors.primary[700]
+                  : semanticColors.text.primary,
               },
             ]}
             value={quantity}
             onChangeText={onQuantityChange}
             editable={!isSplitMode}
-            autoFocus={!isSplitMode}
             onBlur={onQuantityBlur}
             keyboardType={isWeightBasedUOM ? "decimal-pad" : "number-pad"}
-            returnKeyType="done"
             selectTextOnFocus
             placeholder="0"
             placeholderTextColor={semanticColors.text.disabled}
-            accessibilityLabel="Counted quantity"
           />
         </View>
 
@@ -135,14 +153,20 @@ export function CountQuantitySection({
           style={[
             styles.qtyButton,
             {
-              backgroundColor: isSplitMode ? "#e2e8f0" : ACCENT,
+              backgroundColor: isSplitMode
+                ? colors.neutral[100]
+                : colors.primary[600],
             },
           ]}
           onPress={onIncrement}
           disabled={isSplitMode}
           activeOpacity={0.7}
         >
-          <Ionicons name="add" size={28} color={isSplitMode ? colors.neutral[300] : colors.white} />
+          <Ionicons
+            name="add"
+            size={28}
+            color={isSplitMode ? colors.neutral[300] : colors.white}
+          />
         </TouchableOpacity>
       </View>
 
@@ -161,7 +185,9 @@ export function CountQuantitySection({
               <TextInput
                 style={styles.splitInput}
                 value={value}
-                onChangeText={(nextValue) => onSplitCountChange(index, nextValue)}
+                onChangeText={(nextValue) =>
+                  onSplitCountChange(index, nextValue)
+                }
                 onBlur={() => onSplitCountBlur(index)}
                 keyboardType={isWeightBasedUOM ? "decimal-pad" : "number-pad"}
                 placeholder="0"
@@ -172,7 +198,11 @@ export function CountQuantitySection({
                 onPress={() => onRemoveSplitCount(index)}
                 style={styles.removeButton}
               >
-                <Ionicons name="remove-circle" size={24} color={colors.error[400]} />
+                <Ionicons
+                  name="remove-circle"
+                  size={24}
+                  color={colors.error[400]}
+                />
               </TouchableOpacity>
             </View>
           ))}
@@ -187,23 +217,20 @@ export function CountQuantitySection({
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.clearButton} onPress={onClearSplitCounts}>
-              <Ionicons name="trash-outline" size={20} color={colors.error[500]} />
+              <Ionicons
+                name="trash-outline"
+                size={20}
+                color={colors.error[500]}
+              />
             </TouchableOpacity>
           </View>
         </View>
       )}
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionCard: {
-    padding: spacing.lg,
-    backgroundColor: SURFACE_CARD,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: SURFACE_BORDER,
-  },
   actionRow: {
     flexDirection: "row",
     gap: spacing.sm,
@@ -211,7 +238,7 @@ const styles = StyleSheet.create({
   },
   addSplitButton: {
     alignItems: "center",
-    backgroundColor: ACCENT,
+    backgroundColor: colors.primary[600],
     borderRadius: borderRadius.md,
     flexDirection: "row",
     gap: spacing.xs,
@@ -223,8 +250,8 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     alignItems: "center",
-    backgroundColor: SURFACE_MUTED,
-    borderColor: "#e2e8f0",
+    backgroundColor: colors.neutral[100],
+    borderColor: colors.neutral[200],
     borderRadius: borderRadius.md,
     borderWidth: 1,
     height: 44,
@@ -239,7 +266,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   helperText: {
-    color: TEXT_MUTED,
+    color: semanticColors.text.secondary,
     fontSize: 12,
     fontWeight: "500",
     marginBottom: spacing.sm,
@@ -250,15 +277,15 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   modeBadge: {
-    backgroundColor: ACCENT_SOFT,
-    borderColor: "#cae8df",
+    backgroundColor: colors.primary[50],
+    borderColor: colors.primary[100],
     borderRadius: 4,
     borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
   modeBadgeText: {
-    color: ACCENT,
+    color: colors.primary[700],
     fontSize: 10,
     fontWeight: fontWeight.bold,
     textTransform: "uppercase",
@@ -266,16 +293,16 @@ const styles = StyleSheet.create({
   qtyButton: {
     alignItems: "center",
     borderRadius: borderRadius.lg,
-    height: 60,
+    height: 56,
     justifyContent: "center",
-    width: 60,
+    width: 56,
   },
   qtyDisplay: {
     alignItems: "center",
     borderRadius: borderRadius.lg,
     borderWidth: 2,
     flex: 1,
-    height: 60,
+    height: 56,
     justifyContent: "center",
     marginHorizontal: spacing.sm,
   },
@@ -303,8 +330,8 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semiBold,
   },
   splitCountContainer: {
-    backgroundColor: SURFACE_MUTED,
-    borderColor: "#e2e8f0",
+    backgroundColor: semanticColors.background.card,
+    borderColor: semanticColors.border.default,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     marginTop: spacing.sm,
@@ -312,23 +339,23 @@ const styles = StyleSheet.create({
   },
   splitIndexBadge: {
     alignItems: "center",
-    backgroundColor: ACCENT_SOFT,
+    backgroundColor: colors.neutral[100],
     borderRadius: 16,
     height: 32,
     justifyContent: "center",
     width: 32,
   },
   splitIndexText: {
-    color: ACCENT,
+    color: colors.neutral[600],
     fontSize: 12,
     fontWeight: fontWeight.bold,
   },
   splitInput: {
-    backgroundColor: SURFACE_CARD,
-    borderColor: "#d6e3ea",
+    backgroundColor: semanticColors.background.paper,
+    borderColor: semanticColors.border.default,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    color: TEXT_STRONG,
+    color: semanticColors.text.primary,
     flex: 1,
     fontSize: 18,
     fontWeight: fontWeight.semiBold,
@@ -343,7 +370,7 @@ const styles = StyleSheet.create({
   },
   toggleButton: {
     alignItems: "center",
-    backgroundColor: ACCENT_SOFT,
+    backgroundColor: colors.neutral[100],
     borderRadius: 20,
     flexDirection: "row",
     gap: 4,

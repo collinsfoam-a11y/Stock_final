@@ -37,7 +37,6 @@ async def test_modern_batch_sync_success(async_client: AsyncClient, authenticate
     payload = {
         "records": [
             {
-                "record_id": client_record_id,
                 "client_record_id": client_record_id,
                 "session_id": session_id,
                 "location_id": "LOC-1",
@@ -64,37 +63,6 @@ async def test_modern_batch_sync_success(async_client: AsyncClient, authenticate
     assert len(data["conflicts"]) == 0
     assert len(data["errors"]) == 0
 
-    replay = await async_client.post(
-        "/api/sync/batch", json=payload, headers=authenticated_headers
-    )
-    assert replay.status_code == 200
-    assert client_record_id in replay.json()["ok"]
-    count = await test_db.count_lines.count_documents(
-        {"session_id": session_id, "idempotency_key": client_record_id}
-    )
-    assert count == 1
-
-    collision_payload = {
-        "records": [
-            {
-                **payload["records"][0],
-                "client_record_id": f"{client_record_id}-collision",
-            }
-        ],
-        "batch_id": "batch-123-collision",
-    }
-    collision = await async_client.post(
-        "/api/sync/batch", json=collision_payload, headers=authenticated_headers
-    )
-    assert collision.status_code == 200
-    collision_data = collision.json()
-    assert collision_data["ok"] == []
-    assert collision_data["conflicts"][0]["conflict_type"] == "DUPLICATE_RECORD_ID"
-    count_after_collision = await test_db.count_lines.count_documents(
-        {"session_id": session_id, "idempotency_key": client_record_id}
-    )
-    assert count_after_collision == 1
-
 
 @pytest.mark.asyncio
 async def test_modern_batch_sync_allows_same_serial_for_different_items(
@@ -111,7 +79,6 @@ async def test_modern_batch_sync_allows_same_serial_for_different_items(
     payload1 = {
         "records": [
             {
-                "record_id": "rec-1",
                 "client_record_id": "rec-1",
                 "session_id": session_1,
                 "location_id": "LOC-1",
@@ -132,7 +99,6 @@ async def test_modern_batch_sync_allows_same_serial_for_different_items(
     payload2 = {
         "records": [
             {
-                "record_id": "rec-2",
                 "client_record_id": "rec-2",
                 "session_id": session_2,
                 "location_id": "LOC-2",

@@ -12,13 +12,11 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Optional
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel
-from pymongo.errors import DuplicateKeyError, PyMongoError
 
 from backend.api.response_models import PaginatedResponse
 from backend.api.schemas import Session, SessionCreate
@@ -26,8 +24,8 @@ from backend.auth.dependencies import (
     get_current_user_async as get_current_user,
     require_role,
 )
-from backend.config import settings
 from backend.core.websocket_manager import manager
+from backend.db.runtime import get_db
 from backend.services.lock_manager import get_lock_manager
 from backend.services.canonical_inventory import (
     find_session,
@@ -46,35 +44,17 @@ from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.transaction_manager import mongo_transaction
 from backend.services.redis_service import get_redis
 from backend.services.runtime import get_refresh_token_service
-from backend.services.session_query_service import (
-    SessionQueryService,
-    get_session_query_service,
-)
 from backend.utils.api_utils import sanitize_for_logging
-from backend.utils.request_context import get_request_id
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/sessions", tags=["Session Management"])
 
 ACTIVE_SESSION_STATUSES = ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]
-SESSION_IDENTITY_TTL_HOURS_DEFAULT = 48
-
-
-def _as_session_query_service(value: Any) -> SessionQueryService:
-    if isinstance(value, SessionQueryService):
-        return value
-    return SessionQueryService(value)
-
-
-class SessionConflictError(RuntimeError):
-    """Raised when a client session identity conflicts with an existing payload."""
 
 
 def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
-    return sanitize_for_logging(
-        "" if value is None else str(value), max_length=max_length
-    )
+    return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
 
 
 def _build_session_location_key(
@@ -377,9 +357,7 @@ def _build_snapshot_queries(
     return unique_queries
 
 
-def _build_snapshot_payload_and_hash(
-    snapshot_items: list[Any],
-) -> tuple[list[dict[str, Any]], str]:
+def _build_snapshot_payload_and_hash(snapshot_items: list[Any]) -> tuple[list[dict[str, Any]], str]:
     snapshot_items.sort(key=lambda item: item.item_code)
     items_payload = [item.model_dump(mode="json") for item in snapshot_items]
     payload_str = json.dumps(items_payload, sort_keys=True, default=str)
@@ -403,14 +381,12 @@ def _build_snapshot_source_data(item: dict[str, Any]) -> dict[str, Any]:
         "uom_code",
     )
     return {
-        field: item[field]
-        for field in fields
-        if field in item and item[field] not in (None, "")
+        field: item[field] for field in fields if field in item and item[field] not in (None, "")
     }
 
 
 async def _collect_snapshot_items(
-    session_service: SessionQueryService,
+    db: AsyncIOMotorDatabase,
     warehouse: str,
     location_type: Optional[str] = None,
     location_name: Optional[str] = None,
@@ -418,7 +394,6 @@ async def _collect_snapshot_items(
 ) -> list[Any]:
     from backend.core.schemas.snapshot import SnapshotItem
 
-    session_service = _as_session_query_service(session_service)
     for query in _build_snapshot_queries(
         warehouse,
         location_type=location_type,
@@ -426,7 +401,9 @@ async def _collect_snapshot_items(
         rack_no=rack_no,
     ):
         snapshot_items: list[SnapshotItem] = []
-        for item in await session_service.list_erp_items(query):
+        items_cursor = db.erp_items.find(query)
+
+        async for item in items_cursor:
             snapshot_items.append(
                 SnapshotItem(
                     item_code=item.get("item_code", ""),
@@ -454,9 +431,7 @@ def _coerce_datetime(value: Any) -> Optional[datetime]:
 
     if isinstance(value, (int, float)):
         try:
-            return datetime.fromtimestamp(float(value), tz=timezone.utc).replace(
-                tzinfo=None
-            )
+            return datetime.fromtimestamp(float(value), tz=timezone.utc).replace(tzinfo=None)
         except (OverflowError, OSError, ValueError):
             return None
 
@@ -476,9 +451,7 @@ def _coerce_datetime(value: Any) -> Optional[datetime]:
 
 
 def _max_datetime(*values: Any) -> Optional[datetime]:
-    candidates = [
-        candidate for candidate in (_coerce_datetime(v) for v in values) if candidate
-    ]
+    candidates = [candidate for candidate in (_coerce_datetime(v) for v in values) if candidate]
     return max(candidates) if candidates else None
 
 
@@ -529,26 +502,19 @@ def _session_identifier(session: Optional[dict[str, Any]]) -> str:
 
 
 def _session_owner(session: Optional[dict[str, Any]]) -> str:
-    return str(
-        (session or {}).get("staff_user") or (session or {}).get("user_id") or ""
-    )
+    return str((session or {}).get("staff_user") or (session or {}).get("user_id") or "")
 
 
 async def _get_session_line_summary(
-    session_service: SessionQueryService,
+    db: AsyncIOMotorDatabase,
     session_id: str,
 ) -> dict[str, Any]:
-    session_service = _as_session_query_service(session_service)
-    lines = await get_session_count_lines(session_service.database, session_id)
+    lines = await get_session_count_lines(db, session_id)
     active_lines = [line for line in lines if not is_superseded_count_line(line)]
     item_count = len(active_lines)
-    verified_count = sum(
-        1 for line in active_lines if is_count_line_effectively_reviewed(line)
-    )
+    verified_count = sum(1 for line in active_lines if is_count_line_effectively_reviewed(line))
     total_variance = sum(float(line.get("variance") or 0.0) for line in active_lines)
-    damage_items = int(
-        sum(float(line.get("damaged_qty") or 0.0) for line in active_lines)
-    )
+    damage_items = int(sum(float(line.get("damaged_qty") or 0.0) for line in active_lines))
     return {
         "lines": active_lines,
         "item_count": item_count,
@@ -593,8 +559,7 @@ def _build_session_detail_from_doc(
         verified_count=int(line_summary.get("verified_count", 0) or 0),
         total_items=int(line_summary.get("item_count", 0) or 0),
         total_variance=float(
-            session.get("total_variance", line_summary.get("total_variance", 0.0))
-            or 0.0
+            session.get("total_variance", line_summary.get("total_variance", 0.0)) or 0.0
         ),
         finalization_status=session.get("finalization_status"),
         finalized_at=finalized_at,
@@ -734,17 +699,12 @@ def _derive_next_action(
         return WorkflowNextAction.FOLLOW_UP_INACTIVE_SESSION
     if workflow_stage in {WorkflowStage.COUNTING, WorkflowStage.RECONCILING}:
         return WorkflowNextAction.MONITOR_ACTIVE_COUNT
-    if session_status in {
-        CanonicalSessionStatus.CLOSED,
-        CanonicalSessionStatus.COMPLETED,
-    }:
+    if session_status in {CanonicalSessionStatus.CLOSED, CanonicalSessionStatus.COMPLETED}:
         return WorkflowNextAction.CLOSE_SESSION
     return WorkflowNextAction.NONE
 
 
-async def _build_sessions_analytics_payload(
-    session_service: SessionQueryService,
-) -> dict[str, Any]:
+async def _build_sessions_analytics_payload(db: AsyncIOMotorDatabase) -> dict[str, Any]:
     """Build the aggregated session analytics payload used by admin/supervisor dashboards."""
     pipeline = [
         {
@@ -793,19 +753,17 @@ async def _build_sessions_analytics_payload(
         }
     ]
 
-    overall = await session_service.aggregate_sessions(pipeline, length=1)
-    by_date = await session_service.aggregate_sessions(date_pipeline, length=None)
-    by_warehouse = await session_service.aggregate_sessions(warehouse_pipeline, length=None)
-    by_staff = await session_service.aggregate_sessions(staff_pipeline, length=None)
+    overall = await db.sessions.aggregate(pipeline).to_list(1)
+    by_date = await db.sessions.aggregate(date_pipeline).to_list(None)  # type: ignore[arg-type]
+    by_warehouse = await db.sessions.aggregate(warehouse_pipeline).to_list(None)
+    by_staff = await db.sessions.aggregate(staff_pipeline).to_list(None)
 
     overall_summary = overall[0] if overall else {}
 
     return {
         "overall": overall_summary,
         "sessions_by_date": {item["_id"]: item["count"] for item in by_date},
-        "variance_by_warehouse": {
-            item["_id"]: item["total_variance"] for item in by_warehouse
-        },
+        "variance_by_warehouse": {item["_id"]: item["total_variance"] for item in by_warehouse},
         "items_by_staff": {item["_id"]: item["total_items"] for item in by_staff},
         "total_sessions": overall_summary.get("total_sessions", 0),
     }
@@ -818,37 +776,6 @@ def _validate_session_create_request(
     if not warehouse:
         raise HTTPException(status_code=400, detail="Warehouse name cannot be empty")
 
-    raw_client_session_id = str(session_data.client_session_id or "").strip()
-    if not raw_client_session_id:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "code": "CLIENT_SESSION_ID_REQUIRED",
-                "message": "client_session_id is required for session creation",
-            },
-        )
-    try:
-        parsed_client_session_id = UUID(raw_client_session_id)
-    except (TypeError, ValueError) as exc:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "code": "INVALID_CLIENT_SESSION_ID",
-                "message": "client_session_id must be a UUIDv4 value",
-            },
-        ) from exc
-    if parsed_client_session_id.version != 4:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "code": "INVALID_CLIENT_SESSION_ID",
-                "message": "client_session_id must be a UUIDv4 value",
-            },
-        )
-    session_data.client_session_id = str(parsed_client_session_id)
-    if session_data.offline_id:
-        session_data.offline_id = str(session_data.offline_id).strip() or None
-
     return (
         warehouse,
         *_parse_session_location_parts(
@@ -860,105 +787,12 @@ def _validate_session_create_request(
     )
 
 
-def _session_identity_ttl_hours() -> int:
-    try:
-        value = int(
-            getattr(settings, "SESSION_CLIENT_ID_TTL_HOURS", SESSION_IDENTITY_TTL_HOURS_DEFAULT)
-            or SESSION_IDENTITY_TTL_HOURS_DEFAULT
-        )
-    except (TypeError, ValueError):
-        return SESSION_IDENTITY_TTL_HOURS_DEFAULT
-    return max(1, min(value, SESSION_IDENTITY_TTL_HOURS_DEFAULT))
-
-
-def _session_identity_payload(
-    *,
-    warehouse: Optional[str],
-    session_type: Optional[str],
-    location_type: Optional[str],
-    location_name: Optional[str],
-    rack_no: Optional[str],
-) -> dict[str, Optional[str]]:
-    return {
-        "warehouse": str(warehouse or "").strip() or None,
-        "type": str(session_type or "STANDARD").strip().upper() or "STANDARD",
-        "location_type": _normalize_location_value(location_type),
-        "location_name": _normalize_location_value(location_name),
-        "rack_no": _normalize_location_value(rack_no),
-    }
-
-
-def _session_identity_payload_from_doc(session: dict[str, Any]) -> dict[str, Optional[str]]:
-    return _session_identity_payload(
-        warehouse=session.get("warehouse"),
-        session_type=session.get("type"),
-        location_type=session.get("location_type"),
-        location_name=session.get("location_name"),
-        rack_no=session.get("rack_no"),
-    )
-
-
-def _session_identity_key(username: str, client_session_id: str, now: datetime) -> str:
-    ttl_seconds = _session_identity_ttl_hours() * 3600
-    bucket = int(now.timestamp() // ttl_seconds)
-    return f"{username}:{client_session_id}:{bucket}"
-
-
-def _session_client_identity_filter(
-    session_data: SessionCreate,
-    username: str,
-) -> Optional[dict[str, Any]]:
-    client_session_id = str(session_data.client_session_id or "").strip()
-    if not client_session_id:
-        return None
-
-    ttl_hours = _session_identity_ttl_hours()
-    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=ttl_hours)
-
-    return {
-        "staff_user": username,
-        "client_session_id": client_session_id,
-        "created_at": {"$gte": cutoff},
-    }
-
-
-async def _find_existing_session_for_client_identity(
-    session_service: SessionQueryService,
-    session_data: SessionCreate,
-    username: str,
-    expected_payload: dict[str, Optional[str]],
-) -> Optional[dict[str, Any]]:
-    session_service = _as_session_query_service(session_service)
-    identity_filter = _session_client_identity_filter(session_data, username)
-    if not identity_filter:
-        return None
-
-    existing_session = await session_service.find_session(identity_filter)
-    if not existing_session:
-        return None
-
-    try:
-        await increment_session_duplicate_attempts()
-    except (RuntimeError, TypeError, ValueError):
-        logger.debug("Failed to publish session duplicate metric", exc_info=True)
-
-    existing_payload = _session_identity_payload_from_doc(existing_session)
-    if existing_payload != expected_payload:
-        raise SessionConflictError("SESSION_ID_COLLISION")
-
-    if "_id" in existing_session and "id" not in existing_session:
-        existing_session["id"] = str(existing_session["_id"])
-        del existing_session["_id"]
-    return existing_session
-
-
 async def _find_existing_session_for_warehouse(
-    session_service: SessionQueryService,
+    db: AsyncIOMotorDatabase,
     username: str,
     warehouse: str,
 ) -> Optional[dict[str, Any]]:
-    session_service = _as_session_query_service(session_service)
-    existing_session = await session_service.find_session(
+    existing_session = await db.sessions.find_one(
         {
             "staff_user": username,
             "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]},
@@ -1018,9 +852,7 @@ async def _find_active_session_for_location(
 
 async def _close_existing_user_sessions(db: AsyncIOMotorDatabase, username: str) -> None:
     # Governance: auto-close is forbidden outside canonical finalize path.
-    logger.info(
-        "Skipping auto-close for existing sessions (user=%s)", _safe_log_value(username)
-    )
+    logger.info("Skipping auto-close for existing sessions (user=%s)", _safe_log_value(username))
 
 
 async def _revoke_existing_refresh_tokens(username: str) -> None:
@@ -1056,14 +888,13 @@ def _build_new_session(
     )
 
 
-async def _get_latest_session_config_version_id(
-    session_service: SessionQueryService,
-) -> str:
-    return await session_service.get_latest_config_version_id()
+async def _get_latest_session_config_version_id(db: AsyncIOMotorDatabase) -> str:
+    latest_config = await db.config_versions.find_one(sort=[("created_at", -1)])
+    return latest_config["id"] if latest_config else "LEGACY_NO_VERSION"
 
 
 async def _persist_session_snapshot(
-    session_service: SessionQueryService,
+    db: AsyncIOMotorDatabase,
     session: Session,
     warehouse: str,
     location_type: Optional[str],
@@ -1075,7 +906,7 @@ async def _persist_session_snapshot(
     from backend.core.schemas.snapshot import SessionSnapshot
 
     snapshot_items = await _collect_snapshot_items(
-        session_service,
+        db,
         warehouse,
         location_type=location_type,
         location_name=location_name,
@@ -1093,7 +924,7 @@ async def _persist_session_snapshot(
         item_count=len(snapshot_items),
         config_version_id=session.config_version_id,
     )
-    lifecycle_service = session_service.lifecycle_service()
+    lifecycle_service = SessionLifecycleService(db)
     await lifecycle_service.record_session_snapshot(
         session_id=session.id,
         snapshot_doc=snapshot.model_dump(),
@@ -1104,12 +935,12 @@ async def _persist_session_snapshot(
 
 
 async def _insert_session_documents(
-    session_service: SessionQueryService,
+    db: AsyncIOMotorDatabase,
     session: Session,
     username: str,
     db_session: Optional[Any] = None,
 ) -> None:
-    lifecycle_service = session_service.lifecycle_service()
+    lifecycle_service = SessionLifecycleService(db)
     session_doc = session.model_dump()
     session_doc["session_id"] = session.id
     await lifecycle_service.create_session(
@@ -1130,12 +961,7 @@ def _active_workflow_session_query() -> dict[str, Any]:
     return {
         "status": {"$in": ACTIVE_SESSION_STATUSES},
         "$and": [
-            {
-                "$or": [
-                    {"closed_at": {"$exists": False}},
-                    {"closed_at": {"$in": [None, ""]}},
-                ]
-            },
+            {"$or": [{"closed_at": {"$exists": False}}, {"closed_at": {"$in": [None, ""]}}]},
             {
                 "$or": [
                     {"finalized_at": {"$exists": False}},
@@ -1147,9 +973,10 @@ def _active_workflow_session_query() -> dict[str, Any]:
 
 
 async def _fetch_active_workflow_sessions(
-    session_service: SessionQueryService,
+    db: AsyncIOMotorDatabase,
 ) -> list[dict[str, Any]]:
-    return await session_service.list_active_workflow_sessions(_active_workflow_session_query())
+    cursor = db.sessions.find(_active_workflow_session_query()).sort("last_heartbeat", -1)
+    return await cursor.to_list(length=200)
 
 
 def _collect_session_metadata(
@@ -1168,13 +995,13 @@ def _collect_session_metadata(
 
 
 async def _fetch_session_counts_by_id(
-    session_service: SessionQueryService,
+    db: AsyncIOMotorDatabase,
     session_ids: list[str],
 ) -> dict[str, dict[str, Any]]:
     if not session_ids:
         return {}
 
-    rows = await session_service.aggregate_count_lines(
+    rows = await db.count_lines.aggregate(
         [
             {"$match": {"session_id": {"$in": session_ids}}},
             {
@@ -1182,29 +1009,20 @@ async def _fetch_session_counts_by_id(
                     "_id": "$session_id",
                     "items_counted": {"$sum": 1},
                     "reviewed_items": {
-                        "$sum": {
-                            "$cond": [
-                                {"$in": ["$status", ["approved", "locked"]]},
-                                1,
-                                0,
-                            ]
-                        }
+                        "$sum": {"$cond": [{"$in": ["$status", ["approved", "locked"]]}, 1, 0]}
                     },
-                    "last_counted_at": {
-                        "$max": {"$ifNull": ["$updated_at", "$counted_at"]}
-                    },
+                    "last_counted_at": {"$max": {"$ifNull": ["$updated_at", "$counted_at"]}},
                 }
             },
-        ],
-        length=max(len(session_ids), 1),
-    )
+        ]
+    ).to_list(length=max(len(session_ids), 1))
     return {row["_id"]: row for row in rows if isinstance(row.get("_id"), str)}
 
 
 async def _fetch_pending_reviews_by_user(
-    session_service: SessionQueryService,
+    db: AsyncIOMotorDatabase,
 ) -> dict[str, dict[str, Any]]:
-    rows = await session_service.aggregate_count_lines(
+    rows = await db.count_lines.aggregate(
         [
             {
                 "$match": {
@@ -1216,24 +1034,19 @@ async def _fetch_pending_reviews_by_user(
                 "$group": {
                     "_id": "$counted_by",
                     "pending_approvals": {"$sum": 1},
-                    "pending_review_since": {
-                        "$min": {"$ifNull": ["$submitted_at", "$counted_at"]}
-                    },
-                    "last_pending_at": {
-                        "$max": {"$ifNull": ["$updated_at", "$counted_at"]}
-                    },
+                    "pending_review_since": {"$min": {"$ifNull": ["$submitted_at", "$counted_at"]}},
+                    "last_pending_at": {"$max": {"$ifNull": ["$updated_at", "$counted_at"]}},
                 }
             },
-        ],
-        length=500,
-    )
+        ]
+    ).to_list(length=500)
     return {row["_id"]: row for row in rows if isinstance(row.get("_id"), str)}
 
 
 async def _fetch_recounts_by_user(
-    session_service: SessionQueryService,
+    db: AsyncIOMotorDatabase,
 ) -> dict[str, dict[str, Any]]:
-    rows = await session_service.aggregate_count_lines(
+    rows = await db.count_lines.aggregate(
         [
             {"$match": OPEN_RECOUNT_MATCH},
             {
@@ -1258,9 +1071,8 @@ async def _fetch_recounts_by_user(
                     },
                 }
             },
-        ],
-        length=500,
-    )
+        ]
+    ).to_list(length=500)
     return {row["_id"]: row for row in rows if isinstance(row.get("_id"), str)}
 
 
@@ -1283,10 +1095,20 @@ def _group_sessions_by_user(
 
 
 async def _fetch_users_by_username(
-    session_service: SessionQueryService,
+    db: AsyncIOMotorDatabase,
     candidate_usernames: set[str],
 ) -> dict[str, dict[str, Any]]:
-    return await session_service.find_users_by_username(candidate_usernames)
+    if not candidate_usernames:
+        return {}
+
+    user_docs = await db.users.find({"username": {"$in": sorted(candidate_usernames)}}).to_list(
+        length=len(candidate_usernames)
+    )
+    return {
+        user.get("username"): user
+        for user in user_docs
+        if isinstance(user.get("username"), str) and user.get("username")
+    }
 
 
 def _build_user_workflow_summary(
@@ -1305,25 +1127,17 @@ def _build_user_workflow_summary(
     )
     active_session = user_sessions[0] if user_sessions else None
     active_session_id = (
-        (active_session.get("id") or active_session.get("session_id"))
-        if active_session
-        else None
+        (active_session.get("id") or active_session.get("session_id")) if active_session else None
     )
-    session_meta = (
-        session_meta_by_id.get(active_session_id, {}) if active_session_id else {}
-    )
-    session_counts = (
-        session_counts_by_id.get(active_session_id, {}) if active_session_id else {}
-    )
+    session_meta = session_meta_by_id.get(active_session_id, {}) if active_session_id else {}
+    session_counts = session_counts_by_id.get(active_session_id, {}) if active_session_id else {}
 
     pending_info = pending_by_user.get(username, {})
     recount_info = recount_by_user.get(username, {})
     items_counted = int(session_counts.get("items_counted", 0) or 0)
     reviewed_items = int(session_counts.get("reviewed_items", 0) or 0)
     total_items = int(session_meta.get("total_items", 0) or 0)
-    progress_percent = (
-        round((items_counted / total_items) * 100, 1) if total_items > 0 else 0.0
-    )
+    progress_percent = round((items_counted / total_items) * 100, 1) if total_items > 0 else 0.0
     pending_review_since = _coerce_datetime(
         pending_info.get("pending_review_since") or pending_info.get("last_pending_at")
     )
@@ -1365,9 +1179,7 @@ def _build_user_workflow_summary(
         role=user_doc.get("role") or "staff",
         workflow_stage=workflow_stage,
         presence_status=presence_status,
-        active_session_id=(
-            active_session_id if isinstance(active_session_id, str) else None
-        ),
+        active_session_id=active_session_id if isinstance(active_session_id, str) else None,
         session_status=session_status,
         session_type=session_meta.get("type"),
         warehouse=session_meta.get("warehouse"),
@@ -1425,8 +1237,8 @@ async def get_sessions(
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     status: Optional[str] = Query(None, description="Filter by status"),
     user_id: Optional[str] = Query(None, description="Filter by user"),
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
-    session_service: SessionQueryService = Depends(get_session_query_service),
 ) -> PaginatedResponse[Session]:
     """
     Get all sessions with pagination
@@ -1464,9 +1276,13 @@ async def get_sessions(
         # Regular users only see their own sessions
         query["staff_user"] = current_user["username"]
 
-    sessions, total = await session_service.list_sessions_page(
-        query, page=page, page_size=page_size, sort_field="started_at"
-    )
+    # Get total count
+    total = await db.sessions.count_documents(query)
+
+    # Get paginated sessions
+    skip = (page - 1) * page_size
+    sessions_cursor = db.sessions.find(query).sort("started_at", -1).skip(skip).limit(page_size)
+    sessions = await sessions_cursor.to_list(length=page_size)
 
     logger.debug(
         "Fetched sessions page",
@@ -1502,12 +1318,10 @@ async def get_sessions(
 @router.post("", response_model=Session)
 async def create_session(
     session_data: SessionCreate,
-    http_request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
-    session_service: SessionQueryService = Depends(get_session_query_service),
 ) -> Session:
     """Create a new session with snapshot/config persistence and single-session enforcement."""
-    request_id = get_request_id(http_request.headers)
     warehouse, location_type, location_name, rack_no = _validate_session_create_request(
         session_data
     )
@@ -1532,19 +1346,16 @@ async def create_session(
             )
 
     existing_session = await _find_existing_session_for_warehouse(
-        session_service, current_user["username"], warehouse
+        db, current_user["username"], warehouse
     )
     if existing_session:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "ACTIVE_SESSION_EXISTS",
-                "message": "An active session already exists for this warehouse",
-                "session_id": existing_session.get("id"),
-            },
+        logger.info(
+            "Existing open session found for warehouse; returning existing session",
+            extra={"warehouse": warehouse, "session_id": existing_session.get("id")},
         )
+        return Session(**existing_session)
 
-    await _close_existing_user_sessions(session_service, current_user["username"])
+    await _close_existing_user_sessions(db, current_user["username"])
     await _revoke_existing_refresh_tokens(current_user["username"])
 
     session = _build_new_session(
@@ -1598,8 +1409,8 @@ async def create_session(
 async def get_active_sessions(
     user_id: Optional[str] = Query(None, description="Filter by user"),
     rack_id: Optional[str] = Query(None, description="Filter by rack"),
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
-    session_service: SessionQueryService = Depends(get_session_query_service),
 ) -> list[SessionDetail]:
     """
     Get all active sessions
@@ -1612,18 +1423,8 @@ async def get_active_sessions(
     query: dict[str, Any] = {
         "status": {"$in": ACTIVE_SESSION_STATUSES},
         "$and": [
-            {
-                "$or": [
-                    {"finalized_at": {"$exists": False}},
-                    {"finalized_at": {"$in": [None, ""]}},
-                ]
-            },
-            {
-                "$or": [
-                    {"closed_at": {"$exists": False}},
-                    {"closed_at": {"$in": [None, ""]}},
-                ]
-            },
+            {"$or": [{"finalized_at": {"$exists": False}}, {"finalized_at": {"$in": [None, ""]}}]},
+            {"$or": [{"closed_at": {"$exists": False}}, {"closed_at": {"$in": [None, ""]}}]},
         ],
     }
 
@@ -1637,13 +1438,12 @@ async def get_active_sessions(
         query["rack_no"] = rack_id
 
     # Get sessions
-    sessions = await session_service.list_sessions(query, sort_field="started_at", limit=100)
+    sessions_cursor = db.sessions.find(query).sort("started_at", -1)
+    sessions = await sessions_cursor.to_list(length=100)
 
     result = []
     for session in sessions:
-        line_summary = await _get_session_line_summary(
-            session_service, _session_identifier(session)
-        )
+        line_summary = await _get_session_line_summary(db, _session_identifier(session))
         result.append(_build_session_detail_from_doc(session, line_summary))
 
     return result
@@ -1651,17 +1451,17 @@ async def get_active_sessions(
 
 @router.get("/user-workflows", response_model=list[UserWorkflowSummary])
 async def get_user_workflows(
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(require_role("supervisor", "admin")),
-    session_service: SessionQueryService = Depends(get_session_query_service),
 ) -> list[UserWorkflowSummary]:
     """Return the currently running workflow grouped by user."""
     del current_user  # Authorization is enforced by the dependency above.
 
-    active_sessions = await _fetch_active_workflow_sessions(session_service)
+    active_sessions = await _fetch_active_workflow_sessions(db)
     session_ids, session_meta_by_id = _collect_session_metadata(active_sessions)
-    session_counts_by_id = await _fetch_session_counts_by_id(session_service, session_ids)
-    pending_by_user = await _fetch_pending_reviews_by_user(session_service)
-    recount_by_user = await _fetch_recounts_by_user(session_service)
+    session_counts_by_id = await _fetch_session_counts_by_id(db, session_ids)
+    pending_by_user = await _fetch_pending_reviews_by_user(db)
+    recount_by_user = await _fetch_recounts_by_user(db)
     sessions_by_user, candidate_usernames = _group_sessions_by_user(
         active_sessions,
         pending_by_user,
@@ -1670,7 +1470,7 @@ async def get_user_workflows(
     if not candidate_usernames:
         return []
 
-    user_by_username = await _fetch_users_by_username(session_service, candidate_usernames)
+    user_by_username = await _fetch_users_by_username(db, candidate_usernames)
     results = [
         _build_user_workflow_summary(
             username,
@@ -1689,8 +1489,8 @@ async def get_user_workflows(
 
 @router.get("/analytics")
 async def get_sessions_analytics(
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
-    session_service: SessionQueryService = Depends(get_session_query_service),
 ) -> dict[str, Any]:
     """Get aggregated session analytics for supervisor/admin dashboards."""
     if current_user["role"] not in ["supervisor", "admin"]:
@@ -1709,31 +1509,28 @@ async def get_sessions_analytics(
 @router.get("/{session_id}", response_model=SessionDetail)
 async def get_session_detail(
     session_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
-    session_service: SessionQueryService = Depends(get_session_query_service),
 ) -> SessionDetail:
     """Get detailed session information"""
-    session = await find_session(session_service.database, session_id)
+    session = await find_session(db, session_id)
 
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
     # Check access
-    if (
-        current_user["role"] != "supervisor"
-        and _session_owner(session) != current_user["username"]
-    ):
+    if current_user["role"] != "supervisor" and _session_owner(session) != current_user["username"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    line_summary = await _get_session_line_summary(session_service, session_id)
+    line_summary = await _get_session_line_summary(db, session_id)
     return _build_session_detail_from_doc(session, line_summary)
 
 
 @router.get("/{session_id}/stats", response_model=SessionStats)
 async def get_session_stats(
     session_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
-    session_service: SessionQueryService = Depends(get_session_query_service),
 ) -> SessionStats:
     """Get session statistics"""
     if session_id.startswith("offline_"):
@@ -1800,7 +1597,7 @@ async def get_session_stats(
 @router.post("/{session_id}/heartbeat", response_model=HeartbeatResponse)
 async def session_heartbeat(
     session_id: str,
-    session_service: SessionQueryService = Depends(get_session_query_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
     redis_service=Depends(get_redis),
 ) -> HeartbeatResponse:
@@ -1818,7 +1615,7 @@ async def session_heartbeat(
     lock_manager = get_lock_manager(redis_service)
 
     # Get session
-    session = await find_session(session_service.database, session_id)
+    session = await find_session(db, session_id)
 
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
@@ -1843,7 +1640,7 @@ async def session_heartbeat(
 
     # Update session last_heartbeat
     heartbeat_at = _current_utc_naive()
-    lifecycle_service = session_service.lifecycle_service()
+    lifecycle_service = SessionLifecycleService(db)
     await lifecycle_service.update_session_fields(
         session_id,
         {"last_heartbeat": heartbeat_at},
@@ -1878,7 +1675,7 @@ async def session_heartbeat(
 async def update_session_status(
     session_id: str,
     status: str = Query(..., description="New status"),
-    session_service: SessionQueryService = Depends(get_session_query_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -1886,21 +1683,16 @@ async def update_session_status(
     """
     user_id = current_user["username"]
 
-    session = await find_session(session_service.database, session_id)
+    session = await find_session(db, session_id)
 
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
     if is_session_finalized(session):
-        raise HTTPException(
-            status_code=409, detail="Finalized sessions cannot be modified"
-        )
+        raise HTTPException(status_code=409, detail="Finalized sessions cannot be modified")
 
     # Verify ownership or supervisor
-    if (
-        current_user["role"] not in {"supervisor", "admin"}
-        and _session_owner(session) != user_id
-    ):
+    if current_user["role"] not in {"supervisor", "admin"} and _session_owner(session) != user_id:
         raise HTTPException(status_code=403, detail="Not your session")
 
     requested = str(status or "").strip().upper()
@@ -1921,11 +1713,9 @@ async def update_session_status(
         "PAUSED",
         "RECONCILE",
     }:
-        raise HTTPException(
-            status_code=400, detail=f"Unsupported session status: {requested}"
-        )
+        raise HTTPException(status_code=400, detail=f"Unsupported session status: {requested}")
 
-    lifecycle_service = session_service.lifecycle_service()
+    lifecycle_service = SessionLifecycleService(db)
     current_canonical = normalize_session_status_canonical(session.get("status"))
 
     if requested_canonical == current_canonical:
@@ -1981,14 +1771,14 @@ async def update_session_status(
 
 async def _finalize_session_canonical(
     session_id: str,
-    session_service: SessionQueryService,
+    db: AsyncIOMotorDatabase,
     current_user: dict[str, Any],
     lock_manager: Any,
     *,
     note: Optional[str] = None,
 ) -> dict[str, Any]:
-    lifecycle_service = session_service.lifecycle_service()
-    session = await find_session(session_service.database, session_id)
+    lifecycle_service = SessionLifecycleService(db)
+    session = await find_session(db, session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
@@ -2000,10 +1790,7 @@ async def _finalize_session_canonical(
 
     session_status_raw = str(session.get("status") or "").strip().upper()
     session_status_canonical = normalize_session_status_canonical(session_status_raw)
-    if session_status_canonical != "REVIEW" and session_status_raw not in {
-        "REVIEW",
-        "RECONCILE",
-    }:
+    if session_status_canonical != "REVIEW" and session_status_raw not in {"REVIEW", "RECONCILE"}:
         raise HTTPException(
             status_code=409,
             detail="Session must be in REVIEW before finalization",
@@ -2016,12 +1803,9 @@ async def _finalize_session_canonical(
             actor=finalized_by,
             note=note,
         )
-    except (RuntimeError, TypeError, ValueError) as exc:
+    except Exception as exc:
         message = str(exc)
-        if (
-            "cannot be finalized" in message.lower()
-            or "unresolved count lines" in message.lower()
-        ):
+        if "cannot be finalized" in message.lower() or "unresolved count lines" in message.lower():
             raise HTTPException(status_code=409, detail=message) from exc
         if "version mismatch" in message.lower() or "concurrent" in message.lower():
             raise HTTPException(status_code=409, detail=message) from exc
@@ -2030,17 +1814,18 @@ async def _finalize_session_canonical(
     finalized_at = finalize_result["finalized_at"]
 
     if session.get("rack_no"):
-        await lock_manager.release_rack_lock(
-            session["rack_no"], session.get("staff_user")
-        )
+        await lock_manager.release_rack_lock(session["rack_no"], session.get("staff_user"))
         try:
-            await session_service.mark_rack_completed(session["rack_no"])
-        except PyMongoError:
+            await db.rack_registry.update_one(
+                {"rack_id": session["rack_no"]},
+                {"$set": {"status": "completed", "updated_at": time.time()}},
+            )
+        except Exception:
             logger.debug("Rack registry finalize mirror skipped", exc_info=True)
 
     try:
         await lock_manager.delete_session(session_id)
-    except (RuntimeError, TypeError, ValueError):
+    except Exception:
         logger.debug("Session lock deletion skipped during completion", exc_info=True)
 
     await manager.broadcast_to_session(
@@ -2068,15 +1853,13 @@ async def _finalize_session_canonical(
 
 async def _complete_session_legacy_compatible(
     session_id: str,
-    session_service: SessionQueryService,
+    db: AsyncIOMotorDatabase,
     current_user: dict[str, Any],
     lock_manager: Any,
 ) -> dict[str, Any]:
     raise HTTPException(
         status_code=410,
-        detail=(
-            "CRITICAL: /complete path is disabled. Use canonical /finalize flow only."
-        ),
+        detail=("CRITICAL: /complete path is disabled. Use canonical /finalize flow only."),
     )
 
 
@@ -2084,14 +1867,14 @@ async def _complete_session_legacy_compatible(
 async def finalize_session(
     session_id: str,
     request: Optional[SessionFinalizeRequest] = None,
-    session_service: SessionQueryService = Depends(get_session_query_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
     redis_service=Depends(get_redis),
 ) -> dict[str, Any]:
     lock_manager = get_lock_manager(redis_service)
     return await _finalize_session_canonical(
         session_id,
-        session_service,
+        db,
         current_user,
         lock_manager,
         note=request.note if request else None,
@@ -2101,7 +1884,7 @@ async def finalize_session(
 @router.post("/{session_id}/complete")
 async def complete_session(
     session_id: str,
-    session_service: SessionQueryService = Depends(get_session_query_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
     redis_service=Depends(get_redis),
 ) -> dict[str, Any]:
@@ -2111,30 +1894,30 @@ async def complete_session(
     This legacy endpoint preserves the historical owner-compatible close flow.
     """
     lock_manager = get_lock_manager(redis_service)
-    return await _complete_session_legacy_compatible(
-        session_id, session_service, current_user, lock_manager
-    )
+    return await _complete_session_legacy_compatible(session_id, db, current_user, lock_manager)
 
 
 @router.get("/user/history")
 async def get_user_session_history(
     limit: int = Query(10, ge=1, le=100),
-    session_service: SessionQueryService = Depends(get_session_query_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> list[SessionDetail]:
     """Get user's session history (completed sessions)"""
     user_id = current_user["username"]
 
-    sessions = await session_service.list_sessions(
-        {"staff_user": user_id, "status": {"$in": ["COMPLETED", "CLOSED"]}},
-        sort_field="completed_at",
-        limit=limit,
+    sessions_cursor = (
+        db.sessions.find({"staff_user": user_id, "status": {"$in": ["COMPLETED", "CLOSED"]}})
+        .sort("completed_at", -1)
+        .limit(limit)
     )
+
+    sessions = await sessions_cursor.to_list(length=limit)
 
     result = []
     for session in sessions:
         session_identifier = str(session.get("id") or session.get("session_id"))
-        line_summary = await _get_session_line_summary(session_service, session_identifier)
+        line_summary = await _get_session_line_summary(db, session_identifier)
         result.append(_build_session_detail_from_doc(session, line_summary))
 
     return result
@@ -2143,11 +1926,11 @@ async def get_user_session_history(
 @router.get("/{session_id}/integrity", response_model=SessionIntegrityResponse)
 async def check_session_integrity(
     session_id: str,
-    session_service: SessionQueryService = Depends(get_session_query_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> SessionIntegrityResponse:
     """Check if master data has changed since session start (FR-M-34)"""
-    session = await find_session(session_service.database, session_id)
+    session = await find_session(db, session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
@@ -2159,17 +1942,13 @@ async def check_session_integrity(
     else:
         start_ts = float(start_time or 0)
         # M8 fix: Use UTC timezone to match stored timestamps
-        start_dt = datetime.fromtimestamp(start_ts, tz=timezone.utc).replace(
-            tzinfo=None
-        )
+        start_dt = datetime.fromtimestamp(start_ts, tz=timezone.utc).replace(tzinfo=None)
 
     # Check for items updated after session start
-    affected_count = await session_service.count_erp_items(
-        {"updated_at": {"$gt": start_dt}}
-    )
+    affected_count = await db.erp_items.count_documents({"updated_at": {"$gt": start_dt}})
 
     # Get last sync time
-    sync_meta = await session_service.get_sync_metadata("sql_qty_sync")
+    sync_meta = await db.sync_metadata.find_one({"_id": "sql_qty_sync"})
     last_sync_ts = None
     if sync_meta and "last_sync" in sync_meta:
         ls = sync_meta["last_sync"]
@@ -2193,7 +1972,7 @@ async def check_session_integrity(
 
 @router.post("/logout-all")
 async def logout_all_sessions(
-    session_service: SessionQueryService = Depends(get_session_query_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
     refresh_token_service=Depends(get_refresh_token_service),
 ) -> dict[str, Any]:
@@ -2208,7 +1987,7 @@ async def logout_all_sessions(
     revoked_tokens = await refresh_token_service.revoke_all_user_tokens(username)
 
     # Governance: session closure is only allowed via canonical finalize endpoint.
-    active_count = await session_service.count_sessions(
+    active_count = await db.sessions.count_documents(
         {"staff_user": username, "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]}}
     )
 
@@ -2231,6 +2010,7 @@ class BulkSessionCloseRequest(BaseModel):
 @router.post("/bulk/close")
 async def bulk_close_sessions(
     request: BulkSessionCloseRequest,
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
 ):
     raise HTTPException(

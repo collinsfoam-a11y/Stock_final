@@ -3,11 +3,7 @@ import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ModernButton from "@/components/ui/ModernButton";
-import { semanticColors, spacing } from "@/theme/unified";
-
-const SURFACE_BG = "#f4f7f6";
-const SURFACE_BORDER = "#d9e5e2";
-const ACCENT = "#0f766e";
+import { colors, semanticColors, spacing } from "@/theme/unified";
 
 interface ItemSubmitBarProps {
   submitting: boolean;
@@ -39,13 +35,12 @@ export function ItemSubmitBar({
       ]}
     >
       <ModernButton
-        title={isUndoState ? `Undo (${submitCountdown}s)` : "Save & Next Scan"}
+        title={isUndoState ? `Undo (${submitCountdown}s)` : "Save & Verify"}
         onPress={isUndoState ? onCancelSubmit : onSubmit}
         loading={submitting}
         variant={isUndoState ? "danger" : "primary"}
         icon={isUndoState ? "close-circle" : "checkmark-circle"}
         fullWidth
-        style={!isUndoState ? styles.primaryButton : undefined}
       />
     </View>
   );
@@ -54,11 +49,8 @@ export function ItemSubmitBar({
 const styles = StyleSheet.create({
   container: {
     padding: spacing.lg,
-    backgroundColor: SURFACE_BG,
+    backgroundColor: colors.white,
     borderTopWidth: 1,
-    borderTopColor: SURFACE_BORDER,
-  },
-  primaryButton: {
-    backgroundColor: ACCENT,
+    borderTopColor: colors.neutral[200],
   },
 });

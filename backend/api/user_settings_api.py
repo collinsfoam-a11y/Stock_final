@@ -10,7 +10,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pymongo.errors import PyMongoError
 
 from backend.auth.dependencies import get_current_user
 from backend.core.schemas.user_settings import (
@@ -19,15 +18,13 @@ from backend.core.schemas.user_settings import (
     UserSettingsResponse,
     UserSettingsUpdate,
 )
-from backend.services.user_settings_service import (
-    UserSettingsService,
-    get_user_settings_service,
-)
+from backend.db.runtime import get_db
+from backend.models.audit import AuditEventType, AuditLogStatus
+from backend.services.audit_service import AuditService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/user", tags=["User Settings"])
-USER_SETTINGS_ERRORS = (KeyError, PyMongoError, RuntimeError, TypeError, ValueError)
 
 
 DEFAULT_SETTINGS: dict[str, Any] = UserSettings().model_dump(exclude={"updated_at"})
@@ -250,18 +247,18 @@ def _build_user_settings(doc: dict[str, Any] | None) -> UserSettings:
 @router.get("/settings", response_model=UserSettingsResponse)
 async def get_user_settings(
     current_user: dict[str, Any] = Depends(get_current_user),
-    settings_service: UserSettingsService = Depends(get_user_settings_service),
 ) -> UserSettingsResponse:
     """
     Get the current user's settings.
 
     Returns default settings if user has no custom settings stored.
     """
+    db = get_db()
     user_id = str(current_user["_id"])
 
     try:
         # Try to find existing settings
-        settings_doc = await settings_service.get_settings(user_id)
+        settings_doc = await db.user_settings.find_one({"user_id": user_id})
 
         if settings_doc:
             return UserSettingsResponse(
@@ -276,7 +273,7 @@ async def get_user_settings(
                 data=_build_user_settings(None),
             )
 
-    except USER_SETTINGS_ERRORS as e:
+    except Exception as e:
         logger.error("Error fetching settings for user {user_id}: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=500,
@@ -288,18 +285,18 @@ async def get_user_settings(
 async def update_user_settings(
     settings_update: UserSettingsUpdate,
     current_user: dict[str, Any] = Depends(get_current_user),
-    settings_service: UserSettingsService = Depends(get_user_settings_service),
 ) -> UserSettingsResponse:
     """
     Update the current user's settings.
 
     Only provided fields will be updated; others remain unchanged.
     """
+    db = get_db()
     user_id = str(current_user["_id"])
     username = current_user["username"]
 
     try:
-        existing = await settings_service.get_settings(user_id)
+        existing = await db.user_settings.find_one({"user_id": user_id})
 
         update_data = settings_update.model_dump(exclude_unset=True)
 
@@ -319,20 +316,29 @@ async def update_user_settings(
 
         update_data["updated_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
 
-        await settings_service.save_settings(
-            user_id=user_id,
-            update_data=update_data,
-            default_settings=DEFAULT_SETTINGS,
-            existing=existing,
-        )
+        if existing:
+            await db.user_settings.update_one(
+                {"user_id": user_id},
+                {"$set": update_data},
+            )
+        else:
+            new_settings = {
+                "user_id": user_id,
+                **DEFAULT_SETTINGS,
+                **update_data,
+                "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            }
+            await db.user_settings.insert_one(new_settings)
 
-        await settings_service.log_settings_update(
+        await AuditService(db).log_event(
+            event_type=AuditEventType.USER_SETTINGS_UPDATE,
+            status=AuditLogStatus.SUCCESS,
             actor_id=user_id,
             actor_username=username,
             details={"action": "settings_update", "changed_fields": changed_fields},
         )
 
-        updated_doc = await settings_service.get_settings(user_id)
+        updated_doc = await db.user_settings.find_one({"user_id": user_id})
         if not updated_doc:
             raise HTTPException(status_code=500, detail="Failed to retrieve updated settings")
 
@@ -344,7 +350,7 @@ async def update_user_settings(
 
     except HTTPException:
         raise
-    except USER_SETTINGS_ERRORS as e:
+    except Exception as e:
         logger.error("Error updating settings for user {user_id}: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=500,
@@ -355,19 +361,21 @@ async def update_user_settings(
 @router.delete("/settings", response_model=UserSettingsResponse)
 async def reset_user_settings(
     current_user: dict[str, Any] = Depends(get_current_user),
-    settings_service: UserSettingsService = Depends(get_user_settings_service),
 ) -> UserSettingsResponse:
     """
     Reset the current user's settings to defaults.
     """
+    db = get_db()
     user_id = str(current_user["_id"])
     username = current_user["username"]
 
     try:
-        deleted_count = await settings_service.reset_settings(user_id=user_id)
+        result = await db.user_settings.delete_one({"user_id": user_id})
 
-        if deleted_count > 0:
-            await settings_service.log_settings_update(
+        if result.deleted_count > 0:
+            await AuditService(db).log_event(
+                event_type=AuditEventType.USER_SETTINGS_UPDATE,
+                status=AuditLogStatus.SUCCESS,
                 actor_id=user_id,
                 actor_username=username,
                 details={"action": "reset_to_defaults"},

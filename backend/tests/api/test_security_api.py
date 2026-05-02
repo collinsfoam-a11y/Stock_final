@@ -1,10 +1,9 @@
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from backend.api.security_api import get_suspicious_activity
-from backend.services.security_dashboard_service import SecurityDashboardService
 
 
 @pytest.mark.asyncio
@@ -34,11 +33,8 @@ async def test_get_suspicious_activity_formats_ip_and_user_results():
     db = MagicMock()
     db.login_attempts.aggregate.side_effect = [ip_cursor, user_cursor]
 
-    response = await get_suspicious_activity(
-        current_user={"role": "admin"},
-        hours=24,
-        security_service=SecurityDashboardService(db),
-    )
+    with patch("backend.api.security_api.get_db", return_value=db):
+        response = await get_suspicious_activity(current_user={"role": "admin"}, hours=24)
 
     assert response["success"] is True
     assert response["data"]["suspicious_ips"][0]["ip_address"] == "10.0.0.1"

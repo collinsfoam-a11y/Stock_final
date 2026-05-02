@@ -48,6 +48,7 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
   const borderColor = useRef(new Animated.Value(0)).current;
   const labelPosition = useRef(new Animated.Value(value ? 1 : 0)).current;
   const labelScale = useRef(new Animated.Value(value ? 0.85 : 1)).current;
+  const shadowOpacity = useRef(new Animated.Value(0)).current;
 
   const handleFocus = useCallback(
     (e: any) => {
@@ -75,6 +76,11 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
           duration: 200,
           useNativeDriver: true,
         }),
+        Animated.timing(shadowOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
       ]).start();
 
       onFocus?.(e);
@@ -83,6 +89,7 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
       borderColor,
       labelPosition,
       labelScale,
+      shadowOpacity,
       hapticOnFocus,
       onFocus,
     ],
@@ -109,11 +116,16 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
           duration: 200,
           useNativeDriver: true,
         }),
+        Animated.timing(shadowOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
       ]).start();
 
       onBlur?.(e);
     },
-    [borderColor, labelPosition, labelScale, value, onBlur],
+    [borderColor, labelPosition, labelScale, shadowOpacity, value, onBlur],
   );
 
   const animatedBorderColor = borderColor.interpolate({
@@ -160,6 +172,10 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
           getVariantStyles(),
           {
             borderColor: animatedBorderColor,
+            shadowOpacity: shadowOpacity.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 0.1],
+            }),
           },
         ]}
       >
@@ -206,13 +222,10 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     position: "relative",
-    ...createShadow({
-      color: modernColors.primary[500],
-      offsetY: 4,
-      opacity: 0.1,
-      radius: 8,
-      elevation: 4,
-    }),
+    shadowColor: modernColors.primary[500],
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 4,
   },
   label: {
     position: "absolute",

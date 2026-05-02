@@ -9,7 +9,6 @@ from typing import Any, Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
-from pymongo.errors import PyMongoError
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +121,7 @@ class ActivityLogService:
 
             logger.debug(f"Activity logged: {user} - {action} - {status}")
             return str(result.inserted_id)
-        except (PyMongoError, RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Failed to log activity: {str(e)}")
             # Don't raise - logging failures shouldn't break the app
             return ""
@@ -184,7 +183,7 @@ class ActivityLogService:
                     "has_prev": page > 1,
                 },
             }
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Failed to retrieve activities: {str(e)}")
             raise
 
@@ -199,7 +198,7 @@ class ActivityLogService:
                 del activity["_id"]
 
             return activities
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Failed to retrieve user activities: {str(e)}")
             return []
 
@@ -258,7 +257,7 @@ class ActivityLogService:
                 ],
                 "top_users": [{"user": item["_id"], "count": item["count"]} for item in top_users],
             }
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(f"Failed to get statistics: {str(e)}")
             return {
                 "total": 0,

@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 
 from backend.services.pin_auth_service import PINAuthService
 from backend.utils.auth_utils import get_password_hash
-from backend.services.governance_guard import write_authority
 
 logger = logging.getLogger(__name__)
 
@@ -212,8 +211,7 @@ async def init_mock_erp_data(db):
                     "warehouse": "Main",
                 },
             ]
-            with write_authority("DBInitialization"):
-                await db.erp_items.insert_many(mock_items)
+            await db.erp_items.insert_many(mock_items)
             logging.info("Mock ERP data initialized")
     except Exception as e:
         logger.error(f"Error initializing mock ERP data: {str(e)}")

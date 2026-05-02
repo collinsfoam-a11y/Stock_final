@@ -26,7 +26,7 @@ async def _safe_service_check(obj: Any, method: str) -> dict[str, Any]:
         if asyncio.iscoroutine(res):
             return await res
         return res
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         return {"status": "unhealthy", "error": str(e)}
 
 
@@ -115,7 +115,7 @@ async def _get_health_data() -> ApiResponse[HealthCheckResponse]:
             message="Health check completed successfully",
         )
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         return ApiResponse.error_response(
             error_code="HEALTH_CHECK_FAILED",
             error_message=f"Health check failed: {str(e)}",
@@ -154,7 +154,7 @@ async def detailed_health_check(
             message="Detailed health check completed",
         )
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         return ApiResponse.error_response(
             error_code="DETAILED_HEALTH_CHECK_FAILED",
             error_message=f"Detailed health check failed: {str(e)}",

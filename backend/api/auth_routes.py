@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pymongo.errors import PyMongoError
 
 from backend.api.schemas import (
     ApiResponse,
@@ -21,6 +20,7 @@ from backend.auth.dependencies import auth_deps, get_current_user, optional_get_
 from backend.auth.permissions import get_user_permissions
 from backend.auth.cookies import set_auth_cookies
 from backend.config import settings
+from backend.db.runtime import get_db
 from backend.error_messages import get_error_message
 from backend.exceptions import (
     AuthenticationError,
@@ -30,7 +30,6 @@ from backend.exceptions import (
     RateLimitError,
 )
 from backend.models.audit import AuditEventType, AuditLogStatus
-from backend.services.auth_service import AuthService, get_auth_service
 from backend.services.otp_service import OTPService
 from backend.services.runtime import get_cache_service, get_refresh_token_service
 from backend.services.whatsapp_service import WhatsAppDeliveryError, WhatsAppService
@@ -110,7 +109,7 @@ async def reset_rate_limit(ip_address: str) -> None:
     cache_service = get_cache_service()
     try:
         await cache_service.delete("login_attempts", ip_address)
-    except (RuntimeError, TypeError, ValueError, OSError) as exc:
+    except Exception as exc:
         logger.debug(
             f"Failed to reset rate limit for {sanitize_for_logging(ip_address)}: {sanitize_for_logging(str(exc))}"
         )
@@ -118,13 +117,13 @@ async def reset_rate_limit(ip_address: str) -> None:
 
 async def find_user_by_username(username: str) -> Result[dict[str, Any], Exception]:
     """Find a user by username with error handling."""
-    auth_service = get_auth_service()
+    db = get_db()
     try:
-        user = await auth_service.get_user(username)
+        user = await db.users.find_one({"username": username})
         if not user:
             return Fail(NotFoundError("User not found"))
         return Ok(user)
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error(
             f"Error finding user {sanitize_for_logging(username)}: {sanitize_for_logging(str(e))}"
         )
@@ -182,7 +181,7 @@ async def generate_auth_tokens(
                 "expires_in": int(access_token_expires.total_seconds()),
             }
         )
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Error generating auth tokens: %s", sanitize_for_logging(str(e)))
         return Fail(DatabaseConnectionError("Error generating authentication tokens"))
 
@@ -197,12 +196,19 @@ async def get_active_session_record(username: str) -> Result[dict[str, Any], Exc
     if not getattr(settings, "AUTH_SINGLE_SESSION", True):
         return Ok({})
 
-    auth_service = get_auth_service()
+    db = get_db()
     try:
         # One active session = any valid, unrevoked refresh token
-        active_token = await auth_service.get_active_refresh_token(username)
+        active_token = await db.refresh_tokens.find_one(
+            {
+                "username": username,
+                "revoked": False,
+                "expires_at": {"$gt": datetime.now(timezone.utc)},
+            },
+            sort=[("created_at", -1)],
+        )
         return Ok(active_token or {})
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error(
             "Error checking active sessions",
             extra={"username": sanitize_for_logging(username), "error": str(e)},
@@ -253,7 +259,7 @@ async def _resolve_session_conflict(username: str) -> Result[int, Exception]:
         refresh_token_service = get_refresh_token_service()
         revoked_count = await refresh_token_service.revoke_all_user_tokens(username)
         return Ok(revoked_count)
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error(
             "Failed to resolve session conflict",
             extra={"username": sanitize_for_logging(username), "error": str(e)},
@@ -294,38 +300,65 @@ async def log_failed_login_attempt(
     username: str, ip_address: str, user_agent: Optional[str], error: str
 ) -> None:
     """Log a failed login attempt."""
-    auth_service = get_auth_service()
+    db = get_db()
     try:
-        await auth_service.insert_failed_login_attempt(username, ip_address, user_agent, error)
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+        await db.login_attempts.insert_one(
+            {
+                "username": username,
+                "ip_address": ip_address,
+                "user_agent": user_agent,
+                "success": False,
+                "timestamp": datetime.now(timezone.utc),
+                "error": error,
+            }
+        )
+    except Exception as e:
         logger.error("Failed to log login attempt: %s", sanitize_for_logging(str(e)))
 
     # Audit Log
     try:
-        await auth_service.log_audit_event(
+        from backend.services.audit_service import AuditService
+
+        audit_service = AuditService(db)
+        await audit_service.log_event(
             event_type=AuditEventType.AUTH_LOGIN_FAILED,
             status=AuditLogStatus.FAILURE,
             actor_username=username,
             ip_address=ip_address,
             details={"error": error, "user_agent": user_agent},
         )
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Failed to write audit log: %s", sanitize_for_logging(str(e)))
 
 
 async def log_successful_login(user: dict[str, Any], ip_address: str, request: Request) -> None:
     """Log a successful login."""
-    auth_service = get_auth_service()
+    db = get_db()
     try:
-        await auth_service.record_successful_login(
-            user, ip_address, request.headers.get("user-agent")
+        await db.login_attempts.insert_one(
+            {
+                "user_id": user["_id"],
+                "username": user["username"],
+                "ip_address": ip_address,
+                "user_agent": request.headers.get("user-agent"),
+                "success": True,
+                "timestamp": datetime.now(timezone.utc),
+            }
         )
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+
+        # Update last login timestamp
+        await db.users.update_one(
+            {"_id": user["_id"]}, {"$set": {"last_login_at": datetime.now(timezone.utc)}}
+        )
+    except Exception as e:
         logger.error("Failed to log successful login: %s", sanitize_for_logging(str(e)))
 
     # Audit Log
     try:
-        await auth_service.log_audit_event(
+        from backend.services.audit_service import AuditService
+
+        audit_service = AuditService(db)
+        await audit_service.log_event(
             event_type=AuditEventType.AUTH_LOGIN_SUCCESS,
             status=AuditLogStatus.SUCCESS,
             actor_id=str(user["_id"]),
@@ -333,7 +366,7 @@ async def log_successful_login(user: dict[str, Any], ip_address: str, request: R
             ip_address=ip_address,
             details={"user_agent": request.headers.get("user-agent")},
         )
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Failed to write audit log: %s", sanitize_for_logging(str(e)))
 
 
@@ -347,11 +380,11 @@ async def register(
     Register a new user.
     Requires admin authentication, UNLESS no users exist yet (bootstrap).
     """
-    auth_service = get_auth_service()
+    db = get_db()
 
     # F1 fix: Allow first-user bootstrap when no users exist at all.
     # After the first user is created, all subsequent registrations require admin auth.
-    user_count = await auth_service.count_users()
+    user_count = await db.users.count_documents({})
     is_bootstrap = user_count == 0
 
     if not is_bootstrap:
@@ -367,7 +400,7 @@ async def register(
     refresh_token_service = get_refresh_token_service()
     try:
         # Check if user already exists
-        existing_user = await auth_service.get_user(user.username)
+        existing_user = await db.users.find_one({"username": user.username})
         if existing_user:
             error = get_error_message("AUTH_USERNAME_EXISTS", {"username": user.username})
             raise HTTPException(
@@ -394,7 +427,7 @@ async def register(
             "created_at": datetime.now(timezone.utc),
         }
 
-        insert_result = await auth_service.create_user(user_dict)
+        insert_result = await auth_deps.db.users.insert_one(user_dict)
 
         user_doc = user_dict  # Renaming for consistency with original code's later use
         user_doc["_id"] = insert_result.inserted_id
@@ -440,7 +473,7 @@ async def register(
         }
     except HTTPException:
         raise
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         error = get_error_message("UNKNOWN_ERROR", {"operation": "register", "error": str(e)})
         logger.error("Registration error: %s", sanitize_for_logging(str(e)), exc_info=True)
         raise HTTPException(
@@ -463,7 +496,7 @@ async def _check_login_rate_limit(client_ip: str) -> Optional[Result[Any, Except
         if hasattr(rate_limit_result, "unwrap_err"):
             try:
                 err = rate_limit_result.unwrap_err()
-            except (RuntimeError, TypeError, ValueError, OSError) as e:
+            except Exception as e:
                 logger.error("Failed to unwrap rate limit error: %s", sanitize_for_logging(str(e)))
         if err is None:
             err = getattr(rate_limit_result, "err", None)
@@ -490,7 +523,7 @@ def _validate_user_password(
     try:
         if verify_password(credentials.password, hashed_pwd):
             return Ok(True)
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Password verification exception: %s", sanitize_for_logging(str(e)))
 
     return Fail(AuthenticationError("Incorrect username or password"))
@@ -509,6 +542,7 @@ async def login(
     Validates user credentials and returns an access token with refresh token.
     Implements rate limiting, IP tracking, and detailed logging.
     """
+    db = get_db()
     cache_service = get_cache_service()
 
     client_ip = request.client.host if request.client else ""
@@ -551,7 +585,7 @@ async def login(
             )
 
         # Handle legacy password migration (fire and forget)
-        await _migrate_legacy_password(user, credentials.password)
+        await _migrate_legacy_password(db, user, credentials.password)
 
         # Check active status
         if not user.get("is_active", True):
@@ -596,16 +630,16 @@ async def login(
 
     except HTTPException:
         raise  # Let HTTPException pass through with proper status code
-    except (RuntimeError, TypeError, ValueError, OSError, PyMongoError) as e:
+    except Exception as e:
         logger.exception("Login failed unexpectedly")
         return Fail(e)
 
 
 async def _find_user_by_fast_lookup(
-    auth_service: AuthService, pin: str, lookup_hash: str
+    db: Any, pin: str, lookup_hash: str
 ) -> Optional[dict[str, Any]]:
     """Find user via O(1) fast PIN lookup hash."""
-    found_user = await auth_service.get_user_by_pin_lookup_hash(lookup_hash)
+    found_user = await db.users.find_one({"pin_lookup_hash": lookup_hash})
     if not found_user:
         return None
     # Verify secure hash to protect against SHA-256 collision
@@ -618,19 +652,21 @@ async def _find_user_by_fast_lookup(
 
 
 async def _find_user_by_legacy_scan(
-    auth_service: AuthService, pin: str, lookup_hash: str
+    db: Any, pin: str, lookup_hash: str
 ) -> Optional[dict[str, Any]]:
     """Find user via O(N) legacy PIN scan with opportunistic migration."""
-    users_with_pin = await auth_service.list_users_with_pin_hash(limit=1000)
+    users_with_pin = await db.users.find({"pin_hash": {"$exists": True}}).to_list(length=1000)
     for user in users_with_pin:
         if verify_password(pin, user.get("pin_hash", "")):
             # Opportunistic migration for next time
             try:
-                await auth_service.set_user_pin_lookup_hash(user["_id"], lookup_hash)
+                await db.users.update_one(
+                    {"_id": user["_id"]}, {"$set": {"pin_lookup_hash": lookup_hash}}
+                )
                 logger.info(
                     f"Migrated user {sanitize_for_logging(user['username'])} to fast PIN lookup"
                 )
-            except (RuntimeError, TypeError, ValueError, OSError) as e:
+            except Exception as e:
                 logger.warning(
                     f"Failed to migrate user to fast PIN lookup: {sanitize_for_logging(str(e))}"
                 )
@@ -639,12 +675,12 @@ async def _find_user_by_legacy_scan(
 
 
 async def _find_user_by_pin(
-    auth_service: AuthService, pin: str, username: Optional[str] = None
+    db: Any, pin: str, username: Optional[str] = None
 ) -> Optional[dict[str, Any]]:
-    """Find user by PIN using scoped lookup or fast compatibility lookup."""
+    """Find user by PIN using scoped lookup or fast lookup with legacy fallback."""
     if username:
         # Strategy 0: Username-scoped O(1) Lookup (Most secure)
-        user = await auth_service.get_user(username)
+        user = await db.users.find_one({"username": username})
         if user and user.get("pin_hash") and verify_password(pin, user["pin_hash"]):
             return user
         return None
@@ -652,13 +688,13 @@ async def _find_user_by_pin(
     lookup_hash = get_pin_lookup_hash(pin)
 
     # Strategy 1: O(1) Fast Lookup
-    found_user = await _find_user_by_fast_lookup(auth_service, pin, lookup_hash)
+    found_user = await _find_user_by_fast_lookup(db, pin, lookup_hash)
     if found_user:
         return found_user
 
     # Strategy 2: O(N) Legacy Fallback
     logger.debug("Fast lookup failed, falling back to legacy scan...")
-    return await _find_user_by_legacy_scan(auth_service, pin, lookup_hash)
+    return await _find_user_by_legacy_scan(db, pin, lookup_hash)
 
 
 def _validate_pin_login_payload(
@@ -680,9 +716,9 @@ def _validate_pin_login_payload(
 
 
 async def _resolve_pin_login_user(
-    auth_service: AuthService, credentials: PinLogin, request: Request, client_ip: str
+    db: Any, credentials: PinLogin, request: Request, client_ip: str
 ) -> Result[dict[str, Any], Exception]:
-    found_user = await _find_user_by_pin(auth_service, credentials.pin, credentials.username)
+    found_user = await _find_user_by_pin(db, credentials.pin, credentials.username)
     if not found_user:
         logger.warning("No user found with matching PIN", extra={"client_ip": client_ip})
         await log_failed_login_attempt(
@@ -729,7 +765,7 @@ async def login_with_pin(
     For staff users to quickly login with their PIN instead of username/password.
     PIN is stored as a hashed value in the user document.
     """
-    auth_service = get_auth_service()
+    db = get_db()
     cache_service = get_cache_service()
     client_ip = request.client.host if request.client else ""
 
@@ -751,7 +787,7 @@ async def login_with_pin(
         if rate_limit_fail:
             return rate_limit_fail
 
-        user_result = await _resolve_pin_login_user(auth_service, credentials, request, client_ip)
+        user_result = await _resolve_pin_login_user(db, credentials, request, client_ip)
         if user_result.is_err:
             return user_result
         found_user = user_result.unwrap()
@@ -773,7 +809,7 @@ async def login_with_pin(
 
     except HTTPException:
         raise  # Let HTTPException pass through with proper status code
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.exception("PIN login failed unexpectedly")
         return Fail(e)
 
@@ -787,7 +823,7 @@ async def pin_setup(
     Set or update user's 4-digit PIN.
     The PIN is hashed using Argon2 and a O(1) lookup hash is also stored.
     """
-    auth_service = get_auth_service()
+    db = get_db()
     username = current_user["username"]
     pin = setup_data.pin
 
@@ -800,7 +836,16 @@ async def pin_setup(
         lookup_hash = get_pin_lookup_hash(pin)
 
         # Update user document
-        result = await auth_service.set_user_pin(username, hashed_pin, lookup_hash)
+        result = await db.users.update_one(
+            {"username": username},
+            {
+                "$set": {
+                    "pin_hash": hashed_pin,
+                    "pin_lookup_hash": lookup_hash,
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
+        )
 
         if result.modified_count == 0:
             logger.warning(
@@ -810,20 +855,23 @@ async def pin_setup(
 
         # Audit Log
         try:
-            await auth_service.log_audit_event(
+            from backend.services.audit_service import AuditService
+
+            audit_service = AuditService(db)
+            await audit_service.log_event(
                 event_type=AuditEventType.AUTH_PIN_SETUP,
                 status=AuditLogStatus.SUCCESS,
                 actor_id=str(current_user["_id"]),
                 actor_username=username,
                 details={"action": "pin_setup"},
             )
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error("Failed to write audit log: %s", sanitize_for_logging(str(e)))
 
         logger.info("PIN setup successful for user: %s", sanitize_for_logging(username))
         return Ok({"message": "PIN setup successful"})
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error(
             f"Error during PIN setup for {sanitize_for_logging(username)}: {sanitize_for_logging(str(e))}"
         )
@@ -853,14 +901,18 @@ async def _handle_login_failure(
     return Fail(cast(Exception, return_error))
 
 
-async def _migrate_legacy_password(user: dict[str, Any], password: str) -> None:
+async def _migrate_legacy_password(db: Any, user: dict[str, Any], password: str) -> None:
     """Helper to migrate legacy password field."""
     if "password" in user and "hashed_password" not in user:
         try:
-            await get_auth_service().migrate_legacy_password(
-                user["_id"], get_password_hash(password)
+            await db.users.update_one(
+                {"_id": user["_id"]},
+                {
+                    "$set": {"hashed_password": get_password_hash(password)},
+                    "$unset": {"password": ""},
+                },
             )
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error(
                 f"Failed to migrate legacy password for user {sanitize_for_logging(str(user.get('_id')))}: {sanitize_for_logging(str(e))}"
             )
@@ -969,7 +1021,7 @@ def _validate_new_pin_value(new_pin: Optional[str]) -> str:
 
 
 async def _load_user_for_pin_change(username: str) -> dict[str, Any]:
-    user = await get_auth_service().get_user(username)
+    user = await get_db().users.find_one({"username": username})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
@@ -1029,7 +1081,16 @@ async def _persist_user_pin(username: str, new_pin: str) -> None:
 
     new_pin_hash = get_password_hash(new_pin)
     pin_lookup_hash = get_pin_lookup_hash(new_pin)
-    await get_auth_service().set_user_pin(username, new_pin_hash, pin_lookup_hash)
+    await get_db().users.update_one(
+        {"username": username},
+        {
+            "$set": {
+                "pin_hash": new_pin_hash,
+                "pin_lookup_hash": pin_lookup_hash,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        },
+    )
 
 
 @router.post("/auth/change-pin")
@@ -1054,14 +1115,17 @@ async def change_pin(
 
     # Audit Log
     try:
-        await get_auth_service().log_audit_event(
+        from backend.services.audit_service import AuditService
+
+        audit_service = AuditService(get_db())
+        await audit_service.log_event(
             event_type=AuditEventType.AUTH_PIN_SETUP,
             status=AuditLogStatus.SUCCESS,
             actor_id=str(current_user["_id"]),
             actor_username=current_user["username"],
             details={"action": "response_change_pin"},
         )
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Failed to write audit log: %s", sanitize_for_logging(str(e)))
 
     return {
@@ -1103,8 +1167,8 @@ async def change_password(
         )
 
     # Verify current password
-    auth_service = get_auth_service()
-    user = await auth_service.get_user(current_user["username"])
+    db = get_db()
+    user = await db.users.find_one({"username": current_user["username"]})
 
     if not user or "hashed_password" not in user:
         raise HTTPException(
@@ -1126,7 +1190,11 @@ async def change_password(
 
     # Update password
     new_password_hash = get_password_hash(new_password)
-    await auth_service.update_user_password(current_user["username"], new_password_hash)
+    await db.users.update_one(
+        {"username": current_user["username"]},
+        # M12 fix: Use UTC timezone for consistency
+        {"$set": {"hashed_password": new_password_hash, "updated_at": datetime.now(timezone.utc)}},
+    )
 
     logger.info("Password changed for user: %s", sanitize_for_logging(current_user["username"]))
 
@@ -1143,8 +1211,8 @@ async def password_reset_request(request: PasswordResetRequest):
     Sends an OTP to the user's registered phone number via WhatsApp.
     payload: { "username": "..." } or { "phone_number": "..." }
     """
-    auth_service = get_auth_service()
-    otp_service = auth_service.create_otp_service(OTPService)
+    db = get_db()
+    otp_service = OTPService(db)
     whatsapp_service = WhatsAppService()
 
     await otp_service.initialize()
@@ -1164,7 +1232,7 @@ async def password_reset_request(request: PasswordResetRequest):
         username=request.username,
         phone_number=request.phone_number,
     )
-    user = await auth_service.get_user_by_query(query)
+    user = await db.users.find_one(query)
 
     if not user:
         # Security: Do not reveal user existence
@@ -1175,7 +1243,7 @@ async def password_reset_request(request: PasswordResetRequest):
 
     if not user.get("phone_number"):
         # If user has no phone number, we can't send OTP.
-        # Ideally we should use email delivery or tell generic success.
+        # Ideally we should fallback to email or tell generic success.
         # For this Phase 4 requirement, we assume phone is needed.
         return ApiResponse.success_response(
             {"message": "If an account exists, an OTP has been sent."}
@@ -1190,14 +1258,17 @@ async def password_reset_request(request: PasswordResetRequest):
 
         # Audit Log
         try:
-            await auth_service.log_audit_event(
+            from backend.services.audit_service import AuditService
+
+            audit_service = AuditService(db)
+            await audit_service.log_event(
                 event_type=AuditEventType.AUTH_PASSWORD_RESET_REQUEST,
                 status=AuditLogStatus.SUCCESS,
                 actor_id=str(user["_id"]),
                 actor_username=user["username"],
                 details={"phone_number": user["phone_number"]},
             )
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error("Failed to write audit log: %s", sanitize_for_logging(str(e)))
 
         return ApiResponse.success_response(
@@ -1209,7 +1280,7 @@ async def password_reset_request(request: PasswordResetRequest):
         return ApiResponse.error_response(
             {"message": "Password reset is temporarily unavailable. Please try again later."}
         )
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         await otp_service.otp_collection.delete_many({"user_id": str(user["_id"])})
         logger.error("Password reset request failed: %s", sanitize_for_logging(str(e)))
         return ApiResponse.error_response({"message": "Failed to process request"})
@@ -1221,15 +1292,15 @@ async def password_reset_verify(data: PasswordResetVerify):
     Verify the OTP code.
     Returns a short-lived reset token if successful.
     """
-    auth_service = get_auth_service()
-    otp_service = auth_service.create_otp_service(OTPService)
+    db = get_db()
+    otp_service = OTPService(db)
     await otp_service.initialize()
 
     query = _build_password_reset_query(
         username=data.username,
         phone_number=data.phone_number,
     )
-    user = await auth_service.get_user_by_query(query)
+    user = await db.users.find_one(query)
     if not user:
         return ApiResponse.error_response({"message": "Invalid request"})
 
@@ -1243,14 +1314,17 @@ async def password_reset_verify(data: PasswordResetVerify):
 
     # Audit Log
     try:
-        await auth_service.log_audit_event(
+        from backend.services.audit_service import AuditService
+
+        audit_service = AuditService(db)
+        await audit_service.log_event(
             event_type=AuditEventType.AUTH_PASSWORD_RESET_VERIFY,
             status=AuditLogStatus.SUCCESS,
             actor_id=str(user["_id"]),
             actor_username=user["username"],
             details={"otp_verified": True},
         )
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Failed to write audit log: %s", sanitize_for_logging(str(e)))
 
     return ApiResponse.success_response({"reset_token": reset_token, "message": "OTP verified"})
@@ -1261,8 +1335,8 @@ async def password_reset_confirm(data: PasswordResetConfirm):
     """
     Reset password using a valid reset token.
     """
-    auth_service = get_auth_service()
-    otp_service = auth_service.create_otp_service(OTPService)
+    db = get_db()
+    otp_service = OTPService(db)
     whatsapp_service = WhatsAppService()
     await otp_service.initialize()
 
@@ -1272,28 +1346,36 @@ async def password_reset_confirm(data: PasswordResetConfirm):
         return ApiResponse.error_response({"message": "Invalid or expired reset token"})
 
     try:
+        from bson import ObjectId
+
         hashed_password = get_password_hash(data.new_password)
 
-        await auth_service.update_user_password_by_id(user_id, hashed_password)
+        await db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {
+                "$set": {
+                    "hashed_password": hashed_password,
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
+        )
 
         # H5 fix: Revoke all existing refresh tokens for this user after password reset
         try:
-            user_for_revoke = await auth_service.get_user_by_id(user_id)
+            user_for_revoke = await db.users.find_one({"_id": ObjectId(user_id)})
             if user_for_revoke:
-                await auth_service.delete_refresh_tokens_for_username(
-                    user_for_revoke.get("username")
-                )
+                await db.refresh_tokens.delete_many({"username": user_for_revoke.get("username")})
                 logger.info(
                     f"Revoked all refresh tokens for user {user_for_revoke.get('username')} "
                     "after password reset"
                 )
-        except (RuntimeError, TypeError, ValueError, OSError) as revoke_err:
+        except Exception as revoke_err:
             logger.error(
                 f"Failed to revoke tokens after password reset: {sanitize_for_logging(str(revoke_err))}"
             )
 
         # Optional: confirmation should not block a successful password reset
-        user = await auth_service.get_user_by_id(user_id)
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
         if user and user.get("phone_number"):
             try:
                 if whatsapp_service.is_delivery_configured():
@@ -1305,17 +1387,20 @@ async def password_reset_confirm(data: PasswordResetConfirm):
 
         # Audit Log
         try:
-            await auth_service.log_audit_event(
+            from backend.services.audit_service import AuditService
+
+            audit_service = AuditService(db)
+            await audit_service.log_event(
                 event_type=AuditEventType.AUTH_PASSWORD_RESET_CONFIRM,
                 status=AuditLogStatus.SUCCESS,
                 actor_id=user_id,
                 details={"action": "password_changed"},
             )
-        except (RuntimeError, TypeError, ValueError, OSError) as e:
+        except Exception as e:
             logger.error("Failed to write audit log: %s", sanitize_for_logging(str(e)))
 
         return ApiResponse.success_response({"message": "Password reset successful"})
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Password reset confirm failed: %s", sanitize_for_logging(str(e)))
         return ApiResponse.error_response({"message": "Failed to reset password"})

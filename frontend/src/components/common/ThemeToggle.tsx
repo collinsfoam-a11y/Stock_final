@@ -3,7 +3,6 @@ import { TouchableOpacity, Text, StyleSheet, Animated } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useThemeContext } from "../../context/ThemeContext";
 import { useHapticFeedback } from "../../hooks/useHapticFeedback";
-import { createShadow } from "@/theme/shadowUtils";
 
 export const ThemeToggle: React.FC = () => {
   const { themeLegacy: theme, themeMode, setThemeMode } = useThemeContext();
@@ -96,14 +95,14 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     backgroundColor: "transparent",
-    ...createShadow({
-      color: "#000",
-      offsetX: 0,
-      offsetY: 2,
-      opacity: 0.1,
-      radius: 3.84,
-      elevation: 5,
-    }),
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   label: {
     marginLeft: 12,

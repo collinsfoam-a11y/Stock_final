@@ -852,19 +852,6 @@ const StaffHome = React.memo(function StaffHome() {
     return null;
   };
 
-  const trimmedRackName = rackName.trim();
-  const rackNameInvalid = Boolean(trimmedRackName && !/^[a-zA-Z0-9\-_]+$/.test(trimmedRackName));
-  const createSessionValidationMessage = !locationType
-    ? "Select location before continuing."
-    : !selectedFloor
-      ? "Select floor or area before continuing."
-      : !trimmedRackName
-        ? "Enter rack or shelf before continuing."
-        : rackNameInvalid
-          ? "Use only letters, numbers, dashes, and underscores."
-          : "";
-  const canCreateSession = !createSessionValidationMessage && !isCreating;
-
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ModernHeader
@@ -1713,24 +1700,6 @@ const styles = StyleSheet.create({
     borderTopColor: operationalPalette.border,
     paddingBottom: Platform.OS === "ios" ? spacing["2xl"] : spacing.lg,
     backgroundColor: operationalPalette.surface,
-  },
-  validationNotice: {
-    minHeight: 44,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.warning[50],
-    borderWidth: 1,
-    borderColor: "#FDE68A",
-    marginBottom: spacing.lg,
-  },
-  validationText: {
-    flex: 1,
-    color: "#92400e",
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
   },
 });
 

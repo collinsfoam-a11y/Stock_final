@@ -142,7 +142,7 @@ async def record_item_enrichment(
 
     except HTTPException:
         raise
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error(
             "Enrichment API error for %s: %s",
             _safe_log_value(request.item_code),
@@ -174,7 +174,7 @@ async def check_data_completeness(
             total_fields=completeness["total_fields"],
         )
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error(
             "Completeness check error for %s: %s",
             _safe_log_value(item_code),
@@ -204,7 +204,7 @@ async def get_enrichment_statistics(
 
         return {"success": True, "stats": stats}
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Enrichment stats error: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Failed to get enrichment stats: {str(e)}")
 
@@ -230,7 +230,7 @@ async def get_incomplete_items(
 
         return {"success": True, "items": items, "count": len(items)}
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Get incomplete items error: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Failed to get incomplete items: {str(e)}")
 
@@ -256,7 +256,7 @@ async def get_enrichment_leaderboard_endpoint(
 
         return {"success": True, "leaderboard": leaderboard}
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Leaderboard error: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Failed to get leaderboard: {str(e)}")
 
@@ -287,7 +287,7 @@ async def bulk_import_enrichments_endpoint(
 
         return {"success": True, "results": results}
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Bulk import error: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Bulk import failed: {str(e)}")
 
@@ -323,6 +323,6 @@ async def validate_enrichment_data_endpoint(
             "errors": validation_result["errors"],
         }
 
-    except (RuntimeError, TypeError, ValueError, OSError) as e:
+    except Exception as e:
         logger.error("Validation error: %s", _safe_log_value(e, max_length=200))
         raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")

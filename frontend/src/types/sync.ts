@@ -4,12 +4,9 @@
  */
 
 export interface SyncRecord {
-  record_id: string;
   client_record_id: string;
   session_id: string;
-  location_id: string;
-  floor_id: string;
-  rack_id: string;
+  rack_id?: string | null;
   floor?: string | null;
   item_code: string;
   verified_qty: number;

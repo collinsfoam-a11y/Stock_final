@@ -4,15 +4,20 @@ Endpoints for managing user permissions
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 
 from backend.auth.permissions import (
     ROLE_PERMISSIONS,
     Permission,
+    add_permissions_to_user,
+    disable_permissions_for_user,
+    enable_permissions_for_user,
     get_user_permissions,
+    remove_permissions_from_user,
     require_permission,
 )
-from backend.services.permissions_service import PermissionsService, get_permissions_service
+from backend.db.runtime import get_db
 
 permissions_router = APIRouter(prefix="/permissions", tags=["permissions"])
 
@@ -77,11 +82,12 @@ async def list_role_permissions():
 @permissions_router.get("/users/{username}")
 async def get_user_permissions_api(
     username: str,
-    permissions_service: PermissionsService = Depends(get_permissions_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = require_permission(Permission.USER_MANAGE),
 ):
     """Get permissions for a specific user"""
-    user = await permissions_service.get_user(username)
+    # Get user
+    user = await db.users.find_one({"username": username})
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -107,7 +113,7 @@ async def get_user_permissions_api(
 async def add_user_permissions(
     username: str,
     permission_update: PermissionUpdate,
-    permissions_service: PermissionsService = Depends(get_permissions_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = require_permission(Permission.USER_MANAGE),
 ):
     """Add custom permissions to a user"""
@@ -126,9 +132,7 @@ async def add_user_permissions(
                 },
             )
 
-    success = await permissions_service.add_user_permissions(
-        username, permission_update.permissions
-    )
+    success = await add_permissions_to_user(db, username, permission_update.permissions)
 
     if not success:
         raise HTTPException(
@@ -142,11 +146,17 @@ async def add_user_permissions(
             },
         )
 
-    await permissions_service.log_permission_change(
-        current_user=current_user,
+    # Log activity
+    from backend.services.activity_log import ActivityLogService
+
+    activity_service = ActivityLogService(db)
+    await activity_service.log_activity(
+        user=current_user["username"],
+        role=current_user["role"],
         action="add_permissions",
-        username=username,
-        permissions=permission_update.permissions,
+        entity_type="user",
+        entity_id=username,
+        details={"permissions": permission_update.permissions},
     )
 
     return {
@@ -163,13 +173,11 @@ async def add_user_permissions(
 async def remove_user_permissions(
     username: str,
     permission_update: PermissionUpdate,
-    permissions_service: PermissionsService = Depends(get_permissions_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = require_permission(Permission.USER_MANAGE),
 ):
     """Remove custom permissions from a user"""
-    success = await permissions_service.remove_user_permissions(
-        username, permission_update.permissions
-    )
+    success = await remove_permissions_from_user(db, username, permission_update.permissions)
 
     if not success:
         raise HTTPException(
@@ -183,11 +191,17 @@ async def remove_user_permissions(
             },
         )
 
-    await permissions_service.log_permission_change(
-        current_user=current_user,
+    # Log activity
+    from backend.services.activity_log import ActivityLogService
+
+    activity_service = ActivityLogService(db)
+    await activity_service.log_activity(
+        user=current_user["username"],
+        role=current_user["role"],
         action="remove_permissions",
-        username=username,
-        permissions=permission_update.permissions,
+        entity_type="user",
+        entity_id=username,
+        details={"permissions": permission_update.permissions},
     )
 
     return {
@@ -204,13 +218,11 @@ async def remove_user_permissions(
 async def disable_user_permissions(
     username: str,
     permission_update: PermissionUpdate,
-    permissions_service: PermissionsService = Depends(get_permissions_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = require_permission(Permission.USER_MANAGE),
 ):
     """Disable specific permissions for a user"""
-    success = await permissions_service.disable_user_permissions(
-        username, permission_update.permissions
-    )
+    success = await disable_permissions_for_user(db, username, permission_update.permissions)
 
     if not success:
         raise HTTPException(
@@ -224,11 +236,17 @@ async def disable_user_permissions(
             },
         )
 
-    await permissions_service.log_permission_change(
-        current_user=current_user,
+    # Log activity
+    from backend.services.activity_log import ActivityLogService
+
+    activity_service = ActivityLogService(db)
+    await activity_service.log_activity(
+        user=current_user["username"],
+        role=current_user["role"],
         action="disable_permissions",
-        username=username,
-        permissions=permission_update.permissions,
+        entity_type="user",
+        entity_id=username,
+        details={"permissions": permission_update.permissions},
     )
 
     return {
@@ -245,13 +263,11 @@ async def disable_user_permissions(
 async def enable_user_permissions(
     username: str,
     permission_update: PermissionUpdate,
-    permissions_service: PermissionsService = Depends(get_permissions_service),
+    db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = require_permission(Permission.USER_MANAGE),
 ):
     """Re-enable previously disabled permissions for a user"""
-    success = await permissions_service.enable_user_permissions(
-        username, permission_update.permissions
-    )
+    success = await enable_permissions_for_user(db, username, permission_update.permissions)
 
     if not success:
         raise HTTPException(
@@ -265,11 +281,17 @@ async def enable_user_permissions(
             },
         )
 
-    await permissions_service.log_permission_change(
-        current_user=current_user,
+    # Log activity
+    from backend.services.activity_log import ActivityLogService
+
+    activity_service = ActivityLogService(db)
+    await activity_service.log_activity(
+        user=current_user["username"],
+        role=current_user["role"],
         action="enable_permissions",
-        username=username,
-        permissions=permission_update.permissions,
+        entity_type="user",
+        entity_id=username,
+        details={"permissions": permission_update.permissions},
     )
 
     return {

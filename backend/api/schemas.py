@@ -388,8 +388,6 @@ class SessionCreate(BaseModel):
     location_type: Optional[str] = None
     location_name: Optional[str] = None
     rack_no: Optional[str] = None
-    client_session_id: Optional[str] = None
-    offline_id: Optional[str] = None
 
 
 class UnknownItem(BaseModel):

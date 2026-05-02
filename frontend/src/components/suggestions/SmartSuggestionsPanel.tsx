@@ -21,7 +21,6 @@ import {
   smartSuggestionsService,
 } from "@/domains/inventory/services/smartSuggestionsService";
 import * as Haptics from "expo-haptics";
-import { createShadow } from "@/theme/shadowUtils";
 
 // Enable LayoutAnimation on Android
 if (
@@ -414,7 +413,11 @@ const styles = StyleSheet.create({
     borderRadius: modernBorderRadius.lg,
     borderWidth: 1,
     borderColor: modernColors.border.light,
-    ...createShadow({ color: "#000", offsetX: 0, offsetY: 2, opacity: 0.1, radius: 8, elevation: 4 }),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
     overflow: "hidden",
   },
   header: {

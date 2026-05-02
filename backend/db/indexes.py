@@ -14,11 +14,6 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
     "idempotency_operations": [
         # Unique operation ID
         ([("operation_id", 1)], {"unique": True, "name": "idx_operation_id"}),
-        # Explicit sync record id guard for records-only offline sync
-        (
-            [("record_id", 1)],
-            {"unique": True, "sparse": True, "name": "idx_record_id"},
-        ),
         # TTL index for automatic cleanup (30 days)
         ([("created_at", 1)], {"expireAfterSeconds": 2592000, "name": "idx_operation_ttl"}),
     ],
@@ -28,11 +23,6 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         (
             [("client_record_id", 1)],
             {"unique": True, "name": "idx_client_record_id"},
-        ),
-        # Stable sync record id guard
-        (
-            [("record_id", 1)],
-            {"unique": True, "sparse": True, "name": "idx_verification_record_id"},
         ),
         # Session queries
         (
@@ -118,47 +108,6 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         # Query hash for deduplication
         ([("query_hash", 1)], {"name": "idx_query_hash", "sparse": True}),
     ],
-    # Projection Collections
-    "session_dashboard_projection": [
-        ([("session_id", 1), ("item_code", 1)], {"name": "idx_session_item"}),
-        ([("updated_at", -1)], {"name": "idx_updated_at"}),
-        (
-            [("location_id", 1), ("floor_id", 1), ("rack_id", 1)],
-            {"name": "idx_location_floor_rack"},
-        ),
-    ],
-    "verified_items_projection": [
-        ([("session_id", 1), ("item_code", 1)], {"name": "idx_session_item"}),
-        ([("updated_at", -1)], {"name": "idx_updated_at"}),
-        (
-            [("location_id", 1), ("floor_id", 1), ("rack_id", 1)],
-            {"name": "idx_location_floor_rack"},
-        ),
-    ],
-    "variance_summary_projection": [
-        ([("session_id", 1), ("item_code", 1)], {"name": "idx_session_item"}),
-        ([("updated_at", -1)], {"name": "idx_updated_at"}),
-        (
-            [("location_id", 1), ("floor_id", 1), ("rack_id", 1)],
-            {"name": "idx_location_floor_rack"},
-        ),
-    ],
-    "financial_projection": [
-        ([("session_id", 1), ("item_code", 1)], {"name": "idx_session_item"}),
-        ([("updated_at", -1)], {"name": "idx_updated_at"}),
-        (
-            [("location_id", 1), ("floor_id", 1), ("rack_id", 1)],
-            {"name": "idx_location_floor_rack"},
-        ),
-    ],
-    "batch_records": [
-        ([("session_id", 1), ("item_code", 1)], {"name": "idx_session_item"}),
-        ([("updated_at", -1)], {"name": "idx_updated_at"}),
-        (
-            [("location_id", 1), ("floor_id", 1), ("rack_id", 1)],
-            {"name": "idx_location_floor_rack"},
-        ),
-    ],
     # Report Compare Jobs Collection
     "report_compare_jobs": [
         # Job ID
@@ -184,11 +133,6 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         (
             [("idempotency_key", 1)],
             {"name": "idx_count_line_idempotency", "unique": True, "sparse": True},
-        ),
-        # Stable client-side sync record id
-        (
-            [("record_id", 1)],
-            {"name": "idx_count_line_record_id", "unique": True, "sparse": True},
         ),
         # Domain semantic idempotency guard (session + item + context + qty + version hash)
         (
@@ -299,16 +243,6 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("created_by", 1), ("created_at", -1)], {"name": "idx_user_time"}),
         # Staff user + status for active session lookup
         ([("staff_user", 1), ("status", 1), ("warehouse", 1)], {"name": "idx_staff_active"}),
-        # Idempotent client session identity guard
-        (
-            [("client_session_identity_key", 1)],
-            {"name": "idx_client_session_identity_key", "unique": True, "sparse": True},
-        ),
-        # Staff/client identity lookup within the application TTL window
-        (
-            [("staff_user", 1), ("client_session_id", 1), ("created_at", -1)],
-            {"name": "idx_staff_client_session_ttl", "sparse": True},
-        ),
         # Status
         ([("status", 1), ("created_at", -1)], {"name": "idx_status"}),
         # Warehouse

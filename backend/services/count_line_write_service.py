@@ -9,7 +9,6 @@ from typing import Any, Optional
 
 from bson import ObjectId
 from fastapi import HTTPException
-from pymongo.errors import DuplicateKeyError
 
 from backend.services.concurrency import ConcurrencyError, coerce_version
 from backend.services.event_service import EventService
@@ -788,77 +787,6 @@ class CountLineWriteService:
     ) -> Any:
         return await self.commit(payload, context)
 
-    def transaction(self) -> Any:
-        return mongo_transaction(self.db.client)
-
-    async def mark_count_line_drafts_submitted(
-        self,
-        *,
-        draft_query: dict[str, Any],
-        draft_update: dict[str, Any],
-        db_session: Optional[Any] = None,
-    ) -> None:
-        kwargs = {"session": db_session} if db_session is not None else {}
-        try:
-            result = self.db.count_line_drafts.update_many(
-                draft_query,
-                draft_update,
-                **kwargs,
-            )
-        except TypeError:
-            result = self.db.count_line_drafts.update_many(draft_query, draft_update)
-        await self._resolve_awaitable(result)
-
-    async def save_count_line_draft(
-        self,
-        *,
-        draft_filter: dict[str, Any],
-        legacy_draft_filter: dict[str, Any],
-        draft_payload: dict[str, Any],
-        created_at: datetime,
-    ) -> str:
-        existing_draft = await self._resolve_awaitable(
-            self.db.count_line_drafts.find_one(draft_filter)
-        )
-        if not existing_draft:
-            existing_draft = await self._resolve_awaitable(
-                self.db.count_line_drafts.find_one(legacy_draft_filter)
-            )
-
-        if existing_draft:
-            await self._resolve_awaitable(
-                self.db.count_line_drafts.update_one(
-                    {"_id": existing_draft["_id"]},
-                    {"$set": draft_payload},
-                )
-            )
-            return str(existing_draft["_id"])
-
-        draft_payload["created_at"] = created_at
-        try:
-            result = await self._resolve_awaitable(
-                self.db.count_line_drafts.insert_one(draft_payload)
-            )
-            return str(result.inserted_id)
-        except DuplicateKeyError:
-            conflicting_draft = await self._resolve_awaitable(
-                self.db.count_line_drafts.find_one(draft_filter)
-            )
-            if not conflicting_draft:
-                conflicting_draft = await self._resolve_awaitable(
-                    self.db.count_line_drafts.find_one(legacy_draft_filter)
-                )
-            if not conflicting_draft:
-                raise HTTPException(status_code=409, detail="Draft conflict detected")
-
-            await self._resolve_awaitable(
-                self.db.count_line_drafts.update_one(
-                    {"_id": conflicting_draft["_id"]},
-                    {"$set": draft_payload},
-                )
-            )
-            return str(conflicting_draft["_id"])
-
     async def _run_post_write_validation(
         self,
         *,
@@ -1221,7 +1149,7 @@ class CountLineWriteService:
                 session, session_id=session_id
             )
             return await self._resolve_awaitable(result)
-        except (RuntimeError, TypeError, ValueError, OSError) as exc:
+        except Exception as exc:
             if exc.__class__.__name__ != "SnapshotIntegrityError":
                 raise
             raise HTTPException(
@@ -1267,7 +1195,7 @@ class CountLineWriteService:
             # Item absent in frozen baseline: treat baseline as zero, never live ERP qty.
             return 0.0, snapshot_hash or "SESSION_SNAPSHOT_MISS"
 
-        # Legacy compatibility: read-only lookup from pre-existing stock_snapshots.
+        # Legacy fallback: read-only lookup from pre-existing stock_snapshots.
         try:
             legacy_snapshot = await self._resolve_awaitable(
                 self.db.stock_snapshots.find_one(
@@ -1275,7 +1203,7 @@ class CountLineWriteService:
                     **kwargs,
                 )
             )
-        except (RuntimeError, TypeError, ValueError, OSError):
+        except Exception:
             legacy_snapshot = None
         if isinstance(legacy_snapshot, dict):
             return float(legacy_snapshot.get("erp_qty") or 0.0), str(

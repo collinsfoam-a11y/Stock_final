@@ -31,7 +31,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useDebounce } from "use-debounce";
 
 import { useSafeAsync } from "../../src/hooks/useSafeAsync";
-import { useIdleProbe } from "../../src/hooks/useIdleProbe";
 import { usePerformanceMonitor } from "../../src/hooks/usePerformanceMonitor";
 import { useScanSessionStore } from "../../src/store/scanSessionStore";
 import { useSettingsStore } from "../../src/store/settingsStore";
@@ -50,7 +49,6 @@ import { toastService } from "../../src/services/toastService";
 import { localDb } from "../../src/db/localDb";
 import { validateBarcode } from "../../src/utils/validation";
 import { dedupeItemsKeepingHighestStock } from "../../src/utils/itemBatchUtils";
-import { uxProbe } from "../../src/utils/uxProbe";
 
 import ModernHeader from "../../src/components/ui/ModernHeader";
 import ModernButton from "../../src/components/ui/ModernButton";
@@ -72,26 +70,26 @@ import { useAuthStore } from "../../src/store/authStore";
 const SCAN_BUFFER_TIMEOUT = 2000; // 2 seconds
 const SCAN_BUFFER_MAX_SIZE = 10;
 const SCAN_CONFIDENCE_THRESHOLD = 2;
-const SURFACE_BG = "#f4f7f6";
-const SURFACE_CARD = "#ffffff";
-const SURFACE_BORDER = "#d9e5e2";
-const SURFACE_MUTED = "#f8fafc";
-const ACCENT = "#0f766e";
-const ACCENT_SOFT = "#ecf7f4";
-const TEXT_STRONG = "#0f172a";
-const TEXT_MUTED = "#475569";
 
 const ScanScreen = React.memo(function ScanScreen() {
   const router = useRouter();
   const { sessionId: rawSessionId } = useLocalSearchParams();
-  const sessionId = Array.isArray(rawSessionId) ? rawSessionId[0] : rawSessionId;
+  const sessionId = Array.isArray(rawSessionId)
+    ? rawSessionId[0]
+    : rawSessionId;
 
-  const { logout, isAuthenticated } = useAuthStore();
-  const scannerVibration = useSettingsStore((state) => state.settings.scannerVibration);
+  const { user, logout, isAuthenticated } = useAuthStore();
+  const scannerVibration = useSettingsStore(
+    (state) => state.settings.scannerVibration,
+  );
   const scannerSound = useSettingsStore((state) => state.settings.scannerSound);
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
-  const scannerAutoSubmit = useSettingsStore((state) => state.settings.scannerAutoSubmit);
-  const scannerTimeout = useSettingsStore((state) => state.settings.scannerTimeout);
+  const scannerAutoSubmit = useSettingsStore(
+    (state) => state.settings.scannerAutoSubmit,
+  );
+  const scannerTimeout = useSettingsStore(
+    (state) => state.settings.scannerTimeout,
+  );
   const lazyLoading = useSettingsStore((state) => state.settings.lazyLoading);
   const debounceDelay = useSettingsStore((state) => state.settings.debounceDelay);
   const [isScreenFocused, setIsScreenFocused] = useState<boolean>(false);
@@ -110,7 +108,10 @@ const ScanScreen = React.memo(function ScanScreen() {
   });
 
   // WebSocket Integration
-  const { lastMessage } = useWebSocket(sessionId ? String(sessionId) : undefined, isScreenFocused);
+  const { lastMessage } = useWebSocket(
+    sessionId ? String(sessionId) : undefined,
+    isScreenFocused,
+  );
 
   // State
   const [isScanning, setIsScanning] = useState<boolean>(false);
@@ -129,20 +130,17 @@ const ScanScreen = React.memo(function ScanScreen() {
     pendingItems: 0,
     totalItems: 0,
   });
-  const [showCloseSessionModal, setShowCloseSessionModal] = useState<boolean>(false);
+  const [showCloseSessionModal, setShowCloseSessionModal] =
+    useState<boolean>(false);
   const [isFinishing, setIsFinishing] = useState<boolean>(false);
 
   // Animation values for scan frame
   const scanLinePosition = useSharedValue(0);
   const cornerOpacity = useSharedValue(1);
 
-  const scanBufferRef = useRef<{ code: string; count: number; timestamp: number }[]>([]);
-  const activeProbeScreen = showCloseSessionModal
-    ? "finish_rack_modal"
-    : isScanning
-      ? "scan_camera"
-      : "scan_screen";
-  const { markAction } = useIdleProbe(activeProbeScreen, { enabled: isScreenFocused });
+  const scanBufferRef = useRef<
+    { code: string; count: number; timestamp: number }[]
+  >([]);
 
   const loadRecentItems = useCallback(async () => {
     try {
@@ -178,7 +176,10 @@ const ScanScreen = React.memo(function ScanScreen() {
         if (offlineMode) {
           const localResults = await safeAsync(() => localDb.searchItems(query));
           if (localResults) {
-            safeSetState(setSearchResults, dedupeItemsKeepingHighestStock(localResults));
+            safeSetState(
+              setSearchResults,
+              dedupeItemsKeepingHighestStock(localResults),
+            );
           }
           return;
         }
@@ -186,13 +187,16 @@ const ScanScreen = React.memo(function ScanScreen() {
         const results = await safeAsync(() => searchItems(query));
         if (results) {
           const items = Array.isArray(results.items) ? results.items : [];
-          safeSetState(setSearchResults, dedupeItemsKeepingHighestStock(items));
+          safeSetState(
+            setSearchResults,
+            dedupeItemsKeepingHighestStock(items),
+          );
         }
       } catch (error) {
         console.error("Search failed", error);
       }
     },
-    [offlineMode, safeAsync, safeSetState]
+    [offlineMode, safeAsync, safeSetState],
   );
 
   const loadInitialData = useCallback(async () => {
@@ -202,14 +206,13 @@ const ScanScreen = React.memo(function ScanScreen() {
   }, [loadRecentItems, loadSessionStats, safeSetState]);
 
   const onRefresh = useCallback(async () => {
-    markAction();
     safeSetState(setRefreshing, true);
     if (scannerVibration) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     await Promise.all([loadRecentItems(), loadSessionStats()]);
     safeSetState(setRefreshing, false);
-  }, [loadRecentItems, loadSessionStats, markAction, safeSetState, scannerVibration]);
+  }, [loadRecentItems, loadSessionStats, safeSetState, scannerVibration]);
 
   // Animated scan line
   useEffect(() => {
@@ -217,12 +220,15 @@ const ScanScreen = React.memo(function ScanScreen() {
       scanLinePosition.value = withRepeat(
         withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
         -1,
-        true
+        true,
       );
       cornerOpacity.value = withRepeat(
-        withSequence(withTiming(0.5, { duration: 1000 }), withTiming(1, { duration: 1000 })),
+        withSequence(
+          withTiming(0.5, { duration: 1000 }),
+          withTiming(1, { duration: 1000 }),
+        ),
         -1,
-        false
+        false,
       );
     }
   }, [cornerOpacity, isScanning, scanLinePosition]);
@@ -243,20 +249,26 @@ const ScanScreen = React.memo(function ScanScreen() {
 
       if (status === "PAUSED") {
         safeSetState(setIsScanning, false);
-        Alert.alert("Session Paused", reason || "A supervisor has paused this session.", [
-          { text: "OK" },
-        ]);
+        Alert.alert(
+          "Session Paused",
+          reason || "A supervisor has paused this session.",
+          [{ text: "OK" }],
+        );
       } else if (["REVIEW", "RECONCILE", "FINALIZED", "CLOSED"].includes(status) && !isFinishing) {
         const message =
           status === "FINALIZED"
             ? reason || "This session has been finalized."
             : reason || "This session has been submitted for supervisor review.";
-        Alert.alert(status === "FINALIZED" ? "Session Finalized" : "Session Submitted", message, [
-          {
-            text: "OK",
-            onPress: () => router.replace("/staff/home"),
-          },
-        ]);
+        Alert.alert(
+          status === "FINALIZED" ? "Session Finalized" : "Session Submitted",
+          message,
+          [
+            {
+              text: "OK",
+              onPress: () => router.replace("/staff/home"),
+            },
+          ],
+        );
       }
 
       // Refresh stats on any update
@@ -276,7 +288,7 @@ const ScanScreen = React.memo(function ScanScreen() {
       return () => {
         setIsScreenFocused(false);
       };
-    }, [])
+    }, []),
   );
 
   // Canonical startup path: initial load + periodic stat refresh
@@ -292,7 +304,7 @@ const ScanScreen = React.memo(function ScanScreen() {
       }, 30000);
 
       return () => clearInterval(interval);
-    }, [isAuthenticated, loadInitialData, loadSessionStats])
+    }, [isAuthenticated, loadInitialData, loadSessionStats]),
   );
 
   // Search effect with proper cleanup
@@ -305,7 +317,6 @@ const ScanScreen = React.memo(function ScanScreen() {
   }, [debouncedSearchQuery, performSearch, safeSetState]);
 
   const handleBarcodeScan = async ({ data }: { data: string }) => {
-    markAction();
     if (scanned) return;
 
     const now = Date.now();
@@ -313,10 +324,12 @@ const ScanScreen = React.memo(function ScanScreen() {
 
     // Buffer logic
     scanBufferRef.current = scanBufferRef.current.filter(
-      (entry) => now - entry.timestamp < SCAN_BUFFER_TIMEOUT
+      (entry) => now - entry.timestamp < SCAN_BUFFER_TIMEOUT,
     );
 
-    const existingIndex = scanBufferRef.current.findIndex((entry) => entry.code === trimmedData);
+    const existingIndex = scanBufferRef.current.findIndex(
+      (entry) => entry.code === trimmedData,
+    );
 
     if (existingIndex >= 0) {
       scanBufferRef.current[existingIndex]!.count += 1;
@@ -330,11 +343,12 @@ const ScanScreen = React.memo(function ScanScreen() {
     }
 
     if (scanBufferRef.current.length > SCAN_BUFFER_MAX_SIZE) {
-      scanBufferRef.current = scanBufferRef.current.slice(-SCAN_BUFFER_MAX_SIZE);
+      scanBufferRef.current =
+        scanBufferRef.current.slice(-SCAN_BUFFER_MAX_SIZE);
     }
 
     const confident = scanBufferRef.current.find(
-      (entry) => entry.count >= SCAN_CONFIDENCE_THRESHOLD
+      (entry) => entry.count >= SCAN_CONFIDENCE_THRESHOLD,
     );
 
     if (!confident) {
@@ -365,16 +379,11 @@ const ScanScreen = React.memo(function ScanScreen() {
   };
 
   const handleLookup = async (barcode: string) => {
-    markAction();
     if (loading) return;
     const validation = validateBarcode(barcode);
     if (!validation.valid) {
       void playScanSound("error", scannerSound);
-      uxProbe({ t: "scan_error", reason: "invalid_barcode" });
-      Alert.alert(
-        "Barcode not readable",
-        validation.error || "Scan again, or type the item code manually."
-      );
+      Alert.alert("Invalid Barcode", validation.error || "Please try again");
       safeSetState(setScanned, false);
       return;
     }
@@ -385,7 +394,9 @@ const ScanScreen = React.memo(function ScanScreen() {
 
       // OPTIMISTIC STRATEGY: Try Local DB first for instant response
       try {
-        item = await safeAsync(() => localDb.getItemByBarcode(validation.value!));
+        item = await safeAsync(() =>
+          localDb.getItemByBarcode(validation.value!),
+        );
       } catch {
         // Ignore local db error, fall through to API
       }
@@ -400,22 +411,29 @@ const ScanScreen = React.memo(function ScanScreen() {
       }
 
       if (item) {
+        await safeAsync(() =>
+          RecentItemsService.addRecent(item.item_code, item),
+        );
+        await loadRecentItems();
+
         if (!offlineMode) {
           // Check for duplicates only when live validation is enabled.
           try {
             const scanStatus = await safeAsync(() =>
-              checkItemScanStatus(sessionId!, item.item_code)
+              checkItemScanStatus(sessionId!, item.item_code),
             );
             if (scanStatus?.scanned) {
               const locations = scanStatus.locations || [];
               const duplicateInLocation = locations.find(
-                (loc: any) => loc.floor_no === currentFloor && loc.rack_no === currentRack
+                (loc: any) =>
+                  loc.floor_no === currentFloor && loc.rack_no === currentRack,
               );
 
               if (duplicateInLocation) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                Haptics.notificationAsync(
+                  Haptics.NotificationFeedbackType.Warning,
+                );
                 void playScanSound("warning", scannerSound);
-                uxProbe({ t: "scan_error", reason: "duplicate_scan" });
                 safeSetState(setLoading, false);
                 safeSetState(setScanned, false);
                 Alert.alert(
@@ -428,15 +446,19 @@ const ScanScreen = React.memo(function ScanScreen() {
                     },
                     {
                       text: "Verify / Update",
-                      onPress: () => navigateToDetail(item.barcode || validation.value!),
+                      onPress: () =>
+                        navigateToDetail(item.barcode || validation.value!),
                     },
-                  ]
+                  ],
                 );
                 return;
               } else {
-                toastService.show(`Item found in ${locations.length} other location(s)`, {
-                  type: "info",
-                });
+                toastService.show(
+                  `Item found in ${locations.length} other location(s)`,
+                  {
+                    type: "info",
+                  },
+                );
               }
             }
           } catch (_error) {
@@ -444,28 +466,19 @@ const ScanScreen = React.memo(function ScanScreen() {
           }
         }
 
-        uxProbe({ t: "scan_success", itemCode: item.item_code || validation.value! });
         navigateToDetail(item.barcode || validation.value!);
       } else {
         void playScanSound("warning", scannerSound);
-        uxProbe({
-          t: "scan_error",
-          reason: offlineMode ? "item_not_cached_offline" : "item_not_found",
-        });
         Alert.alert(
-          "Item not found",
+          "Not Found",
           offlineMode
-            ? "This item is not in the offline cache. Reconnect or enter another item code."
-            : "Scan again, or enter the barcode or item code manually."
+            ? "Offline mode is enabled, and this item is not available in local cache."
+            : "Item not found in database",
         );
       }
     } catch (error: any) {
       void playScanSound("error", scannerSound);
-      uxProbe({ t: "scan_error", reason: "lookup_failed" });
-      Alert.alert(
-        "Item lookup failed",
-        error.message || "Check the connection, then scan again or type the item code."
-      );
+      Alert.alert("Error", error.message || "Failed to lookup item");
     } finally {
       safeSetState(setLoading, false);
       safeSetState(setScanned, false);
@@ -473,7 +486,6 @@ const ScanScreen = React.memo(function ScanScreen() {
   };
 
   const navigateToDetail = (barcode: string) => {
-    markAction();
     safeSetState(setSearchQuery, "");
     router.push({
       pathname: "/staff/item-detail",
@@ -482,7 +494,6 @@ const ScanScreen = React.memo(function ScanScreen() {
   };
 
   const handleFinishRack = async () => {
-    markAction();
     if (!sessionId) return;
     safeSetState(setIsFinishing, true);
     try {
@@ -498,29 +509,29 @@ const ScanScreen = React.memo(function ScanScreen() {
   };
 
   const handleLogout = () => {
-    markAction();
-    Alert.alert("Confirm Logout", "Are you sure you want to log out ending your session?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            if (sessionId) {
-              // Optional: updateSessionStatus(sessionId, "paused");
+    Alert.alert(
+      "Confirm Logout",
+      "Are you sure you want to log out ending your session?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              if (sessionId) {
+                // Optional: updateSessionStatus(sessionId, "paused");
+              }
+              await logout();
+              router.replace("/welcome");
+            } catch (e) {
+              console.error(e);
             }
-            await logout();
-            router.replace("/welcome");
-          } catch (e) {
-            console.error(e);
           }
-        },
-      },
-    ]);
+        }
+      ]
+    );
   };
-
-  const locationLabel = [currentFloor, currentRack].filter(Boolean).join(" • ");
-  const sessionLabel = sessionId ? String(sessionId).slice(0, 8).toUpperCase() : "LOCAL";
 
   if (isScanning) {
     return (
@@ -540,21 +551,20 @@ const ScanScreen = React.memo(function ScanScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ModernHeader
-        title="Scan items"
-        subtitle={locationLabel || "Active session"}
+        title={`Welcome, ${user?.full_name?.split(" ")[0] || "Staff"}`}
+        subtitle={`${currentFloor || ""} ${currentRack ? `• ${currentRack}` : ""}`}
         showBackButton={false}
         onBackPress={() => router.back()}
-        showSettingsButton={false}
-        style={styles.headerShell}
         rightComponent={
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <SyncStatusPill />
             <TouchableOpacity onPress={handleLogout} style={{ padding: 4 }}>
-              <Ionicons name="log-out-outline" size={24} color={ACCENT} />
+              <Ionicons name="log-out-outline" size={24} color={colors.primary[500]} />
             </TouchableOpacity>
           </View>
         }
       />
+
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -572,44 +582,10 @@ const ScanScreen = React.memo(function ScanScreen() {
           />
         }
       >
-        <View style={styles.sessionHero}>
-          <View style={styles.sessionHeroHeader}>
-            <View style={styles.sessionHeroCopy}>
-              <Text style={styles.sessionHeroKicker}>Session and rack</Text>
-              <Text style={styles.sessionHeroTitle}>
-                {locationLabel || "Choose floor and rack"}
-              </Text>
-              <Text style={styles.sessionHeroText}>
-                Counts save to this session and rack without extra confirmation.
-              </Text>
-            </View>
-            <View style={styles.sessionBadge}>
-              <Ionicons name="radio-outline" size={14} color={ACCENT} />
-              <Text style={styles.sessionBadgeText}>{sessionLabel}</Text>
-            </View>
-          </View>
-
-          <View style={styles.sessionMetaRow}>
-            <View style={styles.sessionMetaChip}>
-              <Ionicons name="layers-outline" size={16} color={ACCENT} />
-              <Text style={styles.sessionMetaText}>{currentFloor || "Floor pending"}</Text>
-            </View>
-            <View style={styles.sessionMetaChip}>
-              <Ionicons name="grid-outline" size={16} color={ACCENT} />
-              <Text style={styles.sessionMetaText}>{currentRack || "Rack pending"}</Text>
-            </View>
-            <View style={styles.sessionMetaChip}>
-              <Ionicons
-                name={offlineMode ? "cloud-offline-outline" : "sync-outline"}
-                size={16}
-                color={offlineMode ? colors.error[600] : ACCENT}
-              />
-              <Text style={styles.sessionMetaText}>
-                {offlineMode ? "Offline mode" : "Live validation"}
-              </Text>
-            </View>
-          </View>
-        </View>
+        <ScanStatsCard
+          initialLoading={initialLoading}
+          sessionStats={sessionStats}
+        />
 
         <ScanLookupPanel
           initialLoading={initialLoading}
@@ -617,27 +593,16 @@ const ScanScreen = React.memo(function ScanScreen() {
           recentItems={recentItems}
           searchQuery={searchQuery}
           searchResults={searchResults}
-          onChangeSearchQuery={(value) => {
-            markAction();
-            setSearchQuery(value);
-          }}
-          onClearSearchQuery={() => {
-            markAction();
-            safeSetState(setSearchQuery, "");
-          }}
-          onOpenScanner={() => {
-            markAction();
-            safeSetState(setIsScanning, true);
-          }}
+          onChangeSearchQuery={setSearchQuery}
+          onClearSearchQuery={() => safeSetState(setSearchQuery, "")}
+          onOpenScanner={() => safeSetState(setIsScanning, true)}
           onPressItem={(item) => {
-            markAction();
             const code = item.barcode || item.item_code;
             if (code) {
               handleLookup(code);
             }
           }}
           onSubmitSearch={() => {
-            markAction();
             if (!searchQuery.trim()) return;
             if (scannerVibration) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -646,54 +611,26 @@ const ScanScreen = React.memo(function ScanScreen() {
           }}
         />
 
-        <ScanStatsCard initialLoading={initialLoading} sessionStats={sessionStats} />
-
         <View style={styles.footerSpacer} />
       </ScrollView>
 
       {/* Bottom Action */}
       <View style={styles.bottomContainer}>
         <ModernButton
-          title="Scan Item"
-          onPress={() => {
-            markAction();
-            safeSetState(setIsScanning, true);
-          }}
+          title="Finish Rack"
+          onPress={() => safeSetState(setShowCloseSessionModal, true)}
           variant="primary"
-          icon="scan"
+          icon="checkmark-circle"
           fullWidth
-          style={styles.scanItemButton}
         />
-        <TouchableOpacity
-          style={styles.finishRackLink}
-          onPress={() => {
-            markAction();
-            uxProbe({ t: "finish_rack", action: "open" });
-            safeSetState(setShowCloseSessionModal, true);
-          }}
-          activeOpacity={0.75}
-          accessibilityRole="button"
-          accessibilityLabel="Finish rack"
-        >
-          <Ionicons name="checkmark-circle-outline" size={18} color={ACCENT} />
-          <Text style={styles.finishRackLinkText}>Finish Rack</Text>
-        </TouchableOpacity>
       </View>
 
       <FinishRackModal
         currentFloor={currentFloor}
         currentRack={currentRack}
         isFinishing={isFinishing}
-        onClose={() => {
-          markAction();
-          uxProbe({ t: "finish_rack", action: "cancel" });
-          safeSetState(setShowCloseSessionModal, false);
-        }}
-        onConfirm={() => {
-          markAction();
-          uxProbe({ t: "finish_rack", action: "confirm" });
-          void handleFinishRack();
-        }}
+        onClose={() => safeSetState(setShowCloseSessionModal, false)}
+        onConfirm={handleFinishRack}
         sessionStats={sessionStats}
         visible={showCloseSessionModal}
       />
@@ -709,10 +646,14 @@ const ScanScreen = React.memo(function ScanScreen() {
         <View
           style={[
             styles.performanceOverlay,
-            performanceWarning ? styles.performancePoor : styles.performanceGood,
+            performanceWarning
+              ? styles.performancePoor
+              : styles.performanceGood,
           ]}
         >
-          <Text style={styles.performanceText}>FPS: {performanceMetrics.fps ?? "--"}</Text>
+          <Text style={styles.performanceText}>
+            FPS: {performanceMetrics.fps ?? "--"}
+          </Text>
         </View>
       )}
     </SafeAreaView>
@@ -724,96 +665,11 @@ export default ScanScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: SURFACE_BG,
-  },
-  headerShell: {
-    backgroundColor: SURFACE_BG,
+    backgroundColor: colors.gray[50],
   },
   scrollContent: {
     padding: spacing.lg,
-    paddingBottom: 140,
-    width: "100%",
-    maxWidth: 1040,
-    alignSelf: "center",
-  },
-  sessionHero: {
-    marginBottom: spacing.lg,
-    padding: spacing.md,
-    backgroundColor: SURFACE_CARD,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: SURFACE_BORDER,
-    ...shadows.sm,
-  },
-  sessionHeroHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  sessionHeroCopy: {
-    flex: 1,
-  },
-  sessionHeroKicker: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    color: ACCENT,
-    marginBottom: spacing.xs,
-  },
-  sessionHeroTitle: {
-    fontSize: typography.fontSize.lg,
-    lineHeight: 26,
-    fontWeight: "700",
-    color: TEXT_STRONG,
-    marginBottom: 2,
-  },
-  sessionHeroText: {
-    fontSize: typography.fontSize.xs,
-    lineHeight: 18,
-    color: TEXT_MUTED,
-    maxWidth: 620,
-  },
-  sessionBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    backgroundColor: ACCENT_SOFT,
-    borderWidth: 1,
-    borderColor: "#cae8df",
-  },
-  sessionBadgeText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: "700",
-    color: ACCENT,
-    letterSpacing: 0.8,
-  },
-  sessionMetaRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  sessionMetaChip: {
-    minHeight: 44,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 14,
-    backgroundColor: SURFACE_MUTED,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-  },
-  sessionMetaText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: "600",
-    color: TEXT_STRONG,
+    paddingBottom: 100,
   },
   footerSpacer: {
     height: 20,
@@ -825,27 +681,10 @@ const styles = StyleSheet.create({
     right: 0,
     padding: spacing.lg,
     paddingBottom: Platform.OS === "ios" ? 34 : spacing.lg,
-    backgroundColor: SURFACE_BG,
+    backgroundColor: colors.white,
     borderTopWidth: 1,
-    borderTopColor: SURFACE_BORDER,
+    borderTopColor: colors.gray[200],
     ...shadows.lg,
-  },
-  scanItemButton: {
-    backgroundColor: ACCENT,
-    borderRadius: 14,
-  },
-  finishRackLink: {
-    minHeight: 44,
-    marginTop: spacing.sm,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.xs,
-  },
-  finishRackLinkText: {
-    color: ACCENT,
-    fontSize: typography.fontSize.sm,
-    fontWeight: "700",
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -859,7 +698,7 @@ const styles = StyleSheet.create({
   },
   performanceOverlay: {
     position: "absolute",
-    top: 96,
+    top: 60,
     right: 20,
     backgroundColor: "rgba(0,0,0,0.7)",
     paddingHorizontal: 12,

@@ -9,7 +9,6 @@ import { CameraView } from "@/services/device/expoCamera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { createShadow } from "@/theme/shadowUtils";
 
 import ModernButton from "@/components/ui/ModernButton";
 import {
@@ -185,7 +184,10 @@ const styles = StyleSheet.create({
     height: 40,
     borderColor: colors.white,
     borderWidth: 4,
-    ...createShadow({ color: "#000", offsetX: 0, offsetY: 2, opacity: 0.5, radius: 4 }),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
   },
   cornerTopLeft: {
     top: 0,
@@ -222,7 +224,10 @@ const styles = StyleSheet.create({
     top: 0,
     height: 2,
     backgroundColor: colors.primary[400],
-    ...createShadow({ color: colors.primary[400], offsetX: 0, offsetY: 0, opacity: 1, radius: 10 }),
+    shadowColor: colors.primary[400],
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
   },
   scanInstruction: {
     color: colors.white,

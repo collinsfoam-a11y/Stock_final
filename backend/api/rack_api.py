@@ -8,14 +8,13 @@ import time
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pymongo.errors import PyMongoError
 from pydantic import BaseModel, Field
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
+from backend.db.runtime import get_db
 from backend.services.governance_guard import raise_forbidden_direct_write
 from backend.services.lock_manager import get_lock_manager
 from backend.services.pubsub_service import get_pubsub_service
-from backend.services.rack_service import RackService, get_rack_service
 from backend.services.session_state_machine import SessionStateMachine
 from backend.services.redis_service import get_redis
 from backend.utils.api_utils import sanitize_for_logging
@@ -23,7 +22,6 @@ from backend.utils.api_utils import sanitize_for_logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/racks", tags=["Rack Management"])
-RACK_ERRORS = (KeyError, PyMongoError, RuntimeError, TypeError, ValueError)
 
 
 def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
@@ -82,6 +80,52 @@ class AvailableRack(BaseModel):
 # Helper Functions
 
 
+async def get_or_create_rack(db, rack_id: str, floor: str) -> dict:
+    """Get rack from registry or create if doesn't exist"""
+    rack = await db.rack_registry.find_one({"rack_id": rack_id})
+
+    if not rack:
+        # Create new rack
+        rack = {
+            "rack_id": rack_id,
+            "floor": floor,
+            "status": "available",
+            "claimed_by": None,
+            "session_id": None,
+            "lock_expires_at": None,
+            "created_at": time.time(),
+            "updated_at": time.time(),
+        }
+        await db.rack_registry.insert_one(rack)
+        logger.info(
+            "Created new rack: %s on %s",
+            _safe_log_value(rack_id),
+            _safe_log_value(floor),
+        )
+
+    return rack
+
+
+async def update_rack_status(
+    db,
+    rack_id: str,
+    status: str,
+    claimed_by: Optional[str] = None,
+    session_id: Optional[str] = None,
+    lock_expires_at: Optional[float] = None,
+) -> None:
+    """Update rack status in database"""
+    update_data = {
+        "status": status,
+        "claimed_by": claimed_by,
+        "session_id": session_id,
+        "lock_expires_at": lock_expires_at,
+        "updated_at": time.time(),
+    }
+
+    await db.rack_registry.update_one({"rack_id": rack_id}, {"$set": update_data})
+
+
 # Endpoints
 
 
@@ -89,7 +133,6 @@ class AvailableRack(BaseModel):
 async def get_available_racks(
     floor: Optional[str] = Query(None, description="Filter by floor"),
     current_user: dict[str, Any] = Depends(get_current_user),
-    rack_service: RackService = Depends(get_rack_service),
 ) -> list[AvailableRack]:
     """
     Get list of available racks
@@ -98,14 +141,31 @@ async def get_available_racks(
     - floor: Optional floor filter
     - status: Only returns available or paused racks
     """
+    db = get_db()
+
+    # Build query
+    query: dict[str, Any] = {"status": {"$in": ["available", "paused"]}}
+    if floor:
+        query["floor"] = floor
+
+    # Get racks
+    racks_cursor = db.rack_registry.find(query).sort("rack_id", 1)
+    racks = await racks_cursor.to_list(length=1000)
+
+    # Get item counts (estimated from ERP items)
     result = []
-    for rack in await rack_service.list_available_racks(floor):
+    for rack in racks:
+        # Count items in this rack
+        item_count = await db.erp_items.count_documents(
+            {"rack": rack["rack_id"], "floor": rack["floor"]}
+        )
+
         result.append(
             AvailableRack(
                 rack_id=rack["rack_id"],
                 floor=rack["floor"],
                 status=rack["status"],
-                item_count=int(rack.get("item_count", 0) or 0),
+                item_count=item_count,
             )
         )
 
@@ -120,10 +180,25 @@ async def get_available_racks(
 @router.get("/floors", response_model=list[str])
 async def get_floors(
     current_user: dict[str, Any] = Depends(get_current_user),
-    rack_service: RackService = Depends(get_rack_service),
 ) -> list[str]:
     """Get list of all floors with racks"""
-    return await rack_service.list_floors()
+    db = get_db()
+
+    # Get distinct floors from rack registry
+    floors = await db.rack_registry.distinct("floor")
+
+    # If no racks yet, return default floors
+    if not floors:
+        floors = [
+            "Ground",
+            "First",
+            "Second",
+            "Upper Godown",
+            "Back Godown",
+            "Damage Area",
+        ]
+
+    return sorted(floors)
 
 
 @router.post("/{rack_id}/claim", response_model=RackClaimResponse)
@@ -133,7 +208,6 @@ async def claim_rack(
     current_user: dict[str, Any] = Depends(get_current_user),
     redis_service=Depends(get_redis),
     pubsub_service=Depends(get_pubsub_service),
-    rack_service: RackService = Depends(get_rack_service),
 ) -> RackClaimResponse:
     """
     Claim a rack for exclusive use
@@ -145,11 +219,13 @@ async def claim_rack(
     4. Update rack status
     5. Broadcast update
     """
+    db = get_db()
+
     user_id = current_user["username"]
     lock_manager = get_lock_manager(redis_service)
 
     # Get or create rack
-    rack = await rack_service.get_or_create_rack(rack_id, request.floor)
+    rack = await get_or_create_rack(db, rack_id, request.floor)
 
     # Check if rack is available
     if rack["status"] not in ["available", "paused"]:
@@ -180,7 +256,8 @@ async def claim_rack(
 
         # Update rack status
         lock_expires_at = time.time() + lock_ttl
-        await rack_service.update_rack_status(
+        await update_rack_status(
+            db,
             rack_id,
             status="active",
             claimed_by=user_id,
@@ -215,7 +292,7 @@ async def claim_rack(
             message=f"Rack {rack_id} claimed successfully",
         )
 
-    except RACK_ERRORS as e:
+    except Exception as e:
         # Release lock on error
         await lock_manager.release_rack_lock(rack_id, user_id)
         logger.error(
@@ -232,7 +309,6 @@ async def release_rack(
     current_user: dict[str, Any] = Depends(get_current_user),
     redis_service=Depends(get_redis),
     pubsub_service=Depends(get_pubsub_service),
-    rack_service: RackService = Depends(get_rack_service),
 ) -> RackReleaseResponse:
     """
     Release rack lock
@@ -244,11 +320,13 @@ async def release_rack(
     4. Update session status
     5. Broadcast update
     """
+    db = get_db()
+
     user_id = current_user["username"]
     lock_manager = get_lock_manager(redis_service)
 
     # Get rack
-    rack = await rack_service.get_rack(rack_id)
+    rack = await db.rack_registry.find_one({"rack_id": rack_id})
     if not rack:
         raise HTTPException(status_code=404, detail=f"Rack {rack_id} not found")
 
@@ -266,11 +344,11 @@ async def release_rack(
         logger.warning("Failed to release Redis lock for rack %s", _safe_log_value(rack_id))
 
     # Update rack status
-    await rack_service.update_rack_status(rack_id, status="available")
+    await update_rack_status(db, rack_id, status="available")
 
     # Update session status
     if rack["session_id"]:
-        session = await rack_service.get_verification_session(rack["session_id"])
+        session = await db.verification_sessions.find_one({"session_id": rack["session_id"]})
         if session and not SessionStateMachine.can_transition(
             session.get("status", ""), "completed"
         ):
@@ -299,15 +377,16 @@ async def pause_rack(
     rack_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
     pubsub_service=Depends(get_pubsub_service),
-    rack_service: RackService = Depends(get_rack_service),
 ) -> dict[str, Any]:
     """
     Pause work on rack (keep lock)
     """
+    db = get_db()
+
     user_id = current_user["username"]
 
     # Get rack
-    rack = await rack_service.get_rack(rack_id)
+    rack = await db.rack_registry.find_one({"rack_id": rack_id})
     if not rack:
         raise HTTPException(status_code=404, detail=f"Rack {rack_id} not found")
 
@@ -316,7 +395,8 @@ async def pause_rack(
         raise HTTPException(status_code=403, detail=f"Rack {rack_id} is not claimed by you")
 
     # Update status
-    await rack_service.update_rack_status(
+    await update_rack_status(
+        db,
         rack_id,
         status="paused",
         claimed_by=rack["claimed_by"],
@@ -326,7 +406,7 @@ async def pause_rack(
 
     # Update session
     if rack["session_id"]:
-        session = await rack_service.get_verification_session(rack["session_id"])
+        session = await db.verification_sessions.find_one({"session_id": rack["session_id"]})
         if session and not SessionStateMachine.can_transition(session.get("status", ""), "paused"):
             raise HTTPException(
                 status_code=409,
@@ -347,15 +427,16 @@ async def resume_rack(
     rack_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
     pubsub_service=Depends(get_pubsub_service),
-    rack_service: RackService = Depends(get_rack_service),
 ) -> dict[str, Any]:
     """
     Resume work on paused rack
     """
+    db = get_db()
+
     user_id = current_user["username"]
 
     # Get rack
-    rack = await rack_service.get_rack(rack_id)
+    rack = await db.rack_registry.find_one({"rack_id": rack_id})
     if not rack:
         raise HTTPException(status_code=404, detail=f"Rack {rack_id} not found")
 
@@ -371,7 +452,8 @@ async def resume_rack(
         )
 
     # Update status
-    await rack_service.update_rack_status(
+    await update_rack_status(
+        db,
         rack_id,
         status="active",
         claimed_by=rack["claimed_by"],
@@ -381,7 +463,7 @@ async def resume_rack(
 
     # Update session
     if rack["session_id"]:
-        session = await rack_service.get_verification_session(rack["session_id"])
+        session = await db.verification_sessions.find_one({"session_id": rack["session_id"]})
         if session and not SessionStateMachine.can_transition(session.get("status", ""), "active"):
             raise HTTPException(
                 status_code=409,
@@ -401,10 +483,11 @@ async def resume_rack(
 async def get_rack_status(
     rack_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
-    rack_service: RackService = Depends(get_rack_service),
 ) -> RackStatus:
     """Get current rack status"""
-    rack = await rack_service.get_rack(rack_id)
+    db = get_db()
+
+    rack = await db.rack_registry.find_one({"rack_id": rack_id})
     if not rack:
         raise HTTPException(status_code=404, detail=f"Rack {rack_id} not found")
 
@@ -422,12 +505,16 @@ async def get_rack_status(
 @router.get("/user/active")
 async def get_user_active_racks(
     current_user: dict[str, Any] = Depends(get_current_user),
-    rack_service: RackService = Depends(get_rack_service),
 ) -> list[RackStatus]:
     """Get all racks claimed by current user"""
+    db = get_db()
+
     user_id = current_user["username"]
 
-    racks = await rack_service.list_user_active_racks(user_id)
+    racks_cursor = db.rack_registry.find(
+        {"claimed_by": user_id, "status": {"$in": ["active", "paused"]}}
+    )
+    racks = await racks_cursor.to_list(length=100)
 
     return [
         RackStatus(

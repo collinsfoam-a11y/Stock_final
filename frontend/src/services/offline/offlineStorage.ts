@@ -20,7 +20,6 @@ function logStorageError(message: string, error: unknown, context?: Record<strin
 const STORAGE_KEYS = {
   ITEMS_CACHE: "items_cache",
   OFFLINE_QUEUE: "offline_queue",
-  OFFLINE_SESSION_ID_MAP: "offline_session_id_map",
   SESSIONS_CACHE: "sessions_cache",
   COUNT_LINES_CACHE: "count_lines_cache",
   LAST_SYNC: "last_sync",
@@ -503,51 +502,6 @@ export const clearOfflineQueue = async () => {
     await storage.remove(STORAGE_KEYS.OFFLINE_QUEUE);
   } catch (error) {
     logStorageError("Error clearing offline queue", error);
-  }
-};
-
-export const getOfflineSessionIdMap = async (): Promise<Record<string, string>> => {
-  try {
-    const mapping = await storage.get<Record<string, string>>(
-      STORAGE_KEYS.OFFLINE_SESSION_ID_MAP,
-      { defaultValue: {} },
-    );
-    return mapping ?? {};
-  } catch (error) {
-    logStorageError("Error loading offline session ID map", error);
-    return {};
-  }
-};
-
-export const getMappedSessionId = async (
-  offlineSessionId: string,
-): Promise<string | null> => {
-  const mapping = await getOfflineSessionIdMap();
-  return mapping[offlineSessionId] ?? null;
-};
-
-export const setSessionIdMapping = async (
-  offlineSessionId: string,
-  serverSessionId: string,
-) => {
-  const offlineId = String(offlineSessionId || "").trim();
-  const serverId = String(serverSessionId || "").trim();
-  if (!offlineId || !serverId || offlineId === serverId) {
-    return;
-  }
-
-  try {
-    const mapping = await getOfflineSessionIdMap();
-    await storage.set(STORAGE_KEYS.OFFLINE_SESSION_ID_MAP, {
-      ...mapping,
-      [offlineId]: serverId,
-    });
-  } catch (error) {
-    logStorageError("Error saving offline session ID map", error, {
-      offlineSessionId: offlineId,
-      serverSessionId: serverId,
-    });
-    throw error;
   }
 };
 

@@ -11,9 +11,6 @@ from typing import Any, Optional
 
 import pandas as pd
 from bson import ObjectId
-from pymongo.errors import PyMongoError
-
-from backend.db.runtime import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +24,6 @@ class DynamicReportService:
         self.db = db
         self.report_templates = db.report_templates
         self.generated_reports = db.generated_reports
-
-    async def get_enabled_dynamic_fields(self) -> list[dict[str, Any]]:
-        return await self.db.dynamic_field_definitions.find({"enabled": True}).to_list(
-            length=None
-        )
 
     async def create_report_template(
         self,
@@ -88,7 +80,7 @@ class DynamicReportService:
             logger.info(f"Created report template: {name}")
             return template
 
-        except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        except Exception as e:
             logger.error(f"Error creating report template: {str(e)}")
             raise
 
@@ -104,7 +96,7 @@ class DynamicReportService:
 
             return templates
 
-        except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        except Exception as e:
             logger.error(f"Error getting report templates: {str(e)}")
             raise
 
@@ -203,7 +195,7 @@ class DynamicReportService:
 
             return report_record
 
-        except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        except Exception as e:
             logger.error(f"Error generating report: {str(e)}")
             raise
 
@@ -230,7 +222,7 @@ class DynamicReportService:
             else:
                 raise ValueError(f"Unknown report type: {report_type}")
 
-        except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        except Exception as e:
             logger.error(f"Error fetching report data: {str(e)}")
             raise
 
@@ -252,7 +244,7 @@ class DynamicReportService:
                 projection[field_name] = 1
 
             # Fetch items
-            cursor = self.db.erp_items.find(query, projection)
+            cursor = self.db.items.find(query, projection)
 
             # Apply sorting
             if sorting:
@@ -276,7 +268,7 @@ class DynamicReportService:
 
             return items
 
-        except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        except Exception as e:
             logger.error(f"Error fetching items data: {str(e)}")
             raise
 
@@ -311,7 +303,7 @@ class DynamicReportService:
 
             return sessions
 
-        except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        except Exception as e:
             logger.error(f"Error fetching sessions data: {str(e)}")
             raise
 
@@ -368,7 +360,7 @@ class DynamicReportService:
 
             return flattened
 
-        except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        except Exception as e:
             logger.error(f"Error fetching variance data: {str(e)}")
             raise
 
@@ -393,7 +385,7 @@ class DynamicReportService:
             logs = await cursor.to_list(length=10000)
             return logs
 
-        except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        except Exception as e:
             logger.error(f"Error fetching audit data: {str(e)}")
             raise
 
@@ -471,7 +463,7 @@ class DynamicReportService:
             else:
                 raise ValueError(f"Unsupported format: {format}")
 
-        except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        except Exception as e:
             logger.error(f"Error generating file: {str(e)}")
             raise
 
@@ -665,7 +657,7 @@ class DynamicReportService:
 
             return reports
 
-        except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        except Exception as e:
             logger.error(f"Error getting generated reports: {str(e)}")
             raise
 
@@ -687,10 +679,6 @@ class DynamicReportService:
 
             return file_record["file_data"], report["file_name"], report["mime_type"]
 
-        except (KeyError, PyMongoError, RuntimeError, TypeError, ValueError) as e:
+        except Exception as e:
             logger.error(f"Error getting report file: {str(e)}")
             raise
-
-
-def create_dynamic_report_service() -> DynamicReportService:
-    return DynamicReportService(get_db())

@@ -1,5 +1,11 @@
 import React from "react";
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import ModernCard from "@/components/ui/ModernCard";
@@ -71,32 +77,18 @@ const RecentItemCard = React.memo(function RecentItemCard({
   item: ScanLookupItem;
   onPress: () => void;
 }) {
-  const hasSavedQty = typeof item.counted_qty === "number" && !Number.isNaN(item.counted_qty);
-
   return (
     <ModernCard style={styles.recentCard} onPress={onPress}>
       <View style={styles.recentRow}>
         <View style={styles.recentIcon}>
-          <Ionicons
-            name={hasSavedQty ? "checkmark-circle" : "cube-outline"}
-            size={22}
-            color={hasSavedQty ? colors.success[600] : colors.primary[600]}
-          />
+          <Ionicons name="cube-outline" size={22} color={colors.primary[600]} />
         </View>
         <View style={styles.recentInfo}>
           <Text style={styles.recentName} numberOfLines={1}>
             {item.item_name}
           </Text>
-          <Text style={styles.recentCode}>
-            {item.item_code}
-            {hasSavedQty ? `  •  Qty ${item.counted_qty}` : ""}
-          </Text>
+          <Text style={styles.recentCode}>{item.item_code}</Text>
         </View>
-        {hasSavedQty ? (
-          <View style={styles.savedBadge}>
-            <Text style={styles.savedBadgeText}>Saved</Text>
-          </View>
-        ) : null}
         <Ionicons name="chevron-forward" size={20} color={colors.gray[400]} />
       </View>
     </ModernCard>
@@ -113,7 +105,11 @@ const SearchResultItem = React.memo(function SearchResultItem({
   const stockQty = getStockQty(item);
 
   return (
-    <TouchableOpacity style={styles.resultItem} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={styles.resultItem}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <Ionicons name="cube-outline" size={20} color={colors.primary[600]} />
       <View style={styles.resultInfo}>
         <Text style={styles.resultName}>{item.item_name}</Text>
@@ -180,7 +176,7 @@ export function ScanLookupPanel({
         <View style={styles.searchRow}>
           <View style={styles.searchInputWrapper}>
             <ModernInput
-              placeholder="Barcode or item code"
+              placeholder="Enter barcode or item code..."
               value={searchQuery}
               onChangeText={onChangeSearchQuery}
               icon="search"
@@ -189,7 +185,6 @@ export function ScanLookupPanel({
               onSubmitEditing={onSubmitSearch}
               returnKeyType="search"
               keyboardType="default"
-              autoFocus={Platform.OS === "web"}
               containerStyle={{ marginBottom: 0 }}
             />
           </View>
@@ -212,8 +207,13 @@ export function ScanLookupPanel({
           <View style={styles.searchResultsContainer}>
             {searchResults.map((item, index) => (
               <React.Fragment key={buildItemKey(item, index)}>
-                <SearchResultItem item={item} onPress={() => onPressItem(item)} />
-                {index < searchResults.length - 1 && <View style={styles.searchResultSeparator} />}
+                <SearchResultItem
+                  item={item}
+                  onPress={() => onPressItem(item)}
+                />
+                {index < searchResults.length - 1 && (
+                  <View style={styles.searchResultSeparator} />
+                )}
               </React.Fragment>
             ))}
           </View>
@@ -232,9 +232,13 @@ export function ScanLookupPanel({
               {[1, 2, 3].map((value) => (
                 <ModernCard key={value} style={styles.recentCard}>
                   <View style={styles.recentRow}>
-                    <SkeletonLoader style={{ width: 44, height: 44, borderRadius: 12 }} />
+                    <SkeletonLoader
+                      style={{ width: 44, height: 44, borderRadius: 12 }}
+                    />
                     <View style={[styles.recentInfo, { marginLeft: spacing.md }]}>
-                      <SkeletonLoader style={{ width: "80%", height: 16, borderRadius: 4 }} />
+                      <SkeletonLoader
+                        style={{ width: "80%", height: 16, borderRadius: 4 }}
+                      />
                       <SkeletonLoader
                         style={{
                           width: "50%",
@@ -251,12 +255,12 @@ export function ScanLookupPanel({
           ) : recentItems.length === 0 ? (
             <EmptyState
               icon="time-outline"
-              title="No Saved Scans Yet"
-              subtitle="Your last counted items will appear here for quick access"
+              title="No Recent Scans"
+              subtitle="Items you scan will appear here for quick access"
             />
           ) : (
             <View style={styles.recentListContainer}>
-              {recentItems.slice(0, 3).map((item, index) => (
+              {recentItems.slice(0, 5).map((item, index) => (
                 <RecentItemCard
                   key={buildItemKey(item, index)}
                   item={item}
@@ -329,53 +333,11 @@ const styles = StyleSheet.create({
   },
   searchSection: {
     marginBottom: spacing.xl,
-    padding: spacing.lg,
-    backgroundColor: SURFACE_CARD,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: SURFACE_BORDER,
-    ...shadows.md,
-  },
-  panelKicker: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    color: ACCENT,
-    marginBottom: spacing.xs,
-  },
-  panelTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: "700",
-    color: TEXT_STRONG,
-    marginBottom: spacing.xs,
-  },
-  panelCopy: {
-    fontSize: typography.fontSize.sm,
-    lineHeight: 22,
-    color: TEXT_MUTED,
-    marginBottom: spacing.md,
   },
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-  },
-  primaryScanButton: {
-    minHeight: 56,
-    borderRadius: 14,
-    backgroundColor: ACCENT,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-    ...shadows.md,
-  },
-  primaryScanButtonText: {
-    color: colors.white,
-    fontSize: typography.fontSize.base,
-    fontWeight: "800",
   },
   searchInputWrapper: {
     flex: 1,
@@ -396,7 +358,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gray[300],
   },
   searchResultsContainer: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     paddingVertical: spacing.xs,
     backgroundColor: colors.white,
     borderRadius: borderRadius.lg,
@@ -421,32 +383,26 @@ const styles = StyleSheet.create({
   resultName: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: TEXT_STRONG,
+    color: colors.gray[900],
   },
   resultCode: {
     fontSize: typography.fontSize.xs,
-    color: TEXT_MUTED,
+    color: colors.gray[500],
   },
   resultStock: {
     marginTop: 2,
     fontSize: typography.fontSize.xs,
-    color: ACCENT,
+    color: colors.primary[700],
     fontWeight: typography.fontWeight.semibold,
   },
   recentSection: {
     marginBottom: spacing.lg,
   },
-  sectionCopy: {
-    fontSize: typography.fontSize.sm,
-    lineHeight: 20,
-    color: TEXT_MUTED,
-    marginBottom: spacing.md,
-  },
   recentListContainer: {
     paddingBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: typography.fontSize.lg,
+    fontSize: typography.fontSize.sm,
     fontWeight: "700",
     color: colors.gray[600],
     marginBottom: spacing.xs,
@@ -477,7 +433,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: borderRadius.full,
-    backgroundColor: ACCENT_SOFT,
+    backgroundColor: colors.primary[50],
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.md,
@@ -485,39 +441,23 @@ const styles = StyleSheet.create({
   recentInfo: {
     flex: 1,
   },
-  savedBadge: {
-    marginRight: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    borderRadius: borderRadius.full,
-    backgroundColor: "#ecfdf5",
-    borderWidth: 1,
-    borderColor: "#bbf7d0",
-  },
-  savedBadgeText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: "700",
-    color: colors.success[600],
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-  },
   recentName: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: TEXT_STRONG,
+    color: colors.gray[900],
     marginBottom: 2,
   },
   recentCode: {
     fontSize: typography.fontSize.xs,
-    color: TEXT_MUTED,
+    color: colors.gray[500],
     fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
   },
   emptyState: {
     alignItems: "center",
     paddingVertical: spacing.xl,
     paddingHorizontal: spacing.lg,
-    backgroundColor: SURFACE_CARD,
-    borderRadius: 18,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.gray[200],
   },
@@ -525,7 +465,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: borderRadius.full,
-    backgroundColor: ACCENT_SOFT,
+    backgroundColor: colors.gray[50],
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.md,
@@ -533,12 +473,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: TEXT_STRONG,
+    color: colors.gray[900],
     marginBottom: spacing.xs,
   },
   emptySubtitle: {
     fontSize: typography.fontSize.sm,
-    color: TEXT_MUTED,
+    color: colors.gray[500],
     textAlign: "center",
     lineHeight: 20,
   },

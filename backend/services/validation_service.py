@@ -124,7 +124,7 @@ class ValidationService:
         except (KeyError, TypeError, AttributeError) as exc:
             logger.debug("validation_logs collection unavailable: %s", exc)
             return None
-        except (RuntimeError, TypeError, ValueError, OSError) as exc:
+        except Exception as exc:
             logger.error("Failed to resolve validation_logs collection: %s", exc)
             raise
 

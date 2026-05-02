@@ -11,7 +11,6 @@ from backend.api.mapping_api import (
     preview_mapping,
     save_mapping,
 )
-from backend.services.mapping_config_service import MappingConfigService
 
 # Mock data
 MOCK_TABLES = [("Table1",), ("Table2",)]
@@ -21,14 +20,12 @@ MOCK_SAMPLE_DATA = [(1, "test1"), (2, "test2")]
 
 @pytest.fixture
 def mock_pyodbc():
-    with patch("backend.api.mapping_api.require_sql") as mock_require_sql:
-        mock = MagicMock()
+    with patch("backend.api.mapping_api.pyodbc") as mock:
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
 
         mock.connect.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_require_sql.return_value = mock
 
         yield mock
 
@@ -136,11 +133,7 @@ async def test_save_mapping(mock_db):
 
     data = {"connection": {"host": "localhost"}, "mapping": {"tables": {"items": "ItemMaster"}}}
 
-    response = await save_mapping(
-        data=data,
-        current_user=current_user,
-        mapping_service=MappingConfigService(mock_db),
-    )
+    response = await save_mapping(data=data, current_user=current_user, db=mock_db)
 
     assert response["success"] is True
     mock_db.config.update_one.assert_called_once()
@@ -163,10 +156,7 @@ async def test_get_current_mapping(mock_db):
     }
     mock_db.config.find_one.return_value = mock_doc
 
-    response = await get_current_mapping(
-        current_user=current_user,
-        mapping_service=MappingConfigService(mock_db),
-    )
+    response = await get_current_mapping(current_user=current_user, db=mock_db)
 
     assert response["mapping"]["tables"]["items"] == "ItemMaster"
     assert response["connection"]["host"] == "localhost"
@@ -178,10 +168,7 @@ async def test_get_current_mapping_empty(mock_db):
 
     mock_db.config.find_one.return_value = None
 
-    response = await get_current_mapping(
-        current_user=current_user,
-        mapping_service=MappingConfigService(mock_db),
-    )
+    response = await get_current_mapping(current_user=current_user, db=mock_db)
 
     assert response["mapping"] is None
     assert response["connection"] is None
