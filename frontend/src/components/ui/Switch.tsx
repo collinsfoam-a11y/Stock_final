@@ -18,6 +18,7 @@ import {
   shadows,
   hitSlop,
 } from "@/theme/unified";
+import { haptics } from "@/services/haptics";
 
 export type SwitchSize = "sm" | "md" | "lg";
 
@@ -82,6 +83,7 @@ export const Switch: React.FC<SwitchProps> = ({
 
   const handlePress = () => {
     if (!disabled) {
+      void haptics.light();
       onValueChange(!value);
     }
   };
