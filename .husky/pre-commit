@@ -1,0 +1,7 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🔍 Running governance checks..."
+
+python3 backend/scripts/check_governance_static.py || exit 1
+cd frontend && npm run -s typecheck || exit 1
