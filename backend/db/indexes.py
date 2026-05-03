@@ -194,6 +194,23 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
             [("session_id", 1), ("item_code", 1), ("floor_no", 1), ("rack_no", 1)],
             {"name": "idx_duplicate_detection"},
         ),
+        # Deterministic idempotency guard for session-scoped item/barcode writes.
+        (
+            [("session_id", 1), ("item_code", 1), ("barcode", 1)],
+            {
+                "name": "idx_session_item_barcode_unique",
+                "unique": True,
+                "sparse": True,
+            },
+        ),
+        # Deterministic idempotency guard keyed by canonical item identity.
+        (
+            [("session_id", 1), ("item_id", 1), ("barcode", 1)],
+            {
+                "name": "idx_session_item_id_barcode_unique",
+                "unique": True,
+            },
+        ),
         # Session + id lookup (used by find_session and $or queries)
         ([("id", 1)], {"name": "idx_count_line_id", "sparse": True}),
     ],

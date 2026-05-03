@@ -5,9 +5,16 @@ The browser E2E suite for this repo lives in this folder and runs with Playwrigh
 ## Common Commands
 
 - Run all E2E tests: `npx playwright test`
+- Run only critical-path E2E: `npm run e2e:critical`
 - Run a single spec: `npx playwright test e2e/auth.spec.ts`
 - Run the recount smoke suite: `npm run e2e:recount-smoke`
 - Open the HTML report after a run: `npx playwright show-report`
+
+## Hybrid Strategy
+
+- Component/unit layer: run `npm test` (includes connectivity and API client behavior tests).
+- API/backend layer: run `./scripts/python.sh -m pytest backend/tests/api backend/tests/services`.
+- E2E layer: keep only critical user journeys in Playwright (`core-flow`, `supervisor-smoke`, `recount-assignment-ui`).
 
 ## Local Expectations
 

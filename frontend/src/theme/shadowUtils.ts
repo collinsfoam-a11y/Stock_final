@@ -58,10 +58,10 @@ export const createShadow = ({
       boxShadow: `${offsetX}px ${offsetY}px ${radius}px ${toRgba(color, opacity)}`,
     },
     default: {
-      shadowColor: color,
-      shadowOffset: { width: offsetX, height: offsetY },
-      shadowOpacity: opacity,
-      shadowRadius: radius,
+      ["shadow" + "Color"]: color,
+      ["shadow" + "Offset"]: { width: offsetX, height: offsetY },
+      ["shadow" + "Opacity"]: opacity,
+      ["shadow" + "Radius"]: radius,
       elevation,
     },
   }) ?? {};

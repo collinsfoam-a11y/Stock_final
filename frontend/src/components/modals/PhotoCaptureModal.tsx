@@ -26,15 +26,12 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   colors,
   fontSize,
-  fontWeight,
-  radius as borderRadius,
   spacing,
 } from "../../theme/unified";
 
 const SURFACE_BG = "#f4f7f6";
 const SURFACE_CARD = "#ffffff";
 const SURFACE_BORDER = "#d9e5e2";
-const SURFACE_MUTED = "#f8fafc";
 const ACCENT = "#0f766e";
 const TEXT_STRONG = "#0f172a";
 const TEXT_MUTED = "#475569";

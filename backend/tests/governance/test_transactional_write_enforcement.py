@@ -210,6 +210,35 @@ async def test_semantic_hash_duplicate_is_rejected():
 
 
 @pytest.mark.asyncio
+async def test_identity_fields_are_normalized_before_insert():
+    db = InMemoryDatabase()
+    await _seed_active_session(db, "sess-id-norm")
+    await _seed_session_snapshot(db, "sess-id-norm", item_code="ITEM-NORM", stock_qty=3.0)
+    service = CountLineWriteService(db)
+
+    line = _build_line(
+        line_id="line-id-norm-1",
+        session_id="sess-id-norm",
+        item_code=" ITEM-NORM ",
+        counted_qty=3.0,
+        idempotency_key="idem-id-norm-1",
+    )
+    line["barcode"] = " 510001 "
+    line["item_id"] = " "
+
+    await service.process_write(
+        {"operation": "insert_one", "document": line},
+        context={"username": "tester", "enforce_snapshot": False},
+    )
+
+    saved = await db.count_lines.find_one({"id": "line-id-norm-1"})
+    assert saved is not None
+    assert saved["item_code"] == "ITEM-NORM"
+    assert saved["item_id"] == "ITEM-NORM"
+    assert saved["barcode"] == "510001"
+
+
+@pytest.mark.asyncio
 async def test_skip_governance_bypass_is_rejected():
     db = InMemoryDatabase()
     await _seed_active_session(db, "sess-bypass")

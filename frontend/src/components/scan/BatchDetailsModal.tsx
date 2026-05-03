@@ -9,17 +9,20 @@ import {
   TextInput,
   Alert,
 } from "react-native";
+import apiClient from "@/api/client";
 import { auroraTheme } from "../../theme/auroraTheme";
 
 interface Batch {
-  batch_id: string;
+  batch_id?: string | null;
   batch_no: string;
   barcode: string;
   mfg_date?: string;
+  manufacturing_date?: string;
   expiry_date?: string;
   stock_qty: number;
-  opening_stock: number;
+  opening_stock?: number;
   warehouse_name?: string;
+  warehouse?: string;
   shelf_name?: string;
   item_code: string;
   item_name: string;
@@ -34,8 +37,11 @@ interface BatchDetailsModalProps {
     barcode?: string;
   } | null;
   onClose: () => void;
-  onBatchSelect: (batch: Batch, countedStock: number) => void;
+  onBatchSelect: (batch: Batch | null, countedStock: number) => void;
 }
+
+const getBatchKey = (batch: Batch): string =>
+  batch.batch_id || batch.batch_no || batch.barcode || batch.item_code;
 
 export const BatchDetailsModal: React.FC<BatchDetailsModalProps> = ({
   visible,
@@ -54,17 +60,12 @@ export const BatchDetailsModal: React.FC<BatchDetailsModalProps> = ({
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/item-batches/${item.item_code}`);
-      const data = await response.json();
-
-      if (data.success) {
-        setBatches(data.batches || []);
-      } else {
-        Alert.alert("Error", "Failed to fetch batch details");
-        setBatches([]);
-      }
-    } catch (error) {
-      console.error("Error fetching batches:", error);
+      const response = await apiClient.get(
+        `/api/item-batches/${encodeURIComponent(item.item_code)}`,
+      );
+      const data = response.data || {};
+      setBatches(Array.isArray(data.batches) ? data.batches : []);
+    } catch {
       Alert.alert("Error", "Failed to fetch batch details");
       setBatches([]);
     } finally {
@@ -78,15 +79,15 @@ export const BatchDetailsModal: React.FC<BatchDetailsModalProps> = ({
     }
   }, [visible, item, fetchBatches]);
 
-  const handleCountedStockChange = (batchId: string, value: string) => {
+  const handleCountedStockChange = (batchKey: string, value: string) => {
     setCountedStocks((prev) => ({
       ...prev,
-      [batchId]: value,
+      [batchKey]: value,
     }));
   };
 
   const handleBatchSelect = (batch: Batch) => {
-    const countedStock = parseInt(countedStocks[batch.batch_id] || "0", 10);
+    const countedStock = parseInt(countedStocks[getBatchKey(batch)] || "0", 10);
     onBatchSelect(batch, countedStock);
   };
 
@@ -138,10 +139,7 @@ export const BatchDetailsModal: React.FC<BatchDetailsModalProps> = ({
               </Text>
               <TouchableOpacity
                 style={styles.continueButton}
-                onPress={() => {
-                  // Continue without batch - pass null batch and 0 counted stock
-                  onBatchSelect(null as any, 0);
-                }}
+                onPress={() => onBatchSelect(null, 0)}
               >
                 <Text style={styles.continueButtonText}>
                   Continue Without Batch
@@ -151,7 +149,7 @@ export const BatchDetailsModal: React.FC<BatchDetailsModalProps> = ({
           ) : (
             <ScrollView style={styles.batchList}>
               {batches.map((batch) => (
-                <View key={batch.batch_id} style={styles.batchCard}>
+                <View key={getBatchKey(batch)} style={styles.batchCard}>
                   <View style={styles.batchHeader}>
                     <Text style={styles.batchNo}>Batch: {batch.batch_no}</Text>
                     <Text style={styles.stockQty}>
@@ -170,7 +168,7 @@ export const BatchDetailsModal: React.FC<BatchDetailsModalProps> = ({
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Mfg Date:</Text>
                       <Text style={styles.detailValue}>
-                        {formatDate(batch.mfg_date)}
+                        {formatDate(batch.manufacturing_date || batch.mfg_date)}
                       </Text>
                     </View>
 
@@ -184,7 +182,7 @@ export const BatchDetailsModal: React.FC<BatchDetailsModalProps> = ({
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Location:</Text>
                       <Text style={styles.detailValue}>
-                        {batch.warehouse_name || "N/A"}
+                        {batch.warehouse_name || batch.warehouse || "N/A"}
                         {batch.shelf_name ? ` - ${batch.shelf_name}` : ""}
                       </Text>
                     </View>
@@ -192,7 +190,7 @@ export const BatchDetailsModal: React.FC<BatchDetailsModalProps> = ({
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Opening Stock:</Text>
                       <Text style={styles.detailValue}>
-                        {batch.opening_stock}
+                        {batch.opening_stock ?? batch.stock_qty}
                       </Text>
                     </View>
                   </View>
@@ -203,9 +201,9 @@ export const BatchDetailsModal: React.FC<BatchDetailsModalProps> = ({
                       style={styles.countedStockInput}
                       placeholder="Enter counted quantity"
                       keyboardType="numeric"
-                      value={countedStocks[batch.batch_id] || ""}
+                      value={countedStocks[getBatchKey(batch)] || ""}
                       onChangeText={(value) =>
-                        handleCountedStockChange(batch.batch_id, value)
+                        handleCountedStockChange(getBatchKey(batch), value)
                       }
                     />
                   </View>

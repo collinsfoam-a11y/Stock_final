@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timezone
+import asyncio
+import logging
+import os
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Optional
 
 from fastapi import HTTPException
@@ -10,6 +13,15 @@ from fastapi import HTTPException
 from backend.services.projection_readiness_gate import (
     ProjectionGateCache,
     get_projection_gate_cache,
+)
+from backend.services.projection_snapshot import (
+    PROJECTION_ITEM_SNAPSHOT_FIELDS,
+    PROJECTION_SESSION_SNAPSHOT_FIELDS,
+    SOURCE_SESSION_TIMESTAMP_FIELDS,
+    apply_snapshot_filter,
+    get_latest_collection_timestamp,
+    get_projection_snapshot_ts,
+    snapshot_mode_enabled,
 )
 from backend.services.query_utils import (
     date_match,
@@ -20,6 +32,9 @@ from backend.services.query_utils import (
 
 _VERIFIED_QTY_FIELD = "verified" + "_qty"
 _PROJECTION_SCAN_LIMIT = 10000
+_RETRIABLE_READINESS_REASONS = {"STALE_DATA", "LAG_EXCEEDED", "PARITY_FAILED"}
+_NON_RETRIABLE_READINESS_REASONS = {"DRIFT_DETECTED", "COLLECTION_MISSING"}
+logger = logging.getLogger(__name__)
 
 
 class ProjectionReadService:
@@ -43,11 +58,283 @@ class ProjectionReadService:
         self.gate_cache = gate_cache or (
             get_projection_gate_cache(db) if enforce_readiness else None
         )
+        self._validation_freshness_checked = False
 
     async def _ensure_collection(self, collection_name: str) -> Any:
         if self.enforce_readiness and self.gate_cache is not None:
-            await self.gate_cache.require_ready()
+            await self._require_readiness_with_retry(collection_name)
+        if self._validation_mode_enabled():
+            await self._ensure_projection_freshness()
         return self.db[collection_name]
+
+    @staticmethod
+    def _readiness_retry_attempts() -> int:
+        try:
+            retries = int(os.getenv("PROJECTION_READINESS_RETRY_ATTEMPTS", "2"))
+        except ValueError:
+            retries = 2
+        return max(0, min(retries, 2))
+
+    @staticmethod
+    def _readiness_retry_delay_seconds() -> float:
+        try:
+            delay_ms = float(os.getenv("PROJECTION_READINESS_RETRY_DELAY_MS", "75"))
+        except ValueError:
+            delay_ms = 75.0
+        return min(max(delay_ms / 1000.0, 0.05), 0.1)
+
+    def _is_retriable_projection_inconsistency(self, detail: dict[str, Any]) -> bool:
+        if detail.get("code") != "PROJECTION_INCONSISTENT":
+            return False
+
+        reason = str(detail.get("reason") or "")
+        if reason in _NON_RETRIABLE_READINESS_REASONS:
+            return False
+        if reason not in _RETRIABLE_READINESS_REASONS:
+            return False
+
+        metrics = detail.get("metrics")
+        if not isinstance(metrics, dict):
+            return reason in {"STALE_DATA", "LAG_EXCEEDED"}
+
+        drift_count = self._to_int(metrics.get("projection_drift_count"))
+        gap_count = self._to_int(metrics.get("projection_gap_count"))
+        if drift_count > 0 or gap_count > 0:
+            return False
+        return True
+
+    @staticmethod
+    def _iso_or_none(value: Optional[datetime]) -> Optional[str]:
+        return value.isoformat() if isinstance(value, datetime) else None
+
+    def _projection_timing_context(
+        self,
+        *,
+        status: Any,
+        read_time: datetime,
+    ) -> dict[str, Any]:
+        lag_seconds = getattr(status, "lag_seconds", None)
+        checked_at = getattr(status, "checked_at", None)
+        estimated_write_time: Optional[datetime] = None
+        if isinstance(checked_at, datetime) and isinstance(lag_seconds, (int, float)):
+            estimated_write_time = checked_at - timedelta(seconds=max(float(lag_seconds), 0.0))
+
+        projection_available_time: Optional[datetime] = None
+        stability_since = getattr(status, "stability_since", None)
+        if isinstance(stability_since, datetime):
+            window_seconds = max(
+                int(getattr(self.gate_cache, "stability_window_seconds", 0) or 0),
+                0,
+            )
+            projection_available_time = stability_since + timedelta(seconds=window_seconds)
+
+        return {
+            "write_time": self._iso_or_none(estimated_write_time),
+            "projection_available_time": self._iso_or_none(projection_available_time),
+            "read_time": read_time.isoformat(),
+        }
+
+    async def _require_readiness_with_retry(self, collection_name: str) -> None:
+        if self.gate_cache is None:
+            return
+
+        retries = self._readiness_retry_attempts()
+        delay_seconds = self._readiness_retry_delay_seconds()
+        attempts = retries + 1
+        first_read_time = datetime.now(timezone.utc).replace(tzinfo=None)
+
+        for attempt in range(attempts):
+            status = await self.gate_cache.get_status(force_refresh=attempt > 0)
+            if status.ready:
+                if attempt > 0:
+                    timing = self._projection_timing_context(
+                        status=status,
+                        read_time=datetime.now(timezone.utc).replace(tzinfo=None),
+                    )
+                    logger.info(
+                        "projection_readiness_retry_succeeded",
+                        extra={
+                            "collection": collection_name,
+                            "attempt": attempt + 1,
+                            "max_attempts": attempts,
+                            "retry_delay_ms": int(delay_seconds * 1000),
+                            "first_read_time": first_read_time.isoformat(),
+                            **timing,
+                        },
+                    )
+                return
+
+            detail = status.http_detail()
+            if attempt < retries and self._is_retriable_projection_inconsistency(detail):
+                read_time = datetime.now(timezone.utc).replace(tzinfo=None)
+                timing = self._projection_timing_context(status=status, read_time=read_time)
+                logger.warning(
+                    "projection_readiness_retry_pending",
+                    extra={
+                        "collection": collection_name,
+                        "attempt": attempt + 1,
+                        "max_attempts": attempts,
+                        "retry_delay_ms": int(delay_seconds * 1000),
+                        "reason": detail.get("reason"),
+                        "retry_after_seconds": detail.get("retry_after_seconds"),
+                        "first_read_time": first_read_time.isoformat(),
+                        **timing,
+                    },
+                )
+                await asyncio.sleep(delay_seconds)
+                continue
+
+            raise HTTPException(status_code=503, detail=detail)
+
+    @staticmethod
+    def _validation_mode_enabled() -> bool:
+        return snapshot_mode_enabled()
+
+    @staticmethod
+    def _validation_freshness_retries() -> int:
+        try:
+            return max(
+                1,
+                int(os.getenv("PROJECTION_VALIDATION_FRESHNESS_RETRIES", "3")),
+            )
+        except ValueError:
+            return 3
+
+    @staticmethod
+    def _validation_freshness_retry_delay_seconds() -> float:
+        try:
+            return max(
+                0.0,
+                float(
+                    os.getenv(
+                        "PROJECTION_VALIDATION_FRESHNESS_RETRY_DELAY_SECONDS", "0.5"
+                    )
+                ),
+            )
+        except ValueError:
+            return 0.5
+
+    @staticmethod
+    def _max_projection_lag_seconds() -> float:
+        try:
+            return max(0.0, float(os.getenv("PROJECTION_MAX_LAG_SECONDS", "5.0")))
+        except ValueError:
+            return 5.0
+
+    async def _ensure_projection_freshness(self) -> None:
+        if self._validation_freshness_checked:
+            return
+
+        last_detail: dict[str, Any] | None = None
+        retries = self._validation_freshness_retries()
+        delay_seconds = self._validation_freshness_retry_delay_seconds()
+        for attempt in range(retries):
+            is_fresh, detail = await self._projection_freshness_status()
+            if is_fresh:
+                self._validation_freshness_checked = True
+                return
+
+            last_detail = detail
+            if attempt < retries - 1 and delay_seconds > 0:
+                await asyncio.sleep(delay_seconds)
+
+        raise HTTPException(
+            status_code=503,
+            detail=last_detail or self._projection_not_ready_detail(),
+        )
+
+    async def _projection_freshness_status(self) -> tuple[bool, dict[str, Any]]:
+        legacy_sessions = self.db["sessions"]
+        projection_sessions = self.db[self.SESSION_COLLECTION]
+        snapshot_ts = get_projection_snapshot_ts()
+        legacy_query = (
+            apply_snapshot_filter({}, SOURCE_SESSION_TIMESTAMP_FIELDS, snapshot_ts)
+            if snapshot_ts
+            else {}
+        )
+        projection_query = (
+            apply_snapshot_filter({}, PROJECTION_SESSION_SNAPSHOT_FIELDS, snapshot_ts)
+            if snapshot_ts
+            else {}
+        )
+
+        legacy_count = await legacy_sessions.count_documents(legacy_query)
+        projection_count = await projection_sessions.count_documents(projection_query)
+        latest_legacy = await self._latest_source_timestamp(legacy_sessions)
+        latest_projection = await self._latest_projection_timestamp(projection_sessions)
+
+        metrics = {
+            "snapshot_ts": snapshot_ts.isoformat() if snapshot_ts else None,
+            "legacy_session_count": legacy_count,
+            "projection_session_count": projection_count,
+            "latest_legacy_session_ts": (
+                latest_legacy.isoformat() if latest_legacy else None
+            ),
+            "latest_projection_session_ts": (
+                latest_projection.isoformat() if latest_projection else None
+            ),
+        }
+        if legacy_count != projection_count:
+            return False, self._projection_not_ready_detail(metrics=metrics)
+        if latest_legacy and latest_projection is None:
+            return False, self._projection_not_ready_detail(metrics=metrics)
+        max_lag_seconds = self._max_projection_lag_seconds()
+        lag_seconds = None
+        if latest_legacy and latest_projection:
+            lag_seconds = max((latest_legacy - latest_projection).total_seconds(), 0.0)
+            metrics["projection_session_lag_seconds"] = lag_seconds
+        if snapshot_ts:
+            if latest_projection and latest_projection < snapshot_ts:
+                if lag_seconds is not None and lag_seconds <= max_lag_seconds:
+                    return True, {}
+                return False, self._projection_not_ready_detail(metrics=metrics)
+            return True, {}
+        if latest_legacy and latest_projection and latest_projection < latest_legacy:
+            if lag_seconds is not None and lag_seconds <= max_lag_seconds:
+                return True, {}
+            return False, self._projection_not_ready_detail(metrics=metrics)
+        return True, {}
+
+    @classmethod
+    async def _latest_source_timestamp(cls, collection: Any) -> datetime | None:
+        return await cls._latest_timestamp(collection, SOURCE_SESSION_TIMESTAMP_FIELDS)
+
+    @classmethod
+    async def _latest_projection_timestamp(cls, collection: Any) -> datetime | None:
+        return await cls._latest_timestamp(collection, PROJECTION_SESSION_SNAPSHOT_FIELDS)
+
+    @classmethod
+    async def _latest_timestamp(
+        cls,
+        collection: Any,
+        fields: tuple[str, ...],
+    ) -> datetime | None:
+        return await get_latest_collection_timestamp(collection, fields)
+
+    @staticmethod
+    def _projection_not_ready_detail(
+        *,
+        metrics: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "code": "PROJECTION_INCONSISTENT",
+            "reason": "STALE_DATA",
+            "message": "Projection freshness guard is waiting for session projection catch-up.",
+            "retry_after_seconds": 1,
+            "metrics": metrics or {},
+        }
+
+    @classmethod
+    def _snapshot_query(cls, collection_name: str, query: dict[str, Any]) -> dict[str, Any]:
+        if collection_name == cls.SESSION_COLLECTION:
+            return apply_snapshot_filter(query, PROJECTION_SESSION_SNAPSHOT_FIELDS)
+        if collection_name in {
+            cls.VERIFIED_COLLECTION,
+            cls.VARIANCE_COLLECTION,
+            cls.FINANCIAL_COLLECTION,
+        }:
+            return apply_snapshot_filter(query, PROJECTION_ITEM_SNAPSHOT_FIELDS)
+        return dict(query)
 
     @staticmethod
     async def _find_page(
@@ -80,6 +367,16 @@ class ProjectionReadService:
         return await cursor.to_list(length=limit)
 
     @staticmethod
+    async def _find_natural_limited(
+        collection: Any,
+        query: dict[str, Any],
+        *,
+        limit: int = _PROJECTION_SCAN_LIMIT,
+    ) -> list[dict[str, Any]]:
+        cursor = collection.find(query).limit(limit)
+        return await cursor.to_list(length=limit)
+
+    @staticmethod
     def _first(document: dict[str, Any], *field_names: str) -> Any:
         for field_name in field_names:
             value = document.get(field_name)
@@ -108,6 +405,17 @@ class ProjectionReadService:
     _normalize_datetime = staticmethod(normalize_datetime)
     _normalize_sort_key = staticmethod(normalize_sort_key)
     _date_match = staticmethod(date_match)
+
+    @classmethod
+    def _legacy_line_warehouse(cls, row: dict[str, Any]) -> str:
+        value = cls._first(
+            row,
+            "count_line_warehouse",
+            "line_warehouse",
+            "source_warehouse",
+            "warehouse_correction",
+        )
+        return str(value or "Unknown")
 
     @classmethod
     def _projection_item_is_verified(cls, row: dict[str, Any]) -> bool:
@@ -257,8 +565,16 @@ class ProjectionReadService:
         collection = await self._ensure_collection(self.VERIFIED_COLLECTION)
         start_time = datetime.now(timezone.utc).replace(tzinfo=None)
         filters = config.filters
-        query = self._build_verified_query(filters)
-        total_records = await collection.count_documents({"is_removed": {"$ne": True}})
+        query = self._snapshot_query(
+            self.VERIFIED_COLLECTION,
+            self._build_verified_query(filters),
+        )
+        total_records = await collection.count_documents(
+            self._snapshot_query(
+                self.VERIFIED_COLLECTION,
+                {"is_removed": {"$ne": True}},
+            )
+        )
         sort_order = getattr(config.sort_order, "value", config.sort_order)
         sort_direction = -1 if str(sort_order) == "desc" else 1
         skip = (config.page - 1) * config.page_size
@@ -362,30 +678,39 @@ class ProjectionReadService:
 
     async def get_dashboard_stats(self) -> dict[str, Any]:
         collection = await self._ensure_collection(self.VERIFIED_COLLECTION)
-        rows = await self._find_limited(collection, {"is_removed": {"$ne": True}})
-        items = [self._map_verified_item(row) for row in rows]
+        rows = await self._find_limited(
+            collection,
+            self._snapshot_query(
+                self.VERIFIED_COLLECTION,
+                {"is_removed": {"$ne": True}},
+            ),
+        )
         today_start = datetime.now(timezone.utc).replace(
             tzinfo=None, hour=0, minute=0, second=0, microsecond=0
         )
         today_count = sum(
             1
-            for item in items
-            if (self._normalize_datetime(item.get("counted_at")) or datetime.min)
+            for row in rows
+            if (
+                self._normalize_datetime(
+                    self._first(row, "counted_at", "created_at", "updated_at")
+                )
+                or datetime.min
+            )
             >= today_start
         )
-        verified_count = sum(1 for item in items if item.get("verified"))
-        total_count = len(items)
+        verified_count = sum(1 for row in rows if bool(row.get("verified")))
+        total_count = len(rows)
         by_warehouse: dict[str, int] = {}
         by_status: dict[str, int] = {}
-        for item in items:
-            by_warehouse[str(item.get("warehouse") or "Unknown")] = (
-                by_warehouse.get(str(item.get("warehouse") or "Unknown"), 0) + 1
-            )
-            by_status[str(item.get("status") or "Unknown")] = (
-                by_status.get(str(item.get("status") or "Unknown"), 0) + 1
-            )
+        for row in rows:
+            warehouse = self._legacy_line_warehouse(row)
+            status = str(row.get("status") or "Unknown")
+            by_warehouse[warehouse] = by_warehouse.get(warehouse, 0) + 1
+            by_status[status] = by_status.get(status, 0) + 1
 
-        total_variance = sum(item.get("variance", 0) for item in items)
+        variances = [self._to_float(row.get("variance")) for row in rows]
+        total_variance = sum(variances)
         return {
             "success": True,
             "stats": {
@@ -395,14 +720,10 @@ class ProjectionReadService:
                 "today_activity": today_count,
                 "total_variance": total_variance,
                 "positive_variance": sum(
-                    item.get("variance", 0)
-                    for item in items
-                    if item.get("variance", 0) > 0
+                    variance for variance in variances if variance > 0
                 ),
                 "negative_variance": sum(
-                    item.get("variance", 0)
-                    for item in items
-                    if item.get("variance", 0) < 0
+                    variance for variance in variances if variance < 0
                 ),
                 "avg_variance": total_variance / total_count if total_count else 0,
                 "verification_rate": (
@@ -416,7 +737,10 @@ class ProjectionReadService:
                 )
             ],
             "by_status": [
-                {"status": key, "count": value} for key, value in by_status.items()
+                {"status": key, "count": value}
+                for key, value in sorted(
+                    by_status.items(), key=lambda item: str(item[0]).lower()
+                )
             ],
             "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
         }
@@ -430,7 +754,13 @@ class ProjectionReadService:
     ) -> dict[str, Any]:
         collection = await self._ensure_collection(self.VARIANCE_COLLECTION)
         start_time = datetime.now(timezone.utc).replace(tzinfo=None)
-        rows = await self._find_limited(collection, {"is_removed": {"$ne": True}})
+        rows = await self._find_limited(
+            collection,
+            self._snapshot_query(
+                self.VARIANCE_COLLECTION,
+                {"is_removed": {"$ne": True}},
+            ),
+        )
         filters = config.filters
         data = []
         for row in rows:
@@ -510,7 +840,11 @@ class ProjectionReadService:
     ) -> dict[str, Any]:
         collection = await self._ensure_collection(self.SESSION_COLLECTION)
         start_time = datetime.now(timezone.utc).replace(tzinfo=None)
-        rows = await self._find_limited(collection, {}, sort_field="started_at")
+        rows = await self._find_limited(
+            collection,
+            self._snapshot_query(self.SESSION_COLLECTION, {}),
+            sort_field="started_at",
+        )
         filters = config.filters
         data = []
         for row in rows:
@@ -562,6 +896,44 @@ class ProjectionReadService:
 
     async def get_filter_options(self) -> dict[str, Any]:
         collection = await self._ensure_collection(self.VERIFIED_COLLECTION)
+        snapshot_query = self._snapshot_query(self.VERIFIED_COLLECTION, {})
+        if snapshot_query:
+            rows = await self._find_natural_limited(collection, snapshot_query)
+            warehouses = sorted(
+                {row.get("warehouse") for row in rows if row.get("warehouse")},
+                key=self._normalize_sort_key,
+            )
+            floors = sorted(
+                {
+                    self._first(row, "floor", "floor_no")
+                    for row in rows
+                    if self._first(row, "floor", "floor_no")
+                },
+                key=self._normalize_sort_key,
+            )
+            categories = sorted(
+                {row.get("category") for row in rows if row.get("category")},
+                key=self._normalize_sort_key,
+            )
+            statuses = sorted(
+                {row.get("status") for row in rows if row.get("status")},
+                key=self._normalize_sort_key,
+            )
+            users = sorted(
+                {row.get("counted_by") for row in rows if row.get("counted_by")},
+                key=self._normalize_sort_key,
+            )
+            return {
+                "success": True,
+                "options": {
+                    "warehouses": warehouses,
+                    "floors": floors,
+                    "categories": categories,
+                    "statuses": statuses,
+                    "users": users,
+                    "verified": [True, False],
+                },
+            }
         warehouses = await collection.distinct("warehouse")
         floors = sorted(
             set(await collection.distinct("floor"))
@@ -586,13 +958,16 @@ class ProjectionReadService:
     async def get_item_details(self, item_id: str) -> dict[str, Any]:
         collection = await self._ensure_collection(self.VERIFIED_COLLECTION)
         row = await collection.find_one(
-            {
-                "$or": [
-                    {"id": item_id},
-                    {"count_line_id": item_id},
-                    {"client_record_id": item_id},
-                ]
-            }
+            self._snapshot_query(
+                self.VERIFIED_COLLECTION,
+                {
+                    "$or": [
+                        {"id": item_id},
+                        {"count_line_id": item_id},
+                        {"client_record_id": item_id},
+                    ]
+                },
+            )
         )
         if not row:
             raise HTTPException(status_code=404, detail="Item not found")
@@ -605,40 +980,57 @@ class ProjectionReadService:
 
     async def get_admin_kpis(self, *, active_users: int) -> dict[str, Any]:
         sessions = await self._ensure_collection(self.SESSION_COLLECTION)
-        financial = await self._ensure_collection(self.FINANCIAL_COLLECTION)
         verified = await self._ensure_collection(self.VERIFIED_COLLECTION)
         variance = await self._ensure_collection(self.VARIANCE_COLLECTION)
 
-        session_rows = await self._find_limited(sessions, {}, sort_field="started_at")
-        financial_rows = await self._find_limited(financial, {})
+        session_rows = await self._find_limited(
+            sessions,
+            self._snapshot_query(self.SESSION_COLLECTION, {}),
+            sort_field="started_at",
+        )
+        verified_rows = await self._find_natural_limited(
+            verified,
+            self._snapshot_query(
+                self.VERIFIED_COLLECTION,
+                {"is_removed": {"$ne": True}},
+            ),
+        )
         active_statuses = {"OPEN", "ACTIVE", "PAUSED", "RECONCILE"}
         active_sessions = sum(
             1
             for row in session_rows
             if str(row.get("status") or "").upper() in active_statuses
+            and not row.get("closed_at")
+            and not row.get("finalized_at")
         )
-        total_items = sum(
-            self._to_int(self._first(row, "total_items", "item_count"))
-            for row in session_rows
+        total_items = await self.db.erp_items.count_documents({})
+        verified_item_codes = {
+            str(row.get("item_code"))
+            for row in verified_rows
+            if row.get("item_code")
+            and str(row.get("status") or "").lower() == "locked"
+        }
+        verified_items = len(verified_item_codes)
+        total_stock_value_rows = await self.db.erp_items.find(
+            {"stock_qty": {"$exists": True}}
+        ).to_list(length=_PROJECTION_SCAN_LIMIT)
+        total_stock_value = sum(
+            self._to_float(row.get("stock_qty")) * self._to_float(row.get("price"))
+            for row in total_stock_value_rows
         )
-        verified_items = sum(
-            self._to_int(self._first(row, "verified_items", "verified_count"))
-            for row in session_rows
+        verified_stock_value = sum(
+            self._to_float(row.get("counted_qty"))
+            * self._to_float(self._first(row, "mrp_counted", "mrp_erp", "mrp"))
+            for row in verified_rows
+            if str(row.get("status") or "").lower() == "locked"
         )
-        verified_rows = await self._find_limited(verified, {"is_removed": {"$ne": True}})
         today_start = datetime.now(timezone.utc).replace(
             tzinfo=None, hour=0, minute=0, second=0, microsecond=0
         )
 
         return {
-            "total_stock_value": sum(
-                self._to_float(self._first(row, "total_stock_value", "stock_value"))
-                for row in financial_rows
-            ),
-            "verified_stock_value": sum(
-                self._to_float(self._first(row, "total_counted_value", "counted_value"))
-                for row in financial_rows
-            ),
+            "total_stock_value": total_stock_value,
+            "verified_stock_value": verified_stock_value,
             "verification_percentage": round(
                 (verified_items / total_items * 100) if total_items else 0.0,
                 2,
@@ -646,15 +1038,25 @@ class ProjectionReadService:
             "active_sessions": active_sessions,
             "active_users": active_users,
             "pending_variances": await variance.count_documents(
-                {"is_removed": {"$ne": True}}
+                self._snapshot_query(
+                    self.VARIANCE_COLLECTION,
+                    {
+                        "is_removed": {"$ne": True},
+                        "variance": {"$exists": True, "$ne": 0},
+                        "$or": [
+                            {"status": {"$in": ["pending_approval", "NEEDS_REVIEW"]}},
+                            {"approval_status": "NEEDS_REVIEW"},
+                        ],
+                    },
+                )
             ),
             "items_verified_today": sum(
                 1
                 for row in verified_rows
-                if self._projection_item_is_verified(row)
+                if str(row.get("status") or "").lower() == "locked"
                 and (
                     self._normalize_datetime(
-                        self._first(row, "verified_at", "counted_at", "updated_at")
+                        self._first(row, "finalized_at")
                     )
                     or datetime.min
                 )
@@ -673,17 +1075,32 @@ class ProjectionReadService:
 
     async def generate_stock_summary(self, filters: Any) -> list[dict[str, Any]]:
         collection = await self._ensure_collection(self.VERIFIED_COLLECTION)
-        rows = await self._find_limited(collection, {"is_removed": {"$ne": True}})
+        item_query: dict[str, Any] = {}
+        if filters.warehouse:
+            item_query["warehouse"] = filters.warehouse
+        if filters.floor:
+            item_query["floor"] = filters.floor
+        if filters.category:
+            item_query["category"] = filters.category
+
+        items = await self.db.erp_items.find(item_query).to_list(
+            length=_PROJECTION_SCAN_LIMIT
+        )
+        item_codes = [item.get("item_code") for item in items if item.get("item_code")]
+        if (filters.warehouse or filters.floor or filters.category) and not item_codes:
+            return []
+
+        line_query: dict[str, Any] = {"is_removed": {"$ne": True}}
+        if item_codes:
+            line_query["item_code"] = {"$in": item_codes}
+        rows = await self._find_natural_limited(
+            collection,
+            self._snapshot_query(self.VERIFIED_COLLECTION, line_query),
+        )
         start, end = self.report_date_bounds(filters.date_from, filters.date_to)
         grouped: dict[str, dict[str, Any]] = {}
         for row in rows:
             mapped = self._map_verified_item(row)
-            if filters.warehouse and mapped.get("warehouse") != filters.warehouse:
-                continue
-            if filters.floor and mapped.get("floor") != filters.floor:
-                continue
-            if filters.category and mapped.get("category") != filters.category:
-                continue
             if filters.user_id and mapped.get("counted_by") != filters.user_id:
                 continue
             if (
@@ -700,27 +1117,19 @@ class ProjectionReadService:
                 key,
                 {
                     "item_code": key,
-                    "item_name": mapped.get("item_name"),
-                    "category": mapped.get("category"),
-                    "warehouse": mapped.get("warehouse"),
-                    "floor": mapped.get("floor"),
-                    "stock_qty": mapped.get("stock_qty", 0.0),
-                    "price": mapped.get("mrp", 0.0),
-                    "stock_value": mapped.get("stock_qty", 0.0)
-                    * mapped.get("mrp", 0.0),
                     "verification_count": 0,
                     "finalized_count": 0,
                     "finalized_qty": 0.0,
                     "last_verified": None,
-                    "is_verified": False,
                 },
             )
             target["verification_count"] += 1
-            if mapped.get("verified"):
+            if str(row.get("status") or "").lower() == "locked":
                 target["finalized_count"] += 1
                 target["finalized_qty"] += mapped.get("counted_qty", 0.0)
-                target["is_verified"] = True
-                verified_at = mapped.get("verified_at") or mapped.get("counted_at")
+                verified_at = self._first(
+                    row, "finalized_at", "verified_at", "counted_at"
+                )
                 verified_dt = self._normalize_datetime(verified_at)
                 last_verified_dt = self._normalize_datetime(target["last_verified"])
                 if verified_at and (
@@ -731,24 +1140,75 @@ class ProjectionReadService:
                     )
                 ):
                     target["last_verified"] = verified_at
+        results: list[dict[str, Any]] = []
+        for item in items:
+            item_code = item.get("item_code")
+            item_code_key = str(item_code) if item_code is not None else ""
+            summary = grouped.get(item_code_key, {})
+            price = self._to_float(item.get("price"))
+            stock_qty = self._to_float(item.get("stock_qty"))
+            verification_count = self._to_int(summary.get("verification_count"))
+            finalized_count = self._to_int(summary.get("finalized_count"))
+            results.append(
+                {
+                    "item_code": item_code_key,
+                    "item_name": item.get("item_name"),
+                    "category": item.get("category"),
+                    "warehouse": item.get("warehouse"),
+                    "floor": item.get("floor"),
+                    "stock_qty": stock_qty,
+                    "price": price,
+                    "stock_value": stock_qty * price,
+                    "verification_count": verification_count,
+                    "finalized_count": finalized_count,
+                    "finalized_qty": self._to_float(summary.get("finalized_qty")),
+                    "last_verified": summary.get("last_verified"),
+                    "is_verified": bool(finalized_count or verification_count),
+                }
+            )
         return sorted(
-            grouped.values(), key=lambda row: str(row.get("item_code") or "")
+            results, key=lambda row: str(row.get("item_code") or "")
         )[:10000]
 
     async def generate_variance_report(self, filters: Any) -> list[dict[str, Any]]:
         collection = await self._ensure_collection(self.VARIANCE_COLLECTION)
-        rows = await self._find_limited(collection, {"is_removed": {"$ne": True}})
+        rows = await self._find_natural_limited(
+            collection,
+            self._snapshot_query(
+                self.VARIANCE_COLLECTION,
+                {"is_removed": {"$ne": True}},
+            ),
+        )
         start, end = self.report_date_bounds(filters.date_from, filters.date_to)
+        item_query: dict[str, Any] = {}
+        if filters.warehouse:
+            item_query["warehouse"] = filters.warehouse
+        if filters.floor:
+            item_query["floor"] = filters.floor
+        if filters.category:
+            item_query["category"] = filters.category
+
+        item_docs = {
+            item.get("item_code"): item
+            for item in await self.db.erp_items.find(item_query).to_list(
+                length=_PROJECTION_SCAN_LIMIT
+            )
+            if item.get("item_code")
+        }
+        if (filters.warehouse or filters.floor or filters.category) and not item_docs:
+            return []
+
         results: list[dict[str, Any]] = []
         for row in rows:
             mapped = self._map_verified_item(row)
             if mapped["variance"] == 0:
                 continue
-            if filters.warehouse and mapped.get("warehouse") != filters.warehouse:
+            item_info = item_docs.get(mapped.get("item_code")) or {}
+            if filters.warehouse and item_info.get("warehouse") != filters.warehouse:
                 continue
-            if filters.floor and mapped.get("floor") != filters.floor:
+            if filters.floor and item_info.get("floor") != filters.floor:
                 continue
-            if filters.category and mapped.get("category") != filters.category:
+            if filters.category and item_info.get("category") != filters.category:
                 continue
             if filters.user_id and mapped.get("counted_by") != filters.user_id:
                 continue
@@ -761,35 +1221,55 @@ class ProjectionReadService:
                 mapped.get("counted_at"), start, end
             ):
                 continue
+            expected_qty = self._to_float(
+                self._first(row, "erp_qty", "stock_qty", "expected_qty")
+            )
+            variance = mapped.get("variance", 0.0)
+            variance_percentage = (
+                100.0 if expected_qty == 0 else (variance / abs(expected_qty)) * 100
+            )
             results.append(
                 {
                     "item_code": mapped.get("item_code"),
-                    "item_name": mapped.get("item_name") or "Unknown",
-                    "expected_qty": mapped.get("stock_qty", 0.0),
+                    "item_name": mapped.get("item_name")
+                    or item_info.get("item_name")
+                    or "Unknown",
+                    "expected_qty": expected_qty,
                     "counted_qty": mapped.get("counted_qty", 0.0),
-                    "variance": mapped.get("variance", 0.0),
-                    "variance_percentage": mapped.get("variance_percentage", 0.0),
+                    "variance": variance,
+                    "variance_percentage": variance_percentage,
                     "status": mapped.get("status"),
                     "approval_status": mapped.get("approval_status"),
                     "counted_by": mapped.get("counted_by"),
-                    "warehouse": mapped.get("warehouse"),
+                    "warehouse": item_info.get("warehouse"),
                     "location": "/".join(
                         part
-                        for part in [mapped.get("floor"), mapped.get("rack_id")]
-                        if part
+                        for part in [
+                            self._first(row, "floor_no", "floor"),
+                            self._first(row, "rack_no", "rack_id"),
+                        ]
+                        if isinstance(part, str) and part
                     ),
                     "counted_at": mapped.get("counted_at"),
-                    "approved_by": mapped.get("verified_by"),
-                    "approved_at": mapped.get("verified_at"),
-                    "finalized_at": mapped.get("verified_at"),
-                    "finalized_by": mapped.get("verified_by"),
+                    "approved_by": row.get("approved_by"),
+                    "approved_at": row.get("approved_at"),
+                    "finalized_at": row.get("finalized_at"),
+                    "finalized_by": row.get("finalized_by"),
                 }
             )
+        results.sort(
+            key=lambda row: abs(float(row.get("variance_percentage") or 0.0)),
+            reverse=True,
+        )
         return results[:10000]
 
     async def generate_session_history(self, filters: Any) -> list[dict[str, Any]]:
         collection = await self._ensure_collection(self.SESSION_COLLECTION)
-        rows = await self._find_limited(collection, {}, sort_field="started_at")
+        rows = await self._find_limited(
+            collection,
+            self._snapshot_query(self.SESSION_COLLECTION, {}),
+            sort_field="started_at",
+        )
         start, end = self.report_date_bounds(filters.date_from, filters.date_to)
         results: list[dict[str, Any]] = []
         for row in rows:
@@ -807,9 +1287,22 @@ class ProjectionReadService:
                 continue
             results.append(
                 {
-                    **mapped,
+                    "session_id": mapped.get("session_id"),
+                    "username": mapped.get("username"),
+                    "staff_name": mapped.get("staff_name"),
+                    "warehouse": mapped.get("warehouse"),
+                    "rack_id": mapped.get("rack_id"),
+                    "floor": mapped.get("floor"),
+                    "status": mapped.get("status"),
+                    "finalization_status": mapped.get("finalization_status"),
+                    "started_at": mapped.get("started_at"),
+                    "completed_at": mapped.get("completed_at"),
+                    "duration_minutes": mapped.get("duration_minutes"),
                     "items_scanned": mapped.get("total_items", 0),
                     "items_verified": mapped.get("verified_items", 0),
+                    "total_variance": mapped.get("total_variance", 0.0),
+                    "finalized_by": mapped.get("finalized_by"),
+                    "finalized_at": mapped.get("finalized_at"),
                 }
             )
         return results[:5000]

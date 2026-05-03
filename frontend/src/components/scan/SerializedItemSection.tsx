@@ -16,7 +16,6 @@ const SURFACE_CARD = "#ffffff";
 const SURFACE_BORDER = "#d9e5e2";
 const SURFACE_MUTED = "#f8fafc";
 const ACCENT = "#0f766e";
-const ACCENT_SOFT = "#e6f4f1";
 const TEXT_STRONG = "#0f172a";
 const TEXT_MUTED = "#475569";
 

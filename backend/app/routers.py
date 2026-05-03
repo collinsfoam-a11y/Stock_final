@@ -182,14 +182,8 @@ def _register_optional_router_set(app: FastAPI, registry: RouterRegistry, logger
         success_log="API v2 router registered",
         failure_log="API v2 router registration failed",
     )
-    _include_optional_router(
-        app,
-        registry.pin_auth_router,
-        logger,
-        prefix="/api",
-        tags=["PIN Auth"],
-        failure_log="PIN auth API router registration failed",
-    )
+    # Legacy PIN auth router intentionally not mounted.
+    # Canonical PIN auth is served from backend.api.auth_routes (/api/auth/login-pin).
     _include_optional_router(
         app,
         registry.reconciliation_router,

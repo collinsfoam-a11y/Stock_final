@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
-jest.mock("@/services/httpClient", () => ({
+jest.mock("@/api/client", () => ({
   __esModule: true,
   default: {
     get: jest.fn(),
@@ -19,7 +19,7 @@ describe("ItemVerificationAPI ERPNext exports", () => {
 
     jest.isolateModules(() => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      httpClient = require("@/services/httpClient").default;
+      httpClient = require("@/api/client").default;
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       ({ ItemVerificationAPI } = require("../itemVerificationApi"));
     });
@@ -43,7 +43,7 @@ describe("ItemVerificationAPI ERPNext exports", () => {
 
     jest.isolateModules(() => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      httpClient = require("@/services/httpClient").default;
+      httpClient = require("@/api/client").default;
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       ({ ItemVerificationAPI } = require("../itemVerificationApi"));
     });

@@ -319,7 +319,7 @@ class TestCreateSessionEndpoint:
                     assert response.status_code == 200
                     data = response.json()
                     assert data["warehouse"] == "WH001"
-                    assert data["status"] == "OPEN"
+                    assert data["status"] == "CREATED"
                     assert data["staff_user"] == "staff1"
         finally:
             app.dependency_overrides.clear()
@@ -941,7 +941,7 @@ class TestSessionStatsEndpoint:
 
 
 class TestCompleteSessionEndpoint:
-    """Test POST /api/sessions/{session_id}/complete"""
+    """Test removed POST /api/sessions/{session_id}/complete route."""
 
     @pytest.mark.asyncio
     async def test_complete_session_success(
@@ -1008,9 +1008,7 @@ class TestCompleteSessionEndpoint:
                     base_url="http://localhost",
                 ) as client:
                     response = await client.post("/api/sessions/sess_123/complete")
-                    assert response.status_code == 410
-                    data = response.json()
-                    assert "disabled" in data["detail"].lower()
+                    assert response.status_code == 405
         finally:
             app.dependency_overrides.clear()
 
@@ -1061,8 +1059,7 @@ class TestCompleteSessionEndpoint:
                 base_url="http://localhost",
             ) as client:
                 response = await client.post("/api/sessions/sess_other/complete")
-                assert response.status_code == 410
-                assert "disabled" in response.json()["detail"].lower()
+                assert response.status_code == 405
         finally:
             app.dependency_overrides.clear()
 
@@ -1253,7 +1250,14 @@ class TestActiveSessionsEndpoint:
         mock_db.sessions = MagicMock()
 
         def _find_sessions(query):
-            assert query["status"]["$in"] == ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]
+            assert query["status"]["$in"] == [
+                "CREATED",
+                "ACTIVE",
+                "REVIEW",
+                "OPEN",
+                "PAUSED",
+                "RECONCILE",
+            ]
             return _AsyncCursor(active_sessions)
 
         mock_db.sessions.find = MagicMock(side_effect=_find_sessions)
@@ -1446,8 +1450,7 @@ class TestSessionIdentifierFallbacks:
                     response = await client.post(
                         "/api/sessions/sess_owner_user_id_only/complete"
                     )
-                    assert response.status_code == 410
-                    assert "disabled" in response.json()["detail"].lower()
+                    assert response.status_code == 405
         finally:
             app.dependency_overrides.clear()
 

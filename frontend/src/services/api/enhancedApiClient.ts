@@ -4,7 +4,7 @@
  */
 
 import axios from "axios";
-import api from "../httpClient";
+import api from "@/api/client";
 import { retryWithBackoff } from "../../utils/retry";
 import { ApiResponse, PaginatedResponse } from "../../types/api";
 

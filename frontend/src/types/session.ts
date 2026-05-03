@@ -10,11 +10,13 @@ export type SessionType = "STANDARD" | "BLIND" | "STRICT";
  * and CanonicalSessionStatus in session_management_api.py.
  */
 export type SessionStatus =
+  | "CREATED"
   | "OPEN"
   | "ACTIVE"
   | "PAUSED"
   | "RECONCILE"
   | "COMPLETED"
+  | "FINALIZED"
   | "CLOSED"
   | "CANCELLED"
   | "EXPORTED"

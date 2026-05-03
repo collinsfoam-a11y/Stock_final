@@ -1,4 +1,5 @@
 import {
+  appendReplayAuditEntry,
   getOfflineQueue,
   removeManyFromOfflineQueue,
   updateQueueItemRetries,
@@ -11,16 +12,22 @@ import {
   setSessionIdMapping,
 } from "./offline/offlineStorage";
 import { syncBatch, isOnline } from "./api/api";
-import apiClient from "./httpClient";
+import apiClient from "@/api/client";
+import {
+  getConnectivityState,
+  setSyncReplayInProgress,
+} from "../core/connectivityState";
+import { getWritePolicyMetrics } from "../core/writePolicyMetrics";
 import { useNetworkStore } from "../store/networkStore";
 import { useAuthStore } from "../store/authStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { createLogger } from "./logging";
+import { normalizeCountLineState } from "@/contracts/states";
 import type { SyncRecord, SyncResult as ApiSyncResult } from "../types/sync";
 
 const log = createLogger("syncService");
 
-const MANUAL_REVIEW_RETRIES_THRESHOLD = 5;
+const MANUAL_REVIEW_RETRIES_THRESHOLD = 3;
 
 /**
  * Aggregate outcome returned after syncing the offline queue.
@@ -45,6 +52,15 @@ let isSyncing = false;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let activeSyncCleanup: (() => void) | null = null;
 const EMPTY_SYNC_RESULT: SyncResult = { success: 0, failed: 0, total: 0, errors: [] };
+type ReplayRunSummary = {
+  timestamp: string;
+  connectivityState: string;
+  success: number;
+  failed: number;
+  total: number;
+  errorCount: number;
+};
+let lastReplayRunSummary: ReplayRunSummary | null = null;
 
 const clearReconnectTimer = () => {
   if (reconnectTimer !== null) {
@@ -97,6 +113,36 @@ const shouldSkipSync = (options?: SyncOptions): SyncResult | null => {
   }
 
   return null;
+};
+
+const updateReplayRunSummary = (summary: Omit<ReplayRunSummary, "timestamp">) => {
+  lastReplayRunSummary = {
+    timestamp: new Date().toISOString(),
+    ...summary,
+  };
+};
+
+const recordReplayAudit = async (
+  actionId: string,
+  success: boolean,
+  retryCount: number,
+  error?: string
+) => {
+  try {
+    await appendReplayAuditEntry({
+      action_id: actionId,
+      success,
+      retry_count: retryCount,
+      error: error || null,
+    });
+  } catch (auditError) {
+    log.warn("Failed to persist replay audit entry", {
+      actionId,
+      success,
+      retryCount,
+      error: auditError instanceof Error ? auditError.message : String(auditError),
+    });
+  }
 };
 
 const stringValue = (value: unknown): string | undefined => {
@@ -165,7 +211,7 @@ const resolveMappedSessionId = async (rawSessionId: unknown): Promise<string | u
 const resolveLocationContext = (data: Record<string, unknown>) => {
   const floorId = stringValue(data.floor_id || data.floor_no);
   const rackId = stringValue(data.rack_id || data.rack_no || data.rack);
-  const locationId = stringValue(data.location_id);
+  const locationId = stringValue(data.location_id || data.mark_location);
 
   if (!locationId || !floorId || !rackId) {
     throw new Error("Missing location_id, floor_id, or rack_id for records-based sync");
@@ -193,9 +239,16 @@ const buildCountLineRecord = async (item: OfflineQueueItem): Promise<SyncRecord>
     now
   );
 
+  const normalizedState = normalizeCountLineState(data.status || item.status);
+  if (normalizedState === "UNKNOWN") {
+    throw new Error(`Unsupported offline count-line status: ${String(data.status || "")}`);
+  }
+
   return {
+    event_id: item.event_id || item.id,
     record_id: item.id,
     client_record_id: item.id,
+    schema_version: "v1",
     session_id: sessionId,
     location_id: locationId,
     floor_id: floorId,
@@ -218,9 +271,10 @@ const buildCountLineRecord = async (item: OfflineQueueItem): Promise<SyncRecord>
     subcategory: stringValue(data.subcategory || data.subcategory_correction) || null,
     item_condition: stringValue(data.item_condition || data.condition) || null,
     evidence_photos: listValue(data.evidence_photos || data.photo_proofs || data.photo_base64),
-    status: stringValue(data.status) || "finalized",
+    status: normalizedState,
     created_at: createdAt,
     updated_at: dateValue(data.updated_at || data.updatedAt || createdAt, createdAt),
+    retry_count: Math.max(Number(item.retries || 0), 0),
   };
 };
 
@@ -265,8 +319,28 @@ const normalizeUnknownItemPayload = async (data: Record<string, unknown>) => {
   };
 };
 
-const toErrorMessage = (error: unknown, fallback = "Unknown batch error") =>
-  error instanceof Error ? error.message : fallback;
+const toErrorMessage = (error: unknown, fallback = "Unknown batch error") => {
+  const payload = (error as { response?: { data?: any } })?.response?.data;
+  const detail = payload?.detail;
+  if (typeof detail === "string" && detail.trim()) {
+    return detail;
+  }
+  if (detail && typeof detail === "object") {
+    if (typeof detail.message === "string" && detail.message.trim()) {
+      return detail.message;
+    }
+    if (Array.isArray(detail.conflicts) && detail.conflicts.length > 0) {
+      const firstConflict = detail.conflicts[0];
+      if (typeof firstConflict?.message === "string" && firstConflict.message.trim()) {
+        return firstConflict.message;
+      }
+    }
+    if (typeof detail.error === "string" && detail.error.trim()) {
+      return detail.error;
+    }
+  }
+  return error instanceof Error ? error.message : fallback;
+};
 
 const resultFromError = (id: string, error: unknown): ApiSyncResult => ({
   id,
@@ -307,13 +381,17 @@ const handleBatchResults = async (
   const successIds: string[] = [];
   const errors: { id: string; error: string }[] = [];
   const retryUpdates: Promise<unknown>[] = [];
+  const auditUpdates: Promise<unknown>[] = [];
   let successCount = 0;
   let failedCount = 0;
 
   for (const result of results) {
+    const queueItem = queueItemsById.get(result.id);
+
     if (result.success) {
       successIds.push(result.id);
       successCount += 1;
+      auditUpdates.push(recordReplayAudit(result.id, true, queueItem?.retries || 0));
       continue;
     }
 
@@ -321,7 +399,6 @@ const handleBatchResults = async (
     const errorMessage = result.message || "Unknown error";
     errors.push({ id: result.id, error: errorMessage });
     log.warn(`Sync item failed: ${result.id} - ${errorMessage}`);
-    const queueItem = queueItemsById.get(result.id);
     const nextRetryCount = (queueItem?.retries || 0) + 1;
     retryUpdates.push(
       updateQueueItemRetries(result.id, {
@@ -330,10 +407,14 @@ const handleBatchResults = async (
         attemptedAt: new Date().toISOString(),
       })
     );
+    auditUpdates.push(recordReplayAudit(result.id, false, nextRetryCount, errorMessage));
   }
 
   if (retryUpdates.length > 0) {
     await Promise.all(retryUpdates);
+  }
+  if (auditUpdates.length > 0) {
+    await Promise.all(auditUpdates);
   }
 
   if (successIds.length > 0) {
@@ -352,6 +433,11 @@ const handleBatchFailure = async (batch: OfflineQueueItem[], batchError: unknown
     log.warn("Auth error during sync - will retry after re-authentication");
     await Promise.all(
       batch.map((item) =>
+        recordReplayAudit(item.id, false, item.retries + 1, errorMessage)
+      )
+    );
+    await Promise.all(
+      batch.map((item) =>
         updateOfflineQueueItem(item.id, {
           status: "pending_retry",
           last_error: errorMessage,
@@ -366,6 +452,9 @@ const handleBatchFailure = async (batch: OfflineQueueItem[], batchError: unknown
   }
 
   log.error(`Batch sync failed: ${errorMessage}`, batchError as Record<string, unknown>);
+  await Promise.all(
+    batch.map((item) => recordReplayAudit(item.id, false, item.retries + 1, errorMessage))
+  );
   await Promise.all(
     batch.map((item) => {
       const nextRetryCount = item.retries + 1;
@@ -509,10 +598,20 @@ export const initializeSyncService = () => {
   }
 
   let networkReady = useNetworkStore.getState().isOnline;
+  let lastConnectivityState = getConnectivityState();
 
   const unsubscribe = useNetworkStore.subscribe((state) => {
     const wasOnline = networkReady;
     networkReady = state.isOnline;
+    const currentConnectivityState = getConnectivityState();
+
+    if (currentConnectivityState !== lastConnectivityState) {
+      log.info("Connectivity transition observed by sync service", {
+        from: lastConnectivityState,
+        to: currentConnectivityState,
+      });
+      lastConnectivityState = currentConnectivityState;
+    }
 
     if (state.isOnline && !wasOnline) {
       const settings = useSettingsStore.getState().settings;
@@ -552,13 +651,30 @@ export const initializeSyncService = () => {
  * Returns the current online state and offline queue summary.
  */
 export const getSyncStatus = async () => {
-  const stats = await getCacheStats();
+  const [stats, writePolicyMetrics] = await Promise.all([
+    getCacheStats(),
+    getWritePolicyMetrics(),
+  ]);
   const online = useNetworkStore.getState().isOnline;
+  const connectivityState = getConnectivityState();
+  const totalWriteDecisions = writePolicyMetrics.directWrites + writePolicyMetrics.queuedWrites;
+  const offlineUsagePercent =
+    totalWriteDecisions > 0
+      ? (writePolicyMetrics.queuedWrites / totalWriteDecisions) * 100
+      : 0;
 
   return {
     isOnline: online,
+    connectivityState,
     queuedOperations: stats.queuedOperations,
+    replaySuccessRate: stats.replaySuccessRate,
+    replaySuccessCount: stats.replaySuccessCount,
+    replayFailureCount: stats.replayFailureCount,
+    writePolicyMetrics,
+    offlineUsagePercent,
     lastSync: stats.lastSync,
+    lastReplayAudit: stats.lastReplayAudit || null,
+    lastReplayRun: lastReplayRunSummary,
     cacheSize: stats.cacheSizeKB,
     needsSync: stats.queuedOperations > 0,
   };
@@ -572,10 +688,20 @@ export const syncOfflineQueue = async (options?: SyncOptions): Promise<SyncResul
   if (skipped) return skipped;
 
   isSyncing = true;
+  setSyncReplayInProgress(true);
 
   try {
-    const queue = await getOfflineQueue();
+    const queue = (await getOfflineQueue()).filter((item) =>
+      item.status === "pending" || item.status === "pending_retry"
+    );
     if (queue.length === 0) {
+      updateReplayRunSummary({
+        connectivityState: getConnectivityState(),
+        success: 0,
+        failed: 0,
+        total: 0,
+        errorCount: 0,
+      });
       return EMPTY_SYNC_RESULT;
     }
 
@@ -606,6 +732,13 @@ export const syncOfflineQueue = async (options?: SyncOptions): Promise<SyncResul
       failedCount,
       errorCount: errors.length,
     });
+    updateReplayRunSummary({
+      connectivityState: getConnectivityState(),
+      success: successCount,
+      failed: failedCount,
+      total,
+      errorCount: errors.length,
+    });
 
     return {
       success: successCount,
@@ -616,6 +749,13 @@ export const syncOfflineQueue = async (options?: SyncOptions): Promise<SyncResul
   } catch (error: unknown) {
     log.error("Sync process error", error as Record<string, unknown>);
     const errorMessage = error instanceof Error ? error.message : "Unknown sync error";
+    updateReplayRunSummary({
+      connectivityState: getConnectivityState(),
+      success: 0,
+      failed: 0,
+      total: 0,
+      errorCount: 1,
+    });
     return {
       success: 0,
       failed: 0,
@@ -624,8 +764,11 @@ export const syncOfflineQueue = async (options?: SyncOptions): Promise<SyncResul
     };
   } finally {
     isSyncing = false;
+    setSyncReplayInProgress(false);
   }
 };
+
+export const getLastReplayRunSummary = () => lastReplayRunSummary;
 
 /**
  * Forces an explicit sync attempt using the standard offline queue flow.

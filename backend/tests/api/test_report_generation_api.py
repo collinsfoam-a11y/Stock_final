@@ -41,7 +41,7 @@ class _FailingProjectionReadService:
     async def generate_stock_summary(self, _filters):
         raise HTTPException(
             status_code=503,
-            detail={"code": "PROJECTION_NOT_READY"},
+            detail={"code": "PROJECTION_INCONSISTENT"},
         )
 
 
@@ -54,7 +54,12 @@ class _ProjectionReadServiceWithSessionHistory:
 
 
 @pytest.mark.asyncio
-async def test_generate_stock_summary_short_circuits_when_item_filters_match_nothing():
+async def test_generate_stock_summary_short_circuits_when_item_filters_match_nothing(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        report_generation_service.settings, "V3_PROJECTION_REPORT_READS", False
+    )
     db = MagicMock()
     db.erp_items.find.return_value = _AsyncCursor([])
 
@@ -91,13 +96,18 @@ async def test_projection_report_failure_fails_closed_without_legacy_db_reads(mo
         await generate_stock_summary(db, ReportFilter())
 
     assert exc.value.status_code == 503
-    assert exc.value.detail["code"] == "PROJECTION_NOT_READY"
+    assert exc.value.detail["code"] == "PROJECTION_INCONSISTENT"
     db.erp_items.find.assert_not_called()
     db.count_lines.find.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_generate_variance_report_short_circuits_when_item_filters_match_nothing():
+async def test_generate_variance_report_short_circuits_when_item_filters_match_nothing(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        report_generation_service.settings, "V3_PROJECTION_REPORT_READS", False
+    )
     db = MagicMock()
     db.erp_items.find.return_value = _AsyncCursor([])
 
@@ -117,7 +127,12 @@ async def test_generate_variance_report_short_circuits_when_item_filters_match_n
 
 
 @pytest.mark.asyncio
-async def test_generate_session_history_report_fetches_count_lines_in_one_query():
+async def test_generate_session_history_report_fetches_count_lines_in_one_query(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        report_generation_service.settings, "V3_PROJECTION_REPORT_READS", False
+    )
     started_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db = MagicMock()
     db.sessions.find.return_value = _AsyncCursor(

@@ -3,6 +3,7 @@ import { storage } from "../storage/asyncStorageService";
 import { levenshteinDistance } from "../../utils/algorithms";
 import { createLogger } from "../logging";
 import { useSettingsStore } from "../../store/settingsStore";
+import { generateUUID } from "../../utils/uuid";
 
 const log = createLogger("OfflineStorage");
 
@@ -24,6 +25,7 @@ function logStorageError(
 const STORAGE_KEYS = {
   ITEMS_CACHE: "items_cache",
   OFFLINE_QUEUE: "offline_queue",
+  OFFLINE_REPLAY_AUDIT: "offline_replay_audit",
   OFFLINE_SESSION_ID_MAP: "offline_session_id_map",
   SESSIONS_CACHE: "sessions_cache",
   COUNT_LINES_CACHE: "count_lines_cache",
@@ -86,10 +88,13 @@ export interface CachedItem {
 
 export interface OfflineQueueItem {
   id: string;
+  event_id?: string;
+  schema_version?: string;
   type: "count_line" | "session" | "unknown_item";
   data: Record<string, unknown>;
   timestamp: string;
   retries: number;
+  retry_count?: number;
   status:
     | "pending"
     | "pending_retry"
@@ -98,6 +103,14 @@ export interface OfflineQueueItem {
   idempotency_key?: string;
   last_error?: string | null;
   last_attempted_at?: string | null;
+}
+
+export interface OfflineReplayAuditEntry {
+  action_id: string;
+  timestamp: string;
+  success: boolean;
+  retry_count: number;
+  error?: string | null;
 }
 
 export interface CachedSession {
@@ -286,13 +299,7 @@ export const clearItemsCache = async () => {
 };
 
 // Offline Queue Operations
-const buildQueueItemId = (
-  type: OfflineQueueItem["type"],
-  idempotencyKey?: string
-) =>
-  idempotencyKey
-    ? `${type}:${idempotencyKey}`
-    : `${type}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+const buildQueueItemId = () => generateUUID();
 
 const resolveIdempotencyKey = (
   type: OfflineQueueItem["type"],
@@ -338,8 +345,10 @@ const resolveIdempotencyKey = (
   if (type === "unknown_item") {
     const barcode = data.barcode;
     const sessionId = data.session_id;
+    const floorId = data.floor_id || data.floor_no || "";
+    const rackId = data.rack_id || data.rack_no || "";
     if (typeof barcode === "string" && typeof sessionId === "string") {
-      return `${sessionId.trim()}:${barcode.trim()}`;
+      return `${sessionId.trim()}:${barcode.trim()}:${String(floorId).trim()}:${String(rackId).trim()}`;
     }
   }
 
@@ -359,12 +368,52 @@ const normalizeQueueItem = (item: OfflineQueueItem): OfflineQueueItem => {
 
   return {
     ...item,
+    event_id: item.event_id || item.id,
+    schema_version: item.schema_version || "v1",
+    retry_count: item.retry_count ?? item.retries ?? 0,
     status: normalizedStatus,
     idempotency_key:
       item.idempotency_key || resolveIdempotencyKey(item.type, item.data),
     last_error: item.last_error ?? null,
     last_attempted_at: item.last_attempted_at ?? null,
   };
+};
+
+const toTimestamp = (value: string): number => {
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const deduplicateQueueItems = (items: OfflineQueueItem[]): OfflineQueueItem[] => {
+  const deduped = new Map<string, OfflineQueueItem>();
+  const withoutIdempotency: OfflineQueueItem[] = [];
+
+  for (const item of items) {
+    if (!item.idempotency_key) {
+      withoutIdempotency.push(item);
+      continue;
+    }
+
+    const key = `${item.type}:${item.idempotency_key}`;
+    const existing = deduped.get(key);
+    if (!existing) {
+      deduped.set(key, item);
+      continue;
+    }
+
+    const keepExisting = toTimestamp(existing.timestamp) > toTimestamp(item.timestamp);
+    const winner = keepExisting ? existing : item;
+    const loser = keepExisting ? item : existing;
+
+    deduped.set(key, {
+      ...winner,
+      retries: Math.max(winner.retries, loser.retries),
+    });
+  }
+
+  return [...deduped.values(), ...withoutIdempotency].sort(
+    (left, right) => toTimestamp(left.timestamp) - toTimestamp(right.timestamp)
+  );
 };
 
 export const addToOfflineQueue = async (
@@ -381,12 +430,16 @@ export const addToOfflineQueue = async (
               item.type === type && item.idempotency_key === idempotencyKey
           )
         : -1;
+    const queueId = buildQueueItemId();
     const queueItem: OfflineQueueItem = {
-      id: buildQueueItemId(type, idempotencyKey),
+      id: queueId,
+      event_id: queueId,
+      schema_version: "v1",
       type,
       data,
       timestamp: new Date().toISOString(),
       retries: 0,
+      retry_count: 0,
       status: "pending",
       idempotency_key: idempotencyKey,
       last_error: null,
@@ -428,7 +481,18 @@ export const getOfflineQueue = async (): Promise<OfflineQueueItem[]> => {
     const queue = await storage.get<OfflineQueueItem[]>(STORAGE_KEYS.OFFLINE_QUEUE, {
       defaultValue: [],
     });
-    return Array.isArray(queue) ? queue.map(normalizeQueueItem) : [];
+    const normalized = Array.isArray(queue) ? queue.map(normalizeQueueItem) : [];
+    const deduplicated = deduplicateQueueItems(normalized);
+
+    if (deduplicated.length !== normalized.length) {
+      await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, deduplicated);
+      log.warn("Removed duplicate offline queue actions", {
+        before: normalized.length,
+        after: deduplicated.length,
+      });
+    }
+
+    return deduplicated;
   } catch (error) {
     logStorageError("Error getting offline queue", error);
     return [];
@@ -481,6 +545,7 @@ export const updateQueueItemRetries = async (
         ? {
             ...item,
             retries: item.retries + 1,
+            retry_count: item.retries + 1,
             status: options?.status || "pending_retry",
             last_error: options?.error ?? item.last_error ?? null,
             last_attempted_at:
@@ -849,12 +914,52 @@ export const getLastSync = async (): Promise<string | null> => {
   }
 };
 
+const MAX_REPLAY_AUDIT_ENTRIES = 500;
+
+export const getReplayAuditLog = async (): Promise<OfflineReplayAuditEntry[]> => {
+  try {
+    const entries = await storage.get<OfflineReplayAuditEntry[]>(
+      STORAGE_KEYS.OFFLINE_REPLAY_AUDIT,
+      { defaultValue: [] }
+    );
+    return Array.isArray(entries) ? entries : [];
+  } catch (error) {
+    logStorageError("Error reading offline replay audit log", error);
+    return [];
+  }
+};
+
+export const appendReplayAuditEntry = async (
+  entry: Omit<OfflineReplayAuditEntry, "timestamp"> & { timestamp?: string }
+): Promise<OfflineReplayAuditEntry> => {
+  const normalizedEntry: OfflineReplayAuditEntry = {
+    ...entry,
+    timestamp: entry.timestamp || new Date().toISOString(),
+    error: entry.error ?? null,
+  };
+
+  const entries = await getReplayAuditLog();
+  const updatedEntries = [...entries, normalizedEntry];
+  if (updatedEntries.length > MAX_REPLAY_AUDIT_ENTRIES) {
+    updatedEntries.splice(0, updatedEntries.length - MAX_REPLAY_AUDIT_ENTRIES);
+  }
+
+  await storage.set(STORAGE_KEYS.OFFLINE_REPLAY_AUDIT, updatedEntries);
+  return normalizedEntry;
+};
+
+export const getLastReplayAuditEntry = async (): Promise<OfflineReplayAuditEntry | null> => {
+  const entries = await getReplayAuditLog();
+  return entries.length > 0 ? entries[entries.length - 1] || null : null;
+};
+
 // Clear all cache
 export const clearAllCache = async () => {
   try {
     await AsyncStorage.multiRemove([
       STORAGE_KEYS.ITEMS_CACHE,
       STORAGE_KEYS.OFFLINE_QUEUE,
+      STORAGE_KEYS.OFFLINE_REPLAY_AUDIT,
       STORAGE_KEYS.SESSIONS_CACHE,
       STORAGE_KEYS.COUNT_LINES_CACHE,
       STORAGE_KEYS.LAST_SYNC,
@@ -869,13 +974,23 @@ export const getCacheStats = async () => {
   try {
     const itemsCache = await getItemsCache();
     const offlineQueue = await getOfflineQueue();
+    const replayAudit = await getReplayAuditLog();
     const sessionsCache = await getSessionsCache();
     const countLinesCache = await getCountLinesCache();
     const lastSync = await getLastSync();
+    const replaySuccessCount = replayAudit.filter((entry) => entry.success).length;
+    const replayFailureCount = replayAudit.length - replaySuccessCount;
+    const replaySuccessRate =
+      replayAudit.length > 0 ? (replaySuccessCount / replayAudit.length) * 100 : 0;
 
     return {
       itemsCount: Object.keys(itemsCache).length,
       queuedOperations: offlineQueue.length,
+      replayAuditCount: replayAudit.length,
+      replaySuccessCount,
+      replayFailureCount,
+      replaySuccessRate,
+      lastReplayAudit: replayAudit[replayAudit.length - 1] || null,
       sessionsCount: Object.keys(sessionsCache).length,
       countLinesCount: Object.values(countLinesCache).reduce(
         (total, lines) => total + lines.length,
@@ -885,6 +1000,7 @@ export const getCacheStats = async () => {
       cacheSizeKB: Math.round(
         (JSON.stringify(itemsCache).length +
           JSON.stringify(offlineQueue).length +
+          JSON.stringify(replayAudit).length +
           JSON.stringify(sessionsCache).length +
           JSON.stringify(countLinesCache).length) /
           1024
@@ -895,6 +1011,11 @@ export const getCacheStats = async () => {
     return {
       itemsCount: 0,
       queuedOperations: 0,
+      replayAuditCount: 0,
+      replaySuccessCount: 0,
+      replayFailureCount: 0,
+      replaySuccessRate: 0,
+      lastReplayAudit: null,
       sessionsCount: 0,
       countLinesCount: 0,
       lastSync: null,

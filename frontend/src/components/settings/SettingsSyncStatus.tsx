@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { useTheme } from "../../hooks/useTheme";
+import { getSyncStatus } from "../../services/syncService";
 import { useSettingsStore } from "../../store/settingsStore";
 
 function formatRelativeTime(value: string | null): string {
@@ -35,6 +36,63 @@ export function SettingsSyncStatus() {
   const hasPendingSync = useSettingsStore((state) => state.hasPendingSync);
   const lastSyncError = useSettingsStore((state) => state.lastSyncError);
   const lastSyncedAt = useSettingsStore((state) => state.lastSyncedAt);
+  const [debugStatus, setDebugStatus] = React.useState<{
+    connectivityState: string;
+    queueLength: number;
+    lastReplayStatus: string;
+    replaySuccessRate: number;
+    offlineUsagePercent: number;
+  } | null>(null);
+
+  React.useEffect(() => {
+    if (!__DEV__) {
+      return;
+    }
+
+    let active = true;
+    const refresh = async () => {
+      try {
+        const syncStatus = await getSyncStatus();
+        const replayRun = syncStatus.lastReplayRun;
+        const replayAudit = syncStatus.lastReplayAudit;
+        const lastReplayStatus = replayRun
+          ? replayRun.failed > 0
+            ? `FAILED (${replayRun.failed}/${replayRun.total})`
+            : replayRun.total > 0
+              ? `SUCCESS (${replayRun.success}/${replayRun.total})`
+              : "IDLE"
+          : replayAudit
+            ? replayAudit.success
+              ? "SUCCESS"
+              : "FAILED"
+            : "IDLE";
+
+        if (active) {
+          setDebugStatus({
+            connectivityState: syncStatus.connectivityState || "UNKNOWN",
+            queueLength: syncStatus.queuedOperations || 0,
+            lastReplayStatus,
+            replaySuccessRate: Number(syncStatus.replaySuccessRate || 0),
+            offlineUsagePercent: Number(syncStatus.offlineUsagePercent || 0),
+          });
+        }
+      } catch {
+        if (active) {
+          setDebugStatus(null);
+        }
+      }
+    };
+
+    void refresh();
+    const interval = setInterval(() => {
+      void refresh();
+    }, 2000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const state = lastSyncError
     ? {
@@ -98,6 +156,73 @@ export function SettingsSyncStatus() {
         >
           {state.detail}
         </Text>
+        {__DEV__ && debugStatus ? (
+          <View
+            style={[
+              styles.debugPanel,
+              {
+                borderColor: `${colors.textSecondary}33`,
+                backgroundColor: `${colors.background}cc`,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.debugText,
+                {
+                  color: colors.textSecondary,
+                  fontSize: typography.fontSize.xs,
+                },
+              ]}
+            >
+              Connectivity: {debugStatus.connectivityState}
+            </Text>
+            <Text
+              style={[
+                styles.debugText,
+                {
+                  color: colors.textSecondary,
+                  fontSize: typography.fontSize.xs,
+                },
+              ]}
+            >
+              Queue: {debugStatus.queueLength}
+            </Text>
+            <Text
+              style={[
+                styles.debugText,
+                {
+                  color: colors.textSecondary,
+                  fontSize: typography.fontSize.xs,
+                },
+              ]}
+            >
+              Last Replay: {debugStatus.lastReplayStatus}
+            </Text>
+            <Text
+              style={[
+                styles.debugText,
+                {
+                  color: colors.textSecondary,
+                  fontSize: typography.fontSize.xs,
+                },
+              ]}
+            >
+              Replay Success: {debugStatus.replaySuccessRate.toFixed(1)}%
+            </Text>
+            <Text
+              style={[
+                styles.debugText,
+                {
+                  color: colors.textSecondary,
+                  fontSize: typography.fontSize.xs,
+                },
+              ]}
+            >
+              Offline Usage: {debugStatus.offlineUsagePercent.toFixed(1)}%
+            </Text>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -121,6 +246,17 @@ const styles = StyleSheet.create({
   },
   detail: {
     lineHeight: 16,
+  },
+  debugPanel: {
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 2,
+    marginTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  debugText: {
+    fontWeight: "500",
   },
 });
 

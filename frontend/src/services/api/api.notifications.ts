@@ -1,4 +1,4 @@
-import api from "../httpClient";
+import api from "@/api/client";
 
 export interface NotificationMetadata {
   count_line_id?: string;

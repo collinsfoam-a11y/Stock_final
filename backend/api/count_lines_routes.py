@@ -1,14 +1,17 @@
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any, NoReturn, Optional
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from backend.api.schemas import BulkCountLineUpdate, CountLineCreate
 from backend.auth.dependencies import get_current_user
+from backend.contracts.states import normalize_session_state
 from backend.core.websocket_manager import manager
 from backend.models.audit import AuditEventType, AuditLogStatus
 from backend.services.activity_log import ActivityLogService
@@ -57,6 +60,40 @@ def _normalize_idempotency_key(value: Any) -> Optional[str]:
         return None
     normalized = value.strip()
     return normalized or None
+
+
+def _is_truthy_flag(value: Any) -> bool:
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _is_draft_debug_mode_enabled() -> bool:
+    env = str(os.getenv("ENVIRONMENT", "development")).strip().lower()
+    return env in {"development", "test"} and _is_truthy_flag(
+        os.getenv("COUNT_LINES_DRAFT_DEBUG_ERRORS", "false")
+    )
+
+
+def _to_json_safe(value: Any) -> Any:
+    if isinstance(value, ObjectId):
+        return str(value)
+    if isinstance(value, dict):
+        return {key: _to_json_safe(val) for key, val in value.items()}
+    if isinstance(value, list):
+        return [_to_json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return [_to_json_safe(item) for item in value]
+    if isinstance(value, set):
+        return [_to_json_safe(item) for item in sorted(value, key=lambda item: str(item))]
+    return value
+
+
+def _build_draft_input_snapshot(line_data: CountLineCreate) -> dict[str, Any]:
+    payload = _to_json_safe(line_data.model_dump(mode="json"))
+    if isinstance(payload.get("photo_base64"), str) and payload.get("photo_base64"):
+        payload["photo_base64"] = "<redacted>"
+    if isinstance(payload.get("photo_proofs"), list):
+        payload["photo_proofs"] = f"<{len(payload['photo_proofs'])} proofs>"
+    return payload
 
 
 def _raise_count_lines_internal_error(detail: str, exc: Exception) -> NoReturn:
@@ -112,7 +149,7 @@ def init_count_lines_api(
 
 def _get_db_client(db_override=None):
     """Resolve the active database client, raising if not initialized."""
-    if db_override:
+    if db_override is not None:
         return db_override
     try:
         return get_count_query_service().database
@@ -376,10 +413,85 @@ async def _broadcast_dashboard_refresh(
 
 
 def _ensure_session_accepts_counts(session: dict[str, Any]) -> None:
-    if session.get("status") not in ["OPEN", "ACTIVE"]:
-        raise HTTPException(status_code=400, detail="Session is not active")
+    session_state = normalize_session_state(session.get("status"))
+    if session_state != "ACTIVE":
+        raise HTTPException(status_code=400, detail="Session must be ACTIVE for count operations")
     if session.get("reconciled_at"):
         raise HTTPException(status_code=400, detail="Session is in reconciliation mode")
+
+
+async def _ensure_session_ready_for_count_writes(
+    db: Any,
+    session: dict[str, Any],
+    *,
+    actor: str,
+) -> dict[str, Any]:
+    lifecycle_service = SessionLifecycleService(db)
+    session_id = str(session.get("id") or session.get("session_id") or "")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="Session is missing canonical id")
+    refreshed = await lifecycle_service.ensure_session_accepts_count_writes(
+        session_id,
+        actor=actor,
+    )
+    if normalize_session_state(refreshed.get("status")) != "ACTIVE":
+        refreshed = dict(refreshed)
+        refreshed["status"] = "ACTIVE"
+    return refreshed
+
+
+def _first_non_empty(*values: Any) -> Optional[str]:
+    for value in values:
+        text = str(value).strip() if value is not None else ""
+        if text:
+            return text
+    return None
+
+
+def _hydrate_count_line_location_context(
+    line_data: CountLineCreate,
+    session: dict[str, Any],
+) -> None:
+    """Backfill canonical location fields from active session context."""
+    line_data.location_id = _first_non_empty(
+        line_data.location_id,
+        session.get("location_id"),
+        session.get("location_type"),
+        session.get("warehouse"),
+    )
+    line_data.floor_id = _first_non_empty(
+        line_data.floor_id,
+        line_data.floor_no,
+        session.get("floor_id"),
+        session.get("location_name"),
+        session.get("floor"),
+    )
+    line_data.rack_id = _first_non_empty(
+        line_data.rack_id,
+        line_data.rack_no,
+        session.get("rack_id"),
+        session.get("rack_no"),
+        session.get("rack"),
+    )
+    line_data.floor_no = _first_non_empty(line_data.floor_no, line_data.floor_id)
+    line_data.rack_no = _first_non_empty(line_data.rack_no, line_data.rack_id)
+
+
+def _assert_draft_context_resolved(line_data: CountLineCreate) -> None:
+    missing = [
+        field
+        for field, value in (
+            ("location_id", line_data.location_id),
+            ("floor_id", line_data.floor_id),
+            ("rack_id", line_data.rack_id),
+        )
+        if not str(value or "").strip()
+    ]
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Draft location context is incomplete: missing {', '.join(missing)}",
+        )
 
 
 async def _find_idempotent_count_line(
@@ -949,10 +1061,35 @@ async def save_count_line_draft(
     Save a draft count line.
     Upserts the current autosave payload into count_line_drafts.
     """
-    db = _get_db_client()
-    write_service = _get_count_line_write_service(db)
-    session = await find_session(db, line_data.session_id)
-    if isinstance(session, dict):
+    stage = "validation"
+    input_snapshot = _build_draft_input_snapshot(line_data)
+    connectivity_mode = (
+        request.headers.get("x-connectivity-state")
+        or request.headers.get("x-connectivity-mode")
+        or request.headers.get("x-network-status")
+        or "unknown"
+    )
+    log_context = {
+        "session_id": _safe_log_value(line_data.session_id),
+        "user_id": _safe_log_value(current_user.get("username")),
+        "connectivity_mode": _safe_log_value(connectivity_mode),
+    }
+
+    try:
+        db = _get_db_client()
+        write_service = _get_count_line_write_service(db)
+        session = await find_session(db, line_data.session_id)
+        if not isinstance(session, dict):
+            raise HTTPException(status_code=404, detail=f"Session {line_data.session_id} not found")
+
+        _hydrate_count_line_location_context(line_data, session)
+        session = await _ensure_session_ready_for_count_writes(
+            db,
+            session,
+            actor=str(current_user.get("username") or "system"),
+        )
+        _assert_draft_context_resolved(line_data)
+        _ensure_session_accepts_counts(session)
         await _enforce_count_line_session_logic(
             db=db,
             session=session,
@@ -960,43 +1097,79 @@ async def save_count_line_draft(
             current_user=current_user,
             operation_name="save_count_line_draft",
         )
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-    username = current_user["username"]
-    draft_line_id = _build_draft_line_id(line_data)
-    draft_filter = _build_count_line_draft_filter(line_data, username)
-    legacy_draft_filter = _build_legacy_count_line_draft_filter(line_data, username)
-    resolved_item_name = await _resolve_item_name_for_draft(db, line_data)
-    draft_payload = {
-        **line_data.model_dump(mode="json"),
-        "item_name": resolved_item_name,
-        "barcode": line_data.barcode,
-        "counted_by": username,
-        "user_id": username,
-        "line_id": draft_line_id,
-        "status": "draft",
-        "updated_at": now,
-    }
 
-    draft_id = await write_service.save_count_line_draft(
-        draft_filter=draft_filter,
-        legacy_draft_filter=legacy_draft_filter,
-        draft_payload=draft_payload,
-        created_at=now,
-    )
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        username = str(current_user.get("username") or "").strip()
+        draft_line_id = _build_draft_line_id(line_data)
+        draft_filter = _build_count_line_draft_filter(line_data, username)
+        legacy_draft_filter = _build_legacy_count_line_draft_filter(line_data, username)
+        resolved_item_name = await _resolve_item_name_for_draft(db, line_data)
+        draft_payload = {
+            **line_data.model_dump(mode="json"),
+            "item_name": resolved_item_name,
+            "barcode": line_data.barcode,
+            "counted_by": username,
+            "user_id": username,
+            "line_id": draft_line_id,
+            "status": "draft",
+            "updated_at": now,
+        }
 
-    logger.debug(
-        "Draft saved for item %s: %s",
-        _safe_log_value(line_data.item_code),
-        line_data.counted_qty,
-    )
-    return {
-        "success": True,
-        "message": "Draft saved successfully",
-        "data": {
-            "id": draft_id,
-            **draft_payload,
-        },
-    }
+        stage = "db_write"
+        async with write_service.transaction() as tx:
+            draft_id = await write_service.save_count_line_draft(
+                draft_filter=draft_filter,
+                legacy_draft_filter=legacy_draft_filter,
+                draft_payload=draft_payload,
+                created_at=now,
+                db_session=tx,
+            )
+
+        logger.debug(
+            "Draft saved for item %s: %s",
+            _safe_log_value(line_data.item_code),
+            line_data.counted_qty,
+        )
+
+        stage = "serialization"
+        return _to_json_safe(
+            {
+                "success": True,
+                "message": "Draft saved successfully",
+                "data": {
+                    "id": draft_id,
+                    **draft_payload,
+                },
+            }
+        )
+    except HTTPException as exc:
+        logger.warning(
+            "Count-line draft rejected at %s (%s)",
+            stage,
+            _safe_log_value(exc.detail, max_length=240),
+            extra=log_context,
+        )
+        raise
+    except Exception as exc:
+        logger.exception(
+            "Count-line draft failed at %s",
+            stage,
+            extra={
+                **log_context,
+                "stage": stage,
+                "input_snapshot": _to_json_safe(input_snapshot),
+            },
+        )
+        if _is_draft_debug_mode_enabled():
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": str(exc),
+                    "stage": stage,
+                    "input_snapshot": _to_json_safe(input_snapshot),
+                },
+            )
+        _raise_count_lines_internal_error("Failed to save count line draft", exc)
 
 
 @router.post("/count-lines")
@@ -1009,6 +1182,12 @@ async def create_count_line(
     db = _get_db_client()
     write_service = _get_count_line_write_service(db)
     session = await _get_mutable_session_or_409(db, line_data.session_id)
+    _hydrate_count_line_location_context(line_data, session)
+    session = await _ensure_session_ready_for_count_writes(
+        db,
+        session,
+        actor=str(current_user.get("username") or "system"),
+    )
     await _enforce_count_line_session_logic(
         db=db,
         session=session,

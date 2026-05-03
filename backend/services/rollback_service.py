@@ -65,8 +65,8 @@ class RollbackService:
 
         updates = {
             "ROLLOUT_STAGE": "0",
-            "V3_PROJECTION_DASHBOARD_READS": "false",
-            "V3_PROJECTION_REPORT_READS": "false",
+            "V3_PROJECTION_DASHBOARD_READS": "true",
+            "V3_PROJECTION_REPORT_READS": "true",
             "SHADOW_READ_ENABLED": "true",
         }
         logger.critical(

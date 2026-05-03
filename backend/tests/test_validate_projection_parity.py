@@ -66,6 +66,7 @@ async def test_validate_projection_parity_passes_for_matching_projection_state(t
             "pending_items": 1,
             "damage_items": 0,
             "total_variance": 0.0,
+            "source_updated_at": now,
             "updated_at": now,
         }
     )
@@ -79,6 +80,7 @@ async def test_validate_projection_parity_passes_for_matching_projection_state(t
             "approval_status": "APPROVED",
             "verified": True,
             "batches": [{"batch": "BATCH-1", "qty": 6.0}],
+            "source_updated_at": now,
             "updated_at": now,
         }
     )
@@ -91,6 +93,7 @@ async def test_validate_projection_parity_passes_for_matching_projection_state(t
             "financial_impact": -15.0,
             "approval_status": "NEEDS_REVIEW",
             "verified": False,
+            "source_updated_at": now,
             "updated_at": now,
         }
     )
@@ -99,6 +102,7 @@ async def test_validate_projection_parity_passes_for_matching_projection_state(t
             "session_id": "sess-1",
             "item_code": "ITEM-1",
             "variance": 1.0,
+            "source_updated_at": now,
             "updated_at": now,
         }
     )
@@ -107,6 +111,7 @@ async def test_validate_projection_parity_passes_for_matching_projection_state(t
             "session_id": "sess-1",
             "item_code": "ITEM-2",
             "variance": -1.0,
+            "source_updated_at": now,
             "updated_at": now,
         }
     )
@@ -115,6 +120,7 @@ async def test_validate_projection_parity_passes_for_matching_projection_state(t
             "session_id": "sess-1",
             "total_counted_value": 0.0,
             "total_stock_value": 0.0,
+            "source_updated_at": now,
             "updated_at": now,
         }
     )
@@ -124,6 +130,7 @@ async def test_validate_projection_parity_passes_for_matching_projection_state(t
             "item_code": "ITEM-1",
             "batch_no": "BATCH-1",
             "counted_qty": 6.0,
+            "source_updated_at": now,
             "updated_at": now,
         }
     )
@@ -133,6 +140,7 @@ async def test_validate_projection_parity_passes_for_matching_projection_state(t
             "item_code": "ITEM-2",
             "batch_no": "NO_BATCH",
             "counted_qty": 4.0,
+            "source_updated_at": now,
             "updated_at": now,
         }
     )
@@ -222,6 +230,7 @@ async def test_validate_projection_parity_fails_when_sample_projection_row_is_mi
             "pending_items": 0,
             "damage_items": 0,
             "total_variance": 2.0,
+            "source_updated_at": now,
             "updated_at": now,
         }
     )
@@ -231,6 +240,7 @@ async def test_validate_projection_parity_fails_when_sample_projection_row_is_mi
             "session_id": "sess-2",
             "item_code": "ITEM-3",
             "variance": 2.0,
+            "source_updated_at": now,
             "updated_at": now,
         }
     )
@@ -239,6 +249,7 @@ async def test_validate_projection_parity_fails_when_sample_projection_row_is_mi
             "session_id": "sess-2",
             "total_counted_value": 20.0,
             "total_stock_value": 0.0,
+            "source_updated_at": now,
             "updated_at": now,
         }
     )
@@ -292,6 +303,7 @@ async def test_validate_projection_parity_fails_when_event_lag_exceeds_threshold
             "pending_items": 0,
             "damage_items": 0,
             "total_variance": 0.0,
+            "source_updated_at": stale_projection_time,
             "updated_at": stale_projection_time,
         }
     )
@@ -304,6 +316,7 @@ async def test_validate_projection_parity_fails_when_event_lag_exceeds_threshold
             "financial_impact": 0.0,
             "approval_status": "APPROVED",
             "verified": True,
+            "source_updated_at": stale_projection_time,
             "updated_at": stale_projection_time,
         }
     )
@@ -312,6 +325,7 @@ async def test_validate_projection_parity_fails_when_event_lag_exceeds_threshold
             "session_id": "sess-3",
             "item_code": "ITEM-4",
             "variance": 0.0,
+            "source_updated_at": stale_projection_time,
             "updated_at": stale_projection_time,
         }
     )
@@ -320,6 +334,7 @@ async def test_validate_projection_parity_fails_when_event_lag_exceeds_threshold
             "session_id": "sess-3",
             "total_counted_value": 0.0,
             "total_stock_value": 0.0,
+            "source_updated_at": stale_projection_time,
             "updated_at": stale_projection_time,
         }
     )
@@ -329,6 +344,7 @@ async def test_validate_projection_parity_fails_when_event_lag_exceeds_threshold
             "item_code": "ITEM-4",
             "batch_no": "NO_BATCH",
             "counted_qty": 5.0,
+            "source_updated_at": stale_projection_time,
             "updated_at": stale_projection_time,
         }
     )

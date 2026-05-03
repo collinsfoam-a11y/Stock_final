@@ -47,6 +47,7 @@ interface ModernInputProps {
   onSubmitEditing?: () => void;
   returnKeyType?: "done" | "go" | "next" | "search" | "send";
   required?: boolean;
+  testID?: string;
   style?: ViewStyle;
   inputStyle?: TextStyle;
   containerStyle?: ViewStyle;
@@ -73,6 +74,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   onSubmitEditing,
   returnKeyType,
   required = false,
+  testID,
   style,
   inputStyle,
   containerStyle,
@@ -161,6 +163,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
 
         <TextInput
           ref={inputRef}
+          testID={testID}
           style={[getInputStyles(), inputStyle]}
           placeholder={placeholder}
           placeholderTextColor={semanticColors.input.placeholder}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useNetworkStore } from "../../store/networkStore";
 import { getOfflineQueue } from "../../services/offline/offlineStorage";
-import { syncOfflineQueue } from "../../services/api";
+import { syncOfflineQueue } from "../../domains/sync/services";
 
 interface NetworkStatusBannerProps {
   onSyncPress?: () => void;

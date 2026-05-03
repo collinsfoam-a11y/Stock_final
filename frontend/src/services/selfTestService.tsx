@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { authService } from "@/services/auth";
 import * as SecureStore from "expo-secure-store";
-import apiClient from "@/services/httpClient";
+import apiClient from "@/api/client";
 import { colors, semanticColors, spacing, radius } from "@/theme/unified";
 
 export interface TestResult {

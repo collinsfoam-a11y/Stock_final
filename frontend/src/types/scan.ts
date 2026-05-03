@@ -90,7 +90,10 @@ export interface CreateCountLinePayload {
     expiry_date_format?: DateFormatType;
   }[];
   floor_no?: string | null;
+  floor_id?: string | null;
   rack_no?: string | null;
+  rack_id?: string | null;
+  location_id?: string | null;
   mark_location?: string | null;
   sr_no?: string | null;
   manufacturing_date?: string | null;

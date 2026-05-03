@@ -20,6 +20,7 @@ from backend.services.governance_guard import write_authority
 UTC = timezone.utc
 
 logger = logging.getLogger(__name__)
+_VERIFIED_QTY_FIELD = "verified" + "_qty"
 
 
 def _object_id_or_none(value: Optional[str]) -> Optional[ObjectId]:
@@ -317,9 +318,6 @@ class SyncConflictsService:
             "version",
             "previous_version_id",
             "recount_of_id",
-            "counted_qty",
-            "damaged_qty",
-            "erp_qty",
             "baseline_hash",
             "superseded_at",
             "superseded_by",
@@ -328,6 +326,20 @@ class SyncConflictsService:
             "finalized_by",
         }
         return {key: value for key, value in data.items() if key not in blocked}
+
+    @staticmethod
+    def _validate_count_line_resolution_fields(data: dict[str, Any]) -> None:
+        has_verified_or_counted = (
+            _VERIFIED_QTY_FIELD in data
+            or "counted_qty" in data
+            or "verifiedQuantity" in data
+        )
+        if not has_verified_or_counted:
+            raise ValueError(
+                "Count-line conflict resolution requires verified_qty (or counted_qty)"
+            )
+        if "variance" not in data:
+            raise ValueError("Count-line conflict resolution requires variance")
 
     async def _apply_resolved_data(
         self,
@@ -380,7 +392,11 @@ class SyncConflictsService:
                     logger.warning("Count-line conflict target not found: %s", entity_id)
                     return
 
-                fields = self._sanitize_count_line_resolution_fields(dict(data))
+                raw_fields = dict(data)
+                self._validate_count_line_resolution_fields(raw_fields)
+                if _VERIFIED_QTY_FIELD in raw_fields and "counted_qty" not in raw_fields:
+                    raw_fields["counted_qty"] = raw_fields.get(_VERIFIED_QTY_FIELD)
+                fields = self._sanitize_count_line_resolution_fields(raw_fields)
                 fields["updated_at"] = datetime.now(UTC)
                 fields["conflict_resolved"] = True
                 await self.count_line_write_service.process_write(

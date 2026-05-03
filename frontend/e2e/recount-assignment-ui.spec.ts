@@ -1,6 +1,8 @@
 import { expect, test, type APIRequestContext, type BrowserContext } from "@playwright/test";
+import { randomUUID } from "crypto";
 
 import { getAuthenticatedSession } from "./helpers/auth";
+import { installStabilityMocks } from "./helpers/stabilityMocks";
 
 const BACKEND_BASE_URL = process.env.E2E_BACKEND_URL || "http://127.0.0.1:8001";
 
@@ -112,6 +114,7 @@ test.describe("Recount Assignment UI", () => {
     browser,
     request,
   }, testInfo) => {
+    // Keep core count-line/recount APIs live, but stabilize unrelated side channels.
     test.setTimeout(180000);
 
     const projectSlug = testInfo.project.name
@@ -176,6 +179,7 @@ test.describe("Recount Assignment UI", () => {
       data: {
         warehouse: erpItem.warehouse,
         type: "STANDARD",
+        client_session_id: randomUUID(),
       },
     });
 
@@ -187,6 +191,11 @@ test.describe("Recount Assignment UI", () => {
         item_code: erpItem.item_code,
         barcode: erpItem.barcode,
         counted_qty: (erpItem.stock_qty ?? 0) + 1,
+        location_id: "showroom",
+        floor_id: "ground-floor",
+        rack_id: `rack-${suffix}`,
+        floor_no: "ground-floor",
+        rack_no: `rack-${suffix}`,
         variance_reason: `ui-smoke-${suffix}`,
         remark: "Playwright recount assignment smoke",
       },
@@ -195,13 +204,16 @@ test.describe("Recount Assignment UI", () => {
     const supervisorContext = await browser.newContext();
     await primeAuthStorage(supervisorContext, supervisorAuth);
     const supervisorPage = await supervisorContext.newPage();
+    await installStabilityMocks(supervisorPage);
 
     await supervisorPage.goto(`/supervisor/session/${encodeURIComponent(session.id)}`);
-    await expect(supervisorPage.getByText("Session Details")).toBeVisible({ timeout: 30000 });
+    await expect(supervisorPage.getByTestId("session-detail-title")).toBeVisible({
+      timeout: 30000,
+    });
     await expect(supervisorPage.getByText(erpItem.item_name)).toBeVisible({ timeout: 30000 });
 
-    await supervisorPage.getByText("Reject", { exact: true }).first().click();
-    await expect(supervisorPage.getByText("Assign Recount", { exact: true })).toBeVisible({
+    await supervisorPage.locator('[data-testid^="session-detail-reject-"]').first().click();
+    await expect(supervisorPage.getByTestId("recount-assignment-submit-btn")).toBeVisible({
       timeout: 10000,
     });
 
@@ -224,9 +236,7 @@ test.describe("Recount Assignment UI", () => {
       { timeout: 15000 },
     );
 
-    await supervisorPage
-      .getByText("Assign Recount", { exact: true })
-      .click({ force: true });
+    await supervisorPage.getByTestId("recount-assignment-submit-btn").click({ force: true });
 
     const rejectResponse = await rejectResponsePromise;
     expect(rejectResponse.ok()).toBeTruthy();
@@ -237,21 +247,27 @@ test.describe("Recount Assignment UI", () => {
     const assigneeContext = await browser.newContext();
     await primeAuthStorage(assigneeContext, assigneeAuth);
     const assigneePage = await assigneeContext.newPage();
+    await installStabilityMocks(assigneePage);
 
     await assigneePage.goto("/notifications");
-    await expect(assigneePage.getByText("Notifications", { exact: true })).toBeVisible({
+    await expect(assigneePage.getByTestId("notifications-screen")).toBeVisible({
       timeout: 30000,
     });
-    await expect(assigneePage.getByText("Recount Requested", { exact: true })).toBeVisible({
+    await expect(
+      assigneePage.locator('[data-testid^="notification-item-recount_assigned-"]').first(),
+    ).toBeVisible({
       timeout: 30000,
     });
     await expect(assigneePage.getByText("Smoke recount assignment")).toBeVisible({
       timeout: 30000,
     });
 
-    await assigneePage.getByText("Recount Requested", { exact: true }).first().click();
+    await assigneePage
+      .locator('[data-testid^="notification-item-recount_assigned-"]')
+      .first()
+      .click();
     await assigneePage.waitForURL("**/staff/item-detail?**", { timeout: 30000 });
-    await expect(assigneePage.getByText("Verify Item", { exact: true })).toBeVisible({
+    await expect(assigneePage.getByTestId("count-qty-input")).toBeVisible({
       timeout: 30000,
     });
 

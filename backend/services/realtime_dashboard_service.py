@@ -13,6 +13,10 @@ from backend.services.advanced_report_service import (
     ReportConfig,
 )
 from backend.services.projection_read_service import ProjectionReadService
+from backend.services.projection_snapshot import (
+    SOURCE_ITEM_TIMESTAMP_FIELDS,
+    apply_snapshot_filter,
+)
 from backend.services.shadow_read_service import schedule_shadow_compare
 from backend.utils.tracing import trace_span
 
@@ -71,7 +75,9 @@ class RealtimeDashboardService:
 
     async def _get_dashboard_stats_baseline(self) -> dict[str, Any]:
         with trace_span("calculate_dashboard_stats"):
+            snapshot_match = apply_snapshot_filter({}, SOURCE_ITEM_TIMESTAMP_FIELDS)
             stats_pipeline = [
+                *([{"$match": snapshot_match}] if snapshot_match else []),
                 {
                     "$facet": {
                         "total": [{"$count": "count"}],
@@ -151,7 +157,10 @@ class RealtimeDashboardService:
             ],
             "by_status": [
                 {"status": item["_id"] or "Unknown", "count": item["count"]}
-                for item in stats.get("by_status", [])
+                for item in sorted(
+                    stats.get("by_status", []),
+                    key=lambda item: str(item.get("_id") or "Unknown").lower(),
+                )
             ],
             "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
         }
@@ -172,6 +181,31 @@ class RealtimeDashboardService:
         return await self._get_filter_options_baseline()
 
     async def _get_filter_options_baseline(self) -> dict[str, Any]:
+        snapshot_query = apply_snapshot_filter({}, SOURCE_ITEM_TIMESTAMP_FIELDS)
+        if snapshot_query:
+            rows = await self._database.count_lines.find(snapshot_query).to_list(
+                length=10000
+            )
+            warehouses = sorted(
+                {row.get("warehouse") for row in rows if row.get("warehouse")}
+            )
+            floors = sorted({row.get("floor") for row in rows if row.get("floor")})
+            categories = sorted(
+                {row.get("category") for row in rows if row.get("category")}
+            )
+            statuses = sorted({row.get("status") for row in rows if row.get("status")})
+            users = sorted({row.get("counted_by") for row in rows if row.get("counted_by")})
+            return {
+                "success": True,
+                "options": {
+                    "warehouses": warehouses,
+                    "floors": floors,
+                    "categories": categories,
+                    "statuses": statuses,
+                    "users": users,
+                    "verified": [True, False],
+                },
+            }
         with trace_span("fetch_filter_options"):
             warehouses = await self._database.count_lines.distinct("warehouse")
             floors = await self._database.count_lines.distinct("floor")

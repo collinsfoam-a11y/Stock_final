@@ -10,6 +10,11 @@ from contextvars import ContextVar
 from functools import wraps
 from typing import Any, Callable, Optional
 
+from backend.contracts.states import (
+    SESSION_STATES,
+    normalize_session_state,
+)
+
 
 class GovernanceViolation(RuntimeError):
     """Raised when a write violates mandatory business invariants."""
@@ -74,19 +79,6 @@ _DB_GUARD_GETITEM_PATCHED_ATTR = "__governance_getitem_patched__"
 _DB_GUARD_GETCOLLECTION_PATCHED_ATTR = "__governance_get_collection_patched__"
 
 
-LEGACY_TO_CANONICAL_STATUS = {
-    "OPEN": "ACTIVE",
-    "ACTIVE": "ACTIVE",
-    "PAUSED": "ACTIVE",
-    "RECONCILE": "REVIEW",
-    "COMPLETED": "FINALIZED",
-    "CLOSED": "FINALIZED",
-    "CANCELLED": "FINALIZED",
-    "FINALIZED": "FINALIZED",
-    "CREATED": "CREATED",
-    "REVIEW": "REVIEW",
-}
-
 SESSION_TRANSITIONS: dict[str, set[str]] = {
     "CREATED": {"ACTIVE"},
     "ACTIVE": {"REVIEW"},
@@ -96,10 +88,7 @@ SESSION_TRANSITIONS: dict[str, set[str]] = {
 
 
 def normalize_session_status(value: Any) -> str:
-    raw = str(value or "").strip().upper()
-    if not raw:
-        return "UNKNOWN"
-    return LEGACY_TO_CANONICAL_STATUS.get(raw, raw)
+    return normalize_session_state(value)
 
 
 def _extract_session_id(context: dict[str, Any]) -> str:
@@ -138,6 +127,10 @@ def _extract_context_fields(
 
 
 def assert_valid_transition(from_state: str, to_state: str) -> None:
+    if from_state not in SESSION_STATES or to_state not in SESSION_STATES:
+        raise GovernanceViolation(
+            f"CRITICAL: Unsupported canonical transition {from_state} -> {to_state}"
+        )
     if to_state not in SESSION_TRANSITIONS.get(from_state, set()):
         raise GovernanceViolation(
             f"CRITICAL: Invalid session transition {from_state} -> {to_state}"

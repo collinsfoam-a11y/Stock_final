@@ -80,8 +80,8 @@ class TestPinAuth:
         headers = {"Authorization": f"Bearer {auth_token}"}
         payload = {"current_password": test_user["password"], "new_pin": "8520"}
 
-        # Route: /api/auth/pin/change
-        response = client.post("/api/auth/pin/change", json=payload, headers=headers)
+        # Route: /api/auth/change-pin
+        response = client.post("/api/auth/change-pin", json=payload, headers=headers)
 
         assert response.status_code == 200
         # ApiResponse wrapper? Let's check.
@@ -96,22 +96,22 @@ class TestPinAuth:
             "new_pin": "123",  # Too short
         }
 
-        response = client.post("/api/auth/pin/change", json=payload, headers=headers)
+        response = client.post("/api/auth/change-pin", json=payload, headers=headers)
 
-        assert response.status_code == 422  # Pydantic validation error
+        assert response.status_code == 400
 
     def test_login_with_pin_success(self, client, auth_token, test_user):
         """Test successful login with PIN"""
         # First set the PIN
         headers = {"Authorization": f"Bearer {auth_token}"}
         setup_payload = {"current_password": test_user["password"], "new_pin": "8520"}
-        client.post("/api/auth/pin/change", json=setup_payload, headers=headers)
+        client.post("/api/auth/change-pin", json=setup_payload, headers=headers)
 
         # Now try to login with PIN - needs username
         login_payload = {"username": test_user["username"], "pin": "8520"}
 
-        # Route: /api/auth/login/pin
-        response = client.post("/api/auth/login/pin", json=login_payload)
+        # Route: /api/auth/login-pin
+        response = client.post("/api/auth/login-pin", json=login_payload)
 
         assert response.status_code == 200
         payload = response.json()
@@ -126,12 +126,12 @@ class TestPinAuth:
         # First set the PIN
         headers = {"Authorization": f"Bearer {auth_token}"}
         setup_payload = {"current_password": test_user["password"], "new_pin": "8520"}
-        client.post("/api/auth/pin/change", json=setup_payload, headers=headers)
+        client.post("/api/auth/change-pin", json=setup_payload, headers=headers)
 
         # Try login with wrong PIN
         login_payload = {"username": test_user["username"], "pin": "0000"}
 
-        response = client.post("/api/auth/login/pin", json=login_payload)
+        response = client.post("/api/auth/login-pin", json=login_payload)
 
         # Should be 401. ApiResponse or direct?
         assert response.status_code == 401
@@ -141,6 +141,6 @@ class TestPinAuth:
         """Test PIN login for non-existent user"""
         login_payload = {"username": "non_existent", "pin": "9999"}
 
-        response = client.post("/api/auth/login/pin", json=login_payload)
+        response = client.post("/api/auth/login-pin", json=login_payload)
 
         assert response.status_code == 401

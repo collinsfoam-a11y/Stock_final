@@ -1,0 +1,70 @@
+diff --git a/node_modules/react-native-web/dist/cjs/modules/createDOMProps/index.js b/node_modules/react-native-web/dist/cjs/modules/createDOMProps/index.js
+index d643013..acafe23 100644
+--- a/node_modules/react-native-web/dist/cjs/modules/createDOMProps/index.js
++++ b/node_modules/react-native-web/dist/cjs/modules/createDOMProps/index.js
+@@ -7,7 +7,6 @@ var _objectSpread2 = _interopRequireDefault(require("@babel/runtime/helpers/obje
+ var _objectWithoutPropertiesLoose2 = _interopRequireDefault(require("@babel/runtime/helpers/objectWithoutPropertiesLoose"));
+ var _AccessibilityUtil = _interopRequireDefault(require("../AccessibilityUtil"));
+ var _StyleSheet2 = _interopRequireDefault(require("../../exports/StyleSheet"));
+-var _warnOnce = require("../warnOnce");
+ var _excluded = ["aria-activedescendant", "accessibilityActiveDescendant", "aria-atomic", "accessibilityAtomic", "aria-autocomplete", "accessibilityAutoComplete", "aria-busy", "accessibilityBusy", "aria-checked", "accessibilityChecked", "aria-colcount", "accessibilityColumnCount", "aria-colindex", "accessibilityColumnIndex", "aria-colspan", "accessibilityColumnSpan", "aria-controls", "accessibilityControls", "aria-current", "accessibilityCurrent", "aria-describedby", "accessibilityDescribedBy", "aria-details", "accessibilityDetails", "aria-disabled", "accessibilityDisabled", "aria-errormessage", "accessibilityErrorMessage", "aria-expanded", "accessibilityExpanded", "aria-flowto", "accessibilityFlowTo", "aria-haspopup", "accessibilityHasPopup", "aria-hidden", "accessibilityHidden", "aria-invalid", "accessibilityInvalid", "aria-keyshortcuts", "accessibilityKeyShortcuts", "aria-label", "accessibilityLabel", "aria-labelledby", "accessibilityLabelledBy", "aria-level", "accessibilityLevel", "aria-live", "accessibilityLiveRegion", "aria-modal", "accessibilityModal", "aria-multiline", "accessibilityMultiline", "aria-multiselectable", "accessibilityMultiSelectable", "aria-orientation", "accessibilityOrientation", "aria-owns", "accessibilityOwns", "aria-placeholder", "accessibilityPlaceholder", "aria-posinset", "accessibilityPosInSet", "aria-pressed", "accessibilityPressed", "aria-readonly", "accessibilityReadOnly", "aria-required", "accessibilityRequired", "role", "accessibilityRole", "aria-roledescription", "accessibilityRoleDescription", "aria-rowcount", "accessibilityRowCount", "aria-rowindex", "accessibilityRowIndex", "aria-rowspan", "accessibilityRowSpan", "aria-selected", "accessibilitySelected", "aria-setsize", "accessibilitySetSize", "aria-sort", "accessibilitySort", "aria-valuemax", "accessibilityValueMax", "aria-valuemin", "accessibilityValueMin", "aria-valuenow", "accessibilityValueNow", "aria-valuetext", "accessibilityValueText", "dataSet", "focusable", "id", "nativeID", "pointerEvents", "style", "tabIndex", "testID"];
+ /**
+  * Copyright (c) Nicolas Gallagher.
+@@ -805,9 +804,6 @@ var createDOMProps = (elementType, props, options) => {
+   }
+ 
+   // Resolve styles
+-  if (pointerEvents != null) {
+-    (0, _warnOnce.warnOnce)('pointerEvents', "props.pointerEvents is deprecated. Use style.pointerEvents");
+-  }
+   var _StyleSheet = (0, _StyleSheet2.default)([style, pointerEvents && pointerEventsStyles[pointerEvents]], (0, _objectSpread2.default)({
+       writingDirection: 'ltr'
+     }, options)),
+diff --git a/node_modules/react-native-web/dist/modules/createDOMProps/index.js b/node_modules/react-native-web/dist/modules/createDOMProps/index.js
+index 18f5e8b..c0d2b05 100644
+--- a/node_modules/react-native-web/dist/modules/createDOMProps/index.js
++++ b/node_modules/react-native-web/dist/modules/createDOMProps/index.js
+@@ -12,7 +12,6 @@ var _excluded = ["aria-activedescendant", "accessibilityActiveDescendant", "aria
+ 
+ import AccessibilityUtil from '../AccessibilityUtil';
+ import StyleSheet from '../../exports/StyleSheet';
+-import { warnOnce } from '../warnOnce';
+ var emptyObject = {};
+ var hasOwnProperty = Object.prototype.hasOwnProperty;
+ var isArray = Array.isArray;
+@@ -801,9 +800,6 @@ var createDOMProps = (elementType, props, options) => {
+   }
+ 
+   // Resolve styles
+-  if (pointerEvents != null) {
+-    warnOnce('pointerEvents', "props.pointerEvents is deprecated. Use style.pointerEvents");
+-  }
+   var _StyleSheet = StyleSheet([style, pointerEvents && pointerEventsStyles[pointerEvents]], _objectSpread({
+       writingDirection: 'ltr'
+     }, options)),
+diff --git a/node_modules/react-native-web/src/modules/createDOMProps/index.js b/node_modules/react-native-web/src/modules/createDOMProps/index.js
+index 4144dbc..5ab745d 100644
+--- a/node_modules/react-native-web/src/modules/createDOMProps/index.js
++++ b/node_modules/react-native-web/src/modules/createDOMProps/index.js
+@@ -9,7 +9,6 @@
+ 
+ import AccessibilityUtil from '../AccessibilityUtil';
+ import StyleSheet from '../../exports/StyleSheet';
+-import { warnOnce } from '../warnOnce';
+ 
+ const emptyObject = {};
+ const hasOwnProperty = Object.prototype.hasOwnProperty;
+@@ -873,13 +872,6 @@ const createDOMProps = (elementType, props, options) => {
+   }
+ 
+   // Resolve styles
+-  if (pointerEvents != null) {
+-    warnOnce(
+-      'pointerEvents',
+-      `props.pointerEvents is deprecated. Use style.pointerEvents`
+-    );
+-  }
+-
+   const [className, inlineStyle] = StyleSheet(
+     [style, pointerEvents && pointerEventsStyles[pointerEvents]],
+     {

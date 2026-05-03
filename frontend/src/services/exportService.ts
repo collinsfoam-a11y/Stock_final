@@ -10,6 +10,7 @@ import type { Session } from "../types/session";
 import type { CountLine } from "../types/item";
 import type { Item } from "../types/scan";
 import { useSettingsStore } from "../store/settingsStore";
+import { normalizeSessionState } from "../contracts/states";
 
 export interface ExportOptions {
   filename?: string;
@@ -296,12 +297,15 @@ export class ExportService {
 
       // Calculate summary statistics
       const totalSessions = sessions.length;
-      const openSessions = sessions.filter((s) => s.status === "OPEN").length;
+      const openSessions = sessions.filter((s) => {
+        const status = normalizeSessionState(s.status);
+        return status === "CREATED" || status === "ACTIVE";
+      }).length;
       const closedSessions = sessions.filter(
-        (s) => s.status === "CLOSED",
+        (s) => normalizeSessionState(s.status) === "FINALIZED",
       ).length;
-      const reconciledSessions = sessions.filter(
-        (s) => s.status === "RECONCILE",
+      const reviewSessions = sessions.filter(
+        (s) => normalizeSessionState(s.status) === "REVIEW",
       ).length;
       const totalItems = sessions.reduce(
         (sum, s) => sum + (s.total_items || 0),
@@ -316,7 +320,7 @@ export class ExportService {
         { metric: "Total Sessions", value: totalSessions },
         { metric: "Open Sessions", value: openSessions },
         { metric: "Closed Sessions", value: closedSessions },
-        { metric: "Reconciled Sessions", value: reconciledSessions },
+        { metric: "Review Sessions", value: reviewSessions },
         { metric: "Total Items Counted", value: totalItems },
         { metric: "Total Variance", value: totalVariance.toFixed(2) },
         {

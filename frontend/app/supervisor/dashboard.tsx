@@ -21,6 +21,7 @@ import {
   ZoneOption,
 } from "../../src/components/supervisor/dashboard/supervisorDashboardShared";
 import { AnimatedPressable, OperationalCard, ScreenContainer } from "../../src/components/ui";
+import { normalizeSessionState } from "../../src/contracts/states";
 import {
   createSession,
   getSessions,
@@ -28,7 +29,6 @@ import {
   getWarehouses,
   getZones,
 } from "../../src/services/api/api";
-import { getConflicts } from "../../src/services/offline/offlineQueue";
 import { getOfflineQueue } from "../../src/services/offline/offlineStorage";
 import { theme } from "../../src/styles/modernDesignSystem";
 import { Session } from "../../src/types";
@@ -108,23 +108,27 @@ export default function SupervisorDashboard() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [sessionsRes, syncStatsRes, offlineQueue, offlineConflicts] = await Promise.all([
+      const [sessionsRes, syncStatsRes, offlineQueue] = await Promise.all([
         getSessions(1, 100),
         getSyncConflictStats().catch(() => null),
         getOfflineQueue().catch(() => []),
-        getConflicts().catch(() => []),
       ]);
       const sessionData = sessionsRes.items || [];
       setSessions(sessionData);
       setPendingConflictCount(Number(syncStatsRes?.data?.pending ?? 0));
-      setOfflineQueueCount((offlineQueue?.length || 0) + (offlineConflicts?.length || 0));
+      const queueReviewCount = (offlineQueue || []).filter(
+        (item: any) =>
+          item?.status === "blocked_conflict" || item?.status === "failed_manual_review"
+      ).length;
+      setOfflineQueueCount((offlineQueue?.length || 0) + queueReviewCount);
 
       const nextStats = sessionData.reduce(
         (acc: DashboardStats, session: Session) => {
+          const sessionState = normalizeSessionState(session.status);
           acc.totalSessions++;
-          if (session.status === "OPEN") acc.openSessions++;
-          if (session.status === "CLOSED") acc.closedSessions++;
-          if (session.status === "RECONCILE") acc.reconciledSessions++;
+          if (sessionState === "CREATED" || sessionState === "ACTIVE") acc.openSessions++;
+          if (sessionState === "FINALIZED") acc.closedSessions++;
+          if (sessionState === "REVIEW") acc.reconciledSessions++;
 
           acc.totalItems += session.total_items || 0;
           acc.totalVariance += session.total_variance || 0;
@@ -221,7 +225,7 @@ export default function SupervisorDashboard() {
   };
 
   const activeSessions = sessions.filter((session) =>
-    ["OPEN", "ACTIVE"].includes(String(session.status || "").toUpperCase())
+    ["CREATED", "OPEN", "ACTIVE"].includes(String(session.status || "").toUpperCase())
   );
   const varianceItemCount = sessions.filter(
     (session) => Math.abs(session.total_variance || 0) > 0
@@ -336,22 +340,26 @@ export default function SupervisorDashboard() {
                 icon="checkmark-done-outline"
                 label="Resolve Differences"
                 onPress={() => router.push("/supervisor/sync-conflicts" as any)}
+                testID="supervisor-dashboard-action-resolve-differences"
                 primary
               />
               <QuickAction
                 icon="add-circle-outline"
                 label="Create Session"
                 onPress={() => setShowCreateSessionModal(true)}
+                testID="supervisor-dashboard-action-create-session"
               />
               <QuickAction
                 icon="albums-outline"
                 label="View Sessions"
                 onPress={() => router.push("/supervisor/sessions" as any)}
+                testID="supervisor-dashboard-action-view-sessions"
               />
               <QuickAction
                 icon="cloud-upload-outline"
                 label="Offline Queue"
                 onPress={() => router.push("/supervisor/offline-queue" as any)}
+                testID="supervisor-dashboard-action-offline-queue"
               />
             </View>
           </View>
@@ -362,6 +370,7 @@ export default function SupervisorDashboard() {
               <AnimatedPressable
                 onPress={() => router.push("/supervisor/sessions" as any)}
                 style={styles.sectionLinkButton}
+                testID="supervisor-dashboard-view-all-sessions"
               >
                 <Text style={styles.sectionLinkText}>View All</Text>
                 <Ionicons name="chevron-forward" size={14} color={ACTION_BLUE} />
@@ -464,16 +473,19 @@ function QuickAction({
   label,
   onPress,
   primary = false,
+  testID,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
   primary?: boolean;
+  testID?: string;
 }) {
   return (
     <AnimatedPressable
       onPress={onPress}
       hapticFeedback="light"
+      testID={testID}
       style={[styles.quickAction, primary && styles.quickActionPrimary]}
       accessibilityRole="button"
       accessibilityLabel={label}

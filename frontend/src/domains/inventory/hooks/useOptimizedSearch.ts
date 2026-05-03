@@ -14,7 +14,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useDebouncedCallback } from "use-debounce";
-import api from "@/services/httpClient";
+import api from "@/api/client";
 
 // Constants
 const DEBOUNCE_MS = 300;

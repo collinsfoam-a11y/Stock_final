@@ -4,8 +4,10 @@
  */
 
 export interface SyncRecord {
+  event_id?: string;
   record_id: string;
   client_record_id: string;
+  schema_version?: string;
   session_id: string;
   location_id: string;
   floor_id: string;
@@ -26,6 +28,7 @@ export interface SyncRecord {
   status: string;
   created_at: string;
   updated_at: string;
+  retry_count?: number;
 }
 
 export interface BatchSyncResponse {

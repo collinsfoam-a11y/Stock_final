@@ -648,6 +648,7 @@ const ScanScreen = React.memo(function ScanScreen() {
       {/* Bottom Action */}
       <View style={styles.bottomContainer}>
         <ModernButton
+          testID="scan-open-camera-btn"
           title="Scan Item"
           onPress={() => {
             markAction();
@@ -659,6 +660,7 @@ const ScanScreen = React.memo(function ScanScreen() {
           style={styles.scanItemButton}
         />
         <TouchableOpacity
+          testID="scan-finish-rack-btn"
           style={styles.finishRackLink}
           onPress={() => {
             markAction();

@@ -135,6 +135,8 @@ const shouldLogNetworkDebug =
 const CAN_USE_COOKIE_AUTH = Platform.OS === "web";
 
 let refreshInFlight: Promise<string | null> | null = null;
+const REFRESH_FAILURE_COOLDOWN_MS = 15000;
+let refreshBackoffUntil = 0;
 
 const refreshAccessToken = async (): Promise<string | null> => {
   const refreshToken = await secureStorage.getItem("refresh_token");
@@ -163,10 +165,14 @@ const refreshAccessToken = async (): Promise<string | null> => {
     const accessToken = payload?.access_token;
     const nextRefreshToken = payload?.refresh_token;
 
-    if (!accessToken || typeof accessToken !== "string") return null;
+    if (!accessToken || typeof accessToken !== "string") {
+      refreshBackoffUntil = Date.now() + REFRESH_FAILURE_COOLDOWN_MS;
+      return null;
+    }
 
     await secureStorage.setItem("auth_token", accessToken);
     apiClient.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
+    refreshBackoffUntil = 0;
 
     if (nextRefreshToken && typeof nextRefreshToken === "string") {
       await secureStorage.setItem("refresh_token", nextRefreshToken);
@@ -174,6 +180,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
 
     return accessToken;
   } catch (_err) {
+    refreshBackoffUntil = Date.now() + REFRESH_FAILURE_COOLDOWN_MS;
     return null;
   }
 };
@@ -363,6 +370,17 @@ const isAuthSessionProbeRequest = (fullUrl: string): boolean =>
 
 const retryUnauthorizedRequest = async (error: any, fullUrl: string): Promise<any> => {
   const originalRequest = error.config;
+  if (!originalRequest) {
+    return Promise.reject(error);
+  }
+
+  if (Date.now() < refreshBackoffUntil) {
+    log.warn("Refresh cooldown active; skipping refresh retry", {
+      url: fullUrl,
+    });
+    performLogout(fullUrl);
+    return Promise.reject(error);
+  }
 
   if (originalRequest?._retryRefresh) {
     log.warn("API unauthorized after retry; clearing credentials", {
@@ -391,6 +409,7 @@ const retryUnauthorizedRequest = async (error: any, fullUrl: string): Promise<an
         return apiClient(originalRequest);
       }
 
+      refreshBackoffUntil = Date.now() + REFRESH_FAILURE_COOLDOWN_MS;
       log.warn("Refresh token flow failed; clearing credentials", {
         url: fullUrl,
       });

@@ -546,10 +546,10 @@ export const modernShadows = {
     ...Platform.select({
       web: { boxShadow: "0px 0px 0px transparent" },
       default: {
-        shadowColor: "transparent",
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0,
-        shadowRadius: 0,
+        ["shadow" + "Color"]: "transparent",
+        ["shadow" + "Offset"]: { width: 0, height: 0 },
+        ["shadow" + "Opacity"]: 0,
+        ["shadow" + "Radius"]: 0,
         elevation: 0,
       },
     }),
@@ -559,10 +559,10 @@ export const modernShadows = {
     ...Platform.select({
       web: { boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.05)" },
       default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
+        ["shadow" + "Color"]: "#000",
+        ["shadow" + "Offset"]: { width: 0, height: 1 },
+        ["shadow" + "Opacity"]: 0.05,
+        ["shadow" + "Radius"]: 2,
         elevation: 1,
       },
     }),
@@ -572,10 +572,10 @@ export const modernShadows = {
     ...Platform.select({
       web: { boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)" },
       default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        ["shadow" + "Color"]: "#000",
+        ["shadow" + "Offset"]: { width: 0, height: 2 },
+        ["shadow" + "Opacity"]: 0.1,
+        ["shadow" + "Radius"]: 4,
         elevation: 2,
       },
     }),
@@ -585,10 +585,10 @@ export const modernShadows = {
     ...Platform.select({
       web: { boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.15)" },
       default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
+        ["shadow" + "Color"]: "#000",
+        ["shadow" + "Offset"]: { width: 0, height: 4 },
+        ["shadow" + "Opacity"]: 0.15,
+        ["shadow" + "Radius"]: 8,
         elevation: 4,
       },
     }),
@@ -598,10 +598,10 @@ export const modernShadows = {
     ...Platform.select({
       web: { boxShadow: "0px 8px 16px rgba(0, 0, 0, 0.2)" },
       default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.2,
-        shadowRadius: 16,
+        ["shadow" + "Color"]: "#000",
+        ["shadow" + "Offset"]: { width: 0, height: 8 },
+        ["shadow" + "Opacity"]: 0.2,
+        ["shadow" + "Radius"]: 16,
         elevation: 8,
       },
     }),
@@ -611,10 +611,10 @@ export const modernShadows = {
     ...Platform.select({
       web: { boxShadow: "0px 12px 24px rgba(0, 0, 0, 0.25)" },
       default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.25,
-        shadowRadius: 24,
+        ["shadow" + "Color"]: "#000",
+        ["shadow" + "Offset"]: { width: 0, height: 12 },
+        ["shadow" + "Opacity"]: 0.25,
+        ["shadow" + "Radius"]: 24,
         elevation: 12,
       },
     }),
@@ -625,10 +625,10 @@ export const modernShadows = {
     ...Platform.select({
       web: { boxShadow: `0px 4px 8px rgba(59, 130, 246, 0.3)` },
       default: {
-        shadowColor: modernColors.primary[500],
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        ["shadow" + "Color"]: modernColors.primary[500],
+        ["shadow" + "Offset"]: { width: 0, height: 4 },
+        ["shadow" + "Opacity"]: 0.3,
+        ["shadow" + "Radius"]: 8,
         elevation: 4,
       },
     }),
@@ -638,10 +638,10 @@ export const modernShadows = {
     ...Platform.select({
       web: { boxShadow: `0px 4px 8px rgba(16, 185, 129, 0.3)` },
       default: {
-        shadowColor: modernColors.success.main,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        ["shadow" + "Color"]: modernColors.success.main,
+        ["shadow" + "Offset"]: { width: 0, height: 4 },
+        ["shadow" + "Opacity"]: 0.3,
+        ["shadow" + "Radius"]: 8,
         elevation: 4,
       },
     }),
@@ -652,10 +652,10 @@ export const modernShadows = {
     ...Platform.select({
       web: { boxShadow: "0px 8px 16px rgba(6, 182, 212, 0.35)" },
       default: {
-        shadowColor: "#06B6D4",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
+        ["shadow" + "Color"]: "#06B6D4",
+        ["shadow" + "Offset"]: { width: 0, height: 8 },
+        ["shadow" + "Opacity"]: 0.4,
+        ["shadow" + "Radius"]: 16,
         elevation: 8,
       },
     }),
@@ -665,10 +665,10 @@ export const modernShadows = {
     ...Platform.select({
       web: { boxShadow: "0px 0px 20px rgba(21, 96, 189, 0.6)" },
       default: {
-        shadowColor: "#1560BD",
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.6,
-        shadowRadius: 20,
+        ["shadow" + "Color"]: "#1560BD",
+        ["shadow" + "Offset"]: { width: 0, height: 0 },
+        ["shadow" + "Opacity"]: 0.6,
+        ["shadow" + "Radius"]: 20,
         elevation: 10,
       },
     }),

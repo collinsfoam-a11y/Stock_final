@@ -5,7 +5,7 @@
  * Backend routes live under: /api/v1/enrichment/*
  */
 
-import apiClient from "../httpClient";
+import apiClient from "@/api/client";
 import type {
   EnrichmentData,
   EnrichmentRequest,

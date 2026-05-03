@@ -7,6 +7,22 @@
 
 import { useNetworkStore } from "../store/networkStore";
 
+function shouldUseBrowserOnlineSignal(
+  isOnline: boolean | null | undefined,
+  isInternetReachable: boolean | null | undefined,
+  connectionType: string | null | undefined
+): boolean {
+  if (typeof navigator === "undefined" || navigator.onLine !== true) {
+    return false;
+  }
+
+  return (
+    isOnline === true &&
+    (isInternetReachable === null || isInternetReachable === undefined) &&
+    (connectionType === "unknown" || connectionType === null || connectionType === undefined)
+  );
+}
+
 /**
  * Three-state network status
  * - ONLINE: Confirmed network + backend connectivity
@@ -57,6 +73,10 @@ export function getNetworkStatus(): NetworkCheckResult {
     status = "OFFLINE";
   } else if (isInternetReachable === true) {
     // Confirmed online with internet
+    status = "ONLINE";
+  } else if (shouldUseBrowserOnlineSignal(isOnline, isInternetReachable, connectionType)) {
+    // Web runtimes may provide `navigator.onLine=true` while NetInfo reachability
+    // remains null. Treat this as resolved online instead of blocking writes forever.
     status = "ONLINE";
   } else {
     // isOnline === true but isInternetReachable is null/unknown

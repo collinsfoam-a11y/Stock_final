@@ -10,6 +10,11 @@ from pymongo.errors import PyMongoError
 
 from backend.db.runtime import get_db
 from backend.services.projection_read_service import ProjectionReadService
+from backend.services.projection_snapshot import (
+    SOURCE_ITEM_TIMESTAMP_FIELDS,
+    SOURCE_SESSION_TIMESTAMP_FIELDS,
+    apply_snapshot_filter,
+)
 from backend.services.shadow_read_service import schedule_shadow_compare
 from backend.utils.api_utils import sanitize_for_logging
 
@@ -82,7 +87,9 @@ class AdminDashboardService:
     async def calculate_verified_value(self) -> float:
         try:
             total_value = 0.0
-            cursor = self._database.count_lines.find({"status": "locked"})
+            cursor = self._database.count_lines.find(
+                apply_snapshot_filter({"status": "locked"}, SOURCE_ITEM_TIMESTAMP_FIELDS)
+            )
             async for line in cursor:
                 qty = float(line.get("counted_qty") or 0.0)
                 unit_value = float(line.get("mrp_counted") or line.get("mrp_erp") or 0.0)
@@ -104,10 +111,13 @@ class AdminDashboardService:
             verified_items_result = await self._database.count_lines.aggregate(
                 [
                     {
-                        "$match": {
-                            "status": "locked",
-                            "item_code": {"$exists": True, "$ne": ""},
-                        }
+                        "$match": apply_snapshot_filter(
+                            {
+                                "status": "locked",
+                                "item_code": {"$exists": True, "$ne": ""},
+                            },
+                            SOURCE_ITEM_TIMESTAMP_FIELDS,
+                        )
                     },
                     {"$group": {"_id": "$item_code"}},
                     {"$count": "count"},
@@ -124,23 +134,26 @@ class AdminDashboardService:
     async def count_active_sessions(self) -> int:
         try:
             return await self._database.sessions.count_documents(
-                {
-                    "status": {"$in": ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]},
-                    "$and": [
-                        {
-                            "$or": [
-                                {"closed_at": {"$exists": False}},
-                                {"closed_at": {"$in": [None, ""]}},
-                            ]
-                        },
-                        {
-                            "$or": [
-                                {"finalized_at": {"$exists": False}},
-                                {"finalized_at": {"$in": [None, ""]}},
-                            ]
-                        },
-                    ],
-                }
+                apply_snapshot_filter(
+                    {
+                        "status": {"$in": ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]},
+                        "$and": [
+                            {
+                                "$or": [
+                                    {"closed_at": {"$exists": False}},
+                                    {"closed_at": {"$in": [None, ""]}},
+                                ]
+                            },
+                            {
+                                "$or": [
+                                    {"finalized_at": {"$exists": False}},
+                                    {"finalized_at": {"$in": [None, ""]}},
+                                ]
+                            },
+                        ],
+                    },
+                    SOURCE_SESSION_TIMESTAMP_FIELDS,
+                )
             )
         except DASHBOARD_ERROR_TYPES as exc:
             logger.error("Error counting sessions: %s", sanitize_for_logging(str(exc)))
@@ -157,13 +170,16 @@ class AdminDashboardService:
     async def count_pending_variances(self) -> int:
         try:
             return await self._database.count_lines.count_documents(
-                {
-                    "variance": {"$exists": True, "$ne": 0},
-                    "$or": [
-                        {"status": {"$in": ["pending_approval", "NEEDS_REVIEW"]}},
-                        {"approval_status": "NEEDS_REVIEW"},
-                    ],
-                }
+                apply_snapshot_filter(
+                    {
+                        "variance": {"$exists": True, "$ne": 0},
+                        "$or": [
+                            {"status": {"$in": ["pending_approval", "NEEDS_REVIEW"]}},
+                            {"approval_status": "NEEDS_REVIEW"},
+                        ],
+                    },
+                    SOURCE_ITEM_TIMESTAMP_FIELDS,
+                )
             )
         except DASHBOARD_ERROR_TYPES as exc:
             logger.error("Error counting variances: %s", sanitize_for_logging(str(exc)))
@@ -177,10 +193,13 @@ class AdminDashboardService:
                 .replace(hour=0, minute=0, second=0, microsecond=0)
             )
             return await self._database.count_lines.count_documents(
-                {
-                    "finalized_at": {"$gte": today_start},
-                    "status": "locked",
-                }
+                apply_snapshot_filter(
+                    {
+                        "finalized_at": {"$gte": today_start},
+                        "status": "locked",
+                    },
+                    SOURCE_ITEM_TIMESTAMP_FIELDS,
+                )
             )
         except DASHBOARD_ERROR_TYPES as exc:
             logger.error(

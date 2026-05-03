@@ -108,6 +108,39 @@ class SessionLifecycleService:
             )
         return session
 
+    async def ensure_session_accepts_count_writes(
+        self,
+        session_id: str,
+        *,
+        actor: str = "system",
+        auto_activate_created: bool = True,
+        db_session: Optional[Any] = None,
+    ) -> dict[str, Any]:
+        """Ensure count-line writes run only on ACTIVE sessions.
+
+        For offline replay safety, CREATED sessions may be promoted to ACTIVE
+        through the canonical CREATED -> ACTIVE transition.
+        """
+
+        session = await self.ensure_session_not_finalized(session_id, db_session=db_session)
+        canonical = normalize_session_status(session.get("status"))
+        if canonical == "ACTIVE":
+            return session
+
+        if canonical == "CREATED" and auto_activate_created:
+            transitioned = await self.transition_session(
+                session_id=session_id,
+                target_status="ACTIVE",
+                actor=actor,
+                note="Auto-activation for count-line write path",
+                db_session=db_session,
+            )
+            return transitioned
+
+        raise GovernanceViolation(
+            f"CRITICAL: Session must be ACTIVE for count-line writes (found {canonical})"
+        )
+
     async def _update_session_with_occ(
         self,
         *,
@@ -295,7 +328,7 @@ class SessionLifecycleService:
     ) -> dict[str, Any]:
         if db_session is None:
             async with mongo_transaction(self.db.client) as tx:
-                return await self.transition_session(
+                return await self._transition_session_core(
                     session_id=session_id,
                     target_status=target_status,
                     actor=actor,
@@ -303,7 +336,25 @@ class SessionLifecycleService:
                     db_session=tx,
                     expected_version=expected_version,
                 )
+        return await self._transition_session_core(
+            session_id=session_id,
+            target_status=target_status,
+            actor=actor,
+            note=note,
+            db_session=db_session,
+            expected_version=expected_version,
+        )
 
+    async def _transition_session_core(
+        self,
+        *,
+        session_id: str,
+        target_status: str,
+        actor: str,
+        note: Optional[str],
+        db_session: Optional[Any],
+        expected_version: Optional[int],
+    ) -> dict[str, Any]:
         session = await self.ensure_session_exists(session_id, db_session=db_session)
         current = normalize_session_status(session.get("status"))
         target = normalize_session_status(target_status)
@@ -658,6 +709,17 @@ class SessionLifecycleService:
         lines = await self.db.count_lines.find({"session_id": session_id}, **kwargs).to_list(
             length=50000
         )
+        pending_drafts = await self.db.count_line_drafts.count_documents(
+            {
+                "session_id": session_id,
+                "status": {"$in": ["draft", "pending", "pending_review", "pending_approval"]},
+            },
+            **kwargs,
+        )
+        if pending_drafts > 0:
+            raise GovernanceViolation(
+                "CRITICAL: Session has pending drafts and cannot be finalized"
+            )
         blocking_lines = [line for line in lines if is_blocking_finalization(line)]
         if blocking_lines:
             raise GovernanceViolation(

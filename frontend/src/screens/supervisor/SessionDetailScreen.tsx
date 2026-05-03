@@ -26,17 +26,18 @@ import { useIdleProbe } from "@/hooks/useIdleProbe";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useSettingsStore } from "@/store/settingsStore";
 import { colors, spacing, typography, borderRadius, shadows } from "@/theme/modernDesign";
+import { normalizeSessionState } from "@/contracts/states";
 import {
-  getSession,
-  getCountLines,
   approveCountLine,
-  rejectCountLine,
-  getAssignableStaffUsers,
   finalizeSession,
+  getAssignableStaffUsers,
+  getCountLines,
+  getSession,
+  rejectCountLine,
+  unverifyStock,
   updateSessionStatus,
   verifyStock,
-  unverifyStock,
-} from "@/services/api/api";
+} from "@/domains/sessions/services";
 
 type BadgeTone = "neutral" | "success" | "warning" | "error" | "info";
 
@@ -69,20 +70,14 @@ const badgeToneStyles = {
 } as const;
 
 const getSessionStatusTone = (status: string): BadgeTone => {
-  switch (status.trim().toUpperCase()) {
-    case "OPEN":
+  switch (normalizeSessionState(status)) {
+    case "CREATED":
     case "ACTIVE":
       return "info";
-    case "RECONCILE":
-    case "PENDING":
+    case "REVIEW":
       return "warning";
-    case "COMPLETED":
     case "FINALIZED":
-    case "APPROVED":
       return "success";
-    case "REJECTED":
-    case "FAILED":
-      return "error";
     default:
       return "neutral";
   }
@@ -151,6 +146,36 @@ export default function SessionDetail() {
     []
   );
 
+  const fetchAllCountLines = React.useCallback(
+    async (verified?: boolean) => {
+      if (!targetSessionId) return [];
+
+      const pageSize = 100;
+      const maxPages = 200;
+      const allItems: any[] = [];
+      let page = 1;
+
+      while (page <= maxPages) {
+        const response = await getCountLines(targetSessionId, page, pageSize, verified);
+        const items = Array.isArray(response?.items) ? response.items : [];
+        allItems.push(...items);
+
+        const pagination = response?.pagination || {};
+        const hasNext =
+          Boolean(pagination.has_next) ||
+          (typeof pagination.total_pages === "number" && page < pagination.total_pages);
+        if (!hasNext) {
+          break;
+        }
+
+        page += 1;
+      }
+
+      return allItems;
+    },
+    [targetSessionId]
+  );
+
   const loadData = React.useCallback(async () => {
     if (!targetSessionId) return;
 
@@ -158,8 +183,8 @@ export default function SessionDetail() {
       setLoading(true);
       const [sessionData, toVerifyData, verifiedData] = await Promise.all([
         getSession(targetSessionId),
-        getCountLines(targetSessionId, 1, 100, false),
-        getCountLines(targetSessionId, 1, 100, true),
+        fetchAllCountLines(false),
+        fetchAllCountLines(true),
       ]);
 
       if (!sessionData) {
@@ -173,8 +198,8 @@ export default function SessionDetail() {
 
       setSessionMissing(false);
       setSession(sessionData);
-      setToVerifyLines(toVerifyData?.items || []);
-      setVerifiedLines(verifiedData?.items || []);
+      setToVerifyLines(Array.isArray(toVerifyData) ? toVerifyData : []);
+      setVerifiedLines(Array.isArray(verifiedData) ? verifiedData : []);
     } catch {
       show("Failed to load session data", "error");
       if (Platform.OS !== "web") {
@@ -183,7 +208,7 @@ export default function SessionDetail() {
     } finally {
       setLoading(false);
     }
-  }, [show, targetSessionId]);
+  }, [fetchAllCountLines, show, targetSessionId]);
 
   React.useEffect(() => {
     loadData();
@@ -399,7 +424,9 @@ export default function SessionDetail() {
           >
             <Ionicons name="arrow-back" size={22} color={colors.gray[700]} />
           </AnimatedPressable>
-          <Text style={styles.headerTitle}>Session Details</Text>
+          <Text testID="session-detail-title" style={styles.headerTitle}>
+            Session Details
+          </Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -437,7 +464,9 @@ export default function SessionDetail() {
           >
             <Ionicons name="arrow-back" size={22} color={colors.gray[700]} />
           </AnimatedPressable>
-          <Text style={styles.headerTitle}>Session Details</Text>
+          <Text testID="session-detail-title" style={styles.headerTitle}>
+            Session Details
+          </Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -475,8 +504,9 @@ export default function SessionDetail() {
     return true;
   });
   const totalVariance = Number(session?.total_variance ?? 0);
+  const normalizedSessionState = normalizeSessionState(session?.status);
   const sessionFinalized =
-    session?.status === "COMPLETED" || session?.finalization_status === "FINALIZED";
+    normalizedSessionState === "FINALIZED" || session?.finalization_status === "FINALIZED";
 
   const ListHeader = () => {
     const rackLabel =
@@ -490,16 +520,17 @@ export default function SessionDetail() {
         : "Rack progress";
     const boundedCompletion = Math.max(0, Math.min(completionPercentage, 100));
     const primarySessionAction =
-      session.status === "OPEN" && !offlineMode ? (
+      (normalizedSessionState === "CREATED" || normalizedSessionState === "ACTIVE") &&
+      !offlineMode ? (
         <AnimatedPressable
           style={[styles.primaryActionButton, styles.warningActionButton]}
-          onPress={() => handleUpdateStatus("RECONCILE")}
+          onPress={() => handleUpdateStatus("REVIEW")}
           accessibilityRole="button"
-          accessibilityLabel="Move session to reconcile"
+          accessibilityLabel="Move session to review"
         >
-          <Text style={styles.buttonText}>Move to Reconcile</Text>
+          <Text style={styles.buttonText}>Move to Review</Text>
         </AnimatedPressable>
-      ) : session.status === "RECONCILE" && !offlineMode ? (
+      ) : normalizedSessionState === "REVIEW" && !offlineMode ? (
         <AnimatedPressable
           style={[styles.primaryActionButton, styles.successActionButton]}
           onPress={() => void handleFinalizeSession()}
@@ -699,6 +730,7 @@ export default function SessionDetail() {
               {requiresSupervisorReview && normalizedStatus === "pending" ? (
                 <>
                   <AnimatedPressable
+                    testID={`session-detail-approve-${item.id}`}
                     style={[styles.inlineActionButton, styles.successActionButton]}
                     onPress={() => handleApproveLine(item.id)}
                     accessibilityRole="button"
@@ -709,6 +741,7 @@ export default function SessionDetail() {
                   </AnimatedPressable>
 
                   <AnimatedPressable
+                    testID={`session-detail-reject-${item.id}`}
                     style={[styles.inlineActionButton, styles.dangerActionButton]}
                     onPress={() => void handleRejectLine(item)}
                     accessibilityRole="button"
@@ -886,7 +919,9 @@ export default function SessionDetail() {
         >
           <Ionicons name="arrow-back" size={22} color={colors.gray[700]} />
         </AnimatedPressable>
-        <Text style={styles.headerTitle}>Session Details</Text>
+        <Text testID="session-detail-title" style={styles.headerTitle}>
+          Session Details
+        </Text>
         <View style={styles.headerSpacer} />
       </Animated.View>
 

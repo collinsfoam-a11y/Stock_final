@@ -92,6 +92,25 @@ def test_shadow_sampling_is_stable_for_same_request(monkeypatch):
         )
 
 
+def test_shadow_sampling_uses_request_entropy_to_avoid_starvation(monkeypatch):
+    monkeypatch.setattr(shadow_read_service.settings, "SHADOW_READ_ENABLED", True)
+    monkeypatch.setattr(shadow_read_service.settings, "SHADOW_READ_SAMPLE_RATE", 0.1)
+    params_hash = shadow_read_service._params_hash({"session_id": "S1"})
+
+    sampled = [
+        shadow_read_service._should_sample(
+            endpoint="dashboard.stats",
+            staff_user="admin",
+            params_hash=params_hash,
+            request_id=f"req-{index}",
+        )
+        for index in range(200)
+    ]
+
+    assert any(sampled)
+    assert not all(sampled)
+
+
 @pytest.mark.asyncio
 async def test_schedule_shadow_compare_disabled_does_not_call_baseline(monkeypatch):
     monkeypatch.setattr(shadow_read_service.settings, "SHADOW_READ_ENABLED", False)
@@ -110,3 +129,38 @@ async def test_schedule_shadow_compare_disabled_does_not_call_baseline(monkeypat
     await asyncio.sleep(0)
 
     assert called is False
+
+
+@pytest.mark.asyncio
+async def test_shadow_full_diff_logging_is_opt_in(monkeypatch):
+    async def noop_increment(*_args, **_kwargs):
+        return None
+
+    async def baseline():
+        return {"stats": {"total_items": 2}}
+
+    warning_calls = []
+
+    def capture_warning(message, *args, extra=None, **kwargs):
+        warning_calls.append((message, extra))
+
+    monkeypatch.setattr(shadow_read_service.settings, "SHADOW_READ_FULL_DIFF_LOGGING", True)
+    monkeypatch.setattr(shadow_read_service, "increment_shadow_total_requests", noop_increment)
+    monkeypatch.setattr(shadow_read_service, "increment_shadow_mismatch_count", noop_increment)
+    monkeypatch.setattr(shadow_read_service.logger, "warning", capture_warning)
+
+    await shadow_read_service._run_shadow_compare(
+        endpoint="dashboard.stats",
+        primary={"stats": {"total_items": 1}},
+        baseline_factory=baseline,
+        request_id="req-1",
+        shadow_id="shadow-1",
+        params_hash="params-1",
+    )
+
+    payload_records = [
+        extra for message, extra in warning_calls if message == "shadow_compare_payload_diff"
+    ]
+    assert len(payload_records) == 1
+    assert payload_records[0]["projection_result"] == {"stats": {"total_items": 1}}
+    assert payload_records[0]["legacy_result"] == {"stats": {"total_items": 2}}

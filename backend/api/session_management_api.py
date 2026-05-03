@@ -24,6 +24,7 @@ from backend.auth.dependencies import (
     get_current_user_async as get_current_user,
     require_role,
 )
+from backend.contracts.states import normalize_session_state
 from backend.config import settings
 from backend.core.websocket_manager import manager
 from backend.services.lock_manager import get_lock_manager
@@ -52,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/sessions", tags=["Session Management"])
 
-ACTIVE_SESSION_STATUSES = ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]
+ACTIVE_SESSION_STATUSES = ["CREATED", "ACTIVE", "REVIEW", "OPEN", "PAUSED", "RECONCILE"]
 SESSION_IDENTITY_TTL_HOURS_DEFAULT = 48
 
 
@@ -144,13 +145,16 @@ class SessionFinalizeRequest(BaseModel):
 
 
 class CanonicalSessionStatus(str, Enum):
-    OPEN = "OPEN"
+    CREATED = "CREATED"
+    OPEN = "CREATED"
     ACTIVE = "ACTIVE"
-    PAUSED = "PAUSED"
-    RECONCILE = "RECONCILE"
-    COMPLETED = "COMPLETED"
-    CLOSED = "CLOSED"
-    CANCELLED = "CANCELLED"
+    PAUSED = "ACTIVE"
+    REVIEW = "REVIEW"
+    RECONCILE = "REVIEW"
+    FINALIZED = "FINALIZED"
+    COMPLETED = "FINALIZED"
+    CLOSED = "FINALIZED"
+    CANCELLED = "FINALIZED"
     UNKNOWN = "UNKNOWN"
 
 
@@ -218,14 +222,18 @@ class UserWorkflowSummary(BaseModel):
 
 
 ACTIVE_WORKFLOW_SESSION_STATES = {
-    "OPEN",
+    "CREATED",
     "ACTIVE",
+    "REVIEW",
+    "OPEN",
     "PAUSED",
     "RECONCILE",
     "open",
+    "created",
     "active",
     "paused",
     "reconcile",
+    "review",
     "in_progress",
 }
 PENDING_APPROVAL_MATCH = {
@@ -466,10 +474,9 @@ def _normalize_session_status(value: Any) -> Optional[CanonicalSessionStatus]:
     if not isinstance(value, str) or not value.strip():
         return None
 
-    normalized = value.strip().upper()
+    normalized = normalize_session_state(value)
     aliases = {
         "IN_PROGRESS": CanonicalSessionStatus.ACTIVE,
-        "RECONCILING": CanonicalSessionStatus.RECONCILE,
     }
     if normalized in aliases:
         return aliases[normalized]
@@ -941,7 +948,7 @@ async def _find_existing_session_for_warehouse(
     existing_session = await session_service.find_session(
         {
             "staff_user": username,
-            "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]},
+            "status": {"$in": ACTIVE_SESSION_STATUSES},
             "warehouse": {"$regex": f"^{re.escape(warehouse)}$", "$options": "i"},
         }
     )
@@ -989,7 +996,7 @@ def _build_new_session(
         staff_user=current_user["username"],
         staff_name=current_user.get("full_name", current_user["username"]),
         type=session_data.type or "STANDARD",
-        status="OPEN",
+        status="CREATED",
         started_at=now,
         last_heartbeat=now,
     )
@@ -1993,20 +2000,6 @@ async def _finalize_session_canonical(
     }
 
 
-async def _complete_session_legacy_compatible(
-    session_id: str,
-    session_service: SessionQueryService,
-    current_user: dict[str, Any],
-    lock_manager: Any,
-) -> dict[str, Any]:
-    raise HTTPException(
-        status_code=410,
-        detail=(
-            "CRITICAL: /complete path is disabled. Use canonical /finalize flow only."
-        ),
-    )
-
-
 @router.post("/{session_id}/finalize")
 async def finalize_session(
     session_id: str,
@@ -2025,24 +2018,6 @@ async def finalize_session(
     )
 
 
-@router.post("/{session_id}/complete")
-async def complete_session(
-    session_id: str,
-    session_service: SessionQueryService = Depends(get_session_query_service),
-    current_user: dict[str, Any] = Depends(get_current_user),
-    redis_service=Depends(get_redis),
-) -> dict[str, Any]:
-    """
-    Complete session and release rack.
-
-    This legacy endpoint preserves the historical owner-compatible close flow.
-    """
-    lock_manager = get_lock_manager(redis_service)
-    return await _complete_session_legacy_compatible(
-        session_id, session_service, current_user, lock_manager
-    )
-
-
 @router.get("/user/history")
 async def get_user_session_history(
     limit: int = Query(10, ge=1, le=100),
@@ -2053,7 +2028,10 @@ async def get_user_session_history(
     user_id = current_user["username"]
 
     sessions = await session_service.list_sessions(
-        {"staff_user": user_id, "status": {"$in": ["COMPLETED", "CLOSED"]}},
+        {
+            "staff_user": user_id,
+            "status": {"$in": ["FINALIZED", "COMPLETED", "CLOSED"]},
+        },
         sort_field="completed_at",
         limit=limit,
     )
@@ -2136,7 +2114,7 @@ async def logout_all_sessions(
 
     # Governance: session closure is only allowed via canonical finalize endpoint.
     active_count = await session_service.count_sessions(
-        {"staff_user": username, "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]}}
+        {"staff_user": username, "status": {"$in": ACTIVE_SESSION_STATUSES}}
     )
 
     return {

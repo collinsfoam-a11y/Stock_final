@@ -14,7 +14,7 @@ import {
   Platform,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -34,6 +34,7 @@ import { saveArrayBufferExport } from "../../src/utils/fileExport";
 
 export default function VariancesScreen() {
   const router = useRouter();
+  const { sessionId } = useLocalSearchParams<{ sessionId?: string }>();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [variances, setVariances] = useState<VarianceItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +100,7 @@ export default function VariancesScreen() {
 
               toastService.showSuccess(`Successfully ${action}d ${result.modified_count} items`);
               setSelectedIds(new Set());
-              loadVariances(true);
+              loadVariances({ reset: true, skipOverride: 0 });
             } catch (error: any) {
               Alert.alert("Error", error.message || "Bulk action failed");
             } finally {
@@ -112,10 +113,10 @@ export default function VariancesScreen() {
   };
 
   const loadVariances = React.useCallback(
-    async (reset = false) => {
+    async ({ reset = false, skipOverride }: { reset?: boolean; skipOverride?: number } = {}) => {
       try {
+        setLoading(true);
         if (reset) {
-          setLoading(true);
           setPagination((prev) => ({ ...prev, skip: 0 }));
         }
 
@@ -129,7 +130,7 @@ export default function VariancesScreen() {
           return;
         }
 
-        const skip = reset ? 0 : pagination.skip;
+        const skip = reset ? 0 : (skipOverride ?? 0);
         const response = await ItemVerificationAPI.getVariances({
           category: filters.category,
           floor: filters.floor,
@@ -153,17 +154,17 @@ export default function VariancesScreen() {
         setRefreshing(false);
       }
     },
-    [filters, offlineMode, pagination.limit, pagination.skip]
+    [filters, offlineMode, pagination.limit]
   );
 
   useEffect(() => {
-    loadVariances(true);
+    void loadVariances({ reset: true, skipOverride: 0 });
   }, [loadVariances]);
 
   const handleRefresh = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
-    loadVariances(true);
+    void loadVariances({ reset: true, skipOverride: 0 });
   };
 
   const handleLoadMore = () => {
@@ -172,11 +173,8 @@ export default function VariancesScreen() {
     }
 
     if (!loading && pagination.skip + pagination.limit < pagination.total) {
-      setPagination((prev) => ({
-        ...prev,
-        skip: prev.skip + prev.limit,
-      }));
-      loadVariances(false);
+      const nextSkip = pagination.skip + pagination.limit;
+      void loadVariances({ reset: false, skipOverride: nextSkip });
     }
   };
 
@@ -233,14 +231,15 @@ export default function VariancesScreen() {
             toggleSelection(item.count_line_id);
           } else {
             if (Platform.OS !== "web") Haptics.selectionAsync();
-            router.push({
-              pathname: "/supervisor/variance-details",
-              params: {
-                itemCode: item.item_code,
-                sessionId: item.session_id || "current",
-              },
-            });
-          }
+                router.push({
+                  pathname: "/supervisor/variance-details",
+                  params: {
+                    itemCode: item.item_code,
+                    sessionId: item.session_id || "current",
+                    countLineId: item.count_line_id,
+                  },
+                });
+              }
         }}
         style={{ marginBottom: theme.spacing.md }}
       >
@@ -352,7 +351,7 @@ export default function VariancesScreen() {
   return (
     <ScreenContainer>
       <StatusBar style="light" />
-      <View style={styles.container}>
+      <View testID="supervisor-variances-screen" style={styles.container}>
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
           <View style={styles.headerLeft}>
@@ -431,6 +430,7 @@ export default function VariancesScreen() {
               onFilterChange={setFilters}
               showVerifiedFilter={false} // Verified filter irrelevant here as all are filtered by variance
               showSearch={false}
+              sessionId={typeof sessionId === "string" ? sessionId : undefined}
             />
           </OperationalCard>
         </Animated.View>

@@ -222,7 +222,13 @@ def _params_hash(params: Any) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
-def _should_sample(*, endpoint: str, staff_user: Optional[str], params_hash: str) -> bool:
+def _should_sample(
+    *,
+    endpoint: str,
+    staff_user: Optional[str],
+    params_hash: str,
+    request_id: Optional[str] = None,
+) -> bool:
     if not settings.SHADOW_READ_ENABLED:
         return False
     sample_rate = max(0.0, min(1.0, float(settings.SHADOW_READ_SAMPLE_RATE)))
@@ -232,7 +238,9 @@ def _should_sample(*, endpoint: str, staff_user: Optional[str], params_hash: str
     sample_count = int(sample_rate * bucket_count)
     if sample_count <= 0:
         return False
-    key = f"{endpoint}:{staff_user or ''}:{params_hash}"
+    # Include per-request entropy so low sample rates cannot permanently starve
+    # static endpoint/user/params combinations.
+    key = f"{endpoint}:{staff_user or ''}:{params_hash}:{request_id or ''}"
     bucket = int(hashlib.sha256(key.encode("utf-8")).hexdigest(), 16) % bucket_count
     return bucket < sample_count
 
@@ -301,6 +309,18 @@ async def _run_shadow_compare(
                     "summary_diffs": result["summary_diffs"],
                 },
             )
+            if settings.SHADOW_READ_FULL_DIFF_LOGGING:
+                logger.warning(
+                    "shadow_compare_payload_diff",
+                    extra={
+                        "request_id": resolved_request_id,
+                        "shadow_id": shadow_id,
+                        "endpoint": sanitize_for_logging(endpoint),
+                        "params_hash": params_hash,
+                        "projection_result": _safe_json_value(primary),
+                        "legacy_result": _safe_json_value(baseline),
+                    },
+                )
     except asyncio.TimeoutError as exc:
         await increment_shadow_timeout_count(endpoint)
         logger.warning(
@@ -340,11 +360,13 @@ def schedule_shadow_compare(
 ) -> None:
     """Schedule a hidden read-only comparison without affecting response flow."""
 
+    resolved_request_id = request_id or get_request_id({})
     params_hash = _params_hash(params)
     if not _should_sample(
         endpoint=endpoint,
         staff_user=staff_user,
         params_hash=params_hash,
+        request_id=resolved_request_id,
     ):
         return
     shadow_id = uuid.uuid4().hex[:12]
@@ -353,7 +375,7 @@ def schedule_shadow_compare(
             endpoint=endpoint,
             primary=primary,
             baseline_factory=baseline_factory,
-            request_id=request_id,
+            request_id=resolved_request_id,
             shadow_id=shadow_id,
             params_hash=params_hash,
         )
@@ -362,7 +384,7 @@ def schedule_shadow_compare(
         lambda completed: _log_shadow_task_exception(
             completed,
             endpoint,
-            request_id,
+            resolved_request_id,
             shadow_id,
             params_hash,
         )

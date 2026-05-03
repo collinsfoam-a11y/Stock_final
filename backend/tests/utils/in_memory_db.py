@@ -46,14 +46,19 @@ def _match_condition(value: Any, condition: dict[str, Any]) -> bool:
 
         expected = _normalize_value(expected)
 
-        if op == "$lt" and not (value < expected):
-            return False
-        if op == "$lte" and not (value <= expected):
-            return False
-        if op == "$gt" and not (value > expected):
-            return False
-        if op == "$gte" and not (value >= expected):
-            return False
+        if op in {"$lt", "$lte", "$gt", "$gte"}:
+            try:
+                if op == "$lt" and not (value < expected):
+                    return False
+                if op == "$lte" and not (value <= expected):
+                    return False
+                if op == "$gt" and not (value > expected):
+                    return False
+                if op == "$gte" and not (value >= expected):
+                    return False
+            except TypeError:
+                return False
+            continue
         if op == "$ne" and not (value != expected):
             return False
         if op == "$in":

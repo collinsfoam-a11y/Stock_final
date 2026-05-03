@@ -167,6 +167,12 @@ export const getReadableInventoryErrorMessage = (
 
   const status = typedError?.response?.status;
   const detail = typedError?.response?.data?.detail;
+  const detailCode =
+    detail && typeof detail === "object" ? (detail as { code?: unknown }).code : undefined;
+  const retryAfterSeconds =
+    detail && typeof detail === "object"
+      ? (detail as { retry_after_seconds?: unknown }).retry_after_seconds
+      : undefined;
 
   if (status === 422) {
     return (
@@ -189,6 +195,17 @@ export const getReadableInventoryErrorMessage = (
 
   if (status === 401 || status === 403) {
     return "Your session has expired or you no longer have access. Sign in again and try once more.";
+  }
+
+  if (
+    status === 503 &&
+    (detailCode === "PROJECTION_INCONSISTENT" || detailCode === "PROJECTION_NOT_READY")
+  ) {
+    const retryHint =
+      typeof retryAfterSeconds === "number" && retryAfterSeconds > 0
+        ? ` Retry in about ${retryAfterSeconds} second${retryAfterSeconds === 1 ? "" : "s"}.`
+        : "";
+    return `The latest session data is still syncing.${retryHint}`;
   }
 
   if (typeof status === "number" && status >= 500) {

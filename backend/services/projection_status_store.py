@@ -8,6 +8,7 @@ parity/freshness/lag inline.
 
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -45,6 +46,7 @@ class ProjectionGateStatus:
     stability_since: Optional[datetime] = None
     healthy_since: Optional[datetime] = None
     lag_seconds: Optional[float] = None
+    freshness_lag_seconds: Optional[float] = None
     drift_count: int = 0
     gap_count: int = 0
     missing_collections: tuple[str, ...] = ()
@@ -53,12 +55,13 @@ class ProjectionGateStatus:
         """Return the standardized 503 body for projection readiness failures."""
 
         return {
-            "code": "PROJECTION_NOT_READY",
+            "code": "PROJECTION_INCONSISTENT",
             "reason": (self.reason or ProjectionReadinessReason.PARITY_FAILED).value,
             "retry_after_seconds": self.retry_after_seconds,
             "message": self.message,
             "metrics": {
                 "projection_lag_seconds": self.lag_seconds,
+                "projection_freshness_lag": self.freshness_lag_seconds,
                 "projection_drift_count": self.drift_count,
                 "projection_gap_count": self.gap_count,
             },
@@ -68,6 +71,12 @@ class ProjectionGateStatus:
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+async def _maybe_await(value: Any) -> Any:
+    if inspect.isawaitable(value):
+        return await value
+    return value
 
 
 def parse_datetime(value: Any) -> Optional[datetime]:
@@ -141,6 +150,25 @@ def _reason(value: Any) -> Optional[ProjectionReadinessReason]:
         return ProjectionReadinessReason.PARITY_FAILED
 
 
+def _parity_passed(document: dict[str, Any]) -> bool:
+    """Evaluate persisted parity with stale-safe semantics.
+
+    `ready/is_ready` may be false for stale snapshots despite parity still being
+    valid, so prefer `parity_passed/is_consistent` when present.
+    """
+
+    for canonical_field in ("parity_passed", "is_consistent"):
+        if canonical_field in document:
+            return _truthy(document.get(canonical_field))
+
+    fallback_fields = [
+        document[field_name]
+        for field_name in ("is_ready", "ready")
+        if field_name in document
+    ]
+    return bool(fallback_fields) and all(_truthy(value) for value in fallback_fields)
+
+
 class ProjectionStatusStore:
     """Read and normalize persisted projection readiness status."""
 
@@ -183,10 +211,10 @@ class ProjectionStatusStore:
                 {"id": self.document_id},
                 {"name": self.document_id},
             ):
-                document = await collection.find_one(query)
+                document = await _maybe_await(collection.find_one(query))
                 if document:
                     return document
-            return await collection.find_one(sort=[("updated_at", -1)])
+            return await _maybe_await(collection.find_one(sort=[("updated_at", -1)]))
         except PyMongoError as exc:
             raise ProjectionStatusUnavailable(
                 "Projection readiness status store is unavailable"
@@ -226,6 +254,74 @@ class ProjectionStatusStore:
                 "Projection readiness drift status could not be persisted"
             ) from exc
 
+    async def refresh_ready_status(
+        self,
+        *,
+        message: str = "Projection readiness refreshed automatically after parity checks.",
+    ) -> bool:
+        """Refresh readiness timestamps when the persisted parity state is healthy.
+
+        Returns True when readiness was refreshed, otherwise False.
+        """
+
+        existing = await self._read_document()
+        if not isinstance(existing, dict) or not existing:
+            return False
+
+        raw_metrics = existing.get("metrics")
+        metrics_doc: dict[str, Any] = raw_metrics if isinstance(raw_metrics, dict) else {}
+        gap_count = _to_int(
+            existing.get("projection_gap_count", metrics_doc.get("projection_gap_count")), 0
+        )
+        drift_count = _to_int(
+            existing.get("projection_drift_count", metrics_doc.get("projection_drift_count")), 0
+        )
+        lag_seconds = _to_float(
+            existing.get(
+                "projection_lag_seconds",
+                existing.get("event_lag_seconds", metrics_doc.get("projection_lag_seconds")),
+            ),
+            0.0,
+        )
+        max_lag = _setting_float("PROJECTION_MAX_LAG_SECONDS", 5.0)
+        parity_passed = _parity_passed(existing)
+        if not parity_passed or gap_count > 0 or drift_count > 0 or lag_seconds > max_lag:
+            return False
+
+        now = utc_now()
+        existing_healthy_since = parse_datetime(existing.get("healthy_since"))
+        existing_stability_since = parse_datetime(existing.get("stability_since"))
+        healthy_since = existing_healthy_since or existing_stability_since or now
+        stability_since = existing_stability_since or existing_healthy_since or now
+        collection = self.db[self.collection_name]
+        try:
+            await collection.update_one(
+                {"_id": self.document_id},
+                {
+                    "$set": {
+                        "is_ready": True,
+                        "ready": True,
+                        "is_consistent": True,
+                        "parity_passed": True,
+                        "projection_drift_count": 0,
+                        "projection_gap_count": 0,
+                        "projection_lag_seconds": lag_seconds,
+                        "message": message,
+                        "updated_at": now,
+                        "validated_at": now,
+                        "healthy_since": healthy_since,
+                        "stability_since": stability_since,
+                    },
+                    "$unset": {"reason": ""},
+                },
+                upsert=True,
+            )
+            return True
+        except PyMongoError as exc:
+            raise ProjectionStatusUnavailable(
+                "Projection readiness refresh could not be persisted"
+            ) from exc
+
     def _status_from_document(
         self,
         document: dict[str, Any],
@@ -233,7 +329,10 @@ class ProjectionStatusStore:
         checked_at: datetime,
     ) -> ProjectionGateStatus:
         retry_after = _setting_int("PROJECTION_GATE_RETRY_AFTER_SECONDS", 30)
-        metrics_doc = document.get("metrics") if isinstance(document.get("metrics"), dict) else {}
+        raw_metrics = document.get("metrics")
+        metrics_doc: dict[str, Any] = (
+            raw_metrics if isinstance(raw_metrics, dict) else {}
+        )
         gap_count = _to_int(
             document.get("projection_gap_count", metrics_doc.get("projection_gap_count")), 0
         )
@@ -253,6 +352,10 @@ class ProjectionStatusStore:
             for value in document.get("missing_collections", ())
             if value not in (None, "")
         )
+        freshness_at = self._status_freshness_time(document)
+        freshness_lag_seconds: Optional[float] = None
+        if freshness_at:
+            freshness_lag_seconds = max((checked_at - freshness_at).total_seconds(), 0.0)
 
         explicit_reason = _reason(document.get("reason"))
         if missing_collections:
@@ -265,6 +368,7 @@ class ProjectionStatusStore:
                 checked_at=checked_at,
                 missing_collections=missing_collections,
                 lag_seconds=lag_seconds,
+                freshness_lag_seconds=freshness_lag_seconds,
                 drift_count=drift_count,
                 gap_count=gap_count,
             )
@@ -278,16 +382,12 @@ class ProjectionStatusStore:
                 retry_after_seconds=retry_after,
                 checked_at=checked_at,
                 lag_seconds=lag_seconds,
+                freshness_lag_seconds=freshness_lag_seconds,
                 drift_count=drift_count,
                 gap_count=gap_count,
             )
 
-        parity_fields = [
-            document[field_name]
-            for field_name in ("parity_passed", "is_consistent", "is_ready", "ready")
-            if field_name in document
-        ]
-        parity_passed = bool(parity_fields) and all(_truthy(value) for value in parity_fields)
+        parity_passed = _parity_passed(document)
         if not parity_passed or gap_count > 0 or drift_count > 0:
             return ProjectionGateStatus(
                 ready=False,
@@ -297,6 +397,7 @@ class ProjectionStatusStore:
                 retry_after_seconds=retry_after,
                 checked_at=checked_at,
                 lag_seconds=lag_seconds,
+                freshness_lag_seconds=freshness_lag_seconds,
                 drift_count=drift_count,
                 gap_count=gap_count,
             )
@@ -311,10 +412,10 @@ class ProjectionStatusStore:
                 retry_after_seconds=retry_after,
                 checked_at=checked_at,
                 lag_seconds=lag_seconds,
+                freshness_lag_seconds=freshness_lag_seconds,
             )
 
         freshness_seconds = _setting_int("PROJECTION_FRESHNESS_SECONDS", 300)
-        freshness_at = self._status_freshness_time(document)
         if not freshness_at or (checked_at - freshness_at).total_seconds() > freshness_seconds:
             return ProjectionGateStatus(
                 ready=False,
@@ -324,6 +425,7 @@ class ProjectionStatusStore:
                 retry_after_seconds=retry_after,
                 checked_at=checked_at,
                 lag_seconds=lag_seconds,
+                freshness_lag_seconds=freshness_lag_seconds,
             )
 
         return ProjectionGateStatus(
@@ -336,6 +438,7 @@ class ProjectionStatusStore:
             stability_since=self._status_stability_since(document),
             healthy_since=self._status_stability_since(document),
             lag_seconds=lag_seconds,
+            freshness_lag_seconds=freshness_lag_seconds,
             drift_count=drift_count,
             gap_count=gap_count,
         )

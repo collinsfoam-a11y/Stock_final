@@ -2,7 +2,7 @@
  * Report Generation API Service - Endpoints for generating and exporting reports
  */
 
-import api from "../httpClient";
+import api from "@/api/client";
 import type {
   GenerateReportParams,
   ReportFilters,

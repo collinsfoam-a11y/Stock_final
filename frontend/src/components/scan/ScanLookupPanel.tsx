@@ -168,6 +168,7 @@ export function ScanLookupPanel({
         <View style={styles.searchRow}>
           <View style={styles.searchInputWrapper}>
             <ModernInput
+              testID="scan-search-input"
               placeholder="Barcode or item code"
               value={searchQuery}
               onChangeText={onChangeSearchQuery}

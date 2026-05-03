@@ -1,7 +1,7 @@
 /**
  * Enhanced Database API - Frontend service for advanced database operations
  */
-import api from "../httpClient";
+import api from "@/api/client";
 import { Item } from "./itemVerificationApi";
 
 interface ApiError {

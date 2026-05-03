@@ -178,3 +178,15 @@ def clean_overrides():
 
     yield
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def reset_security_rate_limiters():
+    """Keep per-process in-memory limiters from leaking state across tests."""
+    from backend.middleware.security import batch_rate_limiter, login_rate_limiter
+
+    batch_rate_limiter.requests.clear()
+    login_rate_limiter.attempts.clear()
+    yield
+    batch_rate_limiter.requests.clear()
+    login_rate_limiter.attempts.clear()

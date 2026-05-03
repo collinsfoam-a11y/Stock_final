@@ -8,6 +8,11 @@ from typing import Any
 from backend.config import settings
 from backend.db.runtime import get_db
 from backend.services.projection_read_service import ProjectionReadService
+from backend.services.projection_snapshot import (
+    SOURCE_ITEM_TIMESTAMP_FIELDS,
+    SOURCE_SESSION_TIMESTAMP_FIELDS,
+    apply_snapshot_filter,
+)
 from backend.services.query_utils import build_mongo_date_filter
 from backend.services.shadow_read_service import schedule_shadow_compare
 
@@ -62,6 +67,7 @@ class ReportGenerationService:
         date_filter = self._date_filter(filters)
         if date_filter:
             line_query["counted_at"] = date_filter
+        line_query = apply_snapshot_filter(line_query, SOURCE_ITEM_TIMESTAMP_FIELDS)
 
         line_summary: dict[str, dict[str, Any]] = {}
         async for line in self._database.count_lines.find(line_query):
@@ -144,6 +150,7 @@ class ReportGenerationService:
         date_filter = self._date_filter(filters)
         if date_filter:
             line_query["counted_at"] = date_filter
+        line_query = apply_snapshot_filter(line_query, SOURCE_ITEM_TIMESTAMP_FIELDS)
 
         item_query: dict[str, Any] = {}
         if filters.warehouse:
@@ -275,6 +282,7 @@ class ReportGenerationService:
         date_filter = self._date_filter(filters)
         if date_filter:
             query["started_at"] = date_filter
+        query = apply_snapshot_filter(query, SOURCE_SESSION_TIMESTAMP_FIELDS)
 
         sessions = [
             session
@@ -290,7 +298,10 @@ class ReportGenerationService:
         }
         if session_ids:
             async for line in self._database.count_lines.find(
-                {"session_id": {"$in": session_ids}},
+                apply_snapshot_filter(
+                    {"session_id": {"$in": session_ids}},
+                    SOURCE_ITEM_TIMESTAMP_FIELDS,
+                ),
                 {"_id": 0, "session_id": 1, "verified": 1, "status": 1},
             ):
                 session_id = str(line.get("session_id") or "")
@@ -402,8 +413,34 @@ class ReportGenerationService:
         warehouses = await self._database.erp_items.distinct("warehouse")
         floors = await self._database.erp_items.distinct("floor")
         categories = await self._database.erp_items.distinct("category")
-        count_line_statuses = await self._database.count_lines.distinct("status")
-        session_statuses = await self._database.sessions.distinct("status")
+        count_line_snapshot_query = apply_snapshot_filter(
+            {},
+            SOURCE_ITEM_TIMESTAMP_FIELDS,
+        )
+        session_snapshot_query = apply_snapshot_filter(
+            {},
+            SOURCE_SESSION_TIMESTAMP_FIELDS,
+        )
+        if count_line_snapshot_query:
+            count_line_rows = await self._database.count_lines.find(
+                count_line_snapshot_query,
+                {"_id": 0, "status": 1},
+            ).to_list(10000)
+            count_line_statuses = [
+                row.get("status") for row in count_line_rows if row.get("status")
+            ]
+        else:
+            count_line_statuses = await self._database.count_lines.distinct("status")
+        if session_snapshot_query:
+            session_rows = await self._database.sessions.find(
+                session_snapshot_query,
+                {"_id": 0, "status": 1},
+            ).to_list(10000)
+            session_statuses = [
+                row.get("status") for row in session_rows if row.get("status")
+            ]
+        else:
+            session_statuses = await self._database.sessions.distinct("status")
         statuses = sorted(set(count_line_statuses) | set(session_statuses))
         users = []
         if current_user.get("role") in ["admin", "supervisor"]:

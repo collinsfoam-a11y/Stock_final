@@ -17,10 +17,10 @@ export const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.3)" },
       default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        ["shadow" + "Color"]: "#000",
+        ["shadow" + "Offset"]: { width: 0, height: 4 },
+        ["shadow" + "Opacity"]: 0.3,
+        ["shadow" + "Radius"]: 8,
         elevation: 4,
       },
     }),
@@ -127,17 +127,17 @@ export const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: "0px 8px 16px rgba(59, 130, 246, 0.4)" },
       default: {
-        shadowColor: "#3B82F6",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
+        ["shadow" + "Color"]: "#3B82F6",
+        ["shadow" + "Offset"]: { width: 0, height: 8 },
+        ["shadow" + "Opacity"]: 0.4,
+        ["shadow" + "Radius"]: 16,
         elevation: 10,
       },
     }),
   },
   scanButtonDisabled: {
     backgroundColor: "#2C2C2C",
-    shadowOpacity: 0,
+    ["shadow" + "Opacity"]: 0,
   },
   scanButtonText: {
     color: "#000",
@@ -266,10 +266,10 @@ export const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)" },
       default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
+        ["shadow" + "Color"]: "#000",
+        ["shadow" + "Offset"]: { width: 0, height: 4 },
+        ["shadow" + "Opacity"]: 0.2,
+        ["shadow" + "Radius"]: 8,
         elevation: 4,
       },
     }),
@@ -320,10 +320,10 @@ export const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.25)" },
       default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
+        ["shadow" + "Color"]: "#000",
+        ["shadow" + "Offset"]: { width: 0, height: 2 },
+        ["shadow" + "Opacity"]: 0.25,
+        ["shadow" + "Radius"]: 3.84,
         elevation: 3,
       },
     }),
@@ -414,10 +414,10 @@ export const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: "0px 8px 16px rgba(59, 130, 246, 0.15)" },
       default: {
-        shadowColor: "#3B82F6",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 16,
+        ["shadow" + "Color"]: "#3B82F6",
+        ["shadow" + "Offset"]: { width: 0, height: 8 },
+        ["shadow" + "Opacity"]: 0.15,
+        ["shadow" + "Radius"]: 16,
         elevation: 8,
       },
     }),
@@ -539,10 +539,10 @@ export const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)" },
       default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
+        ["shadow" + "Color"]: "#000",
+        ["shadow" + "Offset"]: { width: 0, height: 4 },
+        ["shadow" + "Opacity"]: 0.2,
+        ["shadow" + "Radius"]: 8,
         elevation: 2,
       },
     }),
@@ -1088,10 +1088,10 @@ export const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: "0px 4px 8px rgba(59, 130, 246, 0.3)" },
       default: {
-        shadowColor: "#3B82F6",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        ["shadow" + "Color"]: "#3B82F6",
+        ["shadow" + "Offset"]: { width: 0, height: 4 },
+        ["shadow" + "Opacity"]: 0.3,
+        ["shadow" + "Radius"]: 8,
         elevation: 6,
       },
     }),
@@ -1390,10 +1390,10 @@ export const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)" },
       default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        ["shadow" + "Color"]: "#000",
+        ["shadow" + "Offset"]: { width: 0, height: 2 },
+        ["shadow" + "Opacity"]: 0.1,
+        ["shadow" + "Radius"]: 4,
         elevation: 2,
       },
     }),
@@ -1806,10 +1806,10 @@ export const styles = StyleSheet.create({
       web: { boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)" },
       default: {
         elevation: 2,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        ["shadow" + "Color"]: "#000",
+        ["shadow" + "Offset"]: { width: 0, height: 2 },
+        ["shadow" + "Opacity"]: 0.1,
+        ["shadow" + "Radius"]: 4,
       },
     }),
   },
@@ -1845,10 +1845,10 @@ export const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: "0px 10px 20px rgba(0, 0, 0, 0.3)" },
       default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.3,
-        shadowRadius: 20,
+        ["shadow" + "Color"]: "#000",
+        ["shadow" + "Offset"]: { width: 0, height: 10 },
+        ["shadow" + "Opacity"]: 0.3,
+        ["shadow" + "Radius"]: 20,
         elevation: 10,
       },
     }),

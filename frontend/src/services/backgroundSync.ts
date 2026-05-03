@@ -2,7 +2,7 @@ import * as BackgroundTask from "expo-background-task";
 import * as TaskManager from "expo-task-manager";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
-import { syncQueue } from "./syncQueue";
+import { syncOfflineQueue } from "./syncService";
 
 const BACKGROUND_SYNC_TASK = "BACKGROUND_SYNC_TASK";
 
@@ -19,7 +19,7 @@ if (Platform.OS !== "web" && TaskManager?.defineTask) {
   TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
     try {
       logInfo("Background sync task started");
-      const result = await syncQueue.performFullSync();
+      const result = await syncOfflineQueue({ background: true });
       logInfo("Background sync task completed:", result);
 
       return BackgroundTask.BackgroundTaskResult.Success;

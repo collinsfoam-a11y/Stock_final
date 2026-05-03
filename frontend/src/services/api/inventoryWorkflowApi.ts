@@ -4,9 +4,12 @@ import { retryWithBackoff } from "../../utils/retry";
 import { CreateCountLinePayload, Item } from "../../types/scan";
 import { generateUUID } from "../../utils/uuid";
 import { validateBarcode } from "../../utils/validation";
-import api from "../httpClient";
+import api from "@/api/client";
+import { getConnectivityState, getWritePolicyDecision } from "../../core/connectivityState";
+import { recordWritePolicyDecision } from "../../core/writePolicyMetrics";
 import { createLogger } from "../logging";
 import { createOfflineCountLine } from "../offline/offlineCountLine";
+import { normalizeSessionState } from "../../contracts/states";
 import {
   addToOfflineQueue,
   cacheCountLine,
@@ -20,6 +23,8 @@ import {
 import { isOnline, shouldAttemptReadApi } from "./sessionManagementApi";
 
 const log = createLogger("InventoryWorkflowApi");
+const CONNECTIVITY_UNKNOWN_ERROR_MESSAGE =
+  "Connectivity is still being determined. Please retry once the connection is confirmed.";
 
 type InventoryItemResult = Item & {
   _source?: DataSource;
@@ -894,37 +899,59 @@ export const createCountLine = async (
 ): Promise<any & { _source?: DataSource; _offline?: boolean }> => {
   const user = useAuthStore.getState().user;
   const countDataWithIdempotency = ensureCountLineIdempotencyKey(countData);
+  const connectivityState = getConnectivityState();
+  const writePolicy = getWritePolicyDecision();
+  const isOfflineSession = String(countDataWithIdempotency.session_id || "").startsWith("offline_");
+
+  log.debug("Create count line requested", {
+    sessionId: countDataWithIdempotency.session_id,
+    itemCode: countDataWithIdempotency.item_code,
+    connectivityState,
+    writePolicy,
+    isOfflineSession,
+  });
+  void recordWritePolicyDecision(writePolicy);
+
+  if (writePolicy === "BLOCK") {
+    log.warn("Create count line blocked because connectivity is UNKNOWN", {
+      sessionId: countDataWithIdempotency.session_id,
+      itemCode: countDataWithIdempotency.item_code,
+    });
+    throw new Error(CONNECTIVITY_UNKNOWN_ERROR_MESSAGE);
+  }
+
+  if (writePolicy === "ENQUEUE" || isOfflineSession) {
+    log.debug("Queueing count line for offline replay", {
+      sessionId: countDataWithIdempotency.session_id,
+      itemCode: countDataWithIdempotency.item_code,
+      connectivityState,
+      isOfflineSession,
+    });
+
+    try {
+      const offlineCountLine = await createOfflineCountLineResult(
+        countDataWithIdempotency,
+        user?.username
+      );
+      log.debug("Created offline count line", { id: offlineCountLine._id });
+      return offlineCountLine;
+    } catch (persistError) {
+      log.error("Failed to persist offline count line", {
+        error: persistError instanceof Error ? persistError.message : String(persistError),
+      });
+      throw new Error("Failed to save count line offline. Please try again.");
+    }
+  }
 
   try {
-    const isOfflineSession = String(countDataWithIdempotency.session_id || "").startsWith("offline_");
-
-    if (!isOnline() || isOfflineSession) {
-      log.debug("Offline mode or offline session - creating offline count line", {
-        isOnline: isOnline(),
-        isOfflineSession,
-      });
-
-      try {
-        const offlineCountLine = await createOfflineCountLineResult(
-          countDataWithIdempotency,
-          user?.username
-        );
-        log.debug("Created offline count line", { id: offlineCountLine._id });
-        return offlineCountLine;
-      } catch (persistError) {
-        log.error("Failed to persist offline count line", {
-          error: persistError instanceof Error ? persistError.message : String(persistError),
-        });
-        throw new Error("Failed to save count line offline. Please try again.");
-      }
-    }
-
-    log.debug("Online mode - creating count line via API");
+    log.debug("Creating count line via API", {
+      sessionId: countDataWithIdempotency.session_id,
+      itemCode: countDataWithIdempotency.item_code,
+    });
     const response = await api.post("/api/count-lines", countDataWithIdempotency, {
       skipOfflineQueue: true,
     } as any);
     await cacheCountLine(response.data);
-
     log.debug("Created count line via API", {
       id: response.data._id || response.data.id,
     });
@@ -934,31 +961,17 @@ export const createCountLine = async (
     };
   } catch (error: any) {
     if (error.response) {
-      log.error("Server returned error, NOT falling back to offline", {
+      log.error("Server returned error while creating count line", {
         status: error.response.status,
         data: error.response.data,
       });
       throw error;
     }
 
-    log.error("Network error creating count line, falling back to offline", {
+    log.error("Network error creating count line; deterministic policy forbids implicit fallback", {
       error: error instanceof Error ? error.message : String(error),
     });
-
-    try {
-      const offlineCountLine = await createOfflineCountLineResult(
-        countDataWithIdempotency,
-        user?.username,
-        true
-      );
-      log.debug("Created offline count line as fallback", { id: offlineCountLine._id });
-      return offlineCountLine;
-    } catch (fallbackError) {
-      log.error("Offline fallback also failed", {
-        error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
-      });
-      throw new Error("Failed to save count line. Both online and offline storage failed.");
-    }
+    throw error;
   }
 };
 
@@ -1136,9 +1149,9 @@ export const updateSessionStatus = async (sessionId: string, status: string) => 
     return response.data;
   }
 
-  if (normalizedStatus === "CLOSED") {
-    // Legacy "close" now maps to the canonical review handoff.
-    const response = await api.put(`/api/sessions/${sessionId}/status?status=RECONCILE`);
+  const canonicalStatus = normalizeSessionState(normalizedStatus);
+  if (normalizedStatus === "CLOSED" || canonicalStatus === "REVIEW") {
+    const response = await api.put(`/api/sessions/${sessionId}/status?status=REVIEW`);
     return response.data;
   }
 
@@ -1170,20 +1183,38 @@ export const finalizeSession = async (
  * Queues or creates an unknown item depending on network availability.
  */
 export const createUnknownItem = async (itemData: Record<string, unknown>) => {
-  try {
-    if (!isOnline()) {
-      await addToOfflineQueue("unknown_item", itemData);
-      return { success: true, offline: true };
-    }
+  const connectivityState = getConnectivityState();
+  const writePolicy = getWritePolicyDecision();
 
+  log.debug("Create unknown item requested", {
+    barcode: itemData.barcode,
+    sessionId: itemData.session_id,
+    connectivityState,
+    writePolicy,
+  });
+  void recordWritePolicyDecision(writePolicy);
+
+  if (writePolicy === "BLOCK") {
+    log.warn("Create unknown item blocked because connectivity is UNKNOWN", {
+      barcode: itemData.barcode,
+      sessionId: itemData.session_id,
+    });
+    throw new Error(CONNECTIVITY_UNKNOWN_ERROR_MESSAGE);
+  }
+
+  if (writePolicy === "ENQUEUE") {
+    await addToOfflineQueue("unknown_item", itemData);
+    return { success: true, offline: true };
+  }
+
+  try {
     const response = await api.post("/api/unknown-items", itemData, {
       skipOfflineQueue: true,
     } as any);
     return response.data;
   } catch (error) {
     __DEV__ && console.error("Error creating unknown item:", error);
-    await addToOfflineQueue("unknown_item", itemData);
-    return { success: true, offline: true };
+    throw error;
   }
 };
 

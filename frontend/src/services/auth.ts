@@ -1,4 +1,4 @@
-import apiClient from "./httpClient";
+import apiClient from "@/api/client";
 import { useAuthStore } from "../store/authStore";
 import { secureStorage } from "./storage/secureStorage";
 import { Platform } from "react-native";

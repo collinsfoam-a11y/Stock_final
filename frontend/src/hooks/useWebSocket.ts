@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Platform } from "react-native";
-import { API_BASE_URL } from "../services/httpClient";
+import { API_BASE_URL } from "@/api/client";
 import { useAuthStore } from "../store/authStore";
 import { secureStorage } from "../services/storage/secureStorage";
 import { handleUnauthorized } from "../services/authUnauthorizedHandler";

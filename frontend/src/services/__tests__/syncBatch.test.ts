@@ -77,6 +77,7 @@ jest.mock("../api/api", () => ({
 
 // Mock offline storage before importing syncService
 jest.mock("../offline/offlineStorage", () => ({
+  appendReplayAuditEntry: jest.fn(),
   getOfflineQueue: jest.fn(),
   getCacheStats: jest.fn(),
   cacheSession: jest.fn(),
@@ -117,8 +118,11 @@ const mockOperations = [
       rack_id: "R1",
       item_code: "ITEM001",
       counted_qty: 10,
+      status: "SUBMITTED",
     },
     timestamp: "2023-01-01T00:00:00Z",
+    retries: 0,
+    status: "pending",
   },
 ];
 
@@ -140,6 +144,7 @@ describe("syncOfflineQueue", () => {
     (offlineStorage.getMappedSessionId as jest.Mock).mockResolvedValue(null);
     (offlineStorage.cacheSession as jest.Mock).mockResolvedValue(undefined);
     (offlineStorage.setSessionIdMapping as jest.Mock).mockResolvedValue(undefined);
+    (offlineStorage.appendReplayAuditEntry as jest.Mock).mockResolvedValue(undefined);
     (apiClient.post as jest.Mock).mockResolvedValue({
       data: { id: "server-session-1", session_id: "server-session-1" },
     });
@@ -165,6 +170,13 @@ describe("syncOfflineQueue", () => {
     expect(result.success).toBe(1);
     expect(result.failed).toBe(0);
     expect(offlineStorage.removeManyFromOfflineQueue).toHaveBeenCalledWith(["op_1"]);
+    expect(offlineStorage.appendReplayAuditEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action_id: "op_1",
+        success: true,
+        retry_count: 0,
+      })
+    );
   });
 
   it("should sync queued sessions before dependent count-line records", async () => {
@@ -378,6 +390,7 @@ describe("initializeSyncService", () => {
     (offlineStorage.removeManyFromOfflineQueue as jest.Mock).mockResolvedValue(undefined);
     (offlineStorage.updateQueueItemRetries as jest.Mock).mockResolvedValue(undefined);
     (offlineStorage.updateOfflineQueueItem as jest.Mock).mockResolvedValue(undefined);
+    (offlineStorage.appendReplayAuditEntry as jest.Mock).mockResolvedValue(undefined);
     (api.isOnline as jest.Mock).mockReturnValue(true);
     (api.syncBatch as jest.Mock).mockResolvedValue({
       results: [{ id: "op_1", success: true }],

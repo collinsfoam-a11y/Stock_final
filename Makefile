@@ -23,6 +23,7 @@ help:
 	@echo "  make format      - Format all code"
 	@echo "  make audit-count-line-names - Read-only audit for missing or bad item_name records"
 	@echo "  make node-e2e-recount-smoke - Run recount assignment smoke (requires backend on 8001)"
+	@echo "  make predeploy-governance - Run production governance release checklist"
 	@echo ""
 	@echo "🛠️  Development:"
 	@echo "  make install     - Install dependencies"
@@ -129,6 +130,9 @@ node-clean:
 node-e2e-recount-smoke:
 	@echo "Running recount assignment smoke against backend on http://127.0.0.1:8001..."
 	cd frontend && E2E_BACKEND_URL=http://127.0.0.1:8001 npm run e2e:recount-smoke
+
+predeploy-governance:
+	@./scripts/pre_deploy_governance_check.sh
 
 # =============================================================================
 # 🔄 COMBINED TARGETS

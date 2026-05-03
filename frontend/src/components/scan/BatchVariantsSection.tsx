@@ -6,7 +6,6 @@ import {
   colors,
   fontSize,
   fontWeight,
-  radius as borderRadius,
   semanticColors,
   spacing,
 } from "@/theme/unified";

@@ -1,5 +1,6 @@
 import { checkItemScanStatus, createCountLine, getCountLines } from "../inventoryWorkflowApi";
 import * as sessionManagementApi from "../sessionManagementApi";
+import * as connectivityState from "../../../core/connectivityState";
 import * as offlineCountLineService from "../../offline/offlineCountLine";
 import * as offlineStorage from "../../offline/offlineStorage";
 import httpClient from "../../httpClient";
@@ -33,11 +34,18 @@ jest.mock("../../../store/authStore", () => ({
   },
 }));
 
+jest.mock("../../../core/connectivityState", () => ({
+  getConnectivityState: jest.fn(() => "OFFLINE"),
+  getWritePolicyDecision: jest.fn(() => "ENQUEUE"),
+}));
+
 describe("createCountLine offline queueing", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(sessionManagementApi, "isOnline").mockReturnValue(false);
     jest.spyOn(sessionManagementApi, "shouldAttemptReadApi").mockReturnValue(false);
+    (connectivityState.getConnectivityState as jest.Mock).mockReturnValue("OFFLINE");
+    (connectivityState.getWritePolicyDecision as jest.Mock).mockReturnValue("ENQUEUE");
     jest.spyOn(offlineStorage, "getItemFromCache").mockResolvedValue(null as any);
     jest.spyOn(offlineStorage, "addToOfflineQueue").mockResolvedValue({} as any);
     jest.spyOn(offlineStorage, "cacheCountLine").mockResolvedValue({} as any);
@@ -75,6 +83,35 @@ describe("createCountLine offline queueing", () => {
     expect(offlineCountLineService.createOfflineCountLine).toHaveBeenCalledTimes(1);
     expect(offlineStorage.addToOfflineQueue).not.toHaveBeenCalled();
     expect(offlineStorage.cacheCountLine).not.toHaveBeenCalled();
+  });
+
+  it("submits count line directly when connectivity is ONLINE", async () => {
+    jest.spyOn(sessionManagementApi, "isOnline").mockReturnValue(true);
+    (connectivityState.getConnectivityState as jest.Mock).mockReturnValue("ONLINE");
+    (connectivityState.getWritePolicyDecision as jest.Mock).mockReturnValue("DIRECT");
+    (httpClient.post as jest.Mock).mockResolvedValue({
+      data: {
+        _id: "line-online-1",
+        session_id: "session-1",
+        item_code: "ITEM001",
+        counted_qty: 3,
+      },
+    });
+
+    const response = await createCountLine({
+      session_id: "session-1",
+      item_code: "ITEM001",
+      counted_qty: 3,
+      rack_no: "A1",
+    });
+
+    expect(httpClient.post).toHaveBeenCalledWith(
+      "/api/count-lines",
+      expect.objectContaining({ session_id: "session-1", item_code: "ITEM001" }),
+      expect.anything()
+    );
+    expect(response._source).toBe("api");
+    expect(offlineCountLineService.createOfflineCountLine).not.toHaveBeenCalled();
   });
 
   it("replaces placeholder item names with cached ERP names for offline creation", async () => {
@@ -167,26 +204,60 @@ describe("createCountLine offline queueing", () => {
     expect(response.items[0]?.item_name).toBe("Soap Bar");
   });
 
-  it("reuses one idempotency key across online submit and offline fallback", async () => {
+  it("does not silently fallback to offline on online network failure", async () => {
     jest.spyOn(sessionManagementApi, "isOnline").mockReturnValue(true);
+    (connectivityState.getConnectivityState as jest.Mock).mockReturnValue("ONLINE");
+    (connectivityState.getWritePolicyDecision as jest.Mock).mockReturnValue("DIRECT");
     (httpClient.post as jest.Mock).mockRejectedValue(new Error("Network down"));
 
-    await createCountLine({
-      session_id: "session-1",
-      item_code: "ITEM001",
-      counted_qty: 3,
-      rack_no: "A1",
-    });
+    await expect(
+      createCountLine({
+        session_id: "session-1",
+        item_code: "ITEM001",
+        counted_qty: 3,
+        rack_no: "A1",
+      })
+    ).rejects.toThrow("Network down");
 
     expect(httpClient.post).toHaveBeenCalledWith(
       "/api/count-lines",
       expect.objectContaining({ idempotency_key: "idem-123" }),
       expect.anything(),
     );
-    expect(offlineCountLineService.createOfflineCountLine).toHaveBeenCalledWith(
-      expect.objectContaining({ idempotency_key: "idem-123" }),
-      expect.anything(),
-    );
+    expect(offlineCountLineService.createOfflineCountLine).not.toHaveBeenCalled();
+  });
+
+  it("blocks writes when connectivity is UNKNOWN", async () => {
+    (connectivityState.getConnectivityState as jest.Mock).mockReturnValue("UNKNOWN");
+    (connectivityState.getWritePolicyDecision as jest.Mock).mockReturnValue("BLOCK");
+
+    await expect(
+      createCountLine({
+        session_id: "session-1",
+        item_code: "ITEM001",
+        counted_qty: 1,
+        rack_no: "A1",
+      })
+    ).rejects.toThrow("Connectivity is still being determined");
+
+    expect(httpClient.post).not.toHaveBeenCalled();
+    expect(offlineCountLineService.createOfflineCountLine).not.toHaveBeenCalled();
+  });
+
+  it("queues writes during SYNCING without direct API calls", async () => {
+    (connectivityState.getConnectivityState as jest.Mock).mockReturnValue("SYNCING");
+    (connectivityState.getWritePolicyDecision as jest.Mock).mockReturnValue("ENQUEUE");
+
+    const response = await createCountLine({
+      session_id: "session-1",
+      item_code: "ITEM001",
+      counted_qty: 1,
+      rack_no: "A1",
+    });
+
+    expect(response._offline).toBe(true);
+    expect(offlineCountLineService.createOfflineCountLine).toHaveBeenCalledTimes(1);
+    expect(httpClient.post).not.toHaveBeenCalled();
   });
 
   it("hydrates only the current offline page instead of the full cached session", async () => {

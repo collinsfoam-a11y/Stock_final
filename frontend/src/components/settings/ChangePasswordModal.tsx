@@ -20,7 +20,7 @@ import {
 } from "react-native";
 import { useThemeContext } from "../../context/ThemeContext";
 import { typography } from "../../theme/designTokens";
-import { authApi } from "../../services/api/authApi";
+import { authApi } from "../../domains/auth/services";
 import * as Haptics from "expo-haptics";
 import { createShadow } from "@/theme/shadowUtils";
 

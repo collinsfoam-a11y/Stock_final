@@ -20,8 +20,7 @@ import * as Haptics from "expo-haptics";
 import { FlashList } from "@shopify/flash-list";
 
 import { flags } from "../../src/constants/flags";
-import { getConflicts, resolveConflict } from "../../src/services/offline/offlineQueue";
-import { getOfflineQueue } from "../../src/services/offline/offlineStorage";
+import { getOfflineQueue, removeFromOfflineQueue } from "../../src/services/offline/offlineStorage";
 import { forceSync } from "../../src/services/syncService";
 import { summarizeForceSyncResult } from "../../src/components/supervisor/offlineQueueFeedback";
 import {
@@ -44,7 +43,10 @@ export default function OfflineQueueScreen() {
     if (!flags.enableOfflineQueue) return;
     setLoading(true);
     try {
-      const [q, c] = await Promise.all([getOfflineQueue(), getConflicts()]);
+      const q = await getOfflineQueue();
+      const c = q.filter(
+        (item) => item.status === "blocked_conflict" || item.status === "failed_manual_review"
+      );
       setQueue(q);
       setConflicts(c);
     } finally {
@@ -91,7 +93,7 @@ export default function OfflineQueueScreen() {
 
   const handleDismiss = async (id: string) => {
     if (Platform.OS !== "web") Haptics.selectionAsync();
-    await resolveConflict(id);
+    await removeFromOfflineQueue(id);
     load();
   };
 
@@ -189,7 +191,7 @@ export default function OfflineQueueScreen() {
         </View>
 
         <Text style={styles.cardTitle}>
-          {String(item.method).toUpperCase()} {item.url}
+          {String(item.type || "UNKNOWN").toUpperCase()} offline conflict
         </Text>
 
         <OperationalCard
@@ -199,7 +201,7 @@ export default function OfflineQueueScreen() {
           style={{ marginTop: auroraTheme.spacing.sm }}
         >
           <Text style={styles.cardCode} numberOfLines={4}>
-            {typeof item.detail === "string" ? item.detail : JSON.stringify(item.detail)}
+            {item.last_error ? String(item.last_error) : JSON.stringify(item.data || {})}
           </Text>
         </OperationalCard>
 
@@ -298,7 +300,7 @@ export default function OfflineQueueScreen() {
               renderItem={renderQueueItem}
               // @ts-ignore
               estimatedItemSize={100}
-              keyExtractor={(item) => item.id || `q-${Math.random()}`}
+              keyExtractor={(item) => item.id}
               refreshControl={
                 <RefreshControl
                   refreshing={loading}
@@ -339,7 +341,7 @@ export default function OfflineQueueScreen() {
               renderItem={renderConflictItem}
               // @ts-ignore
               estimatedItemSize={150}
-              keyExtractor={(item) => item.id || `c-${Math.random()}`}
+              keyExtractor={(item) => item.id}
               ListEmptyComponent={
                 <View style={styles.emptyState}>
                   {loading ? (

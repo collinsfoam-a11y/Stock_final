@@ -165,7 +165,7 @@ class TestSessionCRUD:
         assert response.status_code in (200, 201)
         data = response.json()
         assert "_id" in data or "id" in data
-        assert data.get("status") in ("OPEN", "ACTIVE")
+        assert data.get("status") in ("CREATED", "ACTIVE")
 
     @pytest.mark.asyncio
     async def test_get_sessions(self, async_client: AsyncClient, authenticated_headers: dict):

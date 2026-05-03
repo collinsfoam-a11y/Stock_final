@@ -214,4 +214,5 @@ class CountQueryService:
 
 
 def get_count_query_service(database: Any | None = None) -> CountQueryService:
-    return CountQueryService(database or get_db())
+    resolved_database = database if database is not None else get_db()
+    return CountQueryService(resolved_database)

@@ -368,11 +368,11 @@ class Settings(PydanticBaseSettings):
     CHANGE_DETECTION_SYNC_ENABLED: bool = True
     CHANGE_DETECTION_INTERVAL: int = Field(300, ge=60)  # 5 minutes
     V3_PROJECTION_DASHBOARD_READS: bool = Field(
-        default=False,
+        default=True,
         description="Read dashboard endpoints from V3 projection collections only.",
     )
     V3_PROJECTION_REPORT_READS: bool = Field(
-        default=False,
+        default=True,
         description="Read report endpoints from V3 projection collections only.",
     )
     SHADOW_READ_ENABLED: bool = Field(
@@ -383,6 +383,10 @@ class Settings(PydanticBaseSettings):
     SHADOW_READ_TIMEOUT_SECONDS: float = Field(default=2.0, ge=0.1, le=30.0)
     SHADOW_READ_VARIANCE_ABS_TOLERANCE: float = Field(default=1.0, ge=0.0)
     SHADOW_READ_VARIANCE_REL_TOLERANCE: float = Field(default=0.005, ge=0.0)
+    SHADOW_READ_FULL_DIFF_LOGGING: bool = Field(
+        default=False,
+        description="Log full projection and legacy payloads for shadow mismatches.",
+    )
     SHADOW_AUTO_DECISION_ENABLED: bool = Field(
         default=True,
         description="Evaluate shadow-read rollout decisions in the background.",
@@ -742,6 +746,10 @@ except Exception as e:
             self.SHADOW_READ_VARIANCE_REL_TOLERANCE = float(
                 os.getenv("SHADOW_READ_VARIANCE_REL_TOLERANCE", 0.005)
             )
+            self.SHADOW_READ_FULL_DIFF_LOGGING = _parse_bool(
+                os.getenv("SHADOW_READ_FULL_DIFF_LOGGING"),
+                default=False,
+            )
             self.SHADOW_AUTO_DECISION_ENABLED = _parse_bool(
                 os.getenv("SHADOW_AUTO_DECISION_ENABLED"),
                 default=True,
@@ -989,6 +997,25 @@ def _enforce_production_guards(settings_obj):
             raise RuntimeError(
                 "CRITICAL: AUTO_SEED_MOCK_ERP_DATA=true is not allowed in production/staging."
             )
+
+    # Guard 6: Draft debug payloads must never be enabled outside local development.
+    draft_debug_mode = os.getenv("COUNT_LINES_DRAFT_DEBUG_ERRORS", "false").lower() in (
+        "true",
+        "1",
+        "yes",
+        "on",
+    )
+    if (is_prod or is_staging) and draft_debug_mode:
+        raise RuntimeError(
+            "CRITICAL: COUNT_LINES_DRAFT_DEBUG_ERRORS=true is not allowed in production/staging."
+        )
+
+    # Guard 7: strict runtime validation is mandatory in production/staging.
+    strict_validation = getattr(settings_obj, "STRICT_VALIDATION", False)
+    if (is_prod or is_staging) and not strict_validation:
+        raise RuntimeError(
+            "CRITICAL: STRICT_VALIDATION=true is required in production/staging."
+        )
 
     if is_prod:
         logger.info("✅ Production runtime guards passed")

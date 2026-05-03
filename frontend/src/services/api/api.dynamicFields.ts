@@ -1,4 +1,4 @@
-import api from "../httpClient";
+import api from "@/api/client";
 
 export const getFieldDefinitions = async (
   enabledOnly: boolean = true,

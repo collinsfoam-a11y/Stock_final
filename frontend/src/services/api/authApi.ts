@@ -5,7 +5,7 @@
  * PIN change, and password change.
  */
 
-import api from "../httpClient";
+import api from "@/api/client";
 import type {
   ChangePasswordResponse,
   ChangePinResponse,
@@ -98,10 +98,19 @@ export const authApi = {
    * @returns Promise with heartbeat response
    */
   async heartbeat(): Promise<{ status: string; timestamp: string }> {
-    const response = await api.get<{ status: string; timestamp: string }>(
+    const response = await api.get<{
+      success?: boolean;
+      status?: string;
+      timestamp?: string;
+      data?: { status?: string; timestamp?: string };
+    }>(
       "/api/auth/heartbeat",
     );
-    return response.data;
+    const payload = response.data?.data || response.data;
+    return {
+      status: String(payload?.status || "ok"),
+      timestamp: String(payload?.timestamp || new Date().toISOString()),
+    };
   },
 };
 

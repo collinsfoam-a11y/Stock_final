@@ -111,6 +111,7 @@ export function CountQuantitySection({
           ]}
         >
           <TextInput
+            testID="count-qty-input"
             style={[
               styles.qtyText,
               {

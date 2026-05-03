@@ -75,7 +75,9 @@ export function CreateSessionModal({
         <View style={styles.modalSheet}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create New Session</Text>
+              <Text testID="supervisor-create-session-title" style={styles.modalTitle}>
+                Create New Session
+              </Text>
               <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
                 <Ionicons name="close" size={24} color={theme.colors.text.primary} />
               </TouchableOpacity>
@@ -166,6 +168,7 @@ export function CreateSessionModal({
               ) : null}
 
               <TouchableOpacity
+                testID="supervisor-create-session-submit"
                 style={[styles.createButton, !canSubmit && styles.createButtonDisabled]}
                 onPress={onSubmit}
                 disabled={!canSubmit}

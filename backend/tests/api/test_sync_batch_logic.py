@@ -13,9 +13,12 @@ async def test_sync_single_record_scopes_upsert_by_session_id(monkeypatch):
     db = MagicMock()
     db.count_lines.find_one = AsyncMock(return_value=None)
     db.item_serials.insert_many = AsyncMock(return_value=None)
+    db.idempotency_operations = MagicMock()
+    db.idempotency_operations.update_one = AsyncMock(return_value=None)
+    db.client = MagicMock()
 
     lifecycle_service = SimpleNamespace(
-        ensure_session_active=AsyncMock(
+        ensure_session_accepts_count_writes=AsyncMock(
             return_value={
                 "id": "session-a",
                 "session_id": "session-a",
@@ -29,6 +32,12 @@ async def test_sync_single_record_scopes_upsert_by_session_id(monkeypatch):
         "backend.api.sync_batch_api.find_duplicate_count_line",
         AsyncMock(return_value=None),
     )
+
+    @asynccontextmanager
+    async def _fake_transaction(_client):
+        yield None
+
+    monkeypatch.setattr("backend.api.sync_batch_api.mongo_transaction", _fake_transaction)
 
     record = SyncRecord(
         record_id="offline-line-1",
@@ -53,11 +62,7 @@ async def test_sync_single_record_scopes_upsert_by_session_id(monkeypatch):
 
     assert success is True
     assert error is None
-    filter_query = db.count_lines.find_one.await_args.args[0]
-    assert filter_query == {
-        "session_id": "session-a",
-        "idempotency_key": "offline-line-1",
-    }
+    db.idempotency_operations.update_one.assert_awaited_once()
     write_payload = write_service.process_write.await_args.args[0]["document"]
     assert write_payload["idempotency_key"] == "offline-line-1"
     assert write_payload["session_id"] == "session-a"
@@ -75,7 +80,9 @@ async def test_process_count_line_op_accepts_non_dict_audit_metadata(monkeypatch
         def __init__(self, _db):
             self._db = _db
 
-        async def ensure_session_active(self, session_id):
+        async def ensure_session_accepts_count_writes(
+            self, session_id, *, actor="system", db_session=None
+        ):
             assert session_id == "session-a"
             return dict(fake_session)
 
@@ -128,7 +135,9 @@ async def test_process_count_line_op_drops_object_id_from_recount_update(monkeyp
         def __init__(self, _db):
             self._db = _db
 
-        async def ensure_session_active(self, session_id):
+        async def ensure_session_accepts_count_writes(
+            self, session_id, *, actor="system", db_session=None
+        ):
             assert session_id == "session-a"
             return dict(fake_session)
 

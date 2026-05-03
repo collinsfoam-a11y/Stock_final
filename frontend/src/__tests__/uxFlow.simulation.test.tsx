@@ -28,7 +28,6 @@ const mockGetSyncConflicts = jest.fn();
 const mockGetSyncConflictStats = jest.fn();
 const mockResolveSyncConflict = jest.fn();
 const mockGetOfflineQueue = jest.fn();
-const mockGetConflicts = jest.fn();
 const mockToastShow = jest.fn();
 const mockAlert = jest.spyOn(Alert, "alert").mockImplementation(jest.fn());
 
@@ -134,11 +133,6 @@ jest.mock("../services/connectionManager", () => ({
       removeListener: jest.fn(),
     })),
   },
-}));
-
-jest.mock("../services/offline/offlineQueue", () => ({
-  getConflicts: (...args: unknown[]) => mockGetConflicts(...args),
-  resolveConflict: jest.fn(),
 }));
 
 jest.mock("../services/offline/offlineStorage", () => ({
@@ -522,10 +516,10 @@ async function runSessionDetailFlow() {
 
   const screen = render(<SessionDetail />);
   await waitFor(() => screen.getByText("Rack 2/5"));
-  expect(screen.getByText("Move to Reconcile")).toBeTruthy();
-  fireEvent.press(screen.getByText("Move to Reconcile"));
+  expect(screen.getByText("Move to Review")).toBeTruthy();
+  fireEvent.press(screen.getByText("Move to Review"));
   await waitFor(() =>
-    expect(mockUpdateSessionStatus).toHaveBeenCalledWith("session-1", "RECONCILE")
+    expect(mockUpdateSessionStatus).toHaveBeenCalledWith("session-1", "REVIEW")
   );
   screen.unmount();
 }
@@ -553,7 +547,6 @@ async function runDashboardSupervisorFlow() {
     },
   });
   mockGetOfflineQueue.mockResolvedValue([]);
-  mockGetConflicts.mockResolvedValue([]);
 
   const screen = render(<SupervisorDashboard />);
   await waitFor(() => screen.getByText("Resolve Differences"));

@@ -64,7 +64,7 @@ export default function SqlConfigScreen() {
           host: response.data.host || "",
           port: response.data.port || 1433,
           database: response.data.database || "",
-          username: response.data.username || "",
+          username: response.data.username || response.data.user || "",
           password: "", // Never load password
         });
       }
@@ -94,7 +94,8 @@ export default function SqlConfigScreen() {
     try {
       setTesting(true);
       setTestResult(null);
-      const response = await testSqlServerConnection(config);
+      const payload = { ...config, user: config.username };
+      const response = await testSqlServerConnection(payload);
       setTestResult(response.data);
       if (response.data.connected) {
         Alert.alert("Success", "Connection test successful!");
@@ -119,7 +120,8 @@ export default function SqlConfigScreen() {
 
     try {
       setSaving(true);
-      const response = await updateSqlServerConfig(config);
+      const payload = { ...config, user: config.username };
+      const response = await updateSqlServerConfig(payload);
       if (response.success) {
         Alert.alert(
           "Success",

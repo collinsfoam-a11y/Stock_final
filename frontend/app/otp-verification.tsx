@@ -22,7 +22,7 @@ import ModernHeader from "../src/components/ui/ModernHeader";
 import ModernCard from "../src/components/ui/ModernCard";
 import ModernInput from "../src/components/ui/ModernInput";
 import ModernButton from "../src/components/ui/ModernButton";
-import apiClient from "../src/services/httpClient";
+import apiClient from "@/api/client";
 import { colors, spacing, typography } from "../src/theme/modernDesign";
 
 export default function OtpVerificationScreen() {

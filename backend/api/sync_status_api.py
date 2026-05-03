@@ -6,7 +6,10 @@ import logging
 from backend.utils.api_utils import sanitize_for_logging
 from typing import Any, cast
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from backend.auth.dependencies import get_current_user_async as get_current_user
+from backend.auth.permissions import Permission, require_permission
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +60,10 @@ async def get_sync_stats() -> dict[str, Any]:
 
 
 @sync_router.post("/trigger", status_code=status.HTTP_200_OK)
-async def trigger_manual_sync() -> dict[str, Any]:
+async def trigger_manual_sync(
+    current_user: dict[str, Any] = Depends(get_current_user),
+    _: dict[str, Any] = require_permission(Permission.SYNC_TRIGGER),
+) -> dict[str, Any]:
     """
     Manually trigger a sync (admin action)
     Returns: Success status

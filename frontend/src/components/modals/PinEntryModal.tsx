@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { Modal } from "../ui/Modal";
 import { modernColors } from "@/styles/modernDesignSystem";
-import { verifyPin } from "@/services/api/api"; // We will add this next
+import { verifyPin } from "@/domains/auth/services";
 
 interface PinEntryModalProps {
   visible: boolean;

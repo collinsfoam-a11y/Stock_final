@@ -7,6 +7,7 @@ import {
   AnimatedPressable,
   GlassCard,
 } from "@/components/ui";
+import { normalizeSessionState } from "@/contracts/states";
 import { theme } from "@/styles/modernDesignSystem";
 import { colors as unifiedColors } from "@/theme/unified";
 import { Session } from "@/types";
@@ -22,6 +23,22 @@ export function SupervisorRecentSessionsSection({
   onViewAll,
   sessions,
 }: SupervisorRecentSessionsSectionProps) {
+  const getStatusBadgeColor = (status: Session["status"]) => {
+    const normalizedStatus = normalizeSessionState(status);
+    if (normalizedStatus === "CREATED" || normalizedStatus === "ACTIVE") {
+      return theme.colors.warning.main;
+    }
+    if (normalizedStatus === "FINALIZED") {
+      return theme.colors.success.main;
+    }
+    return theme.colors.secondary[500];
+  };
+
+  const getStatusLabel = (status: Session["status"]) => {
+    const normalizedStatus = normalizeSessionState(status);
+    return normalizedStatus === "UNKNOWN" ? status : normalizedStatus;
+  };
+
   return (
     <Animated.View
       entering={FadeInDown.delay(400).springify()}
@@ -65,16 +82,11 @@ export function SupervisorRecentSessionsSection({
                   style={[
                     styles.statusBadge,
                     {
-                      backgroundColor:
-                        session.status === "OPEN"
-                          ? theme.colors.warning.main
-                          : session.status === "CLOSED"
-                            ? theme.colors.success.main
-                            : theme.colors.secondary[500],
+                      backgroundColor: getStatusBadgeColor(session.status),
                     },
                   ]}
                 >
-                  <Text style={styles.statusText}>{session.status}</Text>
+                  <Text style={styles.statusText}>{getStatusLabel(session.status)}</Text>
                 </View>
               </View>
 

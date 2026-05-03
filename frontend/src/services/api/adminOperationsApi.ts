@@ -1,5 +1,5 @@
 import { Platform } from "react-native";
-import api from "../httpClient";
+import api from "@/api/client";
 
 // ==========================================
 // ADMIN CONTROL PANEL APIs

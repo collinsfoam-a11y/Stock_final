@@ -2,7 +2,7 @@
  * API service layer: network-aware endpoints with offline fallbacks and caching.
  * Most functions prefer online calls and transparently fall back to cache.
  */
-import api from "../httpClient";
+import api from "@/api/client";
 import type { DataSource } from "../offline/offlineStorage";
 import { createLogger } from "../logging";
 import type { TokenResponse } from "./models";

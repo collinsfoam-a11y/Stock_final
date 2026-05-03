@@ -10,22 +10,17 @@ export async function initMobileRuntime(
   const [
     { initializeNetworkListener },
     { initializeSyncService },
-    { startOfflineQueue, stopOfflineQueue },
     { startSyncService, stopSyncService },
-    { default: apiClient },
   ] = await Promise.all([
     import("../services/networkService"),
     import("../services/syncService"),
-    import("../services/offlineQueue"),
     import("../services/offline/syncService"),
-    import("../services/httpClient"),
   ]);
 
   const networkUnsubscribe = initializeNetworkListener();
   const syncService = initializeSyncService();
 
   try {
-    startOfflineQueue(apiClient);
     startSyncService();
   } catch (e) {
     if (isDev) {
@@ -37,11 +32,5 @@ export async function initMobileRuntime(
     networkUnsubscribe();
     syncService.cleanup();
     stopSyncService();
-    try {
-      stopOfflineQueue();
-    } catch {
-      // Best-effort cleanup.
-    }
   };
 }
-

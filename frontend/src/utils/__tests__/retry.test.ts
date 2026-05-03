@@ -19,10 +19,10 @@ describe("retryWithBackoff", () => {
   });
 
   it("retries projection readiness failures with exponential backoff then blocks", async () => {
-    const error = Object.assign(new Error("not ready"), {
+    const error = Object.assign(new Error("projection stale"), {
       response: {
         status: 503,
-        data: { detail: { code: "PROJECTION_NOT_READY" } },
+        data: { detail: { code: "PROJECTION_INCONSISTENT" } },
       },
     });
     const operation = jest.fn().mockRejectedValue(error);

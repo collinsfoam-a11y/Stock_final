@@ -39,6 +39,7 @@ export function ItemSubmitBar({
       ]}
     >
       <ModernButton
+        testID="item-submit-btn"
         title={isUndoState ? `Undo (${submitCountdown}s)` : "Save & Next Scan"}
         onPress={isUndoState ? onCancelSubmit : onSubmit}
         loading={submitting}

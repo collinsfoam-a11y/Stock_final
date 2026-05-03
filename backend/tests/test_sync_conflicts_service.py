@@ -22,8 +22,8 @@ async def test_resolve_conflict_handles_non_object_id_entity_ids():
             "status": "pending",
             "entity_type": "count_line",
             "entity_id": "offline-line-1",
-            "server_data": {"field": "server"},
-            "local_data": {"field": "local"},
+            "server_data": {"counted_qty": 10, "variance": 1},
+            "local_data": {"counted_qty": 9, "variance": 0},
         }
     )
 

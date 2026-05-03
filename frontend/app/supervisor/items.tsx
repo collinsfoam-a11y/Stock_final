@@ -14,7 +14,7 @@ import {
   Platform,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -66,6 +66,7 @@ const filterCachedItems = (items: any[], filters: FilterValues) => {
 
 export default function ItemsScreen() {
   const router = useRouter();
+  const { sessionId } = useLocalSearchParams<{ sessionId?: string }>();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,10 +85,10 @@ export default function ItemsScreen() {
   });
 
   const loadItems = React.useCallback(
-    async (reset = false) => {
+    async ({ reset = false, skipOverride }: { reset?: boolean; skipOverride?: number } = {}) => {
       try {
+        setLoading(true);
         if (reset) {
-          setLoading(true);
           setPagination((prev) => ({ ...prev, skip: 0 }));
         }
 
@@ -121,7 +122,7 @@ export default function ItemsScreen() {
           return;
         }
 
-        const skip = reset ? 0 : pagination.skip;
+        const skip = reset ? 0 : (skipOverride ?? 0);
         const response = await ItemVerificationAPI.getFilteredItems({
           ...filters,
           limit: pagination.limit,
@@ -143,18 +144,18 @@ export default function ItemsScreen() {
         setRefreshing(false);
       }
     },
-    [filters, offlineMode, pagination.limit, pagination.skip],
+    [filters, offlineMode, pagination.limit],
   );
 
   useEffect(() => {
-    loadItems(true);
+    void loadItems({ reset: true, skipOverride: 0 });
   }, [loadItems]);
 
   const handleRefresh = () => {
     if (Platform.OS !== "web")
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
-    loadItems(true);
+    void loadItems({ reset: true, skipOverride: 0 });
   };
 
   const handleLoadMore = () => {
@@ -163,12 +164,29 @@ export default function ItemsScreen() {
     }
 
     if (!loading && pagination.skip + pagination.limit < pagination.total) {
-      setPagination((prev) => ({
-        ...prev,
-        skip: prev.skip + prev.limit,
-      }));
-      loadItems(false);
+      const nextSkip = pagination.skip + pagination.limit;
+      void loadItems({ reset: false, skipOverride: nextSkip });
     }
+  };
+
+  const handleItemPress = (item: any) => {
+    if (Platform.OS !== "web") {
+      Haptics.selectionAsync();
+    }
+
+    Alert.alert(
+      item.item_name || "Item details",
+      `Item Code: ${item.item_code || "-"}\nBarcode: ${item.barcode || "-"}\nStock: ${
+        item.stock_qty?.toFixed?.(2) ?? item.stock_qty ?? "0.00"
+      } ${item.uom_name || ""}`,
+      [
+        { text: "Close", style: "cancel" },
+        {
+          text: "Review Variances",
+          onPress: () => router.push("/supervisor/variances"),
+        },
+      ],
+    );
   };
 
   const handleExport = async (format: "csv" | "xlsx") => {
@@ -205,10 +223,7 @@ export default function ItemsScreen() {
   const renderItem = ({ item }: { item: any }) => {
     return (
       <AnimatedPressable
-        onPress={() => {
-          // Could navigate to item detail
-          if (Platform.OS !== "web") Haptics.selectionAsync();
-        }}
+        onPress={() => handleItemPress(item)}
         style={{ marginBottom: theme.spacing.sm }}
       >
         <GlassCard
@@ -419,6 +434,7 @@ export default function ItemsScreen() {
               onFilterChange={setFilters}
               showVerifiedFilter={true}
               showSearch={true}
+              sessionId={typeof sessionId === "string" ? sessionId : undefined}
             />
           </GlassCard>
         </Animated.View>

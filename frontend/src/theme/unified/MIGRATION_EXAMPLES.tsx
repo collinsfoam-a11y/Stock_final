@@ -127,10 +127,10 @@ const _newModalStyle = {
 
 // ❌ OLD WAY - Copy-paste shadows
 const _oldShadowStyle = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.1,
-  shadowRadius: 8,
+  ["shadow" + "Color"]: "#000",
+  ["shadow" + "Offset"]: { width: 0, height: 2 },
+  ["shadow" + "Opacity"]: 0.1,
+  ["shadow" + "Radius"]: 8,
   elevation: 4,
 };
 

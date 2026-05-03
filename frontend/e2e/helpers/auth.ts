@@ -1,4 +1,5 @@
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import { randomUUID } from "crypto";
 
 type Role = "staff" | "supervisor" | "admin";
 
@@ -129,6 +130,7 @@ export async function createSessionAs(
     data: {
       warehouse: sessionData.warehouse,
       type: sessionData.type || "STANDARD",
+      client_session_id: randomUUID(),
     },
     headers: {
       Authorization: `Bearer ${session.access_token}`,

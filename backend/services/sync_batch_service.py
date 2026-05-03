@@ -64,8 +64,17 @@ class SyncBatchService:
         return await self._database.item_serials.find_one({"serial_number": serial_number})
 
     async def insert_item_serials_ignore_duplicates(self, serial_docs: list[dict[str, Any]]) -> None:
+        await self.insert_item_serials_ignore_duplicates_with_session(serial_docs, db_session=None)
+
+    async def insert_item_serials_ignore_duplicates_with_session(
+        self,
+        serial_docs: list[dict[str, Any]],
+        *,
+        db_session: Optional[Any],
+    ) -> None:
+        kwargs = {"session": db_session} if db_session is not None else {}
         try:
-            await self._database.item_serials.insert_many(serial_docs, ordered=False)
+            await self._database.item_serials.insert_many(serial_docs, ordered=False, **kwargs)
         except DuplicateKeyError:
             return
         except BulkWriteError as exc:
@@ -78,8 +87,14 @@ class SyncBatchService:
         )
 
     async def record_idempotency_operation(
-        self, *, operation_id: str, client_record_id: str, session_id: str
+        self,
+        *,
+        operation_id: str,
+        client_record_id: str,
+        session_id: str,
+        db_session: Optional[Any] = None,
     ) -> None:
+        kwargs = {"session": db_session} if db_session is not None else {}
         await self._database.idempotency_operations.update_one(
             {"operation_id": operation_id},
             {
@@ -92,6 +107,7 @@ class SyncBatchService:
                 }
             },
             upsert=True,
+            **kwargs,
         )
 
     async def find_session_by_offline_id(self, offline_id: Optional[Any]) -> dict[str, Any] | None:
@@ -105,7 +121,7 @@ class SyncBatchService:
         return await self._database.sessions.find_one(
             {
                 "staff_user": staff_user,
-                "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]},
+                "status": {"$in": ["CREATED", "ACTIVE", "REVIEW", "OPEN", "PAUSED", "RECONCILE"]},
                 "warehouse": warehouse_query,
             }
         )

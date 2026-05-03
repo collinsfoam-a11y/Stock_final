@@ -28,7 +28,7 @@ import {
 } from "../../src/components/admin/users/userManagementShared";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { auroraTheme } from "../../src/theme/auroraTheme";
-import apiClient from "../../src/services/httpClient";
+import apiClient from "@/api/client";
 
 export default function UsersScreen() {
   const router = useRouter();

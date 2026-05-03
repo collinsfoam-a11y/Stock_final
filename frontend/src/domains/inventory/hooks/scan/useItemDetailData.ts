@@ -3,7 +3,7 @@ import { Alert } from "react-native";
 
 import { checkItemScanStatus, getItemByBarcode, searchItems } from "@/services/api/api";
 import { localDb } from "@/db/localDb";
-import apiClient from "@/services/httpClient";
+import apiClient from "@/api/client";
 import { useSettingsStore } from "@/store/settingsStore";
 import { toastService } from "@/services/toastService";
 import { Item } from "@/types/scan";

@@ -6,6 +6,7 @@ Target: Increase coverage from 18% to 85%
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from bson import ObjectId
 from fastapi import HTTPException
 from pymongo.errors import DuplicateKeyError
 
@@ -275,7 +276,16 @@ class TestCreateCountLine:
         """Create mock database"""
         db = AsyncMock()
         db.client = None
-        db.sessions.find_one = AsyncMock()
+        db.sessions.find_one = AsyncMock(
+            return_value={
+                "id": "session123",
+                "session_id": "session123",
+                "status": "OPEN",
+                "location_type": "Showroom",
+                "location_name": "F1",
+                "rack_no": "R1",
+            }
+        )
         db.erp_items.find_one = AsyncMock(return_value=None)
         db.session_snapshots.find_one = AsyncMock(
             return_value={
@@ -544,7 +554,7 @@ class TestCreateCountLine:
         mock_db.sessions.find_one.return_value = {
             "id": "session123",
             "session_id": "session123",
-            "status": "OPEN",
+            "status": "ACTIVE",
         }
         mock_db.erp_items.find_one.return_value = erp_item
 
@@ -686,6 +696,85 @@ class TestCreateCountLine:
         assert result["success"] is True
         assert result["data"]["id"] == "existing_draft"
         mock_db.count_line_drafts.update_one.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_save_count_line_draft_serializes_object_id_values(self, mock_db):
+        line_data = CountLineCreate(
+            session_id="session123",
+            item_code="ITEM001",
+            counted_qty=10,
+            floor_no="F1",
+            rack_no="R1",
+        )
+        mock_db.erp_items.find_one = AsyncMock(
+            return_value={"item_code": "ITEM001", "item_name": ObjectId("507f1f77bcf86cd799439011")}
+        )
+
+        with _patch_count_query_service(mock_db):
+            result = await save_count_line_draft(
+                request=AsyncMock(headers={}),
+                line_data=line_data,
+                current_user={"username": "testuser"},
+            )
+
+        assert result["success"] is True
+        assert result["data"]["item_name"] == "507f1f77bcf86cd799439011"
+
+    @pytest.mark.asyncio
+    async def test_save_count_line_draft_returns_400_when_context_unresolvable(self, mock_db):
+        line_data = CountLineCreate(
+            session_id="session123",
+            item_code="ITEM001",
+            counted_qty=10,
+        )
+        mock_db.sessions.find_one = AsyncMock(
+            return_value={
+                "id": "session123",
+                "session_id": "session123",
+                "status": "OPEN",
+            }
+        )
+
+        with _patch_count_query_service(mock_db), pytest.raises(HTTPException) as exc:
+            await save_count_line_draft(
+                request=AsyncMock(headers={}),
+                line_data=line_data,
+                current_user={"username": "testuser"},
+            )
+
+        assert exc.value.status_code == 400
+        assert "Draft location context is incomplete" in str(exc.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_save_count_line_draft_retries_update_existing_record(self, mock_db):
+        line_data = CountLineCreate(
+            session_id="session123",
+            item_code="ITEM001",
+            counted_qty=10,
+            floor_no="F1",
+            rack_no="R1",
+        )
+        existing = {"_id": "draft-existing"}
+        mock_db.count_line_drafts.find_one = AsyncMock(side_effect=[None, None, existing, existing])
+
+        with _patch_count_query_service(mock_db):
+            first = await save_count_line_draft(
+                request=AsyncMock(headers={}),
+                line_data=line_data,
+                current_user={"username": "testuser"},
+            )
+            second = await save_count_line_draft(
+                request=AsyncMock(headers={}),
+                line_data=line_data,
+                current_user={"username": "testuser"},
+            )
+
+        assert first["success"] is True
+        assert second["success"] is True
+        assert first["data"]["id"] == "draft123"
+        assert second["data"]["id"] == "draft-existing"
+        assert mock_db.count_line_drafts.insert_one.await_count == 1
+        assert mock_db.count_line_drafts.update_one.await_count >= 1
 
 
 class TestVerifyStock:

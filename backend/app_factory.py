@@ -12,7 +12,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 try:
     from dotenv import load_dotenv
 
-    load_dotenv(Path(__file__).parent.parent / ".env")
+    # Keep runtime dotenv loading aligned with backend.config settings resolution.
+    load_dotenv(Path(__file__).parent / ".env")
 except ImportError:
     pass
 

@@ -48,6 +48,23 @@ All `unknown_items` mutations MUST go through:
 
 Borrowing another service's write authority is a governance violation.
 
+### ✅ Projection Temporal Consistency Invariant
+Projection correctness decisions MUST use source event time, never projection
+processing/write time.
+
+Allowed timestamp fields for correctness checks:
+* `source_updated_at`
+* `session_updated_at`
+* canonical event-time fields (`counted_at`, `verified_at`, `finalized_at`, etc.)
+
+Forbidden for correctness decisions:
+* projection write timestamps such as `updated_at`, `projection_updated_at`
+
+This applies to:
+* projection readiness/freshness gates
+* projection parity lag checks
+* snapshot cutover validation
+
 ### 🤖 AI Agent Directive
 If you are an AI assistant reading this:
 **STOP.**

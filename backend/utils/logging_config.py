@@ -12,6 +12,24 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
+SAFE_EXTRA_FIELDS = {
+    "endpoint",
+    "error_type",
+    "items_diff",
+    "legacy_result",
+    "latency_ms",
+    "params_hash",
+    "projection_result",
+    "result",
+    "request_id",
+    "status_code",
+    "shadow_id",
+    "status",
+    "summary_diffs",
+    "user_id",
+    "method",
+}
+
 
 class NonClosingStreamHandler(logging.StreamHandler):
     """Stream handler that avoids closing or replacing the underlying stream."""
@@ -82,6 +100,10 @@ class JSONFormatter(logging.Formatter):
         # Add extra fields
         if hasattr(record, "extra_data"):
             log_data["extra"] = record.extra_data
+        else:
+            for field_name in SAFE_EXTRA_FIELDS:
+                if hasattr(record, field_name):
+                    log_data[field_name] = getattr(record, field_name)
 
         return json.dumps(log_data, ensure_ascii=False)
 

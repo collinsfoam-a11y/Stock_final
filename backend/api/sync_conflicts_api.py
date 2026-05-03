@@ -31,7 +31,7 @@ class BatchConflictResolutionRequest(BaseModel):
 
 
 async def get_sync_service() -> SyncConflictsService:
-    if not auth_deps.db:
+    if auth_deps.db is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Database not initialized",

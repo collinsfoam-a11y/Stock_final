@@ -6,6 +6,7 @@ import pytest
 
 from backend.db.indexes import INDEXES
 from backend.db.migrations import MigrationManager
+from backend.config import settings
 from backend.services.advanced_report_service import (
     AdvancedReportService,
     ColumnConfig,
@@ -24,7 +25,11 @@ class _AggregateCursor:
 
 
 @pytest.mark.asyncio
-async def test_verified_items_report_uses_alias_aware_match_and_projection():
+async def test_verified_items_report_uses_alias_aware_match_and_projection(
+    monkeypatch,
+):
+    monkeypatch.setattr(settings, "V3_PROJECTION_DASHBOARD_READS", False)
+    monkeypatch.setattr(settings, "V3_PROJECTION_REPORT_READS", False)
     db = MagicMock()
     db.count_lines.count_documents = AsyncMock(side_effect=[3, 1])
     pipelines = []
@@ -142,6 +147,13 @@ def test_optimized_count_line_indexes_match_runtime_fields():
     assert idempotency_fields == [("idempotency_key", 1)]
     assert idempotency_options["unique"] is True
     assert idempotency_options["sparse"] is True
+
+    item_identity_fields, item_identity_options = count_line_indexes[
+        "idx_session_item_id_barcode_unique"
+    ]
+    assert item_identity_fields == [("session_id", 1), ("item_id", 1), ("barcode", 1)]
+    assert item_identity_options["unique"] is True
+    assert item_identity_options.get("sparse", False) is False
 
 
 @pytest.mark.asyncio

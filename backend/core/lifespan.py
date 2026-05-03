@@ -54,6 +54,7 @@ from backend.services.error_log import ErrorLogService
 from backend.services.lock_manager import get_lock_manager
 from backend.services.mdns_service import start_mdns, stop_mdns
 from backend.services.monitoring_service import MonitoringService
+from backend.services.projection_readiness_worker import ProjectionReadinessWorker
 from backend.services.pubsub_service import get_pubsub_service
 from backend.services.rate_limiter import ConcurrentRequestHandler, RateLimiter
 from backend.services.redis_service import close_redis, init_redis
@@ -100,6 +101,7 @@ if not logger.handlers:
 scheduled_export_service = None
 sync_conflicts_service = None
 shadow_deployment_monitor = None
+projection_readiness_worker = None
 
 # Setup logging
 logger = setup_logging(
@@ -612,6 +614,15 @@ async def lifespan(app: FastAPI):  # noqa: C901
             logger.warning(f"Shadow deployment monitor unavailable: {str(e)}")
             shadow_deployment_monitor = None
 
+    global projection_readiness_worker
+    try:
+        projection_readiness_worker = ProjectionReadinessWorker(db)
+        await projection_readiness_worker.start()
+        logger.info("OK: Projection readiness worker started")
+    except Exception as e:
+        logger.warning(f"Projection readiness worker unavailable: {str(e)}")
+        projection_readiness_worker = None
+
     # Initialize cache
     try:
         await cache_service.initialize()
@@ -829,6 +840,8 @@ async def lifespan(app: FastAPI):  # noqa: C901
         services_running.append("Database Health")
     if shadow_deployment_monitor:
         services_running.append("Shadow Deployment Monitor")
+    if projection_readiness_worker:
+        services_running.append("Projection Readiness Worker")
 
     if services_running:
         startup_checklist["services"] = True
@@ -890,6 +903,8 @@ async def lifespan(app: FastAPI):  # noqa: C901
     g.auto_sync_manager = auto_sync_manager
 
     g.shadow_deployment_monitor = shadow_deployment_monitor
+
+    g.projection_readiness_worker = projection_readiness_worker
 
     if g.ENTERPRISE_AVAILABLE:
         g.enterprise_audit_service = getattr(app.state, "enterprise_audit", None)
@@ -976,6 +991,16 @@ async def lifespan(app: FastAPI):  # noqa: C901
                 logger.error(f"Error stopping shadow deployment monitor: {str(e)}")
 
     shutdown_tasks.append(stop_shadow_deployment_monitor())
+
+    async def stop_projection_readiness_worker():
+        if projection_readiness_worker:
+            try:
+                await projection_readiness_worker.stop()
+                logger.info("✓ Projection readiness worker stopped")
+            except Exception as e:
+                logger.error(f"Error stopping projection readiness worker: {str(e)}")
+
+    shutdown_tasks.append(stop_projection_readiness_worker())
 
     # Stop auto-sync manager
     async def stop_auto_sync():

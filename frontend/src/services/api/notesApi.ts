@@ -1,4 +1,4 @@
-import apiClient from "../httpClient";
+import apiClient from "@/api/client";
 
 export interface Note {
   id: string;

@@ -22,38 +22,12 @@ import { RoleLayoutGuard } from "@/components/auth/RoleLayoutGuard";
 import { SupervisorSidebar } from "@/components/navigation";
 import { AnimatedPressable, GlassCard, ScreenContainer } from "@/components/ui";
 import { useSettingsStore } from "@/store/settingsStore";
-import { isSupervisorRouteEnabled } from "@/constants/roleFeatureFlags";
-
-const OFFLINE_BLOCKED_ROUTES = new Set([
-  "activity-logs",
-  "dashboard",
-  "sync-conflicts",
-  "user-workflows",
-]);
-
-const OFFLINE_ROUTE_LABELS: Record<string, string> = {
-  "activity-logs": "Activity Logs",
-  dashboard: "Dashboard",
-  session: "Session Details",
-  sessions: "Sessions",
-  "sync-conflicts": "Sync Differences",
-  "user-workflows": "User Workflows",
-};
-
-const OFFLINE_SAFE_LINKS = [
-  { icon: "cube-outline", label: "Items", route: "/supervisor/items" },
-  {
-    icon: "alert-circle-outline",
-    label: "Variances",
-    route: "/supervisor/variances",
-  },
-  {
-    icon: "cloud-offline-outline",
-    label: "Offline Queue",
-    route: "/supervisor/offline-queue",
-  },
-  { icon: "settings-outline", label: "Settings", route: "/supervisor/settings" },
-] as const;
+import {
+  isSupervisorRouteEnabled,
+  SUPERVISOR_OFFLINE_BLOCKED_ROUTES,
+  SUPERVISOR_OFFLINE_ROUTE_LABELS,
+  SUPERVISOR_OFFLINE_SAFE_LINKS,
+} from "@/navigation/routeRegistry";
 
 export default function SupervisorLayout() {
   const { width } = useWindowDimensions();
@@ -68,11 +42,12 @@ export default function SupervisorLayout() {
     currentRoute && !isSupervisorRouteEnabled(currentRoute),
   );
   const isOfflineBlockedRoute = Boolean(
-    offlineMode && currentRoute && OFFLINE_BLOCKED_ROUTES.has(currentRoute),
+    offlineMode &&
+      currentRoute &&
+      SUPERVISOR_OFFLINE_BLOCKED_ROUTES.has(currentRoute),
   );
   const blockedRouteTitle = useMemo(
-    () =>
-      OFFLINE_ROUTE_LABELS[currentRoute || ""] || "Supervisor View",
+    () => SUPERVISOR_OFFLINE_ROUTE_LABELS[currentRoute || ""] || "Supervisor View",
     [currentRoute],
   );
 
@@ -160,7 +135,7 @@ function SupervisorOfflineFallback({
         </GlassCard>
 
         <View style={styles.quickLinks}>
-          {OFFLINE_SAFE_LINKS.map((link) => (
+          {SUPERVISOR_OFFLINE_SAFE_LINKS.map((link) => (
             <AnimatedPressable
               key={link.route}
               style={styles.quickLinkButton}

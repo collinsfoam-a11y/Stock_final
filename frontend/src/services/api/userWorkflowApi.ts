@@ -1,4 +1,4 @@
-import api from "../httpClient";
+import api from "@/api/client";
 
 export type WorkflowStage =
   | "IDLE"

@@ -14,10 +14,6 @@ from pydantic import BaseModel
 from backend.auth.dependencies import get_current_user
 from backend.auth.permissions import Permission, require_permission
 from backend.services.governance_guard import GovernanceViolation
-from backend.services.notification_service import (
-    NotificationPriority,
-    NotificationType,
-)
 from backend.services.recount_service import RecountService, get_recount_service
 from backend.utils.api_utils import sanitize_for_logging
 
@@ -66,14 +62,6 @@ class RecountAssignRequest(BaseModel):
     notes: Optional[str] = None
 
 
-class RecountUpdateRequest(BaseModel):
-    """Request to update recount status"""
-
-    status: Optional[RecountStatus] = None
-    notes: Optional[str] = None
-    result_qty: Optional[float] = None
-
-
 class RecountResponse(BaseModel):
     """Recount response"""
 
@@ -106,7 +94,9 @@ async def create_recount_request(
         if not count_line:
             raise HTTPException(status_code=404, detail="Count line not found")
 
-        if count_line.get("status") not in ["rejected", "REJECTED"]:
+        line_status = str(count_line.get("status") or "").strip().lower()
+        approval_status = str(count_line.get("approval_status") or "").strip().upper()
+        if line_status != "rejected" and approval_status != "REJECTED":
             raise HTTPException(
                 status_code=400, detail="Can only create recount from rejected count line"
             )
@@ -302,79 +292,6 @@ async def assign_recount_request(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/{recount_id}/complete")
-async def complete_recount_request(
-    recount_id: str,
-    request: RecountUpdateRequest,
-    current_user: dict = Depends(get_current_user),
-    recount_service: RecountService = Depends(get_recount_service),
-):
-    """Complete a recount request with results."""
-    try:
-        recount = await recount_service.lifecycle.get_recount_request(recount_id)
-        if not recount:
-            raise HTTPException(status_code=404, detail="Recount request not found")
-
-        username = str(current_user.get("username") or "").strip()
-        role = str(current_user.get("role") or "").strip().lower()
-        is_privileged = role in {"supervisor", "admin"}
-        assigned_to = str(recount.get("assigned_to") or "").strip()
-        created_by = str(recount.get("created_by") or "").strip()
-        if not is_privileged:
-            if assigned_to and assigned_to != username:
-                raise HTTPException(
-                    status_code=403, detail="Only assigned staff can complete recount"
-                )
-            if not assigned_to and created_by and created_by != username:
-                raise HTTPException(
-                    status_code=403, detail="Not authorized to complete this recount"
-                )
-
-        now_dt = datetime.now(timezone.utc).replace(tzinfo=None)
-        update_data: dict[str, object] = {
-            "updated_at": now_dt,
-            "completed_at": now_dt,
-            "completed_by": username,
-        }
-        if request.notes:
-            update_data["completion_notes"] = request.notes
-
-        if request.result_qty is None:
-            await recount_service.lifecycle.transition_recount_request(
-                recount_id=recount_id,
-                target_status=RecountStatus.COMPLETED.value,
-                actor=username,
-                fields=update_data,
-            )
-        else:
-            update_data["result_qty"] = request.result_qty
-            await recount_service.complete_with_result(
-                recount_id=recount_id,
-                recount=recount,
-                result_qty=request.result_qty,
-                update_data=update_data,
-                username=username,
-            )
-
-        await recount_service.notifications.create_notification(
-            user_id=recount["created_by"],
-            notification_type=NotificationType.RECOUNT_COMPLETED,
-            title="Recount Completed",
-            message=f"Recount for '{recount['item_name']}' has been completed",
-            priority=NotificationPriority.MEDIUM,
-            action_url=f"/recount/{recount_id}",
-            metadata={"recount_id": recount_id, "result_qty": request.result_qty},
-        )
-
-        return {"success": True, "message": "Recount completed", "result_qty": request.result_qty}
-
-    except HTTPException:
-        raise
-    except GovernanceViolation as e:
-        raise HTTPException(status_code=409, detail=str(e)) from e
-    except RECOUNT_ERRORS as e:
-        logger.error("Error completing recount: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/{recount_id}/cancel")

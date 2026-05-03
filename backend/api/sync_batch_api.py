@@ -8,15 +8,20 @@ import logging
 import re
 import time
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Optional
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
-from pymongo.errors import PyMongoError
+from pymongo.errors import DuplicateKeyError, PyMongoError
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
+from backend.contracts.states import (
+    COUNT_LINE_STATES,
+    normalize_count_line_state,
+)
 from backend.middleware.security import batch_rate_limiter
 from backend.services.canonical_inventory import (
     can_reuse_rejected_count_line,
@@ -27,7 +32,11 @@ from backend.services.circuit_breaker import get_circuit_breaker
 from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.governance_guard import GovernanceViolation, raise_forbidden_direct_write
 from backend.services.lock_manager import LockManager, get_lock_manager
-from backend.services.metrics import record_sync_failures
+from backend.services.metrics import (
+    record_retry_count,
+    record_sync_failures,
+    record_sync_queue_size,
+)
 from backend.services.redis_service import get_redis
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.sync_batch_service import SyncBatchService, get_sync_batch_service
@@ -56,6 +65,8 @@ class SyncRecord(BaseModel):
     rack_id: str = Field(..., description="Rack ID")
     floor: Optional[str] = Field(None, description="Floor")
     item_code: str = Field(..., description="Item code")
+    item_id: Optional[str] = Field(None, description="Canonical item identifier")
+    barcode: Optional[str] = Field(None, description="Item barcode")
     verified_qty: float = Field(..., description="Verified quantity")
     damaged_qty: float = Field(0, description="Damage quantity")
     serial_numbers: list[str] = Field(default_factory=list, description="Serial numbers")
@@ -66,9 +77,14 @@ class SyncRecord(BaseModel):
     subcategory: Optional[str] = Field(None, description="Subcategory")
     item_condition: Optional[str] = Field(None, description="Item condition")
     evidence_photos: list[str] = Field(default_factory=list, description="Photo URLs")
-    status: str = Field("finalized", description="Record status (partial/finalized)")
+    event_id: Optional[str] = Field(
+        None, description="Stable offline event identifier (falls back to record_id)"
+    )
+    status: str = Field("SUBMITTED", description="Canonical count-line lifecycle state")
+    schema_version: str = Field("v1", description="Payload schema version")
     created_at: str = Field(..., description="Client creation timestamp")
     updated_at: str = Field(..., description="Client update timestamp")
+    retry_count: int = Field(0, ge=0, description="Client-side retry count")
 
 
 class BatchSyncRequest(BaseModel):
@@ -139,6 +155,15 @@ class BatchSyncResponse(BaseModel):
     )
 
 
+class BatchSyncAtomicError(RuntimeError):
+    """Raised when an atomic batch record write fails."""
+
+    def __init__(self, record: SyncRecord, message: str) -> None:
+        super().__init__(message)
+        self.record = record
+        self.message = message
+
+
 # Sync Logic
 
 
@@ -192,6 +217,78 @@ def _idempotency_replay_conflict(
         )
 
     return None
+
+
+def _record_payload_for_logging(record: SyncRecord) -> dict[str, Any]:
+    payload = record.model_dump()
+    # keep logs bounded and scrub long evidence payloads
+    payload["evidence_photos"] = [str(value)[:128] for value in payload.get("evidence_photos", [])]
+    payload["serial_numbers"] = [str(value)[:128] for value in payload.get("serial_numbers", [])]
+    return payload
+
+
+def _log_sync_failure(
+    *,
+    request_id: str,
+    user_id: str,
+    record: SyncRecord,
+    status_code: int,
+    error: str,
+    session_state: Optional[str] = None,
+) -> None:
+    logger.warning(
+        "sync_record_failed",
+        extra={
+            "request_id": request_id,
+            "user": sanitize_for_logging(str(user_id)),
+            "endpoint": "/api/sync/batch",
+            "status": "failed",
+            "status_code": status_code,
+            "error": sanitize_for_logging(str(error)),
+            "payload": _record_payload_for_logging(record),
+            "idempotency_key": record.record_id,
+            "event_id": str(record.event_id or record.record_id),
+            "session_state": session_state or "UNKNOWN",
+            "retry_count": max(int(record.retry_count or 0), 0),
+        },
+    )
+
+
+def _emit_sync_failure_alert(
+    *,
+    failed_count: int,
+    total_count: int,
+    request_id: str,
+    user_id: str,
+    reason: str,
+) -> None:
+    if total_count <= 0:
+        return
+    failure_rate = float(failed_count) / float(total_count)
+    if failure_rate <= 0.02:
+        return
+    logger.error(
+        "sync_failure_rate_threshold_exceeded",
+        extra={
+            "request_id": request_id,
+            "user": sanitize_for_logging(str(user_id)),
+            "endpoint": "/api/sync/batch",
+            "sync_failure_rate": round(failure_rate, 4),
+            "failed_count": failed_count,
+            "total_count": total_count,
+            "threshold": 0.02,
+            "reason": reason,
+        },
+    )
+
+
+@asynccontextmanager
+async def _reuse_or_open_transaction(database: Any, db_session: Optional[Any]):
+    if db_session is not None:
+        yield db_session
+        return
+    async with mongo_transaction(database.client) as tx:
+        yield tx
 
 
 async def validate_record(
@@ -304,6 +401,8 @@ async def sync_single_record(
     user_role: Optional[str] = None,
     write_service: Optional[CountLineWriteService] = None,
     lifecycle_service: Optional[SessionLifecycleService] = None,
+    db_session: Optional[Any] = None,
+    session_cache: Optional[dict[str, dict[str, Any]]] = None,
 ) -> tuple[bool, Optional[str]]:
     """
     Sync a single record to database
@@ -315,11 +414,6 @@ async def sync_single_record(
     try:
         database = sync_batch_service.database
         lifecycle_service = lifecycle_service or SessionLifecycleService(database)
-        session = await lifecycle_service.ensure_session_active(record.session_id)
-        if str(user_role or "").strip().lower() not in {"supervisor", "admin"}:
-            owner = str(session.get("staff_user") or "").strip()
-            if owner and owner != user_id:
-                return False, "Not authorized to sync records for this session"
 
         floor_id = (record.floor_id or record.floor or "").strip()
         rack_id = (record.rack_id or "").strip()
@@ -330,16 +424,29 @@ async def sync_single_record(
                 "CRITICAL: location_id, floor_id, and rack_id are required for sync writes",
             )
 
-        status_normalized = (record.status or "").strip().lower()
-        is_finalized = status_normalized == "finalized"
+        status_normalized = normalize_count_line_state(record.status)
+        if status_normalized not in COUNT_LINE_STATES:
+            return False, f"Unsupported count-line status: {record.status}"
+        is_finalized = status_normalized in {"APPROVED", "LOCKED"}
+        mapped_status = {
+            "DRAFT": "draft",
+            "SUBMITTED": "pending",
+            "PENDING_APPROVAL": "pending",
+            "APPROVED": "locked",
+            "REJECTED": "rejected",
+            "LOCKED": "locked",
+        }[status_normalized]
         counted_at = datetime.fromisoformat(record.created_at.replace("Z", "+00:00")).replace(
             tzinfo=None
         )
         updated_at = datetime.fromisoformat(record.updated_at.replace("Z", "+00:00")).replace(
             tzinfo=None
         )
+        event_id = str(record.event_id or record.record_id).strip()
         doc = {
             "id": str(uuid.uuid4()),
+            "event_id": event_id,
+            "schema_version": str(record.schema_version or "v1"),
             "record_id": record.record_id,
             "client_record_id": record.client_record_id,
             "idempotency_key": record.record_id,
@@ -350,6 +457,8 @@ async def sync_single_record(
             "floor_no": floor_id,
             "rack_no": rack_id,
             "item_code": record.item_code,
+            "item_id": str(record.item_id or record.item_code),
+            "barcode": record.barcode,
             "counted_qty": record.verified_qty,
             "damaged_qty": record.damaged_qty,
             "serial_numbers": record.serial_numbers,
@@ -360,7 +469,7 @@ async def sync_single_record(
             "subcategory": record.subcategory,
             "item_condition": record.item_condition,
             "evidence_photos": record.evidence_photos,
-            "status": "locked" if is_finalized else "pending",
+            "status": mapped_status,
             "approval_status": "APPROVED" if is_finalized else "PENDING",
             "verified": is_finalized,
             "verified_by": user_id if is_finalized else None,
@@ -377,43 +486,72 @@ async def sync_single_record(
             "recount_of_id": None,
         }
 
-        if await _count_line_is_idempotent(sync_batch_service, record.session_id, doc):
-            return True, None
-
         write_service = write_service or CountLineWriteService(database)
-        existing_duplicate = await find_duplicate_count_line(database, doc)
-        if existing_duplicate:
-            await _handle_duplicate_count_line(
-                sync_batch_service=sync_batch_service,
+        cache = session_cache if isinstance(session_cache, dict) else {}
+
+        async with _reuse_or_open_transaction(database, db_session) as tx:
+            session = cache.get(record.session_id)
+            if session is None:
+                session = await lifecycle_service.ensure_session_accepts_count_writes(
+                    record.session_id,
+                    actor=user_id,
+                    db_session=tx,
+                )
+                cache[record.session_id] = session
+
+            if str(user_role or "").strip().lower() not in {"supervisor", "admin"}:
+                owner = str(session.get("staff_user") or "").strip()
+                if owner and owner != user_id:
+                    return False, "Not authorized to sync records for this session"
+
+            existing_duplicate = await find_duplicate_count_line(database, doc)
+            write_context = {"session": session, "username": user_id, "db_session": tx}
+            try:
+                if existing_duplicate:
+                    await _handle_duplicate_count_line(
+                        sync_batch_service=sync_batch_service,
+                        session_id=record.session_id,
+                        line_data=doc,
+                        existing_duplicate=existing_duplicate,
+                        write_service=write_service,
+                        session=session,
+                        username=user_id,
+                        db_session=tx,
+                    )
+                else:
+                    await write_service.process_write(
+                        {"operation": "insert_one", "document": doc},
+                        context=write_context,
+                    )
+            except DuplicateKeyError:
+                # Treat duplicate record_id/idempotency key writes as safe replay success.
+                return True, None
+
+            if record.serial_numbers:
+                serial_docs = [
+                    {
+                        "serial_number": serial,
+                        "item_code": record.item_code,
+                        "session_id": record.session_id,
+                        "rack_id": record.rack_id,
+                        "client_record_id": record.client_record_id,
+                        "event_id": event_id,
+                        "created_at": time.time(),
+                        "schema_version": str(record.schema_version or "v1"),
+                    }
+                    for serial in record.serial_numbers
+                ]
+                await sync_batch_service.insert_item_serials_ignore_duplicates_with_session(
+                    serial_docs,
+                    db_session=tx,
+                )
+
+            await sync_batch_service.record_idempotency_operation(
+                operation_id=record.record_id,
+                client_record_id=record.client_record_id,
                 session_id=record.session_id,
-                line_data=doc,
-                existing_duplicate=existing_duplicate,
-                write_service=write_service,
-                session=session,
-                username=user_id,
+                db_session=tx,
             )
-        else:
-            await write_service.process_write(
-                {"operation": "insert_one", "document": doc},
-                context={"session": session, "username": user_id},
-            )
-
-        # Insert serial numbers
-        if record.serial_numbers:
-            serial_docs = [
-                {
-                    "serial_number": serial,
-                    "item_code": record.item_code,
-                    "session_id": record.session_id,
-                    "rack_id": record.rack_id,
-                    "client_record_id": record.client_record_id,
-                    "created_at": time.time(),
-                }
-                for serial in record.serial_numbers
-            ]
-
-            # Insert with ignore duplicates
-            await sync_batch_service.insert_item_serials_ignore_duplicates(serial_docs)
 
         return True, None
 
@@ -487,6 +625,12 @@ async def sync_batch(
             status_code=400,
             detail="No records provided for batch sync",
         )
+    try:
+        for record in request.records:
+            await record_retry_count(record.retry_count)
+        await record_sync_queue_size(len(request.records))
+    except (RuntimeError, TypeError, ValueError):
+        logger.debug("Failed to publish sync queue/retry metrics", exc_info=True)
 
     # Get lock manager
     lock_manager = get_lock_manager(redis_service)
@@ -506,7 +650,7 @@ async def sync_batch(
 
     # Initialize Sync Service
     database = sync_batch_service.database
-    sync_service = SyncConflictsService(database) if database else None
+    sync_service = SyncConflictsService(database) if database is not None else None
 
     # Check circuit breaker
     if not await circuit_breaker.acquire():
@@ -515,63 +659,133 @@ async def sync_batch(
             detail="Sync service temporarily unavailable. Please try again later.",
         )
 
-    ok_records = []
-    conflicts = []
-    errors = []
+    ok_records: list[str] = []
+    conflicts: list[SyncConflict] = []
+    records_to_sync: list[SyncRecord] = []
 
     try:
         write_service = CountLineWriteService(database)
         lifecycle_service = SessionLifecycleService(database)
-        # Validate all records first
+        session_cache: dict[str, dict[str, Any]] = {}
+
+        # Phase 1: validate entire batch before mutating to enforce full-success-or-retry.
         for record in request.records:
-            # Check idempotency first using stable record_id as operation_id
             existing_op = await sync_batch_service.get_idempotency_operation(record.record_id)
             if existing_op:
                 replay_conflict = _idempotency_replay_conflict(record, existing_op)
                 if replay_conflict:
                     conflicts.append(replay_conflict)
+                    _log_sync_failure(
+                        request_id=request_id,
+                        user_id=str(user_id),
+                        record=record,
+                        status_code=409,
+                        error=replay_conflict.message,
+                    )
                     continue
                 ok_records.append(record.client_record_id)
                 continue
 
             conflict = await validate_record(
-                record, sync_batch_service, lock_manager, sync_service, user_id
+                record, sync_batch_service, lock_manager, sync_service, str(user_id)
             )
             if conflict:
                 conflicts.append(conflict)
-            else:
-                # Sync valid record
-                success, error_msg = await sync_single_record(
-                    record,
-                    sync_batch_service,
-                    user_id,
-                    user_role=str(current_user.get("role") or ""),
-                    write_service=write_service,
-                    lifecycle_service=lifecycle_service,
+                _log_sync_failure(
+                    request_id=request_id,
+                    user_id=str(user_id),
+                    record=record,
+                    status_code=409,
+                    error=conflict.message,
                 )
+                continue
 
-                if success:
-                    # Record idempotency
-                    await sync_batch_service.record_idempotency_operation(
-                        operation_id=record.record_id,
-                        client_record_id=record.client_record_id,
-                        session_id=record.session_id,
+            records_to_sync.append(record)
+
+        if conflicts:
+            await circuit_breaker.record_failure()
+            try:
+                await record_sync_failures(len(conflicts))
+            except (RuntimeError, TypeError, ValueError):
+                logger.debug("Failed to publish sync failure metric", exc_info=True)
+            try:
+                await record_sync_queue_size(0)
+            except (RuntimeError, TypeError, ValueError):
+                logger.debug("Failed to publish sync queue size metric", exc_info=True)
+            _emit_sync_failure_alert(
+                failed_count=len(conflicts),
+                total_count=len(request.records),
+                request_id=request_id,
+                user_id=str(user_id),
+                reason="validation_conflict",
+            )
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "SYNC_BATCH_VALIDATION_FAILED",
+                    "message": "Batch validation failed; no records were committed.",
+                    "conflicts": [conflict.model_dump() for conflict in conflicts],
+                    "retry_after_seconds": 2,
+                },
+            )
+
+        # Phase 2: apply count-line writes atomically in one transaction.
+        if records_to_sync:
+            async with mongo_transaction(database.client) as tx:
+                for record in records_to_sync:
+                    success, error_msg = await sync_single_record(
+                        record,
+                        sync_batch_service,
+                        str(user_id),
+                        user_role=str(current_user.get("role") or ""),
+                        write_service=write_service,
+                        lifecycle_service=lifecycle_service,
+                        db_session=tx,
+                        session_cache=session_cache,
                     )
+                    if not success:
+                        raise BatchSyncAtomicError(record, error_msg or "Unknown sync error")
                     ok_records.append(record.client_record_id)
-                else:
-                    errors.append(
-                        SyncError(
-                            client_record_id=record.client_record_id,
-                            error_type="sync_error",
-                            message=error_msg or "Unknown error",
-                        )
-                    )
 
-        # Record success in circuit breaker
         await circuit_breaker.record_success()
 
+    except BatchSyncAtomicError as exc:
+        await circuit_breaker.record_failure()
+        cached_session = session_cache.get(exc.record.session_id) if "session_cache" in locals() else {}
+        _log_sync_failure(
+            request_id=request_id,
+            user_id=str(user_id),
+            record=exc.record,
+            status_code=409,
+            error=exc.message,
+            session_state=str((cached_session or {}).get("status") or "UNKNOWN"),
+        )
+        try:
+            await record_sync_failures(max(len(records_to_sync), 1))
+        except (RuntimeError, TypeError, ValueError):
+            logger.debug("Failed to publish sync failure metric", exc_info=True)
+        try:
+            await record_sync_queue_size(0)
+        except (RuntimeError, TypeError, ValueError):
+            logger.debug("Failed to publish sync queue size metric", exc_info=True)
+        _emit_sync_failure_alert(
+            failed_count=max(len(records_to_sync), 1),
+            total_count=len(request.records),
+            request_id=request_id,
+            user_id=str(user_id),
+            reason="atomic_batch_failure",
+        )
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "SYNC_BATCH_RETRY_REQUIRED",
+                "message": "Atomic batch sync failed; no records were committed.",
+                "failed_record_id": exc.record.client_record_id,
+                "error": exc.message,
+                "retry_after_seconds": 2,
+            },
+        )
     except (GovernanceViolation, PyMongoError, RuntimeError, TypeError, ValueError) as e:
-        # Record failure in circuit breaker
         await circuit_breaker.record_failure()
         logger.error(
             "sync_batch_failed",
@@ -583,11 +797,35 @@ async def sync_batch(
                 "error": sanitize_for_logging(str(e)),
             },
         )
-        raise HTTPException(status_code=500, detail=f"Batch sync failed: {str(e)}")
+        try:
+            await record_sync_failures(len(request.records))
+        except (RuntimeError, TypeError, ValueError):
+            logger.debug("Failed to publish sync failure metric", exc_info=True)
+        try:
+            await record_sync_queue_size(0)
+        except (RuntimeError, TypeError, ValueError):
+            logger.debug("Failed to publish sync queue size metric", exc_info=True)
+        _emit_sync_failure_alert(
+            failed_count=len(request.records),
+            total_count=len(request.records),
+            request_id=request_id,
+            user_id=str(user_id),
+            reason="internal_error",
+        )
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "SYNC_BATCH_INTERNAL_ERROR",
+                "message": "Batch sync failed unexpectedly.",
+            },
+        )
+
+    try:
+        await record_sync_queue_size(0)
+    except (RuntimeError, TypeError, ValueError):
+        logger.debug("Failed to publish sync queue size metric", exc_info=True)
 
     processing_time = (time.time() - start_time) * 1000
-
-    failed_count = len(conflicts) + len(errors)
     logger.info(
         "sync_batch_completed",
         extra={
@@ -596,41 +834,25 @@ async def sync_batch(
             "endpoint": "/api/sync/batch",
             "status": "completed",
             "ok_count": len(ok_records),
-            "conflict_count": len(conflicts),
-            "error_count": len(errors),
+            "conflict_count": 0,
+            "error_count": 0,
             "processing_time_ms": round(processing_time, 2),
         },
     )
 
-    try:
-        await record_sync_failures(failed_count)
-    except (RuntimeError, TypeError, ValueError):
-        logger.debug("Failed to publish sync failure metric", exc_info=True)
-
-    # Build per-record results for clients that expect flat success flags
     results = [SyncResult(id=record_id, success=True, message=None) for record_id in ok_records]
-
-    results.extend(
-        SyncResult(id=conflict.client_record_id, success=False, message=conflict.message)
-        for conflict in conflicts
-    )
-
-    results.extend(
-        SyncResult(id=error.client_record_id, success=False, message=error.message)
-        for error in errors
-    )
 
     return BatchSyncResponse(
         ok=ok_records,
-        conflicts=conflicts,
-        errors=errors,
+        conflicts=[],
+        errors=[],
         batch_id=request.batch_id,
         processing_time_ms=processing_time,
         total_records=len(request.records),
         results=results,
         processed_count=len(request.records),
         success_count=len(ok_records),
-        failed_count=len(request.records) - len(ok_records),
+        failed_count=0,
     )
 
 
@@ -856,10 +1078,16 @@ def _require_count_line_session_id(line_data: dict[str, Any]) -> str:
 
 
 async def _assert_session_accepts_offline_count(
-    sync_batch_service: SyncBatchService, session_id: str
+    sync_batch_service: SyncBatchService,
+    session_id: str,
+    *,
+    actor: str = "system",
 ) -> dict[str, Any]:
     lifecycle_service = SessionLifecycleService(sync_batch_service.database)
-    session = await lifecycle_service.ensure_session_active(session_id)
+    session = await lifecycle_service.ensure_session_accepts_count_writes(
+        session_id,
+        actor=actor,
+    )
     return session
 
 
@@ -1063,6 +1291,7 @@ async def _handle_duplicate_count_line(
     write_service: CountLineWriteService,
     session: dict[str, Any],
     username: str,
+    db_session: Optional[Any] = None,
 ) -> str:
     if not can_reuse_rejected_count_line(existing_duplicate, line_data):
         raise ValueError(
@@ -1094,7 +1323,23 @@ async def _handle_duplicate_count_line(
     new_line_data["previous_version_id"] = previous_line_id
     new_line_data["recount_of_id"] = root_recount_id
 
-    async with mongo_transaction(sync_batch_service.client) as tx:
+    if db_session is not None:
+        tx_context = db_session
+    else:
+        tx_context = None
+
+    tx_manager = mongo_transaction(sync_batch_service.client)
+    if tx_context is not None:
+        class _NoopTx:
+            async def __aenter__(self):
+                return tx_context
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+        tx_manager = _NoopTx()
+
+    async with tx_manager as tx:
         await write_service.process_write(
             {"operation": "insert_one", "document": new_line_data},
             context={
@@ -1140,7 +1385,11 @@ async def _process_count_line_op(
     sync_batch_service = _as_sync_batch_service(sync_batch_service)
     _remap_line_session_id(line_data, id_mapping)
     session_id = _require_count_line_session_id(line_data)
-    session = await _assert_session_accepts_offline_count(sync_batch_service, session_id)
+    session = await _assert_session_accepts_offline_count(
+        sync_batch_service,
+        session_id,
+        actor=str(current_user.get("username") or "system"),
+    )
     _enforce_required_count_line_context(line_data)
     _set_count_line_defaults(line_data, current_user)
     if await _count_line_is_idempotent(sync_batch_service, session_id, line_data):

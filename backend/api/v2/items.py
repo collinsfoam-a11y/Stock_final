@@ -258,7 +258,7 @@ async def search_items_semantic(
         )
 
 
-@router.get("/{item_id}", response_model=ApiResponse[ItemResponse])
+@router.get("/id/{item_id}", response_model=ApiResponse[ItemResponse])
 async def get_item_v2(
     item_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),

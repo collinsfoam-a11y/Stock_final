@@ -852,8 +852,11 @@ async def get_sql_server_config(current_user: dict = Depends(require_admin)):
             "port": settings.SQL_SERVER_PORT,
             "database": settings.SQL_SERVER_DATABASE,
             "user": settings.SQL_SERVER_USER,
+            "username": settings.SQL_SERVER_USER,
             "auth": "sql" if settings.SQL_SERVER_USER else "windows",
         }
+    elif "user" in safe_config and "username" not in safe_config:
+        safe_config["username"] = safe_config.get("user")
 
     return {"success": True, "data": safe_config}
 
@@ -867,7 +870,7 @@ async def update_sql_server_config(
         host = config.get("host")
         port = config.get("port", 1433)
         database = config.get("database")
-        user = config.get("user")
+        user = config.get("user") or config.get("username")
         password = config.get("password")
 
         if not host or not database:
@@ -880,7 +883,10 @@ async def update_sql_server_config(
         return {
             "success": True,
             "message": "SQL Server configuration updated and connected successfully",
-            "data": {k: v for k, v in sql_connector.config.items() if k != "password"},
+            "data": {
+                **{k: v for k, v in sql_connector.config.items() if k != "password"},
+                "username": sql_connector.config.get("user"),
+            },
         }
 
     except (RuntimeError, TypeError, ValueError, OSError) as e:
@@ -901,7 +907,7 @@ async def test_sql_server_connection(
             host = config.get("host")
             port = config.get("port", 1433)
             database = config.get("database")
-            user = config.get("user")
+            user = config.get("user") or config.get("username")
             password = config.get("password")
 
             if not host or not database:

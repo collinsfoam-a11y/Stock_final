@@ -48,7 +48,7 @@ async def test_create_session_endpoint(async_client, authenticated_headers, test
     assert data["warehouse"] == "Test Warehouse"
     assert data["staff_user"] == test_user["username"]
     assert "id" in data
-    assert data["status"] == "OPEN"
+    assert data["status"] == "CREATED"
 
 
 @pytest.mark.asyncio

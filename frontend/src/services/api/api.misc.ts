@@ -1,4 +1,4 @@
-import api from "../httpClient";
+import api from "@/api/client";
 import type { SyncBatchResult, SyncRecord } from "../../types/sync";
 
 const unwrapApiPayload = <T>(payload: T | { data?: T } | null | undefined): T | null => {

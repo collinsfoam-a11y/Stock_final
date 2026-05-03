@@ -3,12 +3,14 @@ import {
   getAuthenticatedSession,
   seedAuthState,
 } from "./helpers/auth";
+import { installStabilityMocks } from "./helpers/stabilityMocks";
 
 test.describe("Supervisor smoke flow", () => {
   test("dashboard and navigation render for supervisor", async ({
     page,
     request,
   }) => {
+    await installStabilityMocks(page);
     const session = await getAuthenticatedSession(request, "supervisor");
 
     await seedAuthState(page, {
@@ -20,38 +22,35 @@ test.describe("Supervisor smoke flow", () => {
     await page.goto("/");
 
     await expect(page).toHaveURL(/\/supervisor\/dashboard(?:\?.*)?$/);
-    await expect(page.getByText("Supervisor Dashboard")).toBeVisible({
+    await expect(
+      page.getByTestId("supervisor-dashboard-action-create-session"),
+    ).toBeVisible({
       timeout: 30000,
     });
-    await expect(page.getByText("Supervisor overview")).toBeVisible();
     await expect(
-      page.getByText("Keep sessions moving and catch issues early."),
+      page.getByTestId("supervisor-dashboard-action-view-sessions"),
     ).toBeVisible();
-    await expect(page.getByText("Create session")).toBeVisible();
-    await expect(page.getByText("Review variances")).toBeVisible();
-    await expect(page.getByText("Recent Sessions")).toBeVisible();
-    await expect(page.getByText("Recent Activity", { exact: true })).toBeVisible();
+    await expect(
+      page.getByTestId("supervisor-dashboard-action-resolve-differences"),
+    ).toBeVisible();
 
-    const totalSessionsCard = page.getByText("Total Sessions", {
-      exact: true,
-    });
-    await expect(totalSessionsCard).toBeVisible();
-    await totalSessionsCard.click();
+    await page.getByTestId("supervisor-dashboard-action-view-sessions").click();
 
     await expect(page).toHaveURL(/\/supervisor\/sessions(?:\?.*)?$/);
     await expect(page.getByText("All Sessions")).toBeVisible();
 
     await page.goBack();
     await expect(page).toHaveURL(/\/supervisor\/dashboard(?:\?.*)?$/);
-    await expect(page.getByText("Create New Session")).not.toBeVisible();
-    await page.getByText("Create session", { exact: true }).click();
-    await expect(page.getByText("Create New Session")).toBeVisible();
+    await expect(page.getByTestId("supervisor-create-session-title")).not.toBeVisible();
+    await page.getByTestId("supervisor-dashboard-action-create-session").click();
+    await expect(page.getByTestId("supervisor-create-session-title")).toBeVisible();
   });
 
   test("legacy bulk ops route redirects to variances", async ({
     page,
     request,
   }) => {
+    await installStabilityMocks(page);
     const session = await getAuthenticatedSession(request, "supervisor");
 
     await seedAuthState(page, {
@@ -71,6 +70,6 @@ test.describe("Supervisor smoke flow", () => {
     await expect(page).toHaveURL(/\/supervisor\/variances(?:\?.*)?$/, {
       timeout: 30000,
     });
-    await expect(page.getByText(/variance/i).first()).toBeVisible();
+    await expect(page.getByTestId("supervisor-variances-screen")).toBeVisible();
   });
 });

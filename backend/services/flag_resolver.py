@@ -84,7 +84,7 @@ async def resolve_phase0_flags(
     Request-scoped overrides are ignored for mutating calls by contract.
     """
 
-    database = db or get_db()
+    database = db if db is not None else get_db()
     flags = await _load_phase0_flags(database)
 
     resolved_values: dict[str, bool] = {}
@@ -120,7 +120,7 @@ async def resolve_phase0_flags(
 
 async def is_global_disable_active(*, request_context: Any, db: Any = None) -> bool:
     """Return whether the global kill switch is active."""
-    database = db or get_db()
+    database = db if db is not None else get_db()
     flag = await _load_flag(database, BL_V2_GLOBAL_DISABLE)
     if not flag:
         return False

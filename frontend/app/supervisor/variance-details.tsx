@@ -16,7 +16,7 @@ import * as Haptics from "expo-haptics";
 import { createShadow } from "../../src/theme/shadowUtils";
 
 import { ItemVerificationAPI } from "../../src/domains/inventory/services/itemVerificationApi";
-import { getAssignableStaffUsers } from "../../src/services/api/api";
+import { getAssignableStaffUsers, getCountLines } from "../../src/services/api/api";
 import { ScreenContainer, GlassCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import RecountAssignmentModal, {
@@ -26,7 +26,7 @@ import { theme } from "../../src/styles/modernDesignSystem";
 import { useToast } from "../../src/components/feedback/ToastProvider";
 
 export default function VarianceDetailsScreen() {
-  const { itemCode } = useLocalSearchParams();
+  const { itemCode, sessionId, countLineId } = useLocalSearchParams();
   const router = useRouter();
   const { show } = useToast();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
@@ -37,6 +37,56 @@ export default function VarianceDetailsScreen() {
   const [assignableStaff, setAssignableStaff] = useState<AssignableStaffUser[]>([]);
   const [staffLoading, setStaffLoading] = useState(false);
 
+  const resolvedItemCode = typeof itemCode === "string" ? itemCode : undefined;
+  const resolvedSessionId = typeof sessionId === "string" ? sessionId : undefined;
+  const resolvedCountLineId = typeof countLineId === "string" ? countLineId : undefined;
+
+  const normalizeCountLine = useCallback((line: any) => {
+    if (!line || typeof line !== "object") return null;
+    const normalizedCountLineId = line.count_line_id || line.id || line._id;
+    return {
+      ...line,
+      count_line_id: normalizedCountLineId,
+      session_id: line.session_id || resolvedSessionId,
+    };
+  }, [resolvedSessionId]);
+
+  const findSessionScopedLine = useCallback(async () => {
+    if (!resolvedSessionId) return null;
+
+    let page = 1;
+    const pageSize = 100;
+    const maxPages = 200;
+
+    while (page <= maxPages) {
+      const response = await getCountLines(resolvedSessionId, page, pageSize);
+      const items = Array.isArray(response?.items) ? response.items : [];
+
+      const matchedLine = items.find((line: any) => {
+        const lineId = String(line?.id || line?._id || line?.count_line_id || "");
+        const lineItemCode = String(line?.item_code || "");
+
+        if (resolvedCountLineId && lineId === resolvedCountLineId) {
+          return true;
+        }
+        return !!resolvedItemCode && lineItemCode === resolvedItemCode;
+      });
+
+      if (matchedLine) {
+        return normalizeCountLine(matchedLine);
+      }
+
+      const pagination = response?.pagination || {};
+      const hasNext =
+        Boolean(pagination.has_next) ||
+        (typeof pagination.total_pages === "number" && page < pagination.total_pages);
+      if (!hasNext) break;
+      page += 1;
+    }
+
+    return null;
+  }, [normalizeCountLine, resolvedCountLineId, resolvedItemCode, resolvedSessionId]);
+
   const loadDetails = useCallback(async () => {
     try {
       setLoading(true);
@@ -45,13 +95,30 @@ export default function VarianceDetailsScreen() {
         return;
       }
 
+      const scopedLine = await findSessionScopedLine();
+      if (scopedLine) {
+        setItemDetails(scopedLine);
+        return;
+      }
+
       const response = await ItemVerificationAPI.getVariances({
-        search: itemCode as string,
-        limit: 1,
+        search: resolvedItemCode,
+        limit: 200,
       });
 
-      if (response.variances && response.variances.length > 0) {
-        setItemDetails(response.variances[0]);
+      const variances = Array.isArray(response.variances) ? response.variances : [];
+      const matchedVariance = variances.find((variance) => {
+        const varianceCountLineId = String(variance.count_line_id || "");
+        if (resolvedCountLineId && varianceCountLineId === resolvedCountLineId) {
+          return true;
+        }
+        const sameItem = resolvedItemCode ? variance.item_code === resolvedItemCode : true;
+        const sameSession = resolvedSessionId ? variance.session_id === resolvedSessionId : true;
+        return sameItem && sameSession;
+      });
+
+      if (matchedVariance) {
+        setItemDetails(matchedVariance);
       } else {
         if (Platform.OS !== "web")
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -64,7 +131,15 @@ export default function VarianceDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [itemCode, offlineMode, router, show]);
+  }, [
+    findSessionScopedLine,
+    offlineMode,
+    resolvedCountLineId,
+    resolvedItemCode,
+    resolvedSessionId,
+    router,
+    show,
+  ]);
 
   useEffect(() => {
     loadDetails();

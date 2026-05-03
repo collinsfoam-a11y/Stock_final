@@ -1,6 +1,11 @@
 import { useCallback, useMemo } from "react";
 import { useAuthStore } from "../store/authStore";
 import { Permission, Role } from "../constants/permissions";
+import {
+  hasPermissionInPolicy,
+  normalizeRole,
+  resolveEffectivePermissions,
+} from "../core/permissions/permissionPolicy";
 
 const EMPTY_PERMISSIONS: string[] = [];
 
@@ -10,8 +15,15 @@ const EMPTY_PERMISSIONS: string[] = [];
  */
 export const usePermission = () => {
   const user = useAuthStore((state) => state.user);
-  const permissions = user?.permissions ?? EMPTY_PERMISSIONS;
-  const role = user?.role ?? "";
+  const role = normalizeRole(user?.role);
+  const permissions = useMemo(
+    () =>
+      resolveEffectivePermissions({
+        role,
+        explicitPermissions: user?.permissions ?? EMPTY_PERMISSIONS,
+      }),
+    [role, user?.permissions],
+  );
 
   /**
    * Check if user has a specific permission
@@ -20,9 +32,15 @@ export const usePermission = () => {
    */
   const hasPermission = useCallback(
     (permission: Permission | string): boolean => {
-      return permissions.includes(permission as string);
+      return hasPermissionInPolicy(
+        {
+          role,
+          explicitPermissions: permissions,
+        },
+        permission,
+      );
     },
-    [permissions],
+    [permissions, role],
   );
 
   /**
@@ -32,11 +50,9 @@ export const usePermission = () => {
    */
   const hasAnyPermission = useCallback(
     (requiredPermissions: (Permission | string)[]): boolean => {
-      return requiredPermissions.some((permission) =>
-        permissions.includes(permission as string),
-      );
+      return requiredPermissions.some((permission) => hasPermission(permission));
     },
-    [permissions],
+    [hasPermission],
   );
 
   /**
@@ -46,11 +62,9 @@ export const usePermission = () => {
    */
   const hasAllPermissions = useCallback(
     (requiredPermissions: (Permission | string)[]): boolean => {
-      return requiredPermissions.every((permission) =>
-        permissions.includes(permission as string),
-      );
+      return requiredPermissions.every((permission) => hasPermission(permission));
     },
-    [permissions],
+    [hasPermission],
   );
 
   /**
@@ -79,6 +93,7 @@ export const usePermission = () => {
 
   return useMemo(
     () => ({
+      user,
       permissions,
       role,
       hasPermission,
@@ -89,6 +104,7 @@ export const usePermission = () => {
       isAdmin: role === Role.ADMIN,
     }),
     [
+      user,
       permissions,
       role,
       hasPermission,

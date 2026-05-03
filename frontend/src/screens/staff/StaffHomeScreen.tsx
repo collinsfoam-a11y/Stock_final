@@ -28,7 +28,13 @@ import { useAuthStore } from "@/store/authStore";
 import { useNotificationStore } from "@/store/notificationStore";
 import { useScanSessionStore } from "@/store/scanSessionStore";
 import { useSessionsQuery } from "@/hooks/useSessionsQuery";
-import { createSession, getZones, getWarehouses } from "@/services/api/api";
+import {
+  createSession,
+  getZones,
+  getWarehouses,
+  updateSessionStatus,
+} from "@/domains/sessions/services";
+import { normalizeSessionState } from "@/contracts/states";
 import { SESSION_PAGE_SIZE } from "@/constants/config";
 import { toastService } from "@/services/toastService";
 
@@ -220,10 +226,8 @@ const StaffHome = React.memo(function StaffHome() {
     return sessions
       .filter((s: any) => s && typeof s === "object")
       .filter((s: any) => {
-        const status = String(s.status || "OPEN")
-          .trim()
-          .toUpperCase();
-        return status === "OPEN" || status === "ACTIVE";
+        const status = normalizeSessionState(s.status);
+        return status === "CREATED" || status === "ACTIVE";
       })
       .sort((a: any, b: any) => {
         const aDate = getSessionDate(a)?.getTime() ?? 0;
@@ -257,10 +261,8 @@ const StaffHome = React.memo(function StaffHome() {
 
   const finishedSessions = useMemo(() => {
     return sessions.filter((s: any) => {
-      const status = String(s.status || "")
-        .trim()
-        .toUpperCase();
-      return status === "CLOSED" || status === "COMPLETED" || status === "RECONCILE";
+      const status = normalizeSessionState(s.status);
+      return status === "REVIEW" || status === "FINALIZED";
     });
   }, [sessions]);
 
@@ -351,7 +353,9 @@ const StaffHome = React.memo(function StaffHome() {
           { text: "Cancel", style: "cancel" },
           {
             text: "Resume",
-            onPress: () => handleResumeSession(existingSession),
+            onPress: () => {
+              void handleResumeSession(existingSession);
+            },
           },
         ]
       );
@@ -372,13 +376,21 @@ const StaffHome = React.memo(function StaffHome() {
         throw new Error("Session created without an ID");
       }
 
+      if (!String(sessionId).startsWith("offline_")) {
+        await updateSessionStatus(sessionId, "ACTIVE");
+      }
+
       // Optimistic update
       queryClient.setQueryData(["sessions", 1, SESSION_PAGE_SIZE], (old: any) => {
         const existing = Array.isArray(old?.items) ? old.items : [];
+        const normalizedSession = {
+          ...session,
+          status: String(session?.status || "").toUpperCase() === "CREATED" ? "ACTIVE" : session?.status,
+        };
         const filtered = existing.filter(
           (item: any) => (item?.id || item?._id || item?.session_id) !== sessionId
         );
-        return { ...old, items: [session, ...filtered] };
+        return { ...old, items: [normalizedSession, ...filtered] };
       });
 
       // Reset and navigate
@@ -403,7 +415,7 @@ const StaffHome = React.memo(function StaffHome() {
     }
   };
 
-  const handleResumeSession = (session: any) => {
+  const handleResumeSession = async (session: any) => {
     Haptics.selectionAsync();
 
     const sessionId = session?.id || session?._id || session?.session_id;
@@ -422,6 +434,17 @@ const StaffHome = React.memo(function StaffHome() {
       } else {
         setFloor(session.warehouse);
         setRack("");
+      }
+    }
+
+    const normalizedStatus = String(session?.status || "")
+      .trim()
+      .toUpperCase();
+    if (!String(sessionId).startsWith("offline_") && normalizedStatus !== "ACTIVE") {
+      try {
+        await updateSessionStatus(sessionId, "ACTIVE");
+      } catch {
+        // Resume should remain usable even if status sync fails transiently.
       }
     }
 
@@ -449,13 +472,13 @@ const StaffHome = React.memo(function StaffHome() {
 
   const renderSessionCard = (
     session: any,
-    onPress: (session: any) => void = handleResumeSession
+    onPress: (session: any) => void | Promise<void> = handleResumeSession
   ) => (
     <ModernCard
       key={session.id || session._id}
       style={styles.sessionCard}
       padding={spacing.md}
-      onPress={() => onPress(session)}
+      onPress={() => void onPress(session)}
     >
       <View style={styles.sessionHeader}>
         <View style={styles.sessionIcon}>
@@ -503,6 +526,7 @@ const StaffHome = React.memo(function StaffHome() {
       return (
         <Animated.View entering={prefersReducedMotion ? undefined : FadeInDown.duration(500)}>
           <ModernButton
+            testID="staff-home-start-session-btn"
             title="Start New Session"
             icon="add-circle-outline"
             onPress={() => setShowCreateModal(true)}
@@ -685,6 +709,7 @@ const StaffHome = React.memo(function StaffHome() {
               {zones.map((zone) => (
                 <TouchableOpacity
                   key={zone.id}
+                  testID={`staff-home-location-${zone.id}`}
                   style={[styles.chip, locationType === zone.zone_name && styles.chipActive]}
                   onPress={() => setLocationType(zone.zone_name)}
                   accessibilityRole="radio"
@@ -716,6 +741,7 @@ const StaffHome = React.memo(function StaffHome() {
                   {warehouses.map((wh) => (
                     <TouchableOpacity
                       key={wh.id}
+                      testID={`staff-home-floor-${wh.id}`}
                       style={[
                         styles.chip,
                         selectedFloor === wh.warehouse_name && styles.chipActive,
@@ -744,6 +770,7 @@ const StaffHome = React.memo(function StaffHome() {
             {selectedFloor && (
               <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(250)}>
                 <ModernInput
+                  testID="staff-home-rack-input"
                   label="Rack / Shelf Number"
                   placeholder="e.g. A-123"
                   value={rackName}
@@ -763,6 +790,7 @@ const StaffHome = React.memo(function StaffHome() {
 
           <View style={styles.modalFooter}>
             <ModernButton
+              testID="staff-home-confirm-start-session-btn"
               title="Start Session"
               onPress={handleStartSession}
               loading={isCreating}

@@ -94,6 +94,21 @@ describe("API Service - Network Detection", () => {
 
     expect(isOnline()).toBe(false);
   });
+
+  it("should treat web browser online signal as resolved ONLINE when reachability is unknown", () => {
+    Object.defineProperty(window.navigator, "onLine", {
+      value: true,
+      configurable: true,
+    });
+
+    (useNetworkStore.getState as jest.Mock).mockReturnValue({
+      isOnline: true,
+      isInternetReachable: null,
+      connectionType: "unknown",
+    });
+
+    expect(isOnline()).toBe(true);
+  });
 });
 
 describe("API Service - getSessionStats", () => {

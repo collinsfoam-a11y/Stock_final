@@ -2,7 +2,7 @@
  * Version Check Service
  * Provides app version checking and upgrade notification functionality
  */
-import api from "./httpClient";
+import api from "@/api/client";
 import { createLogger } from "./logging";
 
 const FALLBACK_CURRENT_VERSION = "2.1.0";

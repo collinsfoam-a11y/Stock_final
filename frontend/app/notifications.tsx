@@ -116,6 +116,7 @@ export default function NotificationsScreen() {
 
     return (
       <TouchableOpacity
+        testID={`notification-item-${item.type.toLowerCase()}-${item._id}`}
         onPress={() => handleNotificationPress(item)}
         activeOpacity={0.7}
       >
@@ -168,7 +169,7 @@ export default function NotificationsScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <View testID="notifications-screen" style={styles.container}>
       <ModernHeader
         title="Notifications"
         showBackButton

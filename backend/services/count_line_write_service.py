@@ -268,6 +268,51 @@ class CountLineWriteService:
     def _extract_db_session(context: dict[str, Any]) -> Optional[Any]:
         return context.get("db_session") or context.get("mongo_session")
 
+    @staticmethod
+    def _normalize_identity_value(value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
+
+    def _normalize_identity_fields_for_write(self, payload: dict[str, Any]) -> None:
+        operation = str(payload.get("operation") or "").strip().lower()
+
+        def _normalize_target(target: dict[str, Any]) -> None:
+            item_code = self._normalize_identity_value(target.get("item_code"))
+            item_id = self._normalize_identity_value(target.get("item_id"))
+            barcode = self._normalize_identity_value(target.get("barcode"))
+            if item_code:
+                target["item_code"] = item_code
+            if item_id:
+                target["item_id"] = item_id
+            elif item_code:
+                target["item_id"] = item_code
+            if barcode:
+                target["barcode"] = barcode
+
+        if operation == "insert_one":
+            document = payload.get("document")
+            if isinstance(document, dict):
+                _normalize_target(document)
+            return
+
+        if operation != "update_one":
+            return
+
+        update_doc = payload.get("update")
+        if not isinstance(update_doc, dict):
+            return
+
+        # Replacement updates.
+        if not any(str(key).startswith("$") for key in update_doc):
+            _normalize_target(update_doc)
+            return
+
+        set_doc = update_doc.get("$set")
+        if isinstance(set_doc, dict):
+            _normalize_target(set_doc)
+
     async def _load_session_for_write(
         self,
         session_id: str,
@@ -539,6 +584,7 @@ class CountLineWriteService:
         ctx = dict(context)
         ctx["db_session"] = db_session
 
+        self._normalize_identity_fields_for_write(payload)
         await self._assert_snapshot_integrity_for_write(payload, ctx)
         await self._assert_mandatory_write_invariants(payload, ctx)
         self._apply_state_transition_for_write(payload, ctx)
@@ -637,13 +683,15 @@ class CountLineWriteService:
         legacy_draft_filter: dict[str, Any],
         draft_payload: dict[str, Any],
         created_at: datetime,
+        db_session: Optional[Any] = None,
     ) -> str:
+        kwargs = {"session": db_session} if db_session is not None else {}
         existing_draft = await self._resolve_awaitable(
-            self.db.count_line_drafts.find_one(draft_filter)
+            self.db.count_line_drafts.find_one(draft_filter, **kwargs)
         )
         if not existing_draft:
             existing_draft = await self._resolve_awaitable(
-                self.db.count_line_drafts.find_one(legacy_draft_filter)
+                self.db.count_line_drafts.find_one(legacy_draft_filter, **kwargs)
             )
 
         if existing_draft:
@@ -651,6 +699,7 @@ class CountLineWriteService:
                 self.db.count_line_drafts.update_one(
                     {"_id": existing_draft["_id"]},
                     {"$set": draft_payload},
+                    **kwargs,
                 )
             )
             return str(existing_draft["_id"])
@@ -658,16 +707,16 @@ class CountLineWriteService:
         draft_payload["created_at"] = created_at
         try:
             result = await self._resolve_awaitable(
-                self.db.count_line_drafts.insert_one(draft_payload)
+                self.db.count_line_drafts.insert_one(draft_payload, **kwargs)
             )
             return str(result.inserted_id)
         except DuplicateKeyError:
             conflicting_draft = await self._resolve_awaitable(
-                self.db.count_line_drafts.find_one(draft_filter)
+                self.db.count_line_drafts.find_one(draft_filter, **kwargs)
             )
             if not conflicting_draft:
                 conflicting_draft = await self._resolve_awaitable(
-                    self.db.count_line_drafts.find_one(legacy_draft_filter)
+                    self.db.count_line_drafts.find_one(legacy_draft_filter, **kwargs)
                 )
             if not conflicting_draft:
                 raise HTTPException(status_code=409, detail="Draft conflict detected")
@@ -676,6 +725,7 @@ class CountLineWriteService:
                 self.db.count_line_drafts.update_one(
                     {"_id": conflicting_draft["_id"]},
                     {"$set": draft_payload},
+                    **kwargs,
                 )
             )
             return str(conflicting_draft["_id"])

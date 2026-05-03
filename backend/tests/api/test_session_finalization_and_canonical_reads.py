@@ -235,7 +235,7 @@ async def test_finalize_session_rejects_unresolved_lines(async_client, test_db):
 
 
 @pytest.mark.asyncio
-async def test_legacy_complete_route_allows_staff_owner_close(async_client, test_db):
+async def test_legacy_complete_route_is_not_available(async_client, test_db):
     session_id = "sess-legacy-complete"
     now = datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -268,9 +268,7 @@ async def test_legacy_complete_route_allows_staff_owner_close(async_client, test
         f"/api/sessions/{session_id}/complete",
         headers=_make_auth_headers("staff1", "staff"),
     )
-    assert response.status_code == 410
-    body = response.json()
-    assert "disabled" in body["detail"].lower()
+    assert response.status_code == 405
 
 
 @pytest.mark.asyncio

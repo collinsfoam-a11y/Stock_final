@@ -93,9 +93,12 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
     setLoadingRacks(true);
     try {
       const data = await getRackProgress(sessionId);
-      if (Array.isArray(data)) {
-        setRackProgress(data);
-      }
+      const normalizedProgress = Array.isArray(data)
+        ? data
+        : Array.isArray((data as { data?: unknown[] })?.data)
+          ? (data as { data: unknown[] }).data
+          : [];
+      setRackProgress(normalizedProgress as any[]);
     } catch (error) {
       console.error("Failed to load rack progress", error);
     } finally {

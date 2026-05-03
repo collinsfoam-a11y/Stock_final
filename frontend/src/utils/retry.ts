@@ -14,9 +14,15 @@ interface RetryOptions {
 export const PROJECTION_NOT_READY_BLOCKING_MESSAGE =
   "System syncing latest data. Please retry shortly.";
 
+const PROJECTION_RETRYABLE_CODES = new Set([
+  "PROJECTION_NOT_READY",
+  "PROJECTION_INCONSISTENT",
+]);
+
 const isProjectionNotReady = (error: unknown): boolean => {
   const err = error as { response?: { data?: { detail?: { code?: string } } } };
-  return err.response?.data?.detail?.code === "PROJECTION_NOT_READY";
+  const code = err.response?.data?.detail?.code;
+  return typeof code === "string" && PROJECTION_RETRYABLE_CODES.has(code);
 };
 
 export const retryWithBackoff = async <T>(

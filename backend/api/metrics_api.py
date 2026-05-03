@@ -6,6 +6,7 @@ Prometheus-compatible metrics endpoint
 from fastapi import APIRouter, Depends, Response
 
 from backend.services.metrics_query_service import MetricsQueryService, get_metrics_query_service
+from backend.services.observability import metrics as runtime_metrics
 
 metrics_router = APIRouter(prefix="/metrics", tags=["metrics"])
 
@@ -25,14 +26,16 @@ async def get_prometheus_metrics():
     Get metrics in Prometheus text format
     This endpoint can be scraped by Prometheus for monitoring
     """
+    monitoring_text = ""
     if _monitoring_service is None:
-        # No monitoring service available
-        return Response(
-            content="# No monitoring service available\n",
-            media_type="text/plain; version=0.0.4",
-        )
-
-    metrics_text = await _monitoring_service.get_prometheus_metrics()
+        monitoring_text = "# No monitoring service available\n"
+    else:
+        monitoring_text = await _monitoring_service.get_prometheus_metrics()
+    runtime_text = runtime_metrics.to_prometheus()
+    if runtime_text:
+        metrics_text = f"{monitoring_text.rstrip()}\n{runtime_text}\n"
+    else:
+        metrics_text = monitoring_text
 
     return Response(content=metrics_text, media_type="text/plain; version=0.0.4")
 
@@ -40,18 +43,16 @@ async def get_prometheus_metrics():
 @metrics_router.get("/json")
 async def get_metrics_json():
     """Get metrics in JSON format for dashboards"""
-    if _monitoring_service is None:
-        return {
-            "success": False,
-            "error": {
-                "message": "Monitoring service not available",
-                "code": "SERVICE_UNAVAILABLE",
-            },
-        }
+    monitoring_metrics = None
+    if _monitoring_service is not None:
+        monitoring_metrics = await _monitoring_service.get_metrics()
+    runtime_metrics_json = await runtime_metrics.get_metrics()
 
-    metrics = await _monitoring_service.get_metrics()
+    payload = {"runtime": runtime_metrics_json}
+    if monitoring_metrics is not None:
+        payload["monitoring"] = monitoring_metrics
 
-    return {"success": True, "data": metrics}
+    return {"success": True, "data": payload}
 
 
 @metrics_router.get("/health")

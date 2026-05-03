@@ -292,8 +292,10 @@ def _sample_sort_key(session: dict[str, Any]) -> datetime:
 
 def _projection_sample_sort_key(row: dict[str, Any]) -> datetime:
     for field_name in (
+        "source_updated_at",
+        "session_updated_at",
         "last_counted_at",
-        "updated_at",
+        "counted_at",
         "started_at",
         "last_heartbeat",
     ):
@@ -301,6 +303,38 @@ def _projection_sample_sort_key(row: dict[str, Any]) -> datetime:
         if candidate is not None:
             return candidate
     return datetime.min
+
+
+def _projection_event_timestamp(
+    row: dict[str, Any],
+    *,
+    session_level: bool,
+) -> Optional[datetime]:
+    if session_level:
+        return _normalize_datetime(
+            _first_present(
+                row,
+                "source_updated_at",
+                "session_updated_at",
+                "last_activity",
+                "started_at",
+                "created_at",
+                "finalized_at",
+                "completed_at",
+                "closed_at",
+            )
+        )
+    return _normalize_datetime(
+        _first_present(
+            row,
+            "source_updated_at",
+            "session_updated_at",
+            "counted_at",
+            "verified_at",
+            "finalized_at",
+            "created_at",
+        )
+    )
 
 
 def _limit_cursor(cursor: Any, max_records: Optional[int]) -> Any:
@@ -416,7 +450,7 @@ async def _scan_session_projection(
         "pending_items": 0,
         "damage_items": 0,
         "total_variance": 0.0,
-        "latest_updated_at": None,
+        "latest_event_at": None,
     }
 
     cursor = _limit_cursor(db[collection_name].find({}), max_records)
@@ -436,12 +470,10 @@ async def _scan_session_projection(
             _first_present(row, "total_variance", "variance_total")
         )
 
-        updated_at = _normalize_datetime(
-            _first_present(row, "updated_at", "last_updated_at", "projection_updated_at")
-        )
-        latest = aggregate["latest_updated_at"]
-        if updated_at is not None and (latest is None or updated_at > latest):
-            aggregate["latest_updated_at"] = updated_at
+        event_at = _projection_event_timestamp(row, session_level=True)
+        latest = aggregate["latest_event_at"]
+        if event_at is not None and (latest is None or event_at > latest):
+            aggregate["latest_event_at"] = event_at
 
     return rows_by_session, aggregate
 
@@ -458,7 +490,7 @@ async def _scan_item_projection(
         "verified_count": 0,
         "total_variance": 0.0,
         "financial_total": 0.0,
-        "latest_updated_at": None,
+        "latest_event_at": None,
     }
     sample_rows: dict[str, list[dict[str, Any]]] = {
         session_id: [] for session_id in sample_session_ids
@@ -474,12 +506,10 @@ async def _scan_item_projection(
             _first_present(row, "financial_impact", "variance_value", "financial_total")
         )
 
-        updated_at = _normalize_datetime(
-            _first_present(row, "updated_at", "last_updated_at", "projection_updated_at")
-        )
-        latest = aggregate["latest_updated_at"]
-        if updated_at is not None and (latest is None or updated_at > latest):
-            aggregate["latest_updated_at"] = updated_at
+        event_at = _projection_event_timestamp(row, session_level=False)
+        latest = aggregate["latest_event_at"]
+        if event_at is not None and (latest is None or event_at > latest):
+            aggregate["latest_event_at"] = event_at
 
         session_id = _normalize_text(row.get("session_id"))
         if session_id in sample_rows:
@@ -498,7 +528,7 @@ async def _scan_verified_projection(
     aggregate = {
         "row_count": 0,
         "verified_count": 0,
-        "latest_updated_at": None,
+        "latest_event_at": None,
     }
     sample_rows: dict[str, list[dict[str, Any]]] = {
         session_id: [] for session_id in sample_session_ids
@@ -513,12 +543,10 @@ async def _scan_verified_projection(
         if _projection_item_is_verified(row):
             aggregate["verified_count"] += 1
 
-        updated_at = _normalize_datetime(
-            _first_present(row, "updated_at", "last_updated_at", "projection_updated_at")
-        )
-        latest = aggregate["latest_updated_at"]
-        if updated_at is not None and (latest is None or updated_at > latest):
-            aggregate["latest_updated_at"] = updated_at
+        event_at = _projection_event_timestamp(row, session_level=False)
+        latest = aggregate["latest_event_at"]
+        if event_at is not None and (latest is None or event_at > latest):
+            aggregate["latest_event_at"] = event_at
 
         session_id = _normalize_text(row.get("session_id"))
         if session_id in sample_rows:
@@ -536,7 +564,7 @@ async def _scan_variance_projection(
     aggregate = {
         "row_count": 0,
         "total_variance": 0.0,
-        "latest_updated_at": None,
+        "latest_event_at": None,
     }
 
     cursor = _limit_cursor(db[collection_name].find({}), max_records)
@@ -547,12 +575,10 @@ async def _scan_variance_projection(
         aggregate["row_count"] += 1
         aggregate["total_variance"] += _to_float(_first_present(row, "variance", "total_variance"))
 
-        updated_at = _normalize_datetime(
-            _first_present(row, "updated_at", "last_updated_at", "projection_updated_at")
-        )
-        latest = aggregate["latest_updated_at"]
-        if updated_at is not None and (latest is None or updated_at > latest):
-            aggregate["latest_updated_at"] = updated_at
+        event_at = _projection_event_timestamp(row, session_level=False)
+        latest = aggregate["latest_event_at"]
+        if event_at is not None and (latest is None or event_at > latest):
+            aggregate["latest_event_at"] = event_at
 
     return aggregate
 
@@ -586,7 +612,7 @@ async def _scan_financial_projection(
     aggregate = {
         "row_count": 0,
         "financial_total": 0.0,
-        "latest_updated_at": None,
+        "latest_event_at": None,
     }
 
     cursor = _limit_cursor(db[collection_name].find({}), max_records)
@@ -594,12 +620,10 @@ async def _scan_financial_projection(
         aggregate["row_count"] += 1
         aggregate["financial_total"] += _financial_projection_value(row)
 
-        updated_at = _normalize_datetime(
-            _first_present(row, "updated_at", "last_updated_at", "projection_updated_at")
-        )
-        latest = aggregate["latest_updated_at"]
-        if updated_at is not None and (latest is None or updated_at > latest):
-            aggregate["latest_updated_at"] = updated_at
+        event_at = _projection_event_timestamp(row, session_level=False)
+        latest = aggregate["latest_event_at"]
+        if event_at is not None and (latest is None or event_at > latest):
+            aggregate["latest_event_at"] = event_at
 
     return aggregate
 
@@ -783,7 +807,7 @@ async def validate_projection_parity(
         "pending_items": 0,
         "damage_items": 0,
         "total_variance": 0.0,
-        "latest_updated_at": None,
+        "latest_event_at": None,
     }
 
     if await _collection_exists(db, config.session_projection_collection):
@@ -812,7 +836,7 @@ async def validate_projection_parity(
     verified_projection_aggregate = {
         "row_count": 0,
         "verified_count": 0,
-        "latest_updated_at": None,
+        "latest_event_at": None,
     }
     verified_projection_samples: dict[str, list[dict[str, Any]]] = {
         session_id: [] for session_id in sample_session_set
@@ -820,12 +844,12 @@ async def validate_projection_parity(
     variance_projection_aggregate = {
         "row_count": 0,
         "total_variance": 0.0,
-        "latest_updated_at": None,
+        "latest_event_at": None,
     }
     financial_projection_aggregate = {
         "row_count": 0,
         "financial_total": 0.0,
-        "latest_updated_at": None,
+        "latest_event_at": None,
     }
     batch_projection_samples: dict[str, dict[str, list[dict[str, Any]]]] = {
         session_id: {} for session_id in sample_session_set
@@ -1138,20 +1162,20 @@ async def validate_projection_parity(
         max(
             timestamp
             for timestamp in (
-                session_projection_aggregate["latest_updated_at"],
-                verified_projection_aggregate["latest_updated_at"],
-                variance_projection_aggregate["latest_updated_at"],
-                financial_projection_aggregate["latest_updated_at"],
+                session_projection_aggregate["latest_event_at"],
+                verified_projection_aggregate["latest_event_at"],
+                variance_projection_aggregate["latest_event_at"],
+                financial_projection_aggregate["latest_event_at"],
             )
             if timestamp is not None
         )
         if any(
             timestamp is not None
             for timestamp in (
-                session_projection_aggregate["latest_updated_at"],
-                verified_projection_aggregate["latest_updated_at"],
-                variance_projection_aggregate["latest_updated_at"],
-                financial_projection_aggregate["latest_updated_at"],
+                session_projection_aggregate["latest_event_at"],
+                verified_projection_aggregate["latest_event_at"],
+                variance_projection_aggregate["latest_event_at"],
+                financial_projection_aggregate["latest_event_at"],
             )
         )
         else None
@@ -1159,7 +1183,7 @@ async def validate_projection_parity(
 
     report["details"]["event_lag"] = {
         "latest_event_timestamp": latest_event,
-        "latest_projection_timestamp": latest_projection,
+        "latest_projection_event_timestamp": latest_projection,
     }
 
     if latest_event is None or latest_projection is None:

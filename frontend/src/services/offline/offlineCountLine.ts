@@ -82,6 +82,11 @@ export async function createOfflineCountLine(
   countData: CreateCountLinePayload,
   deviceContext?: Partial<DeviceContext>
 ): Promise<OfflineCountLine> {
+  const validation = validateCountLineData(countData);
+  if (!validation.valid) {
+    throw new Error(`Invalid offline count-line payload: ${validation.errors.join(", ")}`);
+  }
+
   const context = { ...globalDeviceContext, ...deviceContext };
   const user = useAuthStore.getState().user;
 
@@ -118,6 +123,8 @@ export async function createOfflineCountLine(
   const offlineCountLine: OfflineCountLine = {
     _id: offlineId,
     idempotency_key: offlineId,
+    event_id: offlineId,
+    schema_version: "v1",
     session_id: countData.session_id,
     item_code: countData.item_code,
     item_name: itemName,
@@ -127,6 +134,7 @@ export async function createOfflineCountLine(
     counted_by: user?.username || "offline_user",
     counted_at: new Date().toISOString(),
     cached_at: new Date().toISOString(),
+    status: "SUBMITTED",
     // Optional fields
     rack_no: countData.rack_no || undefined,
     rack: countData.rack_no || undefined,
@@ -138,6 +146,9 @@ export async function createOfflineCountLine(
   // Merge all request payload data into the offline record
   // This ensures we don't lose any new fields added to CreateCountLinePayload
   const finalCountLine = { ...countData, ...offlineCountLine };
+  finalCountLine.floor_id = countData.floor_id || countData.floor_no || null;
+  finalCountLine.rack_id = countData.rack_id || countData.rack_no || null;
+  finalCountLine.location_id = countData.location_id || countData.mark_location || null;
 
   // Cache and queue
   try {
@@ -188,6 +199,15 @@ export function validateCountLineData(countData: CreateCountLinePayload): {
   }
   if (typeof countData.counted_qty !== "number" || countData.counted_qty < 0) {
     errors.push("counted_qty must be a non-negative number");
+  }
+  if (!countData.location_id && !countData.mark_location) {
+    errors.push("location_id is required for offline sync");
+  }
+  if (!countData.floor_id && !countData.floor_no) {
+    errors.push("floor_id or floor_no is required for offline sync");
+  }
+  if (!countData.rack_id && !countData.rack_no) {
+    errors.push("rack_id or rack_no is required for offline sync");
   }
 
   return {

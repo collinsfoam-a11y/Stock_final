@@ -1,5 +1,5 @@
 import { useAuthStore } from "../../store/authStore";
-import api from "../httpClient";
+import api from "@/api/client";
 import {
   addToOfflineQueue,
   cacheSession,
@@ -11,6 +11,12 @@ import {
   type DataSource,
 } from "../offline/offlineStorage";
 import { getNetworkStatus } from "../../utils/network";
+import {
+  canAttemptLiveApi,
+  getConnectivityState,
+  getWritePolicyDecision,
+} from "../../core/connectivityState";
+import { recordWritePolicyDecision } from "../../core/writePolicyMetrics";
 import { createLogger } from "../logging";
 import { generateUUID } from "../../utils/uuid";
 import type { Session } from "../../types";
@@ -61,6 +67,8 @@ type SessionPage = {
 };
 
 const CLIENT_SESSION_ID_STORAGE_KEY = "client_session_id";
+const CONNECTIVITY_UNKNOWN_ERROR_MESSAGE =
+  "Connectivity is still being determined. Please retry once the connection is confirmed.";
 let memoryClientSessionId: string | null = null;
 
 const getSessionIdentityStorage = () => {
@@ -131,6 +139,12 @@ const ensureSessionCreateIdentity = (config: SessionCreateConfig): SessionCreate
   };
 };
 
+const ensureOfflineSessionId = (value?: string): string => {
+  const normalized = String(value || "").trim();
+  if (!normalized) return `offline_${generateUUID()}`;
+  return normalized.startsWith("offline_") ? normalized : `offline_${normalized}`;
+};
+
 const buildOfflineSession = ({
   warehouse,
   sessionType,
@@ -140,7 +154,7 @@ const buildOfflineSession = ({
   clientSessionId,
   offlineId,
 }: SessionCreateConfig) => {
-  const generatedId = clientSessionId || offlineId || generateUUID();
+  const generatedId = ensureOfflineSessionId(clientSessionId || offlineId);
   return {
     id: generatedId,
     client_session_id: generatedId,
@@ -149,7 +163,7 @@ const buildOfflineSession = ({
     location_type: locationType,
     location_name: locationName,
     rack_no: rackNo,
-    status: "OPEN",
+    status: "CREATED",
     type: sessionType || "STANDARD",
     staff_user: "offline_user",
     staff_name: "Offline User",
@@ -218,15 +232,35 @@ const normalizeSessionsResponse = (
     : Array.isArray(responseData)
       ? (responseData as Session[])
       : [];
+  const hasNext = Boolean(
+    responseData?.pagination?.has_next ?? responseData?.has_next ?? false
+  );
+  const hasPrev = Boolean(
+    responseData?.pagination?.has_prev ??
+      responseData?.pagination?.has_previous ??
+      responseData?.has_prev ??
+      responseData?.has_previous ??
+      false
+  );
+  const responsePage = Number(responseData?.pagination?.page ?? responseData?.page ?? page);
+  const responsePageSize = Number(
+    responseData?.pagination?.page_size ?? responseData?.page_size ?? pageSize
+  );
+  const responseTotal = Number(responseData?.pagination?.total ?? responseData?.total ?? sessions.length);
+  const responseTotalPages = Number(
+    responseData?.pagination?.total_pages ??
+      responseData?.total_pages ??
+      (responsePageSize > 0 ? Math.ceil(responseTotal / responsePageSize) : 1)
+  );
   return {
     items: sessions,
-    pagination: responseData?.pagination || {
-      page,
-      page_size: pageSize,
-      total: sessions.length,
-      total_pages: 1,
-      has_next: false,
-      has_prev: false,
+    pagination: {
+      page: Number.isFinite(responsePage) ? responsePage : page,
+      page_size: Number.isFinite(responsePageSize) ? responsePageSize : pageSize,
+      total: Number.isFinite(responseTotal) ? responseTotal : sessions.length,
+      total_pages: Number.isFinite(responseTotalPages) ? responseTotalPages : 1,
+      has_next: hasNext,
+      has_prev: hasPrev,
     },
   };
 };
@@ -256,9 +290,11 @@ const mergeSessionsWithVisibleCache = async (sessions: Session[]): Promise<Sessi
  */
 export const isOnline = () => {
   const { status, isOnline: rawOnline, isInternetReachable, connectionType } = getNetworkStatus();
+  const connectivityState = getConnectivityState();
 
   log.debug("Network Status Check", {
     status,
+    connectivityState,
     isOnline: rawOnline,
     isInternetReachable,
     connectionType,
@@ -273,10 +309,7 @@ export const isOnline = () => {
  * Returns whether reads should attempt the API before falling back to cache.
  */
 export const shouldAttemptReadApi = () => {
-  const networkStatus = getNetworkStatus() as ReturnType<typeof getNetworkStatus> & {
-    shouldAttemptApi?: boolean;
-  };
-  return networkStatus.shouldAttemptApi ?? networkStatus.status !== "OFFLINE";
+  return canAttemptLiveApi();
 };
 
 /**
@@ -285,30 +318,43 @@ export const shouldAttemptReadApi = () => {
 export const createSession = async (params: string | CreateSessionParams) => {
   const config = ensureSessionCreateIdentity(normalizeCreateSessionParams(params));
   const networkStatus = getNetworkStatus();
+  const connectivityState = getConnectivityState();
+  const writePolicy = getWritePolicyDecision();
 
   log.debug("Create session requested", {
     warehouse: config.warehouse,
     type: config.sessionType,
     networkStatus: networkStatus.status,
+    connectivityState,
+    writePolicy,
   });
+  void recordWritePolicyDecision(writePolicy);
+
+  if (writePolicy === "BLOCK") {
+    log.warn("Create session blocked because connectivity is UNKNOWN", {
+      warehouse: config.warehouse,
+    });
+    throw new Error(CONNECTIVITY_UNKNOWN_ERROR_MESSAGE);
+  }
+
+  if (writePolicy === "ENQUEUE") {
+    log.info("Creating queued offline session", {
+      warehouse: config.warehouse,
+      type: config.sessionType,
+      connectivityState,
+    });
+    const offlineSession = await persistOfflineSession(buildOfflineSession(config));
+    log.debug("Created queued offline session", {
+      id: offlineSession.id,
+      source: offlineSession._source,
+    });
+    return offlineSession;
+  }
+
+  const pendingSession = buildOfflineSession(config);
+  await cacheSession({ ...pendingSession, status: "PENDING_SYNC" });
 
   try {
-    if (!isOnline()) {
-      log.info("Creating offline session", {
-        warehouse: config.warehouse,
-        type: config.sessionType,
-      });
-      const offlineSession = await persistOfflineSession(buildOfflineSession(config));
-      log.debug("Created offline session", {
-        id: offlineSession.id,
-        source: offlineSession._source,
-      });
-      return offlineSession;
-    }
-
-    const pendingSession = buildOfflineSession(config);
-    await cacheSession({ ...pendingSession, status: "PENDING_SYNC" });
-
     const response = await api.post("/api/sessions", buildSessionCreatePayload(config), {
       timeout: 3000,
       skipOfflineQueue: true,
@@ -328,22 +374,21 @@ export const createSession = async (params: string | CreateSessionParams) => {
       response?: { status?: number; data?: { detail?: string } };
     };
 
+    if (pendingSession.id) {
+      await removeSessionFromCache(pendingSession.id);
+    }
+
     if (axiosError?.response?.status === 400) {
       const errorMessage = axiosError.response.data?.detail || "Session creation failed";
       log.warn("Session creation rejected by server", { error: errorMessage });
       throw new Error(errorMessage);
     }
 
-    log.warn("Error creating session, switching to offline mode", {
+    log.warn("Error creating session via API", {
       error: error instanceof Error ? error.message : String(error),
+      connectivityState,
     });
-
-    const offlineSession = await persistOfflineSession(buildOfflineSession(config));
-    log.debug("Created offline session after API error", {
-      id: offlineSession.id,
-      source: offlineSession._source,
-    });
-    return offlineSession;
+    throw error;
   }
 };
 

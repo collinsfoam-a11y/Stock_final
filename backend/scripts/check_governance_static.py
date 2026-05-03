@@ -55,6 +55,16 @@ UI_LAYER_GLOBS = [
     "frontend/src/domains/**/*.ts",
     "frontend/src/domains/**/*.tsx",
 ]
+TEMPORAL_CONSISTENCY_GUARDS: dict[str, re.Pattern[str]] = {
+    # Projection freshness and snapshot cutover must not rely on processing-time fields.
+    "backend/services/projection_read_service.py": re.compile(
+        r"\b(PROJECTION_SESSION_TIMESTAMP_FIELDS|PROJECTION_ITEM_TIMESTAMP_FIELDS)\b"
+    ),
+    # Projection parity lag checks must not use projection write timestamps.
+    "backend/scripts/validate_projection_parity.py": re.compile(
+        r"(projection_updated_at|_first_present\(\s*row\s*,\s*\"updated_at\")"
+    ),
+}
 
 
 def _scan(path: Path, predicate) -> list[str]:
@@ -89,6 +99,10 @@ def main() -> int:
 
     for path_glob in UI_LAYER_GLOBS:
         fail_if_match(failures, path_glob, UI_SHADOW_PROP_RE)
+
+    for rel_path, pattern in TEMPORAL_CONSISTENCY_GUARDS.items():
+        path = ROOT / rel_path
+        failures.extend(_scan(path, lambda line: bool(pattern.search(line))))
 
     if failures:
         print("Governance static check failed:")

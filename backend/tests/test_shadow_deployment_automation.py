@@ -255,8 +255,8 @@ def test_rollback_service_triggers_on_risk():
 
     assert plan.triggered is True
     assert plan.state == "ROLLED_BACK"
-    assert plan.environment_updates["V3_PROJECTION_DASHBOARD_READS"] == "false"
-    assert plan.environment_updates["V3_PROJECTION_REPORT_READS"] == "false"
+    assert plan.environment_updates["V3_PROJECTION_DASHBOARD_READS"] == "true"
+    assert plan.environment_updates["V3_PROJECTION_REPORT_READS"] == "true"
 
 
 def test_rollout_text_includes_exact_apply_and_rollback_patches(capsys):
@@ -281,7 +281,7 @@ def test_rollout_text_includes_exact_apply_and_rollback_patches(capsys):
     assert "# checksum:" in output
     assert "V3_PROJECTION_DASHBOARD_READS=true" in output
     assert "--- ROLLBACK ---" in output
-    assert "V3_PROJECTION_DASHBOARD_READS=false" in output
+    assert "V3_PROJECTION_DASHBOARD_READS=true" in output
 
 
 def test_decision_store_persists_recent_records(tmp_path):

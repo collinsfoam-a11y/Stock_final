@@ -1,4 +1,4 @@
-import api from "../httpClient";
+import api from "@/api/client";
 
 export const getVarianceTrend = async (days: number = 30) => {
   try {

@@ -18,7 +18,7 @@
  * const trends = await analyticsApi.getVarianceTrends("2024-01-01", "2024-01-31");
  * ```
  */
-import api from "../httpClient";
+import api from "@/api/client";
 import { createLogger } from "../logging";
 import { isOnline } from "../../utils/network";
 

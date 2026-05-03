@@ -1,7 +1,7 @@
 /**
  * Enhanced API service with better error handling and loading states
  */
-import api from "../httpClient";
+import api from "@/api/client";
 import { Item } from "../../types/item";
 import { Session } from "../../types/session";
 import { PaginatedResponse } from "../../types/api";

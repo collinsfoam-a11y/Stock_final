@@ -96,6 +96,7 @@ export default function RecountAssignmentModal({
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Assign To</Text>
             <TouchableOpacity
+              testID="recount-assignee-picker-trigger"
               style={styles.selector}
               onPress={() => setPickerVisible(true)}
               activeOpacity={0.8}
@@ -126,6 +127,7 @@ export default function RecountAssignmentModal({
 
           <View style={styles.actions}>
             <TouchableOpacity
+              testID="recount-assignment-cancel-btn"
               style={[styles.button, styles.cancelButton]}
               onPress={onClose}
               disabled={loading}
@@ -135,6 +137,7 @@ export default function RecountAssignmentModal({
             </TouchableOpacity>
 
             <TouchableOpacity
+              testID="recount-assignment-submit-btn"
               style={[
                 styles.button,
                 styles.confirmButton,

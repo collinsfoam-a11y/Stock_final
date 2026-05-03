@@ -269,8 +269,8 @@ describe("sessionManagementApi.getSession", () => {
         },
       });
 
-    await createSession("WH-ONLINE");
-    await createSession("WH-ONLINE");
+    await expect(createSession("WH-ONLINE")).rejects.toThrow("timeout");
+    const created = await createSession("WH-ONLINE");
 
     const storedClientSessionId = localStorageMock.setItem.mock.calls[0]?.[1];
     expect(storedClientSessionId).toBeTruthy();
@@ -279,7 +279,84 @@ describe("sessionManagementApi.getSession", () => {
     );
     expect(httpClient.post.mock.calls[0][1].client_session_id).toBe(storedClientSessionId);
     expect(httpClient.post.mock.calls[1][1].client_session_id).toBe(storedClientSessionId);
+    expect(offlineStorage.addToOfflineQueue).not.toHaveBeenCalled();
+    expect(offlineStorage.removeSessionFromCache).toHaveBeenCalledWith(
+      `offline_${storedClientSessionId}`,
+    );
+    expect(created.id).toBe("server-session");
     expect(localStorageMock.removeItem).toHaveBeenCalledWith("client_session_id");
+  });
+
+  it("blocks createSession when connectivity is UNKNOWN", async () => {
+    let httpClient: any;
+    let offlineStorage: any;
+    let network: any;
+    let createSession: any;
+
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      httpClient = require("../httpClient").default;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      offlineStorage = require("../offline/offlineStorage");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      network = require("../../utils/network");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ({ createSession } = require("../api/sessionManagementApi"));
+    });
+
+    network.getNetworkStatus.mockReturnValue({
+      status: "UNKNOWN",
+      isOnline: true,
+      isInternetReachable: null,
+      connectionType: "wifi",
+    });
+
+    await expect(createSession("WH-UNKNOWN")).rejects.toThrow(
+      "Connectivity is still being determined"
+    );
+
+    expect(httpClient.post).not.toHaveBeenCalled();
+    expect(offlineStorage.cacheSession).not.toHaveBeenCalled();
+    expect(offlineStorage.addToOfflineQueue).not.toHaveBeenCalled();
+  });
+
+  it("queues createSession while sync replay is active", async () => {
+    let offlineStorage: any;
+    let network: any;
+    let connectivity: any;
+    let createSession: any;
+
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      offlineStorage = require("../offline/offlineStorage");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      network = require("../../utils/network");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      connectivity = require("../../core/connectivityState");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ({ createSession } = require("../api/sessionManagementApi"));
+    });
+
+    network.getNetworkStatus.mockReturnValue({
+      status: "ONLINE",
+      isOnline: true,
+      isInternetReachable: true,
+      connectionType: "wifi",
+    });
+    offlineStorage.cacheSession.mockResolvedValue(undefined);
+    offlineStorage.addToOfflineQueue.mockResolvedValue(undefined);
+    connectivity.setSyncReplayInProgress(true);
+
+    try {
+      const result = await createSession("WH-SYNCING");
+      expect(result._createdOffline).toBe(true);
+      expect(offlineStorage.addToOfflineQueue).toHaveBeenCalledWith(
+        "session",
+        expect.objectContaining({ warehouse: "WH-SYNCING" })
+      );
+    } finally {
+      connectivity.setSyncReplayInProgress(false);
+    }
   });
 
   it("merges visible cached sessions into API results", async () => {

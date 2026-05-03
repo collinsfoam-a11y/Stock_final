@@ -9,6 +9,16 @@ export function initMonitoringAndDevTools(isDev: boolean): void {
       }
     });
 
+  import("../services/errorTrackingHooks")
+    .then(({ registerGlobalErrorTrackingHooks }) => {
+      registerGlobalErrorTrackingHooks();
+    })
+    .catch((e) => {
+      if (isDev) {
+        console.warn("Global error tracking hook init failed", e);
+      }
+    });
+
   if (!isDev) {
     return;
   }
@@ -20,6 +30,4 @@ export function initMonitoringAndDevTools(isDev: boolean): void {
     .catch((e) => {
       console.warn("Reactotron init failed", e);
     });
-
 }
-

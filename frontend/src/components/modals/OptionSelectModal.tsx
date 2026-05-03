@@ -20,7 +20,6 @@ const SURFACE_BORDER = "#d9e5e2";
 const SURFACE_MUTED = "#f8fafc";
 const ACCENT = "#0f766e";
 const TEXT_STRONG = "#0f172a";
-const TEXT_MUTED = "#475569";
 
 interface OptionSelectModalProps {
   visible: boolean;

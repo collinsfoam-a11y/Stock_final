@@ -2,7 +2,7 @@
  * Item Verification API Service
  * Handles verification, filtering, CSV export, and variance tracking
  */
-import api from "@/services/httpClient";
+import api from "@/api/client";
 import { createLogger } from "@/services/logging";
 
 const log = createLogger("ItemVerificationAPI");
@@ -182,7 +182,7 @@ export class ItemVerificationAPI {
   ): Promise<VerificationResponse> {
     try {
       const response = await api.patch(
-        `/v2/erp/items/${encodeURIComponent(itemCode)}/verify`,
+        `/api/v2/erp/items/${encodeURIComponent(itemCode)}/verify`,
         request,
       );
       return response.data;

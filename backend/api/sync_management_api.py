@@ -6,6 +6,7 @@ Provides supervisor/admin control endpoints for configured sync services.
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
+from backend.auth.permissions import Permission, require_permission
 
 sync_management_router = APIRouter(prefix="/sync", tags=["sync"])
 
@@ -31,7 +32,10 @@ def _ensure_supervisor(user: dict) -> None:
 
 
 @sync_management_router.post("/erp")
-async def trigger_erp_sync(current_user: dict = Depends(get_current_user)):
+async def trigger_erp_sync(
+    current_user: dict = Depends(get_current_user),
+    _: dict = require_permission(Permission.SYNC_TRIGGER),
+):
     """Trigger ERP sync when the service is available."""
     _ensure_supervisor(current_user)
     if _erp_sync_service is None:
@@ -49,7 +53,10 @@ async def trigger_erp_sync(current_user: dict = Depends(get_current_user)):
 
 
 @sync_management_router.post("/changes")
-async def trigger_change_sync(current_user: dict = Depends(get_current_user)):
+async def trigger_change_sync(
+    current_user: dict = Depends(get_current_user),
+    _: dict = require_permission(Permission.SYNC_TRIGGER),
+):
     """Trigger change detection sync when the service is available."""
     _ensure_supervisor(current_user)
     if _change_detection_service is None:
@@ -69,7 +76,10 @@ async def trigger_change_sync(current_user: dict = Depends(get_current_user)):
 
 
 @sync_management_router.get("/changes/stats")
-async def get_change_sync_stats(current_user: dict = Depends(get_current_user)):
+async def get_change_sync_stats(
+    current_user: dict = Depends(get_current_user),
+    _: dict = require_permission(Permission.SYNC_TRIGGER),
+):
     """Return change detection stats if the service is available."""
     _ensure_supervisor(current_user)
     if _change_detection_service is None:
