@@ -1,8 +1,8 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import * as Haptics from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useThemeContext } from "../../context/ThemeContext";
+import { haptics } from "../../services/haptics";
 
 interface Props {
   value: number;
@@ -32,7 +32,7 @@ export function QuantityStepper({
   const handleChange = (delta: number) => {
     const next = clamp(value + delta);
     if (next !== value) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      void haptics.light();
       onChange(next);
     }
   };
