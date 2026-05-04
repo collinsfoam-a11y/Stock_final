@@ -105,6 +105,8 @@ logger = setup_logging(
     log_format=settings.LOG_FORMAT,
     log_file=settings.LOG_FILE or "app.log",
     app_name=settings.APP_NAME,
+    log_max_bytes=settings.LOG_MAX_BYTES,
+    log_backup_count=settings.LOG_BACKUP_COUNT,
 )
 
 # Initialize tracing (optional, env-gated). This only configures the
@@ -288,7 +290,7 @@ if getattr(settings, "ERP_SYNC_ENABLED", True):
         )
         set_erp_sync_service(erp_sync_service)
     except Exception as e:
-        logger.warning(f"ERP sync service initialization failed: {str(e)}")
+        logger.warning("ERP sync service initialization failed: %s", str(e))
 
 # Change detection sync service (syncs item_name, manual_barcode, MRP changes)
 change_detection_sync = None
@@ -302,7 +304,7 @@ if getattr(settings, "CHANGE_DETECTION_ENABLED", True):
         )
         set_change_detection_service(change_detection_sync)
     except Exception as e:
-        logger.warning(f"Change detection sync service initialization failed: {str(e)}")
+        logger.warning("Change detection sync service initialization failed: %s", str(e))
 
 # Auto-sync manager - automatically syncs when SQL Server becomes available
 auto_sync_manager = None
@@ -316,13 +318,18 @@ if getattr(settings, "AUTO_SYNC_ENABLED", True):
         )
         set_auto_sync_manager(auto_sync_manager)
     except Exception as e:
-        logger.warning(f"Auto-sync manager initialization failed: {str(e)}")
+        logger.warning("Auto-sync manager initialization failed: %s", str(e))
 
 # Migration manager
 migration_manager = MigrationManager(db)
 
 # Initialize refresh token and batch operations services
-refresh_token_service = RefreshTokenService(db, SECRET_KEY, ALGORITHM)
+refresh_token_service = RefreshTokenService(
+    db,
+    cast(str, settings.JWT_REFRESH_SECRET),
+    ALGORITHM,
+    access_secret_key=SECRET_KEY,
+)
 batch_operations = BatchOperationsService(db)
 activity_log_service = ActivityLogService(db)
 error_log_service = ErrorLogService(db)
@@ -357,7 +364,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
         logger.info("✓ Lock manager initialized")
 
     except Exception as e:
-        logger.warning(f"⚠️ Redis services not available: {str(e)}")
+        logger.warning("⚠️ Redis services not available: %s", str(e))
         logger.warning("Multi-user locking and real-time updates will be disabled")
 
     # Start mDNS service
@@ -366,9 +373,9 @@ async def lifespan(app: FastAPI):  # noqa: C901
         # Use PORT env var if set (by PortDetector), otherwise settings
         mdns_port = int(os.getenv("PORT", getattr(settings, "PORT", 8001)))
         await start_mdns(port=mdns_port)
-        logger.info(f"✓ mDNS service started (stock-verify.local on port {mdns_port})")
+        logger.info("✓ mDNS service started (stock-verify.local on port %s)", mdns_port)
     except Exception as e:
-        logger.warning(f"⚠️ mDNS service failed to start: {str(e)}")
+        logger.warning("⚠️ mDNS service failed to start: %s", str(e))
 
     # Create MongoDB indexes via MigrationManager
     # MigrationManager.ensure_indexes() now calls create_indexes internally
@@ -396,6 +403,14 @@ async def lifespan(app: FastAPI):  # noqa: C901
             sql_password and not sql_password_placeholder
         )
 
+        # Always attach SQL connector to count_lines_router so it can handle its own fallbacks
+        try:
+            from backend.api.count_lines_api import router as count_lines_router
+
+            setattr(count_lines_router, "sql_connector", sql_connector)
+            logger.info("✓ SQL connector attached to count_lines_router")
+        except Exception as e:
+            logger.warning("Failed to attach SQL connector to count_lines_router: %s", str(e))
 
         if sql_host and sql_database and sql_credentials_ready:
             logger.info(
@@ -417,14 +432,14 @@ async def lifespan(app: FastAPI):  # noqa: C901
                 sql_connected = True
                 logger.info("OK: SQL Server connection established")
             except (ConnectionError, OSError) as e:
-                logger.warning(f"SQL Server connection failed (network/system error): {str(e)}")
+                logger.warning("SQL Server connection failed (network/system error): %s", str(e))
                 logger.warning("ERP sync will be disabled until SQL Server is configured")
             except asyncio.TimeoutError:
                 logger.warning("SQL Server connection timed out during startup")
                 logger.warning("ERP sync will be disabled until SQL Server is available")
             except Exception as e:
                 # Catch-all for other SQL Server connection errors (authentication, database not found, etc.)
-                logger.warning(f"SQL Server connection failed: {str(e)}")
+                logger.warning("SQL Server connection failed: %s", str(e))
                 logger.warning("ERP sync will be disabled until SQL Server is configured")
         elif sql_host and sql_database:
             logger.warning(
@@ -437,10 +452,10 @@ async def lifespan(app: FastAPI):  # noqa: C901
             )
     except (ValueError, AttributeError) as e:
         # Configuration errors - invalid settings
-        logger.warning(f"Error initializing SQL Server connection (configuration error): {str(e)}")
+        logger.warning("Error initializing SQL Server connection (configuration error): %s", str(e))
     except Exception as e:
         # Other unexpected errors during initialization
-        logger.warning(f"Unexpected error initializing SQL Server connection: {str(e)}")
+        logger.warning("Unexpected error initializing SQL Server connection: %s", str(e))
 
     # Initialize enhanced connection pool in background (never block API startup)
     if (
@@ -473,7 +488,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
                 )
                 logger.info("✓ Enhanced connection pool initialized")
             except Exception as e:
-                logger.warning(f"Connection pool initialization failed: {str(e)}")
+                logger.warning("Connection pool initialization failed: %s", str(e))
 
         asyncio.create_task(_init_connection_pool())
 
@@ -484,7 +499,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
     except Exception as e:
         # MongoDB connection failed - check if we're in development mode
         error_type = type(e).__name__
-        logger.error(f"❌ MongoDB is required but unavailable ({error_type}): {e}")
+        logger.error("❌ MongoDB is required but unavailable ({error_type}): %s", e)
 
         # In development, allow app to run without MongoDB
         if os.getenv("ENVIRONMENT", "development").lower() in ["development", "dev"]:
@@ -528,7 +543,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
         )
     except Exception as e:
         # Catch-all for migration errors (index creation failures, etc.)
-        logger.warning(f"Migration error (may be due to MongoDB unavailability): {str(e)}")
+        logger.warning("Migration error (may be due to MongoDB unavailability): %s", str(e))
 
     # Initialize auto-sync manager (monitors SQL Server and auto-syncs when available)
     global auto_sync_manager
@@ -570,7 +585,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
         # Register with API router
         set_auto_sync_manager(auto_sync_manager)
     except Exception as e:
-        logger.warning(f"Auto-sync manager initialization failed: {str(e)}")
+        logger.warning("Auto-sync manager initialization failed: %s", str(e))
         auto_sync_manager = None
 
     # Start ERP sync service (full sync)
@@ -580,7 +595,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
             await erp_sync_service.start()
             logger.info("✓ ERP sync service started")
         except Exception as e:
-            logger.error(f"Failed to start ERP sync service: {str(e)}")
+            logger.error("Failed to start ERP sync service: %s", str(e))
 
     # Start change detection sync service
     if change_detection_sync:
@@ -588,29 +603,29 @@ async def lifespan(app: FastAPI):  # noqa: C901
             # ChangeDetectionSyncService.start() is already async
             await change_detection_sync.start()
         except Exception as e:
-            logger.error(f"Failed to start change detection sync service: {str(e)}")
+            logger.error("Failed to start change detection sync service: %s", str(e))
 
     # Start database health monitoring
     try:
         database_health_service.start()
         logger.info("OK: Database health monitoring started")
     except Exception as e:
-        logger.error(f"Failed to start database health monitoring: {str(e)}")
+        logger.error("Failed to start database health monitoring: %s", str(e))
 
     # Initialize cache
     try:
         await cache_service.initialize()
         cache_stats = await cache_service.get_stats()
-        logger.info(f"OK: Cache service initialized: {cache_stats.get('backend', 'unknown')}")
+        logger.info("OK: Cache service initialized: %s", cache_stats.get('backend', 'unknown'))
     except Exception as e:
-        logger.warning(f"Cache service error: {str(e)}")
+        logger.warning("Cache service error: %s", str(e))
 
     # Initialize auth dependencies for routers (avoid circular imports)
     try:
         init_auth_dependencies(db, SECRET_KEY, ALGORITHM)
         logger.info("OK: Auth dependencies initialized")
     except Exception as e:
-        logger.error(f"Failed to initialize auth dependencies: {str(e)}")
+        logger.error("Failed to initialize auth dependencies: %s", str(e))
 
     # Initialize Lock Service
     try:
@@ -618,7 +633,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
         await lock_service.initialize()
         logger.info("✓ Lock service initialized")
     except Exception as e:
-        logger.error(f"Failed to initialize lock service: {str(e)}")
+        logger.error("Failed to initialize lock service: %s", str(e))
         # We might want to raise here if strict locking is critical,
         # but for now log error.
         lock_service = None  # fallback? Or just fail.
@@ -628,7 +643,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
         variant_service = VariantService(db)
         logger.info("✓ Variant service initialized for Rule 5 compliance")
     except Exception as e:
-        logger.error(f"Failed to initialize variant service: {str(e)}")
+        logger.error("Failed to initialize variant service: %s", str(e))
         variant_service = None
 
     # Initialize Snapshot Service (Rule 2 Mandatory)
@@ -638,7 +653,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
         snapshot_service = SnapshotService(db)
         logger.info("✓ Snapshot service initialized for Rule 2 compliance")
     except Exception as e:
-        logger.error(f"Failed to initialize snapshot service: {str(e)}")
+        logger.error("Failed to initialize snapshot service: %s", str(e))
         snapshot_service = None
 
     # Initialize count_lines_api with dependencies
@@ -656,13 +671,13 @@ async def lifespan(app: FastAPI):  # noqa: C901
         )
         logger.info("✓ CountLines API initialized with dependencies (including VariantService)")
     except Exception as e:
-        logger.error(f"Failed to initialize CountLines API: {str(e)}")
+        logger.error("Failed to initialize CountLines API: %s", str(e))
     try:
         # Scheduled export service
         scheduled_export_service = ScheduledExportService(db)
         scheduled_export_service.start()
     except Exception as e:
-        logger.error(f"Failed to start scheduled export service: {str(e)}")
+        logger.error("Failed to start scheduled export service: %s", str(e))
 
     # Initialize enrichment service
     if EnrichmentService is not None and init_enrichment_api is not None:
@@ -671,7 +686,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
             init_enrichment_api(enrichment_svc)
             logger.info("✓ Enrichment service initialized")
         except Exception as e:
-            logger.error(f"Failed to initialize enrichment service: {str(e)}")
+            logger.error("Failed to initialize enrichment service: %s", str(e))
 
     # Initialize enterprise services
     if g.ENTERPRISE_AVAILABLE:
@@ -681,7 +696,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
             await app.state.enterprise_audit.initialize()
         except Exception as e:
             app.state.enterprise_audit = None
-            logger.warning(f"Enterprise audit service not available: {str(e)}")
+            logger.warning("Enterprise audit service not available: %s", str(e))
 
         try:
             # Enterprise Security Service
@@ -689,7 +704,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
             await app.state.enterprise_security.initialize()
         except Exception as e:
             app.state.enterprise_security = None
-            logger.warning(f"Enterprise security service not available: {str(e)}")
+            logger.warning("Enterprise security service not available: %s", str(e))
 
         try:
             # Feature Flags Service
@@ -697,7 +712,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
             await app.state.feature_flags.initialize()
         except Exception as e:
             app.state.feature_flags = None
-            logger.warning(f"Feature flags service not available: {str(e)}")
+            logger.warning("Feature flags service not available: %s", str(e))
 
         try:
             # Data Governance Service
@@ -705,7 +720,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
             await app.state.data_governance.initialize()
         except Exception as e:
             app.state.data_governance = None
-            logger.warning(f"Data governance service not available: {str(e)}")
+            logger.warning("Data governance service not available: %s", str(e))
     else:
         # Set None for enterprise services if not available
         app.state.enterprise_audit = None
@@ -718,35 +733,35 @@ async def lifespan(app: FastAPI):  # noqa: C901
         sync_conflicts_service = SyncConflictsService(db)
         logger.info("✓ Sync conflicts service initialized")
     except Exception as e:
-        logger.error(f"Failed to initialize sync conflicts service: {str(e)}")
+        logger.error("Failed to initialize sync conflicts service: %s", str(e))
 
     try:
         # Set monitoring service for metrics API
         set_monitoring_service(monitoring_service)
         logger.info("✓ Monitoring service connected to metrics API")
     except Exception as e:
-        logger.error(f"Failed to set monitoring service: {str(e)}")
+        logger.error("Failed to set monitoring service: %s", str(e))
 
     try:
         # Initialize ERP API
         init_erp_api(db, cache_service, sql_connector)
         logger.info("✓ ERP API initialized")
     except Exception as e:
-        logger.error(f"Failed to initialize ERP API: {str(e)}")
+        logger.error("Failed to initialize ERP API: %s", str(e))
 
     try:
         # Initialize Enhanced Item API
         init_enhanced_api(db, cache_service, monitoring_service, sql_connector)
         logger.info("✓ Enhanced Item API initialized")
     except Exception as e:
-        logger.error(f"Failed to initialize Enhanced Item API: {str(e)}")
+        logger.error("Failed to initialize Enhanced Item API: %s", str(e))
 
     try:
         # Initialize verification API
         init_verification_api(db, cache_service, erp_sync_service)
         logger.info("✓ Item verification API initialized")
     except Exception as e:
-        logger.error(f"Failed to initialize verification API: {str(e)}")
+        logger.error("Failed to initialize verification API: %s", str(e))
 
     # Startup checklist verification
     startup_checklist = {
@@ -763,7 +778,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
         startup_checklist["mongodb"] = True
         logger.info("✓ Startup Check: MongoDB connected")
     except Exception as e:
-        logger.warning(f"⚠️  Startup Check: MongoDB not connected - {str(e)}")
+        logger.warning("⚠️  Startup Check: MongoDB not connected - %s", str(e))
 
     # Verify SQL Server (optional)
     try:
@@ -781,14 +796,14 @@ async def lifespan(app: FastAPI):  # noqa: C901
     except asyncio.TimeoutError:
         logger.info("ℹ️  Startup Check: SQL Server not available - timeout")
     except Exception as e:
-        logger.info(f"ℹ️  Startup Check: SQL Server not available - {str(e)}")
+        logger.info("ℹ️  Startup Check: SQL Server not available - %s", str(e))
 
     # Verify Cache
     try:
         cache_stats = await cache_service.get_stats()
-        logger.info(f"✓ Startup Check: Cache initialized ({cache_stats.get('backend', 'unknown')})")
+        logger.info("✓ Startup Check: Cache initialized (%s)", cache_stats.get('backend', 'unknown'))
     except Exception as e:
-        logger.warning(f"⚠️ Startup Check: Cache service warning: {str(e)}")
+        logger.warning("⚠️ Startup Check: Cache service warning: %s", str(e))
 
     # Verify Auth
     try:
@@ -798,7 +813,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
             startup_checklist["auth"] = True
             logger.info("✓ Startup Check: Auth initialized")
     except Exception as e:
-        logger.warning(f"⚠️  Startup Check: Auth error - {str(e)}")
+        logger.warning("⚠️  Startup Check: Auth error - %s", str(e))
 
     # Verify Services
     services_running = []
@@ -815,7 +830,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
 
     if services_running:
         startup_checklist["services"] = True
-        logger.info(f"✓ Startup Check: {len(services_running)} services running")
+        logger.info("✓ Startup Check: %s services running", len(services_running))
 
     # Log startup summary
     critical_services = ["mongodb", "auth"]
@@ -825,7 +840,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
         logger.info("✅ Startup Checklist: All critical services OK")
     else:
         failed = [svc for svc in critical_services if not startup_checklist[svc]]
-        logger.warning(f"⚠️  Startup Checklist: Critical services failed - {', '.join(failed)}")
+        logger.warning("⚠️  Startup Checklist: Critical services failed - %s", ', '.join(failed))
 
     # Initialize search service
     try:
@@ -836,7 +851,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
         init_search_service(database)
         logger.info("✓ Search service initialized successfully")
     except Exception as e:
-        logger.error(f"❌ Failed to initialize search service: {e}")
+        logger.error("❌ Failed to initialize search service: %s", e)
 
     logger.info("OK: Application startup complete")
 
@@ -902,7 +917,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
 
         save_backend_info(port, local_ip, protocol)
     except Exception as e:
-        logger.error(f"Error saving backend port info: {e}")
+        logger.error("Error saving backend port info: %s", e)
 
     yield
 
@@ -922,7 +937,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
     #             erp_sync.stop()
     #             logger.info("✓ ERP sync service stopped")
     #         except Exception as e:
-    #             logger.error(f"Error stopping ERP sync service: {str(e)}")
+    #             logger.error("Error stopping ERP sync service: %s", str(e))
 
     #     shutdown_tasks.append(stop_erp_sync())
 
@@ -934,7 +949,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
                 await scheduled_export_service.stop()
                 logger.info("✓ Scheduled export service stopped")
             except Exception as e:
-                logger.error(f"Error stopping scheduled export service: {str(e)}")
+                logger.error("Error stopping scheduled export service: %s", str(e))
 
         shutdown_tasks.append(stop_export_service())
 
@@ -944,7 +959,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
             await database_health_service.stop()
             logger.info("✓ Database health monitoring stopped")
         except Exception as e:
-            logger.error(f"Error stopping database health monitoring: {str(e)}")
+            logger.error("Error stopping database health monitoring: %s", str(e))
 
     shutdown_tasks.append(stop_health_monitoring())
 
@@ -955,7 +970,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
                 await auto_sync_manager.stop()
                 logger.info("✅ Auto-sync manager stopped")
             except Exception as e:
-                logger.error(f"Error stopping auto-sync manager: {e}")
+                logger.error("Error stopping auto-sync manager: %s", e)
 
     shutdown_tasks.append(stop_auto_sync())
 
@@ -969,7 +984,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
             await close_redis()
             logger.info("✓ Redis connection closed")
         except Exception as e:
-            logger.error(f"Error stopping Redis services: {str(e)}")
+            logger.error("Error stopping Redis services: %s", str(e))
 
     shutdown_tasks.append(stop_redis_services())
 
@@ -980,9 +995,9 @@ async def lifespan(app: FastAPI):  # noqa: C901
             timeout=shutdown_timeout,
         )
     except TimeoutError:
-        logger.warning(f"⚠️  Shutdown timeout after {shutdown_timeout}s, forcing shutdown...")
+        logger.warning("⚠️  Shutdown timeout after %ss, forcing shutdown...", shutdown_timeout)
     except Exception as e:
-        logger.error(f"Error during shutdown: {str(e)}")
+        logger.error("Error during shutdown: %s", str(e))
 
     # Close connection pool (blocking operation)
     if connection_pool:
@@ -990,7 +1005,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
             connection_pool.close_all()
             logger.info("✓ Connection pool closed")
         except Exception as e:
-            logger.error(f"Error closing connection pool: {str(e)}")
+            logger.error("Error closing connection pool: %s", str(e))
 
     # Close MongoDB connection
     try:
@@ -998,14 +1013,14 @@ async def lifespan(app: FastAPI):  # noqa: C901
             client.close()
             logger.info("✓ MongoDB connection closed")
     except Exception as e:
-        logger.error(f"Error closing MongoDB connection: {str(e)}")
+        logger.error("Error closing MongoDB connection: %s", str(e))
 
     # Stop mDNS service
     try:
         await stop_mdns()
         logger.info("✓ mDNS service stopped")
     except Exception as e:
-        logger.error(f"Error stopping mDNS service: {str(e)}")
+        logger.error("Error stopping mDNS service: %s", str(e))
 
     shutdown_duration = time.time() - shutdown_start
-    logger.info(f"✓ Application shutdown complete (took {shutdown_duration:.2f}s)")
+    logger.info("✓ Application shutdown complete (took %.2fs)", shutdown_duration)

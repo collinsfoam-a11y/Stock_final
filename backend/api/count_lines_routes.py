@@ -1465,17 +1465,18 @@ async def get_count_lines(
     lines_cursor = db_client.count_lines.find({"session_id": session_id}, {"_id": 0}).sort(
         "counted_at", -1
     )
-    lines = await lines_cursor.to_list(length=None)
-    projected_lines = [materialize_count_line_review_state(line) for line in lines]
 
-    if verified is not None:
-        projected_lines = [
-            line for line in projected_lines if is_count_line_effectively_reviewed(line) == verified
-        ]
-
-    total = len(projected_lines)
+    total = 0
     skip = (page - 1) * page_size
-    lines_page = projected_lines[skip : skip + page_size]
+    limit_end = skip + page_size
+    lines_page = []
+
+    async for line in lines_cursor:
+        projected_line = materialize_count_line_review_state(line)
+        if is_count_line_effectively_reviewed(projected_line) == verified:
+            if skip <= total < limit_end:
+                lines_page.append(projected_line)
+            total += 1
 
     return {
         "items": lines_page,
@@ -1483,7 +1484,7 @@ async def get_count_lines(
             "page": page,
             "page_size": page_size,
             "total": total,
-            "total_pages": (total + page_size - 1) // page_size,
+            "total_pages": (total + page_size - 1) // page_size if page_size else 0,
             "has_next": skip + page_size < total,
             "has_prev": page > 1,
         },
