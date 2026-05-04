@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-05-03T16:19:36.260195+00:00",
+  "duration_seconds": 180,
+  "reads": {
+    "ok": 330,
+    "fail": 0,
+    "projection_503": 0,
+    "total": 330
+  },
+  "result": "PASS",
+  "samples": []
+}

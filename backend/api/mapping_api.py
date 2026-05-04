@@ -9,11 +9,15 @@ import pyodbc
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from backend.auth.dependencies import get_current_user
+from backend.auth.dependencies import require_admin
 from backend.config import settings
 from backend.db.runtime import get_db
 
-router = APIRouter(prefix="/api/mapping", tags=["Database Mapping"])
+router = APIRouter(
+    prefix="/api/mapping",
+    tags=["Database Mapping"],
+    dependencies=[Depends(require_admin)],
+)
 logger = logging.getLogger(__name__)
 
 # --- Models ---
@@ -44,9 +48,7 @@ class MappingConfig(BaseModel):
 # --- Helper ---
 
 
-def _require_mapping_admin(current_user: dict = Depends(get_current_user)) -> dict:
-    if current_user.get("role") not in {"admin", "supervisor"}:
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
+def _require_mapping_admin(current_user: dict = Depends(require_admin)) -> dict:
     return current_user
 
 

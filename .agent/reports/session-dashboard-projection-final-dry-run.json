@@ -1,0 +1,44 @@
+{
+  "mode": "dry-run",
+  "sessions_scanned": 31,
+  "missing_sessions": 2,
+  "repairable_sessions": 2,
+  "inserted_sessions": 0,
+  "skipped_existing": 0,
+  "skipped_missing_id": 0,
+  "errors": 0,
+  "missing_session_ids": [
+    "13d11b12-8127-4e03-b9b3-00a4680a73d7",
+    "93b4c9fe-63dd-4301-b430-4ec01e27a0dd"
+  ],
+  "candidate_rows": [
+    {
+      "session_id": "13d11b12-8127-4e03-b9b3-00a4680a73d7",
+      "total_items": 0,
+      "verified_items": 0,
+      "pending_items": 0,
+      "status": "ACTIVE",
+      "warehouse": "stale-auth-1777721721654",
+      "started_at": "2026-05-02T11:35:21.857000",
+      "source_updated_at": "2026-05-02T11:35:21.876000"
+    },
+    {
+      "session_id": "93b4c9fe-63dd-4301-b430-4ec01e27a0dd",
+      "total_items": 1,
+      "verified_items": 0,
+      "pending_items": 1,
+      "status": "ACTIVE",
+      "warehouse": "Main",
+      "started_at": "2026-05-02T11:35:22.036000",
+      "source_updated_at": "2026-05-02T11:35:33.178000"
+    }
+  ],
+  "coverage_before": {
+    "total_sessions": 31,
+    "covered_sessions": 29
+  },
+  "coverage_after": {
+    "total_sessions": 31,
+    "covered_sessions": 31
+  }
+}

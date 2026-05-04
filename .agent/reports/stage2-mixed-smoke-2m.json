@@ -1,0 +1,1096 @@
+{
+  "reads": {
+    "ok": 0,
+    "fail": 112,
+    "gate_503": 112,
+    "total": 112
+  },
+  "sync": {
+    "create_ok": 2,
+    "create_fail": 4,
+    "replay_ok": 15,
+    "replay_fail": 5,
+    "total": 26
+  },
+  "samples": {
+    "reads": [
+      {
+        "ts": "2026-05-03T05:48:11.690094+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1040.33
+      },
+      {
+        "ts": "2026-05-03T05:48:12.735096+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1044.9
+      },
+      {
+        "ts": "2026-05-03T05:48:13.842780+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1051.0
+      },
+      {
+        "ts": "2026-05-03T05:48:14.904054+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1061.14
+      },
+      {
+        "ts": "2026-05-03T05:48:16.020277+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1060.64
+      },
+      {
+        "ts": "2026-05-03T05:48:17.083840+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1063.41
+      },
+      {
+        "ts": "2026-05-03T05:48:18.200915+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1061.53
+      },
+      {
+        "ts": "2026-05-03T05:48:19.262524+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1061.49
+      },
+      {
+        "ts": "2026-05-03T05:48:20.378969+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1064.48
+      },
+      {
+        "ts": "2026-05-03T05:48:21.438260+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1059.13
+      },
+      {
+        "ts": "2026-05-03T05:48:22.571217+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1053.22
+      },
+      {
+        "ts": "2026-05-03T05:48:23.620060+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1048.71
+      },
+      {
+        "ts": "2026-05-03T05:48:24.738173+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1050.61
+      },
+      {
+        "ts": "2026-05-03T05:48:25.801276+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1062.97
+      },
+      {
+        "ts": "2026-05-03T05:48:26.913728+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1046.01
+      },
+      {
+        "ts": "2026-05-03T05:48:27.969271+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1055.41
+      },
+      {
+        "ts": "2026-05-03T05:48:29.076822+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1052.32
+      },
+      {
+        "ts": "2026-05-03T05:48:30.132496+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1055.5
+      },
+      {
+        "ts": "2026-05-03T05:48:31.249933+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1056.55
+      },
+      {
+        "ts": "2026-05-03T05:48:32.308611+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1058.54
+      },
+      {
+        "ts": "2026-05-03T05:48:33.426174+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1050.58
+      },
+      {
+        "ts": "2026-05-03T05:48:34.482168+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1055.82
+      },
+      {
+        "ts": "2026-05-03T05:48:35.597223+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1055.53
+      },
+      {
+        "ts": "2026-05-03T05:48:36.654159+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1056.85
+      },
+      {
+        "ts": "2026-05-03T05:48:37.778271+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1058.14
+      },
+      {
+        "ts": "2026-05-03T05:48:38.839226+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1060.82
+      },
+      {
+        "ts": "2026-05-03T05:48:39.953467+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1060.19
+      },
+      {
+        "ts": "2026-05-03T05:48:41.013589+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1060.0
+      },
+      {
+        "ts": "2026-05-03T05:48:42.152539+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1053.53
+      },
+      {
+        "ts": "2026-05-03T05:48:43.205603+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1052.97
+      },
+      {
+        "ts": "2026-05-03T05:48:44.314877+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1047.34
+      },
+      {
+        "ts": "2026-05-03T05:48:45.373152+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1058.15
+      },
+      {
+        "ts": "2026-05-03T05:48:46.532340+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1103.51
+      },
+      {
+        "ts": "2026-05-03T05:48:47.595961+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1063.53
+      },
+      {
+        "ts": "2026-05-03T05:48:48.714279+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1056.38
+      },
+      {
+        "ts": "2026-05-03T05:48:49.775907+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1061.41
+      },
+      {
+        "ts": "2026-05-03T05:48:50.894937+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1063.52
+      },
+      {
+        "ts": "2026-05-03T05:48:51.949586+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1054.54
+      },
+      {
+        "ts": "2026-05-03T05:48:53.074305+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1059.71
+      },
+      {
+        "ts": "2026-05-03T05:48:54.131451+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1056.93
+      },
+      {
+        "ts": "2026-05-03T05:48:55.240377+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1043.83
+      },
+      {
+        "ts": "2026-05-03T05:48:56.304368+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1063.87
+      },
+      {
+        "ts": "2026-05-03T05:48:57.424830+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1064.71
+      },
+      {
+        "ts": "2026-05-03T05:48:58.484074+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1059.06
+      },
+      {
+        "ts": "2026-05-03T05:48:59.597947+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1058.53
+      },
+      {
+        "ts": "2026-05-03T05:49:00.640784+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1042.74
+      },
+      {
+        "ts": "2026-05-03T05:49:01.747086+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1039.26
+      },
+      {
+        "ts": "2026-05-03T05:49:02.788779+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1041.61
+      },
+      {
+        "ts": "2026-05-03T05:49:03.890809+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1041.25
+      },
+      {
+        "ts": "2026-05-03T05:49:04.940871+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1049.93
+      },
+      {
+        "ts": "2026-05-03T05:49:06.042451+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1045.14
+      },
+      {
+        "ts": "2026-05-03T05:49:07.098652+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1056.1
+      },
+      {
+        "ts": "2026-05-03T05:49:08.205812+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1055.04
+      },
+      {
+        "ts": "2026-05-03T05:49:09.260333+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1054.38
+      },
+      {
+        "ts": "2026-05-03T05:49:10.370649+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1057.15
+      },
+      {
+        "ts": "2026-05-03T05:49:11.429803+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1059.04
+      },
+      {
+        "ts": "2026-05-03T05:49:12.533165+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1037.36
+      },
+      {
+        "ts": "2026-05-03T05:49:13.585242+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1052.0
+      },
+      {
+        "ts": "2026-05-03T05:49:14.705104+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1057.01
+      },
+      {
+        "ts": "2026-05-03T05:49:15.762241+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1057.04
+      },
+      {
+        "ts": "2026-05-03T05:49:16.868001+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1051.69
+      },
+      {
+        "ts": "2026-05-03T05:49:17.924641+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1056.52
+      },
+      {
+        "ts": "2026-05-03T05:49:19.039918+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1057.92
+      },
+      {
+        "ts": "2026-05-03T05:49:20.093589+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1053.5
+      },
+      {
+        "ts": "2026-05-03T05:49:21.213577+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1064.52
+      },
+      {
+        "ts": "2026-05-03T05:49:22.271331+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1057.65
+      },
+      {
+        "ts": "2026-05-03T05:49:23.386218+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1060.21
+      },
+      {
+        "ts": "2026-05-03T05:49:24.436153+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1049.81
+      },
+      {
+        "ts": "2026-05-03T05:49:25.566222+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1057.65
+      },
+      {
+        "ts": "2026-05-03T05:49:26.622633+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1056.3
+      },
+      {
+        "ts": "2026-05-03T05:49:27.722687+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1048.85
+      },
+      {
+        "ts": "2026-05-03T05:49:28.784057+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1061.26
+      },
+      {
+        "ts": "2026-05-03T05:49:29.904846+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1054.93
+      },
+      {
+        "ts": "2026-05-03T05:49:30.966064+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1061.08
+      },
+      {
+        "ts": "2026-05-03T05:49:32.081874+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1063.04
+      },
+      {
+        "ts": "2026-05-03T05:49:33.142045+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1060.05
+      },
+      {
+        "ts": "2026-05-03T05:49:34.258195+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1055.13
+      },
+      {
+        "ts": "2026-05-03T05:49:35.318735+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1060.43
+      },
+      {
+        "ts": "2026-05-03T05:49:36.430925+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1050.6
+      },
+      {
+        "ts": "2026-05-03T05:49:37.487597+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1056.54
+      },
+      {
+        "ts": "2026-05-03T05:49:38.589428+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1050.96
+      },
+      {
+        "ts": "2026-05-03T05:49:39.654701+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1065.15
+      },
+      {
+        "ts": "2026-05-03T05:49:40.814930+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1105.35
+      },
+      {
+        "ts": "2026-05-03T05:49:41.872302+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1057.26
+      },
+      {
+        "ts": "2026-05-03T05:49:42.991950+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1055.56
+      },
+      {
+        "ts": "2026-05-03T05:49:44.045695+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1053.55
+      },
+      {
+        "ts": "2026-05-03T05:49:45.165737+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1059.31
+      },
+      {
+        "ts": "2026-05-03T05:49:46.217388+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1051.48
+      },
+      {
+        "ts": "2026-05-03T05:49:47.331792+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1059.05
+      },
+      {
+        "ts": "2026-05-03T05:49:48.376673+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1044.77
+      },
+      {
+        "ts": "2026-05-03T05:49:49.475475+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1038.03
+      },
+      {
+        "ts": "2026-05-03T05:49:50.511549+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1036.02
+      },
+      {
+        "ts": "2026-05-03T05:49:51.620200+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1057.56
+      },
+      {
+        "ts": "2026-05-03T05:49:52.676183+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1055.83
+      },
+      {
+        "ts": "2026-05-03T05:49:53.796914+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1054.97
+      },
+      {
+        "ts": "2026-05-03T05:49:54.847302+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1050.28
+      },
+      {
+        "ts": "2026-05-03T05:49:55.954660+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1049.78
+      },
+      {
+        "ts": "2026-05-03T05:49:57.015592+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1060.79
+      },
+      {
+        "ts": "2026-05-03T05:49:58.113849+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1044.52
+      },
+      {
+        "ts": "2026-05-03T05:49:59.166646+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1052.66
+      },
+      {
+        "ts": "2026-05-03T05:50:00.279088+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1051.42
+      },
+      {
+        "ts": "2026-05-03T05:50:01.342139+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1062.9
+      },
+      {
+        "ts": "2026-05-03T05:50:02.455069+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1057.43
+      },
+      {
+        "ts": "2026-05-03T05:50:03.508036+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1052.86
+      },
+      {
+        "ts": "2026-05-03T05:50:04.628774+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1058.01
+      },
+      {
+        "ts": "2026-05-03T05:50:05.687992+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1059.1
+      },
+      {
+        "ts": "2026-05-03T05:50:06.807363+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1056.12
+      },
+      {
+        "ts": "2026-05-03T05:50:07.863891+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1056.3
+      },
+      {
+        "ts": "2026-05-03T05:50:08.978914+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1063.08
+      },
+      {
+        "ts": "2026-05-03T05:50:10.037889+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1058.84
+      },
+      {
+        "ts": "2026-05-03T05:50:11.136957+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 503,
+        "latency_ms": 1043.84
+      },
+      {
+        "ts": "2026-05-03T05:50:12.189052+00:00",
+        "endpoint": "/api/admin/dashboard/kpis",
+        "status": 503,
+        "latency_ms": 1052.0
+      }
+    ],
+    "sync": [
+      {
+        "ts": "2026-05-03T05:48:10.649627+00:00",
+        "phase": "create",
+        "status": 400,
+        "item_code": "10136",
+        "latency_ms": 12.6,
+        "body": "{\"detail\":{\"message\":\"Variance reason is required for this count\",\"violated_thresholds\":[{\"threshold_type\":\"quantity\",\"threshold_value\":1.0,\"actual_value\":1.73,\"operator\":\"gte\",\"re"
+      },
+      {
+        "ts": "2026-05-03T05:48:21.514090+00:00",
+        "phase": "create",
+        "status": 200,
+        "item_code": "10137",
+        "latency_ms": 20.58,
+        "body": "{\"ok\":[\"mix-cac139f2-9e22-41d7-8202-4f41988d30c2\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-create-0de52351016f\",\"processing_time_ms\":15.393257141113281,\"total_records\":1,\"result"
+      },
+      {
+        "ts": "2026-05-03T05:48:21.517830+00:00",
+        "phase": "replay",
+        "status": 200,
+        "item_code": "10137",
+        "latency_ms": 3.6,
+        "body": "{\"ok\":[\"mix-cac139f2-9e22-41d7-8202-4f41988d30c2\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-replay-05aa08125f19\",\"processing_time_ms\":0.2200603485107422,\"total_records\":1,\"result"
+      },
+      {
+        "ts": "2026-05-03T05:48:23.687359+00:00",
+        "phase": "replay",
+        "status": 200,
+        "item_code": "10137",
+        "latency_ms": 7.28,
+        "body": "{\"ok\":[\"mix-cac139f2-9e22-41d7-8202-4f41988d30c2\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-replay-62a65cebada3\",\"processing_time_ms\":0.3628730773925781,\"total_records\":1,\"result"
+      },
+      {
+        "ts": "2026-05-03T05:48:25.867411+00:00",
+        "phase": "replay",
+        "status": 200,
+        "item_code": "10137",
+        "latency_ms": 12.99,
+        "body": "{\"ok\":[\"mix-cac139f2-9e22-41d7-8202-4f41988d30c2\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-replay-cca9c8ef2c11\",\"processing_time_ms\":0.4630088806152344,\"total_records\":1,\"result"
+      },
+      {
+        "ts": "2026-05-03T05:48:30.193118+00:00",
+        "phase": "replay",
+        "status": 200,
+        "item_code": "10137",
+        "latency_ms": 9.41,
+        "body": "{\"ok\":[\"mix-cac139f2-9e22-41d7-8202-4f41988d30c2\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-replay-78698d52eb24\",\"processing_time_ms\":0.8780956268310547,\"total_records\":1,\"result"
+      },
+      {
+        "ts": "2026-05-03T05:48:32.375397+00:00",
+        "phase": "create",
+        "status": 400,
+        "item_code": "10139",
+        "latency_ms": 12.02,
+        "body": "{\"detail\":{\"message\":\"Variance reason is required for this count\",\"violated_thresholds\":[{\"threshold_type\":\"quantity\",\"threshold_value\":1.0,\"actual_value\":22.57,\"operator\":\"gte\",\"r"
+      },
+      {
+        "ts": "2026-05-03T05:48:36.719808+00:00",
+        "phase": "replay",
+        "status": 200,
+        "item_code": "10137",
+        "latency_ms": 11.32,
+        "body": "{\"ok\":[\"mix-cac139f2-9e22-41d7-8202-4f41988d30c2\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-replay-9edb2094df0e\",\"processing_time_ms\":0.8540153503417969,\"total_records\":1,\"result"
+      },
+      {
+        "ts": "2026-05-03T05:48:41.094249+00:00",
+        "phase": "create",
+        "status": 200,
+        "item_code": "10253",
+        "latency_ms": 26.46,
+        "body": "{\"ok\":[\"mix-0a747c83-18a3-4142-9fc5-55009922e545\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-create-00fe7e27c2b3\",\"processing_time_ms\":16.576051712036133,\"total_records\":1,\"result"
+      },
+      {
+        "ts": "2026-05-03T05:48:41.098872+00:00",
+        "phase": "replay",
+        "status": 200,
+        "item_code": "10253",
+        "latency_ms": 4.49,
+        "body": "{\"ok\":[\"mix-0a747c83-18a3-4142-9fc5-55009922e545\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-replay-cc0988cdc95b\",\"processing_time_ms\":0.25081634521484375,\"total_records\":1,\"resul"
+      },
+      {
+        "ts": "2026-05-03T05:48:47.657648+00:00",
+        "phase": "replay",
+        "status": 429,
+        "item_code": "10137",
+        "latency_ms": 9.48,
+        "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":22,\"limit\":10}}"
+      },
+      {
+        "ts": "2026-05-03T05:48:52.014297+00:00",
+        "phase": "create",
+        "status": 429,
+        "item_code": "10254",
+        "latency_ms": 10.01,
+        "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":18,\"limit\":10}}"
+      },
+      {
+        "ts": "2026-05-03T05:48:54.196418+00:00",
+        "phase": "replay",
+        "status": 429,
+        "item_code": "10253",
+        "latency_ms": 4.88,
+        "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":16,\"limit\":10}}"
+      },
+      {
+        "ts": "2026-05-03T05:49:00.700691+00:00",
+        "phase": "create",
+        "status": 429,
+        "item_code": "10255",
+        "latency_ms": 9.05,
+        "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":9,\"limit\":10}}"
+      },
+      {
+        "ts": "2026-05-03T05:49:00.707624+00:00",
+        "phase": "replay",
+        "status": 429,
+        "item_code": "10137",
+        "latency_ms": 6.71,
+        "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":9,\"limit\":10}}"
+      },
+      {
+        "ts": "2026-05-03T05:49:04.997123+00:00",
+        "phase": "replay",
+        "status": 429,
+        "item_code": "10253",
+        "latency_ms": 5.53,
+        "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":5,\"limit\":10}}"
+      },
+      {
+        "ts": "2026-05-03T05:49:11.495538+00:00",
+        "phase": "replay",
+        "status": 200,
+        "item_code": "10137",
+        "latency_ms": 10.27,
+        "body": "{\"ok\":[\"mix-cac139f2-9e22-41d7-8202-4f41988d30c2\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-replay-7abf0ec30989\",\"processing_time_ms\":0.6358623504638672,\"total_records\":1,\"result"
+      },
+      {
+        "ts": "2026-05-03T05:49:17.981793+00:00",
+        "phase": "replay",
+        "status": 429,
+        "item_code": "10253",
+        "latency_ms": 5.9,
+        "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":3,\"limit\":10}}"
+      },
+      {
+        "ts": "2026-05-03T05:49:24.508128+00:00",
+        "phase": "replay",
+        "status": 200,
+        "item_code": "10137",
+        "latency_ms": 8.79,
+        "body": "{\"ok\":[\"mix-cac139f2-9e22-41d7-8202-4f41988d30c2\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-replay-2f0e97f8f91f\",\"processing_time_ms\":0.4858970642089844,\"total_records\":1,\"result"
+      },
+      {
+        "ts": "2026-05-03T05:49:28.849640+00:00",
+        "phase": "replay",
+        "status": 200,
+        "item_code": "10253",
+        "latency_ms": 9.7,
+        "body": "{\"ok\":[\"mix-0a747c83-18a3-4142-9fc5-55009922e545\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-replay-17679a652bc2\",\"processing_time_ms\":0.40602684020996094,\"total_records\":1,\"resul"
+      },
+      {
+        "ts": "2026-05-03T05:49:35.380095+00:00",
+        "phase": "replay",
+        "status": 200,
+        "item_code": "10253",
+        "latency_ms": 6.29,
+        "body": "{\"ok\":[\"mix-0a747c83-18a3-4142-9fc5-55009922e545\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-replay-59bcbb7307cd\",\"processing_time_ms\":0.29397010803222656,\"total_records\":1,\"resul"
+      },
+      {
+        "ts": "2026-05-03T05:49:41.936081+00:00",
+        "phase": "replay",
+        "status": 200,
+        "item_code": "10137",
+        "latency_ms": 11.76,
+        "body": "{\"ok\":[\"mix-cac139f2-9e22-41d7-8202-4f41988d30c2\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-replay-1dd30931ba47\",\"processing_time_ms\":0.4947185516357422,\"total_records\":1,\"result"
+      },
+      {
+        "ts": "2026-05-03T05:49:48.437303+00:00",
+        "phase": "replay",
+        "status": 200,
+        "item_code": "10253",
+        "latency_ms": 5.99,
+        "body": "{\"ok\":[\"mix-0a747c83-18a3-4142-9fc5-55009922e545\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-replay-e62cc28a2fff\",\"processing_time_ms\":0.3871917724609375,\"total_records\":1,\"result"
+      },
+      {
+        "ts": "2026-05-03T05:49:52.741727+00:00",
+        "phase": "replay",
+        "status": 200,
+        "item_code": "10137",
+        "latency_ms": 10.13,
+        "body": "{\"ok\":[\"mix-cac139f2-9e22-41d7-8202-4f41988d30c2\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-replay-28fa9a2788ef\",\"processing_time_ms\":0.5109310150146484,\"total_records\":1,\"result"
+      },
+      {
+        "ts": "2026-05-03T05:49:59.227510+00:00",
+        "phase": "replay",
+        "status": 200,
+        "item_code": "10137",
+        "latency_ms": 5.57,
+        "body": "{\"ok\":[\"mix-cac139f2-9e22-41d7-8202-4f41988d30c2\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-replay-7ad3ca2c2510\",\"processing_time_ms\":0.3027915954589844,\"total_records\":1,\"result"
+      },
+      {
+        "ts": "2026-05-03T05:50:05.751045+00:00",
+        "phase": "replay",
+        "status": 200,
+        "item_code": "10253",
+        "latency_ms": 8.05,
+        "body": "{\"ok\":[\"mix-0a747c83-18a3-4142-9fc5-55009922e545\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"mix-replay-cfbc7f3a7932\",\"processing_time_ms\":0.2779960632324219,\"total_records\":1,\"result"
+      }
+    ]
+  },
+  "metrics": [
+    {
+      "ts": "2026-05-03T05:48:12.740154+00:00",
+      "status": 200,
+      "counters": {
+        "shadow_total_requests{endpoint=\"admin_dashboard.kpis\"}": 94,
+        "shadow_total_requests{endpoint=\"dashboard.filter_options\"}": 109
+      },
+      "gauges": {
+        "projection_readiness_status": 1.0,
+        "projection_lag_seconds": 0.0,
+        "projection_freshness_lag": 210.067921,
+        "projection_drift_count": 0.0,
+        "projection_gap_count": 0.0,
+        "sync_queue_size": 1.0
+      }
+    },
+    {
+      "ts": "2026-05-03T05:48:23.624954+00:00",
+      "status": 200,
+      "counters": {
+        "shadow_total_requests{endpoint=\"admin_dashboard.kpis\"}": 94,
+        "shadow_total_requests{endpoint=\"dashboard.filter_options\"}": 109
+      },
+      "gauges": {
+        "projection_readiness_status": 1.0,
+        "projection_lag_seconds": 0.0,
+        "projection_freshness_lag": 210.067921,
+        "projection_drift_count": 0.0,
+        "projection_gap_count": 0.0,
+        "sync_queue_size": 0.0
+      }
+    },
+    {
+      "ts": "2026-05-03T05:48:34.489891+00:00",
+      "status": 200,
+      "counters": {
+        "shadow_total_requests{endpoint=\"admin_dashboard.kpis\"}": 94,
+        "shadow_total_requests{endpoint=\"dashboard.filter_options\"}": 109
+      },
+      "gauges": {
+        "projection_readiness_status": 1.0,
+        "projection_lag_seconds": 0.0,
+        "projection_freshness_lag": 240.082255,
+        "projection_drift_count": 0.0,
+        "projection_gap_count": 0.0,
+        "sync_queue_size": 1.0
+      }
+    },
+    {
+      "ts": "2026-05-03T05:48:43.212191+00:00",
+      "status": 200,
+      "counters": {
+        "shadow_total_requests{endpoint=\"admin_dashboard.kpis\"}": 94,
+        "shadow_total_requests{endpoint=\"dashboard.filter_options\"}": 109
+      },
+      "gauges": {
+        "projection_readiness_status": 1.0,
+        "projection_lag_seconds": 0.0,
+        "projection_freshness_lag": 240.082255,
+        "projection_drift_count": 0.0,
+        "projection_gap_count": 0.0,
+        "sync_queue_size": 0.0
+      }
+    },
+    {
+      "ts": "2026-05-03T05:48:54.139387+00:00",
+      "status": 200,
+      "counters": {
+        "shadow_total_requests{endpoint=\"admin_dashboard.kpis\"}": 94,
+        "shadow_total_requests{endpoint=\"dashboard.filter_options\"}": 109
+      },
+      "gauges": {
+        "projection_readiness_status": 1.0,
+        "projection_lag_seconds": 0.0,
+        "projection_freshness_lag": 240.082255,
+        "projection_drift_count": 0.0,
+        "projection_gap_count": 0.0,
+        "sync_queue_size": 0.0
+      }
+    },
+    {
+      "ts": "2026-05-03T05:49:02.794354+00:00",
+      "status": 200,
+      "counters": {
+        "shadow_total_requests{endpoint=\"admin_dashboard.kpis\"}": 94,
+        "shadow_total_requests{endpoint=\"dashboard.filter_options\"}": 109
+      },
+      "gauges": {
+        "projection_readiness_status": 1.0,
+        "projection_lag_seconds": 0.0,
+        "projection_freshness_lag": 270.08398,
+        "projection_drift_count": 0.0,
+        "projection_gap_count": 0.0,
+        "sync_queue_size": 0.0
+      }
+    },
+    {
+      "ts": "2026-05-03T05:49:13.592749+00:00",
+      "status": 200,
+      "counters": {
+        "shadow_total_requests{endpoint=\"admin_dashboard.kpis\"}": 94,
+        "shadow_total_requests{endpoint=\"dashboard.filter_options\"}": 109
+      },
+      "gauges": {
+        "projection_readiness_status": 1.0,
+        "projection_lag_seconds": 0.0,
+        "projection_freshness_lag": 270.08398,
+        "projection_drift_count": 0.0,
+        "projection_gap_count": 0.0,
+        "sync_queue_size": 0.0
+      }
+    },
+    {
+      "ts": "2026-05-03T05:49:24.443870+00:00",
+      "status": 200,
+      "counters": {
+        "shadow_total_requests{endpoint=\"admin_dashboard.kpis\"}": 94,
+        "shadow_total_requests{endpoint=\"dashboard.filter_options\"}": 109
+      },
+      "gauges": {
+        "projection_readiness_status": 1.0,
+        "projection_lag_seconds": 0.0,
+        "projection_freshness_lag": 270.08398,
+        "projection_drift_count": 0.0,
+        "projection_gap_count": 0.0,
+        "sync_queue_size": 0.0
+      }
+    },
+    {
+      "ts": "2026-05-03T05:49:33.148686+00:00",
+      "status": 200,
+      "counters": {
+        "shadow_total_requests{endpoint=\"admin_dashboard.kpis\"}": 94,
+        "shadow_total_requests{endpoint=\"dashboard.filter_options\"}": 109
+      },
+      "gauges": {
+        "projection_readiness_status": 1.0,
+        "projection_lag_seconds": 0.0,
+        "projection_freshness_lag": 0.007606,
+        "projection_drift_count": 0.0,
+        "projection_gap_count": 0.0,
+        "sync_queue_size": 0.0
+      }
+    },
+    {
+      "ts": "2026-05-03T05:49:44.051097+00:00",
+      "status": 200,
+      "counters": {
+        "shadow_total_requests{endpoint=\"admin_dashboard.kpis\"}": 94,
+        "shadow_total_requests{endpoint=\"dashboard.filter_options\"}": 109
+      },
+      "gauges": {
+        "projection_readiness_status": 1.0,
+        "projection_lag_seconds": 0.0,
+        "projection_freshness_lag": 0.007606,
+        "projection_drift_count": 0.0,
+        "projection_gap_count": 0.0,
+        "sync_queue_size": 0.0
+      }
+    },
+    {
+      "ts": "2026-05-03T05:49:54.851640+00:00",
+      "status": 200,
+      "counters": {
+        "shadow_total_requests{endpoint=\"admin_dashboard.kpis\"}": 94,
+        "shadow_total_requests{endpoint=\"dashboard.filter_options\"}": 109
+      },
+      "gauges": {
+        "projection_readiness_status": 1.0,
+        "projection_lag_seconds": 0.0,
+        "projection_freshness_lag": 0.007606,
+        "projection_drift_count": 0.0,
+        "projection_gap_count": 0.0,
+        "sync_queue_size": 0.0
+      }
+    },
+    {
+      "ts": "2026-05-03T05:50:03.515292+00:00",
+      "status": 200,
+      "counters": {
+        "shadow_total_requests{endpoint=\"admin_dashboard.kpis\"}": 94,
+        "shadow_total_requests{endpoint=\"dashboard.filter_options\"}": 109
+      },
+      "gauges": {
+        "projection_readiness_status": 1.0,
+        "projection_lag_seconds": 0.0,
+        "projection_freshness_lag": 30.010086,
+        "projection_drift_count": 0.0,
+        "projection_gap_count": 0.0,
+        "sync_queue_size": 0.0
+      }
+    }
+  ],
+  "success_rate": 0.0
+}

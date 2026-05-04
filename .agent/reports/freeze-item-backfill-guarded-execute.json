@@ -1,0 +1,90 @@
+{
+  "mode": "execute",
+  "count_lines_scanned": 13,
+  "active_count_lines": 13,
+  "missing_verified_items": 5,
+  "missing_variance_items": 5,
+  "missing_batch_rows": 5,
+  "missing_financial_rows": 5,
+  "inserted_verified_items": 5,
+  "inserted_variance_items": 5,
+  "inserted_batch_rows": 5,
+  "inserted_financial_rows": 5,
+  "skipped_superseded": 0,
+  "skipped_missing_id": 0,
+  "errors": 0,
+  "candidate_lines": [
+    {
+      "count_line_id": "468cb15e-816d-4bc8-9bcb-67225376ebbe",
+      "session_id": "5fbb1727-a3f6-49b4-ad44-0a0a9c6ffa86",
+      "item_code": "7846",
+      "variance": 10.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "ffa342cd-207d-4207-8d84-96bb920e45aa",
+      "session_id": "5aa5f2a9-5cd1-4709-88ea-aeefb8247409",
+      "item_code": "7846",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "ddc1cf0c-8124-4f1b-81bc-6b9873dec9a7",
+      "session_id": "f7710e2e-7647-4c93-adfc-dd6c269a1cf4",
+      "item_code": "7846",
+      "variance": 10.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "d5450eb8-41b6-43fe-a8fe-37bece3eed2c",
+      "session_id": "92c7012f-9e3c-4f84-a8f5-62156eb0f41b",
+      "item_code": "7846",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "68dfde3a-7bbd-4986-99d3-e9d178fed49c",
+      "session_id": "57b44594-db82-46b7-92f1-5c86e225ae22",
+      "item_code": "7846",
+      "variance": 10.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    }
+  ],
+  "candidate_financial_sessions": [
+    {
+      "session_id": "5fbb1727-a3f6-49b4-ad44-0a0a9c6ffa86",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "5aa5f2a9-5cd1-4709-88ea-aeefb8247409",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "f7710e2e-7647-4c93-adfc-dd6c269a1cf4",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "92c7012f-9e3c-4f84-a8f5-62156eb0f41b",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "57b44594-db82-46b7-92f1-5c86e225ae22",
+      "line_count": 1,
+      "financial_total": 0.0
+    }
+  ]
+}

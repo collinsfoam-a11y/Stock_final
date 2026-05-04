@@ -101,16 +101,28 @@ const flushAsyncWork = async (iterations = 5) => {
   }
 };
 
-const mockOperations = [
+const mockQueueItems = [
   {
-    id: "op_1",
+    id: "count_line:op_1",
     type: "count_line",
     data: {
+      _id: "op_1",
+      idempotency_key: "op_1",
       session_id: "sess_1",
       item_code: "ITEM001",
-      verified_qty: 10,
+      counted_qty: 10,
+      floor_no: "F1",
+      rack_no: "R1",
+      location_id: "LOC-1",
+      serial_numbers: ["SN-1"],
+      counted_at: "2023-01-01T00:00:00Z",
     },
     timestamp: "2023-01-01T00:00:00Z",
+    retries: 0,
+    status: "pending",
+    idempotency_key: "op_1",
+    last_error: null,
+    last_attempted_at: null,
   },
 ];
 
@@ -119,7 +131,7 @@ describe("syncOfflineQueue", () => {
     jest.clearAllMocks();
     // Default mock implementations
     (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue(
-      mockOperations,
+      mockQueueItems,
     );
     (offlineStorage.getCacheStats as jest.Mock).mockResolvedValue({
       queuedOperations: 1,
@@ -139,37 +151,69 @@ describe("syncOfflineQueue", () => {
     );
   });
 
-  it("should sync operations from offline queue", async () => {
+  it("should sync canonical records from offline queue", async () => {
     const result = await syncOfflineQueue();
 
-    // Verify API called with transformed operations
-    expect(api.syncBatch).toHaveBeenCalledWith([
-      expect.objectContaining({
-        id: "op_1",
-        type: "count_line",
-        data: expect.objectContaining({
+    // Verify API called with the backend records contract, never legacy operations.
+    expect(api.syncBatch).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          client_record_id: "op_1",
           session_id: "sess_1",
+          location_id: "LOC-1",
+          floor_id: "F1",
+          rack_id: "R1",
           item_code: "ITEM001",
           verified_qty: 10,
+          damaged_qty: 0,
+          serial_numbers: ["SN-1"],
+          status: "finalized",
         }),
-      }),
-    ]);
+      ],
+      expect.stringMatching(/^offline-/),
+    );
 
     // Verify success handling
     expect(result.success).toBe(1);
     expect(result.failed).toBe(0);
     expect(offlineStorage.removeManyFromOfflineQueue).toHaveBeenCalledWith([
-      "op_1",
+      "count_line:op_1",
     ]);
   });
 
-  it("should handle ignored operations (empty queue)", async () => {
+  it("should handle an empty queue", async () => {
     (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue([]);
 
     const result = await syncOfflineQueue();
 
     expect(api.syncBatch).not.toHaveBeenCalled();
     expect(result.total).toBe(0);
+  });
+
+  it("should keep unsupported offline items for manual review without calling batch sync", async () => {
+    (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue([
+      {
+        id: "session:offline_1",
+        type: "session",
+        data: { id: "offline_1", warehouse: "Main" },
+        timestamp: "2023-01-01T00:00:00Z",
+        retries: 0,
+        status: "pending",
+      },
+    ]);
+
+    const result = await syncOfflineQueue();
+
+    expect(api.syncBatch).not.toHaveBeenCalled();
+    expect(result.failed).toBe(1);
+    expect(offlineStorage.updateOfflineQueueItem).toHaveBeenCalledWith(
+      "session:offline_1",
+      expect.objectContaining({
+        status: "failed_manual_review",
+        last_error: expect.stringContaining("Unsupported offline item type"),
+      }),
+    );
+    expect(offlineStorage.removeManyFromOfflineQueue).not.toHaveBeenCalled();
   });
 
   it("should handle partial failures", async () => {
@@ -183,7 +227,7 @@ describe("syncOfflineQueue", () => {
     expect(result.success).toBe(0);
     expect(result.errors).toContainEqual(
       expect.objectContaining({
-        id: "op_1",
+        id: "count_line:op_1",
         error: "Duplicate record",
       }),
     );
@@ -191,7 +235,7 @@ describe("syncOfflineQueue", () => {
     expect(offlineStorage.removeManyFromOfflineQueue).not.toHaveBeenCalled();
     // Should preserve failed items with explicit retry metadata
     expect(offlineStorage.updateQueueItemRetries).toHaveBeenCalledWith(
-      "op_1",
+      "count_line:op_1",
       expect.objectContaining({
         error: "Duplicate record",
         status: "blocked_conflict",
@@ -202,7 +246,7 @@ describe("syncOfflineQueue", () => {
   it("should preserve repeated failures for manual review instead of deleting them", async () => {
     (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue([
       {
-        ...mockOperations[0],
+        ...mockQueueItems[0],
         retries: 4,
         status: "pending_retry",
       },
@@ -215,7 +259,7 @@ describe("syncOfflineQueue", () => {
 
     expect(result.failed).toBe(1);
     expect(offlineStorage.updateQueueItemRetries).toHaveBeenCalledWith(
-      "op_1",
+      "count_line:op_1",
       expect.objectContaining({
         error: "Server timeout",
         status: "failed_manual_review",
@@ -234,11 +278,11 @@ describe("syncOfflineQueue", () => {
 
     expect(result.failed).toBe(1);
     expect(result.errors).toContainEqual({
-      id: "op_1",
+      id: "count_line:op_1",
       error: "Unauthorized",
     });
     expect(offlineStorage.updateOfflineQueueItem).toHaveBeenCalledWith(
-      "op_1",
+      "count_line:op_1",
       expect.objectContaining({
         status: "pending_retry",
         last_error: "Unauthorized",
@@ -262,7 +306,7 @@ describe("initializeSyncService", () => {
     jest.useFakeTimers();
     jest.clearAllMocks();
     (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue(
-      mockOperations,
+      mockQueueItems,
     );
     (offlineStorage.getCacheStats as jest.Mock).mockResolvedValue({
       queuedOperations: 1,

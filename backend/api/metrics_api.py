@@ -3,11 +3,16 @@ Metrics API
 Prometheus-compatible metrics endpoint
 """
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Depends, Response
 
+from backend.auth.dependencies import require_admin
 from backend.db.runtime import get_db
 
-metrics_router = APIRouter(prefix="/metrics", tags=["metrics"])
+metrics_router = APIRouter(
+    prefix="/metrics",
+    tags=["metrics"],
+    dependencies=[Depends(require_admin)],
+)
 
 # Global monitoring service reference (will be set from server.py)
 _monitoring_service = None

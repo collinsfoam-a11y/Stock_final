@@ -17,6 +17,7 @@ from backend.services.governance_guard import (
     assert_valid_write,
     write_authority,
 )
+from backend.services.projection_write_service import ProjectionWriteService
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.snapshot_service import SnapshotService
 from backend.services.transaction_manager import mongo_transaction
@@ -204,6 +205,7 @@ class CountLineWriteService:
         validation_service: Optional[ValidationService] = None,
         lifecycle_service: Optional[SessionLifecycleService] = None,
         audit_service: Optional[GovernanceAuditService] = None,
+        projection_service: Optional[ProjectionWriteService] = None,
     ) -> None:
         self.db = db
         self.snapshot_service = snapshot_service or SnapshotService(db)
@@ -211,6 +213,7 @@ class CountLineWriteService:
         self.validation_service = validation_service or ValidationService(db)
         self.lifecycle_service = lifecycle_service or SessionLifecycleService(db)
         self.audit_service = audit_service or GovernanceAuditService(db)
+        self.projection_service = projection_service or ProjectionWriteService(db)
         self._session_snapshot_cache: dict[str, Optional[dict[str, Any]]] = {}
         self._session_snapshot_item_index: dict[str, dict[str, float]] = {}
 
@@ -226,6 +229,29 @@ class CountLineWriteService:
         with write_authority("CountLineWriteService"):
             result = write_call()
             return await self._resolve_awaitable(result)
+
+    async def archive_orphan_session_lines(
+        self,
+        *,
+        session_ids: list[str],
+        archive_marker: dict[str, Any],
+    ) -> Any:
+        """
+        One-time reconciliation hook for historical count lines that have no
+        parent session. This deliberately does not create or edit business
+        counts; it only removes invalid orphan rows from active reporting scope.
+        """
+        normalized_session_ids = sorted(
+            {str(session_id).strip() for session_id in session_ids if str(session_id).strip()}
+        )
+        if not normalized_session_ids:
+            return None
+        return await self._execute_authorized_write(
+            lambda: self.db.count_lines.update_many(
+                {"session_id": {"$in": normalized_session_ids}, "archived": {"$ne": True}},
+                {"$set": archive_marker},
+            )
+        )
 
     @staticmethod
     def _resolve_governance_mode_profile(
@@ -377,6 +403,7 @@ class CountLineWriteService:
                 db_session=db_session,
                 expected_version=expected_versions.get(session_id),
                 actor=actor,
+                sync_projection=False,
             )
 
     async def _log_count_line_audit(
@@ -569,6 +596,15 @@ class CountLineWriteService:
                 context=ctx,
                 db_session=db_session,
                 expected_versions=expected_versions,
+            )
+
+        if session_ids and not bool(ctx.get("skip_projection_sync", False)):
+            await self.projection_service.sync_for_sessions(
+                session_ids,
+                trigger=f"count_line.{operation}",
+                actor=str(ctx.get("username") or ctx.get("actor") or "system"),
+                db_session=db_session,
+                rebuild_item_projections=not bool(ctx.get("skip_projection_items_sync", False)),
             )
 
         await self._log_count_line_audit(

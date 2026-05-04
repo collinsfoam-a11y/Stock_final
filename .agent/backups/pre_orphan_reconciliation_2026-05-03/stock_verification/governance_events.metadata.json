@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"13346e75dd0a4d1d80dc61a00df30de3","collectionName":"governance_events","type":"collection"}

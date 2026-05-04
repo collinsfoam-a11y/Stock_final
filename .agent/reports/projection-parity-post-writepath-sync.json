@@ -1,0 +1,133 @@
+{
+  "is_consistent": false,
+  "summary": {
+    "session_totals_match": false,
+    "verified_items_match": true,
+    "variance_match": true,
+    "financial_match": false,
+    "sample_validation_passed": true,
+    "event_lag_ok": false
+  },
+  "metrics": {
+    "projection_drift_count": 3,
+    "projection_gap_count": 0,
+    "event_lag_seconds": 965302.036,
+    "event_lag_threshold_seconds": 5.0
+  },
+  "samples_checked": 3,
+  "timestamp": "2026-05-03T16:49:31.532165Z",
+  "collections": {
+    "session_projection": "session_dashboard_projection",
+    "verified_projection": "verified_items_projection",
+    "variance_projection": "variance_summary_projection",
+    "financial_projection": "financial_projection",
+    "batch_projection": "batch_records",
+    "event_log": "event_log"
+  },
+  "details": {
+    "sample_session_ids": [
+      "edae9046-b1bb-4f03-9177-b9d8828291c3",
+      "59c5b8a9-96ca-41d9-b3fd-57b57e574310",
+      "3aee6a58-08d7-47f0-adbe-66cc1a6db719"
+    ],
+    "session_totals": {
+      "legacy": {
+        "session_count": 46,
+        "total_items": 30,
+        "verified_items": 10,
+        "pending_items": 20,
+        "damage_items": 2,
+        "total_variance": 7.0
+      },
+      "projection": {
+        "session_count": 46,
+        "total_items": 15,
+        "verified_items": 4,
+        "pending_items": 11,
+        "damage_items": 1,
+        "total_variance": 9.0
+      }
+    },
+    "verified_items": {
+      "legacy": 10,
+      "projection": 10
+    },
+    "variance_totals": {
+      "legacy": 7.0,
+      "projection": 7.0
+    },
+    "financial_totals": {
+      "legacy": 23664.0,
+      "projection": -235567.0
+    },
+    "sample_results": [
+      {
+        "session_id": "edae9046-b1bb-4f03-9177-b9d8828291c3",
+        "items_compared": 1,
+        "mismatches": []
+      },
+      {
+        "session_id": "59c5b8a9-96ca-41d9-b3fd-57b57e574310",
+        "items_compared": 1,
+        "mismatches": []
+      },
+      {
+        "session_id": "3aee6a58-08d7-47f0-adbe-66cc1a6db719",
+        "items_compared": 1,
+        "mismatches": []
+      }
+    ],
+    "event_lag": {
+      "latest_event_timestamp": "2026-05-03T16:49:24.097000Z",
+      "latest_projection_event_timestamp": "2026-04-22T12:41:02.061000Z"
+    }
+  },
+  "controls": {
+    "max_records": null,
+    "timeout_seconds": null,
+    "sample_seed": null
+  },
+  "failures": [
+    {
+      "kind": "drift",
+      "check": "session_totals",
+      "message": "Legacy session totals do not match session dashboard projection",
+      "legacy": {
+        "session_count": 46,
+        "total_items": 30,
+        "verified_items": 10,
+        "pending_items": 20,
+        "damage_items": 2,
+        "total_variance": 7.0
+      },
+      "projection": {
+        "session_count": 46,
+        "total_items": 15,
+        "verified_items": 4,
+        "pending_items": 11,
+        "damage_items": 1,
+        "total_variance": 9.0
+      },
+      "context": {}
+    },
+    {
+      "kind": "drift",
+      "check": "financial_totals",
+      "message": "Legacy financial total does not match projection financial total",
+      "legacy": 23664.0,
+      "projection": -235567.0,
+      "context": {}
+    },
+    {
+      "kind": "drift",
+      "check": "event_lag",
+      "message": "Projection lag exceeds the configured threshold",
+      "legacy": "2026-05-03T16:49:24.097000Z",
+      "projection": "2026-04-22T12:41:02.061000Z",
+      "context": {
+        "lag_seconds": 965302.036,
+        "threshold_seconds": 5.0
+      }
+    }
+  ]
+}

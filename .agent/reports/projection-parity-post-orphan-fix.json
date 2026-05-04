@@ -1,0 +1,72 @@
+{
+  "is_consistent": true,
+  "summary": {
+    "session_totals_match": true,
+    "verified_items_match": true,
+    "variance_match": true,
+    "financial_match": true,
+    "sample_validation_passed": true,
+    "event_lag_ok": true
+  },
+  "metrics": {
+    "projection_drift_count": 0,
+    "projection_gap_count": 0,
+    "event_lag_seconds": 0.0,
+    "event_lag_threshold_seconds": 5.0,
+    "active_count_lines": 15,
+    "active_sessions": 46,
+    "active_session_projection_rows": 46
+  },
+  "samples_checked": 0,
+  "timestamp": "2026-05-04T10:34:12.386593Z",
+  "collections": {
+    "session_projection": "session_dashboard_projection",
+    "verified_projection": "verified_items_projection",
+    "variance_projection": "variance_summary_projection",
+    "financial_projection": "financial_projection",
+    "batch_projection": "batch_records",
+    "event_log": "event_log"
+  },
+  "details": {
+    "source_session_totals": {
+      "total_items": 15,
+      "verified_items": 4,
+      "pending_items": 11,
+      "damage_items": 1,
+      "total_variance": 9.0
+    },
+    "projection_session_totals": {
+      "total_items": 15,
+      "verified_items": 4,
+      "pending_items": 11,
+      "damage_items": 1,
+      "total_variance": 9.0
+    },
+    "source_financial_totals": {
+      "total_stock_value": 236624.0,
+      "total_counted_value": 238080.0,
+      "overage_value": 2038.0,
+      "shortage_value": 582.0,
+      "damage_value": 14650.0
+    },
+    "projection_financial_totals": {
+      "total_stock_value": 236624.0,
+      "total_counted_value": 238080.0,
+      "overage_value": 2038.0,
+      "shortage_value": 582.0,
+      "damage_value": 14650.0
+    },
+    "orphan_line_session_ids": []
+  },
+  "controls": {
+    "strict": true,
+    "float_tolerance": 0.0001,
+    "event_lag_threshold_seconds": 5.0,
+    "archived_filter": {
+      "archived": {
+        "$ne": true
+      }
+    }
+  },
+  "failures": []
+}

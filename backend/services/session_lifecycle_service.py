@@ -16,6 +16,7 @@ from backend.services.governance_guard import (
     normalize_session_status,
     write_authority,
 )
+from backend.services.projection_write_service import ProjectionWriteService
 from backend.services.transaction_manager import mongo_transaction
 from backend.services.validation_service import ValidationService
 
@@ -43,10 +44,12 @@ class SessionLifecycleService:
         *,
         validation_service: Optional[ValidationService] = None,
         audit_service: Optional[GovernanceAuditService] = None,
+        projection_service: Optional[ProjectionWriteService] = None,
     ) -> None:
         self.db = db
         self.validation_service = validation_service or ValidationService(db)
         self.audit_service = audit_service or GovernanceAuditService(db)
+        self.projection_service = projection_service or ProjectionWriteService(db)
 
     @staticmethod
     def _lookup(session_id: str) -> dict[str, Any]:
@@ -186,6 +189,22 @@ class SessionLifecycleService:
             session_update["last_activity"] = last_activity
         return session_update
 
+    async def _sync_session_projection(
+        self,
+        *,
+        session_id: str,
+        trigger: str,
+        actor: str,
+        db_session: Optional[Any],
+    ) -> None:
+        await self.projection_service.sync_for_sessions(
+            [session_id],
+            trigger=trigger,
+            actor=actor,
+            db_session=db_session,
+            rebuild_item_projections=False,
+        )
+
     async def record_session_snapshot(
         self,
         *,
@@ -281,6 +300,12 @@ class SessionLifecycleService:
             version=int(created_doc.get("version", 0) or 0),
             db_session=db_session,
         )
+        await self._sync_session_projection(
+            session_id=str(created_doc["id"]),
+            trigger="session.create",
+            actor=username,
+            db_session=db_session,
+        )
         return created_doc
 
     async def transition_session(
@@ -367,6 +392,12 @@ class SessionLifecycleService:
             metadata={"from": current, "to": target, "note": note},
             db_session=db_session,
         )
+        await self._sync_session_projection(
+            session_id=session_id,
+            trigger="session.transition",
+            actor=actor,
+            db_session=db_session,
+        )
         refreshed = await self.ensure_session_exists(session_id, db_session=db_session)
         return refreshed
 
@@ -378,6 +409,7 @@ class SessionLifecycleService:
         db_session: Optional[Any] = None,
         expected_version: Optional[int] = None,
         actor: str = "system",
+        sync_projection: bool = True,
     ) -> None:
         session = await self.ensure_session_not_finalized(session_id, db_session=db_session)
         await assert_valid_write(
@@ -406,6 +438,13 @@ class SessionLifecycleService:
             version=effective_expected + 1,
             db_session=db_session,
         )
+        if sync_projection:
+            await self._sync_session_projection(
+                session_id=session_id,
+                trigger="session.update_totals",
+                actor=actor,
+                db_session=db_session,
+            )
 
     async def update_session_fields(
         self,
@@ -443,6 +482,12 @@ class SessionLifecycleService:
             session_id=session_id,
             actor_id=actor,
             version=effective_expected + 1,
+            db_session=db_session,
+        )
+        await self._sync_session_projection(
+            session_id=session_id,
+            trigger="session.update_fields",
+            actor=actor,
             db_session=db_session,
         )
 
@@ -762,6 +807,12 @@ class SessionLifecycleService:
             actor_id=actor,
             version=expected_version + 1,
             metadata={"note": note},
+            db_session=db_session,
+        )
+        await self._sync_session_projection(
+            session_id=session_id,
+            trigger="session.finalize",
+            actor=actor,
             db_session=db_session,
         )
 

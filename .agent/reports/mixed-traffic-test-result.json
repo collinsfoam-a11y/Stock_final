@@ -1,0 +1,5 @@
+{
+  "timestamp_utc": "2026-05-03T15:22:31.665262Z",
+  "status": "SKIPPED",
+  "reason": "Step 5 canary hard gate failed (HTTP 503 PROJECTION_INCONSISTENT / STALE_DATA). Runbook forbids proceeding to mixed traffic before canary pass."
+}

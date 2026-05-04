@@ -1,0 +1,45 @@
+{
+  "generated_at": "2026-05-03T04:00:50Z",
+  "stage2": {
+    "status": "FAILED_GATE",
+    "report": "/Users/noufi1/stk_final/Stock_final/.agent/reports/stage2-burn-15m-rerun.json",
+    "reads": {
+      "ok": 1799,
+      "fail": 1,
+      "gate_503": 1,
+      "total_requests": 1800,
+      "success_rate": 0.9994444444444445
+    },
+    "metrics": {
+      "samples": 90,
+      "max_projection_freshness_lag": 0.0,
+      "max_sync_queue_size": 0.0,
+      "max_sync_failure_rate": 0.0,
+      "max_projection_drift_count": 0,
+      "max_projection_gap_count": 0
+    },
+    "anomalies": [
+      {
+        "type": "projection_inconsistent_503",
+        "count": 1
+      },
+      {
+        "type": "read_non_200",
+        "count": 1
+      }
+    ]
+  },
+  "stage3": {
+    "status": "BLOCKED",
+    "reason": "stage2 gate failed (strict criteria violation)",
+    "report": "/Users/noufi1/stk_final/Stock_final/.agent/reports/stage3-burn-30m.json"
+  },
+  "deployment_decisions": {
+    "report": "/Users/noufi1/stk_final/Stock_final/.agent/reports/stage2-rerun-decision-slice.json",
+    "total_entries": 15,
+    "go_entries": 0,
+    "no_go_entries": 15,
+    "no_shadow_data_entries": 15
+  },
+  "final_status": "NO-GO_FOR_STAGE3_AND_100_PERCENT_ROLLOUT"
+}

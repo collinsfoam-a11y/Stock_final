@@ -1,0 +1,333 @@
+{
+  "timestamp": "2026-05-03T05:18:43.019689+00:00",
+  "duration_seconds": 180,
+  "reads": {
+    "ok": 344,
+    "fail": 0,
+    "gate_503": 0,
+    "total": 344
+  },
+  "success_rate": 1.0,
+  "samples_tail": [
+    {
+      "ts": "2026-05-03T05:18:22.033734+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 22.77,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:22.057574+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 23.76,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:23.081985+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 19.19,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:23.104808+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 22.75,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:24.127032+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 21.46,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:24.150344+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 23.23,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:25.163698+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 12.59,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:25.183279+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 19.55,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:26.208627+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 20.17,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:26.233900+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 25.22,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:27.263164+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 24.07,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:27.287015+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 23.79,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:28.316276+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 24.09,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:28.340268+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 23.92,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:29.363548+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 18.09,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:29.386037+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 22.45,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:30.411934+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 20.71,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:30.437737+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 25.74,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:31.462055+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 19.14,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:31.484990+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 22.86,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:32.514497+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 28.61,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:32.538656+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 24.11,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:33.571012+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 28.88,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:33.596193+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 25.1,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:34.622056+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 20.67,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:34.646247+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 24.06,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:35.679648+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 28.22,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:35.705774+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 26.05,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:36.739085+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 28.17,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:36.764741+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 25.59,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:37.787452+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 17.55,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:37.811865+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 24.37,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:38.836335+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 19.33,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:38.859360+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 22.98,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:39.882740+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 19.17,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:39.905843+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 23.04,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:40.936778+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 29.45,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:40.964603+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 27.76,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    },
+    {
+      "ts": "2026-05-03T05:18:41.988991+00:00",
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 200,
+      "latency_ms": 19.22,
+      "error": "",
+      "body": "{\"success\":true,\"options\":{\"warehouses\":[\"Main\",\"Showroom - Ground Floor - A-021172\",\"Showroom - Ground Floor - A-066382"
+    },
+    {
+      "ts": "2026-05-03T05:18:42.014627+00:00",
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 200,
+      "latency_ms": 25.59,
+      "error": "",
+      "body": "{\"total_stock_value\":0.0,\"verified_stock_value\":0.0,\"verification_percentage\":0.0,\"active_sessions\":68,\"active_users\":0,"
+    }
+  ]
+}

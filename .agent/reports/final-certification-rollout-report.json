@@ -1,0 +1,94 @@
+{
+  "generated_at": "2026-05-02T19:21:40.295679+00:00",
+  "burn_test": {
+    "report": ".agent/reports/final-burn-test-60m-certified-rerun.json",
+    "passed": true,
+    "duration_seconds": 3600,
+    "sync": {
+      "create_ok": 0,
+      "create_fail": 0,
+      "create_attempted": 0,
+      "replay_ok": 48,
+      "replay_fail": 0,
+      "total_requests": 48,
+      "success_rate": 1.0
+    },
+    "reads": {
+      "ok": 7200,
+      "fail": 0,
+      "gate_503": 0,
+      "total_requests": 7200,
+      "success_rate": 1.0
+    },
+    "metrics": {
+      "samples": 360,
+      "max_projection_freshness_lag": 0.0,
+      "max_sync_queue_size": 0.0,
+      "max_sync_failure_rate": 0.0,
+      "max_projection_drift_count": 0,
+      "max_projection_gap_count": 0
+    },
+    "anomalies": []
+  },
+  "parity_post_burn": {
+    "report": ".agent/reports/projection-parity-post-burn-60m-certified-rerun.json",
+    "is_consistent": true,
+    "metrics": {
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "event_lag_seconds": 0.0,
+      "event_lag_threshold_seconds": 5.0
+    },
+    "summary": {
+      "session_totals_match": true,
+      "verified_items_match": true,
+      "variance_match": true,
+      "financial_match": true,
+      "sample_validation_passed": true,
+      "event_lag_ok": true
+    }
+  },
+  "alert_gate_validation": {
+    "report": ".agent/reports/projection-gate-recovery-window-validation.json",
+    "stale_status_code": 503,
+    "immediate_after_publish_status": 503,
+    "delayed_after_publish_status": 503
+  },
+  "route_identity_integrity": {
+    "index_report": ".agent/reports/count-line-identity-index-verification-final.json",
+    "index_passed": true,
+    "index_failures": [],
+    "write_path_report": ".agent/reports/count-line-write-path-audit-final.json",
+    "write_path_passed": true,
+    "write_path_failures": []
+  },
+  "readiness_publish": {
+    "report": ".agent/reports/projection-readiness-republish-execute-final-gate.json",
+    "published": true,
+    "is_ready": true,
+    "updated_at": "2026-05-02T17:09:42.988800"
+  },
+  "runtime_metrics_snapshot": {
+    "counters": {
+      "retry_count": 2,
+      "sync_failure_rate": 1
+    },
+    "gauges": {
+      "projection_readiness_status": 1.0,
+      "projection_lag_seconds": 0.0,
+      "projection_freshness_lag": 30.010058,
+      "projection_drift_count": 0.0,
+      "projection_gap_count": 0.0,
+      "sync_queue_size": 0.0
+    },
+    "histograms": {
+      "retry_count_distribution": {
+        "count": 1,
+        "sum": 2.0,
+        "min": 2.0,
+        "max": 2.0,
+        "avg": 2.0
+      }
+    }
+  }
+}

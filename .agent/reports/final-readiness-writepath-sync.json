@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-05-03T16:50:17.428899+00:00",
+  "write_path_sync_enabled": true,
+  "guard_fallback_mode": true,
+  "canary": {
+    "result": "PASS",
+    "projection_503": 0,
+    "reads_ok": 330,
+    "reads_fail": 0
+  },
+  "mixed_traffic": {
+    "writes_ok": 206,
+    "writes_fail": 0,
+    "version_guard_pass": true
+  },
+  "repair": {
+    "session_inserted": 0,
+    "item_batch_inserted": 6
+  },
+  "parity_gate": {
+    "is_consistent": false,
+    "drift_count": 3,
+    "gap_count": 0,
+    "event_lag_seconds": 965302.036
+  },
+  "deploy_ready": false,
+  "blockers": [
+    "projection_parity_failed"
+  ]
+}

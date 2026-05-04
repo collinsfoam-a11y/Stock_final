@@ -1,0 +1,2567 @@
+{
+  "timestamp": "2026-05-03T05:04:49.098221+00:00",
+  "duration_seconds": 900,
+  "session_id": "75060e76-75c8-4abd-8c0e-72afab696bf6",
+  "username": "staff1",
+  "inventory_items_available": 969,
+  "inventory_items_used": 0,
+  "sync": {
+    "create_ok": 0,
+    "create_fail": 90,
+    "create_attempted": 90,
+    "replay_ok": 0,
+    "replay_fail": 0,
+    "total_requests": 90,
+    "success_rate": 0.0
+  },
+  "reads": {
+    "ok": 1800,
+    "fail": 0,
+    "gate_503": 0,
+    "total_requests": 1800,
+    "success_rate": 1.0
+  },
+  "metrics": {
+    "samples": 90,
+    "max_projection_freshness_lag": 0.0,
+    "max_sync_queue_size": 0.0,
+    "max_sync_failure_rate": 0.0,
+    "max_projection_drift_count": 0,
+    "max_projection_gap_count": 0
+  },
+  "anomalies": [
+    {
+      "type": "sync_non_200",
+      "count": 90
+    }
+  ],
+  "passed": false,
+  "time_series_metrics": [
+    {
+      "ts": "2026-05-03T04:49:49.150905+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:49:59.209834+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:50:09.193293+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:50:19.201720+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:50:29.192532+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:50:39.176627+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:50:49.176135+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:50:59.157325+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:51:09.153810+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:51:19.193134+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:51:29.159943+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:51:39.177102+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:51:49.167575+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:51:59.204905+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:52:09.138003+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:52:19.188392+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:52:29.160259+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:52:39.193907+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:52:49.170948+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:52:59.179543+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:53:09.149454+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:53:19.156394+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:53:29.162609+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:53:39.180806+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:53:49.157015+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:53:59.150520+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:54:09.149348+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:54:19.194655+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:54:29.181819+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:54:39.182164+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:54:49.160144+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:54:59.187485+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:55:09.168494+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:55:19.177755+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:55:29.170867+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:55:39.200236+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:55:49.146753+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:55:59.141159+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:56:09.158967+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:56:19.161289+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:56:29.183154+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:56:39.174472+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:56:49.194897+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:56:59.183636+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:57:09.155617+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:57:19.162817+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:57:29.137190+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:57:39.158389+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:57:49.168109+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:57:59.197643+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:58:09.162570+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:58:19.187681+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:58:29.155541+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:58:39.160485+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:58:49.191746+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:58:59.184130+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:59:09.165978+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:59:19.188876+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:59:29.183534+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:59:39.175666+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:59:49.137543+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T04:59:59.189899+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:00:09.150390+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:00:19.145668+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:00:29.175729+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:00:39.151552+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:00:49.179541+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:00:59.156802+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:01:09.146857+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:01:19.178972+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:01:29.150085+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:01:39.135110+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:01:49.143662+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:01:59.170036+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:02:09.169349+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:02:19.151968+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:02:29.139103+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:02:39.152609+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:02:49.174339+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:02:59.157468+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:03:09.141974+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:03:19.145593+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:03:29.142944+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:03:39.181406+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:03:49.165495+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:03:59.176235+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:04:09.190598+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:04:19.150193+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:04:29.151221+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-03T05:04:39.155102+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    }
+  ],
+  "samples": {
+    "sync": [
+      {
+        "ts": "2026-05-03T04:49:49.131197+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 31.231041997671127,
+        "record_id": "burn-59f1148b-a38f-4a51-afd9-a76ec0d36b25",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-59f1148b-a38f-4a51-afd9-a76ec0d36b25\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:49:59.176353+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 25.350291005452164,
+        "record_id": "burn-ab5b0aff-6b75-4c47-bc07-f3be81871961",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-ab5b0aff-6b75-4c47-bc07-f3be81871961\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:50:09.162057+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 21.593792000203393,
+        "record_id": "burn-dbadfa1c-f4c0-4718-80b8-15e73fd38512",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-dbadfa1c-f4c0-4718-80b8-15e73fd38512\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:50:19.168167+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 23.30699999583885,
+        "record_id": "burn-fa6de433-9842-4120-83c0-4f088b6173a1",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-fa6de433-9842-4120-83c0-4f088b6173a1\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:50:29.160204+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 22.52250000310596,
+        "record_id": "burn-67acebf5-e760-4536-a2a6-c4408b37fd25",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-67acebf5-e760-4536-a2a6-c4408b37fd25\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:50:39.137932+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 12.662374996580184,
+        "record_id": "burn-683df238-d340-4037-9c3e-236e5e41f0c0",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:50:49.138712+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 14.672416989924386,
+        "record_id": "burn-38b13dc1-ef70-47c5-a965-5d6a16d08fcf",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:50:59.135558+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 4.225833006785251,
+        "record_id": "burn-f3590273-9b5c-4639-8faa-895ee5ccbc23",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:51:09.123333+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 22.60079099505674,
+        "record_id": "burn-aada2a2c-98dd-405c-a47a-e77684842822",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-aada2a2c-98dd-405c-a47a-e77684842822\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:51:19.160690+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 12.127791007515043,
+        "record_id": "burn-96ebf78f-7dfd-4b43-a41d-35a2fa2d9c98",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:51:29.127373+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.122541996883228,
+        "record_id": "burn-6038894f-648c-416a-898c-0d2330042ebf",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:51:39.144744+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 23.079791993950494,
+        "record_id": "burn-23129210-b02a-47c2-b65c-74e103589faa",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-23129210-b02a-47c2-b65c-74e103589faa\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:51:49.134652+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 8.418375000474043,
+        "record_id": "burn-c2a09305-dc67-4fc8-adec-ddecc6ea2bcb",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:51:59.163988+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.864000000059605,
+        "record_id": "burn-a31626f7-b276-4e60-9986-0004ddb767cb",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:52:09.107824+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 6.500167000922374,
+        "record_id": "burn-7067dee3-fb27-4a75-88a5-768fbe88f296",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:52:19.156133+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 13.686791993677616,
+        "record_id": "burn-06763302-5c51-4402-840f-016c8de56e01",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-06763302-5c51-4402-840f-016c8de56e01\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:52:29.123953+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.52395800454542,
+        "record_id": "burn-79a9229f-5853-4b06-b6dd-bda9f8b57284",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:52:39.157964+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.28545799292624,
+        "record_id": "burn-bff09f0b-9884-4cca-89ed-d08f8a036d0d",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:52:49.135189+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 13.422749994788319,
+        "record_id": "burn-b4b32562-1cc2-4b3e-8fad-143401678fd5",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:52:59.148109+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 32.55987500597257,
+        "record_id": "burn-8a8cb1aa-6a0b-45e8-8e56-7fccc46ecd22",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-8a8cb1aa-6a0b-45e8-8e56-7fccc46ecd22\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:53:09.116168+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.86283299466595,
+        "record_id": "burn-4a10d474-bb6e-4165-8aee-b23a69ff7420",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:53:19.118461+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.9933329988271,
+        "record_id": "burn-2a6dcfb9-2325-4d6a-a3d8-1c07a289bfb8",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:53:29.129956+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.273625001194887,
+        "record_id": "burn-02756ee6-7218-458b-8745-58a475aba339",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:53:39.148152+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 27.131583003210835,
+        "record_id": "burn-9122668e-330d-4f13-8370-efbcca3f09c1",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-9122668e-330d-4f13-8370-efbcca3f09c1\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:53:49.122098+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.715624990756623,
+        "record_id": "burn-1e88b096-0f2b-408b-9a33-c22d0c664cc0",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:53:59.116634+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 10.4916249983944,
+        "record_id": "burn-083be873-af02-4cfc-bb70-48112cf8762f",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:54:09.114889+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 10.958875005599111,
+        "record_id": "burn-31190ee5-b264-4217-9b76-772516e7c306",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:54:19.164372+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 21.593708006548695,
+        "record_id": "burn-bd3b60a3-fb32-4628-9786-3b8ab684a20d",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-bd3b60a3-fb32-4628-9786-3b8ab684a20d\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:54:29.147724+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 10.031415993580595,
+        "record_id": "burn-09c6ea37-7cfc-40db-92bc-4eac25573ba9",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:54:39.146301+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.372459004633129,
+        "record_id": "burn-57577ab8-089e-4ad5-b577-0c5a50717d5b",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:54:49.124993+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.107915997854434,
+        "record_id": "burn-a1d6190f-e7b2-4e6d-b962-8846ff330af9",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:54:59.156095+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 27.501457996550016,
+        "record_id": "burn-7880109f-2827-4ca8-ad06-84256fc5c0a9",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-7880109f-2827-4ca8-ad06-84256fc5c0a9\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:55:09.133815+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.187208991032094,
+        "record_id": "burn-dedf213c-6b66-4a4a-89c5-0525f7f735bc",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:55:19.139952+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 12.53891599480994,
+        "record_id": "burn-85749778-376e-4077-9391-8400805f8975",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:55:29.134526+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.88866700977087,
+        "record_id": "burn-fb157165-734c-41f8-af18-ad75b47a1070",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:55:39.169120+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 26.597791002132,
+        "record_id": "burn-1b5f4732-6196-476f-9154-0148fd503ce5",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-1b5f4732-6196-476f-9154-0148fd503ce5\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:55:49.112055+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.528416987857781,
+        "record_id": "burn-50a09038-5047-4695-8c78-59a4c978bc0c",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:55:59.113357+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 6.2070420099189505,
+        "record_id": "burn-8d7cb0cc-5ef6-415c-a702-bf272cc91403",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:56:09.124319+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 9.879374993033707,
+        "record_id": "burn-5d3b88dd-4ef7-4c4b-85af-68124c2b60f6",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:56:19.132074+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 21.132875001057982,
+        "record_id": "burn-aec055ea-124b-4eae-903b-f89274cd6d6a",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-aec055ea-124b-4eae-903b-f89274cd6d6a\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:56:29.143595+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.296292010229081,
+        "record_id": "burn-abbafe79-57f1-434b-b20a-5b97d9d64b70",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:56:39.137392+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 10.800333009683527,
+        "record_id": "burn-f34bd03c-04c4-42c6-8588-63d6686073e1",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:56:49.163309+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 22.859999997308478,
+        "record_id": "burn-22d61605-78b3-409c-ba39-815e113509c9",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-22d61605-78b3-409c-ba39-815e113509c9\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:56:59.148070+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.141082999529317,
+        "record_id": "burn-b4f13b22-f55b-4e62-b196-450722fb15ce",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:57:09.118890+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.625250001088716,
+        "record_id": "burn-9e7a791d-e0e5-497c-8c9b-dcbabf27620b",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:57:19.137896+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 7.7882079931441694,
+        "record_id": "burn-4d864480-0978-4063-a9fd-5a74c47bce13",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:57:29.114228+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 15.916332995402627,
+        "record_id": "burn-54840166-feb8-4a07-831e-6c9bf6c9c64f",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-54840166-feb8-4a07-831e-6c9bf6c9c64f\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:57:39.122040+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.643875011941418,
+        "record_id": "burn-a858574c-a558-440f-9ade-ce3472838dfa",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:57:49.141230+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 9.109457998420112,
+        "record_id": "burn-cd2607b4-140a-4d94-8c6d-423d1afd229e",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:57:59.166259+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 22.153832993353717,
+        "record_id": "burn-c6ec5c2a-a7a7-4709-bfd2-0729b18c3452",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-c6ec5c2a-a7a7-4709-bfd2-0729b18c3452\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:58:09.129319+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 10.391167001216672,
+        "record_id": "burn-41d0be42-7fa8-44c3-b873-b9a0ed54ef4e",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:58:19.153865+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 13.640541990753263,
+        "record_id": "burn-a1f15338-57cc-444d-a5e4-7e9aeed84bb3",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:58:29.116496+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 9.525041008600965,
+        "record_id": "burn-80791c08-963a-4e48-b75f-d0da2ee89941",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:58:39.131391+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 19.13033300661482,
+        "record_id": "burn-651d13f9-fb74-49d4-b6c0-2d51982eb5ff",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-651d13f9-fb74-49d4-b6c0-2d51982eb5ff\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:58:49.156730+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.53291598893702,
+        "record_id": "burn-9d3edfe1-f208-4204-9103-fa78204be36d",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:58:59.150327+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.424041003920138,
+        "record_id": "burn-a781a380-ed7c-4c30-a9e2-fd48e16bb73f",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:59:09.130496+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.151291997521184,
+        "record_id": "burn-a552d6e2-2238-41b8-84c0-51bff7834e27",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:59:19.157977+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 22.709917000611313,
+        "record_id": "burn-7179c102-956a-4971-8b5f-7acd62611ead",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-7179c102-956a-4971-8b5f-7acd62611ead\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T04:59:29.147398+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.090833009802736,
+        "record_id": "burn-7ef6d90d-1c16-4f3a-bd99-41cdcc548efb",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:59:39.141273+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 10.8933339943178,
+        "record_id": "burn-c7ba0351-68e2-43b2-a033-e8d9dfdb4dc2",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:59:49.115432+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 3.8329999952111393,
+        "record_id": "burn-1f50a3c0-fcfb-4cf9-b091-97177e4d8c7a",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T04:59:59.158431+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 20.845125007326715,
+        "record_id": "burn-967a4eaa-3bb7-4735-9897-2f160d83b001",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-967a4eaa-3bb7-4735-9897-2f160d83b001\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T05:00:09.114834+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 10.81720799265895,
+        "record_id": "burn-232bf0ab-441f-4238-bda8-65d2ace46eb9",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:00:19.111887+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 10.741207996034063,
+        "record_id": "burn-8c7be5bf-6a63-490e-9948-c4de056d37f1",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:00:29.139884+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.241250002058223,
+        "record_id": "burn-c01dc1ca-0fa0-44aa-9601-de56b22c4cec",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:00:39.124882+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 20.24758300103713,
+        "record_id": "burn-4a0b88ff-d576-4e0e-9633-76ae7c11f1ee",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-4a0b88ff-d576-4e0e-9633-76ae7c11f1ee\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T05:00:49.143899+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.774499987950549,
+        "record_id": "burn-6ee9f672-f0ac-4685-8f81-ca0387a604c2",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:00:59.120052+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.18020799185615,
+        "record_id": "burn-47b8ce42-3e85-4915-8f8a-909ababca553",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:01:09.111879+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.52829198690597,
+        "record_id": "burn-5f8324ca-e851-4558-897c-965877aefee4",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:01:19.147975+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 21.588750008959323,
+        "record_id": "burn-6c8fd723-b049-441e-bffb-fbd49b009835",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-6c8fd723-b049-441e-bffb-fbd49b009835\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T05:01:29.114251+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.62287499755621,
+        "record_id": "burn-36ab77eb-627a-47c7-b291-571ba4e721a8",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:01:39.104710+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 9.118875008425675,
+        "record_id": "burn-7578f70d-bc9f-4693-afd4-ced739695577",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:01:49.108881+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.640374999842606,
+        "record_id": "burn-13276e5f-b5ce-4e04-9848-33be2c1420aa",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:01:59.139224+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 21.137917006853968,
+        "record_id": "burn-01a9b8d7-fbfa-4ec5-9179-c41412b560c4",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-01a9b8d7-fbfa-4ec5-9179-c41412b560c4\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T05:02:09.132773+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.477708001621068,
+        "record_id": "burn-62d399f9-a872-4de9-ab62-ef2331c91ac2",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:02:19.118076+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 10.497166003915481,
+        "record_id": "burn-115157ad-be2c-4de0-a7e1-7238e83908ca",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:02:29.105842+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 10.290374993928708,
+        "record_id": "burn-41210079-73cf-4de9-b560-3ca638351fa3",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:02:39.121880+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 20.65758300886955,
+        "record_id": "burn-8da33914-91ac-4c70-a44f-2281942ef093",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-8da33914-91ac-4c70-a44f-2281942ef093\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T05:02:49.139905+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.418000009143725,
+        "record_id": "burn-16ad1417-2fdf-4cbf-afe5-99682eb5cfd3",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:02:59.123202+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 10.591375001240522,
+        "record_id": "burn-4f482dd0-f807-415c-bcea-c69f5ae92a6d",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:03:09.106539+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 12.281874995096587,
+        "record_id": "burn-c04ee9fe-01ee-428d-8246-22e8dfe08e00",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:03:19.113928+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 21.86062499822583,
+        "record_id": "burn-67207aa4-2dc8-4550-9d57-fe7ae8b17904",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-67207aa4-2dc8-4550-9d57-fe7ae8b17904\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T05:03:29.108758+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.33216600283049,
+        "record_id": "burn-f7b4b68a-e38e-416a-a14b-5a32a527fc41",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:03:39.146830+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 10.92116600193549,
+        "record_id": "burn-720439af-a479-4aaf-9616-b6925aefabdb",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:03:49.134563+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 20.309624989749864,
+        "record_id": "burn-7120cc63-2a33-4303-bc92-c332dfb00105",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-7120cc63-2a33-4303-bc92-c332dfb00105\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T05:03:59.141076+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 13.091250002617016,
+        "record_id": "burn-197c3315-6f1a-48b4-bd6b-b90586b6aeae",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:04:09.155023+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 10.474084003362805,
+        "record_id": "burn-f9cf966e-f5c7-4b54-a416-d7f751d79859",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:04:19.129811+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 3.90454099397175,
+        "record_id": "burn-f4f411f9-dea2-47e9-9f1b-7be6b5a5fa2c",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T05:04:29.120654+00:00",
+        "phase": "create",
+        "status": 409,
+        "latency_ms": 20.92129099764861,
+        "record_id": "burn-0b589d64-a80b-426a-b884-b59402b9e7e5",
+        "item_code": "10103",
+        "error": "HTTP Error 409: Conflict",
+        "body_snippet": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"burn-0b589d64-a80b-426a-b884-b59402b9e7e5\",\"error\":\"Not authorized to sync records for this session\",\"retry_a"
+      },
+      {
+        "ts": "2026-05-03T05:04:39.120587+00:00",
+        "phase": "create",
+        "status": 503,
+        "latency_ms": 11.285375003353693,
+        "record_id": "burn-b571f697-4938-4258-822e-141ce34461c8",
+        "item_code": "10103",
+        "error": "HTTP Error 503: Service Unavailable",
+        "body_snippet": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      }
+    ],
+    "reads": [
+      {
+        "ts": "2026-05-03T05:03:49.149743+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 14.969374999054708
+      },
+      {
+        "ts": "2026-05-03T05:03:49.162019+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 12.152541996329091
+      },
+      {
+        "ts": "2026-05-03T05:03:50.153918+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 27.568999998038635
+      },
+      {
+        "ts": "2026-05-03T05:03:50.168705+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.550917010637932
+      },
+      {
+        "ts": "2026-05-03T05:03:51.158933+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.98537499923259
+      },
+      {
+        "ts": "2026-05-03T05:03:51.174421+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 15.26233299227897
+      },
+      {
+        "ts": "2026-05-03T05:03:52.164479+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.458582993247546
+      },
+      {
+        "ts": "2026-05-03T05:03:52.179450+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.759041005163454
+      },
+      {
+        "ts": "2026-05-03T05:03:53.125324+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 25.516875000903383
+      },
+      {
+        "ts": "2026-05-03T05:03:53.141272+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 15.732165993540548
+      },
+      {
+        "ts": "2026-05-03T05:03:54.132163+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 26.28462501161266
+      },
+      {
+        "ts": "2026-05-03T05:03:54.146893+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.500541990855709
+      },
+      {
+        "ts": "2026-05-03T05:03:55.149171+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 26.186542003415525
+      },
+      {
+        "ts": "2026-05-03T05:03:55.164133+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.751916998648085
+      },
+      {
+        "ts": "2026-05-03T05:03:56.165000+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 23.999249999178573
+      },
+      {
+        "ts": "2026-05-03T05:03:56.179250+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.022125003975816
+      },
+      {
+        "ts": "2026-05-03T05:03:57.128512+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 26.495625003008172
+      },
+      {
+        "ts": "2026-05-03T05:03:57.142676+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 13.923333011916839
+      },
+      {
+        "ts": "2026-05-03T05:03:58.142611+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 23.956000004545785
+      },
+      {
+        "ts": "2026-05-03T05:03:58.158019+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 15.204833005554974
+      },
+      {
+        "ts": "2026-05-03T05:03:59.159844+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 18.45191599568352
+      },
+      {
+        "ts": "2026-05-03T05:03:59.173121+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 13.101874996209517
+      },
+      {
+        "ts": "2026-05-03T05:04:00.118923+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.177083003451116
+      },
+      {
+        "ts": "2026-05-03T05:04:00.133178+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.113708006334491
+      },
+      {
+        "ts": "2026-05-03T05:04:01.158369+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 14.18441599525977
+      },
+      {
+        "ts": "2026-05-03T05:04:01.169296+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 10.826625002664514
+      },
+      {
+        "ts": "2026-05-03T05:04:02.164507+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 26.347791994339786
+      },
+      {
+        "ts": "2026-05-03T05:04:02.178793+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.077708998229355
+      },
+      {
+        "ts": "2026-05-03T05:04:03.123093+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.59225000347942
+      },
+      {
+        "ts": "2026-05-03T05:04:03.137416+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.118167004198767
+      },
+      {
+        "ts": "2026-05-03T05:04:04.131719+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 23.546042008092627
+      },
+      {
+        "ts": "2026-05-03T05:04:04.146798+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.917207998223603
+      },
+      {
+        "ts": "2026-05-03T05:04:05.132305+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.642083008075133
+      },
+      {
+        "ts": "2026-05-03T05:04:05.147609+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 15.080959012266248
+      },
+      {
+        "ts": "2026-05-03T05:04:06.137226+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 22.948249999899417
+      },
+      {
+        "ts": "2026-05-03T05:04:06.152147+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.73954199173022
+      },
+      {
+        "ts": "2026-05-03T05:04:07.141525+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 22.806084001786076
+      },
+      {
+        "ts": "2026-05-03T05:04:07.155472+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 13.78833400667645
+      },
+      {
+        "ts": "2026-05-03T05:04:08.155422+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 23.60483299707994
+      },
+      {
+        "ts": "2026-05-03T05:04:08.170015+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.36479200492613
+      },
+      {
+        "ts": "2026-05-03T05:04:09.173328+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 18.05941700877156
+      },
+      {
+        "ts": "2026-05-03T05:04:09.186958+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 13.507834009942599
+      },
+      {
+        "ts": "2026-05-03T05:04:10.146951+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 23.404000006848946
+      },
+      {
+        "ts": "2026-05-03T05:04:10.161831+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.762624996365048
+      },
+      {
+        "ts": "2026-05-03T05:04:11.158991+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 23.080707993358374
+      },
+      {
+        "ts": "2026-05-03T05:04:11.173131+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 13.97729100426659
+      },
+      {
+        "ts": "2026-05-03T05:04:12.153110+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 10.710249989642762
+      },
+      {
+        "ts": "2026-05-03T05:04:12.163036+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 9.823083004448563
+      },
+      {
+        "ts": "2026-05-03T05:04:13.152956+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.1125419997843
+      },
+      {
+        "ts": "2026-05-03T05:04:13.167886+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.715332988998853
+      },
+      {
+        "ts": "2026-05-03T05:04:14.160277+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 22.316333997878246
+      },
+      {
+        "ts": "2026-05-03T05:04:14.174663+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.208374996087514
+      },
+      {
+        "ts": "2026-05-03T05:04:15.166543+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.6382920013275
+      },
+      {
+        "ts": "2026-05-03T05:04:15.181669+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.908750003087334
+      },
+      {
+        "ts": "2026-05-03T05:04:16.116918+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 23.759292002068833
+      },
+      {
+        "ts": "2026-05-03T05:04:16.131465+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.378833002410829
+      },
+      {
+        "ts": "2026-05-03T05:04:17.137776+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 22.94216699374374
+      },
+      {
+        "ts": "2026-05-03T05:04:17.152067+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.112167002167553
+      },
+      {
+        "ts": "2026-05-03T05:04:18.146842+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 19.00845899945125
+      },
+      {
+        "ts": "2026-05-03T05:04:18.159217+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 12.274791995878331
+      },
+      {
+        "ts": "2026-05-03T05:04:19.138793+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 8.91066600161139
+      },
+      {
+        "ts": "2026-05-03T05:04:19.147694+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 8.81591699726414
+      },
+      {
+        "ts": "2026-05-03T05:04:20.157627+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 25.65954100282397
+      },
+      {
+        "ts": "2026-05-03T05:04:20.172979+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 15.16129200172145
+      },
+      {
+        "ts": "2026-05-03T05:04:21.168336+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 23.53525000216905
+      },
+      {
+        "ts": "2026-05-03T05:04:21.183129+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.6473749919096
+      },
+      {
+        "ts": "2026-05-03T05:04:22.116663+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.352958003873937
+      },
+      {
+        "ts": "2026-05-03T05:04:22.132126+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 15.273249999154359
+      },
+      {
+        "ts": "2026-05-03T05:04:23.126024+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.496291996911168
+      },
+      {
+        "ts": "2026-05-03T05:04:23.140660+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.42312500148546
+      },
+      {
+        "ts": "2026-05-03T05:04:24.139295+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.52625001023989
+      },
+      {
+        "ts": "2026-05-03T05:04:24.154719+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 15.209584002150223
+      },
+      {
+        "ts": "2026-05-03T05:04:25.157298+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 23.426208004821092
+      },
+      {
+        "ts": "2026-05-03T05:04:25.171813+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.407583003048785
+      },
+      {
+        "ts": "2026-05-03T05:04:26.163429+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 22.59654201043304
+      },
+      {
+        "ts": "2026-05-03T05:04:26.178396+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.72875000035856
+      },
+      {
+        "ts": "2026-05-03T05:04:27.161020+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 22.608667000895366
+      },
+      {
+        "ts": "2026-05-03T05:04:27.175549+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.358874992467463
+      },
+      {
+        "ts": "2026-05-03T05:04:28.167894+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.215583005570807
+      },
+      {
+        "ts": "2026-05-03T05:04:28.182416+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.38537500507664
+      },
+      {
+        "ts": "2026-05-03T05:04:29.136125+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 15.228417003527284
+      },
+      {
+        "ts": "2026-05-03T05:04:29.147853+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 11.58437499543652
+      },
+      {
+        "ts": "2026-05-03T05:04:30.155333+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 25.731665999046527
+      },
+      {
+        "ts": "2026-05-03T05:04:30.169487+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 13.924832994234748
+      },
+      {
+        "ts": "2026-05-03T05:04:31.166373+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.00399999169167
+      },
+      {
+        "ts": "2026-05-03T05:04:31.181652+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 15.058042001328431
+      },
+      {
+        "ts": "2026-05-03T05:04:32.166980+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 22.716666993801482
+      },
+      {
+        "ts": "2026-05-03T05:04:32.181313+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.173167000990361
+      },
+      {
+        "ts": "2026-05-03T05:04:33.128702+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 27.609707991359755
+      },
+      {
+        "ts": "2026-05-03T05:04:33.142342+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 13.472999999066815
+      },
+      {
+        "ts": "2026-05-03T05:04:34.134404+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 25.134666997473687
+      },
+      {
+        "ts": "2026-05-03T05:04:34.149191+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.582333998987451
+      },
+      {
+        "ts": "2026-05-03T05:04:35.141156+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 25.77650001330767
+      },
+      {
+        "ts": "2026-05-03T05:04:35.157607+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 16.2268749991199
+      },
+      {
+        "ts": "2026-05-03T05:04:36.149565+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.894707996281795
+      },
+      {
+        "ts": "2026-05-03T05:04:36.164599+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.795333991060033
+      },
+      {
+        "ts": "2026-05-03T05:04:37.165008+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.798957994789816
+      },
+      {
+        "ts": "2026-05-03T05:04:37.180238+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 15.03916599904187
+      },
+      {
+        "ts": "2026-05-03T05:04:38.126322+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 23.24287500232458
+      },
+      {
+        "ts": "2026-05-03T05:04:38.141188+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.677375002065673
+      },
+      {
+        "ts": "2026-05-03T05:04:39.138553+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 17.760832997737452
+      },
+      {
+        "ts": "2026-05-03T05:04:39.151704+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 13.051332993200049
+      },
+      {
+        "ts": "2026-05-03T05:04:40.151445+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 23.442582998541184
+      },
+      {
+        "ts": "2026-05-03T05:04:40.165543+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 13.875083008315414
+      },
+      {
+        "ts": "2026-05-03T05:04:41.143041+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 23.680667000007816
+      },
+      {
+        "ts": "2026-05-03T05:04:41.156743+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 13.474583000061102
+      },
+      {
+        "ts": "2026-05-03T05:04:42.151470+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.071791995083913
+      },
+      {
+        "ts": "2026-05-03T05:04:42.165693+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.011040999321267
+      },
+      {
+        "ts": "2026-05-03T05:04:43.167282+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 23.68212500005029
+      },
+      {
+        "ts": "2026-05-03T05:04:43.181084+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 13.62533301289659
+      },
+      {
+        "ts": "2026-05-03T05:04:44.116911+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.657250003656372
+      },
+      {
+        "ts": "2026-05-03T05:04:44.131562+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.42816699272953
+      },
+      {
+        "ts": "2026-05-03T05:04:45.132704+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 22.730832992237993
+      },
+      {
+        "ts": "2026-05-03T05:04:45.146822+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 13.917333009885624
+      },
+      {
+        "ts": "2026-05-03T05:04:46.139604+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.95779200398829
+      },
+      {
+        "ts": "2026-05-03T05:04:46.154596+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.769874993362464
+      },
+      {
+        "ts": "2026-05-03T05:04:47.159114+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 26.063833007356152
+      },
+      {
+        "ts": "2026-05-03T05:04:47.173901+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 14.554000008502044
+      },
+      {
+        "ts": "2026-05-03T05:04:48.115970+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 24.415000007138588
+      },
+      {
+        "ts": "2026-05-03T05:04:48.130059+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 13.904667008318938
+      }
+    ]
+  }
+}

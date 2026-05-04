@@ -6,11 +6,17 @@ import logging
 from backend.utils.api_utils import sanitize_for_logging
 from typing import Any, cast
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from backend.auth.dependencies import require_admin
 
 logger = logging.getLogger(__name__)
 
-sync_router = APIRouter(prefix="/sync", tags=["sync"])
+sync_router = APIRouter(
+    prefix="/sync",
+    tags=["sync"],
+    dependencies=[Depends(require_admin)],
+)
 
 # Global reference to auto sync manager (set from server.py)
 _auto_sync_manager = None

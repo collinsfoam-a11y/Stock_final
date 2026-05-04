@@ -1,0 +1,38 @@
+{
+  "timestamp": "2026-05-03T03:59:22.271632+00:00",
+  "passed": false,
+  "anomalies": [
+    {
+      "type": "projection_inconsistent_503",
+      "count": 1
+    },
+    {
+      "type": "read_non_200",
+      "count": 1
+    }
+  ],
+  "reads": {
+    "ok": 1799,
+    "fail": 1,
+    "gate_503": 1,
+    "total_requests": 1800,
+    "success_rate": 0.9994444444444445
+  },
+  "metrics": {
+    "samples": 90,
+    "max_projection_freshness_lag": 0.0,
+    "max_sync_queue_size": 0.0,
+    "max_sync_failure_rate": 0.0,
+    "max_projection_drift_count": 0,
+    "max_projection_gap_count": 0
+  },
+  "sync": {
+    "create_ok": 0,
+    "create_fail": 0,
+    "create_attempted": 0,
+    "replay_ok": 0,
+    "replay_fail": 0,
+    "total_requests": 0,
+    "success_rate": 0.0
+  }
+}

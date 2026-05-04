@@ -1,0 +1,169 @@
+{
+  "report": "/Users/noufi1/stk_final/Stock_final/.agent/reports/stage2-reads-only-shadow-gate-15m.json",
+  "duration_seconds": 900,
+  "reads": {
+    "ok": 1708,
+    "fail": 0,
+    "gate_503": 0,
+    "total": 1708
+  },
+  "success_rate": 1.0,
+  "gate_503": 0,
+  "decision_recent": [
+    {
+      "ts": "2026-05-03T05:18:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 37,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    },
+    {
+      "ts": "2026-05-03T05:19:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 44,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    },
+    {
+      "ts": "2026-05-03T05:20:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 56,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    },
+    {
+      "ts": "2026-05-03T05:21:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 67,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    },
+    {
+      "ts": "2026-05-03T05:22:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 77,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    },
+    {
+      "ts": "2026-05-03T05:23:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 91,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    },
+    {
+      "ts": "2026-05-03T05:24:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 100,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    },
+    {
+      "ts": "2026-05-03T05:25:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 110,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    },
+    {
+      "ts": "2026-05-03T05:26:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 119,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    },
+    {
+      "ts": "2026-05-03T05:27:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 135,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    },
+    {
+      "ts": "2026-05-03T05:28:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 145,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    },
+    {
+      "ts": "2026-05-03T05:29:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 157,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    },
+    {
+      "ts": "2026-05-03T05:30:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 166,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    },
+    {
+      "ts": "2026-05-03T05:31:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 172,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    },
+    {
+      "ts": "2026-05-03T05:32:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 184,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    },
+    {
+      "ts": "2026-05-03T05:33:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 194,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    },
+    {
+      "ts": "2026-05-03T05:34:25Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 203,
+      "mismatch": 0,
+      "timeout": 0,
+      "error": 0
+    }
+  ],
+  "final_decision": "GO",
+  "final_reason": "shadow_health_window_satisfied"
+}

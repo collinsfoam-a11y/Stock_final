@@ -1,0 +1,1097 @@
+[
+  {
+    "decision": "NO-GO",
+    "kind": "background_decision",
+    "metrics": {
+      "endpoints": {},
+      "error": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "reason": "no_shadow_data",
+      "timeout": 0,
+      "timeout_rate": 0.0,
+      "total": 0
+    },
+    "payload": {
+      "decision": {
+        "decision": "NO-GO",
+        "healthy": false,
+        "healthy_for_seconds": 0.0,
+        "metrics": {
+          "endpoints": {},
+          "error": 0,
+          "error_rate": 0.0,
+          "healthy": false,
+          "mismatch": 0,
+          "mismatch_rate": 0.0,
+          "reason": "no_shadow_data",
+          "timeout": 0,
+          "timeout_rate": 0.0,
+          "total": 0
+        },
+        "reason": "no_shadow_data",
+        "required_window_seconds": 120
+      },
+      "rollback": {
+        "environment_updates": {},
+        "manual_confirmation_required": false,
+        "reason": "shadow_health_within_rollback_thresholds",
+        "rollback_patch": "# checksum: empty",
+        "state": "STABLE",
+        "triggered": false
+      },
+      "rollout": {
+        "apply_patch": "# checksum: 58f431b0fa2f\nROLLOUT_STAGE=2\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.05\nV3_PROJECTION_DASHBOARD_READS=true\nV3_PROJECTION_REPORT_READS=false",
+        "cooldown_remaining_seconds": 0.0,
+        "current_stage": 2,
+        "environment_updates": {
+          "ROLLOUT_STAGE": "2",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.05",
+          "V3_PROJECTION_DASHBOARD_READS": "true",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "manual_confirmation_required": true,
+        "next_stage": 2,
+        "patch_errors": [],
+        "reason": "no_shadow_data",
+        "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+        "rollback_updates": {
+          "ROLLOUT_STAGE": "0",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.10",
+          "V3_PROJECTION_DASHBOARD_READS": "false",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "stage_name": "partial_rollout",
+        "status": "HELD"
+      }
+    },
+    "reason": "no_shadow_data",
+    "ts": "2026-05-03T03:45:02Z"
+  },
+  {
+    "decision": "NO-GO",
+    "kind": "background_decision",
+    "metrics": {
+      "endpoints": {},
+      "error": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "reason": "no_shadow_data",
+      "timeout": 0,
+      "timeout_rate": 0.0,
+      "total": 0
+    },
+    "payload": {
+      "decision": {
+        "decision": "NO-GO",
+        "healthy": false,
+        "healthy_for_seconds": 0.0,
+        "metrics": {
+          "endpoints": {},
+          "error": 0,
+          "error_rate": 0.0,
+          "healthy": false,
+          "mismatch": 0,
+          "mismatch_rate": 0.0,
+          "reason": "no_shadow_data",
+          "timeout": 0,
+          "timeout_rate": 0.0,
+          "total": 0
+        },
+        "reason": "no_shadow_data",
+        "required_window_seconds": 120
+      },
+      "rollback": {
+        "environment_updates": {},
+        "manual_confirmation_required": false,
+        "reason": "shadow_health_within_rollback_thresholds",
+        "rollback_patch": "# checksum: empty",
+        "state": "STABLE",
+        "triggered": false
+      },
+      "rollout": {
+        "apply_patch": "# checksum: 58f431b0fa2f\nROLLOUT_STAGE=2\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.05\nV3_PROJECTION_DASHBOARD_READS=true\nV3_PROJECTION_REPORT_READS=false",
+        "cooldown_remaining_seconds": 0.0,
+        "current_stage": 2,
+        "environment_updates": {
+          "ROLLOUT_STAGE": "2",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.05",
+          "V3_PROJECTION_DASHBOARD_READS": "true",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "manual_confirmation_required": true,
+        "next_stage": 2,
+        "patch_errors": [],
+        "reason": "no_shadow_data",
+        "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+        "rollback_updates": {
+          "ROLLOUT_STAGE": "0",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.10",
+          "V3_PROJECTION_DASHBOARD_READS": "false",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "stage_name": "partial_rollout",
+        "status": "HELD"
+      }
+    },
+    "reason": "no_shadow_data",
+    "ts": "2026-05-03T03:46:02Z"
+  },
+  {
+    "decision": "NO-GO",
+    "kind": "background_decision",
+    "metrics": {
+      "endpoints": {},
+      "error": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "reason": "no_shadow_data",
+      "timeout": 0,
+      "timeout_rate": 0.0,
+      "total": 0
+    },
+    "payload": {
+      "decision": {
+        "decision": "NO-GO",
+        "healthy": false,
+        "healthy_for_seconds": 0.0,
+        "metrics": {
+          "endpoints": {},
+          "error": 0,
+          "error_rate": 0.0,
+          "healthy": false,
+          "mismatch": 0,
+          "mismatch_rate": 0.0,
+          "reason": "no_shadow_data",
+          "timeout": 0,
+          "timeout_rate": 0.0,
+          "total": 0
+        },
+        "reason": "no_shadow_data",
+        "required_window_seconds": 120
+      },
+      "rollback": {
+        "environment_updates": {},
+        "manual_confirmation_required": false,
+        "reason": "shadow_health_within_rollback_thresholds",
+        "rollback_patch": "# checksum: empty",
+        "state": "STABLE",
+        "triggered": false
+      },
+      "rollout": {
+        "apply_patch": "# checksum: 58f431b0fa2f\nROLLOUT_STAGE=2\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.05\nV3_PROJECTION_DASHBOARD_READS=true\nV3_PROJECTION_REPORT_READS=false",
+        "cooldown_remaining_seconds": 0.0,
+        "current_stage": 2,
+        "environment_updates": {
+          "ROLLOUT_STAGE": "2",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.05",
+          "V3_PROJECTION_DASHBOARD_READS": "true",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "manual_confirmation_required": true,
+        "next_stage": 2,
+        "patch_errors": [],
+        "reason": "no_shadow_data",
+        "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+        "rollback_updates": {
+          "ROLLOUT_STAGE": "0",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.10",
+          "V3_PROJECTION_DASHBOARD_READS": "false",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "stage_name": "partial_rollout",
+        "status": "HELD"
+      }
+    },
+    "reason": "no_shadow_data",
+    "ts": "2026-05-03T03:47:02Z"
+  },
+  {
+    "decision": "NO-GO",
+    "kind": "background_decision",
+    "metrics": {
+      "endpoints": {},
+      "error": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "reason": "no_shadow_data",
+      "timeout": 0,
+      "timeout_rate": 0.0,
+      "total": 0
+    },
+    "payload": {
+      "decision": {
+        "decision": "NO-GO",
+        "healthy": false,
+        "healthy_for_seconds": 0.0,
+        "metrics": {
+          "endpoints": {},
+          "error": 0,
+          "error_rate": 0.0,
+          "healthy": false,
+          "mismatch": 0,
+          "mismatch_rate": 0.0,
+          "reason": "no_shadow_data",
+          "timeout": 0,
+          "timeout_rate": 0.0,
+          "total": 0
+        },
+        "reason": "no_shadow_data",
+        "required_window_seconds": 120
+      },
+      "rollback": {
+        "environment_updates": {},
+        "manual_confirmation_required": false,
+        "reason": "shadow_health_within_rollback_thresholds",
+        "rollback_patch": "# checksum: empty",
+        "state": "STABLE",
+        "triggered": false
+      },
+      "rollout": {
+        "apply_patch": "# checksum: 58f431b0fa2f\nROLLOUT_STAGE=2\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.05\nV3_PROJECTION_DASHBOARD_READS=true\nV3_PROJECTION_REPORT_READS=false",
+        "cooldown_remaining_seconds": 0.0,
+        "current_stage": 2,
+        "environment_updates": {
+          "ROLLOUT_STAGE": "2",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.05",
+          "V3_PROJECTION_DASHBOARD_READS": "true",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "manual_confirmation_required": true,
+        "next_stage": 2,
+        "patch_errors": [],
+        "reason": "no_shadow_data",
+        "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+        "rollback_updates": {
+          "ROLLOUT_STAGE": "0",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.10",
+          "V3_PROJECTION_DASHBOARD_READS": "false",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "stage_name": "partial_rollout",
+        "status": "HELD"
+      }
+    },
+    "reason": "no_shadow_data",
+    "ts": "2026-05-03T03:48:02Z"
+  },
+  {
+    "decision": "NO-GO",
+    "kind": "background_decision",
+    "metrics": {
+      "endpoints": {},
+      "error": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "reason": "no_shadow_data",
+      "timeout": 0,
+      "timeout_rate": 0.0,
+      "total": 0
+    },
+    "payload": {
+      "decision": {
+        "decision": "NO-GO",
+        "healthy": false,
+        "healthy_for_seconds": 0.0,
+        "metrics": {
+          "endpoints": {},
+          "error": 0,
+          "error_rate": 0.0,
+          "healthy": false,
+          "mismatch": 0,
+          "mismatch_rate": 0.0,
+          "reason": "no_shadow_data",
+          "timeout": 0,
+          "timeout_rate": 0.0,
+          "total": 0
+        },
+        "reason": "no_shadow_data",
+        "required_window_seconds": 120
+      },
+      "rollback": {
+        "environment_updates": {},
+        "manual_confirmation_required": false,
+        "reason": "shadow_health_within_rollback_thresholds",
+        "rollback_patch": "# checksum: empty",
+        "state": "STABLE",
+        "triggered": false
+      },
+      "rollout": {
+        "apply_patch": "# checksum: 58f431b0fa2f\nROLLOUT_STAGE=2\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.05\nV3_PROJECTION_DASHBOARD_READS=true\nV3_PROJECTION_REPORT_READS=false",
+        "cooldown_remaining_seconds": 0.0,
+        "current_stage": 2,
+        "environment_updates": {
+          "ROLLOUT_STAGE": "2",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.05",
+          "V3_PROJECTION_DASHBOARD_READS": "true",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "manual_confirmation_required": true,
+        "next_stage": 2,
+        "patch_errors": [],
+        "reason": "no_shadow_data",
+        "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+        "rollback_updates": {
+          "ROLLOUT_STAGE": "0",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.10",
+          "V3_PROJECTION_DASHBOARD_READS": "false",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "stage_name": "partial_rollout",
+        "status": "HELD"
+      }
+    },
+    "reason": "no_shadow_data",
+    "ts": "2026-05-03T03:49:02Z"
+  },
+  {
+    "decision": "NO-GO",
+    "kind": "background_decision",
+    "metrics": {
+      "endpoints": {},
+      "error": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "reason": "no_shadow_data",
+      "timeout": 0,
+      "timeout_rate": 0.0,
+      "total": 0
+    },
+    "payload": {
+      "decision": {
+        "decision": "NO-GO",
+        "healthy": false,
+        "healthy_for_seconds": 0.0,
+        "metrics": {
+          "endpoints": {},
+          "error": 0,
+          "error_rate": 0.0,
+          "healthy": false,
+          "mismatch": 0,
+          "mismatch_rate": 0.0,
+          "reason": "no_shadow_data",
+          "timeout": 0,
+          "timeout_rate": 0.0,
+          "total": 0
+        },
+        "reason": "no_shadow_data",
+        "required_window_seconds": 120
+      },
+      "rollback": {
+        "environment_updates": {},
+        "manual_confirmation_required": false,
+        "reason": "shadow_health_within_rollback_thresholds",
+        "rollback_patch": "# checksum: empty",
+        "state": "STABLE",
+        "triggered": false
+      },
+      "rollout": {
+        "apply_patch": "# checksum: 58f431b0fa2f\nROLLOUT_STAGE=2\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.05\nV3_PROJECTION_DASHBOARD_READS=true\nV3_PROJECTION_REPORT_READS=false",
+        "cooldown_remaining_seconds": 0.0,
+        "current_stage": 2,
+        "environment_updates": {
+          "ROLLOUT_STAGE": "2",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.05",
+          "V3_PROJECTION_DASHBOARD_READS": "true",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "manual_confirmation_required": true,
+        "next_stage": 2,
+        "patch_errors": [],
+        "reason": "no_shadow_data",
+        "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+        "rollback_updates": {
+          "ROLLOUT_STAGE": "0",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.10",
+          "V3_PROJECTION_DASHBOARD_READS": "false",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "stage_name": "partial_rollout",
+        "status": "HELD"
+      }
+    },
+    "reason": "no_shadow_data",
+    "ts": "2026-05-03T03:50:02Z"
+  },
+  {
+    "decision": "NO-GO",
+    "kind": "background_decision",
+    "metrics": {
+      "endpoints": {},
+      "error": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "reason": "no_shadow_data",
+      "timeout": 0,
+      "timeout_rate": 0.0,
+      "total": 0
+    },
+    "payload": {
+      "decision": {
+        "decision": "NO-GO",
+        "healthy": false,
+        "healthy_for_seconds": 0.0,
+        "metrics": {
+          "endpoints": {},
+          "error": 0,
+          "error_rate": 0.0,
+          "healthy": false,
+          "mismatch": 0,
+          "mismatch_rate": 0.0,
+          "reason": "no_shadow_data",
+          "timeout": 0,
+          "timeout_rate": 0.0,
+          "total": 0
+        },
+        "reason": "no_shadow_data",
+        "required_window_seconds": 120
+      },
+      "rollback": {
+        "environment_updates": {},
+        "manual_confirmation_required": false,
+        "reason": "shadow_health_within_rollback_thresholds",
+        "rollback_patch": "# checksum: empty",
+        "state": "STABLE",
+        "triggered": false
+      },
+      "rollout": {
+        "apply_patch": "# checksum: 58f431b0fa2f\nROLLOUT_STAGE=2\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.05\nV3_PROJECTION_DASHBOARD_READS=true\nV3_PROJECTION_REPORT_READS=false",
+        "cooldown_remaining_seconds": 0.0,
+        "current_stage": 2,
+        "environment_updates": {
+          "ROLLOUT_STAGE": "2",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.05",
+          "V3_PROJECTION_DASHBOARD_READS": "true",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "manual_confirmation_required": true,
+        "next_stage": 2,
+        "patch_errors": [],
+        "reason": "no_shadow_data",
+        "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+        "rollback_updates": {
+          "ROLLOUT_STAGE": "0",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.10",
+          "V3_PROJECTION_DASHBOARD_READS": "false",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "stage_name": "partial_rollout",
+        "status": "HELD"
+      }
+    },
+    "reason": "no_shadow_data",
+    "ts": "2026-05-03T03:51:02Z"
+  },
+  {
+    "decision": "NO-GO",
+    "kind": "background_decision",
+    "metrics": {
+      "endpoints": {},
+      "error": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "reason": "no_shadow_data",
+      "timeout": 0,
+      "timeout_rate": 0.0,
+      "total": 0
+    },
+    "payload": {
+      "decision": {
+        "decision": "NO-GO",
+        "healthy": false,
+        "healthy_for_seconds": 0.0,
+        "metrics": {
+          "endpoints": {},
+          "error": 0,
+          "error_rate": 0.0,
+          "healthy": false,
+          "mismatch": 0,
+          "mismatch_rate": 0.0,
+          "reason": "no_shadow_data",
+          "timeout": 0,
+          "timeout_rate": 0.0,
+          "total": 0
+        },
+        "reason": "no_shadow_data",
+        "required_window_seconds": 120
+      },
+      "rollback": {
+        "environment_updates": {},
+        "manual_confirmation_required": false,
+        "reason": "shadow_health_within_rollback_thresholds",
+        "rollback_patch": "# checksum: empty",
+        "state": "STABLE",
+        "triggered": false
+      },
+      "rollout": {
+        "apply_patch": "# checksum: 58f431b0fa2f\nROLLOUT_STAGE=2\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.05\nV3_PROJECTION_DASHBOARD_READS=true\nV3_PROJECTION_REPORT_READS=false",
+        "cooldown_remaining_seconds": 0.0,
+        "current_stage": 2,
+        "environment_updates": {
+          "ROLLOUT_STAGE": "2",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.05",
+          "V3_PROJECTION_DASHBOARD_READS": "true",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "manual_confirmation_required": true,
+        "next_stage": 2,
+        "patch_errors": [],
+        "reason": "no_shadow_data",
+        "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+        "rollback_updates": {
+          "ROLLOUT_STAGE": "0",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.10",
+          "V3_PROJECTION_DASHBOARD_READS": "false",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "stage_name": "partial_rollout",
+        "status": "HELD"
+      }
+    },
+    "reason": "no_shadow_data",
+    "ts": "2026-05-03T03:52:02Z"
+  },
+  {
+    "decision": "NO-GO",
+    "kind": "background_decision",
+    "metrics": {
+      "endpoints": {},
+      "error": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "reason": "no_shadow_data",
+      "timeout": 0,
+      "timeout_rate": 0.0,
+      "total": 0
+    },
+    "payload": {
+      "decision": {
+        "decision": "NO-GO",
+        "healthy": false,
+        "healthy_for_seconds": 0.0,
+        "metrics": {
+          "endpoints": {},
+          "error": 0,
+          "error_rate": 0.0,
+          "healthy": false,
+          "mismatch": 0,
+          "mismatch_rate": 0.0,
+          "reason": "no_shadow_data",
+          "timeout": 0,
+          "timeout_rate": 0.0,
+          "total": 0
+        },
+        "reason": "no_shadow_data",
+        "required_window_seconds": 120
+      },
+      "rollback": {
+        "environment_updates": {},
+        "manual_confirmation_required": false,
+        "reason": "shadow_health_within_rollback_thresholds",
+        "rollback_patch": "# checksum: empty",
+        "state": "STABLE",
+        "triggered": false
+      },
+      "rollout": {
+        "apply_patch": "# checksum: 58f431b0fa2f\nROLLOUT_STAGE=2\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.05\nV3_PROJECTION_DASHBOARD_READS=true\nV3_PROJECTION_REPORT_READS=false",
+        "cooldown_remaining_seconds": 0.0,
+        "current_stage": 2,
+        "environment_updates": {
+          "ROLLOUT_STAGE": "2",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.05",
+          "V3_PROJECTION_DASHBOARD_READS": "true",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "manual_confirmation_required": true,
+        "next_stage": 2,
+        "patch_errors": [],
+        "reason": "no_shadow_data",
+        "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+        "rollback_updates": {
+          "ROLLOUT_STAGE": "0",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.10",
+          "V3_PROJECTION_DASHBOARD_READS": "false",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "stage_name": "partial_rollout",
+        "status": "HELD"
+      }
+    },
+    "reason": "no_shadow_data",
+    "ts": "2026-05-03T03:53:02Z"
+  },
+  {
+    "decision": "NO-GO",
+    "kind": "background_decision",
+    "metrics": {
+      "endpoints": {},
+      "error": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "reason": "no_shadow_data",
+      "timeout": 0,
+      "timeout_rate": 0.0,
+      "total": 0
+    },
+    "payload": {
+      "decision": {
+        "decision": "NO-GO",
+        "healthy": false,
+        "healthy_for_seconds": 0.0,
+        "metrics": {
+          "endpoints": {},
+          "error": 0,
+          "error_rate": 0.0,
+          "healthy": false,
+          "mismatch": 0,
+          "mismatch_rate": 0.0,
+          "reason": "no_shadow_data",
+          "timeout": 0,
+          "timeout_rate": 0.0,
+          "total": 0
+        },
+        "reason": "no_shadow_data",
+        "required_window_seconds": 120
+      },
+      "rollback": {
+        "environment_updates": {},
+        "manual_confirmation_required": false,
+        "reason": "shadow_health_within_rollback_thresholds",
+        "rollback_patch": "# checksum: empty",
+        "state": "STABLE",
+        "triggered": false
+      },
+      "rollout": {
+        "apply_patch": "# checksum: 58f431b0fa2f\nROLLOUT_STAGE=2\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.05\nV3_PROJECTION_DASHBOARD_READS=true\nV3_PROJECTION_REPORT_READS=false",
+        "cooldown_remaining_seconds": 0.0,
+        "current_stage": 2,
+        "environment_updates": {
+          "ROLLOUT_STAGE": "2",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.05",
+          "V3_PROJECTION_DASHBOARD_READS": "true",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "manual_confirmation_required": true,
+        "next_stage": 2,
+        "patch_errors": [],
+        "reason": "no_shadow_data",
+        "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+        "rollback_updates": {
+          "ROLLOUT_STAGE": "0",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.10",
+          "V3_PROJECTION_DASHBOARD_READS": "false",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "stage_name": "partial_rollout",
+        "status": "HELD"
+      }
+    },
+    "reason": "no_shadow_data",
+    "ts": "2026-05-03T03:54:02Z"
+  },
+  {
+    "decision": "NO-GO",
+    "kind": "background_decision",
+    "metrics": {
+      "endpoints": {},
+      "error": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "reason": "no_shadow_data",
+      "timeout": 0,
+      "timeout_rate": 0.0,
+      "total": 0
+    },
+    "payload": {
+      "decision": {
+        "decision": "NO-GO",
+        "healthy": false,
+        "healthy_for_seconds": 0.0,
+        "metrics": {
+          "endpoints": {},
+          "error": 0,
+          "error_rate": 0.0,
+          "healthy": false,
+          "mismatch": 0,
+          "mismatch_rate": 0.0,
+          "reason": "no_shadow_data",
+          "timeout": 0,
+          "timeout_rate": 0.0,
+          "total": 0
+        },
+        "reason": "no_shadow_data",
+        "required_window_seconds": 120
+      },
+      "rollback": {
+        "environment_updates": {},
+        "manual_confirmation_required": false,
+        "reason": "shadow_health_within_rollback_thresholds",
+        "rollback_patch": "# checksum: empty",
+        "state": "STABLE",
+        "triggered": false
+      },
+      "rollout": {
+        "apply_patch": "# checksum: 58f431b0fa2f\nROLLOUT_STAGE=2\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.05\nV3_PROJECTION_DASHBOARD_READS=true\nV3_PROJECTION_REPORT_READS=false",
+        "cooldown_remaining_seconds": 0.0,
+        "current_stage": 2,
+        "environment_updates": {
+          "ROLLOUT_STAGE": "2",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.05",
+          "V3_PROJECTION_DASHBOARD_READS": "true",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "manual_confirmation_required": true,
+        "next_stage": 2,
+        "patch_errors": [],
+        "reason": "no_shadow_data",
+        "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+        "rollback_updates": {
+          "ROLLOUT_STAGE": "0",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.10",
+          "V3_PROJECTION_DASHBOARD_READS": "false",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "stage_name": "partial_rollout",
+        "status": "HELD"
+      }
+    },
+    "reason": "no_shadow_data",
+    "ts": "2026-05-03T03:55:02Z"
+  },
+  {
+    "decision": "NO-GO",
+    "kind": "background_decision",
+    "metrics": {
+      "endpoints": {},
+      "error": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "reason": "no_shadow_data",
+      "timeout": 0,
+      "timeout_rate": 0.0,
+      "total": 0
+    },
+    "payload": {
+      "decision": {
+        "decision": "NO-GO",
+        "healthy": false,
+        "healthy_for_seconds": 0.0,
+        "metrics": {
+          "endpoints": {},
+          "error": 0,
+          "error_rate": 0.0,
+          "healthy": false,
+          "mismatch": 0,
+          "mismatch_rate": 0.0,
+          "reason": "no_shadow_data",
+          "timeout": 0,
+          "timeout_rate": 0.0,
+          "total": 0
+        },
+        "reason": "no_shadow_data",
+        "required_window_seconds": 120
+      },
+      "rollback": {
+        "environment_updates": {},
+        "manual_confirmation_required": false,
+        "reason": "shadow_health_within_rollback_thresholds",
+        "rollback_patch": "# checksum: empty",
+        "state": "STABLE",
+        "triggered": false
+      },
+      "rollout": {
+        "apply_patch": "# checksum: 58f431b0fa2f\nROLLOUT_STAGE=2\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.05\nV3_PROJECTION_DASHBOARD_READS=true\nV3_PROJECTION_REPORT_READS=false",
+        "cooldown_remaining_seconds": 0.0,
+        "current_stage": 2,
+        "environment_updates": {
+          "ROLLOUT_STAGE": "2",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.05",
+          "V3_PROJECTION_DASHBOARD_READS": "true",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "manual_confirmation_required": true,
+        "next_stage": 2,
+        "patch_errors": [],
+        "reason": "no_shadow_data",
+        "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+        "rollback_updates": {
+          "ROLLOUT_STAGE": "0",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.10",
+          "V3_PROJECTION_DASHBOARD_READS": "false",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "stage_name": "partial_rollout",
+        "status": "HELD"
+      }
+    },
+    "reason": "no_shadow_data",
+    "ts": "2026-05-03T03:56:02Z"
+  },
+  {
+    "decision": "NO-GO",
+    "kind": "background_decision",
+    "metrics": {
+      "endpoints": {},
+      "error": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "reason": "no_shadow_data",
+      "timeout": 0,
+      "timeout_rate": 0.0,
+      "total": 0
+    },
+    "payload": {
+      "decision": {
+        "decision": "NO-GO",
+        "healthy": false,
+        "healthy_for_seconds": 0.0,
+        "metrics": {
+          "endpoints": {},
+          "error": 0,
+          "error_rate": 0.0,
+          "healthy": false,
+          "mismatch": 0,
+          "mismatch_rate": 0.0,
+          "reason": "no_shadow_data",
+          "timeout": 0,
+          "timeout_rate": 0.0,
+          "total": 0
+        },
+        "reason": "no_shadow_data",
+        "required_window_seconds": 120
+      },
+      "rollback": {
+        "environment_updates": {},
+        "manual_confirmation_required": false,
+        "reason": "shadow_health_within_rollback_thresholds",
+        "rollback_patch": "# checksum: empty",
+        "state": "STABLE",
+        "triggered": false
+      },
+      "rollout": {
+        "apply_patch": "# checksum: 58f431b0fa2f\nROLLOUT_STAGE=2\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.05\nV3_PROJECTION_DASHBOARD_READS=true\nV3_PROJECTION_REPORT_READS=false",
+        "cooldown_remaining_seconds": 0.0,
+        "current_stage": 2,
+        "environment_updates": {
+          "ROLLOUT_STAGE": "2",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.05",
+          "V3_PROJECTION_DASHBOARD_READS": "true",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "manual_confirmation_required": true,
+        "next_stage": 2,
+        "patch_errors": [],
+        "reason": "no_shadow_data",
+        "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+        "rollback_updates": {
+          "ROLLOUT_STAGE": "0",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.10",
+          "V3_PROJECTION_DASHBOARD_READS": "false",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "stage_name": "partial_rollout",
+        "status": "HELD"
+      }
+    },
+    "reason": "no_shadow_data",
+    "ts": "2026-05-03T03:57:02Z"
+  },
+  {
+    "decision": "NO-GO",
+    "kind": "background_decision",
+    "metrics": {
+      "endpoints": {},
+      "error": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "reason": "no_shadow_data",
+      "timeout": 0,
+      "timeout_rate": 0.0,
+      "total": 0
+    },
+    "payload": {
+      "decision": {
+        "decision": "NO-GO",
+        "healthy": false,
+        "healthy_for_seconds": 0.0,
+        "metrics": {
+          "endpoints": {},
+          "error": 0,
+          "error_rate": 0.0,
+          "healthy": false,
+          "mismatch": 0,
+          "mismatch_rate": 0.0,
+          "reason": "no_shadow_data",
+          "timeout": 0,
+          "timeout_rate": 0.0,
+          "total": 0
+        },
+        "reason": "no_shadow_data",
+        "required_window_seconds": 120
+      },
+      "rollback": {
+        "environment_updates": {},
+        "manual_confirmation_required": false,
+        "reason": "shadow_health_within_rollback_thresholds",
+        "rollback_patch": "# checksum: empty",
+        "state": "STABLE",
+        "triggered": false
+      },
+      "rollout": {
+        "apply_patch": "# checksum: 58f431b0fa2f\nROLLOUT_STAGE=2\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.05\nV3_PROJECTION_DASHBOARD_READS=true\nV3_PROJECTION_REPORT_READS=false",
+        "cooldown_remaining_seconds": 0.0,
+        "current_stage": 2,
+        "environment_updates": {
+          "ROLLOUT_STAGE": "2",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.05",
+          "V3_PROJECTION_DASHBOARD_READS": "true",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "manual_confirmation_required": true,
+        "next_stage": 2,
+        "patch_errors": [],
+        "reason": "no_shadow_data",
+        "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+        "rollback_updates": {
+          "ROLLOUT_STAGE": "0",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.10",
+          "V3_PROJECTION_DASHBOARD_READS": "false",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "stage_name": "partial_rollout",
+        "status": "HELD"
+      }
+    },
+    "reason": "no_shadow_data",
+    "ts": "2026-05-03T03:58:02Z"
+  },
+  {
+    "decision": "NO-GO",
+    "kind": "background_decision",
+    "metrics": {
+      "endpoints": {},
+      "error": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "reason": "no_shadow_data",
+      "timeout": 0,
+      "timeout_rate": 0.0,
+      "total": 0
+    },
+    "payload": {
+      "decision": {
+        "decision": "NO-GO",
+        "healthy": false,
+        "healthy_for_seconds": 0.0,
+        "metrics": {
+          "endpoints": {},
+          "error": 0,
+          "error_rate": 0.0,
+          "healthy": false,
+          "mismatch": 0,
+          "mismatch_rate": 0.0,
+          "reason": "no_shadow_data",
+          "timeout": 0,
+          "timeout_rate": 0.0,
+          "total": 0
+        },
+        "reason": "no_shadow_data",
+        "required_window_seconds": 120
+      },
+      "rollback": {
+        "environment_updates": {},
+        "manual_confirmation_required": false,
+        "reason": "shadow_health_within_rollback_thresholds",
+        "rollback_patch": "# checksum: empty",
+        "state": "STABLE",
+        "triggered": false
+      },
+      "rollout": {
+        "apply_patch": "# checksum: 58f431b0fa2f\nROLLOUT_STAGE=2\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.05\nV3_PROJECTION_DASHBOARD_READS=true\nV3_PROJECTION_REPORT_READS=false",
+        "cooldown_remaining_seconds": 0.0,
+        "current_stage": 2,
+        "environment_updates": {
+          "ROLLOUT_STAGE": "2",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.05",
+          "V3_PROJECTION_DASHBOARD_READS": "true",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "manual_confirmation_required": true,
+        "next_stage": 2,
+        "patch_errors": [],
+        "reason": "no_shadow_data",
+        "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+        "rollback_updates": {
+          "ROLLOUT_STAGE": "0",
+          "SHADOW_READ_ENABLED": "true",
+          "SHADOW_READ_SAMPLE_RATE": "0.10",
+          "V3_PROJECTION_DASHBOARD_READS": "false",
+          "V3_PROJECTION_REPORT_READS": "false"
+        },
+        "stage_name": "partial_rollout",
+        "status": "HELD"
+      }
+    },
+    "reason": "no_shadow_data",
+    "ts": "2026-05-03T03:59:02Z"
+  }
+]

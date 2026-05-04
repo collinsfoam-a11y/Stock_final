@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-05-02T19:16:02.770897",
+  "scanned_files": 228,
+  "checks": {
+    "no_direct_count_lines_writes": true,
+    "required_paths_use_process_write": true
+  },
+  "passed": true,
+  "failures": [],
+  "direct_write_findings": [],
+  "required_process_write_paths": [
+    {
+      "path": "backend/api/count_lines_routes.py",
+      "uses_process_write": true
+    },
+    {
+      "path": "backend/api/sync_batch_api.py",
+      "uses_process_write": true
+    },
+    {
+      "path": "backend/services/recount_service.py",
+      "uses_process_write": true
+    },
+    {
+      "path": "backend/services/sync_conflicts_service.py",
+      "uses_process_write": true
+    },
+    {
+      "path": "backend/services/unknown_item_service.py",
+      "uses_process_write": true
+    }
+  ]
+}

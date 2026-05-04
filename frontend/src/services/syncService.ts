@@ -12,6 +12,7 @@ import { useNetworkStore } from "../store/networkStore";
 import { useAuthStore } from "../store/authStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { createLogger } from "./logging";
+import type { SyncRecord } from "../types/sync";
 
 const log = createLogger("syncService");
 
@@ -68,6 +69,211 @@ const deriveFailureStatus = (
   return "pending_retry";
 };
 
+const asString = (value: unknown): string | null => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+  return null;
+};
+
+const firstString = (...values: unknown[]): string | null => {
+  for (const value of values) {
+    const normalized = asString(value);
+    if (normalized) return normalized;
+  }
+  return null;
+};
+
+const asNumber = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const asObject = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+
+const toIsoTimestamp = (...values: unknown[]): string => {
+  const raw = firstString(...values);
+  if (!raw) return new Date().toISOString();
+  const parsed = Date.parse(raw);
+  if (Number.isNaN(parsed)) return new Date().toISOString();
+  return new Date(parsed).toISOString();
+};
+
+const resolveClientRecordId = (item: OfflineQueueItem): string => {
+  const audit = asObject(item.data.audit);
+  return (
+    firstString(
+      item.idempotency_key,
+      item.data.idempotency_key,
+      audit.idempotency_key,
+      item.data._id,
+      item.data.id,
+      item.id,
+    ) || item.id
+  );
+};
+
+const resolveSerialNumbers = (data: Record<string, unknown>): string[] => {
+  const serials = new Set<string>();
+
+  if (Array.isArray(data.serial_numbers)) {
+    for (const serial of data.serial_numbers) {
+      const normalized = asString(serial);
+      if (normalized) serials.add(normalized);
+    }
+  }
+
+  if (Array.isArray(data.serial_entries)) {
+    for (const entry of data.serial_entries) {
+      const normalized = firstString(asObject(entry).serial_number);
+      if (normalized) serials.add(normalized);
+    }
+  }
+
+  return [...serials];
+};
+
+const resolveEvidencePhotos = (data: Record<string, unknown>): string[] => {
+  const photos = new Set<string>();
+
+  if (Array.isArray(data.evidence_photos)) {
+    for (const photo of data.evidence_photos) {
+      const normalized = asString(photo);
+      if (normalized) photos.add(normalized);
+    }
+  }
+
+  if (Array.isArray(data.photo_proofs)) {
+    for (const proof of data.photo_proofs) {
+      if (typeof proof === "string") {
+        const normalized = asString(proof);
+        if (normalized) photos.add(normalized);
+        continue;
+      }
+
+      const proofObject = asObject(proof);
+      const normalized = firstString(
+        proofObject.url,
+        proofObject.uri,
+        proofObject.previewUri,
+        proofObject.base64,
+      );
+      if (normalized) photos.add(normalized);
+    }
+  }
+
+  const photoBase64 = asString(data.photo_base64);
+  if (photoBase64) photos.add(photoBase64);
+
+  return [...photos];
+};
+
+const resolveCanonicalStatus = (data: Record<string, unknown>): SyncRecord["status"] => {
+  const normalized = firstString(data.status)?.toLowerCase();
+  return normalized === "partial" ? "partial" : "finalized";
+};
+
+const buildSyncRecord = (
+  item: OfflineQueueItem
+): { record: SyncRecord; queueId: string } | { error: string; queueId: string } => {
+  if (item.type !== "count_line") {
+    return {
+      queueId: item.id,
+      error: `Unsupported offline item type '${item.type}' for records-based sync`,
+    };
+  }
+
+  const data = item.data;
+  const audit = asObject(data.audit);
+  const clientRecordId = resolveClientRecordId(item);
+  const sessionId = firstString(data.session_id);
+  const itemCode = firstString(data.item_code);
+  const floorId = firstString(data.floor_id, data.floor_no, data.floor, data.location_name);
+  const rackId = firstString(data.rack_id, data.rack_no, data.rack);
+  const locationId = firstString(
+    data.location_id,
+    data.location,
+    data.location_type,
+    data.warehouse_id,
+    data.warehouse,
+    data.mark_location,
+    floorId,
+  );
+  const verifiedQty = asNumber(data.verified_qty) ?? asNumber(data.counted_qty);
+
+  const missingFields = [
+    !clientRecordId ? "client_record_id" : null,
+    !sessionId ? "session_id" : null,
+    !locationId ? "location_id" : null,
+    !floorId ? "floor_id" : null,
+    !rackId ? "rack_id" : null,
+    !itemCode ? "item_code" : null,
+    verifiedQty === null ? "verified_qty" : null,
+  ].filter(Boolean);
+
+  if (missingFields.length > 0) {
+    return {
+      queueId: item.id,
+      error: `Missing required sync fields: ${missingFields.join(", ")}`,
+    };
+  }
+
+  const damagedQty =
+    (asNumber(data.damaged_qty) ?? 0) +
+    (asNumber(data.non_returnable_damaged_qty) ?? 0);
+  const createdAt = toIsoTimestamp(
+    data.created_at,
+    data.counted_at,
+    data.cached_at,
+    audit.offline_created_at,
+    item.timestamp,
+  );
+  const updatedAt = toIsoTimestamp(
+    data.updated_at,
+    data.counted_at,
+    data.cached_at,
+    audit.offline_created_at,
+    item.timestamp,
+  );
+
+  return {
+    queueId: item.id,
+    record: {
+      client_record_id: clientRecordId,
+      session_id: sessionId!,
+      location_id: locationId!,
+      floor_id: floorId!,
+      rack_id: rackId!,
+      floor: floorId,
+      item_code: itemCode!,
+      verified_qty: verifiedQty!,
+      damaged_qty: damagedQty,
+      serial_numbers: resolveSerialNumbers(data),
+      mfg_date: firstString(data.mfg_date, data.manufacturing_date),
+      mrp: asNumber(data.mrp) ?? asNumber(data.mrp_counted),
+      uom: firstString(data.uom, data.uom_name, data.uom_code),
+      category: firstString(data.category, data.category_correction),
+      subcategory: firstString(data.subcategory, data.subcategory_correction),
+      item_condition: firstString(data.item_condition, data.condition),
+      evidence_photos: resolveEvidencePhotos(data),
+      status: resolveCanonicalStatus(data),
+      created_at: createdAt,
+      updated_at: updatedAt,
+    },
+  };
+};
+
 const shouldSkipSync = (options?: SyncOptions): SyncResult | null => {
   if (isSyncing) {
     log.debug("Sync already in progress, skipping");
@@ -93,14 +299,6 @@ const shouldSkipSync = (options?: SyncOptions): SyncResult | null => {
 
   return null;
 };
-
-const toSyncOperations = (batch: OfflineQueueItem[]) =>
-  batch.map((item: OfflineQueueItem) => ({
-    id: item.id,
-    type: item.type,
-    data: item.data,
-    timestamp: item.timestamp,
-  }));
 
 const toErrorMessage = (error: unknown, fallback = "Unknown batch error") =>
   error instanceof Error ? error.message : fallback;
@@ -137,28 +335,35 @@ const handleBatchResults = async (
   batch: OfflineQueueItem[],
   results: { success: boolean; id: string; message?: string }[],
 ) => {
-  const queueItemsById = new Map(batch.map((item) => [item.id, item]));
-  const successIds: string[] = [];
+  const queueItemsById = new Map<string, OfflineQueueItem>();
+  for (const item of batch) {
+    queueItemsById.set(item.id, item);
+    queueItemsById.set(resolveClientRecordId(item), item);
+  }
+
+  const successIds = new Set<string>();
   const errors: { id: string; error: string }[] = [];
   const retryUpdates: Promise<unknown>[] = [];
   let successCount = 0;
   let failedCount = 0;
 
   for (const result of results) {
+    const queueItem = queueItemsById.get(result.id);
+    const queueItemId = queueItem?.id || result.id;
+
     if (result.success) {
-      successIds.push(result.id);
+      successIds.add(queueItemId);
       successCount += 1;
       continue;
     }
 
     failedCount += 1;
     const errorMessage = result.message || "Unknown error";
-    errors.push({ id: result.id, error: errorMessage });
-    log.warn(`Sync item failed: ${result.id} - ${errorMessage}`);
-    const queueItem = queueItemsById.get(result.id);
+    errors.push({ id: queueItemId, error: errorMessage });
+    log.warn(`Sync item failed: ${queueItemId} - ${errorMessage}`);
     const nextRetryCount = (queueItem?.retries || 0) + 1;
     retryUpdates.push(
-      updateQueueItemRetries(result.id, {
+      updateQueueItemRetries(queueItemId, {
         error: errorMessage,
         status: deriveFailureStatus(errorMessage, nextRetryCount),
         attemptedAt: new Date().toISOString(),
@@ -170,13 +375,38 @@ const handleBatchResults = async (
     await Promise.all(retryUpdates);
   }
 
-  if (successIds.length > 0) {
-    await removeManyFromOfflineQueue(successIds);
-    log.debug(`Removed ${successIds.length} synced items from queue`);
-    await removeSyncedSessionsFromCache(batch, successIds);
+  const syncedQueueIds = [...successIds];
+  if (syncedQueueIds.length > 0) {
+    await removeManyFromOfflineQueue(syncedQueueIds);
+    log.debug(`Removed ${syncedQueueIds.length} synced items from queue`);
+    await removeSyncedSessionsFromCache(batch, syncedQueueIds);
   }
 
   return { successCount, failedCount, errors };
+};
+
+const handleInvalidSyncItems = async (
+  invalidItems: { queueId: string; error: string }[],
+) => {
+  if (invalidItems.length === 0) {
+    return { failedCount: 0, errors: [] as { id: string; error: string }[] };
+  }
+
+  const attemptedAt = new Date().toISOString();
+  await Promise.all(
+    invalidItems.map((item) =>
+      updateOfflineQueueItem(item.queueId, {
+        status: "failed_manual_review",
+        last_error: item.error,
+        last_attempted_at: attemptedAt,
+      }),
+    ),
+  );
+
+  return {
+    failedCount: invalidItems.length,
+    errors: invalidItems.map((item) => ({ id: item.queueId, error: item.error })),
+  };
 };
 
 const handleBatchFailure = async (batch: OfflineQueueItem[], batchError: unknown) => {
@@ -218,21 +448,46 @@ const handleBatchFailure = async (batch: OfflineQueueItem[], batchError: unknown
 };
 
 const syncBatchChunk = async (batch: OfflineQueueItem[], batchIndex: number) => {
-  const operations = toSyncOperations(batch);
+  const preparedItems = batch.map(buildSyncRecord);
+  const validItems = preparedItems.filter(
+    (item): item is { record: SyncRecord; queueId: string } => "record" in item,
+  );
+  const records = validItems.map((item) => item.record);
+  const validQueueIds = new Set(validItems.map((item) => item.queueId));
+  const validBatch = batch.filter((item) => validQueueIds.has(item.id));
+  const invalidItems = preparedItems.filter(
+    (item): item is { error: string; queueId: string } => "error" in item,
+  );
+
   log.debug(`Processing batch ${batchIndex + 1}`, {
     batchSize: batch.length,
-    operations: operations.map((operation: Record<string, unknown>) => ({
-      id: operation.id,
-      type: operation.type,
+    records: records.map((record) => ({
+      id: record.client_record_id,
+      itemCode: record.item_code,
     })),
+    invalidItems: invalidItems.length,
   });
 
+  const invalidResult = await handleInvalidSyncItems(invalidItems);
+  if (records.length === 0) {
+    return { successCount: 0, ...invalidResult };
+  }
+
   try {
-    const response = await syncBatch(operations);
-    return await handleBatchResults(batch, response.results || []);
+    const response = await syncBatch(records, `offline-${Date.now()}-${batchIndex + 1}`);
+    const batchResult = await handleBatchResults(validBatch, response.results || []);
+    return {
+      successCount: batchResult.successCount,
+      failedCount: batchResult.failedCount + invalidResult.failedCount,
+      errors: [...batchResult.errors, ...invalidResult.errors],
+    };
   } catch (error: unknown) {
-    const failure = await handleBatchFailure(batch, error);
-    return { successCount: 0, ...failure };
+    const failure = await handleBatchFailure(validBatch, error);
+    return {
+      successCount: 0,
+      failedCount: failure.failedCount + invalidResult.failedCount,
+      errors: [...failure.errors, ...invalidResult.errors],
+    };
   }
 };
 
@@ -307,7 +562,7 @@ export const getSyncStatus = async () => {
 };
 
 /**
- * Flushes queued offline operations in batches when auth and connectivity allow it.
+ * Flushes queued offline records in batches when auth and connectivity allow it.
  */
 export const syncOfflineQueue = async (
   options?: SyncOptions,

@@ -1,0 +1,27 @@
+{
+  "session_id": "8236b63a-6ec6-4a8d-8982-98ffe78bfc36",
+  "started_at": "2026-05-03T06:42:47.490315+00:00",
+  "session_dashboard": {
+    "total_items": 9,
+    "verified_items": 7,
+    "pending_items": 2,
+    "total_variance": -1.27,
+    "updated_at": "2026-05-03 06:42:47.493689"
+  },
+  "item_projection": {
+    "active_lines": 9,
+    "deleted": {
+      "verified": 9,
+      "variance": 9,
+      "batch": 9,
+      "financial": 1
+    },
+    "inserted": {
+      "verified": 9,
+      "variance": 9,
+      "batch": 9,
+      "financial": 1
+    }
+  },
+  "completed_at": "2026-05-03T06:42:47.665302+00:00"
+}

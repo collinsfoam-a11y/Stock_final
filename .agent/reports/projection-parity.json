@@ -1,0 +1,91 @@
+{
+  "is_consistent": true,
+  "summary": {
+    "session_totals_match": true,
+    "verified_items_match": true,
+    "variance_match": true,
+    "financial_match": true,
+    "sample_validation_passed": true,
+    "event_lag_ok": true
+  },
+  "metrics": {
+    "projection_drift_count": 0,
+    "projection_gap_count": 0,
+    "event_lag_seconds": 0.0,
+    "event_lag_threshold_seconds": 5.0
+  },
+  "samples_checked": 3,
+  "timestamp": "2026-05-03T15:17:47.597649Z",
+  "collections": {
+    "session_projection": "session_dashboard_projection",
+    "verified_projection": "verified_items_projection",
+    "variance_projection": "variance_summary_projection",
+    "financial_projection": "financial_projection",
+    "batch_projection": "batch_records",
+    "event_log": "event_log"
+  },
+  "details": {
+    "sample_session_ids": [
+      "6547bcbb-33e9-461b-b142-c9ba84c4cbd7",
+      "364f54c5-6d86-4b4c-b01e-6bc73f21d75a",
+      "0fba715c-ebbe-4cde-b6dc-9892a691833c"
+    ],
+    "session_totals": {
+      "legacy": {
+        "session_count": 96,
+        "total_items": 55,
+        "verified_items": 10,
+        "pending_items": 45,
+        "damage_items": 0,
+        "total_variance": 186.73
+      },
+      "projection": {
+        "session_count": 96,
+        "total_items": 55,
+        "verified_items": 10,
+        "pending_items": 45,
+        "damage_items": 0,
+        "total_variance": 186.73
+      }
+    },
+    "verified_items": {
+      "legacy": 10,
+      "projection": 10
+    },
+    "variance_totals": {
+      "legacy": 186.73,
+      "projection": 186.73
+    },
+    "financial_totals": {
+      "legacy": -469.15,
+      "projection": -469.15
+    },
+    "sample_results": [
+      {
+        "session_id": "6547bcbb-33e9-461b-b142-c9ba84c4cbd7",
+        "items_compared": 1,
+        "mismatches": []
+      },
+      {
+        "session_id": "364f54c5-6d86-4b4c-b01e-6bc73f21d75a",
+        "items_compared": 1,
+        "mismatches": []
+      },
+      {
+        "session_id": "0fba715c-ebbe-4cde-b6dc-9892a691833c",
+        "items_compared": 1,
+        "mismatches": []
+      }
+    ],
+    "event_lag": {
+      "latest_event_timestamp": "2026-04-29T07:40:33.524000Z",
+      "latest_projection_event_timestamp": "2026-05-03T06:59:02.448000Z"
+    }
+  },
+  "controls": {
+    "max_records": null,
+    "timeout_seconds": null,
+    "sample_seed": null
+  },
+  "failures": []
+}

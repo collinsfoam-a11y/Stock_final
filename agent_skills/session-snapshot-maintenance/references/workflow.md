@@ -7,6 +7,7 @@ Use `backend/scripts/backfill_session_snapshots.py` when:
 - `session_snapshots.item_count = 0`
 - the goal is to restore snapshot items from ERP data
 - the parent `sessions.snapshot_hash` metadata also needs alignment
+- execute mode is not required (the script currently blocks `--execute`)
 
 Use `backend/scripts/cleanup_synthetic_session_data.py` when:
 
@@ -40,6 +41,28 @@ Request:
   --command "./scripts/python.sh backend/scripts/cleanup_synthetic_session_data.py --execute --limit 20" \
   --impact "Archives synthetic smoke-test session documents into data_archive and deletes them from operational MongoDB collections." \
   --scope "session_snapshots,sessions,verification_sessions,count_lines"
+```
+
+Rejected:
+
+```bash
+./scripts/python.sh scripts/agent_approval_log.py log \
+  --status rejected \
+  --run-id <run_id> \
+  --call-id <call_id> \
+  --action cleanup-synthetic-session-data \
+  --notes "Execution not approved by user."
+```
+
+Cancelled:
+
+```bash
+./scripts/python.sh scripts/agent_approval_log.py log \
+  --status cancelled \
+  --run-id <run_id> \
+  --call-id <call_id> \
+  --action cleanup-synthetic-session-data \
+  --notes "Execution postponed or aborted before mutation."
 ```
 
 Approve:
@@ -80,3 +103,12 @@ Completed:
 - For backfill work, verify `repaired` and `updated_sessions` counts are plausible.
 - For cleanup work, verify `archived` and `deleted` counts match the expected collection scope.
 - Run the targeted backend tests if the script or surrounding logic changed.
+
+## Preflight Summary Template
+
+Before asking for execute approval, report:
+
+- command and exact filters (`--limit`, `--session-id`, query predicates)
+- dry-run counts and estimated document impact
+- recovery path (`data_archive` collection scope and restore expectations)
+- confidence and known gaps

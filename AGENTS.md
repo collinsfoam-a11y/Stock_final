@@ -21,10 +21,16 @@ Apply a HumanLayer-style checkpoint before any of the following:
 Default pattern:
 
 1. Inspect first.
-2. Prefer dry-run or read-only mode.
-3. Summarize expected impact.
+2. Prefer dry-run or read-only mode with the smallest possible scope (`--limit`, `--session-id`, or equivalent filters).
+3. Summarize expected impact with concrete preflight details:
+   - exact command and filters
+   - collections/documents expected to change
+   - rollback or recovery path (archive target, backup artifact, or compensating action)
+   - confidence level and known gaps
 4. Log the request with `./scripts/python.sh scripts/agent_approval_log.py`.
 5. Ask for confirmation before the mutating step.
+6. If approval is denied or deferred, log `rejected` or `cancelled` and stop.
+7. After approved execution, log `executed` and `completed`, then run a narrow verification pass.
 
 ## Repo-Local Skills
 
@@ -52,6 +58,13 @@ Default pattern:
 - Keep architecture stable unless the user explicitly asks for a redesign.
 - Run the narrowest useful verification first, then expand if needed.
 - Surface risk clearly when a command can mutate data or operational state.
+- For risky actions, cite exact files/commands you inspected before recommending execution.
+
+## Evidence and Data Hygiene
+
+- For approval-gated operations, include source-backed evidence (script paths, flags, and expected counters), not assumptions.
+- Prefer sharing counts, IDs, and scoped samples over raw document dumps.
+- Never expose secrets, credentials, or sensitive payloads in logs, commits, or chat output.
 
 ## UI/UX Mode
 
@@ -76,7 +89,7 @@ Default pattern:
 
 - `backend/scripts/backfill_session_snapshots.py`
   - Dry-run is safe by default.
-  - `--execute` requires a human checkpoint before running.
+  - `--execute` is currently blocked by the script; treat it as a guarded no-op unless the script behavior changes.
 - Any script that modifies sessions, count lines, or snapshot records in MongoDB.
 - Any deploy or rollback script under `scripts/` or release automation in `.github/workflows/`.
 
@@ -96,3 +109,21 @@ Default pattern:
 - `docs/AGENT_APPROVAL_LOG.md`
 - `docs/AGENT_UI_UX_RULES.md`
 - `docs/VIBE_CODING_AGENT_STACK.md`
+
+
+<claude-mem-context>
+# Memory Context
+
+# claude-mem status
+
+This project has no memory yet. The current session will seed it; subsequent sessions will receive auto-injected context for relevant past work.
+
+Memory injection starts on your second session in a project.
+
+`/learn-codebase` is available if the user wants to front-load the entire repo into memory in a single pass (~5 minutes on a typical repo, optional). Otherwise memory builds passively as work happens.
+
+Live activity: http://localhost:37701
+How it works: `/how-it-works`
+
+This message disappears once the first observation lands.
+</claude-mem-context>

@@ -1,0 +1,111 @@
+{
+  "duration_seconds": 240,
+  "total_requests": 201,
+  "counts": {
+    "total": 201,
+    "status_503": 201,
+    "projection_503": 201
+  },
+  "sample_errors": [
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"message\":\"Projection freshness guard is waiting for session projection catch-up.\",\"retry_after_seconds\":1,\"metrics\":{\"snapshot_ts\":\"2026-05-03T06:59:02.448000\",\"legacy_sessi"
+    }
+  ]
+}

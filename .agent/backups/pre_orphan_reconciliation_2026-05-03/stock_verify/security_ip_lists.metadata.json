@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"ip_address":{"$numberInt":"1"}},"name":"ip_address_1"},{"v":{"$numberInt":"2"},"key":{"list_type":{"$numberInt":"1"}},"name":"list_type_1"}],"uuid":"e63bdfb30d024a7eaa55ba13a2778693","collectionName":"security_ip_lists","type":"collection"}

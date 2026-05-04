@@ -1,0 +1,18 @@
+{
+  "mode": "dry-run",
+  "count_lines_scanned": 27,
+  "active_count_lines": 27,
+  "missing_verified_items": 0,
+  "missing_variance_items": 0,
+  "missing_batch_rows": 0,
+  "missing_financial_rows": 0,
+  "inserted_verified_items": 0,
+  "inserted_variance_items": 0,
+  "inserted_batch_rows": 0,
+  "inserted_financial_rows": 0,
+  "skipped_superseded": 0,
+  "skipped_missing_id": 0,
+  "errors": 0,
+  "candidate_lines": [],
+  "candidate_financial_sessions": []
+}

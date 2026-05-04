@@ -1,0 +1,148 @@
+{
+  "timestamp": "2026-05-03T15:21:30.794294+00:00",
+  "duration_seconds": 180,
+  "reads": {
+    "ok": 303,
+    "fail": 27,
+    "projection_503": 27,
+    "total": 330
+  },
+  "result": "FAIL",
+  "samples": [
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":17,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":24.803719,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":17,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":25.476736,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":16,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":26.139621,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":15,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":26.796697,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":15,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":27.470061,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":14,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":28.140419,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":13,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":28.817045,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":13,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":29.520067,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":12,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":0.171503,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":11,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":0.844856,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":11,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":1.515748,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":10,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":2.184195,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":9,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":2.85741,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":9,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":3.530856,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":8,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":4.19626,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":7,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":4.870188,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":7,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":5.53589,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":6,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":6.210185,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":5,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":6.882325,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":5,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":7.555976,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":4,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":8.220143,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":3,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":8.893444,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":3,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":9.570255,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":2,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":10.235747,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":1,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":10.901122,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":1,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":11.575899,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 503,
+      "body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":1,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":12.250546,\"projection_drift_count\":0,\"projection_gap_count\":0},\"missing_collections\":[]}}"
+    }
+  ]
+}

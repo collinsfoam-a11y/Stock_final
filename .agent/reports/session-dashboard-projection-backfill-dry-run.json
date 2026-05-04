@@ -1,0 +1,66 @@
+{
+  "mode": "dry-run",
+  "sessions_scanned": 12,
+  "missing_sessions": 4,
+  "repairable_sessions": 4,
+  "inserted_sessions": 0,
+  "skipped_existing": 0,
+  "skipped_missing_id": 0,
+  "errors": 0,
+  "missing_session_ids": [
+    "4811ce11-0581-4832-99a6-31f8ebc2a21b",
+    "0d7b1afd-9096-4e16-ac55-0e75b1abff37",
+    "eb894f15-bf86-415d-9517-201106d23062",
+    "8236b63a-6ec6-4a8d-8982-98ffe78bfc36"
+  ],
+  "candidate_rows": [
+    {
+      "session_id": "4811ce11-0581-4832-99a6-31f8ebc2a21b",
+      "total_items": 0,
+      "verified_items": 0,
+      "pending_items": 0,
+      "status": "ACTIVE",
+      "warehouse": "stale-auth-1777718597617",
+      "started_at": "2026-05-02T10:43:17.881000",
+      "source_updated_at": "2026-05-02T10:43:18.072000"
+    },
+    {
+      "session_id": "0d7b1afd-9096-4e16-ac55-0e75b1abff37",
+      "total_items": 0,
+      "verified_items": 0,
+      "pending_items": 0,
+      "status": "ACTIVE",
+      "warehouse": "Main",
+      "started_at": "2026-05-02T10:43:18.133000",
+      "source_updated_at": "2026-05-02T10:43:18.194000"
+    },
+    {
+      "session_id": "eb894f15-bf86-415d-9517-201106d23062",
+      "total_items": 0,
+      "verified_items": 0,
+      "pending_items": 0,
+      "status": "ACTIVE",
+      "warehouse": "AUDIT-df17b586",
+      "started_at": "2026-05-02T10:44:51.611000",
+      "source_updated_at": "2026-05-02T10:44:51.628000"
+    },
+    {
+      "session_id": "8236b63a-6ec6-4a8d-8982-98ffe78bfc36",
+      "total_items": 0,
+      "verified_items": 0,
+      "pending_items": 0,
+      "status": "ACTIVE",
+      "warehouse": "Main",
+      "started_at": "2026-05-02T10:52:02.951000",
+      "source_updated_at": "2026-05-02T10:52:02.986000"
+    }
+  ],
+  "coverage_before": {
+    "total_sessions": 12,
+    "covered_sessions": 8
+  },
+  "coverage_after": {
+    "total_sessions": 12,
+    "covered_sessions": 12
+  }
+}

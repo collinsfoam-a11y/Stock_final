@@ -1,0 +1,8 @@
+{
+  "pre_restart_http_code": "200",
+  "down_during_restart_http_code": "000",
+  "post_restart_http_code": "200",
+  "pre_restart_body": "{\"ok\":[\"val-rec-validation-sync-e53496c6-45a4-49ab-8cb9-0cc16d966e80-0\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"chaos-backend-restart\",\"processing_time_ms\":0.28204917907714844,\"total_records\":1,\"results\":[{\"id\":\"val-rec-validation-sync-e53496c6-45a4-49ab-8cb9-0cc16d966e80-0\",\"success\":true,\"message\":null}],\"processed_count\":1,\"success_count\":1,\"failed_count\":0}",
+  "post_restart_body": "{\"ok\":[\"val-rec-validation-sync-e53496c6-45a4-49ab-8cb9-0cc16d966e80-0\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"chaos-backend-restart\",\"processing_time_ms\":0.35500526428222656,\"total_records\":1,\"results\":[{\"id\":\"val-rec-validation-sync-e53496c6-45a4-49ab-8cb9-0cc16d966e80-0\",\"success\":true,\"message\":null}],\"processed_count\":1,\"success_count\":1,\"failed_count\":0}",
+  "health_after_restart": "{\"status\":\"healthy\",\"timestamp\":\"2026-05-02T16:16:28.354017\",\"service\":\"stock-verify-api\",\"mongodb\":{\"port\":27017,\"status\":\"healthy\",\"is_running\":true,\"error\":null}}"
+}

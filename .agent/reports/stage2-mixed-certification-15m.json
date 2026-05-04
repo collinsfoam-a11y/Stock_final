@@ -1,0 +1,1017 @@
+{
+  "stage": "stage2_mixed",
+  "timestamp": "2026-05-03T06:14:34.868091+00:00",
+  "duration_seconds": 900,
+  "reads": {
+    "ok": 0,
+    "fail": 891,
+    "gate_503": 849,
+    "total": 891,
+    "error_rate": 1.0
+  },
+  "sync": {
+    "ok": 0,
+    "fail": 90,
+    "total": 90,
+    "success_rate": 0.0
+  },
+  "metrics_summary": {
+    "samples": 90,
+    "max_projection_drift_count": 0,
+    "max_projection_gap_count": 0,
+    "max_sync_queue_size": 0.0,
+    "max_sync_failure_rate": 0.0,
+    "projection_readiness_status_last": 0.0,
+    "shadow_total_requests_min": 0,
+    "shadow_total_requests_max": 0
+  },
+  "deployment_decisions": {
+    "entries_in_window": 15,
+    "go_entries": 0,
+    "no_go_entries": 15,
+    "no_go_reasons": [
+      "no_shadow_data"
+    ],
+    "tail": [
+      {
+        "ts": "2026-05-03T06:02:59Z",
+        "decision": "NO-GO",
+        "reason": "no_shadow_data"
+      },
+      {
+        "ts": "2026-05-03T06:03:59Z",
+        "decision": "NO-GO",
+        "reason": "no_shadow_data"
+      },
+      {
+        "ts": "2026-05-03T06:04:59Z",
+        "decision": "NO-GO",
+        "reason": "no_shadow_data"
+      },
+      {
+        "ts": "2026-05-03T06:05:59Z",
+        "decision": "NO-GO",
+        "reason": "no_shadow_data"
+      },
+      {
+        "ts": "2026-05-03T06:06:59Z",
+        "decision": "NO-GO",
+        "reason": "no_shadow_data"
+      },
+      {
+        "ts": "2026-05-03T06:07:59Z",
+        "decision": "NO-GO",
+        "reason": "no_shadow_data"
+      },
+      {
+        "ts": "2026-05-03T06:08:59Z",
+        "decision": "NO-GO",
+        "reason": "no_shadow_data"
+      },
+      {
+        "ts": "2026-05-03T06:09:59Z",
+        "decision": "NO-GO",
+        "reason": "no_shadow_data"
+      },
+      {
+        "ts": "2026-05-03T06:10:59Z",
+        "decision": "NO-GO",
+        "reason": "no_shadow_data"
+      },
+      {
+        "ts": "2026-05-03T06:11:59Z",
+        "decision": "NO-GO",
+        "reason": "no_shadow_data"
+      },
+      {
+        "ts": "2026-05-03T06:12:59Z",
+        "decision": "NO-GO",
+        "reason": "no_shadow_data"
+      },
+      {
+        "ts": "2026-05-03T06:13:59Z",
+        "decision": "NO-GO",
+        "reason": "no_shadow_data"
+      }
+    ]
+  },
+  "passed": false,
+  "samples": {
+    "reads_tail": [
+      {
+        "ts": "2026-05-03T06:14:34.225165+00:00",
+        "path": "/api/admin/dashboard/kpis",
+        "status": 401,
+        "latency_ms": 4.17,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.264684+00:00",
+        "path": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 4.34,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.268208+00:00",
+        "path": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 3.48,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.271887+00:00",
+        "path": "/api/admin/dashboard/kpis",
+        "status": 401,
+        "latency_ms": 3.64,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.309359+00:00",
+        "path": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 4.77,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.312378+00:00",
+        "path": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.95,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.314807+00:00",
+        "path": "/api/admin/dashboard/kpis",
+        "status": 401,
+        "latency_ms": 2.4,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.354452+00:00",
+        "path": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 4.51,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.358072+00:00",
+        "path": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 3.57,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.361193+00:00",
+        "path": "/api/admin/dashboard/kpis",
+        "status": 401,
+        "latency_ms": 3.08,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.401115+00:00",
+        "path": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 4.83,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.405598+00:00",
+        "path": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 4.43,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.409489+00:00",
+        "path": "/api/admin/dashboard/kpis",
+        "status": 401,
+        "latency_ms": 3.85,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.448993+00:00",
+        "path": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 4.35,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.452827+00:00",
+        "path": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 3.75,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.456489+00:00",
+        "path": "/api/admin/dashboard/kpis",
+        "status": 401,
+        "latency_ms": 3.61,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.493124+00:00",
+        "path": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 4.43,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.496202+00:00",
+        "path": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 3.04,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.499655+00:00",
+        "path": "/api/admin/dashboard/kpis",
+        "status": 401,
+        "latency_ms": 3.42,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.539477+00:00",
+        "path": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 4.7,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.543056+00:00",
+        "path": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 3.51,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.546054+00:00",
+        "path": "/api/admin/dashboard/kpis",
+        "status": 401,
+        "latency_ms": 2.96,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.586275+00:00",
+        "path": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 5.13,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.590114+00:00",
+        "path": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 3.78,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.593475+00:00",
+        "path": "/api/admin/dashboard/kpis",
+        "status": 401,
+        "latency_ms": 3.32,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.633508+00:00",
+        "path": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 4.9,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.637482+00:00",
+        "path": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 3.92,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.641208+00:00",
+        "path": "/api/admin/dashboard/kpis",
+        "status": 401,
+        "latency_ms": 3.69,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.680707+00:00",
+        "path": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 4.35,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.684318+00:00",
+        "path": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 3.57,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.688063+00:00",
+        "path": "/api/admin/dashboard/kpis",
+        "status": 401,
+        "latency_ms": 3.7,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.727886+00:00",
+        "path": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 4.65,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.731630+00:00",
+        "path": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 3.7,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.735803+00:00",
+        "path": "/api/admin/dashboard/kpis",
+        "status": 401,
+        "latency_ms": 4.13,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.775152+00:00",
+        "path": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 5.13,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.778816+00:00",
+        "path": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 3.61,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.781986+00:00",
+        "path": "/api/admin/dashboard/kpis",
+        "status": 401,
+        "latency_ms": 3.13,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.822299+00:00",
+        "path": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 5.03,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.826195+00:00",
+        "path": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 3.84,
+        "error": "HTTP Error 401: Unauthorized"
+      },
+      {
+        "ts": "2026-05-03T06:14:34.829738+00:00",
+        "path": "/api/admin/dashboard/kpis",
+        "status": 401,
+        "latency_ms": 3.5,
+        "error": "HTTP Error 401: Unauthorized"
+      }
+    ],
+    "sync_tail": [
+      {
+        "ts": "2026-05-03T06:09:38.093485+00:00",
+        "status": 503,
+        "latency_ms": 5.46,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:09:50.867078+00:00",
+        "status": 409,
+        "latency_ms": 10.56,
+        "error": "HTTP Error 409: Conflict",
+        "body": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"mix-seed-f0a6d0c5-9017-45e4-aea0-268d1354ac6b\",\"e"
+      },
+      {
+        "ts": "2026-05-03T06:10:00.484652+00:00",
+        "status": 503,
+        "latency_ms": 6.28,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:10:10.079259+00:00",
+        "status": 503,
+        "latency_ms": 3.92,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:10:19.600726+00:00",
+        "status": 503,
+        "latency_ms": 6.31,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:10:29.112212+00:00",
+        "status": 409,
+        "latency_ms": 7.31,
+        "error": "HTTP Error 409: Conflict",
+        "body": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"mix-seed-f0a6d0c5-9017-45e4-aea0-268d1354ac6b\",\"e"
+      },
+      {
+        "ts": "2026-05-03T06:10:38.580005+00:00",
+        "status": 503,
+        "latency_ms": 6.45,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:10:48.056383+00:00",
+        "status": 503,
+        "latency_ms": 5.99,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:11:00.744186+00:00",
+        "status": 409,
+        "latency_ms": 9.07,
+        "error": "HTTP Error 409: Conflict",
+        "body": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"mix-seed-f0a6d0c5-9017-45e4-aea0-268d1354ac6b\",\"e"
+      },
+      {
+        "ts": "2026-05-03T06:11:10.283890+00:00",
+        "status": 503,
+        "latency_ms": 10.05,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:11:19.966595+00:00",
+        "status": 503,
+        "latency_ms": 5.46,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:11:29.459404+00:00",
+        "status": 503,
+        "latency_ms": 5.81,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:11:38.938364+00:00",
+        "status": 409,
+        "latency_ms": 13.73,
+        "error": "HTTP Error 409: Conflict",
+        "body": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"mix-seed-f0a6d0c5-9017-45e4-aea0-268d1354ac6b\",\"e"
+      },
+      {
+        "ts": "2026-05-03T06:11:48.511564+00:00",
+        "status": 503,
+        "latency_ms": 7.0,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:11:57.982896+00:00",
+        "status": 503,
+        "latency_ms": 4.45,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:12:10.592563+00:00",
+        "status": 409,
+        "latency_ms": 11.62,
+        "error": "HTTP Error 409: Conflict",
+        "body": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"mix-seed-f0a6d0c5-9017-45e4-aea0-268d1354ac6b\",\"e"
+      },
+      {
+        "ts": "2026-05-03T06:12:19.949293+00:00",
+        "status": 503,
+        "latency_ms": 5.14,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:12:29.967411+00:00",
+        "status": 503,
+        "latency_ms": 76.41,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:12:39.703116+00:00",
+        "status": 503,
+        "latency_ms": 12.0,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:12:50.313934+00:00",
+        "status": 409,
+        "latency_ms": 41.12,
+        "error": "HTTP Error 409: Conflict",
+        "body": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"mix-seed-f0a6d0c5-9017-45e4-aea0-268d1354ac6b\",\"e"
+      },
+      {
+        "ts": "2026-05-03T06:12:59.775768+00:00",
+        "status": 503,
+        "latency_ms": 3.02,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:13:09.105188+00:00",
+        "status": 503,
+        "latency_ms": 3.8,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:13:18.531988+00:00",
+        "status": 503,
+        "latency_ms": 4.15,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:13:31.145947+00:00",
+        "status": 409,
+        "latency_ms": 9.64,
+        "error": "HTTP Error 409: Conflict",
+        "body": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"mix-seed-f0a6d0c5-9017-45e4-aea0-268d1354ac6b\",\"e"
+      },
+      {
+        "ts": "2026-05-03T06:13:40.622720+00:00",
+        "status": 503,
+        "latency_ms": 6.76,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:13:50.084268+00:00",
+        "status": 503,
+        "latency_ms": 6.03,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:13:59.520984+00:00",
+        "status": 503,
+        "latency_ms": 3.63,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:14:08.928691+00:00",
+        "status": 409,
+        "latency_ms": 7.2,
+        "error": "HTTP Error 409: Conflict",
+        "body": "{\"detail\":{\"code\":\"SYNC_BATCH_RETRY_REQUIRED\",\"message\":\"Atomic batch sync failed; no records were committed.\",\"failed_record_id\":\"mix-seed-f0a6d0c5-9017-45e4-aea0-268d1354ac6b\",\"e"
+      },
+      {
+        "ts": "2026-05-03T06:14:18.354839+00:00",
+        "status": 503,
+        "latency_ms": 7.8,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      },
+      {
+        "ts": "2026-05-03T06:14:31.021055+00:00",
+        "status": 503,
+        "latency_ms": 5.07,
+        "error": "HTTP Error 503: Service Unavailable",
+        "body": "{\"detail\":\"Sync service temporarily unavailable. Please try again later.\"}"
+      }
+    ],
+    "metrics_tail": [
+      {
+        "ts": "2026-05-03T06:09:38.096316+00:00",
+        "status": 200,
+        "latency_ms": 2.78,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:09:50.871085+00:00",
+        "status": 200,
+        "latency_ms": 3.95,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:10:00.489482+00:00",
+        "status": 200,
+        "latency_ms": 4.76,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:10:10.082711+00:00",
+        "status": 200,
+        "latency_ms": 3.4,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:10:19.604832+00:00",
+        "status": 200,
+        "latency_ms": 4.02,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:10:29.115186+00:00",
+        "status": 200,
+        "latency_ms": 2.94,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:10:38.583868+00:00",
+        "status": 200,
+        "latency_ms": 3.81,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:10:48.060850+00:00",
+        "status": 200,
+        "latency_ms": 4.37,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:11:00.747650+00:00",
+        "status": 200,
+        "latency_ms": 3.42,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:11:10.295805+00:00",
+        "status": 200,
+        "latency_ms": 11.86,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:11:19.970608+00:00",
+        "status": 200,
+        "latency_ms": 3.95,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:11:29.463361+00:00",
+        "status": 200,
+        "latency_ms": 3.84,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:11:38.942805+00:00",
+        "status": 200,
+        "latency_ms": 4.38,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:11:48.516305+00:00",
+        "status": 200,
+        "latency_ms": 4.68,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:11:57.986361+00:00",
+        "status": 200,
+        "latency_ms": 3.43,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:12:10.595901+00:00",
+        "status": 200,
+        "latency_ms": 3.29,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:12:19.952748+00:00",
+        "status": 200,
+        "latency_ms": 3.38,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:12:29.978336+00:00",
+        "status": 200,
+        "latency_ms": 10.84,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:12:39.712588+00:00",
+        "status": 200,
+        "latency_ms": 9.41,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:12:50.327413+00:00",
+        "status": 200,
+        "latency_ms": 13.43,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:12:59.777938+00:00",
+        "status": 200,
+        "latency_ms": 2.14,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:13:09.107899+00:00",
+        "status": 200,
+        "latency_ms": 2.65,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:13:18.535554+00:00",
+        "status": 200,
+        "latency_ms": 3.48,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:13:31.149343+00:00",
+        "status": 200,
+        "latency_ms": 3.35,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:13:40.626987+00:00",
+        "status": 200,
+        "latency_ms": 4.2,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:13:50.088891+00:00",
+        "status": 200,
+        "latency_ms": 4.55,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:13:59.524421+00:00",
+        "status": 200,
+        "latency_ms": 3.39,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:14:08.931393+00:00",
+        "status": 200,
+        "latency_ms": 2.67,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:14:18.360333+00:00",
+        "status": 200,
+        "latency_ms": 5.4,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      },
+      {
+        "ts": "2026-05-03T06:14:31.024999+00:00",
+        "status": 200,
+        "latency_ms": 3.87,
+        "error": null,
+        "projection_drift_count": 0,
+        "projection_gap_count": 0,
+        "projection_freshness_lag": 0.0,
+        "projection_readiness_status": 0.0,
+        "sync_queue_size": 0.0,
+        "retry_count": 0,
+        "sync_failure_rate": 0.0,
+        "shadow_total_requests_sum": 0
+      }
+    ]
+  }
+}

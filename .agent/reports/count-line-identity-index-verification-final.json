@@ -1,0 +1,55 @@
+{
+  "timestamp": "2026-05-02T19:16:02.791671",
+  "database": {
+    "name": "stock_verification"
+  },
+  "required_index": "idx_session_item_id_barcode_unique",
+  "required_key": [
+    [
+      "session_id",
+      1
+    ],
+    [
+      "item_id",
+      1
+    ],
+    [
+      "barcode",
+      1
+    ]
+  ],
+  "index_document": {
+    "v": 2,
+    "key": [
+      [
+        "session_id",
+        1
+      ],
+      [
+        "item_id",
+        1
+      ],
+      [
+        "barcode",
+        1
+      ]
+    ],
+    "unique": true
+  },
+  "counts": {
+    "missing_item_id": 0,
+    "missing_barcode": 0,
+    "duplicate_groups": 0
+  },
+  "checks": {
+    "index_exists": true,
+    "index_unique": true,
+    "index_non_sparse": true,
+    "index_key_matches": true,
+    "missing_item_id_zero": true,
+    "missing_barcode_zero": true,
+    "duplicate_groups_zero": true
+  },
+  "passed": true,
+  "failures": []
+}

@@ -505,6 +505,13 @@ try:
 except Exception as e:
     import warnings  # noqa: E402
 
+    fallback_env = os.getenv("ENVIRONMENT", os.getenv("APP_ENV", "development")).lower()
+    if fallback_env in {"production", "staging"}:
+        raise RuntimeError(
+            "CRITICAL: Settings validation failed in production/staging. "
+            "Fallback settings are not allowed for production startup."
+        ) from e
+
     warnings.warn(
         f"Configuration Error: {e}. Using environment variables with defaults.",
         stacklevel=2,
@@ -647,6 +654,11 @@ def perform_security_checks(settings_obj):
                 )
 
     except Exception as e:
+        environment = getattr(
+            settings_obj, "ENVIRONMENT", os.getenv("ENVIRONMENT", "development")
+        ).lower()
+        if environment in {"production", "staging"}:
+            raise RuntimeError(f"Security check failed in {environment}: {e}") from e
         if str(getattr(settings_obj, "DEBUG", False)).lower() not in ("1", "true"):
             logger.warning(f"Security check warning: {e}")
 
