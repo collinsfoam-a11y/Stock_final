@@ -1,0 +1,6 @@
+interface:
+  display_name: "Stock Final"
+  short_description: "Repo-specific patterns and workflows for Stock_final"
+  default_prompt: "Use the Stock_final repo skill to follow existing architecture, testing, and workflow conventions."
+policy:
+  allow_implicit_invocation: true
