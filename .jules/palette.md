@@ -5,3 +5,7 @@
 ## 2025-05-15 - [Clear Button for Form Inputs]
 **Learning:** Adding a clear button to form inputs is a high-impact micro-UX improvement that reduces friction during data correction. When implemented with haptic feedback and automatic refocusing, it creates a "delightful" and efficient interaction. In PNPM-based React Native/Expo environments, Jest transformation configurations must specifically account for the `.pnpm` symlink structure to ensure components with ES modules are correctly transformed.
 **Action:** Use the `showClearButton` prop in `ModernInput` for any searchable or high-correction fields. Ensure `transformIgnorePatterns` in `jest.config.js` is updated if new ES-only dependencies are added.
+
+## 2025-05-20 - [Safe Event Forwarding in UI Components]
+**Learning:** When wrapping standard interactive props like `onPress` in foundational components to add micro-UX (like haptics), it is critical to forward all arguments (e.g., `GestureResponderEvent`) to the original callback. Failure to do so breaks components that rely on event data for complex interactions. Additionally, prepending state info like "Loading" to `accessibilityLabel` provides immediate context for screen reader users during async operations.
+**Action:** Always use `(event) => { haptics.light(); onPress?.(event); }` pattern when adding tactile feedback to buttons.

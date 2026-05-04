@@ -45,6 +45,7 @@ import {
   touchTargets,
 } from "../../theme/unified";
 import { useThemeContextSafe } from "../../context/ThemeContext";
+import { haptics } from "../../services/haptics";
 
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
@@ -125,6 +126,15 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
       opacity.value = withTiming(1, {
         duration: duration.fast,
       });
+    }
+  };
+
+  const handlePress = (event: any) => {
+    if (!disabled && !loading) {
+      void haptics.light();
+      if (onPress) {
+        (onPress as any)(event);
+      }
     }
   };
 
@@ -283,14 +293,16 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
 
     const webProps = isWeb
       ? {
-          onPress,
+          onPress: handlePress,
           onPressIn: handlePressIn,
           onPressOut: handlePressOut,
           disabled: disabled || loading,
           activeOpacity: 0.8,
           style: buttonStyle,
           testID,
-          accessibilityLabel: accessibilityLabel || title,
+          accessibilityLabel: loading
+            ? `Loading, ${accessibilityLabel || title}`
+            : accessibilityLabel || title,
           accessibilityHint,
           accessibilityRole: "button" as "button",
           accessibilityState: { disabled: disabled || loading },
@@ -299,14 +311,16 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
 
     const nativeProps = !isWeb
       ? {
-          onPress,
+          onPress: handlePress,
           onPressIn: handlePressIn,
           onPressOut: handlePressOut,
           disabled: disabled || loading,
           activeOpacity: 1,
           style: [animatedStyle, buttonStyle],
           testID,
-          accessibilityLabel: accessibilityLabel || title,
+          accessibilityLabel: loading
+            ? `Loading, ${accessibilityLabel || title}`
+            : accessibilityLabel || title,
           accessibilityHint,
           accessibilityRole: "button" as "button",
           accessibilityState: { disabled: disabled || loading },
