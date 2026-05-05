@@ -45,6 +45,7 @@ import {
   touchTargets,
 } from "../../theme/unified";
 import { useThemeContextSafe } from "../../context/ThemeContext";
+import { haptics } from "../../services/haptics";
 
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
@@ -112,6 +113,7 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   // Press handlers with animations
   const handlePressIn = () => {
     if (!disabled && !loading) {
+      void haptics.light();
       scale.value = withSpring(0.95, springConfigs.stiff);
       opacity.value = withTiming(opacityTokens.pressed, {
         duration: duration.fast,
@@ -290,7 +292,9 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
           activeOpacity: 0.8,
           style: buttonStyle,
           testID,
-          accessibilityLabel: accessibilityLabel || title,
+          accessibilityLabel: loading
+            ? `Loading, ${accessibilityLabel || title}`
+            : accessibilityLabel || title,
           accessibilityHint,
           accessibilityRole: "button" as "button",
           accessibilityState: { disabled: disabled || loading },
@@ -306,7 +310,9 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
           activeOpacity: 1,
           style: [animatedStyle, buttonStyle],
           testID,
-          accessibilityLabel: accessibilityLabel || title,
+          accessibilityLabel: loading
+            ? `Loading, ${accessibilityLabel || title}`
+            : accessibilityLabel || title,
           accessibilityHint,
           accessibilityRole: "button" as "button",
           accessibilityState: { disabled: disabled || loading },
