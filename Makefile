@@ -184,6 +184,7 @@ clean:
 
 security:
 	@echo "🔒 Running security checks..."
+	@./scripts/check_vulnerabilities.sh || true
 	@echo "Checking for tracked env files (no secrets in git)..."
 	@tracked_env_files="$$(git ls-files | grep -E '(^|/)\\.env($|\\.)' || true)"; \
 	bad_env_files="$$(printf '%s\n' "$$tracked_env_files" | grep -Ev '\\.env\\.(example|sample|template)$$|\\.env\\.production\\.example$$' || true)"; \
