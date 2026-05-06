@@ -21,8 +21,10 @@ import {
   TextStyle,
   Platform,
   View,
+  GestureResponderEvent,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { haptics } from "../../services/haptics";
 import { BlurView } from "expo-blur";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, {
@@ -61,7 +63,7 @@ export type ButtonSize = "small" | "medium" | "large";
 
 interface ModernButtonProps {
   title: string;
-  onPress: () => void;
+  onPress: (event: GestureResponderEvent) => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
   disabled?: boolean;
@@ -238,6 +240,13 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
 
   const sizeConfig = getSizeConfig();
 
+  const handlePress = (event: GestureResponderEvent) => {
+    if (!disabled && !loading) {
+      void haptics.light();
+      onPress(event);
+    }
+  };
+
   // Render icon
   const renderIcon = () => {
     if (!icon || loading) return null;
@@ -283,14 +292,16 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
 
     const webProps = isWeb
       ? {
-          onPress,
+          onPress: handlePress,
           onPressIn: handlePressIn,
           onPressOut: handlePressOut,
           disabled: disabled || loading,
           activeOpacity: 0.8,
           style: buttonStyle,
           testID,
-          accessibilityLabel: accessibilityLabel || title,
+          accessibilityLabel: loading
+            ? `Loading, ${accessibilityLabel || title}`
+            : (accessibilityLabel || title),
           accessibilityHint,
           accessibilityRole: "button" as "button",
           accessibilityState: { disabled: disabled || loading },
@@ -299,14 +310,16 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
 
     const nativeProps = !isWeb
       ? {
-          onPress,
+          onPress: handlePress,
           onPressIn: handlePressIn,
           onPressOut: handlePressOut,
           disabled: disabled || loading,
           activeOpacity: 1,
           style: [animatedStyle, buttonStyle],
           testID,
-          accessibilityLabel: accessibilityLabel || title,
+          accessibilityLabel: loading
+            ? `Loading, ${accessibilityLabel || title}`
+            : (accessibilityLabel || title),
           accessibilityHint,
           accessibilityRole: "button" as "button",
           accessibilityState: { disabled: disabled || loading },
