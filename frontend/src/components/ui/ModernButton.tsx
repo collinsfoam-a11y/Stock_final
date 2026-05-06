@@ -21,7 +21,6 @@ import {
   TextStyle,
   Platform,
   View,
-  GestureResponderEvent,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
@@ -63,7 +62,7 @@ export type ButtonSize = "small" | "medium" | "large";
 
 interface ModernButtonProps {
   title: string;
-  onPress: (event: GestureResponderEvent) => void;
+  onPress: () => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
   disabled?: boolean;
@@ -130,14 +129,10 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
     }
   };
 
-  const handlePress = (event: GestureResponderEvent) => {
+  const handlePress = (event: any) => {
     if (!disabled && !loading) {
-      try {
-        void Promise.resolve(haptics.light()).catch(() => undefined);
-      } catch {
-        // Haptics must not block the primary action.
-      }
-      onPress(event);
+      void haptics.light();
+      (onPress as any)?.(event);
     }
   };
 
