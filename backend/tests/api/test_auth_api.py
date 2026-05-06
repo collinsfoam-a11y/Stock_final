@@ -6,7 +6,13 @@ from httpx import AsyncClient
 
 from backend.auth.dependencies import get_current_user as auth_get_current_user
 from backend.server import app, get_current_user
-from backend.utils.auth_utils import create_access_token, get_password_hash, verify_password
+from backend.utils.auth_utils import (
+    create_access_token,
+    get_password_hash,
+    get_pin_hash,
+    verify_password,
+    verify_pin_hash,
+)
 
 # Test Data
 TEST_USERNAME = "testuser_auth"
@@ -41,7 +47,7 @@ def restore_auth_dependency(test_db):
 async def auth_headers(test_db):
     # Create a test user
     hashed_password = get_password_hash(TEST_PASSWORD)
-    hashed_pin = get_password_hash(TEST_PIN)
+    hashed_pin = get_pin_hash(TEST_PIN)
 
     user_data = {
         "username": TEST_USERNAME,
@@ -86,7 +92,7 @@ async def test_change_pin_success(async_client: AsyncClient, auth_headers, test_
 
     # Verify in DB
     user = await test_db.users.find_one({"username": TEST_USERNAME})
-    assert verify_password(NEW_PIN, user["pin_hash"])
+    assert verify_pin_hash(NEW_PIN, user["pin_hash"])
 
 
 @pytest.mark.asyncio

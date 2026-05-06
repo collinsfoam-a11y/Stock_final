@@ -11,6 +11,10 @@ from backend.config import settings
 
 logger = logging.getLogger(__name__)
 
+BCRYPT_MAX_PASSWORD_BYTES = 72
+MIN_PASSWORD_LENGTH = 8
+MAX_PASSWORD_LENGTH = 128
+
 # Security - Modern password hashing with Argon2 (OWASP recommended)
 # Fallback to bcrypt-only if argon2 is not available
 try:
@@ -31,6 +35,7 @@ try:
             argon2__memory_cost=65536,
             argon2__time_cost=3,
             argon2__parallelism=4,
+            argon2__type="ID",
         )
         try:
             import bcrypt
@@ -53,7 +58,98 @@ SECRET_KEY = str(settings.JWT_SECRET)
 ALGORITHM = str(settings.JWT_ALGORITHM) if settings.JWT_ALGORITHM else "HS256"
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
+def _password_byte_length(password: str) -> int:
+    return len(password.encode("utf-8"))
+
+
+def validate_password(password: str) -> None:
+    if password is None:
+        raise ValueError("Password required")
+    if not isinstance(password, str):
+        raise TypeError("Password must be string")
+    if len(password) < MIN_PASSWORD_LENGTH or len(password) > MAX_PASSWORD_LENGTH:
+        raise ValueError("Password length must be 8-128 characters")
+    if password.strip() == "":
+        raise ValueError("Password cannot be empty or whitespace")
+
+
+def validate_pin(pin: str) -> None:
+    if not isinstance(pin, str) or len(pin) != 4 or not pin.isdigit():
+        raise ValueError("PIN must be exactly 4 digits")
+
+
+def _is_bcrypt_hash(hashed_password: str) -> bool:
+    return hashed_password.startswith(("$2a$", "$2b$", "$2x$", "$2y$"))
+
+
+def identify_password_hash(hashed_password: Optional[str]) -> str:
+    if not hashed_password:
+        return "unknown"
+    try:
+        scheme = pwd_context.identify(hashed_password)
+    except Exception:
+        scheme = None
+    if scheme == "argon2":
+        if hashed_password.startswith("$argon2id$"):
+            return "argon2id"
+        if hashed_password.startswith("$argon2i$"):
+            return "argon2i"
+        return "argon2"
+    if scheme == "bcrypt" or _is_bcrypt_hash(hashed_password):
+        return "bcrypt"
+    return str(scheme) if scheme else "unknown"
+
+
+def _default_password_hash_algorithm() -> str:
+    try:
+        scheme = pwd_context.default_scheme()
+    except Exception:
+        return "unknown"
+    return "argon2id" if scheme == "argon2" else str(scheme)
+
+
+def get_password_hash_metadata(hashed_password: str) -> dict[str, str]:
+    return {"password_hash_algorithm": identify_password_hash(hashed_password)}
+
+
+def password_hash_needs_upgrade(hashed_password: Optional[str]) -> bool:
+    if not hashed_password:
+        return False
+    if identify_password_hash(hashed_password) == "bcrypt":
+        return _default_password_hash_algorithm() == "argon2id"
+    try:
+        return bool(pwd_context.needs_update(hashed_password))
+    except Exception:
+        return False
+
+
+def _verify_secret(plain_secret: Optional[str], hashed_secret: Optional[str]) -> bool:
+    if not plain_secret or not hashed_secret:
+        logger.warning("Empty password or hash provided")
+        return False
+
+    hash_algorithm = identify_password_hash(hashed_secret)
+    password_bytes = plain_secret.encode("utf-8")
+    if hash_algorithm == "bcrypt" and len(password_bytes) > BCRYPT_MAX_PASSWORD_BYTES:
+        logger.warning("Password exceeds bcrypt 72-byte limit")
+        return False
+
+    # Strategy 1: Try passlib CryptContext (supports multiple schemes)
+    try:
+        result = pwd_context.verify(plain_secret, hashed_secret)
+        if result:
+            logger.debug("Password verified using passlib CryptContext")
+        return bool(result)
+    except Exception as e:
+        logger.debug(f"Passlib verification failed: {type(e).__name__}: {str(e)}")
+
+    # Strategy 2: Direct bcrypt verification (fallback)
+    if hash_algorithm == "bcrypt":
+        return _verify_bcrypt_fallback(password_bytes, hashed_secret)
+    return False
+
+
+def verify_password(plain_password: Optional[str], hashed_password: Optional[str]) -> bool:
     """
     Verify a password against a hash using multiple fallback strategies.
 
@@ -64,34 +160,28 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if password matches, False otherwise
     """
-    if not plain_password or not hashed_password:
-        logger.warning("Empty password or hash provided")
-        return False
-
-    # Bcrypt has a 72-byte limit, truncate if necessary
-    password_bytes = plain_password.encode("utf-8")
-    if len(password_bytes) > 72:
-        logger.warning("Password exceeds 72 bytes, truncating")
-        plain_password = plain_password[:72]
-        password_bytes = plain_password.encode("utf-8")
-
-    # Strategy 1: Try passlib CryptContext (supports multiple schemes)
     try:
-        result = pwd_context.verify(plain_password, hashed_password)
-        if result:
-            logger.debug("Password verified using passlib CryptContext")
-        return bool(result)
-    except Exception as e:
-        logger.debug(f"Passlib verification failed: {type(e).__name__}: {str(e)}")
+        validate_password(plain_password)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return False
+    return _verify_secret(plain_password, hashed_password)
 
-    # Strategy 2: Direct bcrypt verification (fallback)
-    return _verify_bcrypt_fallback(password_bytes, hashed_password)
+
+def verify_pin_hash(pin: Optional[str], hashed_pin: Optional[str]) -> bool:
+    try:
+        validate_pin(pin)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return False
+    return _verify_secret(pin, hashed_pin)
 
 
 def _verify_bcrypt_fallback(password_bytes: bytes, hashed_password: str) -> bool:
     try:
         import bcrypt
 
+        if len(password_bytes) > BCRYPT_MAX_PASSWORD_BYTES:
+            logger.warning("Password exceeds bcrypt 72-byte limit")
+            return False
         if isinstance(hashed_password, str):
             hash_bytes = hashed_password.encode("utf-8")
             result = bcrypt.checkpw(password_bytes, hash_bytes)
@@ -113,15 +203,24 @@ def _verify_bcrypt_fallback(password_bytes: bytes, hashed_password: str) -> bool
         return False
 
 
+def _hash_secret(secret: str) -> str:
+    if (
+        _default_password_hash_algorithm() == "bcrypt"
+        and _password_byte_length(secret) > BCRYPT_MAX_PASSWORD_BYTES
+    ):
+        raise ValueError("Password exceeds bcrypt 72-byte limit")
+    return str(pwd_context.hash(secret))
+
+
 def get_password_hash(password: str) -> str:
     """Hash a password using the configured context"""
-    if not password:
-        return str(pwd_context.hash(""))
+    validate_password(password)
+    return _hash_secret(password)
 
-    password_bytes = password.encode("utf-8")
-    if len(password_bytes) > 72:
-        password = password_bytes[:72].decode("utf-8", errors="ignore")
-    return str(pwd_context.hash(password))
+
+def get_pin_hash(pin: str) -> str:
+    validate_pin(pin)
+    return _hash_secret(pin)
 
 
 def create_access_token(
@@ -143,5 +242,12 @@ def create_access_token(
             minutes=getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 15)
         )
 
-    to_encode.update({"exp": expire, "type": "access"})
+    to_encode.update(
+        {
+            "exp": expire,
+            "type": "access",
+            "iss": "stk-verify-api",
+            "aud": "stk-verify-client",
+        }
+    )
     return str(jwt.encode(to_encode, key, algorithm=algo))

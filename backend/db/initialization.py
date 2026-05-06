@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 
 from backend.services.pin_auth_service import PINAuthService
-from backend.utils.auth_utils import get_password_hash
+from backend.utils.auth_utils import get_password_hash, get_pin_hash
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ async def init_default_users(db):
 
         # Default PIN for all users
         default_pin = "1234"
-        pin_hash = get_password_hash(default_pin)
+        pin_hash = get_pin_hash(default_pin)
         pin_lookup_hash = get_pin_lookup_hash(default_pin)
 
         # Check for staff1

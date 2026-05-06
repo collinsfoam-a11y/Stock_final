@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import hashlib
 import inspect
 import json
+import logging
 from typing import Any, Optional
 
 from bson import ObjectId
@@ -23,6 +24,8 @@ from backend.services.snapshot_service import SnapshotService
 from backend.services.transaction_manager import mongo_transaction
 from backend.services.validation_service import ValidationService
 from backend.services.variance_service import VarianceService
+
+logger = logging.getLogger(__name__)
 
 
 def _utc_now() -> datetime:

@@ -34,7 +34,13 @@ from backend.services.otp_service import OTPService
 from backend.services.runtime import get_cache_service, get_refresh_token_service
 from backend.services.whatsapp_service import WhatsAppDeliveryError, WhatsAppService
 from backend.utils.api_utils import result_to_response, sanitize_for_logging
-from backend.utils.auth_utils import create_access_token, get_password_hash, verify_password
+from backend.utils.auth_utils import (
+    create_access_token,
+    get_password_hash,
+    get_pin_hash,
+    verify_password,
+    verify_pin_hash,
+)
 from backend.utils.crypto_utils import get_pin_lookup_hash
 from backend.utils.result import Fail, Ok, Result
 
@@ -643,7 +649,7 @@ async def _find_user_by_fast_lookup(
     if not found_user:
         return None
     # Verify secure hash to protect against SHA-256 collision
-    if not verify_password(pin, found_user.get("pin_hash", "")):
+    if not verify_pin_hash(pin, found_user.get("pin_hash", "")):
         logger.warning(
             f"Hash collision or data corruption for user {sanitize_for_logging(found_user.get('username'))}"
         )
@@ -657,7 +663,7 @@ async def _find_user_by_legacy_scan(
     """Find user via O(N) legacy PIN scan with opportunistic migration."""
     users_with_pin = await db.users.find({"pin_hash": {"$exists": True}}).to_list(length=1000)
     for user in users_with_pin:
-        if verify_password(pin, user.get("pin_hash", "")):
+        if verify_pin_hash(pin, user.get("pin_hash", "")):
             # Opportunistic migration for next time
             try:
                 await db.users.update_one(
@@ -681,7 +687,7 @@ async def _find_user_by_pin(
     if username:
         # Strategy 0: Username-scoped O(1) Lookup (Most secure)
         user = await db.users.find_one({"username": username})
-        if user and user.get("pin_hash") and verify_password(pin, user["pin_hash"]):
+        if user and user.get("pin_hash") and verify_pin_hash(pin, user["pin_hash"]):
             return user
         return None
 
@@ -831,7 +837,7 @@ async def pin_setup(
 
     try:
         # Securely hash the PIN
-        hashed_pin = get_password_hash(pin)
+        hashed_pin = get_pin_hash(pin)
         # Generate the lookup hash for fast search
         lookup_hash = get_pin_lookup_hash(pin)
 
@@ -1052,7 +1058,7 @@ def _validate_pin_change_identity(
                     "message": "No PIN is currently set. Use password to set a new PIN.",
                 },
             )
-        if not verify_password(current_pin, user["pin_hash"]):
+        if not verify_pin_hash(current_pin, user["pin_hash"]):
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -1079,7 +1085,7 @@ def _validate_pin_change_identity(
 async def _persist_user_pin(username: str, new_pin: str) -> None:
     from backend.utils.crypto_utils import get_pin_lookup_hash
 
-    new_pin_hash = get_password_hash(new_pin)
+    new_pin_hash = get_pin_hash(new_pin)
     pin_lookup_hash = get_pin_lookup_hash(new_pin)
     await get_db().users.update_one(
         {"username": username},

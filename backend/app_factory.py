@@ -1,9 +1,9 @@
 import logging
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional, TypeVar, cast
+from typing import Any, Optional, TypeVar
 
 # Add the parent directory to Python path for proper imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -16,9 +16,7 @@ try:
 except ImportError:
     pass
 
-import jwt  # noqa: E402
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response  # noqa: E402
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer  # noqa: E402
 from starlette.requests import Request  # noqa: E402
 
 import sentry_sdk  # noqa: E402
@@ -89,14 +87,10 @@ from backend.auth.dependencies import require_admin as auth_require_admin  # noq
 from backend.config import settings  # noqa: E402
 from backend.core.lifespan import (  # noqa: E402
     activity_log_service,
-    cache_service,
     db,
     lifespan,
-    refresh_token_service,
 )
-from backend.exceptions import AuthenticationError, NotFoundError  # noqa: E402
-from backend.exceptions import RateLimitError as RateLimitExceededError  # noqa: E402
-from backend.exceptions import StockVerifyException as DatabaseError  # noqa: E402
+from backend.exceptions import AuthenticationError  # noqa: E402
 from backend.exceptions import ValidationError  # noqa: E402
 from backend.services.canonical_inventory import build_session_lookup  # noqa: E402
 from backend.services.count_line_write_service import CountLineWriteService  # noqa: E402
