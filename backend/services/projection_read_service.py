@@ -721,7 +721,9 @@ class ProjectionReadService:
                 summary["finalized_qty"] += _as_float(row.get("counted_qty"))
                 last_verified = row.get("verified_at") or row.get("counted_at")
                 if last_verified and (
-                    summary["last_verified"] is None or str(last_verified) > str(summary["last_verified"])
+                    summary["last_verified"] is None
+                    or _sort_datetime_key(last_verified)
+                    > _sort_datetime_key(summary["last_verified"])
                 ):
                     summary["last_verified"] = last_verified
 
@@ -805,9 +807,13 @@ class ProjectionReadService:
         results: list[dict[str, Any]] = []
         for row in rows:
             started_at = _coerce_datetime(row.get("started_at"))
-            if getattr(filters, "date_from", None) and started_at and started_at.date() < filters.date_from:
+            date_from = getattr(filters, "date_from", None)
+            date_to = getattr(filters, "date_to", None)
+            if (date_from or date_to) and started_at is None:
                 continue
-            if getattr(filters, "date_to", None) and started_at and started_at.date() > filters.date_to:
+            if date_from and started_at and started_at.date() < date_from:
+                continue
+            if date_to and started_at and started_at.date() > date_to:
                 continue
             completed_at = (
                 _coerce_datetime(row.get("finalized_at"))
