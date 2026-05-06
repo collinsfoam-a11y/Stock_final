@@ -8,6 +8,9 @@ import logging
 from pathlib import Path
 
 from backend.app.factory import *  # noqa: F401,F403
+from backend.api.count_lines_api import get_count_lines, unverify_stock, verify_stock  # noqa: F401
+from backend.auth.dependencies import get_current_user  # noqa: F401
+from backend.core.lifespan import cache_service  # noqa: F401
 from backend.app.settings_runtime import run_server_main
 from backend.config import settings
 

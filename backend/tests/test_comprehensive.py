@@ -94,8 +94,10 @@ async def test_stock_verification_workflow(mock_db, mock_supervisor):
     # Setup
     count_line = {
         "id": "line-1",
+        "_id": "mongo-line-1",
         "session_id": "session-1",
         "item_code": "ITEM001",
+        "variance": 1.0,
         "verified": False,
         "location_id": "LOC-1",
         "floor_id": "F1",

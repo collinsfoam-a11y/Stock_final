@@ -9,6 +9,7 @@ import json
 import logging
 import sys
 from datetime import datetime, timezone
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Iterable
 
@@ -92,6 +93,8 @@ def _build_handlers(
     log_format: str,
     log_file: str | None,
     app_name: str,
+    log_max_bytes: int,
+    log_backup_count: int,
 ) -> list[logging.Handler]:
     if log_format == "json":
         formatter: logging.Formatter = JSONFormatter(app_name=app_name)
@@ -101,10 +104,22 @@ def _build_handlers(
             datefmt="%Y-%m-%d %H:%M:%S",
         )
 
+    file_handler: logging.Handler | None = None
+    if log_file:
+        if log_max_bytes > 0:
+            file_handler = RotatingFileHandler(
+                log_file,
+                maxBytes=log_max_bytes,
+                backupCount=log_backup_count,
+                encoding="utf-8",
+            )
+        else:
+            file_handler = logging.FileHandler(log_file, encoding="utf-8")
+
     handlers: list[logging.Handler] = []
     for handler in (
         NonClosingStreamHandler(),
-        logging.FileHandler(log_file, encoding="utf-8") if log_file else None,
+        file_handler,
     ):
         if handler is None:
             continue
@@ -139,8 +154,10 @@ def _configure_logger(
 def setup_logging(
     log_level: str = "INFO",
     log_format: str = "text",
-    log_file: str = None,
+    log_file: str | None = None,
     app_name: str = "stock_verify",
+    log_max_bytes: int = 10 * 1024 * 1024,
+    log_backup_count: int = 5,
 ) -> logging.Logger:
     """
     Setup application logging
@@ -150,6 +167,8 @@ def setup_logging(
         log_format: Format type (json or text)
         log_file: Optional log file path
         app_name: Application name for logger
+        log_max_bytes: Max file size before rotating. Use 0 to disable rotation.
+        log_backup_count: Number of rotated log files to keep.
 
     Returns:
         Configured logger instance
@@ -159,6 +178,8 @@ def setup_logging(
 
     # Set level
     numeric_level = getattr(logging, log_level.upper(), logging.INFO)
+    log_max_bytes = max(0, int(log_max_bytes))
+    log_backup_count = max(0, int(log_backup_count))
     if log_file:
         log_path = Path(log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -180,6 +201,8 @@ def setup_logging(
                 log_format=log_format,
                 log_file=log_file,
                 app_name=app_name,
+                log_max_bytes=log_max_bytes,
+                log_backup_count=log_backup_count,
             ),
         )
 

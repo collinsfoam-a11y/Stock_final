@@ -36,9 +36,6 @@ from backend.services.canonical_inventory import (
     normalize_session_status as normalize_canonical_session_status,
 )
 from backend.services.event_service import EventService
-from backend.services.governance_guard import (
-    normalize_session_status as normalize_session_status_canonical,
-)
 from backend.services.projection_read_service import ProjectionReadService
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.transaction_manager import mongo_transaction

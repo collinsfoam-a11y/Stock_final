@@ -14,7 +14,7 @@ from backend.auth.dependencies import get_current_user, require_admin
 from backend.auth.permissions import ROLE_PERMISSIONS, Permission, has_permission
 from backend.db.runtime import get_db
 from backend.utils.api_utils import sanitize_for_logging
-from backend.utils.auth_utils import get_password_hash
+from backend.utils.auth_utils import get_password_hash, get_pin_hash
 from backend.utils.crypto_utils import get_pin_lookup_hash
 
 logger = logging.getLogger(__name__)
@@ -252,7 +252,7 @@ def _apply_profile_update(update: dict[str, Any], request: UpdateUserRequest) ->
     if request.password is not None:
         update["hashed_password"] = get_password_hash(request.password)
     if request.pin is not None:
-        update["pin_hash"] = get_password_hash(request.pin)
+        update["pin_hash"] = get_pin_hash(request.pin)
         update["pin_lookup_hash"] = get_pin_lookup_hash(request.pin)
 
 
@@ -532,7 +532,7 @@ async def create_user(
 
     # Add PIN if provided
     if request.pin:
-        user_doc["pin_hash"] = get_password_hash(request.pin)
+        user_doc["pin_hash"] = get_pin_hash(request.pin)
         user_doc["pin_lookup_hash"] = get_pin_lookup_hash(request.pin)
 
     result = await db.users.insert_one(user_doc)
@@ -828,7 +828,7 @@ async def reset_user_pin(
         {"_id": oid},
         {
             "$set": {
-                "pin_hash": get_password_hash(new_pin),
+                "pin_hash": get_pin_hash(new_pin),
                 "pin_lookup_hash": get_pin_lookup_hash(new_pin),
                 "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
             }

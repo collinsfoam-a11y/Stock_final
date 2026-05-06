@@ -9,7 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from backend.config import settings
-from backend.utils.auth_utils import verify_password
+from backend.utils.auth_utils import verify_pin_hash
 from backend.utils.crypto_utils import get_pin_lookup_hash
 
 # Configure logging
@@ -39,7 +39,7 @@ async def verify_pin_login():
         logger.error("User has no pin_hash set!")
     else:
         logger.info("User has pin_hash set")
-        if verify_password(pin, user["pin_hash"]):
+        if verify_pin_hash(pin, user["pin_hash"]):
             logger.info("✓ PIN verification (bcrypt) passed")
         else:
             logger.error("✗ PIN verification (bcrypt) failed")
