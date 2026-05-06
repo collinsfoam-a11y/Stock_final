@@ -1,7 +1,9 @@
 import asyncio
+import logging
 import os
 import sys
-import logging
+
+from motor.motor_asyncio import AsyncIOMotorClient
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -10,10 +12,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from motor.motor_asyncio import AsyncIOMotorClient
-from backend.utils.auth_utils import get_password_hash
-from backend.utils.crypto_utils import get_pin_lookup_hash
-from backend.config import settings
+from backend.utils.auth_utils import get_pin_hash  # noqa: E402
+from backend.utils.crypto_utils import get_pin_lookup_hash  # noqa: E402
+from backend.config import settings  # noqa: E402
 
 
 async def fix_pins():
@@ -21,7 +22,11 @@ async def fix_pins():
     client = AsyncIOMotorClient(settings.MONGO_URL)
     db = client[settings.DB_NAME]
 
-    users_config = {"staff1": "1234", "supervisor": "1234", "admin": "1234"}
+    default_pin = os.getenv("SEED_DEFAULT_PIN", "").strip()
+    if len(default_pin) != 4 or not default_pin.isdigit():
+        raise RuntimeError("SEED_DEFAULT_PIN must be set to exactly 4 numeric digits.")
+
+    users_config = {"staff1": default_pin, "supervisor": default_pin, "admin": default_pin}
 
     for username, pin in users_config.items():
         logger.info(f"Checking user: {username}")
@@ -32,7 +37,7 @@ async def fix_pins():
             continue
 
         # Always update to ensure correct PIN hashes
-        pin_hash = get_password_hash(pin)
+        pin_hash = get_pin_hash(pin)
         pin_lookup_hash = get_pin_lookup_hash(pin)
 
         result = await db.users.update_one(
