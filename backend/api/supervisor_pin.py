@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from backend.auth.dependencies import get_current_user
 from backend.db.runtime import get_db
 from backend.services.activity_log import ActivityLogService
-from backend.utils.auth_utils import verify_password
+from backend.utils.auth_utils import verify_pin_hash
 from backend.utils.api_utils import sanitize_for_logging
 
 router = APIRouter()
@@ -75,7 +75,6 @@ async def verify_supervisor_pin(
         raise HTTPException(status_code=403, detail="User is not a supervisor")
 
     # 3. Verify PIN
-    # We reuse verify_password for PINs since they are hashed the same way
     stored_pin_hash = supervisor.get("pin_hash")
     if not stored_pin_hash:
         raise HTTPException(
@@ -83,7 +82,7 @@ async def verify_supervisor_pin(
             detail="Supervisor PIN not set. Please contact administrator.",
         )
 
-    if not verify_password(request.pin, stored_pin_hash):
+    if not verify_pin_hash(request.pin, stored_pin_hash):
         logger.warning(
             "Failed PIN attempt for supervisor %s",
             _safe_log_value(request.supervisor_username),

@@ -54,14 +54,10 @@ def test_auth_utils_verify_password_long_truncation():
 
 def test_auth_utils_get_password_hash_empty():
     """Test get_password_hash with empty input (Line 110)"""
-    # Should hash empty string
-    hashed = get_password_hash("")
-    # verify_password refuses empty password, so we manually check
-    # But wait, verify_password checks `if not plain_password`
-    # So we can't use verify_password to verify it.
-    # Just checking it returns a string is enough for coverage.
-    assert isinstance(hashed, str)
-    assert len(hashed) > 0
+    with pytest.raises(ValueError):
+        get_password_hash("")
+    with pytest.raises(ValueError):
+        get_password_hash("        ")
 
 
 def test_auth_utils_verify_bcrypt_fallback_direct():
@@ -84,9 +80,10 @@ def test_auth_utils_verify_bcrypt_fallback_direct():
 
 def test_auth_utils_verify_password_fallback_trigger():
     """Test that verify_password triggers fallback when pwd_context fails"""
+    import bcrypt
+
     password = os.urandom(18).hex()
-    # Create a real hash first
-    real_hash = get_password_hash(password)
+    real_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
     # Mock pwd_context.verify to raise an exception
     with patch("backend.utils.auth_utils.pwd_context.verify", side_effect=ValueError("Mock error")):

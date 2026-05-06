@@ -136,3 +136,37 @@ async def test_delete_user(async_client: AsyncClient):
     # Verify user is gone
     get_response = await async_client.get(f"/api/users/{user_id}")
     assert get_response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_reset_user_password_uses_request_body(async_client: AsyncClient):
+    """Test resetting user password via request body."""
+    app.dependency_overrides[get_current_user] = mock_get_current_admin
+
+    list_response = await async_client.get("/api/users?search=staff1")
+    assert list_response.status_code == status.HTTP_200_OK
+    user_id = list_response.json()["users"][0]["id"]
+
+    response = await async_client.post(
+        f"/api/users/{user_id}/reset-password",
+        json={"new_password": "resetPassword123"},
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_reset_user_pin_uses_request_body(async_client: AsyncClient):
+    """Test resetting user PIN via request body."""
+    app.dependency_overrides[get_current_user] = mock_get_current_admin
+
+    list_response = await async_client.get("/api/users?search=staff1")
+    assert list_response.status_code == status.HTTP_200_OK
+    user_id = list_response.json()["users"][0]["id"]
+
+    response = await async_client.post(
+        f"/api/users/{user_id}/reset-pin",
+        json={"new_pin": "8520"},
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["success"] is True

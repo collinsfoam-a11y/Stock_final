@@ -1,9 +1,9 @@
 import logging
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional, TypeVar, cast
+from typing import Any, Optional, TypeVar
 
 # Add the parent directory to Python path for proper imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -16,9 +16,7 @@ try:
 except ImportError:
     pass
 
-import jwt  # noqa: E402
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response  # noqa: E402
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer  # noqa: E402
 from starlette.requests import Request  # noqa: E402
 
 import sentry_sdk  # noqa: E402
@@ -84,25 +82,21 @@ from backend.api.variance_api import router as variance_router  # noqa: E402
 from backend.api.websocket_api import router as websocket_router  # noqa: E402
 from backend.api.sql_verification_api import router as sql_verification_router  # noqa: E402
 from backend.auth.cookies import clear_auth_cookies, get_refresh_token_cookie, set_auth_cookies  # noqa: E402
-from backend.auth.dependencies import get_current_user as auth_get_current_user  # noqa: E402
+from backend.auth.dependencies import get_current_user  # noqa: E402
 from backend.config import settings  # noqa: E402
 from backend.core.lifespan import (  # noqa: E402
     activity_log_service,
-    cache_service,
     db,
     lifespan,
-    refresh_token_service,
 )
-from backend.exceptions import AuthenticationError, NotFoundError  # noqa: E402
-from backend.exceptions import RateLimitError as RateLimitExceededError  # noqa: E402
-from backend.exceptions import StockVerifyException as DatabaseError  # noqa: E402
+from backend.exceptions import AuthenticationError  # noqa: E402
 from backend.exceptions import ValidationError  # noqa: E402
 from backend.services.canonical_inventory import build_session_lookup  # noqa: E402
 from backend.services.count_line_write_service import CountLineWriteService  # noqa: E402
 
 # Utils
 from backend.utils.api_utils import result_to_response, sanitize_for_logging  # noqa: E402
-from backend.utils.auth_utils import get_password_hash  # noqa: E402
+from backend.utils.auth_utils import get_password_hash, get_password_hash_metadata  # noqa: E402
 from backend.utils.result import Fail, Ok, Result  # noqa: E402
 from backend.utils.tracing import instrument_fastapi_app  # noqa: E402
 from backend.services.runtime import get_refresh_token_service  # noqa: E402
@@ -182,10 +176,7 @@ RUNNING_UNDER_PYTEST = "pytest" in sys.modules
 
 ROOT_DIR = Path(__file__).parent
 
-# SECURITY: settings from backend.config already enforce strong secrets
-SECRET_KEY: str = cast(str, settings.JWT_SECRET)
-ALGORITHM = settings.JWT_ALGORITHM
-security = HTTPBearer(auto_error=False)
+# Removed redundant SECRET_KEY, ALGORITHM bindings
 
 # Initialize Sentry if DSN is provided
 sentry_dsn = getattr(settings, "SENTRY_DSN", None)
@@ -212,12 +203,27 @@ if sentry_dsn:
         )
 else:
     logger.info("Sentry DSN not found, skipping Sentry initialization")
+
+
+def _api_docs_enabled() -> bool:
+    """Disable generated API docs in production unless explicitly enabled."""
+    env = str(getattr(settings, "ENVIRONMENT", "development") or "development").lower()
+    if env in {"production", "staging"}:
+        return os.getenv("ENABLE_API_DOCS", "false").lower() in {"1", "true", "yes"}
+    return os.getenv("ENABLE_API_DOCS", "true").lower() not in {"0", "false", "no"}
+
+
+_docs_enabled = _api_docs_enabled()
+
 # Create FastAPI app with lifespan
 app = FastAPI(
     title=getattr(settings, "APP_NAME", "Stock Count API"),
     description="Stock counting and ERP sync API",
     version=getattr(settings, "APP_VERSION", "1.0.0"),
     lifespan=lifespan,
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
 )
 
 # Attach OpenTelemetry tracing to the FastAPI app if enabled
@@ -262,17 +268,12 @@ def test_direct():
 # Note: verify_password and get_password_hash are imported from backend.utils.auth_utils (line 72)
 
 
-def create_access_token(data: dict[str, Any]) -> str:
-    """Create a JWT access token from user data"""
-    return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
+def _password_fields(password: str) -> dict[str, str]:
+    hashed_password = get_password_hash(password)
+    return {"hashed_password": hashed_password, **get_password_hash_metadata(hashed_password)}
 
 
-async def get_current_user(
-    request: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-) -> dict[str, Any]:
-    """Resolve the authenticated user for the current request."""
-    return await auth_get_current_user(request, credentials)
+
 
 
 # Initialize default users
@@ -285,7 +286,7 @@ async def init_default_users():
             await db.users.insert_one(
                 {
                     "username": "staff1",
-                    "hashed_password": get_password_hash("staff123"),
+                    **_password_fields("staff123"),
                     "full_name": "Staff Member",
                     "role": "staff",
                     "is_active": True,
@@ -293,7 +294,7 @@ async def init_default_users():
                     "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
                 }
             )
-            logger.info("Default user created: staff1/staff123")
+            logger.info("Default user created: staff1")
 
         # Check for supervisor
         supervisor_exists = await db.users.find_one({"username": "supervisor"})
@@ -301,7 +302,7 @@ async def init_default_users():
             await db.users.insert_one(
                 {
                     "username": "supervisor",
-                    "hashed_password": get_password_hash("super123"),
+                    **_password_fields("super123"),
                     "full_name": "Supervisor",
                     "role": "supervisor",
                     "is_active": True,
@@ -309,7 +310,7 @@ async def init_default_users():
                     "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
                 }
             )
-            logger.info("Default user created: supervisor/super123")
+            logger.info("Default user created: supervisor")
 
         # Check for admin
         admin_exists = await db.users.find_one({"username": "admin"})
@@ -317,7 +318,7 @@ async def init_default_users():
             await db.users.insert_one(
                 {
                     "username": "admin",
-                    "hashed_password": get_password_hash("admin123"),
+                    **_password_fields("admin123"),
                     "full_name": "Administrator",
                     "role": "admin",
                     "is_active": True,
@@ -325,7 +326,7 @@ async def init_default_users():
                     "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
                 }
             )
-            logger.info("Default user created: admin/admin123")
+            logger.info("Default user created: admin")
     except Exception as e:
         logger.error(
             "Error creating default users: %s",
@@ -448,179 +449,7 @@ async def init_mock_erp_data():
 # Routes
 
 
-# Helper functions for login
-async def check_rate_limit(ip_address: str) -> Result[bool, Exception]:
-    """
-    Check if the IP has exceeded the login attempt limit.
 
-    Rate limiting is configurable via RATE_LIMIT_ENABLED environment variable.
-    Default: Enabled in production, disabled in development.
-    """
-    # Check if rate limiting is enabled (default: True for production)
-    rate_limit_enabled = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
-
-    if not rate_limit_enabled:
-        logger.debug(
-            "Rate limiting disabled for IP: %s",
-            sanitize_for_logging(ip_address),
-        )
-        return Ok(True)
-
-    namespace = "login_attempts"
-    key = ip_address
-
-    # Get current attempt count
-    attempts = (await cache_service.get(namespace, key)) or 0
-    try:
-        attempts = int(attempts)
-    except (ValueError, TypeError):
-        attempts = 0
-
-    # Configuration: max attempts and TTL
-    max_attempts = int(getattr(settings, "RATE_LIMIT_MAX_ATTEMPTS", 5))
-    ttl_seconds = int(getattr(settings, "RATE_LIMIT_TTL_SECONDS", 300))
-
-    if attempts >= max_attempts:
-        # Block for configured TTL period
-        await cache_service.set(namespace, key, attempts, ttl=ttl_seconds)
-        logger.warning(
-            "Rate limit exceeded for IP %s: %s attempts",
-            sanitize_for_logging(ip_address),
-            attempts,
-        )
-        return Fail(
-            RateLimitExceededError(
-                f"Too many login attempts. Please try again in {ttl_seconds // 60} minutes.",
-                retry_after=ttl_seconds,
-            )
-        )
-
-    # Increment attempt counter with TTL
-    await cache_service.set(namespace, key, attempts + 1, ttl=ttl_seconds)
-    logger.debug(
-        "Rate limit check passed for IP %s: %s/%s attempts",
-        sanitize_for_logging(ip_address),
-        attempts + 1,
-        max_attempts,
-    )
-    return Ok(True)
-
-
-async def find_user_by_username(username: str) -> Result[dict[str, Any], Exception]:
-    """Find a user by username with error handling."""
-    try:
-        user = await db.users.find_one({"username": username})
-        if not user:
-            return Fail(NotFoundError("User not found"))
-        return Ok(user)
-    except Exception as e:
-        logger.error(
-            "Error finding user %s: %s",
-            sanitize_for_logging(username),
-            sanitize_for_logging(str(e), 200),
-        )
-        return Fail(DatabaseError("Error accessing user data"))
-
-
-async def generate_auth_tokens(
-    user: dict[str, Any], ip_address: str, request: Request
-) -> Result[dict[str, Any], Exception]:
-    """Generate access and refresh tokens with error handling."""
-    try:
-        # Generate access token
-        access_token_expires = timedelta(
-            minutes=getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 15)
-        )
-        access_token = create_access_token(
-            {"sub": user["username"], "role": user.get("role", "staff")}
-        )
-
-        # Generate refresh token using service
-        refresh_payload = {"sub": user["username"], "role": user.get("role", "staff")}
-        refresh_token = refresh_token_service.create_refresh_token(refresh_payload)
-        refresh_token_expires = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
-            days=getattr(settings, "REFRESH_TOKEN_EXPIRE_DAYS", 30)
-        )
-
-        # Store refresh token via service
-        await refresh_token_service.store_refresh_token(
-            refresh_token,
-            user["username"],
-            refresh_token_expires,
-            ip_address=ip_address,
-            user_agent=request.headers.get("user-agent"),
-        )
-
-        return Ok(
-            {
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "expires_in": int(access_token_expires.total_seconds()),
-            }
-        )
-    except Exception as e:
-        logger.error(
-            "Error generating auth tokens: %s",
-            sanitize_for_logging(str(e), 200),
-        )
-        return Fail(DatabaseError("Error generating authentication tokens"))
-
-
-async def log_failed_login_attempt(
-    username: str, ip_address: str, user_agent: Optional[str], error: str
-) -> None:
-    """Log a failed login attempt."""
-    try:
-        await db.login_attempts.insert_one(
-            {
-                "username": username,
-                "ip_address": ip_address,
-                "user_agent": user_agent,
-                "success": False,
-                "timestamp": datetime.now(timezone.utc).replace(tzinfo=None),
-                "error": error,
-            }
-        )
-    except Exception as e:
-        logger.error(
-            "Failed to log login attempt: %s",
-            sanitize_for_logging(str(e), 200),
-        )
-
-
-async def log_successful_login(user: dict[str, Any], ip_address: str, request: Request) -> None:
-    """Log a successful login."""
-    try:
-        await db.login_attempts.insert_one(
-            {
-                "user_id": user["_id"],
-                "username": user["username"],
-                "ip_address": ip_address,
-                "user_agent": request.headers.get("user-agent"),
-                "success": True,
-                "timestamp": datetime.now(timezone.utc).replace(tzinfo=None),
-            }
-        )
-
-        # Update last login timestamp
-        await db.users.update_one(
-            {"_id": user["_id"]},
-            {"$set": {"last_login_at": datetime.now(timezone.utc).replace(tzinfo=None)}},
-        )
-
-        # Log to monitoring
-        # monitoring_service.log_event(
-        #     "user_login",
-        #     user_id=user["_id"],
-        #     username=user["username"],
-        #     ip_address=ip_address,
-        #     user_agent=request.headers.get("user-agent")
-        # )
-    except Exception as e:
-        logger.error(
-            "Failed to log successful login: %s",
-            sanitize_for_logging(str(e), 200),
-        )
 
 
 @api_router.post("/auth/refresh", response_model=ApiResponse[TokenResponse])
@@ -847,7 +676,7 @@ async def get_session_by_id(
 
         # Check permissions
         if (
-            current_user["role"] != "supervisor"
+            current_user["role"] not in ("supervisor", "admin")
             and session.get("staff_user") != current_user["username"]
         ):
             raise HTTPException(status_code=403, detail="Access denied")

@@ -36,9 +36,6 @@ from backend.services.canonical_inventory import (
     normalize_session_status as normalize_canonical_session_status,
 )
 from backend.services.event_service import EventService
-from backend.services.governance_guard import (
-    normalize_session_status as normalize_session_status_canonical,
-)
 from backend.services.projection_read_service import ProjectionReadService
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.transaction_manager import mongo_transaction
@@ -480,9 +477,6 @@ def _effective_session_status(session: dict[str, Any]) -> CanonicalSessionStatus
     )
     try:
         status = CanonicalSessionStatus(normalized)
-        print(
-            f"\n_effective_session_status for {session.get('id')}: {status} (from {session.get('status')}, {session.get('reconciled_at')})"
-        )
         return status
     except ValueError:
         return CanonicalSessionStatus.UNKNOWN
@@ -1696,7 +1690,7 @@ async def update_session_status(
         raise HTTPException(status_code=403, detail="Not your session")
 
     requested = str(status or "").strip().upper()
-    requested_canonical = normalize_session_status_canonical(requested)
+    requested_canonical = normalize_canonical_session_status(requested)
     if requested == "PAUSED":
         requested_canonical = "ACTIVE"
     if requested in {"RECONCILE", "REVIEW"}:
@@ -1716,7 +1710,10 @@ async def update_session_status(
         raise HTTPException(status_code=400, detail=f"Unsupported session status: {requested}")
 
     lifecycle_service = SessionLifecycleService(db)
-    current_canonical = normalize_session_status_canonical(session.get("status"))
+    current_canonical = normalize_canonical_session_status(
+        session.get("status"),
+        reconciled_at=session.get("reconciled_at"),
+    )
 
     if requested_canonical == current_canonical:
         await lifecycle_service.update_session_fields(
@@ -1789,8 +1786,14 @@ async def _finalize_session_canonical(
         raise HTTPException(status_code=409, detail="Session is already finalized")
 
     session_status_raw = str(session.get("status") or "").strip().upper()
-    session_status_canonical = normalize_session_status_canonical(session_status_raw)
-    if session_status_canonical != "REVIEW" and session_status_raw not in {"REVIEW", "RECONCILE"}:
+    session_status_canonical = normalize_canonical_session_status(
+        session_status_raw,
+        reconciled_at=session.get("reconciled_at"),
+    )
+    if (
+        session_status_canonical not in {"REVIEW", "RECONCILE"}
+        and session_status_raw not in {"REVIEW", "RECONCILE"}
+    ):
         raise HTTPException(
             status_code=409,
             detail="Session must be in REVIEW before finalization",

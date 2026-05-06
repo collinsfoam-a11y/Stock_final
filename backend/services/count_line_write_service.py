@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import hashlib
 import inspect
 import json
+import logging
 from typing import Any, Optional
 
 from bson import ObjectId
@@ -23,6 +24,8 @@ from backend.services.snapshot_service import SnapshotService
 from backend.services.transaction_manager import mongo_transaction
 from backend.services.validation_service import ValidationService
 from backend.services.variance_service import VarianceService
+
+logger = logging.getLogger(__name__)
 
 
 def _utc_now() -> datetime:
@@ -266,10 +269,13 @@ class CountLineWriteService:
 
     async def _resolve_awaitable(self, value: Any) -> Any:
         resolved = value
-        for _ in range(10):
+        for i in range(10):
             if not inspect.isawaitable(resolved):
-                break
+                if i > 1:
+                    logger.warning("CountLineWriteService._resolve_awaitable took %s iterations to resolve", i)
+                return resolved
             resolved = await resolved
+        logger.warning("CountLineWriteService._resolve_awaitable hit iteration limit (10) for %s", type(value).__name__)
         return resolved
 
     async def _execute_authorized_write(self, write_call: Any) -> Any:

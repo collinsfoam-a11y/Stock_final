@@ -94,6 +94,24 @@ def _parse_bool(value: object, *, default: bool = False) -> bool:
     return default
 
 
+INSECURE_JWT_SECRET_VALUES = {
+    "lavanya-emart-secret-key-2025-change-in-production",
+    "REPLACE_WITH_A_SECURE_64_CHAR_SECRET",
+    "your-secret-key-here",
+    "change-me-in-production",
+    "GENERATE_SECURE_SECRET_HERE_MIN_32_CHARS",
+}
+
+INSECURE_JWT_REFRESH_SECRET_VALUES = {
+    "lavanya-emart-refresh-secret-key-2025-change-in-production",
+    "REPLACE_WITH_A_SECURE_64_CHAR_REFRESH_SECRET",
+    "your-refresh-secret-key-here",
+    "change-me-in-production",
+    "GENERATE_SECURE_REFRESH_SECRET_HERE_MIN_32_CHARS",
+    "GENERATE_DIFFERENT_SECURE_SECRET_HERE_MIN_32_CHARS",
+}
+
+
 class Settings(PydanticBaseSettings):
     """Application settings with validation"""
 
@@ -269,13 +287,7 @@ class Settings(PydanticBaseSettings):
         if len(v) < 32:
             raise ValueError("JWT_SECRET must be at least 32 characters long")
         # Check for known insecure defaults
-        insecure_secrets = {
-            "lavanya-emart-secret-key-2025-change-in-production",
-            "REPLACE_WITH_A_SECURE_64_CHAR_SECRET",
-            "your-secret-key-here",
-            "change-me-in-production",
-        }
-        if v in insecure_secrets:
+        if v in INSECURE_JWT_SECRET_VALUES:
             raise ValueError(
                 "SECURITY ERROR: JWT_SECRET contains a known insecure default value. "
                 "Generate a secure secret using: python scripts/generate_secrets.py"
@@ -300,13 +312,7 @@ class Settings(PydanticBaseSettings):
         if len(v) < 32:
             raise ValueError("JWT_REFRESH_SECRET must be at least 32 characters long")
         # Check for known insecure defaults
-        insecure_secrets = {
-            "lavanya-emart-refresh-secret-key-2025-change-in-production",
-            "REPLACE_WITH_A_SECURE_64_CHAR_REFRESH_SECRET",
-            "your-refresh-secret-key-here",
-            "change-me-in-production",
-        }
-        if v in insecure_secrets:
+        if v in INSECURE_JWT_REFRESH_SECRET_VALUES:
             raise ValueError(
                 "SECURITY ERROR: JWT_REFRESH_SECRET contains a known insecure default value. "
                 "Generate a secure secret using: python scripts/generate_secrets.py"
@@ -359,6 +365,8 @@ class Settings(PydanticBaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"  # json or text
     LOG_FILE: Optional[str] = None
+    LOG_MAX_BYTES: int = Field(10 * 1024 * 1024, ge=0)
+    LOG_BACKUP_COUNT: int = Field(5, ge=0)
 
     # Error Tracking (Sentry)
     SENTRY_DSN: Optional[str] = Field(
@@ -538,11 +546,19 @@ except Exception as e:
             jwt_secret = _secret_env_first("JWT_SECRET")
             if not jwt_secret:
                 raise ValueError("JWT_SECRET environment variable is required")
+            if len(jwt_secret) < 32:
+                raise ValueError("JWT_SECRET must be at least 32 characters long")
+            if jwt_secret in INSECURE_JWT_SECRET_VALUES:
+                raise ValueError("JWT_SECRET contains a known insecure default value")
             self.JWT_SECRET = jwt_secret
 
             jwt_refresh_secret = _secret_env_first("JWT_REFRESH_SECRET")
             if not jwt_refresh_secret:
                 raise ValueError("JWT_REFRESH_SECRET environment variable is required")
+            if len(jwt_refresh_secret) < 32:
+                raise ValueError("JWT_REFRESH_SECRET must be at least 32 characters long")
+            if jwt_refresh_secret in INSECURE_JWT_REFRESH_SECRET_VALUES:
+                raise ValueError("JWT_REFRESH_SECRET contains a known insecure default value")
             self.JWT_REFRESH_SECRET = jwt_refresh_secret
             self.JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
             self.LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
@@ -550,6 +566,8 @@ except Exception as e:
                 "LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
             )
             self.LOG_FILE = os.getenv("LOG_FILE", "app.log")
+            self.LOG_MAX_BYTES = int(os.getenv("LOG_MAX_BYTES", str(10 * 1024 * 1024)))
+            self.LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", 5))
             self.USE_CONNECTION_POOL = os.getenv("USE_CONNECTION_POOL", "true").lower() == "true"
             self.POOL_SIZE = int(os.getenv("POOL_SIZE", 10))
             self.MAX_OVERFLOW = int(os.getenv("MAX_OVERFLOW", 5))
@@ -619,13 +637,7 @@ def perform_security_checks(settings_obj):
         jwt_secret = getattr(settings_obj, "JWT_SECRET", None)
         jwt_refresh = getattr(settings_obj, "JWT_REFRESH_SECRET", None)
 
-        placeholders = {
-            "REPLACE_WITH_A_SECURE_64_CHAR_SECRET",
-            "REPLACE_WITH_A_SECURE_64_CHAR_REFRESH_SECRET",
-            "your-secret-key-here",
-            "your-refresh-secret-key-here",
-            "change-me-in-production",
-        }
+        placeholders = INSECURE_JWT_SECRET_VALUES | INSECURE_JWT_REFRESH_SECRET_VALUES
 
         environment = getattr(
             settings_obj, "ENVIRONMENT", os.getenv("ENVIRONMENT", "development")

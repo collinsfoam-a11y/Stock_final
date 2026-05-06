@@ -38,7 +38,22 @@ def encode(payload: dict[str, Any], key: str, algorithm: str = "HS256") -> str:
     return str(token)
 
 
-def decode(token: str, key: str, algorithms: Optional[list[str]] = None) -> dict[str, Any]:
+def _matches_audience(claim_audience: Any, expected_audience: str) -> bool:
+    if isinstance(claim_audience, str):
+        return claim_audience == expected_audience
+    if isinstance(claim_audience, (list, tuple, set)):
+        return expected_audience in claim_audience
+    return False
+
+
+def decode(
+    token: str,
+    key: str,
+    algorithms: Optional[list[str]] = None,
+    *,
+    issuer: Optional[str] = None,
+    audience: Optional[str] = None,
+) -> dict[str, Any]:
     SUPPORTED_ALGORITHMS = ["HS256", "HS384", "HS512"]
     if algorithms:
         invalid_algs = [alg for alg in algorithms if alg not in SUPPORTED_ALGORITHMS]
@@ -57,6 +72,12 @@ def decode(token: str, key: str, algorithms: Optional[list[str]] = None) -> dict
             now = datetime.now(UTC).timestamp()
             if now > exp_ts:
                 raise ExpiredTokenError("token is expired")
+
+        if issuer is not None and claims.get("iss") != issuer:
+            raise InvalidTokenError("Invalid issuer")
+
+        if audience is not None and not _matches_audience(claims.get("aud"), audience):
+            raise InvalidTokenError("Invalid audience")
         return dict(claims)
     except ExpiredTokenError as exc:
         raise ExpiredSignatureError(str(exc))

@@ -632,10 +632,13 @@ def _setup_core_services(monkeypatch, fake_db, server_module) -> None:
 
     from backend.services.runtime import set_refresh_token_service
 
+    from backend.config import settings
+
     refresh_service = RefreshTokenService(
         cast(AsyncIOMotorDatabase, fake_db),
-        server_module.SECRET_KEY,
-        server_module.ALGORITHM,
+        cast(str, settings.JWT_REFRESH_SECRET),
+        settings.JWT_ALGORITHM,
+        access_secret_key=cast(str, settings.JWT_SECRET),
     )
     server_module.refresh_token_service = refresh_service
     set_refresh_token_service(refresh_service)
@@ -780,9 +783,7 @@ def _setup_auth_and_seed_users(monkeypatch, fake_db, server_module) -> None:
     """Setup authentication overrides and seed default test users."""
     pass
 
-    # Patch server module's auth settings to match test env
-    server_module.SECRET_KEY = os.getenv("JWT_SECRET", "test-jwt-secret-key-for-testing-only")
-    server_module.ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+    # Removed server_module auth patches, settings handles this now
 
     # Updated seed function to populate both users collection and pin_authentication collection
     def _seed_user(username: str, password: str, full_name: str, role: str):
@@ -806,9 +807,10 @@ def _setup_auth_and_seed_users(monkeypatch, fake_db, server_module) -> None:
     _seed_user("supervisor", "super123", "Supervisor", "supervisor")
     _seed_user("admin", "admin123", "Administrator", "admin")
 
+    from backend.utils.auth_utils import get_pin_hash
     from backend.utils.crypto_utils import get_pin_lookup_hash
 
-    hashed_pin = server_module.get_password_hash("1234")
+    hashed_pin = get_pin_hash("1234")
     lookup_hash = get_pin_lookup_hash("1234")
 
     # Update the user document for auth.py's implementation
