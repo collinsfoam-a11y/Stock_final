@@ -21,6 +21,7 @@ import {
   touchTargets,
   hitSlop,
 } from "@/theme/unified";
+import { haptics } from "@/services/haptics";
 
 interface CheckboxProps {
   checked: boolean;
@@ -55,6 +56,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
 
   const handlePress = () => {
     if (!disabled) {
+      void haptics.light();
       onChange(!checked);
     }
   };

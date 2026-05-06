@@ -13,10 +13,8 @@ import {
   ViewStyle,
   TextStyle,
   TouchableOpacity,
-  Platform,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Haptics from "expo-haptics";
 
 import {
   colors as unifiedColors,
@@ -27,6 +25,7 @@ import {
   fontWeight,
   textStyles,
 } from "../../theme/unified";
+import { haptics } from "../../services/haptics";
 
 interface ModernInputProps {
   label?: string;
@@ -91,9 +90,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   };
 
   const handleClear = () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    }
+    void haptics.light();
     onChangeText("");
     inputRef.current?.focus();
   };

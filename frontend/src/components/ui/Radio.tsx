@@ -19,6 +19,7 @@ import {
   touchTargets,
   hitSlop,
 } from "@/theme/unified";
+import { haptics } from "@/services/haptics";
 
 export interface RadioOption {
   value: string;
@@ -84,7 +85,10 @@ const RadioItem: React.FC<RadioItemProps> = ({
   return (
     <TouchableOpacity
       style={styles.item}
-      onPress={onSelect}
+      onPress={() => {
+        void haptics.light();
+        onSelect();
+      }}
       disabled={disabled}
       activeOpacity={0.8}
       hitSlop={hitSlop.small}
