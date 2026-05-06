@@ -132,7 +132,11 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
 
   const handlePress = (event: GestureResponderEvent) => {
     if (!disabled && !loading) {
-      void haptics.light();
+      try {
+        void Promise.resolve(haptics.light()).catch(() => undefined);
+      } catch {
+        // Haptics must not block the primary action.
+      }
       onPress(event);
     }
   };
