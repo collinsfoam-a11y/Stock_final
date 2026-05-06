@@ -16,7 +16,7 @@ if [ -f frontend/package-lock.json ]; then
   else
     rc=$?
     cat "$npm_output_file"
-    if rg -q "audit endpoint returned an error|403 Forbidden|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT" "$npm_output_file"; then
+    if grep -Eq "audit endpoint returned an error|403 Forbidden|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT" "$npm_output_file"; then
       echo "⚠️  npm audit could not complete (registry/proxy/network/auth issue)."
       if [ "$status" -eq 0 ]; then
         status=2

@@ -183,24 +183,27 @@ clean:
 .PHONY: security secrets validate-env
 
 security:
-	@echo "🔒 Running security checks..."
-	@./scripts/check_vulnerabilities.sh || true
-	@echo "Checking for tracked env files (no secrets in git)..."
-	@tracked_env_files="$$(git ls-files | grep -E '(^|/)\\.env($|\\.)' || true)"; \
+	@set -eu; \
+	echo "🔒 Running security checks..."; \
+	vuln_status=0; \
+	./scripts/check_vulnerabilities.sh || vuln_status=$$?; \
+	echo "Checking for tracked env files (no secrets in git)..."; \
+	tracked_env_files="$$(git ls-files | grep -E '(^|/)\\.env($|\\.)' || true)"; \
 	bad_env_files="$$(printf '%s\n' "$$tracked_env_files" | grep -Ev '\\.env\\.(example|sample|template)$$|\\.env\\.production\\.example$$' || true)"; \
 	if [ -n "$$bad_env_files" ]; then \
 		echo "❌ ERROR: tracked env files detected (remove from git and use *.example templates):"; \
 		printf '%s\n' "$$bad_env_files"; \
 		exit 1; \
-	fi
-	@echo "✅ No tracked env files detected"
-	@echo "Running pre-commit security hooks..."
-	@if [ -f .pre-commit-config.yaml ]; then \
+	fi; \
+	echo "✅ No tracked env files detected"; \
+	echo "Running pre-commit security hooks..."; \
+	if [ -f .pre-commit-config.yaml ]; then \
 		pre-commit run detect-secrets --all-files || true; \
 	else \
 		echo "⚠️  Skipping pre-commit hooks: .pre-commit-config.yaml not found"; \
-	fi
-	@echo "✅ Security check complete!"
+	fi; \
+	echo "✅ Security check complete!"; \
+	exit $$vuln_status
 
 secrets:
 	@echo "🔐 Generating new JWT secrets..."
