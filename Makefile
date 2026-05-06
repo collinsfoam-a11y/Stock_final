@@ -183,23 +183,37 @@ clean:
 .PHONY: security secrets validate-env
 
 security:
-	@echo "🔒 Running security checks..."
-	@echo "Checking for tracked env files (no secrets in git)..."
-	@tracked_env_files="$$(git ls-files | grep -E '(^|/)\\.env($|\\.)' || true)"; \
+	@set -eu; \
+	echo "🔒 Running security checks..."; \
+	vuln_status=0; \
+	./scripts/check_vulnerabilities.sh || vuln_status=$$?; \
+	echo "Checking for tracked env files (no secrets in git)..."; \
+	tracked_env_files="$$(git ls-files | grep -E '(^|/)\\.env($|\\.)' || true)"; \
 	bad_env_files="$$(printf '%s\n' "$$tracked_env_files" | grep -Ev '\\.env\\.(example|sample|template)$$|\\.env\\.production\\.example$$' || true)"; \
-	if [ -n "$$bad_env_files" ]; then \
-		echo "❌ ERROR: tracked env files detected (remove from git and use *.example templates):"; \
-		printf '%s\n' "$$bad_env_files"; \
-		exit 1; \
-	fi
-	@echo "✅ No tracked env files detected"
-	@echo "Running pre-commit security hooks..."
-	@if [ -f .pre-commit-config.yaml ]; then \
-		pre-commit run detect-secrets --all-files || true; \
-	else \
-		echo "⚠️  Skipping pre-commit hooks: .pre-commit-config.yaml not found"; \
-	fi
-	@echo "✅ Security check complete!"
+		if [ -n "$$bad_env_files" ]; then \
+			echo "❌ ERROR: tracked env files detected (remove from git and use *.example templates):"; \
+			printf '%s\n' "$$bad_env_files"; \
+			vuln_status=1; \
+		else \
+			echo "✅ No tracked env files detected"; \
+		fi; \
+		echo "Running pre-commit security hooks..."; \
+		if [ -f .pre-commit-config.yaml ]; then \
+			detect_secrets_status=0; \
+			pre-commit run detect-secrets --all-files || detect_secrets_status=$$?; \
+			if [ "$$detect_secrets_status" -ne 0 ]; then \
+				echo "❌ detect-secrets hook failed"; \
+				vuln_status=1; \
+			fi; \
+		else \
+			echo "⚠️  Skipping pre-commit hooks: .pre-commit-config.yaml not found"; \
+		fi; \
+		if [ "$$vuln_status" -eq 0 ]; then \
+			echo "✅ Security checks passed!"; \
+		else \
+			echo "⚠️  Security checks completed with failures"; \
+		fi; \
+		exit $$vuln_status
 
 secrets:
 	@echo "🔐 Generating new JWT secrets..."
