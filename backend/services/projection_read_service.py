@@ -758,9 +758,13 @@ class ProjectionReadService:
                 continue
 
             counted_at = _coerce_datetime(row.get("counted_at"))
-            if getattr(filters, "date_from", None) and counted_at and counted_at.date() < filters.date_from:
+            date_from = getattr(filters, "date_from", None)
+            date_to = getattr(filters, "date_to", None)
+            if (date_from or date_to) and counted_at is None:
                 continue
-            if getattr(filters, "date_to", None) and counted_at and counted_at.date() > filters.date_to:
+            if date_from and counted_at and counted_at.date() < date_from:
+                continue
+            if date_to and counted_at and counted_at.date() > date_to:
                 continue
 
             results.append(
