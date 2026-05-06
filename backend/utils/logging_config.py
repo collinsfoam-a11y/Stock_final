@@ -190,20 +190,21 @@ def setup_logging(
     logger_names = dict.fromkeys(
         (app_name, "stock-verify", "backend", "uvicorn", "uvicorn.error", "uvicorn.access")
     )
+    shared_handlers = _build_handlers(
+        numeric_level=numeric_level,
+        log_format=log_format,
+        log_file=log_file,
+        app_name=app_name,
+        log_max_bytes=log_max_bytes,
+        log_backup_count=log_backup_count,
+    )
     for logger_name in logger_names:
         if logger_name is None:
             continue
         _configure_logger(
             name=logger_name,
             numeric_level=numeric_level,
-            handlers=_build_handlers(
-                numeric_level=numeric_level,
-                log_format=log_format,
-                log_file=log_file,
-                app_name=app_name,
-                log_max_bytes=log_max_bytes,
-                log_backup_count=log_backup_count,
-            ),
+            handlers=shared_handlers,
         )
 
     return logger

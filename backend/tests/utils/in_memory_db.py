@@ -636,8 +636,9 @@ def _setup_core_services(monkeypatch, fake_db, server_module) -> None:
 
     refresh_service = RefreshTokenService(
         cast(AsyncIOMotorDatabase, fake_db),
-        cast(str, settings.JWT_SECRET),
+        cast(str, settings.JWT_REFRESH_SECRET),
         settings.JWT_ALGORITHM,
+        access_secret_key=cast(str, settings.JWT_SECRET),
     )
     server_module.refresh_token_service = refresh_service
     set_refresh_token_service(refresh_service)

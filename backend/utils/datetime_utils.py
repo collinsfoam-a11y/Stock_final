@@ -21,4 +21,4 @@ def utc_now_iso() -> str:
     """
     Return the current UTC datetime as an ISO 8601 string.
     """
-    return utc_now_naive().isoformat()
+    return utc_now().isoformat().replace("+00:00", "Z")

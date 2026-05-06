@@ -1710,7 +1710,10 @@ async def update_session_status(
         raise HTTPException(status_code=400, detail=f"Unsupported session status: {requested}")
 
     lifecycle_service = SessionLifecycleService(db)
-    current_canonical = normalize_canonical_session_status(session.get("status"))
+    current_canonical = normalize_canonical_session_status(
+        session.get("status"),
+        reconciled_at=session.get("reconciled_at"),
+    )
 
     if requested_canonical == current_canonical:
         await lifecycle_service.update_session_fields(
@@ -1783,8 +1786,14 @@ async def _finalize_session_canonical(
         raise HTTPException(status_code=409, detail="Session is already finalized")
 
     session_status_raw = str(session.get("status") or "").strip().upper()
-    session_status_canonical = normalize_canonical_session_status(session_status_raw)
-    if session_status_canonical != "REVIEW" and session_status_raw not in {"REVIEW", "RECONCILE"}:
+    session_status_canonical = normalize_canonical_session_status(
+        session_status_raw,
+        reconciled_at=session.get("reconciled_at"),
+    )
+    if (
+        session_status_canonical not in {"REVIEW", "RECONCILE"}
+        and session_status_raw not in {"REVIEW", "RECONCILE"}
+    ):
         raise HTTPException(
             status_code=409,
             detail="Session must be in REVIEW before finalization",

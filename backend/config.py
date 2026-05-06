@@ -546,6 +546,8 @@ except Exception as e:
             jwt_secret = _secret_env_first("JWT_SECRET")
             if not jwt_secret:
                 raise ValueError("JWT_SECRET environment variable is required")
+            if len(jwt_secret) < 32:
+                raise ValueError("JWT_SECRET must be at least 32 characters long")
             if jwt_secret in INSECURE_JWT_SECRET_VALUES:
                 raise ValueError("JWT_SECRET contains a known insecure default value")
             self.JWT_SECRET = jwt_secret
@@ -553,6 +555,8 @@ except Exception as e:
             jwt_refresh_secret = _secret_env_first("JWT_REFRESH_SECRET")
             if not jwt_refresh_secret:
                 raise ValueError("JWT_REFRESH_SECRET environment variable is required")
+            if len(jwt_refresh_secret) < 32:
+                raise ValueError("JWT_REFRESH_SECRET must be at least 32 characters long")
             if jwt_refresh_secret in INSECURE_JWT_REFRESH_SECRET_VALUES:
                 raise ValueError("JWT_REFRESH_SECRET contains a known insecure default value")
             self.JWT_REFRESH_SECRET = jwt_refresh_secret

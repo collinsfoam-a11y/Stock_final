@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from backend.auth.dependencies import get_current_user, require_admin
 from backend.auth.permissions import ROLE_PERMISSIONS, Permission, has_permission
@@ -133,6 +133,25 @@ class BulkActionResult(BaseModel):
     failed_count: int
     failed_ids: list[str]
     message: str
+
+
+class ResetPasswordRequest(BaseModel):
+    """Request to reset a user's password."""
+
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Password cannot be empty or whitespace only")
+        return value
+
+
+class ResetPinRequest(BaseModel):
+    """Request to reset a user's PIN."""
+
+    new_pin: str = Field(..., pattern=r"^\d{4}$")
 
 
 # ============================================================================
@@ -782,7 +801,7 @@ async def get_available_roles(
 @user_management_router.post("/{user_id}/reset-password")
 async def reset_user_password(
     user_id: str,
-    new_password: str = Query(..., min_length=8, max_length=128),
+    request: ResetPasswordRequest,
     current_user: dict = Depends(require_admin),
 ):
     """
@@ -796,7 +815,7 @@ async def reset_user_password(
         {"_id": oid},
         {
             "$set": {
-                "hashed_password": get_password_hash(new_password),
+                "hashed_password": get_password_hash(request.new_password),
                 "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
             }
         },
@@ -814,7 +833,7 @@ async def reset_user_password(
 @user_management_router.post("/{user_id}/reset-pin")
 async def reset_user_pin(
     user_id: str,
-    new_pin: str = Query(..., pattern=r"^\d{4}$"),
+    request: ResetPinRequest,
     current_user: dict = Depends(require_admin),
 ):
     """
@@ -828,8 +847,8 @@ async def reset_user_pin(
         {"_id": oid},
         {
             "$set": {
-                "pin_hash": get_pin_hash(new_pin),
-                "pin_lookup_hash": get_pin_lookup_hash(new_pin),
+                "pin_hash": get_pin_hash(request.new_pin),
+                "pin_lookup_hash": get_pin_lookup_hash(request.new_pin),
                 "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
             }
         },
