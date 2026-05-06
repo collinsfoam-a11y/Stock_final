@@ -32,6 +32,18 @@ class TestEnhancedConnectionPool:
             "retry_delay": 0.01,  # Very short delay for testing
         }
 
+    @pytest.fixture(autouse=True)
+    def patch_connection_string_builder(self):
+        """Avoid host-driver discovery during unit tests."""
+        with patch(
+            "backend.services.enhanced_connection_pool._PYODBC_AVAILABLE",
+            True,
+        ), patch(
+            "backend.services.enhanced_connection_pool.SQLServerConnectionBuilder.build_connection_string",
+            return_value="DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost;DATABASE=test_db;",
+        ):
+            yield
+
     @pytest.fixture
     def mock_connection(self):
         """Mock SQL Server connection"""
