@@ -63,7 +63,7 @@ export type ButtonSize = "small" | "medium" | "large";
 
 interface ModernButtonProps {
   title: string;
-  onPress?: (event: GestureResponderEvent) => void;
+  onPress: (event: GestureResponderEvent) => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
   disabled?: boolean;
@@ -243,7 +243,7 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   const handlePress = (event: GestureResponderEvent) => {
     if (!disabled && !loading) {
       void haptics.light();
-      onPress?.(event);
+      onPress(event);
     }
   };
 
