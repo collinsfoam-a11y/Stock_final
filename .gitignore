@@ -1,0 +1,26 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Caches
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+*.pyc
+
+# Embedded git repositories (not part of this project)
+antigravity-awesome-skills/
+awesome-agent-skills/
+claude-mem/
+coll_git/
+everything-claude-code/
+goose/
+nocobase/
+nocobase-app/
+vibe-kanban/
+
+# Frontend (empty placeholder — add back if used)
+frontend/
