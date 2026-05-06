@@ -86,7 +86,7 @@ class CreateUserRequest(BaseModel):
     )
     email: Optional[EmailStr] = None
     full_name: Optional[str] = Field(None, max_length=100)
-    password: str = Field(..., min_length=6, max_length=128)
+    password: str = Field(..., min_length=8, max_length=128)
     pin: Optional[str] = Field(None, pattern=r"^\d{4}$")
     role: str = Field(
         default="staff",
@@ -102,7 +102,7 @@ class UpdateUserRequest(BaseModel):
     full_name: Optional[str] = Field(None, max_length=100)
     password: Optional[str] = Field(
         None,
-        min_length=6,
+        min_length=8,
         max_length=128,
     )
     pin: Optional[str] = Field(None, pattern=r"^\d{4}$")
@@ -782,7 +782,7 @@ async def get_available_roles(
 @user_management_router.post("/{user_id}/reset-password")
 async def reset_user_password(
     user_id: str,
-    new_password: str = Query(..., min_length=6, max_length=128),
+    new_password: str = Query(..., min_length=8, max_length=128),
     current_user: dict = Depends(require_admin),
 ):
     """
