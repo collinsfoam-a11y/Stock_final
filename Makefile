@@ -195,13 +195,18 @@ security:
 		printf '%s\n' "$$bad_env_files"; \
 		exit 1; \
 	fi; \
-	echo "✅ No tracked env files detected"; \
-	echo "Running pre-commit security hooks..."; \
-	if [ -f .pre-commit-config.yaml ]; then \
-		pre-commit run detect-secrets --all-files || true; \
-	else \
-		echo "⚠️  Skipping pre-commit hooks: .pre-commit-config.yaml not found"; \
-	fi; \
+		echo "✅ No tracked env files detected"; \
+		echo "Running pre-commit security hooks..."; \
+		if [ -f .pre-commit-config.yaml ]; then \
+			detect_secrets_status=0; \
+			pre-commit run detect-secrets --all-files || detect_secrets_status=$$?; \
+			if [ "$$detect_secrets_status" -ne 0 ]; then \
+				echo "❌ detect-secrets hook failed"; \
+				vuln_status=1; \
+			fi; \
+		else \
+			echo "⚠️  Skipping pre-commit hooks: .pre-commit-config.yaml not found"; \
+		fi; \
 	echo "✅ Security check complete!"; \
 	exit $$vuln_status
 

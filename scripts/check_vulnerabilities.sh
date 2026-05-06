@@ -9,25 +9,32 @@ echo "🔎 Dependency vulnerability checks"
 if [ -f frontend/package-lock.json ]; then
   echo ""
   echo "📦 Frontend: npm audit"
-  npm_output_file="$(mktemp)"
-  if (cd frontend && npm audit --audit-level=moderate >"$npm_output_file" 2>&1); then
-    cat "$npm_output_file"
-    echo "✅ npm audit passed"
-  else
-    rc=$?
-    cat "$npm_output_file"
-    if grep -Eq "audit endpoint returned an error|403 Forbidden|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT" "$npm_output_file"; then
-      echo "⚠️  npm audit could not complete (registry/proxy/network/auth issue)."
-      if [ "$status" -eq 0 ]; then
-        status=2
-      fi
-    else
-      echo "❌ npm audit found vulnerabilities or returned an actionable failure"
-      status=1
+  if ! command -v npm >/dev/null 2>&1; then
+    echo "⚠️  npm is not installed; skipping frontend vulnerability scan"
+    if [ "$status" -eq 0 ]; then
+      status=2
     fi
-    echo "   Exit code: $rc"
+  else
+    npm_output_file="$(mktemp)"
+    if (cd frontend && npm audit --audit-level=moderate >"$npm_output_file" 2>&1); then
+      cat "$npm_output_file"
+      echo "✅ npm audit passed"
+    else
+      rc=$?
+      cat "$npm_output_file"
+      if grep -Eq "audit endpoint returned an error|403 Forbidden|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT" "$npm_output_file"; then
+        echo "⚠️  npm audit could not complete (registry/proxy/network/auth issue)."
+        if [ "$status" -eq 0 ]; then
+          status=2
+        fi
+      else
+        echo "❌ npm audit found vulnerabilities or returned an actionable failure"
+        status=1
+      fi
+      echo "   Exit code: $rc"
+    fi
+    rm -f "$npm_output_file"
   fi
-  rm -f "$npm_output_file"
 else
   echo "⚠️  frontend/package-lock.json not found; skipping npm audit"
 fi
