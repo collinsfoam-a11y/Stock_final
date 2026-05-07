@@ -13,3 +13,7 @@
 ## 2025-05-18 - Standardizing Tactile Feedback across Design System Components
 **Learning:** For a consistent mobile "feel," all interactive primitive components (Switch, Checkbox, Radio, etc.) should provide subtle haptic feedback on state change. Centralizing this logic in a `haptics` service that respects feature flags and platform constraints (e.g., disabling on web) ensures a robust and unified user experience.
 **Action:** Use `haptics.light()` from the centralized haptics service for all primary toggle/selection interactions in new UI components.
+
+## 2026-05-10 - Enhancing Container Interactivity and Tactile Feedback
+**Learning:** Container components like `ModernCard` that support both `onPress` and `onLongPress` should provide consistent tactile feedback (light for press, medium for long press) to meet mobile UX expectations. Furthermore, ensuring a component becomes interactive (e.g., using `TouchableOpacity` and setting `accessibilityRole="button"`) when *either* handler is present prevents "dead" interactive elements that only respond to one type of gesture.
+**Action:** Always verify that interactive containers respond to all provided gesture handlers and provide appropriate haptic feedback via the centralized service.

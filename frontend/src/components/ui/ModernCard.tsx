@@ -38,6 +38,7 @@ import {
   textStyles,
 } from "../../theme/unified";
 import { useThemeContextSafe } from "../../context/ThemeContext";
+import { haptics } from "../../services/haptics";
 
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
@@ -127,7 +128,7 @@ export const ModernCard: React.FC<ModernCardProps> = ({
 
   // Press handlers
   const handlePressIn = () => {
-    if (onPress) {
+    if (onPress || onLongPress) {
       scale.value = withSpring(0.98, springConfigs.gentle);
       opacity.value = withTiming(0.9, {
         duration: duration.fast,
@@ -136,11 +137,25 @@ export const ModernCard: React.FC<ModernCardProps> = ({
   };
 
   const handlePressOut = () => {
-    if (onPress) {
+    if (onPress || onLongPress) {
       scale.value = withSpring(1, springConfigs.gentle);
       opacity.value = withTiming(1, {
         duration: duration.fast,
       });
+    }
+  };
+
+  const handlePress = () => {
+    if (onPress) {
+      void haptics.light();
+      onPress();
+    }
+  };
+
+  const handleLongPress = () => {
+    if (onLongPress) {
+      void haptics.medium();
+      onLongPress();
     }
   };
 
@@ -247,21 +262,23 @@ export const ModernCard: React.FC<ModernCardProps> = ({
 
     // Use standard components on web to avoid Reanimated issues
     const isWeb = Platform.OS === "web";
+    const isInteractive = Boolean(onPress || onLongPress);
     let Component: React.ComponentType<any> = isWeb ? View : AnimatedView;
-    if (onPress) {
+
+    if (isInteractive) {
       Component = isWeb ? TouchableOpacity : AnimatedTouchableOpacity;
     }
 
     const props = {
-      onPress,
-      onLongPress,
+      onPress: handlePress,
+      onLongPress: handleLongPress,
       delayLongPress,
       onPressIn: handlePressIn,
       onPressOut: handlePressOut,
       style: isWeb ? cardStyle : [animatedStyle, cardStyle],
       testID,
       accessible: true,
-      accessibilityRole: onPress ? ("button" as const) : ("none" as const),
+      accessibilityRole: isInteractive ? ("button" as const) : ("none" as const),
       accessibilityLabel: accessibilityLabel || title,
       accessibilityHint,
     };
