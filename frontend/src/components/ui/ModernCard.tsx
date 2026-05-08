@@ -18,8 +18,10 @@ import {
   ViewStyle,
   StyleProp,
   Platform,
+  GestureResponderEvent,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { haptics } from "../../services/haptics";
 import { BlurView } from "expo-blur";
 import Animated, {
   useSharedValue,
@@ -62,7 +64,7 @@ interface ModernCardProps {
   children: React.ReactNode;
   title?: string;
   subtitle?: string;
-  onPress?: () => void;
+  onPress?: (event: GestureResponderEvent) => void;
   variant?: CardVariant;
   elevation?: CardElevation;
   padding?: number;
@@ -71,7 +73,7 @@ interface ModernCardProps {
   icon?: keyof typeof Ionicons.glyphMap;
   footer?: React.ReactNode;
   testID?: string;
-  onLongPress?: () => void;
+  onLongPress?: (event: GestureResponderEvent) => void;
   delayLongPress?: number;
   accessibilityLabel?: string;
   accessibilityHint?: string;
@@ -128,10 +130,24 @@ export const ModernCard: React.FC<ModernCardProps> = ({
   // Press handlers
   const handlePressIn = () => {
     if (onPress) {
+      void haptics.light();
       scale.value = withSpring(0.98, springConfigs.gentle);
       opacity.value = withTiming(0.9, {
         duration: duration.fast,
       });
+    }
+  };
+
+  const handlePress = (event: GestureResponderEvent) => {
+    if (onPress) {
+      onPress(event);
+    }
+  };
+
+  const handleLongPress = (event: GestureResponderEvent) => {
+    if (onLongPress) {
+      void haptics.medium();
+      onLongPress(event);
     }
   };
 
@@ -253,8 +269,8 @@ export const ModernCard: React.FC<ModernCardProps> = ({
     }
 
     const props = {
-      onPress,
-      onLongPress,
+      onPress: handlePress,
+      onLongPress: handleLongPress,
       delayLongPress,
       onPressIn: handlePressIn,
       onPressOut: handlePressOut,

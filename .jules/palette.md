@@ -13,3 +13,7 @@
 ## 2025-05-18 - Standardizing Tactile Feedback across Design System Components
 **Learning:** For a consistent mobile "feel," all interactive primitive components (Switch, Checkbox, Radio, etc.) should provide subtle haptic feedback on state change. Centralizing this logic in a `haptics` service that respects feature flags and platform constraints (e.g., disabling on web) ensures a robust and unified user experience.
 **Action:** Use `haptics.light()` from the centralized haptics service for all primary toggle/selection interactions in new UI components.
+
+## 2025-05-20 - Enhancing Interactive Cards with Tactile Feedback and Event Consistency
+**Learning:** Interactive cards in a mobile-first UI benefit significantly from immediate tactile feedback on press-in. To ensure these components are fully interoperable with React Native's gesture and navigation systems, it is essential to forward the `GestureResponderEvent` to provided `onPress` and `onLongPress` callbacks.
+**Action:** Always trigger `haptics.light()` on `handlePressIn` for interactive components and ensure all interaction handlers preserve and pass the event argument to the caller's callbacks.
