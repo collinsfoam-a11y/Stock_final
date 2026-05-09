@@ -17,6 +17,14 @@ import {
   searchItemsInCache,
   type DataSource,
 } from "../offline/offlineStorage";
+import { submitCountLineCommand } from "../control-plane/countLineControlPlane";
+import {
+  approveCountLineCommand,
+  overlayCountLineReviewState,
+  rejectCountLineCommand,
+  unverifyStockCommand,
+  verifyStockCommand,
+} from "../control-plane/countLineReviewControlPlane";
 import { isOnline, shouldAttemptReadApi } from "./sessionManagementApi";
 
 const log = createLogger("InventoryWorkflowApi");
@@ -870,20 +878,7 @@ export const createCountLine = async (
         isOnline: isOnline(),
         isOfflineSession,
       });
-
-      try {
-        const offlineCountLine = await createOfflineCountLineResult(
-          countDataWithIdempotency,
-          user?.username
-        );
-        log.debug("Created offline count line", { id: offlineCountLine._id });
-        return offlineCountLine;
-      } catch (persistError) {
-        log.error("Failed to persist offline count line", {
-          error: persistError instanceof Error ? persistError.message : String(persistError),
-        });
-        throw new Error("Failed to save count line offline. Please try again.");
-      }
+      return await submitCountLineCommand(countData);
     }
 
     log.debug("Online mode - creating count line via API");
@@ -959,10 +954,11 @@ export const getCountLines = async (
           ? response.data
           : [];
     const hydratedLines = await hydrateCountLineNames(countLinesToCache);
+    const reviewedLines = await overlayCountLineReviewState(hydratedLines);
 
     return {
       ...response.data,
-      items: hydratedLines,
+      items: reviewedLines,
       _source: "api" as DataSource,
     };
   } catch (error: any) {
@@ -1071,8 +1067,7 @@ export const getVarianceReasons = async () => {
  * Approves a count line through the supervisor review endpoint.
  */
 export const approveCountLine = async (lineId: string) => {
-  const response = await api.put(`/api/count-lines/${lineId}/approve`);
-  return response.data;
+  return approveCountLineCommand(lineId, undefined);
 };
 
 /**
@@ -1082,8 +1077,7 @@ export const rejectCountLine = async (
   lineId: string,
   payload?: { notes?: string; assign_to?: string }
 ) => {
-  const response = await api.put(`/api/count-lines/${lineId}/reject`, payload || {});
-  return response.data;
+  return rejectCountLineCommand(lineId, payload);
 };
 
 /**
@@ -1178,24 +1172,12 @@ export const deleteCountLine = async (lineId: string) => {
  * Marks a count line as verified.
  */
 export const verifyStock = async (countLineId: string) => {
-  try {
-    const response = await api.put(`/api/count-lines/${countLineId}/verify`);
-    return response.data;
-  } catch (error: unknown) {
-    __DEV__ && console.error("Verify stock error:", error);
-    throw error;
-  }
+  return verifyStockCommand(countLineId);
 };
 
 /**
  * Removes the verified flag from a count line.
  */
 export const unverifyStock = async (countLineId: string) => {
-  try {
-    const response = await api.put(`/api/count-lines/${countLineId}/unverify`);
-    return response.data;
-  } catch (error: unknown) {
-    __DEV__ && console.error("Unverify stock error:", error);
-    throw error;
-  }
+  return unverifyStockCommand(countLineId);
 };

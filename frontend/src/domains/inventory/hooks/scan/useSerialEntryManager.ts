@@ -77,7 +77,7 @@ export const useSerialEntryManager = ({
       }
 
       if (sessionId) {
-        const result = await checkSerialUniqueness(sessionId, normalized, item?.item_code);
+        const result = await checkSerialUniqueness(sessionId, normalized);
         if (result.status === "UNAVAILABLE") {
           Alert.alert(
             "Serial Validation Unavailable",

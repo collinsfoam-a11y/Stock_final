@@ -392,9 +392,9 @@ export class ItemVerificationAPI {
    */
   static async approveVariance(
     countLineId: string,
-    notes?: string
+    _notes?: string
   ): Promise<Record<string, unknown>> {
-    return approveCountLine(countLineId, { notes });
+    return approveCountLine(countLineId);
   }
 
   /**

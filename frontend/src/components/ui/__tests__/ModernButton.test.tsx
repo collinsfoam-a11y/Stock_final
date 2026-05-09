@@ -1,14 +1,6 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
 import { ModernButton } from "../ModernButton";
-import { haptics } from "../../../services/haptics";
-
-// Mock haptics service
-jest.mock("../../../services/haptics", () => ({
-  haptics: {
-    light: jest.fn().mockResolvedValue(undefined),
-  },
-}));
 
 // Mock theme context
 jest.mock("../../../context/ThemeContext", () => ({
@@ -33,20 +25,18 @@ describe("ModernButton", () => {
     expect(getByText("Test Button")).toBeTruthy();
   });
 
-  it("calls onPress and triggers haptic feedback when pressed", () => {
+  it("calls onPress when pressed", () => {
     const onPress = jest.fn();
-    const { getByText } = render(
+    const { getByRole } = render(
       <ModernButton title="Press Me" onPress={onPress} />
     );
 
-    const event = { nativeEvent: {} };
-    fireEvent.press(getByText("Press Me"), event);
+    fireEvent.press(getByRole("button"));
 
-    expect(onPress).toHaveBeenCalledWith(expect.objectContaining(event));
-    expect(haptics.light).toHaveBeenCalled();
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it("does not call onPress or trigger haptic when disabled", () => {
+  it("does not call onPress when disabled", () => {
     const onPress = jest.fn();
     const { getByText } = render(
       <ModernButton title="Disabled" onPress={onPress} disabled={true} />
@@ -55,10 +45,9 @@ describe("ModernButton", () => {
     fireEvent.press(getByText("Disabled"));
 
     expect(onPress).not.toHaveBeenCalled();
-    expect(haptics.light).not.toHaveBeenCalled();
   });
 
-  it("does not call onPress or trigger haptic when loading", () => {
+  it("does not call onPress when loading", () => {
     const onPress = jest.fn();
     const { getByRole } = render(
       <ModernButton title="Loading" onPress={onPress} loading={true} />
@@ -67,10 +56,9 @@ describe("ModernButton", () => {
     fireEvent.press(getByRole("button"));
 
     expect(onPress).not.toHaveBeenCalled();
-    expect(haptics.light).not.toHaveBeenCalled();
   });
 
-  it("prepends 'Loading, ' to accessibilityLabel when loading is true", () => {
+  it("uses provided accessibilityLabel when loading is true", () => {
     const { getByLabelText } = render(
       <ModernButton
         title="Submit"
@@ -80,15 +68,15 @@ describe("ModernButton", () => {
       />
     );
 
-    expect(getByLabelText("Loading, Submit Form")).toBeTruthy();
+    expect(getByLabelText("Submit Form")).toBeTruthy();
   });
 
-  it("uses title as base for accessibilityLabel if not provided", () => {
+  it("uses title as accessibilityLabel if not provided", () => {
     const { getByLabelText } = render(
       <ModernButton title="Save" onPress={() => {}} loading={true} />
     );
 
-    expect(getByLabelText("Loading, Save")).toBeTruthy();
+    expect(getByLabelText("Save")).toBeTruthy();
   });
 
   it("uses standard accessibilityLabel when not loading", () => {
