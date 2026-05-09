@@ -1,4 +1,4 @@
-import { auroraTheme } from "@/theme/auroraTheme";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 
 export type UserRole = "staff" | "supervisor" | "admin";
 
@@ -37,26 +37,22 @@ export interface UserFormState {
 
 export const userTextStyles = {
   h2: {
-    fontFamily: auroraTheme.typography.fontFamily.heading,
-    fontSize: auroraTheme.typography.fontSize["2xl"],
+    fontSize: 24,
     fontWeight: "700" as const,
   },
   h3: {
-    fontFamily: auroraTheme.typography.fontFamily.heading,
-    fontSize: auroraTheme.typography.fontSize.xl,
+    fontSize: 20,
     fontWeight: "600" as const,
   },
   body: {
-    fontFamily: auroraTheme.typography.fontFamily.body,
-    fontSize: auroraTheme.typography.fontSize.base,
+    fontSize: 16,
   },
   label: {
-    fontFamily: auroraTheme.typography.fontFamily.label,
-    fontSize: auroraTheme.typography.fontSize.sm,
+    fontSize: 14,
+    fontWeight: "600" as const,
   },
   caption: {
-    fontFamily: auroraTheme.typography.fontFamily.body,
-    fontSize: auroraTheme.typography.fontSize.xs,
+    fontSize: 12,
   },
 };
 
@@ -72,33 +68,41 @@ export const createEmptyUserForm = (): UserFormState => ({
   isActive: true,
 });
 
-export const getRoleBadgeStyle = (role: UserRole) => {
-  switch (role) {
-    case "admin":
-      return {
-        bg: auroraTheme.colors.error[100],
-        text: auroraTheme.colors.error[700],
-      };
-    case "supervisor":
-      return {
-        bg: auroraTheme.colors.warning[100],
-        text: auroraTheme.colors.warning[700],
-      };
-    default:
-      return {
-        bg: auroraTheme.colors.primary[100],
-        text: auroraTheme.colors.primary[700],
-      };
-  }
+export const getRoleBadgeStyle = (role: UserRole, uiTokens: ThemeTokens) => {
+  const color =
+    role === "admin"
+      ? uiTokens.colors.error
+      : role === "supervisor"
+        ? uiTokens.colors.warning
+        : uiTokens.colors.accent;
+
+  return {
+    bg: colorWithAlpha(color, 0.12),
+    text: color,
+  };
 };
 
-export const getStatusStyle = (isActive: boolean) =>
-  isActive
-    ? {
-        bg: auroraTheme.colors.success[100],
-        text: auroraTheme.colors.success[700],
-      }
-    : {
-        bg: auroraTheme.colors.neutral[200],
-        text: auroraTheme.colors.neutral[600],
-      };
+export const getStatusStyle = (isActive: boolean, uiTokens: ThemeTokens) => {
+  const color = isActive ? uiTokens.colors.success : uiTokens.colors.textMuted;
+
+  return {
+    bg: colorWithAlpha(color, 0.12),
+    text: isActive ? color : uiTokens.colors.textSecondary,
+  };
+};
+
+export const getOperationalActionColor = (
+  action: "primary" | "success" | "warning" | "danger",
+  uiTokens: ThemeTokens
+) => {
+  switch (action) {
+    case "success":
+      return uiTokens.colors.success;
+    case "warning":
+      return uiTokens.colors.warning;
+    case "danger":
+      return uiTokens.colors.error;
+    default:
+      return uiTokens.colors.accent;
+  }
+};

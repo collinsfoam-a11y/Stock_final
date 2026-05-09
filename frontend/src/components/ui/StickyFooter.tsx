@@ -1,6 +1,6 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
-import { PremiumButton } from "@/components/premium/PremiumButton"; // Assuming this is already modern or will be
+import { AppButton } from "@/components/ui/AppButton";
 import { useThemeContext } from "../../context/ThemeContext";
 
 interface Props {
@@ -26,7 +26,7 @@ function StickyFooter({ title, disabled, loading, onPress, testID }: Props) {
       ]}
     >
       <View style={[styles.inner, { borderRadius: theme.borderRadius.lg }]}>
-        <PremiumButton
+        <AppButton
           title={title}
           onPress={onPress}
           disabled={!!disabled}

@@ -1,8 +1,6 @@
 import { Dimensions, Platform, StyleSheet } from "react-native";
 
-import { auroraTheme } from "@/theme/auroraTheme";
-
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export const DASHBOARD_IS_WEB = Platform.OS === "web";
@@ -89,67 +87,98 @@ export const prepareSessionChartData = (sessionsAnalytics: any) => {
   });
 };
 
-export const prepareStatusChartData = (systemStats: any) => {
+export const prepareStatusChartData = (systemStats: any, uiTokens: ThemeTokens) => {
   if (!systemStats) return [];
 
   return [
     {
       label: "Active",
       value: systemStats.active_sessions || 0,
-      color: auroraTheme.colors.success[500],
+      color: uiTokens.colors.success,
     },
     {
       label: "Idle",
       value: (systemStats.total_sessions || 0) - (systemStats.active_sessions || 0),
-      color: auroraTheme.colors.neutral[400],
+      color: uiTokens.colors.textMuted,
     },
   ];
 };
 
-const typography = {
+const createDashboardStyleBridge = (uiTokens: ThemeTokens) => ({
+  colors: {
+    background: {
+      tertiary: uiTokens.colors.surfaceElevated,
+    },
+    border: {
+      light: uiTokens.colors.border,
+      medium: uiTokens.colors.border,
+    },
+    error: {
+      500: uiTokens.colors.error,
+    },
+    primary: {
+      400: uiTokens.colors.accent,
+      500: uiTokens.colors.accent,
+    },
+    success: {
+      500: uiTokens.colors.success,
+    },
+    text: {
+      primary: uiTokens.colors.textPrimary,
+      secondary: uiTokens.colors.textSecondary,
+    },
+  },
+  glass: {
+    medium: {
+      backgroundColor: uiTokens.colors.surfaceElevated,
+    },
+  },
+});
+
+type DashboardStyleBridge = ReturnType<typeof createDashboardStyleBridge>;
+
+const createDashboardTypography = (dashboardTheme: DashboardStyleBridge) => ({
   h1: {
-    fontFamily: auroraTheme.typography.fontFamily.display,
-    fontSize: auroraTheme.typography.fontSize["4xl"],
+    fontSize: 32,
     fontWeight: "800" as const,
-    color: auroraTheme.colors.text.primary,
+    color: dashboardTheme.colors.text.primary,
   },
   h2: {
-    fontFamily: auroraTheme.typography.fontFamily.heading,
-    fontSize: auroraTheme.typography.fontSize["2xl"],
+    fontSize: 24,
     fontWeight: "700" as const,
-    color: auroraTheme.colors.text.primary,
+    color: dashboardTheme.colors.text.primary,
   },
   h3: {
-    fontFamily: auroraTheme.typography.fontFamily.heading,
-    fontSize: auroraTheme.typography.fontSize.xl,
+    fontSize: 20,
     fontWeight: "600" as const,
-    color: auroraTheme.colors.text.primary,
+    color: dashboardTheme.colors.text.primary,
   },
   body: {
-    fontFamily: auroraTheme.typography.fontFamily.body,
-    fontSize: auroraTheme.typography.fontSize.base,
-    color: auroraTheme.colors.text.secondary,
+    fontSize: 16,
+    color: dashboardTheme.colors.text.secondary,
   },
   bodyStrong: {
-    fontFamily: auroraTheme.typography.fontFamily.body,
-    fontSize: auroraTheme.typography.fontSize.base,
+    fontSize: 16,
     fontWeight: "600" as const,
-    color: auroraTheme.colors.text.primary,
+    color: dashboardTheme.colors.text.primary,
   },
   small: {
-    fontFamily: auroraTheme.typography.fontFamily.body,
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.tertiary,
+    fontSize: 14,
+    color: dashboardTheme.colors.text.secondary,
   },
   label: {
-    fontFamily: auroraTheme.typography.fontFamily.label,
-    fontSize: auroraTheme.typography.fontSize.sm,
+    fontSize: 14,
     fontWeight: "600" as const,
-    color: auroraTheme.colors.text.secondary,
+    color: dashboardTheme.colors.text.secondary,
   },
-};
+});
 
-export const dashboardWebStyles = StyleSheet.create({
+export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
+  const dashboardTheme = createDashboardStyleBridge(uiTokens);
+  const uiSemanticColors = { text: { inverse: uiTokens.colors.surface } };
+  const typography = createDashboardTypography(dashboardTheme);
+
+  return StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -186,7 +215,7 @@ export const dashboardWebStyles = StyleSheet.create({
   refreshButton: {
     padding: 10,
     borderRadius: 20,
-    backgroundColor: auroraTheme.glass.medium.backgroundColor as string,
+    backgroundColor: dashboardTheme.glass.medium.backgroundColor as string,
   },
   logoutButton: {
     padding: 10,
@@ -197,7 +226,7 @@ export const dashboardWebStyles = StyleSheet.create({
     flexDirection: "row",
     paddingHorizontal: 24,
     borderBottomWidth: 1,
-    borderBottomColor: auroraTheme.colors.border.light,
+    borderBottomColor: dashboardTheme.colors.border.light,
     gap: 24,
   },
   tab: {
@@ -206,7 +235,7 @@ export const dashboardWebStyles = StyleSheet.create({
     borderBottomColor: "transparent",
   },
   activeTab: {
-    borderBottomColor: auroraTheme.colors.primary[400],
+    borderBottomColor: dashboardTheme.colors.primary[400],
   },
   tabText: {
     ...typography.body,
@@ -214,7 +243,7 @@ export const dashboardWebStyles = StyleSheet.create({
   },
   activeTabText: {
     ...typography.bodyStrong,
-    color: auroraTheme.colors.text.primary,
+    color: dashboardTheme.colors.text.primary,
   },
   content: {
     flex: 1,
@@ -234,7 +263,7 @@ export const dashboardWebStyles = StyleSheet.create({
   },
   offlineNoticeBody: {
     ...typography.small,
-    color: auroraTheme.colors.text.secondary,
+    color: dashboardTheme.colors.text.secondary,
     lineHeight: 18,
   },
   tabContent: {
@@ -266,7 +295,7 @@ export const dashboardWebStyles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: auroraTheme.colors.primary[500] + "20",
+    backgroundColor: colorWithAlpha(dashboardTheme.colors.primary[500], 0.12),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -288,7 +317,7 @@ export const dashboardWebStyles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: auroraTheme.colors.primary[500] + "20",
+    backgroundColor: colorWithAlpha(dashboardTheme.colors.primary[500], 0.12),
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
@@ -333,7 +362,7 @@ export const dashboardWebStyles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: auroraTheme.colors.border.light,
+    borderBottomColor: dashboardTheme.colors.border.light,
   },
   serviceInfo: {
     flex: 2,
@@ -379,10 +408,10 @@ export const dashboardWebStyles = StyleSheet.create({
     borderRadius: 999,
   },
   serviceActionButtonSuccess: {
-    backgroundColor: auroraTheme.colors.success[500],
+    backgroundColor: dashboardTheme.colors.success[500],
   },
   serviceActionButtonDanger: {
-    backgroundColor: auroraTheme.colors.error[500],
+    backgroundColor: dashboardTheme.colors.error[500],
   },
   serviceActionText: {
     ...typography.label,
@@ -418,22 +447,22 @@ export const dashboardWebStyles = StyleSheet.create({
   },
   sectionSubtitle: {
     ...typography.small,
-    color: auroraTheme.colors.text.secondary,
+    color: dashboardTheme.colors.text.secondary,
     marginTop: 4,
   },
   healthBadge: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: auroraTheme.colors.primary[500] + "20",
+    backgroundColor: colorWithAlpha(dashboardTheme.colors.primary[500], 0.12),
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: auroraTheme.colors.primary[500],
+    borderColor: dashboardTheme.colors.primary[500],
   },
   healthScoreText: {
     ...typography.h3,
-    color: auroraTheme.colors.primary[400],
+    color: dashboardTheme.colors.primary[400],
   },
   diagnosisStats: {
     flexDirection: "row",
@@ -481,7 +510,7 @@ export const dashboardWebStyles = StyleSheet.create({
   },
   issueDesc: {
     ...typography.small,
-    color: auroraTheme.colors.text.secondary,
+    color: dashboardTheme.colors.text.secondary,
     marginTop: 2,
   },
   autoFixButton: {
@@ -491,13 +520,13 @@ export const dashboardWebStyles = StyleSheet.create({
     marginTop: 8,
     paddingVertical: 4,
     paddingHorizontal: 8,
-    backgroundColor: auroraTheme.colors.primary[500] + "20",
+    backgroundColor: colorWithAlpha(dashboardTheme.colors.primary[500], 0.12),
     borderRadius: 6,
     alignSelf: "flex-start",
   },
   autoFixText: {
     ...typography.label,
-    color: auroraTheme.colors.primary[400],
+    color: dashboardTheme.colors.primary[400],
     fontSize: 11,
   },
   issueTime: {
@@ -506,7 +535,7 @@ export const dashboardWebStyles = StyleSheet.create({
   timeText: {
     ...typography.small,
     fontSize: 10,
-    color: auroraTheme.colors.text.secondary,
+    color: dashboardTheme.colors.text.secondary,
   },
   noIssues: {
     alignItems: "center",
@@ -515,7 +544,7 @@ export const dashboardWebStyles = StyleSheet.create({
   },
   noIssuesText: {
     ...typography.body,
-    color: auroraTheme.colors.text.secondary,
+    color: dashboardTheme.colors.text.secondary,
   },
   recommendationsCard: {
     marginTop: 20,
@@ -536,7 +565,7 @@ export const dashboardWebStyles = StyleSheet.create({
   recommendationText: {
     ...typography.small,
     flex: 1,
-    color: auroraTheme.colors.text.secondary,
+    color: dashboardTheme.colors.text.secondary,
   },
   reportsGrid: {
     flexDirection: "row",
@@ -557,7 +586,7 @@ export const dashboardWebStyles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: auroraTheme.colors.primary[500] + "20",
+    backgroundColor: colorWithAlpha(dashboardTheme.colors.primary[500], 0.12),
     justifyContent: "center",
     alignItems: "center",
   },
@@ -576,7 +605,7 @@ export const dashboardWebStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: auroraTheme.colors.primary[500],
+    backgroundColor: dashboardTheme.colors.primary[500],
     paddingVertical: 10,
     borderRadius: 8,
     gap: 8,
@@ -612,7 +641,7 @@ export const dashboardWebStyles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: auroraTheme.colors.border.light,
+    borderBottomColor: dashboardTheme.colors.border.light,
   },
   modalTitle: {
     ...typography.h3,
@@ -640,12 +669,12 @@ export const dashboardWebStyles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
-    backgroundColor: auroraTheme.colors.background.tertiary,
+    borderColor: dashboardTheme.colors.border.light,
+    backgroundColor: dashboardTheme.colors.background.tertiary,
   },
   formatOptionActive: {
-    backgroundColor: auroraTheme.colors.primary[500],
-    borderColor: auroraTheme.colors.primary[500],
+    backgroundColor: dashboardTheme.colors.primary[500],
+    borderColor: dashboardTheme.colors.primary[500],
   },
   formatText: {
     color: uiSemanticColors.text.inverse,
@@ -656,7 +685,7 @@ export const dashboardWebStyles = StyleSheet.create({
     padding: 20,
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: auroraTheme.colors.border.light,
+    borderTopColor: dashboardTheme.colors.border.light,
   },
   cancelButton: {
     flex: 1,
@@ -664,21 +693,22 @@ export const dashboardWebStyles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
+    borderColor: dashboardTheme.colors.border.light,
   },
   cancelButtonText: {
-    color: auroraTheme.colors.text.secondary,
+    color: dashboardTheme.colors.text.secondary,
     fontWeight: "600",
   },
   confirmButton: {
     flex: 1,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: auroraTheme.colors.primary[500],
+    backgroundColor: dashboardTheme.colors.primary[500],
     alignItems: "center",
   },
   confirmButtonText: {
     color: uiSemanticColors.text.inverse,
     fontWeight: "600",
   },
-});
+  });
+};

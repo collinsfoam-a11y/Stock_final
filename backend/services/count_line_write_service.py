@@ -236,6 +236,47 @@ class CountLineWriteService:
             result = write_call()
             return await self._resolve_awaitable(result)
 
+    async def finalize_session_count_lines(
+        self,
+        *,
+        session_id: str,
+        actor: str,
+        finalized_at: datetime,
+        note: Optional[str] = None,
+        db_session: Optional[Any] = None,
+    ) -> int:
+        """Lock and approve mutable count lines for a finalized session."""
+        line_update: dict[str, Any] = {
+            "status": "locked",
+            "approval_status": "APPROVED",
+            "verified": True,
+            "verified_by": actor,
+            "verified_at": finalized_at,
+            "approved_by": actor,
+            "approved_at": finalized_at,
+            "finalized_by": actor,
+            "finalized_at": finalized_at,
+            "updated_at": finalized_at,
+            "updated_by": actor,
+        }
+        if note:
+            line_update["finalization_note"] = note
+
+        count_line_filter = {
+            "session_id": session_id,
+            "status": {"$nin": ["locked", "SUPERSEDED", "superseded"]},
+            "approval_status": {"$nin": ["REJECTED", "NEEDS_REVIEW"]},
+        }
+        kwargs = {"session": db_session} if db_session is not None else {}
+        result = await self._execute_authorized_write(
+            lambda: self.db.count_lines.update_many(
+                count_line_filter,
+                {"$set": line_update},
+                **kwargs,
+            )
+        )
+        return int(getattr(result, "modified_count", 0) or 0)
+
     async def archive_orphan_session_lines(
         self,
         *,

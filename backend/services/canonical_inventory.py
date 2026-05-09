@@ -11,8 +11,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from backend.services.session_lifecycle_service import SessionLifecycleService
-
 ACTIVE_SESSION_STATUSES = {"OPEN", "ACTIVE", "PAUSED", "RECONCILE"}
 FINALIZED_SESSION_STATUSES = {"COMPLETED", "CLOSED", "CANCELLED"}
 LOCKED_COUNT_LINE_STATUSES = {"locked"}
@@ -261,7 +259,12 @@ async def get_session_count_lines(
     return lines
 
 
-async def recompute_session_totals(db: Any, session_id: str) -> dict[str, Any]:
+async def recompute_session_totals(
+    db: Any,
+    session_id: str,
+    *,
+    lifecycle_service: Any,
+) -> dict[str, Any]:
     total_items = 0
     total_variance = 0.0
     verified_items = 0
@@ -320,6 +323,5 @@ async def recompute_session_totals(db: Any, session_id: str) -> dict[str, Any]:
     if last_activity is not None:
         session_update["last_activity"] = last_activity
 
-    lifecycle_service = SessionLifecycleService(db)
     await lifecycle_service.update_session_totals(session_id, session_update)
     return session_update

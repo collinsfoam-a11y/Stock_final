@@ -121,8 +121,6 @@ export { SwipeCard } from "./SwipeCard";
 export type { SwipeAction, SwipeCardProps } from "./SwipeCard";
 export { SpeedDialMenu } from "./SpeedDialMenu";
 export type { SpeedDialAction, SpeedDialMenuProps } from "./SpeedDialMenu";
-export { Toast } from "./Toast";
-export type { ToastType, ToastProps } from "./Toast";
 export { ConfirmModal } from "./ConfirmModal";
 export type { ConfirmModalVariant, ConfirmModalProps } from "./ConfirmModal";
 export { QuantityStepper } from "./QuantityStepper";

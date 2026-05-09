@@ -6,9 +6,9 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 import { ModernCard } from "@/components/ui/ModernCard";
 import { DateRangePicker } from "@/components/forms/DateRangePicker";
-import { auroraTheme } from "@/theme/auroraTheme";
+import type { ThemeTokens } from "@/theme/themeTokens";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
 
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface DashboardReportModalProps {
   generating: boolean;
   onClose: () => void;
@@ -19,6 +19,7 @@ interface DashboardReportModalProps {
   reportFormat: "excel" | "csv" | "json";
   selectedReport: string | null;
   styles: any;
+  uiTokens: ThemeTokens;
   visible: boolean;
 }
 
@@ -32,6 +33,7 @@ export function DashboardReportModal({
   reportFormat,
   selectedReport,
   styles,
+  uiTokens,
   visible,
 }: DashboardReportModalProps) {
   return (
@@ -40,8 +42,8 @@ export function DashboardReportModal({
         <ModernCard variant="outlined" elevation="none" style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Generate Report</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color={auroraTheme.colors.text.secondary} />
+            <TouchableOpacity onPress={onClose} {...getAccessibleButtonProps({ label: "Close report dialog" })}>
+              <Ionicons name="close" size={24} color={uiTokens.colors.textSecondary} />
             </TouchableOpacity>
           </View>
           <View style={styles.modalBody}>
@@ -75,15 +77,15 @@ export function DashboardReportModal({
                     size={20}
                     color={
                       reportFormat === format
-                        ? uiSemanticColors.text.inverse
-                        : auroraTheme.colors.text.secondary
+                        ? uiTokens.colors.surface
+                        : uiTokens.colors.textSecondary
                     }
                   />
                   <Text
                     style={[
                       styles.formatText,
                       reportFormat !== format && {
-                        color: auroraTheme.colors.text.secondary,
+                        color: uiTokens.colors.textSecondary,
                       },
                     ]}
                   >
@@ -101,9 +103,14 @@ export function DashboardReportModal({
               style={styles.confirmButton}
               onPress={onConfirm}
               disabled={generating || !selectedReport}
+              {...getAccessibleButtonProps({
+                label: "Download selected report",
+                disabled: generating || !selectedReport,
+                busy: generating,
+              })}
             >
               {generating ? (
-                <ActivityIndicator size="small" color={uiSemanticColors.text.inverse} />
+                <ActivityIndicator size="small" color={uiTokens.colors.surface} />
               ) : (
                 <Text style={styles.confirmButtonText}>Download</Text>
               )}

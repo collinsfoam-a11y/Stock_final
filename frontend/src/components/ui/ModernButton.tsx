@@ -41,6 +41,7 @@ import {
   touchTargets,
 } from "@/theme/legacyCompat";
 import { useThemeContextSafe } from "../../context/ThemeContext";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -250,12 +251,20 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   }
 
   const sizeConfig = getSizeConfig();
+  const decorativeIconProps = getDecorativeIconProps();
 
   // Render icon
   const renderIcon = () => {
     if (!icon || loading) return null;
 
-    return <Ionicons name={icon} size={sizeConfig.iconSize} color={getIconColor()} />;
+    return (
+      <Ionicons
+        {...decorativeIconProps}
+        name={icon}
+        size={sizeConfig.iconSize}
+        color={getIconColor()}
+      />
+    );
   };
 
   // Render button content

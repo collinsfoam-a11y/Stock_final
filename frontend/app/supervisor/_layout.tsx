@@ -11,15 +11,14 @@ import React, { useMemo, useState } from "react";
 import { Redirect, Stack, Slot, useRouter, useSegments } from "expo-router";
 import { View, Text, StyleSheet, Platform, useWindowDimensions } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { auroraTheme } from "@/theme/auroraTheme";
 import { RoleLayoutGuard } from "@/components/auth/RoleLayoutGuard";
 import { SupervisorSidebar } from "@/components/navigation";
 import { AnimatedPressable, ModernCard, ScreenContainer } from "@/components/ui";
 import { useSettingsStore } from "@/store/settingsStore";
 import { isSupervisorRouteEnabled } from "@/constants/roleFeatureFlags";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { flags } from "@/constants/flags";
 import type { ThemeTokens } from "@/theme/themeTokens";
+import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
 
 const OFFLINE_BLOCKED_ROUTES = new Set([
   "activity-logs",
@@ -59,6 +58,7 @@ export default function SupervisorLayout() {
   const segmentList = segments as string[];
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const isLargeScreen = width >= 1024 && Platform.OS === "web";
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const currentRoute = segmentList[1];
@@ -99,6 +99,7 @@ export default function SupervisorLayout() {
               <SupervisorOfflineFallback
                 routeTitle={blockedRouteTitle}
                 onNavigate={router.push}
+                styles={styles}
                 uiTokens={uiTokens}
               />
             ) : (
@@ -110,6 +111,7 @@ export default function SupervisorLayout() {
         <SupervisorOfflineFallback
           routeTitle={blockedRouteTitle}
           onNavigate={router.push}
+          styles={styles}
           uiTokens={uiTokens}
         />
       ) : (
@@ -122,15 +124,16 @@ export default function SupervisorLayout() {
 function SupervisorOfflineFallback({
   routeTitle,
   onNavigate,
+  styles,
   uiTokens,
 }: {
   routeTitle: string;
   onNavigate: (href: any) => void;
+  styles: SupervisorLayoutStyles;
   uiTokens: ThemeTokens;
 }) {
   return (
     <ScreenContainer
-      gradient={flags.uiVisualSystemV2}
       header={{
         title: routeTitle,
         subtitle: "Unavailable while offline mode is enabled",
@@ -156,6 +159,7 @@ function SupervisorOfflineFallback({
               key={link.route}
               style={styles.quickLinkButton}
               onPress={() => onNavigate(link.route as any)}
+              {...getAccessibleButtonProps({ label: `Open ${link.label}` })}
             >
               <Ionicons
                 name={link.icon as keyof typeof Ionicons.glyphMap}
@@ -171,61 +175,65 @@ function SupervisorOfflineFallback({
   );
 }
 
-const styles = StyleSheet.create({
+type SupervisorLayoutStyles = ReturnType<typeof createStyles>;
+
+const createStyles = (uiTokens: ThemeTokens) =>
+  StyleSheet.create({
   webContainer: {
     flex: 1,
     flexDirection: "row",
-    backgroundColor: auroraTheme.colors.background.primary,
+    backgroundColor: uiTokens.colors.background,
   },
   mainContent: {
     flex: 1,
     minWidth: 0,
-    backgroundColor: auroraTheme.colors.background.primary,
+    backgroundColor: uiTokens.colors.background,
   },
   offlineContainer: {
     flex: 1,
-    padding: auroraTheme.spacing.lg,
-    gap: auroraTheme.spacing.lg,
+    padding: uiTokens.spacing.lg,
+    gap: uiTokens.spacing.lg,
   },
   offlineCard: {
-    padding: auroraTheme.spacing.lg,
+    padding: uiTokens.spacing.lg,
   },
   offlineHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.sm,
-    marginBottom: auroraTheme.spacing.sm,
+    gap: uiTokens.spacing.sm,
+    marginBottom: uiTokens.spacing.sm,
   },
   offlineTitle: {
     flex: 1,
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
     fontSize: 15,
     fontWeight: "700",
   },
   offlineBody: {
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
     fontSize: 13,
     lineHeight: 20,
   },
   quickLinks: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: auroraTheme.spacing.md,
+    gap: uiTokens.spacing.md,
   },
   quickLinkButton: {
+    ...getMinimumTouchTargetStyle(),
     minWidth: 180,
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.sm,
-    paddingHorizontal: auroraTheme.spacing.md,
-    paddingVertical: auroraTheme.spacing.md,
-    borderRadius: auroraTheme.borderRadius.lg,
-    backgroundColor: auroraTheme.colors.surface.base,
+    gap: uiTokens.spacing.sm,
+    paddingHorizontal: uiTokens.spacing.md,
+    paddingVertical: uiTokens.spacing.md,
+    borderRadius: uiTokens.radius.lg,
+    backgroundColor: uiTokens.colors.surface,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.subtle,
+    borderColor: uiTokens.colors.border,
   },
   quickLinkText: {
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
     fontSize: 14,
     fontWeight: "600",
   },

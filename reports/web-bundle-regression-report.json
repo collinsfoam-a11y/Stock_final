@@ -1,0 +1,129 @@
+{
+  "generatedAt": "2026-05-08T17:15:47.545Z",
+  "baseline": {
+    "path": "reports/web-bundle-baseline.json",
+    "updatedAt": "2026-05-08T17:11:47.830Z"
+  },
+  "status": "pass",
+  "metrics": {
+    "generatedAt": "2026-05-08T17:15:47.545Z",
+    "bundleCount": 67,
+    "totalJsKb": 4003.0654296875,
+    "mainBundleKb": 1976.8212890625,
+    "commonBundleKb": 1474.9052734375,
+    "routeChunkCount": 58,
+    "routeChunkTotalKb": 375.16796875,
+    "largestRouteChunkKb": 27.62890625,
+    "topRouteChunks": [
+      {
+        "route": "dashboard",
+        "file": "dashboard-bb1ce23925666ea1e4307708f867adb8.js",
+        "sizeKb": 27.63
+      },
+      {
+        "route": "SessionDetailScreen",
+        "file": "SessionDetailScreen-b39ecd71e76cbe9a3382a8e9295c7d3b.js",
+        "sizeKb": 23.33
+      },
+      {
+        "route": "history",
+        "file": "history-34b0325691889971a7bd945467bce4d5.js",
+        "sizeKb": 22.75
+      },
+      {
+        "route": "StaffHomeScreen",
+        "file": "StaffHomeScreen-28546ffe658f35256856a73730845239.js",
+        "sizeKb": 20.03
+      },
+      {
+        "route": "security",
+        "file": "security-b5d2b080aa83be634aceb4b6190d6cd4.js",
+        "sizeKb": 15.21
+      },
+      {
+        "route": "offline-queue",
+        "file": "offline-queue-de7f3a55bd9c52e48522099ca1830117.js",
+        "sizeKb": 14.79
+      },
+      {
+        "route": "sync-conflicts",
+        "file": "sync-conflicts-7531b242159a249746966ede2c4713b0.js",
+        "sizeKb": 14.14
+      },
+      {
+        "route": "user-workflows",
+        "file": "user-workflows-af55a3f387cb81d0b358e92be339d5a8.js",
+        "sizeKb": 14.12
+      },
+      {
+        "route": "variances",
+        "file": "variances-f40e9e64f00a423172c51afb07d5e5ef.js",
+        "sizeKb": 13.87
+      },
+      {
+        "route": "_layout",
+        "file": "_layout-8ba857134e1acd88960729157843e033.js",
+        "sizeKb": 12.96
+      },
+      {
+        "route": "login",
+        "file": "login-f7e53115b1be94affc4d9894b65329ad.js",
+        "sizeKb": 12.95
+      },
+      {
+        "route": "items",
+        "file": "items-a72910ef6181491ac13a3acdff5d7a4a.js",
+        "sizeKb": 10.75
+      }
+    ]
+  },
+  "checks": [
+    {
+      "id": "bundle-count",
+      "label": "Web bundle file count",
+      "current": 67,
+      "limit": 70,
+      "status": "pass"
+    },
+    {
+      "id": "total-js-kb",
+      "label": "Total JS size",
+      "current": 4003.07,
+      "limit": 4050,
+      "unit": "kB",
+      "status": "pass"
+    },
+    {
+      "id": "main-bundle-kb",
+      "label": "Main bundle size",
+      "current": 1976.82,
+      "limit": 1995,
+      "unit": "kB",
+      "status": "pass"
+    },
+    {
+      "id": "common-bundle-kb",
+      "label": "Common bundle size",
+      "current": 1474.91,
+      "limit": 1495,
+      "unit": "kB",
+      "status": "pass"
+    },
+    {
+      "id": "route-total-kb",
+      "label": "Route chunk aggregate size",
+      "current": 375.17,
+      "limit": 390,
+      "unit": "kB",
+      "status": "pass"
+    },
+    {
+      "id": "largest-route-kb",
+      "label": "Largest route chunk",
+      "current": 27.63,
+      "limit": 35,
+      "unit": "kB",
+      "status": "pass"
+    }
+  ]
+}

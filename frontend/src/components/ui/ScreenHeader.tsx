@@ -53,7 +53,7 @@ export interface ScreenHeaderProps {
   subtitle?: string;
   /** Show back button (defaults to false) */
   showBackButton?: boolean;
-  /** Custom back button handler (defaults to router.back()) */
+  /** Custom back button handler (defaults to safe role-aware back navigation) */
   onBackPress?: () => void;
   /** Show logout button (defaults to true) */
   showLogoutButton?: boolean;

@@ -24,7 +24,7 @@ import Animated, {
   Extrapolation,
 } from "react-native-reanimated";
 import { useThemeContext } from "../../context/ThemeContext";
-import { GlassCard } from "./GlassCard";
+import { AppCard } from "./AppCard";
 
 import { shadows as uiShadows } from "@/theme/legacyCompat";
 const SWIPE_THRESHOLD = 80;
@@ -207,9 +207,9 @@ const SwipeCard: React.FC<SwipeCardProps> = ({
       {/* Main Card */}
       <GestureDetector gesture={panGesture}>
         <Animated.View style={cardStyle}>
-          <GlassCard variant="medium" elevation="md">
+          <AppCard variant="default" elevation="md">
             {children}
-          </GlassCard>
+          </AppCard>
         </Animated.View>
       </GestureDetector>
     </View>

@@ -6,6 +6,7 @@ import ModernButton from "@/components/ui/ModernButton";
 import { useUiTokens } from "@/hooks/useUiTokens";
 
 interface ItemSubmitBarProps {
+  canSubmit?: boolean;
   submitting: boolean;
   submitCountdown: number | null;
   onCancelSubmit: () => void;
@@ -13,6 +14,7 @@ interface ItemSubmitBarProps {
 }
 
 export function ItemSubmitBar({
+  canSubmit = true,
   submitting,
   submitCountdown,
   onCancelSubmit,
@@ -45,12 +47,20 @@ export function ItemSubmitBar({
       ]}
     >
       <ModernButton
-        title={isUndoState ? `Undo (${submitCountdown}s)` : "Save & Verify"}
+        title={isUndoState ? `Undo (${submitCountdown}s)` : canSubmit ? "Save & Verify" : "Enter Count to Verify"}
         onPress={isUndoState ? onCancelSubmit : onSubmit}
+        disabled={!isUndoState && !canSubmit}
         loading={submitting}
         variant={isUndoState ? "danger" : "primary"}
         icon={isUndoState ? "close-circle" : "checkmark-circle"}
         fullWidth
+        accessibilityHint={
+          isUndoState
+            ? "Cancels the pending item verification"
+            : canSubmit
+              ? "Starts the save countdown for this counted item"
+              : "Enter a quantity greater than zero before saving"
+        }
       />
     </View>
   );

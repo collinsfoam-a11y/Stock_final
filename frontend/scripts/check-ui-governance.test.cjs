@@ -63,9 +63,38 @@ function testAllowedAppearanceDebt() {
   assert.equal(findings.find((finding) => finding.id === "UI012")?.status, "deprecated");
 }
 
+function testLegacyFacadeIsQuarantined() {
+  const findings = scanText(
+    "frontend/src/components/ui/index.ts",
+    ["export { AuroraBackground } from './AuroraBackground';"].join("\n")
+  );
+
+  const legacyFinding = findings.find((finding) => finding.id === "UI010");
+  assert.equal(legacyFinding?.status, "quarantine");
+  assert.equal(legacyFinding?.severity, "P2");
+}
+
+function testAccessibilityHelperIsRecognized() {
+  const findings = scanText(
+    "frontend/src/components/scan/example.tsx",
+    [
+      "<TouchableOpacity",
+      "  {...getAccessibleButtonProps({ label: 'Increment quantity' })}",
+      "  onPress={onIncrement}",
+      ">",
+      "  <Text>+</Text>",
+      "</TouchableOpacity>",
+    ].join("\n")
+  );
+
+  assert.equal(findings.find((finding) => finding.id === "UI017"), undefined);
+}
+
 testChangedLineParsing();
 testForbiddenPatterns();
 testChangedLineScope();
 testAllowedAppearanceDebt();
+testLegacyFacadeIsQuarantined();
+testAccessibilityHelperIsRecognized();
 
 console.log("check-ui-governance tests passed");

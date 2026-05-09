@@ -21,11 +21,15 @@ export type ThemeTokens = {
     overlay: string;
   };
   spacing: {
+    none: number;
+    xxs: number;
     xs: number;
     sm: number;
     md: number;
     lg: number;
     xl: number;
+    "2xl": number;
+    "3xl": number;
     xxl: number;
   };
   radius: {
@@ -190,11 +194,15 @@ export const createThemeTokens = (
         "rgba(0, 0, 0, 0.5)",
     },
     spacing: {
+      none: 0,
+      xxs: spacingSource.xxs ?? 2,
       xs: spacingSource.xs ?? 4,
       sm: spacingSource.sm ?? 8,
       md: spacingSource.md ?? spacingSource.base ?? 16,
       lg: spacingSource.lg ?? 24,
       xl: spacingSource.xl ?? 32,
+      "2xl": spacingSource["2xl"] ?? spacingSource.xxl ?? 24,
+      "3xl": spacingSource["3xl"] ?? 32,
       xxl: spacingSource["2xl"] ?? spacingSource.xxl ?? 48,
     },
     radius: {

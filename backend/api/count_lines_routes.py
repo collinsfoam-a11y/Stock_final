@@ -120,6 +120,15 @@ def _get_db_client(db_override=None):
         raise HTTPException(status_code=500, detail="Database is not initialized")
 
 
+async def _recompute_session_totals(db: Any, session_id: str) -> dict[str, Any]:
+    lifecycle_service = SessionLifecycleService(db)
+    return await recompute_session_totals(
+        db,
+        session_id,
+        lifecycle_service=lifecycle_service,
+    )
+
+
 def _get_count_line_write_service(db: Any) -> CountLineWriteService:
     return CountLineWriteService(
         db,
@@ -1180,7 +1189,7 @@ async def create_count_line(
     )
 
     try:
-        await recompute_session_totals(db, line_data.session_id)
+        await _recompute_session_totals(db, line_data.session_id)
     except Exception as exc:
         logger.error("Failed to update session stats: %s", _safe_log_value(exc, max_length=200))
 
@@ -1250,7 +1259,7 @@ async def verify_stock(
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
 
-    await recompute_session_totals(db_client, str(count_line.get("session_id") or ""))
+    await _recompute_session_totals(db_client, str(count_line.get("session_id") or ""))
     await _broadcast_dashboard_refresh(
         "count_line_verified",
         session_id=str(count_line.get("session_id") or ""),
@@ -1308,7 +1317,7 @@ async def unverify_stock(
     if update_result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Count line not found")
 
-    await recompute_session_totals(db_client, str(count_line.get("session_id") or ""))
+    await _recompute_session_totals(db_client, str(count_line.get("session_id") or ""))
     await _broadcast_dashboard_refresh(
         "count_line_unverified",
         session_id=str(count_line.get("session_id") or ""),
@@ -1534,7 +1543,7 @@ async def approve_count_line(
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Count line not found")
 
-        await recompute_session_totals(db, str(count_line.get("session_id") or ""))
+        await _recompute_session_totals(db, str(count_line.get("session_id") or ""))
         await _broadcast_dashboard_refresh(
             "count_line_approved",
             session_id=str(count_line.get("session_id") or ""),
@@ -1647,7 +1656,7 @@ async def reject_count_line(
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Count line not found")
 
-        await recompute_session_totals(db, str(count_line.get("session_id") or ""))
+        await _recompute_session_totals(db, str(count_line.get("session_id") or ""))
         await _broadcast_dashboard_refresh(
             "count_line_rejected",
             session_id=str(count_line.get("session_id") or ""),
@@ -1902,7 +1911,7 @@ async def add_quantity_to_count_line(
         raise HTTPException(status_code=404, detail="Count line not found")
 
     try:
-        await recompute_session_totals(db, str(count_line.get("session_id") or ""))
+        await _recompute_session_totals(db, str(count_line.get("session_id") or ""))
     except Exception as exc:
         logger.warning(
             "Failed to recompute session totals after add-quantity: %s",
@@ -1996,7 +2005,7 @@ async def update_count_line(
         raise HTTPException(status_code=404, detail="Count line not found")
 
     try:
-        await recompute_session_totals(db, str(count_line.get("session_id") or ""))
+        await _recompute_session_totals(db, str(count_line.get("session_id") or ""))
     except Exception as exc:
         logger.warning(
             "Failed to recompute session totals after count-line update: %s",
@@ -2015,7 +2024,7 @@ async def update_count_line(
 async def _recalculate_session_stats(db, session_id: str) -> None:
     """Re-calculate session stats after line deletion."""
     try:
-        await recompute_session_totals(db, session_id)
+        await _recompute_session_totals(db, session_id)
     except Exception as e:
         logger.error(
             "Failed to update session stats after delete: %s",
@@ -2196,7 +2205,7 @@ async def bulk_approve_count_lines(
         )
 
         for session_id in session_ids:
-            await recompute_session_totals(db, session_id)
+            await _recompute_session_totals(db, session_id)
         if session_ids:
             await _broadcast_dashboard_refresh(
                 "count_lines_bulk_approved",
@@ -2272,7 +2281,7 @@ async def create_count_lines_batch(
         except Exception as e:
             errors.append({"index": idx, "error": str(e)})
 
-    await recompute_session_totals(db, batch_data.session_id)
+    await _recompute_session_totals(db, batch_data.session_id)
 
     return {
         "success": len(results) > 0,
@@ -2341,7 +2350,7 @@ async def bulk_reject_count_lines(
         )
 
         for session_id in session_ids:
-            await recompute_session_totals(db, session_id)
+            await _recompute_session_totals(db, session_id)
         if session_ids:
             await _broadcast_dashboard_refresh(
                 "count_lines_bulk_rejected",
@@ -2620,7 +2629,7 @@ async def merge_count_lines(
 
     if merged_count > 0 and target_session_id:
         try:
-            await recompute_session_totals(db, target_session_id)
+            await _recompute_session_totals(db, target_session_id)
         except Exception as exc:
             logger.warning(
                 "Failed to recompute session totals after merge: %s",

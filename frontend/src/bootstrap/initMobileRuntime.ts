@@ -9,12 +9,10 @@ export async function initMobileRuntime(
 
   const [
     { initializeNetworkListener },
-    { initializeSyncService },
-    { startSyncService, stopSyncService },
+    { initializeSyncService, startSyncService, stopSyncService },
   ] = await Promise.all([
     import("../services/networkService"),
     import("../services/syncService"),
-    import("../services/offline/syncService"),
   ]);
 
   const networkUnsubscribe = initializeNetworkListener();

@@ -1,12 +1,12 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { auroraTheme } from "@/theme/auroraTheme";
-import { Summary } from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
 import { DashboardConnectionState } from "@/components/admin/realtime-dashboard/realtimeDashboardLive";
+import { Summary } from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
 
-import { colors as uiColors } from "@/theme/legacyCompat";
 interface RealtimeDashboardToolbarProps {
   actionsDisabled?: boolean;
   autoRefresh: boolean;
@@ -20,6 +20,9 @@ interface RealtimeDashboardToolbarProps {
   verifiedFilter: boolean | null;
 }
 
+type ToolbarTokens = ReturnType<typeof useUiTokens>;
+type ToolbarStyles = ReturnType<typeof createStyles>;
+
 export function RealtimeDashboardToolbar({
   actionsDisabled = false,
   autoRefresh,
@@ -32,6 +35,15 @@ export function RealtimeDashboardToolbar({
   summary,
   verifiedFilter,
 }: RealtimeDashboardToolbarProps) {
+  const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
+  const liveToneColor =
+    connectionState.tone === "warning"
+      ? uiTokens.colors.warning
+      : connectionState.tone === "muted"
+        ? uiTokens.colors.textSecondary
+        : uiTokens.colors.success;
+
   return (
     <>
       <View style={styles.controls}>
@@ -41,23 +53,31 @@ export function RealtimeDashboardToolbar({
             disabled={actionsDisabled}
             label="All"
             onPress={() => onToggleVerifiedFilter(null)}
+            styles={styles}
           />
           <FilterButton
             active={verifiedFilter === true}
             disabled={actionsDisabled}
             label="Verified"
             onPress={() => onToggleVerifiedFilter(true)}
+            styles={styles}
           />
           <FilterButton
             active={verifiedFilter === false}
             disabled={actionsDisabled}
             label="Pending"
             onPress={() => onToggleVerifiedFilter(false)}
+            styles={styles}
           />
         </View>
 
         <View style={styles.controlsRight}>
           <TouchableOpacity
+            {...getAccessibleButtonProps({
+              label: `${autoRefresh ? "Disable" : "Enable"} realtime auto refresh`,
+              disabled: actionsDisabled,
+              selected: autoRefresh,
+            })}
             style={[styles.iconButton, actionsDisabled && styles.disabledButton]}
             onPress={onToggleAutoRefresh}
             disabled={actionsDisabled}
@@ -65,20 +85,32 @@ export function RealtimeDashboardToolbar({
             <Ionicons
               name={autoRefresh ? "sync" : "sync-outline"}
               size={20}
-              color={
-                autoRefresh ? auroraTheme.colors.primary[500] : auroraTheme.colors.text.secondary
-              }
+              color={autoRefresh ? uiTokens.colors.accent : uiTokens.colors.textSecondary}
             />
           </TouchableOpacity>
           <TouchableOpacity
+            {...getAccessibleButtonProps({
+              label: "Open realtime dashboard column settings",
+              disabled: actionsDisabled,
+            })}
             style={[styles.iconButton, actionsDisabled && styles.disabledButton]}
             onPress={onOpenColumnSettings}
             disabled={actionsDisabled}
           >
-            <Ionicons name="options" size={20} color={auroraTheme.colors.text.primary} />
+            <Ionicons name="options" size={20} color={uiTokens.colors.textPrimary} />
           </TouchableOpacity>
-          <ExportButton disabled={actionsDisabled} label="ERPNext CSV" onPress={onExportCSV} />
-          <ExportButton disabled={actionsDisabled} label="ERPNext XLSX" onPress={onExportXLSX} />
+          <ExportButton
+            disabled={actionsDisabled}
+            label="ERPNext CSV"
+            onPress={onExportCSV}
+            styles={styles}
+          />
+          <ExportButton
+            disabled={actionsDisabled}
+            label="ERPNext XLSX"
+            onPress={onExportXLSX}
+            styles={styles}
+          />
         </View>
       </View>
 
@@ -89,26 +121,12 @@ export function RealtimeDashboardToolbar({
       {summary && (
         <View style={styles.generationInfo}>
           <Text style={styles.generationText}>
-            Generated in {summary.generation_time_ms.toFixed(0)}ms • {summary.filtered_records} of{" "}
+            Generated in {summary.generation_time_ms.toFixed(0)}ms - {summary.filtered_records} of{" "}
             {summary.total_records} records
           </Text>
-          <View style={styles.liveIndicator}>
-            <View
-              style={[
-                styles.liveDot,
-                connectionState.tone === "warning" && styles.liveDotWarning,
-                connectionState.tone === "muted" && styles.liveDotMuted,
-              ]}
-            />
-            <Text
-              style={[
-                styles.liveText,
-                connectionState.tone === "warning" && styles.liveTextWarning,
-                connectionState.tone === "muted" && styles.liveTextMuted,
-              ]}
-            >
-              {connectionState.label}
-            </Text>
+          <View style={styles.liveIndicator} accessibilityLabel={connectionState.label}>
+            <View style={[styles.liveDot, { backgroundColor: liveToneColor }]} />
+            <Text style={[styles.liveText, { color: liveToneColor }]}>{connectionState.label}</Text>
           </View>
         </View>
       )}
@@ -120,13 +138,16 @@ function ExportButton({
   disabled = false,
   label,
   onPress,
+  styles,
 }: {
   disabled?: boolean;
   label: string;
   onPress: () => void;
+  styles: ToolbarStyles;
 }) {
   return (
     <TouchableOpacity
+      {...getAccessibleButtonProps({ label: `Export ${label}`, disabled })}
       style={[styles.exportButton, disabled && styles.disabledButton]}
       onPress={onPress}
       disabled={disabled}
@@ -141,15 +162,22 @@ function FilterButton({
   disabled = false,
   label,
   onPress,
+  styles,
 }: {
   active: boolean;
   disabled?: boolean;
   label: string;
   onPress: () => void;
+  styles: ToolbarStyles;
 }) {
   return (
     <TouchableOpacity
-      style={[styles.filterButton, disabled && styles.disabledButton]}
+      {...getAccessibleButtonProps({
+        label: `Show ${label.toLowerCase()} items`,
+        disabled,
+        selected: active,
+      })}
+      style={[styles.filterButton, active && styles.filterButtonActive, disabled && styles.disabledButton]}
       onPress={onPress}
       disabled={disabled}
     >
@@ -160,103 +188,99 @@ function FilterButton({
   );
 }
 
-const styles = StyleSheet.create({
-  controls: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: auroraTheme.spacing.md,
-  },
-  controlsLeft: {
-    flexDirection: "row",
-    gap: auroraTheme.spacing.sm,
-  },
-  controlsRight: {
-    flexDirection: "row",
-    gap: auroraTheme.spacing.sm,
-  },
-  filterButton: {
-    paddingHorizontal: auroraTheme.spacing.md,
-    paddingVertical: auroraTheme.spacing.sm,
-    backgroundColor: auroraTheme.colors.surface.base,
-    borderRadius: auroraTheme.borderRadius.sm,
-  },
-  filterButtonText: {
-    fontSize: 13,
-    color: auroraTheme.colors.text.secondary,
-  },
-  filterButtonTextActive: {
-    color: auroraTheme.colors.primary[500],
-    fontWeight: "600",
-  },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: auroraTheme.colors.surface.base,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  disabledButton: {
-    opacity: 0.45,
-  },
-  generationInfo: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: auroraTheme.spacing.md,
-    paddingHorizontal: auroraTheme.spacing.sm,
-  },
-  exportHelpText: {
-    fontSize: 12,
-    color: auroraTheme.colors.text.secondary,
-    marginBottom: auroraTheme.spacing.sm,
-    paddingHorizontal: auroraTheme.spacing.xs,
-  },
-  generationText: {
-    fontSize: 12,
-    color: auroraTheme.colors.text.secondary,
-  },
-  liveIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: uiColors.success[500],
-  },
-  exportButton: {
-    minWidth: 52,
-    height: 36,
-    borderRadius: auroraTheme.borderRadius.sm,
-    backgroundColor: auroraTheme.colors.surface.base,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: auroraTheme.spacing.sm,
-  },
-  exportButtonText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: auroraTheme.colors.text.primary,
-  },
-  liveDotWarning: {
-    backgroundColor: uiColors.warning[500],
-  },
-  liveDotMuted: {
-    backgroundColor: auroraTheme.colors.text.secondary,
-  },
-  liveText: {
-    fontSize: 12,
-    color: uiColors.success[500],
-    fontWeight: "600",
-  },
-  liveTextWarning: {
-    color: uiColors.warning[500],
-  },
-  liveTextMuted: {
-    color: auroraTheme.colors.text.secondary,
-  },
-});
+const createStyles = (uiTokens: ToolbarTokens) =>
+  StyleSheet.create({
+    controls: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: uiTokens.spacing.md,
+    },
+    controlsLeft: {
+      flexDirection: "row",
+      gap: uiTokens.spacing.sm,
+    },
+    controlsRight: {
+      flexDirection: "row",
+      gap: uiTokens.spacing.sm,
+    },
+    filterButton: {
+      ...getMinimumTouchTargetStyle(),
+      paddingHorizontal: uiTokens.spacing.md,
+      backgroundColor: uiTokens.colors.surface,
+      borderRadius: uiTokens.radius.sm,
+      borderWidth: 1,
+      borderColor: uiTokens.colors.border,
+      justifyContent: "center",
+    },
+    filterButtonActive: {
+      borderColor: uiTokens.colors.accent,
+    },
+    filterButtonText: {
+      fontSize: 13,
+      color: uiTokens.colors.textSecondary,
+    },
+    filterButtonTextActive: {
+      color: uiTokens.colors.accent,
+      fontWeight: "600",
+    },
+    iconButton: {
+      ...getMinimumTouchTargetStyle(),
+      borderRadius: uiTokens.radius.full,
+      backgroundColor: uiTokens.colors.surface,
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: uiTokens.colors.border,
+    },
+    disabledButton: {
+      opacity: 0.45,
+    },
+    generationInfo: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: uiTokens.spacing.md,
+      paddingHorizontal: uiTokens.spacing.sm,
+    },
+    exportHelpText: {
+      fontSize: 12,
+      color: uiTokens.colors.textSecondary,
+      marginBottom: uiTokens.spacing.sm,
+      paddingHorizontal: uiTokens.spacing.xs,
+    },
+    generationText: {
+      fontSize: 12,
+      color: uiTokens.colors.textSecondary,
+    },
+    liveIndicator: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: uiTokens.spacing.xs,
+    },
+    liveDot: {
+      width: 8,
+      height: 8,
+      borderRadius: uiTokens.radius.full,
+    },
+    exportButton: {
+      ...getMinimumTouchTargetStyle(),
+      minWidth: 52,
+      borderRadius: uiTokens.radius.sm,
+      backgroundColor: uiTokens.colors.surface,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: uiTokens.spacing.sm,
+      borderWidth: 1,
+      borderColor: uiTokens.colors.border,
+    },
+    exportButtonText: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: uiTokens.colors.textPrimary,
+    },
+    liveText: {
+      fontSize: 12,
+      fontWeight: "600",
+    },
+  });

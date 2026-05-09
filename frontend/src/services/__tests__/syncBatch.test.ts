@@ -70,8 +70,7 @@ jest.mock(
 );
 
 // Mock API functions before importing syncService
-jest.mock("../api/api", () => ({
-  isOnline: jest.fn(),
+jest.mock("../api/api.misc", () => ({
   syncBatch: jest.fn(),
 }));
 
@@ -87,9 +86,13 @@ jest.mock("../offline/offlineStorage", () => ({
 
 // Now import the function under test
 // eslint-disable-next-line import/first
-import { initializeSyncService, syncOfflineQueue } from "../syncService";
+import {
+  initializeSyncService,
+  registerSyncAuthStateProvider,
+  syncOfflineQueue,
+} from "../syncService";
 // eslint-disable-next-line import/first
-import * as api from "../api/api";
+import * as api from "../api/api.misc";
 // eslint-disable-next-line import/first
 import * as offlineStorage from "../offline/offlineStorage";
 // eslint-disable-next-line import/first
@@ -100,6 +103,7 @@ const flushAsyncWork = async (iterations = 5) => {
     await Promise.resolve();
   }
 };
+let unregisterAuthProvider: (() => void) | null = null;
 
 const mockQueueItems = [
   {
@@ -129,6 +133,11 @@ const mockQueueItems = [
 describe("syncOfflineQueue", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    unregisterAuthProvider?.();
+    unregisterAuthProvider = registerSyncAuthStateProvider(() => ({
+      isAuthenticated: true,
+      user: { username: "e2e", role: "staff" },
+    }));
     // Default mock implementations
     (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue(
       mockQueueItems,
@@ -136,9 +145,14 @@ describe("syncOfflineQueue", () => {
     (offlineStorage.getCacheStats as jest.Mock).mockResolvedValue({
       queuedOperations: 1,
     });
-    (api.isOnline as jest.Mock).mockReturnValue(true);
     (api.syncBatch as jest.Mock).mockResolvedValue({
       results: [{ id: "op_1", success: true }],
+    });
+    useNetworkStore.setState({
+      isOnline: true,
+      isInternetReachable: true,
+      connectionType: "wifi",
+      isRestrictedMode: false,
     });
     (offlineStorage.removeManyFromOfflineQueue as jest.Mock).mockResolvedValue(
       undefined,
@@ -292,7 +306,12 @@ describe("syncOfflineQueue", () => {
   });
 
   it("should not sync when offline", async () => {
-    (api.isOnline as jest.Mock).mockReturnValue(false);
+    useNetworkStore.setState({
+      isOnline: false,
+      isInternetReachable: false,
+      connectionType: "none",
+      isRestrictedMode: false,
+    });
 
     const result = await syncOfflineQueue();
 
@@ -305,6 +324,11 @@ describe("initializeSyncService", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
+    unregisterAuthProvider?.();
+    unregisterAuthProvider = registerSyncAuthStateProvider(() => ({
+      isAuthenticated: true,
+      user: { username: "e2e", role: "staff" },
+    }));
     (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue(
       mockQueueItems,
     );
@@ -320,14 +344,13 @@ describe("initializeSyncService", () => {
     (offlineStorage.updateOfflineQueueItem as jest.Mock).mockResolvedValue(
       undefined,
     );
-    (api.isOnline as jest.Mock).mockReturnValue(true);
     (api.syncBatch as jest.Mock).mockResolvedValue({
       results: [{ id: "op_1", success: true }],
     });
     useNetworkStore.setState({
       isOnline: false,
       connectionType: "unknown",
-      isInternetReachable: null,
+      isInternetReachable: false,
       isRestrictedMode: false,
     });
   });
@@ -341,7 +364,7 @@ describe("initializeSyncService", () => {
     const first = initializeSyncService();
     const second = initializeSyncService();
 
-    useNetworkStore.setState({ isOnline: true });
+    useNetworkStore.setState({ isOnline: true, isInternetReachable: true });
     jest.advanceTimersByTime(2000);
     await flushAsyncWork();
 
@@ -354,7 +377,7 @@ describe("initializeSyncService", () => {
   it("should cancel pending reconnect work during cleanup", async () => {
     const syncService = initializeSyncService();
 
-    useNetworkStore.setState({ isOnline: true });
+    useNetworkStore.setState({ isOnline: true, isInternetReachable: true });
     syncService.cleanup();
     jest.advanceTimersByTime(2000);
     await flushAsyncWork();

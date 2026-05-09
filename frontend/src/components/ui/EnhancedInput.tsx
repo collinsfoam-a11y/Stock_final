@@ -10,6 +10,8 @@
  * - Animated focus states
  *
  * Inspired by react-native-design-kit Input patterns
+ *
+ * @deprecated Use AppInput. This component remains as a legacy compatibility adapter only.
  */
 
 import React, { useState, useRef, useCallback } from "react";
@@ -42,6 +44,7 @@ import {
 } from "@/theme/uiConstants";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { warnDeprecatedVisualSystem } from "./legacyVisualSystem";
 /**
  * Shared size options for the enhanced text input.
  */
@@ -354,6 +357,7 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
   secureTextEntry,
   ...rest
 }) => {
+  warnDeprecatedVisualSystem("EnhancedInput");
   const { themeLegacy } = useThemeContext();
   const inputRef = useRef<TextInput>(null);
   const [isFocused, setIsFocused] = useState(false);

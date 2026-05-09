@@ -41,7 +41,7 @@ import {
   DASHBOARD_IS_WEB,
   DASHBOARD_TABS,
   DashboardTab,
-  dashboardWebStyles as styles,
+  createDashboardWebStyles,
   isDashboardTab,
   normalizeDashboardMetrics,
   prepareSessionChartData,
@@ -50,11 +50,14 @@ import {
 } from "../../src/components/admin/dashboard/dashboardWebShared";
 import { ADMIN_NAV_GROUPS } from "../../src/components/navigation/adminNavShared";
 import { useSettingsStore } from "../../src/store/settingsStore";
+import { useUiTokens } from "@/hooks/useUiTokens";
 
 export default function DashboardWeb() {
   const router = useRouter();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
+  const uiTokens = useUiTokens();
+  const styles = useMemo(() => createDashboardWebStyles(uiTokens), [uiTokens]);
 
   const [activeTab, setActiveTab] = useState<DashboardTab>(isDashboardTab(tab) ? tab : "overview");
   const [loading, setLoading] = useState(true);
@@ -436,7 +439,7 @@ export default function DashboardWeb() {
   );
 
   const sessionChartData = prepareSessionChartData(sessionsAnalytics);
-  const statusChartData = prepareStatusChartData(systemStats);
+  const statusChartData = prepareStatusChartData(systemStats, uiTokens);
 
   return (
     <ScreenContainer
@@ -497,6 +500,7 @@ export default function DashboardWeb() {
               statusChartData={statusChartData}
               styles={styles}
               systemStats={systemStats}
+              uiTokens={uiTokens}
             />
           )}
 
@@ -507,6 +511,7 @@ export default function DashboardWeb() {
               serviceActionLoading={serviceActionLoading}
               servicesStatus={servicesStatus}
               styles={styles}
+              uiTokens={uiTokens}
             />
           )}
 
@@ -519,6 +524,7 @@ export default function DashboardWeb() {
               reports={reports}
               reportsLoading={reportsLoading}
               styles={styles}
+              uiTokens={uiTokens}
             />
           )}
 
@@ -536,6 +542,7 @@ export default function DashboardWeb() {
               diagnosisHealth={diagnosisHealth}
               onAutoFix={handleAutoFix}
               styles={styles}
+              uiTokens={uiTokens}
             />
           )}
         </ScrollView>
@@ -554,6 +561,7 @@ export default function DashboardWeb() {
           reportFormat={reportFormat}
           selectedReport={selectedReport}
           styles={styles}
+          uiTokens={uiTokens}
           visible={showReportModal}
         />
       </View>

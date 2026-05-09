@@ -5,13 +5,15 @@
  * Provides a recovery path when admin screens crash.
  */
 
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { auroraTheme } from "../../theme/auroraTheme";
 
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
+
 interface AdminCrashScreenProps {
   error: Error;
   resetError: () => void;
@@ -19,6 +21,8 @@ interface AdminCrashScreenProps {
 
 export const AdminCrashScreen: React.FC<AdminCrashScreenProps> = ({ error, resetError }) => {
   const router = useRouter();
+  const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
 
   const handleGoHome = () => {
     resetError();
@@ -34,7 +38,7 @@ export const AdminCrashScreen: React.FC<AdminCrashScreenProps> = ({ error, reset
     <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Ionicons name="warning-outline" size={64} color={auroraTheme.colors.status.error} />
+          <Ionicons name="warning-outline" size={64} color={uiTokens.colors.error} />
         </View>
 
         <Text style={styles.title}>Admin Panel Error</Text>
@@ -58,18 +62,30 @@ export const AdminCrashScreen: React.FC<AdminCrashScreenProps> = ({ error, reset
         )}
 
         <View style={styles.actions}>
-          <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={resetError}>
-            <Ionicons name="refresh" size={20} color={uiSemanticColors.text.inverse} />
+          <TouchableOpacity
+            {...getAccessibleButtonProps({ label: "Retry loading admin panel" })}
+            style={[styles.button, styles.primaryButton]}
+            onPress={resetError}
+          >
+            <Ionicons name="refresh" size={20} color={uiTokens.colors.surface} />
             <Text style={styles.primaryButtonText}>Try Again</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handleGoHome}>
-            <Ionicons name="home-outline" size={20} color={auroraTheme.colors.primary[500]} />
+          <TouchableOpacity
+            {...getAccessibleButtonProps({ label: "Return to admin dashboard" })}
+            style={[styles.button, styles.secondaryButton]}
+            onPress={handleGoHome}
+          >
+            <Ionicons name="home-outline" size={20} color={uiTokens.colors.accent} />
             <Text style={styles.secondaryButtonText}>Go to Dashboard</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.button, styles.outlineButton]} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={20} color={auroraTheme.colors.text.secondary} />
+          <TouchableOpacity
+            {...getAccessibleButtonProps({ label: "Log out after admin panel error" })}
+            style={[styles.button, styles.outlineButton]}
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out-outline" size={20} color={uiTokens.colors.textSecondary} />
             <Text style={styles.outlineButtonText}>Logout</Text>
           </TouchableOpacity>
         </View>
@@ -82,126 +98,130 @@ export const AdminCrashScreen: React.FC<AdminCrashScreenProps> = ({ error, reset
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: auroraTheme.colors.background.primary,
-    padding: 24,
-  },
-  content: {
-    maxWidth: 480,
-    width: "100%",
-    alignItems: "center",
-  },
-  iconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: `${auroraTheme.colors.status.error}15`,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: auroraTheme.colors.text.primary,
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 16,
-    color: auroraTheme.colors.text.secondary,
-    marginBottom: 24,
-    textAlign: "center",
-  },
-  errorBox: {
-    width: "100%",
-    backgroundColor: `${auroraTheme.colors.status.error}10`,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: `${auroraTheme.colors.status.error}30`,
-    padding: 16,
-    marginBottom: 24,
-  },
-  errorLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: auroraTheme.colors.status.error,
-    marginBottom: 8,
-    textTransform: "uppercase",
-  },
-  errorMessage: {
-    fontSize: 14,
-    color: auroraTheme.colors.text.primary,
-    fontFamily: "monospace",
-  },
-  stackContainer: {
-    maxHeight: 150,
-    width: "100%",
-    backgroundColor: auroraTheme.colors.background.secondary,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 24,
-  },
-  stackTitle: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: auroraTheme.colors.text.secondary,
-    marginBottom: 8,
-  },
-  stack: {
-    fontSize: 10,
-    color: auroraTheme.colors.text.muted,
-    fontFamily: "monospace",
-  },
-  actions: {
-    width: "100%",
-    gap: 12,
-    marginBottom: 24,
-  },
-  button: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    gap: 8,
-  },
-  primaryButton: {
-    backgroundColor: auroraTheme.colors.primary[500],
-  },
-  primaryButtonText: {
-    color: uiSemanticColors.text.inverse,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  secondaryButton: {
-    backgroundColor: `${auroraTheme.colors.primary[500]}15`,
-  },
-  secondaryButtonText: {
-    color: auroraTheme.colors.primary[500],
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  outlineButton: {
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
-  },
-  outlineButtonText: {
-    color: auroraTheme.colors.text.secondary,
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  helpText: {
-    fontSize: 12,
-    color: auroraTheme.colors.text.muted,
-    textAlign: "center",
-  },
-});
+type CrashTokens = ReturnType<typeof useUiTokens>;
+
+const createStyles = (uiTokens: CrashTokens) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: uiTokens.colors.background,
+      padding: uiTokens.spacing["2xl"],
+    },
+    content: {
+      maxWidth: 480,
+      width: "100%",
+      alignItems: "center",
+    },
+    iconContainer: {
+      width: 100,
+      height: 100,
+      borderRadius: uiTokens.radius.full,
+      backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.1),
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: uiTokens.spacing["2xl"],
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: "700",
+      color: uiTokens.colors.textPrimary,
+      marginBottom: uiTokens.spacing.sm,
+      textAlign: "center",
+    },
+    subtitle: {
+      fontSize: 16,
+      color: uiTokens.colors.textSecondary,
+      marginBottom: uiTokens.spacing["2xl"],
+      textAlign: "center",
+    },
+    errorBox: {
+      width: "100%",
+      backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.08),
+      borderRadius: uiTokens.radius.lg,
+      borderWidth: 1,
+      borderColor: colorWithAlpha(uiTokens.colors.error, 0.24),
+      padding: uiTokens.spacing.lg,
+      marginBottom: uiTokens.spacing["2xl"],
+    },
+    errorLabel: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: uiTokens.colors.error,
+      marginBottom: uiTokens.spacing.sm,
+      textTransform: "uppercase",
+    },
+    errorMessage: {
+      fontSize: 14,
+      color: uiTokens.colors.textPrimary,
+      fontFamily: "monospace",
+    },
+    stackContainer: {
+      maxHeight: 150,
+      width: "100%",
+      backgroundColor: uiTokens.colors.surface,
+      borderRadius: uiTokens.radius.md,
+      padding: uiTokens.spacing.md,
+      marginBottom: uiTokens.spacing["2xl"],
+    },
+    stackTitle: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: uiTokens.colors.textSecondary,
+      marginBottom: uiTokens.spacing.sm,
+    },
+    stack: {
+      fontSize: 10,
+      color: uiTokens.colors.textMuted,
+      fontFamily: "monospace",
+    },
+    actions: {
+      width: "100%",
+      gap: uiTokens.spacing.md,
+      marginBottom: uiTokens.spacing["2xl"],
+    },
+    button: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: uiTokens.spacing.md,
+      paddingHorizontal: uiTokens.spacing["2xl"],
+      borderRadius: uiTokens.radius.lg,
+      gap: uiTokens.spacing.sm,
+      minHeight: 48,
+    },
+    primaryButton: {
+      backgroundColor: uiTokens.colors.accent,
+    },
+    primaryButtonText: {
+      color: uiTokens.colors.surface,
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    secondaryButton: {
+      backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.1),
+    },
+    secondaryButtonText: {
+      color: uiTokens.colors.accent,
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    outlineButton: {
+      backgroundColor: "transparent",
+      borderWidth: 1,
+      borderColor: uiTokens.colors.border,
+    },
+    outlineButtonText: {
+      color: uiTokens.colors.textSecondary,
+      fontSize: 16,
+      fontWeight: "500",
+    },
+    helpText: {
+      fontSize: 12,
+      color: uiTokens.colors.textMuted,
+      textAlign: "center",
+    },
+  });
 
 export default AdminCrashScreen;

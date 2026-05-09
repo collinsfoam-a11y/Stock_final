@@ -2,6 +2,22 @@ import React from "react";
 import { render } from "@testing-library/react-native";
 import HomeScreen from "../../app/staff/home";
 
+jest.mock("../../src/services/connectionManager", () => ({
+  __esModule: true,
+  default: {
+    getInstance: jest.fn(() => ({
+      isHealthy: true,
+      backendUrl: "http://mock:8001",
+      backendPort: 8001,
+      backendIp: "mock",
+      lastChecked: new Date().toISOString(),
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      initialize: jest.fn().mockResolvedValue(undefined),
+    })),
+  },
+}));
+
 jest.mock("expo-haptics", () => ({
   selectionAsync: jest.fn(),
   notificationAsync: jest.fn(),
@@ -78,6 +94,7 @@ jest.mock("expo-router", () => ({
     push: jest.fn(),
     replace: jest.fn(),
     back: jest.fn(),
+    canGoBack: jest.fn(() => true),
   }),
   useFocusEffect: jest.fn((cb) => cb()),
   Stack: {

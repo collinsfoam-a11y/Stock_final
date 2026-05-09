@@ -4,6 +4,7 @@ import { secureStorage } from "../services/storage/secureStorage";
 import { useSettingsStore } from "./settingsStore";
 import { setUnauthorizedHandler } from "../services/authUnauthorizedHandler";
 import { createLogger } from "../services/logging";
+import { registerSyncAuthStateProvider } from "../services/syncService";
 import { setUserPreferenceScope } from "../services/userPreferenceScope";
 
 interface User {
@@ -1000,4 +1001,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
 setUnauthorizedHandler(() => {
   void useAuthStore.getState().logout();
+});
+
+registerSyncAuthStateProvider(() => {
+  const state = useAuthStore.getState();
+  return {
+    isAuthenticated: state.isAuthenticated,
+    user: state.user,
+  };
 });

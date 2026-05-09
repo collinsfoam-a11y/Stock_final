@@ -34,6 +34,7 @@ from backend.services.canonical_inventory import (
     is_session_finalized,
     normalize_session_status as normalize_canonical_session_status,
 )
+from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.redis_service import get_redis
 from backend.services.runtime import get_refresh_token_service
@@ -1623,7 +1624,11 @@ async def _finalize_session_canonical(
     *,
     note: Optional[str] = None,
 ) -> dict[str, Any]:
-    lifecycle_service = SessionLifecycleService(db)
+    count_line_write_service = CountLineWriteService(db)
+    lifecycle_service = SessionLifecycleService(
+        db,
+        count_line_finalizer=count_line_write_service.finalize_session_count_lines,
+    )
     session = await find_session(db, session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")

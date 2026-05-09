@@ -4,6 +4,10 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import type { DateFormatType } from "@/types/scan";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import {
+  getAccessibleButtonProps,
+  getDecorativeIconProps,
+} from "@/utils/accessibility";
 import type {
   DatePickerPart,
   DateParts,
@@ -52,6 +56,7 @@ export const FlexibleDateField: React.FC<FlexibleDateFieldProps> = ({
   trackColor,
 }) => {
   const uiTokens = useUiTokens();
+  const decorativeIconProps = getDecorativeIconProps();
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -161,6 +166,10 @@ export const FlexibleDateField: React.FC<FlexibleDateFieldProps> = ({
     <TouchableOpacity
       style={[styles.smallPicker, fullWidth && styles.smallPickerFull]}
       onPress={onPress}
+      {...getAccessibleButtonProps({
+        label: `${label} ${placeholder} picker`,
+        hint: `Opens the ${label.toLowerCase()} ${placeholder.toLowerCase()} selector.`,
+      })}
     >
       <Text style={[styles.smallPickerText, !partValue && styles.placeholderText]}>
         {partValue || placeholder}
@@ -172,12 +181,20 @@ export const FlexibleDateField: React.FC<FlexibleDateFieldProps> = ({
     <View>
       <View style={styles.toggleRow}>
         <View style={styles.toggleLabelContainer}>
-          <Ionicons name={iconName} size={20} color={iconColor} />
+          <Ionicons
+            {...decorativeIconProps}
+            name={iconName}
+            size={20}
+            color={iconColor}
+          />
           <Text style={styles.toggleLabel}>Has {label}</Text>
         </View>
         <Switch
           value={enabled}
           onValueChange={onToggleEnabled}
+          accessibilityRole="switch"
+          accessibilityLabel={`Has ${label}`}
+          accessibilityState={{ checked: enabled }}
           trackColor={{
             false: colorWithAlpha(uiTokens.colors.textMuted, uiTokens.mode === "dark" ? 0.45 : 0.3),
             true: trackColor,
@@ -199,6 +216,10 @@ export const FlexibleDateField: React.FC<FlexibleDateFieldProps> = ({
                     format === option.value && styles.formatOptionActive,
                   ]}
                   onPress={() => onChangeFormat(option.value)}
+                  {...getAccessibleButtonProps({
+                    label: `${label} format ${option.label}`,
+                    selected: format === option.value,
+                  })}
                 >
                   <Text
                     style={[

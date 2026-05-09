@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, Text, StyleSheet, TextInput } from "react-native";
 import { AnimatedPressable, ScreenContainer } from "@/components/ui";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -6,12 +6,15 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { usePermission } from "../../src/hooks/usePermission";
 import { getServiceLogs } from "../../src/services/api";
 import { useSettingsStore } from "../../src/store/settingsStore";
-import { auroraTheme } from "../../src/theme/auroraTheme";
 import { safeBackNavigation } from "@/utils/navigation";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
 
 export default function LogsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const { hasRole } = usePermission();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const service = (params.service as string) || "backend";
@@ -69,16 +72,16 @@ export default function LogsScreen() {
     switch (level?.toUpperCase()) {
       case "ERROR":
       case "CRITICAL":
-        return auroraTheme.colors.error[500];
+        return uiTokens.colors.error;
       case "WARN":
       case "WARNING":
-        return auroraTheme.colors.warning[500];
+        return uiTokens.colors.warning;
       case "INFO":
-        return auroraTheme.colors.primary[500];
+        return uiTokens.colors.accent;
       case "DEBUG":
-        return auroraTheme.colors.text.disabled;
+        return uiTokens.colors.textMuted;
       default:
-        return auroraTheme.colors.text.muted;
+        return uiTokens.colors.textSecondary;
     }
   };
 
@@ -99,8 +102,14 @@ export default function LogsScreen() {
           <AnimatedPressable
             style={[styles.refreshButton, offlineMode && styles.disabledButton]}
             onPress={loadLogs}
+            disabled={offlineMode}
+            {...getAccessibleButtonProps({
+              label: "Refresh service logs",
+              disabled: offlineMode,
+              busy: refreshing,
+            })}
           >
-            <Ionicons name="refresh" size={24} color={auroraTheme.colors.text.primary} />
+            <Ionicons name="refresh" size={24} color={uiTokens.colors.textPrimary} />
           </AnimatedPressable>
         ),
       }}
@@ -113,7 +122,7 @@ export default function LogsScreen() {
           <Ionicons
             name="cloud-offline-outline"
             size={20}
-            color={auroraTheme.colors.warning[500]}
+            color={uiTokens.colors.warning}
           />
           <View style={styles.noticeCopy}>
             <Text style={styles.noticeTitle}>Live logs unavailable offline</Text>
@@ -131,15 +140,16 @@ export default function LogsScreen() {
           <Ionicons
             name="search"
             size={20}
-            color={auroraTheme.colors.text.muted}
+            color={uiTokens.colors.textMuted}
             style={styles.searchIcon}
           />
           <TextInput
             style={styles.searchInput}
             placeholder="Search logs..."
-            placeholderTextColor={auroraTheme.colors.text.muted}
+            placeholderTextColor={uiTokens.colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
+            accessibilityLabel="Search service logs"
           />
         </View>
         <View style={styles.levelFilters}>
@@ -150,6 +160,10 @@ export default function LogsScreen() {
                 key={level}
                 style={[styles.levelFilter, isActive && styles.levelFilterActive]}
                 onPress={() => setFilterLevel(level)}
+                {...getAccessibleButtonProps({
+                  label: `Show ${level.toLowerCase()} logs`,
+                  selected: isActive,
+                })}
               >
                 <Text style={[styles.levelFilterText, isActive && styles.levelFilterTextActive]}>
                   {level}
@@ -166,7 +180,7 @@ export default function LogsScreen() {
             <Ionicons
               name="document-text-outline"
               size={64}
-              color={auroraTheme.colors.text.muted}
+              color={uiTokens.colors.textMuted}
             />
             <Text style={styles.emptyText}>No logs found</Text>
             <Text style={styles.emptySubtext}>
@@ -193,146 +207,155 @@ export default function LogsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+type LogsTokens = ReturnType<typeof useUiTokens>;
+
+const createStyles = (uiTokens: LogsTokens) =>
+  StyleSheet.create({
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 32,
+    padding: uiTokens.spacing.xl,
   },
   loadingText: {
-    marginTop: 10,
-    color: auroraTheme.colors.text.primary,
+    marginTop: uiTokens.spacing.sm,
+    color: uiTokens.colors.textPrimary,
     fontSize: 16,
   },
   refreshButton: {
-    padding: 8,
-    borderRadius: auroraTheme.borderRadius.md,
+    ...getMinimumTouchTargetStyle(),
+    alignItems: "center",
+    justifyContent: "center",
+    padding: uiTokens.spacing.sm,
+    borderRadius: uiTokens.radius.md,
   },
   disabledButton: {
     opacity: 0.45,
   },
   noticeCard: {
     flexDirection: "row",
-    gap: auroraTheme.spacing.sm,
-    margin: auroraTheme.spacing.lg,
+    gap: uiTokens.spacing.sm,
+    margin: uiTokens.spacing.lg,
     marginBottom: 0,
-    padding: auroraTheme.spacing.md,
-    backgroundColor: auroraTheme.colors.surface.base,
-    borderRadius: auroraTheme.borderRadius.md,
+    padding: uiTokens.spacing.md,
+    backgroundColor: uiTokens.colors.surface,
+    borderRadius: uiTokens.radius.md,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.subtle,
+    borderColor: uiTokens.colors.border,
   },
   noticeCopy: {
     flex: 1,
-    gap: 4,
+    gap: uiTokens.spacing.xs,
   },
   noticeTitle: {
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
     fontSize: 13,
     fontWeight: "700",
   },
   noticeBody: {
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
     fontSize: 12,
     lineHeight: 18,
   },
   filtersContainer: {
-    backgroundColor: auroraTheme.colors.surface.base,
-    padding: auroraTheme.spacing.lg,
+    backgroundColor: uiTokens.colors.surface,
+    padding: uiTokens.spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: auroraTheme.colors.border.subtle,
+    borderBottomColor: uiTokens.colors.border,
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: auroraTheme.colors.surface.elevated,
-    borderRadius: auroraTheme.borderRadius.md,
-    paddingHorizontal: auroraTheme.spacing.md,
-    marginBottom: auroraTheme.spacing.md,
+    backgroundColor: uiTokens.colors.surfaceElevated,
+    borderRadius: uiTokens.radius.md,
+    paddingHorizontal: uiTokens.spacing.md,
+    marginBottom: uiTokens.spacing.md,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.subtle,
+    borderColor: uiTokens.colors.border,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: uiTokens.spacing.sm,
   },
   searchInput: {
     flex: 1,
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
     fontSize: 14,
-    paddingVertical: 10,
+    paddingVertical: uiTokens.spacing.sm,
   },
   levelFilters: {
     flexDirection: "row",
-    gap: 8,
+    gap: uiTokens.spacing.sm,
     flexWrap: "wrap",
   },
   levelFilter: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: auroraTheme.colors.surface.elevated,
+    ...getMinimumTouchTargetStyle(),
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: uiTokens.spacing.md,
+    paddingVertical: uiTokens.spacing.xs,
+    borderRadius: uiTokens.radius.full,
+    backgroundColor: uiTokens.colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.subtle,
+    borderColor: uiTokens.colors.border,
   },
   levelFilterActive: {
-    backgroundColor: auroraTheme.colors.primary[500],
-    borderColor: auroraTheme.colors.primary[500],
+    backgroundColor: uiTokens.colors.accent,
+    borderColor: uiTokens.colors.accent,
   },
   levelFilterText: {
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
     fontSize: 12,
     fontWeight: "600",
   },
   levelFilterTextActive: {
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.surface,
   },
   content: {
     flex: 1,
-    padding: auroraTheme.spacing.lg,
+    padding: uiTokens.spacing.lg,
   },
   logEntry: {
-    backgroundColor: auroraTheme.colors.surface.base,
-    borderRadius: auroraTheme.borderRadius.md,
-    padding: auroraTheme.spacing.md,
-    marginBottom: 8,
+    backgroundColor: uiTokens.colors.surface,
+    borderRadius: uiTokens.radius.md,
+    padding: uiTokens.spacing.md,
+    marginBottom: uiTokens.spacing.sm,
     borderLeftWidth: 4,
-    borderLeftColor: auroraTheme.colors.border.subtle,
+    borderLeftColor: uiTokens.colors.border,
   },
   logHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: uiTokens.spacing.sm,
   },
   logLevelBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: uiTokens.spacing.sm,
+    paddingVertical: uiTokens.spacing.xs,
+    borderRadius: uiTokens.radius.sm,
   },
   logLevelText: {
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.surface,
     fontSize: 10,
     fontWeight: "700",
   },
   logTimestamp: {
     fontSize: 11,
-    color: auroraTheme.colors.text.muted,
+    color: uiTokens.colors.textMuted,
   },
   logMessage: {
     fontSize: 13,
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
     lineHeight: 18,
   },
   emptyText: {
     fontSize: 18,
     fontWeight: "600",
-    color: auroraTheme.colors.text.primary,
-    marginTop: 16,
+    color: uiTokens.colors.textPrimary,
+    marginTop: uiTokens.spacing.md,
   },
   emptySubtext: {
     fontSize: 14,
-    color: auroraTheme.colors.text.muted,
+    color: uiTokens.colors.textMuted,
     textAlign: "center",
   },
 });

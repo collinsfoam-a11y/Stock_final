@@ -228,6 +228,7 @@ function parseArgs(argv) {
     report: false,
     json: false,
     maxFindings: 120,
+    outputPath: null,
   };
 
   for (const arg of argv) {
@@ -244,6 +245,8 @@ function parseArgs(argv) {
       if (Number.isFinite(value) && value >= 0) {
         args.maxFindings = value;
       }
+    } else if (arg.startsWith("--output=")) {
+      args.outputPath = arg.split("=").slice(1).join("=");
     } else if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
@@ -263,6 +266,7 @@ Options:
   --strict               Exit nonzero on blocking P0/P1 findings.
   --report               Print migration and category summaries.
   --json                 Print machine-readable JSON.
+  --output=PATH          Write machine-readable JSON to PATH, relative to repo root.
   --max-findings=N       Print at most N findings. Default: 120.
   -h, --help             Show this help.
 `);
@@ -430,6 +434,19 @@ function classifyLegacyStatus(repoPath, allowlist) {
   return pathMatches(repoPath, allowlist) ? "deprecated" : "blocking";
 }
 
+function classifyLegacyImportOverride(repoPath) {
+  if (pathMatches(repoPath, APPROVED_LEGACY_FACADE_FILES)) {
+    return {
+      severity: "P2",
+      status: "quarantine",
+      guidance:
+        "Legacy visual exports are quarantined compatibility surfaces. Do not import them from production workflows; migrate downstream consumers to approved primitives.",
+    };
+  }
+
+  return { status: "blocking" };
+}
+
 function getTagBlock(lines, startIndex) {
   const block = [];
   for (let index = startIndex; index < Math.min(lines.length, startIndex + 10); index += 1) {
@@ -496,9 +513,14 @@ function scanText(repoPath, text, options = {}) {
         new RegExp(`\\b(?:import|export)\\b[^\\n]*\\b${name}\\b`).test(line)
       )
     ) {
-      addFinding(findings, "LEGACY_VISUAL_IMPORT", repoPath, lineNumber, line, {
-        status: classifyLegacyStatus(repoPath, APPROVED_LEGACY_FACADE_FILES),
-      });
+      addFinding(
+        findings,
+        "LEGACY_VISUAL_IMPORT",
+        repoPath,
+        lineNumber,
+        line,
+        classifyLegacyImportOverride(repoPath)
+      );
     }
 
     if (/(^|[^A-Za-z0-9_])#[0-9a-fA-F]{3,8}([^A-Za-z0-9_]|$)/.test(line)) {
@@ -592,7 +614,9 @@ function scanText(repoPath, text, options = {}) {
       const block = getTagBlock(lines, index);
       const allowedTouchableFile = pathMatches(repoPath, APPROVED_DIRECT_TOUCHABLE_FILES);
       const hasA11y =
-        /accessibility(?:Role|Label|Hint|State)=/.test(block) || /aria-label=/.test(block);
+        /accessibility(?:Role|Label|Hint|State)=/.test(block) ||
+        /aria-label=/.test(block) ||
+        /\bgetAccessible(?:Button|Toggle)Props\(/.test(block);
       const isNonInteractiveWrapper = /TouchableWithoutFeedback/.test(line);
       if (!allowedTouchableFile && !hasA11y && !isNonInteractiveWrapper) {
         addFinding(findings, "TOUCHABLE_MISSING_ACCESSIBILITY", repoPath, lineNumber, line);
@@ -644,39 +668,130 @@ function formatCounts(counts) {
   return entries.length ? entries.map(([key, value]) => `${key}: ${value}`).join(", ") : "none";
 }
 
-function printReport(findings) {
-  const categoryCounts = countBy(findings, "category");
-  const statusCounts = countBy(findings, "status");
-  const ruleCounts = countBy(findings, "id");
-
-  console.log("");
-  console.log("Governance report");
-  console.log(`Migration status: ${formatCounts(statusCounts)}`);
-  console.log(`Blocked-pattern report: ${formatCounts(categoryCounts)}`);
-  console.log(`Deprecated usage report: ${formatCounts(ruleCounts)}`);
-
-  const reports = [
-    ["Token adoption", "token-adoption"],
-    ["Accessibility violations", "accessibility"],
-    ["Virtualization audit", "virtualization"],
-    ["Motion audit", "motion"],
-    ["Navigation audit", "navigation"],
-  ];
-
-  for (const [label, category] of reports) {
-    const matches = findings.filter((finding) => finding.category === category);
-    console.log(`${label}: ${matches.length}`);
-  }
+function formatPercent(value) {
+  if (!Number.isFinite(value)) return "n/a";
+  return `${Math.round(value * 100)}%`;
 }
 
-function printFindings(files, findings, maxFindings, report) {
+function collectFileMetrics(files, findings) {
+  const fileTexts = files.map((file) => {
+    try {
+      return [file, fs.readFileSync(path.join(repoRoot, file), "utf8")];
+    } catch (_) {
+      return [file, ""];
+    }
+  });
+
+  const tokenFindingFiles = new Set(
+    findings
+      .filter((finding) => finding.category === "token-adoption")
+      .map((finding) => finding.path)
+  );
+  const animationFiles = fileTexts.filter(([, text]) =>
+    /\b(?:withTiming|withRepeat|Animated\.timing|FadeIn|FadeOut|springify)\b/.test(text)
+  );
+  const reducedMotionFiles = animationFiles.filter(([, text]) =>
+    /\b(?:useReducedMotion|prefersReducedMotion|reduceMotion)\b/.test(text)
+  );
+  const denseFiles = fileTexts.filter(([file]) => DENSE_SCREEN_PATTERN.test(file));
+  const denseVirtualizedFiles = denseFiles.filter(([, text]) =>
+    /\b(?:FlatList|FlashList|VirtualizedList|VirtualList)\b/.test(text)
+  );
+  const interactiveFiles = fileTexts.filter(([, text]) =>
+    /<(?:Pressable|TouchableOpacity|TouchableHighlight|TouchableWithoutFeedback|Button)\b/.test(
+      text
+    )
+  );
+  const accessibilityFindingFiles = new Set(
+    findings
+      .filter((finding) => finding.category === "accessibility")
+      .map((finding) => finding.path)
+  );
+  const deprecatedFindings = findings.filter((finding) => finding.status === "deprecated");
+
+  return {
+    scannedFiles: files.length,
+    tokenAdoption: {
+      advisoryFiles: tokenFindingFiles.size,
+      estimatedFileAdoption:
+        files.length === 0 ? 1 : Math.max(0, (files.length - tokenFindingFiles.size) / files.length),
+    },
+    reducedMotion: {
+      animationFiles: animationFiles.length,
+      coveredFiles: reducedMotionFiles.length,
+      coverage:
+        animationFiles.length === 0 ? 1 : reducedMotionFiles.length / animationFiles.length,
+    },
+    virtualization: {
+      denseFiles: denseFiles.length,
+      virtualizedFiles: denseVirtualizedFiles.length,
+      coverage: denseFiles.length === 0 ? 1 : denseVirtualizedFiles.length / denseFiles.length,
+    },
+    accessibility: {
+      interactiveFiles: interactiveFiles.length,
+      filesWithFindings: accessibilityFindingFiles.size,
+      estimatedFileCoverage:
+        interactiveFiles.length === 0
+          ? 1
+          : Math.max(0, (interactiveFiles.length - accessibilityFindingFiles.size) / interactiveFiles.length),
+    },
+    deprecated: {
+      total: deprecatedFindings.length,
+      byRule: countBy(deprecatedFindings, "id"),
+    },
+  };
+}
+
+function buildMetrics(files, findings, blockingFindings) {
+  return {
+    generatedAt: new Date().toISOString(),
+    counts: {
+      files: files.length,
+      findings: findings.length,
+      blockingFindings: blockingFindings.length,
+      bySeverity: countBy(findings, "severity"),
+      byStatus: countBy(findings, "status"),
+      byCategory: countBy(findings, "category"),
+      byRule: countBy(findings, "id"),
+    },
+    ...collectFileMetrics(files, findings),
+  };
+}
+
+function printReport(metrics) {
+  console.log("");
+  console.log("Governance report");
+  console.log(`Migration status: ${formatCounts(metrics.counts.byStatus)}`);
+  console.log(`Category report: ${formatCounts(metrics.counts.byCategory)}`);
+  console.log(`Rule count report: ${formatCounts(metrics.counts.byRule)}`);
+  console.log(`Deprecated usage report: ${formatCounts(metrics.deprecated.byRule)}`);
+  console.log(`Token adoption advisories: ${metrics.counts.byCategory["token-adoption"] || 0}`);
+  console.log(`Accessibility violations: ${metrics.counts.byCategory.accessibility || 0}`);
+  console.log(`Motion audit: ${metrics.counts.byCategory.motion || 0}`);
+  console.log(`Navigation audit: ${metrics.counts.byCategory.navigation || 0}`);
+  console.log(`Virtualization audit: ${metrics.counts.byCategory.virtualization || 0}`);
+  console.log(
+    `Token adoption estimate: ${formatPercent(metrics.tokenAdoption.estimatedFileAdoption)}`
+  );
+  console.log(
+    `Reduced-motion coverage: ${metrics.reducedMotion.coveredFiles}/${metrics.reducedMotion.animationFiles} files (${formatPercent(metrics.reducedMotion.coverage)})`
+  );
+  console.log(
+    `Virtualization coverage: ${metrics.virtualization.virtualizedFiles}/${metrics.virtualization.denseFiles} dense files (${formatPercent(metrics.virtualization.coverage)})`
+  );
+  console.log(
+    `Accessibility file coverage estimate: ${formatPercent(metrics.accessibility.estimatedFileCoverage)}`
+  );
+}
+
+function printFindings(files, findings, maxFindings, report, metrics) {
   console.log("UI governance scan");
   console.log(`Files scanned: ${files.length}`);
   console.log(`Findings: ${findings.length}${findings.length ? ` (${summarize(findings)})` : ""}`);
 
   if (findings.length === 0) {
     console.log("Result: PASS");
-    if (report) printReport(findings);
+    if (report) printReport(metrics);
     return;
   }
 
@@ -694,7 +809,7 @@ function printFindings(files, findings, maxFindings, report) {
     console.log(`Output truncated: ${findings.length - maxFindings} additional findings hidden.`);
   }
 
-  if (report) printReport(findings);
+  if (report) printReport(metrics);
 }
 
 function buildResult(args) {
@@ -715,17 +830,27 @@ function buildResult(args) {
       (finding.severity === "P0" || finding.severity === "P1")
   );
 
-  return { files, findings, blockingFindings };
+  const metrics = buildMetrics(files, findings, blockingFindings);
+
+  return { files, findings, blockingFindings, metrics };
+}
+
+function writeOutput(outputPath, result) {
+  if (!outputPath) return;
+  const fullPath = path.isAbsolute(outputPath) ? outputPath : path.join(repoRoot, outputPath);
+  fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+  fs.writeFileSync(fullPath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
 }
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const result = buildResult(args);
+  writeOutput(args.outputPath, result);
 
   if (args.json) {
     console.log(JSON.stringify(result, null, 2));
   } else {
-    printFindings(result.files, result.findings, args.maxFindings, args.report);
+    printFindings(result.files, result.findings, args.maxFindings, args.report, result.metrics);
   }
 
   if (args.strict && result.blockingFindings.length > 0) {

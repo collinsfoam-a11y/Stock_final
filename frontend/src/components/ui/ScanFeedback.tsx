@@ -1,18 +1,12 @@
 /**
- * ScanFeedback Component - Aurora Design v2.0
+ * ScanFeedback Component
  *
- * Visual and haptic feedback for barcode scanning
- * Features:
- * - Success/Error animations
- * - Lottie-like animated feedback
- * - Haptic patterns
- * - Sound feedback support
+ * Operational scan acknowledgment with tokenized motion and reduced-motion support.
  */
 
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { View, Text, StyleSheet, useWindowDimensions, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import Animated, {
   useSharedValue,
@@ -21,10 +15,14 @@ import Animated, {
   withSequence,
   withTiming,
   withDelay,
+  withRepeat,
   Easing,
 } from "react-native-reanimated";
-import { auroraTheme } from "@/theme/auroraTheme";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { zIndex as uiZIndex } from "@/theme/designTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { getOperationalMotionDuration } from "@/utils/motion";
 
 export type ScanFeedbackType = "success" | "error" | "warning" | "info" | "duplicate";
 
@@ -41,27 +39,22 @@ interface ScanFeedbackProps {
 const feedbackConfig = {
   success: {
     icon: "checkmark-circle" as const,
-    gradient: auroraTheme.colors.aurora.success,
     haptic: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
   },
   error: {
     icon: "close-circle" as const,
-    gradient: [auroraTheme.colors.error[500], auroraTheme.colors.error[700]] as const,
     haptic: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
   },
   warning: {
     icon: "warning" as const,
-    gradient: auroraTheme.colors.aurora.warm,
     haptic: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning),
   },
   info: {
     icon: "information-circle" as const,
-    gradient: auroraTheme.colors.aurora.secondary,
     haptic: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium),
   },
   duplicate: {
     icon: "copy" as const,
-    gradient: [auroraTheme.colors.warning[500], auroraTheme.colors.warning[700]] as const,
     haptic: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning),
   },
 };
@@ -75,6 +68,8 @@ export const ScanFeedback: React.FC<ScanFeedbackProps> = ({
   duration = 2000,
   showIcon = true,
 }) => {
+  const uiTokens = useUiTokens();
+  const prefersReducedMotion = useReducedMotion();
   const { width: screenWidth } = useWindowDimensions();
   const scale = useSharedValue(0);
   const opacity = useSharedValue(0);
@@ -84,6 +79,19 @@ export const ScanFeedback: React.FC<ScanFeedbackProps> = ({
   const ringOpacity = useSharedValue(0.5);
 
   const config = feedbackConfig[type];
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
+  const feedbackColor = {
+    success: uiTokens.colors.success,
+    error: uiTokens.colors.error,
+    warning: uiTokens.colors.warning,
+    info: uiTokens.colors.info,
+    duplicate: uiTokens.colors.warning,
+  }[type];
+  const enterDuration = getOperationalMotionDuration(uiTokens, "fast", prefersReducedMotion);
+  const exitDuration = getOperationalMotionDuration(uiTokens, "fast", prefersReducedMotion);
+  const pulseDuration = getOperationalMotionDuration(uiTokens, "slow", prefersReducedMotion);
+  const dismissDelay = Math.max(duration, pulseDuration);
+  const accessibilityLabel = [title, message].filter(Boolean).join(". ");
 
   const triggerHaptic = useCallback(() => {
     if (Platform.OS !== "web") {
@@ -96,46 +104,65 @@ export const ScanFeedback: React.FC<ScanFeedbackProps> = ({
       // Trigger haptic
       triggerHaptic();
 
-      // Animate in
-      opacity.value = withTiming(1, { duration: 200 });
-      scale.value = withSpring(1, { damping: 12, stiffness: 180 });
+      if (prefersReducedMotion) {
+        opacity.value = 1;
+        scale.value = 1;
+        iconScale.value = 1;
+        iconRotation.value = 0;
+        ringScale.value = 1;
+        ringOpacity.value = 0;
+      } else {
+        opacity.value = withTiming(1, { duration: enterDuration });
+        scale.value = withSpring(1, { damping: 12, stiffness: 180 });
+        iconScale.value = withDelay(
+          enterDuration,
+          withSpring(1, { damping: 10, stiffness: 200 })
+        );
 
-      // Icon animation
-      iconScale.value = withDelay(100, withSpring(1, { damping: 10, stiffness: 200 }));
+        if (type === "success") {
+          iconRotation.value = withDelay(
+            enterDuration,
+            withSequence(
+              withTiming(-10, { duration: enterDuration }),
+              withSpring(0, { damping: 8, stiffness: 200 })
+            )
+          );
+        }
 
-      if (type === "success") {
-        iconRotation.value = withDelay(
-          150,
+        ringScale.value = withRepeat(
           withSequence(
-            withTiming(-10, { duration: 100 }),
-            withSpring(0, { damping: 8, stiffness: 200 })
-          )
+            withTiming(1.35, { duration: pulseDuration, easing: Easing.out(Easing.ease) }),
+            withTiming(1, { duration: enterDuration })
+          ),
+          2,
+          false
+        );
+        ringOpacity.value = withRepeat(
+          withSequence(
+            withTiming(0, { duration: pulseDuration }),
+            withTiming(0.5, { duration: enterDuration })
+          ),
+          2,
+          false
         );
       }
-
-      // Pulse ring animation
-      ringScale.value = withRepeat(
-        withSequence(
-          withTiming(1.5, { duration: 600, easing: Easing.out(Easing.ease) }),
-          withTiming(1, { duration: 400 })
-        ),
-        3,
-        false
-      );
-      ringOpacity.value = withRepeat(
-        withSequence(withTiming(0, { duration: 600 }), withTiming(0.5, { duration: 0 })),
-        3,
-        false
-      );
 
       // Auto dismiss
       if (onDismiss) {
         const timer = setTimeout(() => {
-          opacity.value = withTiming(0, { duration: 200 });
-          scale.value = withTiming(0.8, { duration: 200 });
-          iconScale.value = withTiming(0, { duration: 150 });
-          setTimeout(onDismiss, 200);
-        }, duration);
+          if (prefersReducedMotion) {
+            opacity.value = 0;
+            scale.value = 0;
+            iconScale.value = 0;
+            onDismiss();
+            return;
+          }
+
+          opacity.value = withTiming(0, { duration: exitDuration });
+          scale.value = withTiming(0.8, { duration: exitDuration });
+          iconScale.value = withTiming(0, { duration: enterDuration });
+          setTimeout(onDismiss, exitDuration);
+        }, dismissDelay);
 
         return () => clearTimeout(timer);
       }
@@ -150,7 +177,12 @@ export const ScanFeedback: React.FC<ScanFeedbackProps> = ({
   }, [
     visible,
     duration,
+    dismissDelay,
+    enterDuration,
+    exitDuration,
     onDismiss,
+    prefersReducedMotion,
+    pulseDuration,
     type,
     triggerHaptic,
     opacity,
@@ -178,88 +210,102 @@ export const ScanFeedback: React.FC<ScanFeedbackProps> = ({
   if (!visible) return null;
 
   return (
-    <View style={[styles.overlay, styles.pointerEventsNone]}>
+    <View
+      style={[styles.overlay, styles.pointerEventsNone]}
+      accessible
+      accessibilityRole="alert"
+      accessibilityLiveRegion="polite"
+      accessibilityLabel={accessibilityLabel}
+    >
       <Animated.View style={[styles.container, { width: screenWidth * 0.7 }, containerStyle]}>
-        <LinearGradient
-          colors={config.gradient as readonly [string, string, ...string[]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradient}
+        <View
+          style={[
+            styles.panel,
+            {
+              backgroundColor: uiTokens.colors.surfaceElevated,
+              borderColor: colorWithAlpha(feedbackColor, 0.3),
+            },
+          ]}
         >
           {/* Pulse ring */}
-          <Animated.View style={[styles.ring, ringStyle]} />
+          <Animated.View
+            style={[
+              styles.ring,
+              {
+                borderColor: colorWithAlpha(feedbackColor, 0.3),
+              },
+              ringStyle,
+            ]}
+          />
 
           {/* Icon */}
           {showIcon && (
             <Animated.View style={iconStyle}>
               <View style={styles.iconContainer}>
-                <Ionicons name={config.icon} size={64} color={auroraTheme.colors.text.primary} />
+                <Ionicons name={config.icon} size={64} color={feedbackColor} />
               </View>
             </Animated.View>
           )}
 
           {/* Text content */}
-          <Text style={styles.title}>{title}</Text>
-          {message && <Text style={styles.message}>{message}</Text>}
-        </LinearGradient>
+          <Text style={[styles.title, { color: uiTokens.colors.textPrimary }]}>{title}</Text>
+          {message && (
+            <Text style={[styles.message, { color: uiTokens.colors.textSecondary }]}>
+              {message}
+            </Text>
+          )}
+        </View>
       </Animated.View>
     </View>
   );
 };
 
-// Helper function for repeat animation (simplified)
-const withRepeat = (animation: any, _times: number, _reverse: boolean) => {
-  // This is a simplified version - in production, use reanimated's withRepeat
-  return animation;
-};
+type ScanFeedbackTokens = ReturnType<typeof useUiTokens>;
 
-const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex: uiZIndex.toast,
-  },
-  pointerEventsNone: {
-    pointerEvents: "none",
-  },
-  container: {
-    maxWidth: 280,
-    borderRadius: auroraTheme.borderRadius["2xl"],
-    overflow: "hidden",
-    ...auroraTheme.shadows.xl,
-  },
-  gradient: {
-    padding: auroraTheme.spacing["2xl"],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ring: {
-    position: "absolute",
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: "rgba(255, 255, 255, 0.3)",
-  },
-  iconContainer: {
-    marginBottom: auroraTheme.spacing.lg,
-  },
-  title: {
-    fontSize: auroraTheme.typography.fontSize.xl,
-    fontFamily: auroraTheme.typography.fontFamily.heading,
-    fontWeight: "700",
-    color: auroraTheme.colors.text.primary,
-    textAlign: "center",
-  },
-  message: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    fontFamily: auroraTheme.typography.fontFamily.body,
-    color: auroraTheme.colors.text.secondary,
-    textAlign: "center",
-    marginTop: auroraTheme.spacing.sm,
-  },
-});
+const createStyles = (uiTokens: ScanFeedbackTokens) =>
+  StyleSheet.create({
+    overlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: uiTokens.colors.overlay,
+      zIndex: uiZIndex.toast,
+    },
+    pointerEventsNone: {
+      pointerEvents: "none",
+    },
+    container: {
+      maxWidth: 280,
+      borderRadius: uiTokens.radius.xl,
+      overflow: "hidden",
+      ...uiTokens.shadows.md,
+    },
+    panel: {
+      padding: uiTokens.spacing["2xl"],
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+    },
+    ring: {
+      position: "absolute",
+      width: 120,
+      height: 120,
+      borderRadius: uiTokens.radius.full,
+      borderWidth: 3,
+    },
+    iconContainer: {
+      marginBottom: uiTokens.spacing.lg,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: "700",
+      textAlign: "center",
+    },
+    message: {
+      fontSize: 14,
+      textAlign: "center",
+      marginTop: uiTokens.spacing.sm,
+    },
+  });
 
 export default ScanFeedback;

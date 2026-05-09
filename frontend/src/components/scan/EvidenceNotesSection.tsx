@@ -6,6 +6,7 @@ import ModernCard from "@/components/ui/ModernCard";
 import ModernInput from "@/components/ui/ModernInput";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 type DamageType = "returnable" | "nonreturnable";
 
@@ -47,6 +48,7 @@ export function EvidenceNotesSection({
   onVarianceRemarkChange,
 }: EvidenceNotesSectionProps) {
   const uiTokens = useUiTokens();
+  const decorativeIconProps = getDecorativeIconProps();
 
   const styles = useMemo(
     () =>
@@ -227,7 +229,12 @@ export function EvidenceNotesSection({
       <View style={styles.section}>
         <View style={styles.toggleRow}>
           <View style={styles.toggleLabelContainer}>
-            <Ionicons name="alert-circle-outline" size={20} color={uiTokens.colors.error} />
+            <Ionicons
+              {...decorativeIconProps}
+              name="alert-circle-outline"
+              size={20}
+              color={uiTokens.colors.error}
+            />
             <Text style={styles.toggleLabel}>Is Damaged Item</Text>
           </View>
           <Switch
@@ -306,6 +313,7 @@ export function EvidenceNotesSection({
                 onPress={onTakeDamagePhoto}
               >
                 <Ionicons
+                  {...decorativeIconProps}
                   name={damagePhoto ? "checkmark-circle" : "camera"}
                   size={24}
                   color={damagePhoto ? uiTokens.colors.surfaceElevated : uiTokens.colors.error}
@@ -322,7 +330,12 @@ export function EvidenceNotesSection({
 
               {damagePhoto && (
                 <View style={styles.photoPreviewWrapper}>
-                  <Ionicons name="checkmark-circle" size={16} color={uiTokens.colors.success} />
+                  <Ionicons
+                    {...decorativeIconProps}
+                    name="checkmark-circle"
+                    size={16}
+                    color={uiTokens.colors.success}
+                  />
                   <Text style={styles.photoPreviewText}>Photo captured</Text>
                   <TouchableOpacity onPress={onRemoveDamagePhoto}>
                     <Text style={styles.photoRemoveText}>Remove</Text>
@@ -342,6 +355,7 @@ export function EvidenceNotesSection({
             <View key={`${uri}-${index}`} style={styles.itemPhotoWrapper}>
               <ModernCard style={styles.itemPhotoCard}>
                 <Ionicons
+                  {...decorativeIconProps}
                   name="image"
                   size={32}
                   color={colorWithAlpha(uiTokens.colors.accent, 0.45)}
@@ -350,7 +364,12 @@ export function EvidenceNotesSection({
                   style={styles.removePhotoBadge}
                   onPress={() => onRemoveItemPhoto(index)}
                 >
-                  <Ionicons name="close-circle" size={20} color={uiTokens.colors.error} />
+                  <Ionicons
+                    {...decorativeIconProps}
+                    name="close-circle"
+                    size={20}
+                    color={uiTokens.colors.error}
+                  />
                 </TouchableOpacity>
               </ModernCard>
             </View>
@@ -358,7 +377,12 @@ export function EvidenceNotesSection({
 
           {itemPhotos.length < 3 && (
             <TouchableOpacity style={styles.addPhotoCard} onPress={onAddItemPhoto}>
-              <Ionicons name="add-circle-outline" size={32} color={uiTokens.colors.accent} />
+              <Ionicons
+                {...decorativeIconProps}
+                name="add-circle-outline"
+                size={32}
+                color={uiTokens.colors.accent}
+              />
               <Text style={styles.addPhotoSubtext}>Add Photo</Text>
             </TouchableOpacity>
           )}

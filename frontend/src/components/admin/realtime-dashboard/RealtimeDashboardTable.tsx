@@ -2,7 +2,6 @@ import React from "react";
 import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { auroraTheme } from "@/theme/auroraTheme";
 import {
   Column,
   DashboardItem,
@@ -10,9 +9,9 @@ import {
   IS_WEB,
   Pagination,
 } from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
-
-import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
-import { colorWithAlpha as uiColorWithAlpha } from "@/theme/themeTokens";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
 
 const ROW_HEIGHT = 48;
 const DEFAULT_COLUMN_WIDTH = 120;
@@ -28,10 +27,13 @@ interface RealtimeDashboardTableProps {
   visibleColumns: Column[];
 }
 
+type TableStyles = ReturnType<typeof createStyles>;
+
 type TableRowProps = {
   index: number;
   item: DashboardItem;
   onItemPress: (item: DashboardItem) => void;
+  styles: TableStyles;
   visibleColumns: Column[];
 };
 
@@ -39,21 +41,26 @@ const TableRow = React.memo(function TableRow({
   index,
   item,
   onItemPress,
+  styles,
   visibleColumns,
 }: TableRowProps) {
   return (
     <TouchableOpacity
+      {...getAccessibleButtonProps({
+        label: `Open item ${item.item_code || item.barcode || item.id}`,
+      })}
       style={[
         styles.tableRow,
         index % 2 === 0 && styles.tableRowAlt,
         item.verified && styles.tableRowVerified,
       ]}
       onPress={() => onItemPress(item)}
-      accessibilityRole="button"
-      accessibilityLabel={`Open item ${item.item_code || item.barcode || item.id}`}
     >
       {visibleColumns.map((column) => (
-        <View key={column.field} style={[styles.tableCell, { width: column.width || DEFAULT_COLUMN_WIDTH }]}>
+        <View
+          key={column.field}
+          style={[styles.tableCell, { width: column.width || DEFAULT_COLUMN_WIDTH }]}
+        >
           <Text
             style={[
               styles.tableCellText,
@@ -84,12 +91,11 @@ export function RealtimeDashboardTable({
   sortOrder,
   visibleColumns,
 }: RealtimeDashboardTableProps) {
+  const uiTokens = useUiTokens();
+  const styles = React.useMemo(() => createStyles(uiTokens), [uiTokens]);
   const tableWidth = React.useMemo(
     () =>
-      visibleColumns.reduce(
-        (total, column) => total + (column.width || DEFAULT_COLUMN_WIDTH),
-        0
-      ),
+      visibleColumns.reduce((total, column) => total + (column.width || DEFAULT_COLUMN_WIDTH), 0),
     [visibleColumns]
   );
 
@@ -99,10 +105,11 @@ export function RealtimeDashboardTable({
         index={index}
         item={item}
         onItemPress={onItemPress}
+        styles={styles}
         visibleColumns={visibleColumns}
       />
     ),
-    [onItemPress, visibleColumns]
+    [onItemPress, styles, visibleColumns]
   );
 
   return (
@@ -115,26 +122,35 @@ export function RealtimeDashboardTable({
         >
           <View style={{ width: tableWidth }}>
             <View style={styles.tableHeader}>
-              {visibleColumns.map((column) => (
-                <TouchableOpacity
-                  key={column.field}
-                  style={[styles.tableHeaderCell, { width: column.width || DEFAULT_COLUMN_WIDTH }]}
-                  onPress={() => column.sortable && onSort(column.field)}
-                  disabled={!column.sortable}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Sort by ${column.label}`}
-                  accessibilityState={{ disabled: !column.sortable }}
-                >
-                  <Text style={styles.tableHeaderText}>{column.label}</Text>
-                  {column.sortable && sortBy === column.field && (
-                    <Ionicons
-                      name={sortOrder === "asc" ? "arrow-up" : "arrow-down"}
-                      size={14}
-                      color={auroraTheme.colors.primary[500]}
-                    />
-                  )}
-                </TouchableOpacity>
-              ))}
+              {visibleColumns.map((column) => {
+                const isSorted = column.sortable && sortBy === column.field;
+
+                return (
+                  <TouchableOpacity
+                    {...getAccessibleButtonProps({
+                      label: `Sort by ${column.label}`,
+                      disabled: !column.sortable,
+                      selected: isSorted,
+                    })}
+                    key={column.field}
+                    style={[
+                      styles.tableHeaderCell,
+                      { width: column.width || DEFAULT_COLUMN_WIDTH },
+                    ]}
+                    onPress={() => column.sortable && onSort(column.field)}
+                    disabled={!column.sortable}
+                  >
+                    <Text style={styles.tableHeaderText}>{column.label}</Text>
+                    {isSorted && (
+                      <Ionicons
+                        name={sortOrder === "asc" ? "arrow-up" : "arrow-down"}
+                        size={14}
+                        color={uiTokens.colors.accent}
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             <FlatList
@@ -154,13 +170,13 @@ export function RealtimeDashboardTable({
               })}
               ListEmptyComponent={
                 <View style={styles.emptyState}>
-                <Ionicons
-                  name="document-text-outline"
-                  size={48}
-                  color={auroraTheme.colors.text.secondary}
-                />
-                <Text style={styles.emptyText}>No data found</Text>
-              </View>
+                  <Ionicons
+                    name="document-text-outline"
+                    size={48}
+                    color={uiTokens.colors.textSecondary}
+                  />
+                  <Text style={styles.emptyText}>No data found</Text>
+                </View>
               }
             />
           </View>
@@ -169,11 +185,15 @@ export function RealtimeDashboardTable({
 
       <View style={styles.pagination}>
         <TouchableOpacity
+          {...getAccessibleButtonProps({
+            label: "Previous realtime dashboard page",
+            disabled: !pagination.has_prev,
+          })}
           style={[styles.pageButton, !pagination.has_prev && styles.pageButtonDisabled]}
           onPress={() => onPageChange(pagination.page - 1)}
           disabled={!pagination.has_prev}
         >
-          <Ionicons name="chevron-back" size={20} color={uiSemanticColors.text.inverse} />
+          <Ionicons name="chevron-back" size={20} color={uiTokens.colors.surface} />
         </TouchableOpacity>
 
         <Text style={styles.pageInfo}>
@@ -181,100 +201,108 @@ export function RealtimeDashboardTable({
         </Text>
 
         <TouchableOpacity
+          {...getAccessibleButtonProps({
+            label: "Next realtime dashboard page",
+            disabled: !pagination.has_next,
+          })}
           style={[styles.pageButton, !pagination.has_next && styles.pageButtonDisabled]}
           onPress={() => onPageChange(pagination.page + 1)}
           disabled={!pagination.has_next}
         >
-          <Ionicons name="chevron-forward" size={20} color={uiSemanticColors.text.inverse} />
+          <Ionicons name="chevron-forward" size={20} color={uiTokens.colors.surface} />
         </TouchableOpacity>
       </View>
     </>
   );
 }
 
-const styles = StyleSheet.create({
-  tableContainer: {
-    backgroundColor: auroraTheme.colors.surface.base,
-    borderRadius: auroraTheme.borderRadius.lg,
-    overflow: "hidden",
-    marginBottom: auroraTheme.spacing.lg,
-  },
-  tableHeader: {
-    flexDirection: "row",
-    backgroundColor: auroraTheme.colors.surface.elevated,
-    borderBottomWidth: 1,
-    borderBottomColor: auroraTheme.colors.border.subtle,
-  },
-  tableHeaderCell: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: auroraTheme.spacing.md,
-    paddingVertical: auroraTheme.spacing.md,
-    gap: 4,
-  },
-  tableHeaderText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: auroraTheme.colors.text.primary,
-  },
-  tableRow: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: auroraTheme.colors.border.subtle,
-    minHeight: ROW_HEIGHT,
-  },
-  tableRowAlt: {
-    backgroundColor: auroraTheme.colors.surface.elevated + "40",
-  },
-  tableRowVerified: {
-    backgroundColor: uiColorWithAlpha(uiColors.success[500], 0.06),
-  },
-  tableCell: {
-    paddingHorizontal: auroraTheme.spacing.md,
-    paddingVertical: auroraTheme.spacing.md,
-    justifyContent: "center",
-  },
-  tableCellText: {
-    fontSize: 13,
-    color: auroraTheme.colors.text.primary,
-  },
-  negativeValue: {
-    color: uiColors.error[500],
-  },
-  positiveValue: {
-    color: uiColors.success[500],
-  },
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 64,
-  },
-  emptyText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: auroraTheme.colors.text.secondary,
-  },
-  pagination: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: auroraTheme.spacing.lg,
-    marginBottom: auroraTheme.spacing.lg,
-  },
-  pageButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: auroraTheme.colors.primary[500],
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  pageButtonDisabled: {
-    backgroundColor: auroraTheme.colors.surface.elevated,
-    opacity: 0.5,
-  },
-  pageInfo: {
-    fontSize: 14,
-    color: auroraTheme.colors.text.primary,
-  },
-});
+type TableTokens = ReturnType<typeof useUiTokens>;
+
+const createStyles = (uiTokens: TableTokens) =>
+  StyleSheet.create({
+    tableContainer: {
+      backgroundColor: uiTokens.colors.surface,
+      borderRadius: uiTokens.radius.lg,
+      overflow: "hidden",
+      marginBottom: uiTokens.spacing.lg,
+      borderWidth: 1,
+      borderColor: uiTokens.colors.border,
+    },
+    tableHeader: {
+      flexDirection: "row",
+      backgroundColor: uiTokens.colors.surfaceElevated,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: uiTokens.colors.border,
+    },
+    tableHeaderCell: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: uiTokens.spacing.md,
+      paddingVertical: uiTokens.spacing.md,
+      gap: uiTokens.spacing.xs,
+    },
+    tableHeaderText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: uiTokens.colors.textPrimary,
+    },
+    tableRow: {
+      flexDirection: "row",
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: uiTokens.colors.border,
+      minHeight: ROW_HEIGHT,
+    },
+    tableRowAlt: {
+      backgroundColor: colorWithAlpha(uiTokens.colors.surfaceElevated, 0.4),
+    },
+    tableRowVerified: {
+      backgroundColor: colorWithAlpha(uiTokens.colors.success, 0.06),
+    },
+    tableCell: {
+      paddingHorizontal: uiTokens.spacing.md,
+      paddingVertical: uiTokens.spacing.md,
+      justifyContent: "center",
+    },
+    tableCellText: {
+      fontSize: 13,
+      color: uiTokens.colors.textPrimary,
+    },
+    negativeValue: {
+      color: uiTokens.colors.error,
+    },
+    positiveValue: {
+      color: uiTokens.colors.success,
+    },
+    emptyState: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: uiTokens.spacing.xxl,
+    },
+    emptyText: {
+      marginTop: uiTokens.spacing.md,
+      fontSize: 16,
+      color: uiTokens.colors.textSecondary,
+    },
+    pagination: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      gap: uiTokens.spacing.lg,
+      marginBottom: uiTokens.spacing.lg,
+    },
+    pageButton: {
+      ...getMinimumTouchTargetStyle(),
+      borderRadius: uiTokens.radius.full,
+      backgroundColor: uiTokens.colors.accent,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    pageButtonDisabled: {
+      backgroundColor: uiTokens.colors.surfaceElevated,
+      opacity: 0.5,
+    },
+    pageInfo: {
+      fontSize: 14,
+      color: uiTokens.colors.textPrimary,
+    },
+  });

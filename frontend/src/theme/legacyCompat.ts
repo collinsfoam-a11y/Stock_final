@@ -4,6 +4,8 @@
  * Central bridge for old `theme/unified` and `theme/modernDesign` imports.
  * New code should prefer `useUiTokens` or `themeTokens`, but this keeps the
  * remaining UI wired consistently while migration is in progress.
+ *
+ * @deprecated Wrapper-only migration bridge. Do not add new feature usage.
  */
 
 import {

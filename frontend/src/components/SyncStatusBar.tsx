@@ -6,41 +6,42 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { getSyncStatus, forceSync, SyncResult } from "../services/syncService";
+import { forceSync, SyncResult } from "../services/syncService";
+import {
+  refreshSyncStatus,
+  subscribeSyncStatus,
+  type SyncStatusSnapshot,
+} from "../services/syncStatusPolling";
 import { useNetworkStore } from "../store/networkStore";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
-interface SyncStatus {
-  isOnline: boolean;
-  queuedOperations: number;
-  lastSync: string | null;
-  cacheSize: number;
-  needsSync: boolean;
-}
 
 export const SyncStatusBar: React.FC = () => {
-  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatusSnapshot | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const isOnline = useNetworkStore((state: any) => state.isOnline);
+  const syncResultTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const loadSyncStatus = React.useCallback(async () => {
-    try {
-      const status = await getSyncStatus();
+  useEffect(() => {
+    const unsubscribe = subscribeSyncStatus((status) => {
       setSyncStatus(status);
-    } catch (error) {
-      console.error("Error loading sync status:", error);
-    }
+    });
+    void refreshSyncStatus();
+    return () => {
+      unsubscribe();
+      if (syncResultTimerRef.current) {
+        clearTimeout(syncResultTimerRef.current);
+        syncResultTimerRef.current = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
-    loadSyncStatus();
-
-    // Update sync status every 5 seconds
-    const interval = setInterval(loadSyncStatus, 5000);
-
-    return () => clearInterval(interval);
-  }, [isOnline, loadSyncStatus]);
+    if (isOnline) {
+      void refreshSyncStatus();
+    }
+  }, [isOnline]);
 
   const handleSync = async () => {
     if (!isOnline || isSyncing) return;
@@ -56,12 +57,16 @@ export const SyncStatusBar: React.FC = () => {
       });
 
       setSyncResult(result);
-
-      // Reload status after sync
-      setTimeout(loadSyncStatus, 1000);
+      await refreshSyncStatus();
 
       // Clear result after 3 seconds
-      setTimeout(() => setSyncResult(null), 3000);
+      if (syncResultTimerRef.current) {
+        clearTimeout(syncResultTimerRef.current);
+      }
+      syncResultTimerRef.current = setTimeout(() => {
+        setSyncResult(null);
+        syncResultTimerRef.current = null;
+      }, 3000);
     } catch (error: any) {
       console.error("Sync error:", error);
       setSyncResult({

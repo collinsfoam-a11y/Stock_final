@@ -5,6 +5,9 @@ import { useItemSubmission } from "../useItemSubmission";
 import type { Item } from "@/types/scan";
 
 const mockBack = jest.fn();
+const mockCanGoBack = jest.fn(() => true);
+const mockPush = jest.fn();
+const mockReplace = jest.fn();
 const mockCheckItemCounted = jest.fn();
 const mockCreateCountLine = jest.fn();
 const mockAddQuantityToCountLine = jest.fn();
@@ -12,7 +15,10 @@ const mockNotificationAsync = jest.fn();
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({
+    canGoBack: mockCanGoBack,
     back: mockBack,
+    push: mockPush,
+    replace: mockReplace,
   }),
 }));
 

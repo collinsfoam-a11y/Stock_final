@@ -7,6 +7,8 @@
  * - Gradient border option
  * - Shadow and elevation
  * - Customizable variants
+ *
+ * @deprecated Use AppCard. GlassCard is limited to approved appearance/demo surfaces.
  */
 
 import React from "react";
@@ -16,6 +18,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useThemeContextSafe } from "../../context/ThemeContext";
 
 import { colors as uiColors } from "@/theme/legacyCompat";
+import { warnDeprecatedVisualSystem } from "./legacyVisualSystem";
 export type GlassVariant = "light" | "medium" | "strong" | "dark" | "modal";
 export type GlassElevation = "none" | "xs" | "sm" | "md" | "lg" | "xl";
 
@@ -46,6 +49,7 @@ export const GlassCard = ({
   accessibilityLabel,
   accessibilityHint,
 }: GlassCardProps) => {
+  warnDeprecatedVisualSystem("GlassCard");
   const themeContext = useThemeContextSafe();
   const theme = themeContext?.theme;
 

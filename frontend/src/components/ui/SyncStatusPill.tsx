@@ -3,7 +3,7 @@
  * Modern, unified status indicator for synchronization state
  */
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -12,43 +12,33 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { getSyncStatus, forceSync } from "../../services/syncService";
+import { forceSync } from "../../services/syncService";
+import {
+  refreshSyncStatus,
+  subscribeSyncStatus,
+  type SyncStatusSnapshot,
+} from "../../services/syncStatusPolling";
 import { modernAnimations, modernBorderRadius } from "../../styles/modernDesignSystem";
 
 import { colors } from "@/theme/legacyCompat";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
-interface SyncStatus {
-  isOnline: boolean;
-  queuedOperations: number;
-  lastSync: string | null;
-  cacheSize: number;
-  needsSync: boolean;
-}
-
 export const SyncStatusPill = () => {
   const uiTokens = useUiTokens();
   const reduceMotion = useReducedMotion();
-  const [status, setStatus] = useState<SyncStatus | null>(null);
+  const [status, setStatus] = useState<SyncStatusSnapshot | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
   // Animation for sync rotation
   const rotation = useSharedValue(0);
 
-  const loadStatus = useCallback(async () => {
-    try {
-      const s = await getSyncStatus();
-      setStatus(s);
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
-
   useEffect(() => {
-    loadStatus();
-    const interval = setInterval(loadStatus, 5000);
-    return () => clearInterval(interval);
-  }, [loadStatus]);
+    const unsubscribe = subscribeSyncStatus((nextStatus) => {
+      setStatus(nextStatus);
+    });
+    void refreshSyncStatus();
+    return unsubscribe;
+  }, []);
 
   const handleSync = async () => {
     if (!status?.isOnline || isSyncing) return;
@@ -63,7 +53,7 @@ export const SyncStatusPill = () => {
 
     try {
       await forceSync();
-      await loadStatus();
+      await refreshSyncStatus();
     } catch (e) {
       console.error("Sync failed", e);
     } finally {

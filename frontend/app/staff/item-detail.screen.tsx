@@ -44,6 +44,7 @@ import { useQuantityCountManager } from "@/domains/inventory/hooks/scan/useQuant
 import { useSerialEntryManager } from "@/domains/inventory/hooks/scan/useSerialEntryManager";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 import { safeBackNavigation } from "@/utils/navigation";
 
 const formatMetricNumber = (value: number | undefined | null): string => {
@@ -65,13 +66,14 @@ const formatStockMetric = (
 const formatPriceMetric = (value: number | undefined | null, visible: boolean): string => {
   if (!visible) return "---";
   const formattedValue = formatMetricNumber(value);
-  return formattedValue === "---" ? formattedValue : `Rs${formattedValue}`;
+  return formattedValue === "---" ? formattedValue : `₹${formattedValue}`;
 };
 
 export default function ItemDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const uiTokens = useUiTokens();
+  const decorativeIconProps = getDecorativeIconProps();
   const params = useLocalSearchParams<{ barcode: string; sessionId: string }>();
   const { barcode, sessionId } = params;
   const displayBarcode = Array.isArray(barcode) ? barcode[0] : barcode;
@@ -517,6 +519,7 @@ export default function ItemDetailScreen() {
         <View style={styles.errorContainer}>
           <ModernCard style={styles.errorCard}>
             <Ionicons
+              {...decorativeIconProps}
               name="alert-circle-outline"
               size={52}
               color={uiTokens.colors.error}
@@ -568,6 +571,10 @@ export default function ItemDetailScreen() {
   const heroSessionValue = normalizedSessionId
     ? normalizedSessionId.slice(-8).toUpperCase()
     : "N/A";
+  const parsedQuantity = Number.parseFloat(quantity);
+  const canSubmit = Number.isFinite(parsedQuantity) && parsedQuantity > 0;
+  const shouldShowBatchVariants =
+    batchLoading || Boolean(batchError) || rawVariantsCount > 0 || sameNameVariants.length > 0;
 
   return (
     <ThemedScreen showPattern={false} variant="solid" dismissKeyboardOnTap>
@@ -594,7 +601,12 @@ export default function ItemDetailScreen() {
           <ModernCard style={styles.heroCard}>
             <View style={styles.heroTop}>
               <View style={styles.heroIcon}>
-                <Ionicons name="cube-outline" size={28} color={uiTokens.colors.accentStrong} />
+                <Ionicons
+                  {...decorativeIconProps}
+                  name="cube-outline"
+                  size={28}
+                  color={uiTokens.colors.accentStrong}
+                />
               </View>
 
               <View style={styles.heroCopy}>
@@ -611,6 +623,7 @@ export default function ItemDetailScreen() {
                 <View style={styles.heroCodeRow}>
                   <View style={[styles.heroPill, styles.heroPillStrong]}>
                     <Ionicons
+                      {...decorativeIconProps}
                       name="barcode-outline"
                       size={13}
                       color={uiTokens.colors.accentStrong}
@@ -625,6 +638,7 @@ export default function ItemDetailScreen() {
 
                   <View style={styles.heroPill}>
                     <Ionicons
+                      {...decorativeIconProps}
                       name="pricetag-outline"
                       size={13}
                       color={uiTokens.colors.textSecondary}
@@ -646,7 +660,12 @@ export default function ItemDetailScreen() {
                       },
                     ]}
                   >
-                    <Ionicons name={sourceStatus.icon} size={13} color={sourceStatus.color} />
+                    <Ionicons
+                      {...decorativeIconProps}
+                      name={sourceStatus.icon}
+                      size={13}
+                      color={sourceStatus.color}
+                    />
                     <Text style={[styles.sourcePillText, { color: sourceStatus.color }]}>
                       {sourceStatus.label}
                     </Text>
@@ -696,6 +715,7 @@ export default function ItemDetailScreen() {
             <View style={styles.heroContextChips}>
               <View style={styles.heroContextChip}>
                 <Ionicons
+                  {...decorativeIconProps}
                   name="file-tray-stacked-outline"
                   size={13}
                   color={uiTokens.colors.textSecondary}
@@ -703,11 +723,21 @@ export default function ItemDetailScreen() {
                 <Text style={styles.heroContextChipText}>Session {heroSessionValue}</Text>
               </View>
               <View style={styles.heroContextChip}>
-                <Ionicons name="layers-outline" size={13} color={uiTokens.colors.textSecondary} />
+                <Ionicons
+                  {...decorativeIconProps}
+                  name="layers-outline"
+                  size={13}
+                  color={uiTokens.colors.textSecondary}
+                />
                 <Text style={styles.heroContextChipText}>Floor {currentFloor || "N/A"}</Text>
               </View>
               <View style={styles.heroContextChip}>
-                <Ionicons name="cube-outline" size={13} color={uiTokens.colors.textSecondary} />
+                <Ionicons
+                  {...decorativeIconProps}
+                  name="cube-outline"
+                  size={13}
+                  color={uiTokens.colors.textSecondary}
+                />
                 <Text style={styles.heroContextChipText}>Rack {currentRack || "N/A"}</Text>
               </View>
             </View>
@@ -715,7 +745,12 @@ export default function ItemDetailScreen() {
             <View style={styles.workflowStrip} accessibilityLabel="Item verification workflow">
               <View style={styles.workflowStep}>
                 <View style={styles.workflowStepIcon}>
-                  <Ionicons name="scan-outline" size={14} color={uiTokens.colors.accentStrong} />
+                  <Ionicons
+                    {...decorativeIconProps}
+                    name="scan-outline"
+                    size={14}
+                    color={uiTokens.colors.accentStrong}
+                  />
                 </View>
                 <Text style={styles.workflowStepText}>Identify</Text>
                 <Text style={styles.workflowStepMeta}>Locked item</Text>
@@ -724,6 +759,7 @@ export default function ItemDetailScreen() {
               <View style={styles.workflowStep}>
                 <View style={styles.workflowStepIcon}>
                   <Ionicons
+                    {...decorativeIconProps}
                     name="calculator-outline"
                     size={14}
                     color={uiTokens.colors.accentStrong}
@@ -736,6 +772,7 @@ export default function ItemDetailScreen() {
               <View style={styles.workflowStep}>
                 <View style={styles.workflowStepIcon}>
                   <Ionicons
+                    {...decorativeIconProps}
                     name="checkmark-done-outline"
                     size={14}
                     color={uiTokens.colors.accentStrong}
@@ -747,25 +784,11 @@ export default function ItemDetailScreen() {
             </View>
           </ModernCard>
 
-          <View style={styles.sectionHeading}>
-            <Ionicons name="cube-outline" size={16} color={uiTokens.colors.textSecondary} />
-            <Text style={styles.sectionHeadingText}>Item Summary</Text>
-          </View>
-          <ItemSummarySection
-            barcode={displayBarcode}
-            isRefreshing={isRefreshing}
-            item={item}
-            onRefreshStock={handleRefreshStock}
-            showDetails={isInteractionsComplete}
-            showItemImages={settings.showItemImages}
-            showItemPrices={settings.showItemPrices}
-            showItemStock={settings.showItemStock}
-          />
-
           {isInteractionsComplete && (
             <>
               <View style={styles.sectionHeading}>
                 <Ionicons
+                  {...decorativeIconProps}
                   name="calculator-outline"
                   size={16}
                   color={uiTokens.colors.textSecondary}
@@ -792,30 +815,65 @@ export default function ItemDetailScreen() {
                   onToggleSplitMode={handleToggleSplitMode}
                 />
               </View>
+            </>
+          )}
 
-              <View style={styles.sectionHeading}>
-                <Ionicons name="layers-outline" size={16} color={uiTokens.colors.textSecondary} />
-                <Text style={styles.sectionHeadingText}>Batch Variants</Text>
-              </View>
-              <BatchVariantsSection
-                variants={sameNameVariants}
-                rawVariantsCount={rawVariantsCount}
-                loading={batchLoading}
-                error={batchError}
-                showZeroStock={showZeroStock}
-                onToggleShowZeroStock={setShowZeroStock}
-                onSelectVariant={(variantBarcode) => {
-                  router.replace({
-                    pathname: "/staff/item-detail",
-                    params: normalizedSessionId
-                      ? { barcode: variantBarcode, sessionId: normalizedSessionId }
-                      : { barcode: variantBarcode },
-                  });
-                }}
-              />
+          <View style={styles.sectionHeading}>
+            <Ionicons
+              {...decorativeIconProps}
+              name="cube-outline"
+              size={16}
+              color={uiTokens.colors.textSecondary}
+            />
+            <Text style={styles.sectionHeadingText}>Item Summary</Text>
+          </View>
+          <ItemSummarySection
+            barcode={displayBarcode}
+            isRefreshing={isRefreshing}
+            item={item}
+            onRefreshStock={handleRefreshStock}
+            showBarcodeDetails={false}
+            showDetails={isInteractionsComplete}
+            showItemImages={settings.showItemImages}
+            showItemPrices={settings.showItemPrices}
+            showItemStock={settings.showItemStock}
+          />
+
+          {isInteractionsComplete && (
+            <>
+              {shouldShowBatchVariants ? (
+                <>
+                  <View style={styles.sectionHeading}>
+                    <Ionicons
+                      {...decorativeIconProps}
+                      name="layers-outline"
+                      size={16}
+                      color={uiTokens.colors.textSecondary}
+                    />
+                    <Text style={styles.sectionHeadingText}>Batch Variants</Text>
+                  </View>
+                  <BatchVariantsSection
+                    variants={sameNameVariants}
+                    rawVariantsCount={rawVariantsCount}
+                    loading={batchLoading}
+                    error={batchError}
+                    showZeroStock={showZeroStock}
+                    onToggleShowZeroStock={setShowZeroStock}
+                    onSelectVariant={(variantBarcode) => {
+                      router.replace({
+                        pathname: "/staff/item-detail",
+                        params: normalizedSessionId
+                          ? { barcode: variantBarcode, sessionId: normalizedSessionId }
+                          : { barcode: variantBarcode },
+                      });
+                    }}
+                  />
+                </>
+              ) : null}
 
               <View style={styles.sectionHeading}>
                 <Ionicons
+                  {...decorativeIconProps}
                   name="calendar-clear-outline"
                   size={16}
                   color={uiTokens.colors.textSecondary}
@@ -838,7 +896,12 @@ export default function ItemDetailScreen() {
               />
 
               <View style={styles.sectionHeading}>
-                <Ionicons name="barcode-outline" size={16} color={uiTokens.colors.textSecondary} />
+                <Ionicons
+                  {...decorativeIconProps}
+                  name="barcode-outline"
+                  size={16}
+                  color={uiTokens.colors.textSecondary}
+                />
                 <Text style={styles.sectionHeadingText}>Serial Tracking</Text>
               </View>
               <SerializedItemSection
@@ -855,7 +918,12 @@ export default function ItemDetailScreen() {
               />
 
               <View style={styles.sectionHeading}>
-                <Ionicons name="cash-outline" size={16} color={uiTokens.colors.textSecondary} />
+                <Ionicons
+                  {...decorativeIconProps}
+                  name="cash-outline"
+                  size={16}
+                  color={uiTokens.colors.textSecondary}
+                />
                 <Text style={styles.sectionHeadingText}>Price Validation</Text>
               </View>
               <ItemMrpSection
@@ -872,6 +940,7 @@ export default function ItemDetailScreen() {
 
               <View style={styles.sectionHeading}>
                 <Ionicons
+                  {...decorativeIconProps}
                   name="document-text-outline"
                   size={16}
                   color={uiTokens.colors.textSecondary}
@@ -903,6 +972,7 @@ export default function ItemDetailScreen() {
         </ScrollView>
 
         <ItemSubmitBar
+          canSubmit={canSubmit}
           submitting={submitting}
           submitCountdown={submitCountdown}
           onCancelSubmit={cancelSubmit}

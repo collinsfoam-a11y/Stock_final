@@ -19,6 +19,7 @@ import { getTokenShadowStyle } from "@/theme/themeTokens";
 import { flags } from "@/constants/flags";
 import { safeBackNavigation } from "@/utils/navigation";
 import type { UserRole } from "@/utils/roleNavigation";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 interface ModernHeaderProps {
   title?: string;
   showLogo?: boolean;
@@ -28,6 +29,7 @@ interface ModernHeaderProps {
   rightAction?: {
     icon: keyof typeof Ionicons.glyphMap;
     onPress: () => void;
+    label?: string;
   };
   showSettingsButton?: boolean;
   subtitle?: string;
@@ -66,6 +68,7 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
   const router = useRouter();
   const uiTokens = useUiTokens();
   const iconColor = uiTokens.colors.textSecondary;
+  const decorativeIconProps = getDecorativeIconProps();
 
   const shouldShowSettings =
     !!user && showSettingsButton && rightAction?.icon !== "settings-outline";
@@ -120,9 +123,17 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
             <TouchableOpacity
               onPress={handleBackPress}
               style={styles.backButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              {...getAccessibleButtonProps({
+                label: "Go back",
+                hint: "Returns to the previous operational screen.",
+              })}
             >
-              <Ionicons name="arrow-back" size={24} color={iconColor} />
+              <Ionicons
+                {...decorativeIconProps}
+                name="arrow-back"
+                size={24}
+                color={iconColor}
+              />
             </TouchableOpacity>
           ) : !showLogo ? (
             <View style={styles.logoContainer}>
@@ -180,18 +191,33 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
             <TouchableOpacity
               onPress={onPressSettings}
               style={styles.backButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              {...getAccessibleButtonProps({
+                label: "Open settings",
+                hint: "Opens settings for the current role.",
+              })}
             >
-              <Ionicons name="settings-outline" size={24} color={iconColor} />
+              <Ionicons
+                {...decorativeIconProps}
+                name="settings-outline"
+                size={24}
+                color={iconColor}
+              />
             </TouchableOpacity>
           )}
           {rightAction && (
             <TouchableOpacity
               onPress={rightAction.onPress}
               style={styles.backButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              {...getAccessibleButtonProps({
+                label: rightAction.label ?? "Header action",
+              })}
             >
-              <Ionicons name={rightAction.icon} size={24} color={iconColor} />
+              <Ionicons
+                {...decorativeIconProps}
+                name={rightAction.icon}
+                size={24}
+                color={iconColor}
+              />
             </TouchableOpacity>
           )}
         </View>

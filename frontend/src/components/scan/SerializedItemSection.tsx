@@ -6,6 +6,7 @@ import type { SerialEntryData } from "@/types/scan";
 import { SerialEntriesSection } from "@/components/scan/SerialEntriesSection";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 interface SerializedItemSectionProps {
   enabled: boolean;
@@ -33,6 +34,7 @@ export function SerializedItemSection({
   onSerializedChange,
 }: SerializedItemSectionProps) {
   const uiTokens = useUiTokens();
+  const decorativeIconProps = getDecorativeIconProps();
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -73,7 +75,12 @@ export function SerializedItemSection({
       <View style={styles.section}>
         <View style={styles.toggleRow}>
           <View style={styles.toggleLabelContainer}>
-            <Ionicons name="barcode-outline" size={20} color={uiTokens.colors.accent} />
+            <Ionicons
+              {...decorativeIconProps}
+              name="barcode-outline"
+              size={20}
+              color={uiTokens.colors.accent}
+            />
             <Text style={styles.toggleLabel}>Is Serialized Item</Text>
           </View>
           <Switch

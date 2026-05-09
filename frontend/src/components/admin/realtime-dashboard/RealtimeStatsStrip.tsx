@@ -1,19 +1,22 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { auroraTheme } from "@/theme/auroraTheme";
 import {
   DashboardStats,
   formatValue,
 } from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
 
-import { colors as uiColors } from "@/theme/legacyCompat";
 interface RealtimeStatsStripProps {
   stats: DashboardStats | null;
 }
 
 export function RealtimeStatsStrip({ stats }: RealtimeStatsStripProps) {
+  const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
+
   if (!stats) return null;
 
   return (
@@ -24,45 +27,51 @@ export function RealtimeStatsStrip({ stats }: RealtimeStatsStripProps) {
         keyboardShouldPersistTaps="handled"
       >
         <StatsCard
+          styles={styles}
           label="Total Items"
           value={stats.total_items}
           icon="cube"
-          color={uiColors.success[500]}
+          color={uiTokens.colors.success}
           format="number"
         />
         <StatsCard
+          styles={styles}
           label="Verified"
           value={stats.verified_items}
           icon="checkmark-circle"
-          color={uiColors.info[500]}
+          color={uiTokens.colors.info}
           format="number"
         />
         <StatsCard
+          styles={styles}
           label="Pending"
           value={stats.pending_items}
           icon="time"
-          color={uiColors.warning[500]}
+          color={uiTokens.colors.warning}
           format="number"
         />
         <StatsCard
+          styles={styles}
           label="Verification Rate"
           value={stats.verification_rate}
           icon="trending-up"
-          color={uiColors.secondary[700]}
+          color={uiTokens.colors.accent}
           format="percentage"
         />
         <StatsCard
+          styles={styles}
           label="Total Variance"
           value={stats.total_variance}
           icon="analytics"
-          color={stats.total_variance < 0 ? uiColors.error[500] : uiColors.success[500]}
+          color={stats.total_variance < 0 ? uiTokens.colors.error : uiTokens.colors.success}
           format="number"
         />
         <StatsCard
+          styles={styles}
           label="Today's Activity"
           value={stats.today_activity}
           icon="today"
-          color={uiColors.secondary[500]}
+          color={uiTokens.colors.info}
           format="number"
         />
       </ScrollView>
@@ -75,17 +84,19 @@ function StatsCard({
   format,
   icon,
   label,
+  styles,
   value,
 }: {
   color: string;
   format?: string;
   icon: string;
   label: string;
+  styles: ReturnType<typeof createStyles>;
   value: number | string;
 }) {
   return (
     <View style={[styles.card, { borderLeftColor: color }]}>
-      <View style={[styles.iconContainer, { backgroundColor: color + "20" }]}>
+      <View style={[styles.iconContainer, { backgroundColor: colorWithAlpha(color, 0.12) }]}>
         <Ionicons name={icon as any} size={20} color={color} />
       </View>
       <View style={styles.textContainer}>
@@ -96,39 +107,42 @@ function StatsCard({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: auroraTheme.spacing.lg,
-  },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: auroraTheme.colors.surface.base,
-    borderRadius: auroraTheme.borderRadius.md,
-    padding: auroraTheme.spacing.md,
-    marginRight: auroraTheme.spacing.md,
-    borderLeftWidth: 3,
-    minWidth: 140,
-  },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: auroraTheme.spacing.sm,
-  },
-  textContainer: {
-    flex: 1,
-  },
-  value: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: auroraTheme.colors.text.primary,
-  },
-  label: {
-    fontSize: 12,
-    color: auroraTheme.colors.text.secondary,
-    marginTop: 2,
-  },
-});
+type RealtimeStatsTokens = ReturnType<typeof useUiTokens>;
+
+const createStyles = (uiTokens: RealtimeStatsTokens) =>
+  StyleSheet.create({
+    container: {
+      marginBottom: uiTokens.spacing.lg,
+    },
+    card: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: uiTokens.colors.surface,
+      borderRadius: uiTokens.radius.md,
+      padding: uiTokens.spacing.md,
+      marginRight: uiTokens.spacing.md,
+      borderLeftWidth: 3,
+      minWidth: 140,
+    },
+    iconContainer: {
+      width: 36,
+      height: 36,
+      borderRadius: uiTokens.radius.full,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: uiTokens.spacing.sm,
+    },
+    textContainer: {
+      flex: 1,
+    },
+    value: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: uiTokens.colors.textPrimary,
+    },
+    label: {
+      fontSize: 12,
+      color: uiTokens.colors.textSecondary,
+      marginTop: uiTokens.spacing.xxs,
+    },
+  });

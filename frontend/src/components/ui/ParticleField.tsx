@@ -8,6 +8,8 @@
  * - Performance optimized
  * - Customizable density and colors
  * - Theme-aware defaults
+ *
+ * @deprecated Particles are decorative and not approved for operational workflows.
  */
 
 import React, { useEffect, useMemo } from "react";
@@ -24,6 +26,7 @@ import Animated, {
 import { useThemeContext } from "../../context/ThemeContext";
 
 import { shadows as uiShadows } from "@/theme/legacyCompat";
+import { warnDeprecatedVisualSystem } from "./legacyVisualSystem";
 interface Particle {
   id: number;
   x: number;
@@ -144,6 +147,7 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({
   maxSize = 6,
   animated = true,
 }) => {
+  warnDeprecatedVisualSystem("ParticleField");
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { theme } = useThemeContext();
 

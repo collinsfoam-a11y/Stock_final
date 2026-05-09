@@ -13,6 +13,7 @@ import {
   ViewStyle,
   TextStyle,
   TouchableOpacity,
+  type KeyboardTypeOptions,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
@@ -35,7 +36,7 @@ interface ModernInputProps {
   disabled?: boolean;
   secureTextEntry?: boolean;
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
-  keyboardType?: "default" | "numeric" | "email-address" | "phone-pad";
+  keyboardType?: KeyboardTypeOptions;
   maxLength?: number;
   multiline?: boolean;
   numberOfLines?: number;
@@ -44,9 +45,14 @@ interface ModernInputProps {
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightIconPress?: () => void;
   onSubmitEditing?: () => void;
+  onBlur?: React.ComponentProps<typeof TextInput>["onBlur"];
+  onFocus?: React.ComponentProps<typeof TextInput>["onFocus"];
   returnKeyType?: "done" | "go" | "next" | "search" | "send";
   required?: boolean;
   testID?: string;
+  helperText?: string;
+  editable?: boolean;
+  autoCorrect?: boolean;
   style?: ViewStyle;
   inputStyle?: TextStyle;
   containerStyle?: ViewStyle;
@@ -70,9 +76,14 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   rightIcon,
   onRightIconPress,
   onSubmitEditing,
+  onBlur,
+  onFocus,
   returnKeyType,
   required = false,
   testID,
+  helperText,
+  editable = true,
+  autoCorrect,
   style,
   inputStyle,
   containerStyle,
@@ -172,15 +183,22 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           placeholderTextColor={uiTokens.colors.textSecondary}
           value={value}
           onChangeText={onChangeText}
-          editable={!disabled}
+          editable={editable && !disabled}
           secureTextEntry={isPassword && !isPasswordVisible}
           autoCapitalize={autoCapitalize}
+          autoCorrect={autoCorrect}
           keyboardType={keyboardType}
           maxLength={maxLength}
           multiline={multiline}
           numberOfLines={numberOfLines}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onFocus={(event) => {
+            setIsFocused(true);
+            onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setIsFocused(false);
+            onBlur?.(event);
+          }}
           onSubmitEditing={onSubmitEditing}
           returnKeyType={returnKeyType}
           testID={testID}
@@ -208,6 +226,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
       </Pressable>
 
       {Boolean(error) && <Text style={styles.errorText}>{error}</Text>}
+      {!error && Boolean(helperText) && <Text style={styles.helperText}>{helperText}</Text>}
     </View>
   );
 };
@@ -225,6 +244,11 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: fontSize.xs,
     color: unifiedColors.error[500],
+    marginTop: unifiedSpacing.xs,
+  },
+  helperText: {
+    fontSize: fontSize.xs,
+    color: unifiedColors.neutral[500],
     marginTop: unifiedSpacing.xs,
   },
 });

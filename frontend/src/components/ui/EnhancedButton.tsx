@@ -9,6 +9,8 @@
  * - Size variants
  *
  * Inspired by react-native-design-kit Button patterns
+ *
+ * @deprecated Use AppButton. This component remains as a legacy compatibility adapter only.
  */
 
 import React from "react";
@@ -28,6 +30,7 @@ import {
 } from "@/theme/uiConstants";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { warnDeprecatedVisualSystem } from "./legacyVisualSystem";
 export type ButtonType = "solid" | "outline" | "text" | "gradient";
 export type ButtonSize = "sm" | "md" | "lg" | "xl";
 export type IconPosition = "left" | "right" | "top" | "bottom";
@@ -105,6 +108,7 @@ export const EnhancedButton: React.FC<EnhancedButtonProps> = ({
   disabled,
   ...rest
 }) => {
+  warnDeprecatedVisualSystem("EnhancedButton");
   const { themeLegacy } = useThemeContext();
 
   // Determine colors based on type

@@ -7,16 +7,58 @@ import {
   OfflineQueueItem,
   removeSessionFromCache,
 } from "./offline/offlineStorage";
-import { syncBatch, isOnline } from "./api/api";
 import { useNetworkStore } from "../store/networkStore";
-import { useAuthStore } from "../store/authStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { createLogger } from "./logging";
+import { isDefinitelyOnline } from "../utils/network";
 import type { SyncRecord } from "../types/sync";
 
 const log = createLogger("syncService");
 
 const MANUAL_REVIEW_RETRIES_THRESHOLD = 5;
+const RECONNECT_SYNC_DELAY_MS = 2000;
+const DEFAULT_SYNC_INTERVAL_MS = 15 * 60 * 1000;
+const IS_TEST_ENV =
+  process.env.NODE_ENV === "test" || typeof process.env.JEST_WORKER_ID !== "undefined";
+type SyncAuthState = {
+  isAuthenticated: boolean;
+  user: unknown | null;
+};
+
+const emptyAuthState: SyncAuthState = {
+  isAuthenticated: false,
+  user: null,
+};
+let authStateProvider: () => SyncAuthState = () => emptyAuthState;
+let syncBatchPromise:
+  | Promise<(typeof import("./api/api.misc"))["syncBatch"]>
+  | null = null;
+let periodicSyncInterval: ReturnType<typeof setInterval> | null = null;
+let periodicSettingsUnsubscribe: (() => void) | null = null;
+let periodicSyncIntervalOverrideMs: number | undefined;
+
+const getSyncBatch = async () => {
+  if (!syncBatchPromise) {
+    syncBatchPromise = IS_TEST_ENV
+      ? Promise.resolve(
+          // Jest `doMock` setups need synchronous resolution after mocks are registered.
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          require("./api/api.misc")
+            .syncBatch as (typeof import("./api/api.misc"))["syncBatch"],
+        )
+      : import("./api/api.misc").then((module) => module.syncBatch);
+  }
+  return syncBatchPromise;
+};
+
+export const registerSyncAuthStateProvider = (provider: () => SyncAuthState) => {
+  authStateProvider = provider;
+  return () => {
+    if (authStateProvider === provider) {
+      authStateProvider = () => emptyAuthState;
+    }
+  };
+};
 
 /**
  * Aggregate outcome returned after syncing the offline queue.
@@ -34,6 +76,28 @@ export interface SyncResult {
 export interface SyncOptions {
   onProgress?: (current: number, total: number) => void;
   background?: boolean;
+  wakeReason?: "reconnect" | "periodic" | "manual";
+}
+
+export interface SyncSchedulerOptions {
+  intervalMs?: number;
+  runImmediately?: boolean;
+}
+
+export interface SyncRuntimeMetrics {
+  reconnectWakeupsScheduled: number;
+  reconnectWakeupsTriggered: number;
+  periodicWakeupsTriggered: number;
+  periodicReschedules: number;
+  syncRunsStarted: number;
+  syncRunsSucceeded: number;
+  syncRunsFailed: number;
+  syncRunsSkipped: number;
+  lastWakeReason: "reconnect" | "periodic" | "manual" | null;
+  lastIntervalMs: number | null;
+  lastSyncStartedAt: string | null;
+  lastSyncCompletedAt: string | null;
+  lastSyncError: string | null;
 }
 
 // Simple in-memory lock to prevent concurrent syncs
@@ -41,12 +105,43 @@ let isSyncing = false;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let activeSyncCleanup: (() => void) | null = null;
 const EMPTY_SYNC_RESULT: SyncResult = { success: 0, failed: 0, total: 0, errors: [] };
+const syncRuntimeMetrics: SyncRuntimeMetrics = {
+  reconnectWakeupsScheduled: 0,
+  reconnectWakeupsTriggered: 0,
+  periodicWakeupsTriggered: 0,
+  periodicReschedules: 0,
+  syncRunsStarted: 0,
+  syncRunsSucceeded: 0,
+  syncRunsFailed: 0,
+  syncRunsSkipped: 0,
+  lastWakeReason: null,
+  lastIntervalMs: null,
+  lastSyncStartedAt: null,
+  lastSyncCompletedAt: null,
+  lastSyncError: null,
+};
 
 const clearReconnectTimer = () => {
   if (reconnectTimer !== null) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
   }
+};
+
+const clearPeriodicSyncInterval = () => {
+  if (periodicSyncInterval !== null) {
+    clearInterval(periodicSyncInterval);
+    periodicSyncInterval = null;
+  }
+};
+
+const getPeriodicSyncIntervalMs = (overrideIntervalMs?: number): number => {
+  if (typeof overrideIntervalMs === "number") {
+    return Math.max(5 * 60 * 1000, overrideIntervalMs);
+  }
+
+  const minutes = useSettingsStore.getState().settings.autoSyncInterval;
+  return Math.max(5, minutes) * 60 * 1000;
 };
 
 const deriveFailureStatus = (
@@ -274,31 +369,110 @@ const buildSyncRecord = (
   };
 };
 
-const shouldSkipSync = (options?: SyncOptions): SyncResult | null => {
+const getSkipReason = (options?: SyncOptions): string | null => {
   if (isSyncing) {
-    log.debug("Sync already in progress, skipping");
-    return EMPTY_SYNC_RESULT;
+    return "sync_in_progress";
   }
 
-  if (!isOnline()) {
-    log.debug("Offline, skipping sync");
-    return EMPTY_SYNC_RESULT;
+  if (!isDefinitelyOnline()) {
+    return "offline";
   }
 
   const settings = useSettingsStore.getState().settings;
   if (options?.background && (settings.offlineMode || !settings.autoSyncEnabled)) {
-    log.debug("Background sync disabled by user settings");
-    return EMPTY_SYNC_RESULT;
+    return "background_sync_disabled";
   }
 
-  const authState = useAuthStore.getState();
+  const authState = authStateProvider();
   if (!authState.isAuthenticated || !authState.user) {
-    log.debug("Not authenticated, skipping sync");
-    return EMPTY_SYNC_RESULT;
+    return "unauthenticated";
   }
 
   return null;
 };
+
+const runBackgroundSync = async (
+  wakeReason: "reconnect" | "periodic",
+): Promise<void> => {
+  if (wakeReason === "reconnect") {
+    syncRuntimeMetrics.reconnectWakeupsTriggered += 1;
+  } else {
+    syncRuntimeMetrics.periodicWakeupsTriggered += 1;
+  }
+  syncRuntimeMetrics.lastWakeReason = wakeReason;
+  await syncOfflineQueue({ background: true, wakeReason });
+};
+
+const restartPeriodicSync = (shouldRunImmediately: boolean): void => {
+  clearPeriodicSyncInterval();
+  syncRuntimeMetrics.periodicReschedules += 1;
+
+  const { autoSyncEnabled, offlineMode } = useSettingsStore.getState().settings;
+  if (!autoSyncEnabled || offlineMode) {
+    log.debug("Periodic sync disabled by user settings");
+    syncRuntimeMetrics.lastIntervalMs = null;
+    return;
+  }
+
+  const intervalMs = getPeriodicSyncIntervalMs(periodicSyncIntervalOverrideMs);
+  syncRuntimeMetrics.lastIntervalMs = intervalMs;
+
+  if (shouldRunImmediately) {
+    void runBackgroundSync("periodic").catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      log.warn("Periodic sync run failed", { error: message });
+    });
+  }
+
+  periodicSyncInterval = setInterval(() => {
+    void runBackgroundSync("periodic").catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      log.warn("Periodic sync wakeup failed", { error: message });
+    });
+  }, intervalMs);
+  log.debug("Started periodic sync schedule", { intervalMs });
+};
+
+export const startSyncService = (options?: SyncSchedulerOptions): void => {
+  const runImmediately = options?.runImmediately ?? true;
+  periodicSyncIntervalOverrideMs = options?.intervalMs;
+  restartPeriodicSync(runImmediately);
+
+  if (!periodicSettingsUnsubscribe) {
+    periodicSettingsUnsubscribe = useSettingsStore.subscribe(
+      (state, previousState) => {
+        const current = state.settings;
+        const previous = previousState.settings;
+        if (
+          current.autoSyncEnabled === previous.autoSyncEnabled &&
+          current.autoSyncInterval === previous.autoSyncInterval &&
+          current.offlineMode === previous.offlineMode
+        ) {
+          return;
+        }
+
+        restartPeriodicSync(
+          current.autoSyncEnabled &&
+            !current.offlineMode &&
+            (!previous.autoSyncEnabled || previous.offlineMode),
+        );
+      },
+    );
+  }
+};
+
+export const stopSyncService = (): void => {
+  clearPeriodicSyncInterval();
+  periodicSyncIntervalOverrideMs = undefined;
+  if (periodicSettingsUnsubscribe) {
+    periodicSettingsUnsubscribe();
+    periodicSettingsUnsubscribe = null;
+  }
+};
+
+export const getSyncRuntimeMetrics = (): SyncRuntimeMetrics => ({
+  ...syncRuntimeMetrics,
+});
 
 const toErrorMessage = (error: unknown, fallback = "Unknown batch error") =>
   error instanceof Error ? error.message : fallback;
@@ -474,6 +648,7 @@ const syncBatchChunk = async (batch: OfflineQueueItem[], batchIndex: number) => 
   }
 
   try {
+    const syncBatch = await getSyncBatch();
     const response = await syncBatch(records, `offline-${Date.now()}-${batchIndex + 1}`);
     const batchResult = await handleBatchResults(validBatch, response.results || []);
     return {
@@ -521,16 +696,20 @@ export const initializeSyncService = () => {
       log.debug("Network came online, scheduling sync");
 
       clearReconnectTimer();
+      syncRuntimeMetrics.reconnectWakeupsScheduled += 1;
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
-        const authState = useAuthStore.getState();
+        const authState = authStateProvider();
         if (authState.isAuthenticated && authState.user) {
           log.debug("Authenticated and online, triggering sync");
-          void syncOfflineQueue({ background: true });
+          void runBackgroundSync("reconnect").catch((error) => {
+            const message = error instanceof Error ? error.message : String(error);
+            log.warn("Reconnect sync failed", { error: message });
+          });
         } else {
           log.debug("Not authenticated yet, skipping sync until login");
         }
-      }, 2000);
+      }, RECONNECT_SYNC_DELAY_MS);
     }
   });
 
@@ -567,10 +746,19 @@ export const getSyncStatus = async () => {
 export const syncOfflineQueue = async (
   options?: SyncOptions,
 ): Promise<SyncResult> => {
-  const skipped = shouldSkipSync(options);
-  if (skipped) return skipped;
+  const skipReason = getSkipReason(options);
+  if (skipReason) {
+    syncRuntimeMetrics.syncRunsSkipped += 1;
+    log.debug("Skipping sync run", { reason: skipReason });
+    return EMPTY_SYNC_RESULT;
+  }
 
   isSyncing = true;
+  syncRuntimeMetrics.syncRunsStarted += 1;
+  syncRuntimeMetrics.lastWakeReason =
+    options?.wakeReason ?? (options?.background ? "periodic" : "manual");
+  syncRuntimeMetrics.lastSyncStartedAt = new Date().toISOString();
+  syncRuntimeMetrics.lastSyncError = null;
 
   try {
     const queue = await getOfflineQueue();
@@ -619,6 +807,9 @@ export const syncOfflineQueue = async (
     log.error("Sync process error", error as Record<string, unknown>);
     const errorMessage =
       error instanceof Error ? error.message : "Unknown sync error";
+    syncRuntimeMetrics.syncRunsFailed += 1;
+    syncRuntimeMetrics.lastSyncError = errorMessage;
+    syncRuntimeMetrics.lastSyncCompletedAt = new Date().toISOString();
     return {
       success: 0,
       failed: 0,
@@ -626,6 +817,10 @@ export const syncOfflineQueue = async (
       errors: [{ id: "general", error: errorMessage }],
     };
   } finally {
+    if (syncRuntimeMetrics.lastSyncError === null) {
+      syncRuntimeMetrics.syncRunsSucceeded += 1;
+      syncRuntimeMetrics.lastSyncCompletedAt = new Date().toISOString();
+    }
     isSyncing = false;
   }
 };

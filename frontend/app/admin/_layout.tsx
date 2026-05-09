@@ -12,7 +12,6 @@
 import React from "react";
 import { Redirect, Stack, Slot, useSegments } from "expo-router";
 import { View, StyleSheet, Platform, useWindowDimensions } from "react-native";
-import { auroraTheme } from "@/theme/auroraTheme";
 import { AdminSidebar } from "@/components/navigation";
 import { RoleLayoutGuard } from "@/components/auth/RoleLayoutGuard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -21,7 +20,6 @@ import { usePersistentState } from "@/hooks/usePersistentState";
 import { breakpoints } from "@/styles/globalStyles";
 import { isAdminRouteEnabled } from "@/constants/roleFeatureFlags";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { flags } from "@/constants/flags";
 
 export default function AdminLayout() {
   const { width } = useWindowDimensions();
@@ -62,9 +60,7 @@ export default function AdminLayout() {
             style={[
               styles.mainContent,
               {
-                backgroundColor: flags.uiVisualSystemV2
-                  ? uiTokens.colors.background
-                  : auroraTheme.colors.background.primary,
+                backgroundColor: uiTokens.colors.background,
               },
             ]}
           >
@@ -94,10 +90,8 @@ const styles = StyleSheet.create({
   webContainer: {
     flex: 1,
     flexDirection: "row",
-    backgroundColor: auroraTheme.colors.background.primary,
   },
   mainContent: {
     flex: 1,
-    backgroundColor: auroraTheme.colors.background.primary,
   },
 });

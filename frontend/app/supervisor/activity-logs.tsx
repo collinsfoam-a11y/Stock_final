@@ -3,7 +3,7 @@
  * Refactored to use Aurora Design System
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
@@ -15,8 +15,12 @@ import { FlashList } from "@shopify/flash-list";
 import { getActivityLogs, getActivityStats } from "../../src/services/api/api";
 import { useToast } from "../../src/components/feedback/ToastProvider";
 import { ModernCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
-import { auroraTheme } from "../../src/theme/auroraTheme";
 import { safeBackNavigation } from "@/utils/navigation";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import {
+  createOperationalStyleBridge,
+  type OperationalStyleBridge,
+} from "@/theme/operationalStyleBridge";
 
 interface ActivityLog {
   id: string;
@@ -33,6 +37,9 @@ interface ActivityLog {
 
 export default function ActivityLogsScreen() {
   const router = useRouter();
+  const uiTokens = useUiTokens();
+  const operationalTheme = useMemo(() => createOperationalStyleBridge(uiTokens), [uiTokens]);
+  const styles = useMemo(() => createStyles(operationalTheme), [operationalTheme]);
   const { show } = useToast();
 
   const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -116,8 +123,8 @@ export default function ActivityLogsScreen() {
   };
 
   const renderLogItem = ({ item: log }: { item: ActivityLog }) => (
-    <AnimatedPressable style={{ marginBottom: auroraTheme.spacing.md }}>
-      <ModernCard variant="outlined" elevation="none" padding={auroraTheme.spacing.md}>
+    <AnimatedPressable style={{ marginBottom: operationalTheme.spacing.md }}>
+      <ModernCard variant="outlined" elevation="none" padding={operationalTheme.spacing.md}>
         <View style={styles.logHeader}>
           <View style={styles.logHeaderLeft}>
             <View
@@ -134,8 +141,8 @@ export default function ActivityLogsScreen() {
                 size={20}
                 color={
                   log.status === "error"
-                    ? auroraTheme.colors.error[500]
-                    : auroraTheme.colors.primary[500]
+                    ? operationalTheme.colors.error[500]
+                    : operationalTheme.colors.primary[500]
                 }
               />
             </View>
@@ -152,10 +159,10 @@ export default function ActivityLogsScreen() {
               {
                 color:
                   log.status === "success"
-                    ? auroraTheme.colors.success[500]
+                    ? operationalTheme.colors.success[500]
                     : log.status === "error"
-                      ? auroraTheme.colors.error[500]
-                      : auroraTheme.colors.warning[500],
+                      ? operationalTheme.colors.error[500]
+                      : operationalTheme.colors.warning[500],
               },
             ]}
           >
@@ -169,10 +176,10 @@ export default function ActivityLogsScreen() {
           <ModernCard
             variant="outlined"
             elevation="none"
-            padding={auroraTheme.spacing.xs}
+            padding={operationalTheme.spacing.xs}
             style={{
               alignSelf: "flex-start",
-              marginVertical: auroraTheme.spacing.xs,
+              marginVertical: operationalTheme.spacing.xs,
             }}
           >
             <Text style={styles.entityText}>
@@ -185,18 +192,18 @@ export default function ActivityLogsScreen() {
           <ModernCard
             variant="outlined"
             elevation="none"
-            padding={auroraTheme.spacing.sm}
+            padding={operationalTheme.spacing.sm}
             style={{
-              marginTop: auroraTheme.spacing.sm,
+              marginTop: operationalTheme.spacing.sm,
               flexDirection: "row",
               alignItems: "center",
               gap: 8,
-              borderColor: auroraTheme.colors.error[500],
+              borderColor: operationalTheme.colors.error[500],
               backgroundColor: "rgba(239, 68, 68, 0.1)",
             }}
           >
-            <Ionicons name="alert-circle" size={16} color={auroraTheme.colors.error[500]} />
-            <Text style={[styles.errorText, { color: auroraTheme.colors.error[500] }]}>
+            <Ionicons name="alert-circle" size={16} color={operationalTheme.colors.error[500]} />
+            <Text style={[styles.errorText, { color: operationalTheme.colors.error[500] }]}>
               {log.error_message}
             </Text>
           </ModernCard>
@@ -206,8 +213,8 @@ export default function ActivityLogsScreen() {
           <ModernCard
             variant="outlined"
             elevation="none"
-            padding={auroraTheme.spacing.sm}
-            style={{ marginTop: auroraTheme.spacing.sm }}
+            padding={operationalTheme.spacing.sm}
+            style={{ marginTop: operationalTheme.spacing.sm }}
           >
             <Text style={styles.detailsText} numberOfLines={3}>
               {JSON.stringify(log.details, null, 2)}
@@ -229,7 +236,7 @@ export default function ActivityLogsScreen() {
               onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
             >
-              <Ionicons name="arrow-back" size={24} color={auroraTheme.colors.text.primary} />
+              <Ionicons name="arrow-back" size={24} color={operationalTheme.colors.text.primary} />
             </AnimatedPressable>
             <View>
               <Text style={styles.pageTitle}>Activity Logs</Text>
@@ -267,7 +274,7 @@ export default function ActivityLogsScreen() {
         <View style={styles.listContainer}>
           {loading && logs.length === 0 ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={auroraTheme.colors.primary[500]} />
+              <ActivityIndicator size="large" color={operationalTheme.colors.primary[500]} />
               <Text style={styles.loadingText}>Loading activity logs...</Text>
             </View>
           ) : (
@@ -281,7 +288,7 @@ export default function ActivityLogsScreen() {
                 <RefreshControl
                   refreshing={refreshing}
                   onRefresh={handleRefresh}
-                  tintColor={auroraTheme.colors.primary[500]}
+                  tintColor={operationalTheme.colors.primary[500]}
                 />
               }
               onEndReached={loadMore}
@@ -291,7 +298,7 @@ export default function ActivityLogsScreen() {
                   <Ionicons
                     name="document-text-outline"
                     size={64}
-                    color={auroraTheme.colors.text.tertiary}
+                    color={operationalTheme.colors.text.tertiary}
                   />
                   <Text style={styles.emptyText}>No activity logs found</Text>
                 </View>
@@ -299,11 +306,11 @@ export default function ActivityLogsScreen() {
               ListFooterComponent={
                 loading && logs.length > 0 ? (
                   <View style={{ padding: 20 }}>
-                    <ActivityIndicator color={auroraTheme.colors.primary[500]} />
+                    <ActivityIndicator color={operationalTheme.colors.primary[500]} />
                   </View>
                 ) : null
               }
-              contentContainerStyle={{ paddingBottom: auroraTheme.spacing.xl }}
+              contentContainerStyle={{ paddingBottom: operationalTheme.spacing.xl }}
             />
           )}
         </View>
@@ -312,48 +319,48 @@ export default function ActivityLogsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: auroraTheme.colors.background.primary,
+    backgroundColor: operationalTheme.colors.background.primary,
   },
   container: {
     flex: 1,
     paddingTop: 60,
-    paddingHorizontal: auroraTheme.spacing.md,
+    paddingHorizontal: operationalTheme.spacing.md,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: auroraTheme.spacing.md,
+    marginBottom: operationalTheme.spacing.md,
   },
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.md,
+    gap: operationalTheme.spacing.md,
   },
   backButton: {
-    padding: auroraTheme.spacing.xs,
-    backgroundColor: auroraTheme.colors.background.glass,
-    borderRadius: auroraTheme.borderRadius.full,
+    padding: operationalTheme.spacing.xs,
+    backgroundColor: operationalTheme.colors.background.glass,
+    borderRadius: operationalTheme.borderRadius.full,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
+    borderColor: operationalTheme.colors.border.light,
   },
   pageTitle: {
-    fontFamily: auroraTheme.typography.fontFamily.heading,
-    fontSize: auroraTheme.typography.fontSize["2xl"],
-    color: auroraTheme.colors.text.primary,
+    fontFamily: operationalTheme.typography.fontFamily.heading,
+    fontSize: operationalTheme.typography.fontSize["2xl"],
+    color: operationalTheme.colors.text.primary,
     fontWeight: "700",
   },
   pageSubtitle: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
+    fontSize: operationalTheme.typography.fontSize.sm,
+    color: operationalTheme.colors.text.secondary,
   },
   statsContainer: {
     flexDirection: "row",
-    gap: auroraTheme.spacing.sm,
-    marginBottom: auroraTheme.spacing.md,
+    gap: operationalTheme.spacing.sm,
+    marginBottom: operationalTheme.spacing.md,
   },
   listContainer: {
     flex: 1,
@@ -364,9 +371,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loadingText: {
-    marginTop: auroraTheme.spacing.md,
-    color: auroraTheme.colors.text.secondary,
-    fontSize: auroraTheme.typography.fontSize.md,
+    marginTop: operationalTheme.spacing.md,
+    color: operationalTheme.colors.text.secondary,
+    fontSize: operationalTheme.typography.fontSize.md,
   },
   emptyContainer: {
     flex: 1,
@@ -375,25 +382,25 @@ const styles = StyleSheet.create({
     paddingTop: 100,
   },
   emptyText: {
-    marginTop: auroraTheme.spacing.md,
-    color: auroraTheme.colors.text.tertiary,
-    fontSize: auroraTheme.typography.fontSize.lg,
+    marginTop: operationalTheme.spacing.md,
+    color: operationalTheme.colors.text.tertiary,
+    fontSize: operationalTheme.typography.fontSize.lg,
   },
   logHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: auroraTheme.spacing.sm,
+    marginBottom: operationalTheme.spacing.sm,
   },
   logHeaderLeft: {
     flexDirection: "row",
-    gap: auroraTheme.spacing.md,
+    gap: operationalTheme.spacing.md,
     flex: 1,
   },
   iconContainer: {
     width: 36,
     height: 36,
-    borderRadius: auroraTheme.borderRadius.full,
+    borderRadius: operationalTheme.borderRadius.full,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -401,38 +408,38 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   logAction: {
-    fontSize: auroraTheme.typography.fontSize.md,
+    fontSize: operationalTheme.typography.fontSize.md,
     fontWeight: "700",
-    color: auroraTheme.colors.text.primary,
+    color: operationalTheme.colors.text.primary,
     marginBottom: 2,
   },
   logUser: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.tertiary,
+    fontSize: operationalTheme.typography.fontSize.xs,
+    color: operationalTheme.colors.text.tertiary,
   },
   statusText: {
-    fontSize: auroraTheme.typography.fontSize.xs,
+    fontSize: operationalTheme.typography.fontSize.xs,
     fontWeight: "bold",
     textTransform: "uppercase",
   },
   timestamp: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.tertiary,
-    marginBottom: auroraTheme.spacing.xs,
+    fontSize: operationalTheme.typography.fontSize.xs,
+    color: operationalTheme.colors.text.tertiary,
+    marginBottom: operationalTheme.spacing.xs,
     marginLeft: 52, // Align with text, skipping icon
   },
   entityText: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.secondary,
+    fontSize: operationalTheme.typography.fontSize.xs,
+    color: operationalTheme.colors.text.secondary,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
   errorText: {
-    fontSize: auroraTheme.typography.fontSize.xs,
+    fontSize: operationalTheme.typography.fontSize.xs,
     flex: 1,
   },
   detailsText: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.secondary,
+    fontSize: operationalTheme.typography.fontSize.xs,
+    color: operationalTheme.colors.text.secondary,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
 });

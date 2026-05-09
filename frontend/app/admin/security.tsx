@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
+  FlatList,
   View,
   Text,
   StyleSheet,
@@ -22,8 +23,10 @@ import {
   getSecuritySessions,
 } from "../../src/services/api";
 import { useSettingsStore } from "../../src/store/settingsStore";
-import { auroraTheme } from "../../src/theme/auroraTheme";
 import { safeBackNavigation } from "@/utils/navigation";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
 
 const { width } = Dimensions.get("window");
 const isWeb = Platform.OS === "web";
@@ -31,6 +34,8 @@ const isTablet = width > 768;
 
 export default function SecurityScreen() {
   const router = useRouter();
+  const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const { hasRole } = usePermission();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [loading, setLoading] = useState(true);
@@ -132,9 +137,9 @@ export default function SecurityScreen() {
         <View style={styles.metricsGrid}>
           <ModernCard variant="outlined" elevation="none" padding={0} style={styles.metricCard}>
             <View
-              style={[styles.metricIcon, { backgroundColor: auroraTheme.colors.error[500] + "20" }]}
+              style={[styles.metricIcon, { backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.12) }]}
             >
-              <Ionicons name="close-circle" size={24} color={auroraTheme.colors.error[500]} />
+              <Ionicons name="close-circle" size={24} color={uiTokens.colors.error} />
             </View>
             <Text style={styles.metricValue}>{stats.failed_logins || 0}</Text>
             <Text style={styles.metricLabel}>Failed Logins (24h)</Text>
@@ -144,10 +149,10 @@ export default function SecurityScreen() {
             <View
               style={[
                 styles.metricIcon,
-                { backgroundColor: auroraTheme.colors.success[500] + "20" },
+                { backgroundColor: colorWithAlpha(uiTokens.colors.success, 0.12) },
               ]}
             >
-              <Ionicons name="checkmark-circle" size={24} color={auroraTheme.colors.success[500]} />
+              <Ionicons name="checkmark-circle" size={24} color={uiTokens.colors.success} />
             </View>
             <Text style={styles.metricValue}>{stats.successful_logins || 0}</Text>
             <Text style={styles.metricLabel}>Total Logins (24h)</Text>
@@ -157,10 +162,10 @@ export default function SecurityScreen() {
             <View
               style={[
                 styles.metricIcon,
-                { backgroundColor: auroraTheme.colors.primary[500] + "20" },
+                { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.12) },
               ]}
             >
-              <Ionicons name="people" size={24} color={auroraTheme.colors.primary[500]} />
+              <Ionicons name="people" size={24} color={uiTokens.colors.accent} />
             </View>
             <Text style={styles.metricValue}>{stats.active_sessions || 0}</Text>
             <Text style={styles.metricLabel}>Active Sessions</Text>
@@ -170,10 +175,10 @@ export default function SecurityScreen() {
             <View
               style={[
                 styles.metricIcon,
-                { backgroundColor: auroraTheme.colors.warning[500] + "20" },
+                { backgroundColor: colorWithAlpha(uiTokens.colors.warning, 0.12) },
               ]}
             >
-              <Ionicons name="globe-outline" size={24} color={auroraTheme.colors.warning[500]} />
+              <Ionicons name="globe-outline" size={24} color={uiTokens.colors.warning} />
             </View>
             <Text style={styles.metricValue}>{stats.suspicious_ips || 0}</Text>
             <Text style={styles.metricLabel}>Flagged IPs</Text>
@@ -205,128 +210,181 @@ export default function SecurityScreen() {
     );
   };
 
-  const renderFailedLogins = () => (
-    <View style={styles.tabContent}>
-      {failedLogins.length === 0 ? (
-        <EmptyState
-          message="No failed login attempts in the last 24 hours"
-          icon="shield-checkmark"
-        />
-      ) : (
-        <View style={styles.listContainer}>
-          {failedLogins.map((login: any, index: number) => (
-            <ModernCard
-              key={index}
-              variant="outlined"
-              elevation="none"
-              padding={0}
-              style={styles.listItem}
-            >
-              <View
-                style={[
-                  styles.listItemIcon,
-                  { backgroundColor: auroraTheme.colors.error[500] + "15" },
-                ]}
-              >
-                <Ionicons name="warning-outline" size={20} color={auroraTheme.colors.error[500]} />
-              </View>
-              <View style={styles.listItemContent}>
-                <Text style={styles.listItemTitle}>{login.username || "Anonymous"}</Text>
-                <Text style={styles.listItemSubtitle}>IP: {login.ip_address}</Text>
-                <Text style={styles.listItemReason}>
-                  Error: {login.error || "Authentication failed"}
-                </Text>
-              </View>
-              <Text style={styles.listItemTime}>
-                {new Date(login.timestamp).toLocaleTimeString()}
-              </Text>
-            </ModernCard>
-          ))}
-        </View>
-      )}
-    </View>
+  const renderFailedLoginItem = ({ item: login }: { item: any }) => (
+    <ModernCard variant="outlined" elevation="none" padding={0} style={styles.listItem}>
+      <View
+        style={[styles.listItemIcon, { backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.1) }]}
+      >
+        <Ionicons name="warning-outline" size={20} color={uiTokens.colors.error} />
+      </View>
+      <View style={styles.listItemContent}>
+        <Text style={styles.listItemTitle}>{login.username || "Anonymous"}</Text>
+        <Text style={styles.listItemSubtitle}>IP: {login.ip_address}</Text>
+        <Text style={styles.listItemReason}>
+          Error: {login.error || "Authentication failed"}
+        </Text>
+      </View>
+      <Text style={styles.listItemTime}>
+        {new Date(login.timestamp).toLocaleTimeString()}
+      </Text>
+    </ModernCard>
   );
 
-  const renderSuspiciousActivity = () => {
-    if (!suspiciousActivity) return <LoadingSpinner />;
-
-    return (
-      <View style={styles.tabContent}>
-        {(suspiciousActivity.suspicious_ips || []).map((item: any, index: number) => (
-          <ModernCard
-            key={`ip-${index}`}
-            variant="outlined"
-            elevation="none"
-            padding={0}
-            style={styles.suspiciousCard}
-          >
-            <View style={styles.suspiciousHeader}>
-              <Ionicons name="globe" size={24} color={auroraTheme.colors.warning[500]} />
-              <Text style={styles.suspiciousTitle}>{item.ip_address}</Text>
-              <View style={styles.riskBadge}>
-                <Text style={styles.riskText}>RISK</Text>
-              </View>
-            </View>
-            <Text style={styles.suspiciousDetail}>
-              {item.count} failed attempts across {item.usernames?.length || 0} identifiers.
-            </Text>
-            <Text style={styles.suspiciousFooter}>
-              Last attempt: {new Date(item.last_attempt).toLocaleString()}
-            </Text>
-          </ModernCard>
-        ))}
-        {!suspiciousActivity.suspicious_ips?.length &&
-          !suspiciousActivity.suspicious_users?.length && (
-            <EmptyState message="No suspicious activity patterns detected" icon="finger-print" />
-          )}
-      </View>
-    );
-  };
-
-  const renderSessions = () => (
-    <View style={styles.tabContent}>
-      {sessions.length === 0 ? (
-        <EmptyState message="No active administrative sessions" icon="people" />
-      ) : (
-        <View style={styles.listContainer}>
-          {sessions.map((session: any, index: number) => (
-            <ModernCard
-              key={index}
-              variant="outlined"
-              elevation="none"
-              padding={0}
-              style={styles.listItem}
-            >
-              <View style={styles.sessionAvatar}>
-                <Text style={styles.avatarText}>{session.username?.[0]?.toUpperCase()}</Text>
-              </View>
-              <View style={styles.listItemContent}>
-                <Text style={styles.listItemTitle}>
-                  {session.username} <Text style={styles.roleTag}>({session.role})</Text>
-                </Text>
-                <Text style={styles.listItemSubtitle}>
-                  {session.ip_address} • {session.user_agent?.split(" ")[0] || "Unknown Client"}
-                </Text>
-              </View>
-              <View style={styles.activeTag}>
-                <View style={styles.pulseDot} />
-                <Text style={styles.activeLabel}>Live</Text>
-              </View>
-            </ModernCard>
-          ))}
+  const renderSuspiciousItem = ({ item }: { item: any }) => (
+    <ModernCard variant="outlined" elevation="none" padding={0} style={styles.suspiciousCard}>
+      <View style={styles.suspiciousHeader}>
+        <Ionicons name="globe" size={24} color={uiTokens.colors.warning} />
+        <Text style={styles.suspiciousTitle}>{item.ip_address}</Text>
+        <View style={styles.riskBadge}>
+          <Text style={styles.riskText}>RISK</Text>
         </View>
-      )}
-    </View>
+      </View>
+      <Text style={styles.suspiciousDetail}>
+        {item.count} failed attempts across {item.usernames?.length || 0} identifiers.
+      </Text>
+      <Text style={styles.suspiciousFooter}>
+        Last attempt: {new Date(item.last_attempt).toLocaleString()}
+      </Text>
+    </ModernCard>
+  );
+
+  const renderSessionItem = ({ item: session }: { item: any }) => (
+    <ModernCard variant="outlined" elevation="none" padding={0} style={styles.listItem}>
+      <View style={styles.sessionAvatar}>
+        <Text style={styles.avatarText}>{session.username?.[0]?.toUpperCase()}</Text>
+      </View>
+      <View style={styles.listItemContent}>
+        <Text style={styles.listItemTitle}>
+          {session.username} <Text style={styles.roleTag}>({session.role})</Text>
+        </Text>
+        <Text style={styles.listItemSubtitle}>
+          {session.ip_address} • {session.user_agent?.split(" ")[0] || "Unknown Client"}
+        </Text>
+      </View>
+      <View style={styles.activeTag}>
+        <View style={styles.pulseDot} />
+        <Text style={styles.activeLabel}>Live</Text>
+      </View>
+    </ModernCard>
   );
 
   const EmptyState = ({ message, icon }: { message: string; icon: any }) => (
     <View style={styles.emptyContainer}>
       <ModernCard variant="outlined" elevation="none" padding={0} style={styles.emptyContent}>
-        <Ionicons name={icon} size={64} color={auroraTheme.colors.text.muted} />
+        <Ionicons name={icon} size={64} color={uiTokens.colors.textMuted} />
         <Text style={styles.emptyText}>{message}</Text>
       </ModernCard>
     </View>
   );
+
+  const ListGap = () => <View style={styles.listGap} />;
+
+  const renderFooter = () => (
+    <View style={styles.footer}>
+      <Text style={styles.footerText}>Enterprise Security Engine v2.0</Text>
+      <Text style={styles.footerSubtext}>
+        System integrity checked at {lastUpdate.toLocaleTimeString()}
+      </Text>
+    </View>
+  );
+
+  const refreshControl = (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={() => loadData(true)}
+      tintColor={uiTokens.colors.accent}
+    />
+  );
+
+  const renderStaticContent = (content: React.ReactElement) => (
+    <FlatList
+      contentContainerStyle={[styles.scrollContainer, isWeb && styles.scrollContainerWeb]}
+      data={[]}
+      keyExtractor={(_, index) => `static-${index}`}
+      ListFooterComponent={renderFooter}
+      ListHeaderComponent={content}
+      refreshControl={refreshControl}
+      renderItem={() => null}
+    />
+  );
+
+  const renderActiveContent = () => {
+    if (offlineMode) {
+      return renderStaticContent(
+        <ModernCard variant="outlined" elevation="none" padding={0} style={styles.offlineNotice}>
+          <Text style={styles.offlineNoticeTitle}>
+            Security monitoring requires a live connection
+          </Text>
+          <Text style={styles.offlineNoticeBody}>
+            Failed logins, suspicious activity, and active session telemetry are loaded from backend
+            services and are not available offline.
+          </Text>
+        </ModernCard>
+      );
+    }
+
+    if (activeTab === "summary") {
+      return renderStaticContent(renderSummary());
+    }
+
+    if (activeTab === "failed") {
+      return (
+        <FlatList
+          contentContainerStyle={[styles.scrollContainer, isWeb && styles.scrollContainerWeb]}
+          data={failedLogins}
+          ItemSeparatorComponent={ListGap}
+          keyExtractor={(login, index) =>
+            `${login.username || "failed"}-${login.timestamp || index}`
+          }
+          ListEmptyComponent={
+            <EmptyState
+              message="No failed login attempts in the last 24 hours"
+              icon="shield-checkmark"
+            />
+          }
+          ListFooterComponent={renderFooter}
+          refreshControl={refreshControl}
+          renderItem={renderFailedLoginItem}
+        />
+      );
+    }
+
+    if (activeTab === "suspicious") {
+      if (!suspiciousActivity) return renderStaticContent(<LoadingSpinner />);
+
+      return (
+        <FlatList
+          contentContainerStyle={[styles.scrollContainer, isWeb && styles.scrollContainerWeb]}
+          data={suspiciousActivity.suspicious_ips || []}
+          ItemSeparatorComponent={ListGap}
+          keyExtractor={(item, index) => `${item.ip_address || "ip"}-${index}`}
+          ListEmptyComponent={
+            !suspiciousActivity.suspicious_users?.length ? (
+              <EmptyState message="No suspicious activity patterns detected" icon="finger-print" />
+            ) : null
+          }
+          ListFooterComponent={renderFooter}
+          refreshControl={refreshControl}
+          renderItem={renderSuspiciousItem}
+        />
+      );
+    }
+
+    return (
+      <FlatList
+        contentContainerStyle={[styles.scrollContainer, isWeb && styles.scrollContainerWeb]}
+        data={sessions}
+        ItemSeparatorComponent={ListGap}
+        keyExtractor={(session, index) =>
+          `${session.id || session.session_id || session.username || "session"}-${index}`
+        }
+        ListEmptyComponent={<EmptyState message="No active administrative sessions" icon="people" />}
+        ListFooterComponent={renderFooter}
+        refreshControl={refreshControl}
+        renderItem={renderSessionItem}
+      />
+    );
+  };
 
   return (
     <ScreenContainer
@@ -342,11 +400,17 @@ export default function SecurityScreen() {
           <AnimatedPressable
             style={[styles.refreshButton, offlineMode && styles.disabledButton]}
             onPress={() => loadData(true)}
+            disabled={offlineMode}
+            {...getAccessibleButtonProps({
+              label: "Refresh security monitoring data",
+              disabled: offlineMode,
+              busy: refreshing,
+            })}
           >
             <Ionicons
               name="sync"
               size={22}
-              color={auroraTheme.colors.text.primary}
+              color={uiTokens.colors.textPrimary}
               style={refreshing ? styles.refreshingIcon : undefined}
             />
           </AnimatedPressable>
@@ -371,15 +435,15 @@ export default function SecurityScreen() {
               key={tab.id}
               style={[styles.tab, activeTab === tab.id && styles.activeTab]}
               onPress={() => setActiveTab(tab.id as any)}
+              {...getAccessibleButtonProps({
+                label: `Open ${tab.label} security tab`,
+                selected: activeTab === tab.id,
+              })}
             >
               <Ionicons
                 name={tab.icon as any}
                 size={18}
-                color={
-                  activeTab === tab.id
-                    ? auroraTheme.colors.text.primary
-                    : auroraTheme.colors.text.muted
-                }
+                color={activeTab === tab.id ? uiTokens.colors.surface : uiTokens.colors.textMuted}
               />
               <Text style={[styles.tabText, activeTab === tab.id && styles.activeTabText]}>
                 {tab.label}
@@ -389,83 +453,52 @@ export default function SecurityScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContainer, isWeb && styles.scrollContainerWeb]}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => loadData(true)}
-            tintColor={auroraTheme.colors.primary[500]}
-          />
-        }
-      >
-        {offlineMode ? (
-          <ModernCard variant="outlined" elevation="none" padding={0} style={styles.offlineNotice}>
-            <Text style={styles.offlineNoticeTitle}>
-              Security monitoring requires a live connection
-            </Text>
-            <Text style={styles.offlineNoticeBody}>
-              Failed logins, suspicious activity, and active session telemetry are loaded from
-              backend services and are not available offline.
-            </Text>
-          </ModernCard>
-        ) : (
-          <>
-            {activeTab === "summary" && renderSummary()}
-            {activeTab === "failed" && renderFailedLogins()}
-            {activeTab === "suspicious" && renderSuspiciousActivity()}
-            {activeTab === "sessions" && renderSessions()}
-          </>
-        )}
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Enterprise Security Engine v2.0</Text>
-          <Text style={styles.footerSubtext}>
-            System integrity checked at {lastUpdate.toLocaleTimeString()}
-          </Text>
-        </View>
-      </ScrollView>
+      {renderActiveContent()}
     </ScreenContainer>
   );
 }
 
-const styles = StyleSheet.create({
+type SecurityTokens = ReturnType<typeof useUiTokens>;
+
+const createStyles = (uiTokens: SecurityTokens) =>
+  StyleSheet.create({
   tabsWrapper: {
-    paddingVertical: 8,
-    backgroundColor: "rgba(10, 15, 30, 0.4)",
+    paddingVertical: uiTokens.spacing.sm,
+    backgroundColor: uiTokens.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.05)",
+    borderBottomColor: uiTokens.colors.border,
   },
   tabsContainer: {
     flexGrow: 0,
   },
   tabsContent: {
-    paddingHorizontal: auroraTheme.spacing.md,
-    gap: 10,
+    paddingHorizontal: uiTokens.spacing.md,
+    gap: uiTokens.spacing.sm,
   },
   tab: {
+    ...getMinimumTouchTargetStyle(),
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    justifyContent: "center",
+    paddingHorizontal: uiTokens.spacing.md,
+    paddingVertical: uiTokens.spacing.sm,
+    borderRadius: uiTokens.radius.full,
+    backgroundColor: uiTokens.colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
-    gap: 8,
+    borderColor: uiTokens.colors.border,
+    gap: uiTokens.spacing.sm,
   },
   activeTab: {
-    backgroundColor: auroraTheme.colors.primary[600],
-    borderColor: auroraTheme.colors.primary[400],
+    backgroundColor: uiTokens.colors.accent,
+    borderColor: uiTokens.colors.accent,
   },
   tabText: {
-    color: auroraTheme.colors.text.muted,
+    color: uiTokens.colors.textMuted,
     fontSize: 13,
     fontWeight: "600",
   },
   activeTabText: {
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.surface,
   },
   disabledButton: {
     opacity: 0.45,
@@ -474,8 +507,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContainer: {
-    padding: auroraTheme.spacing.md,
-    paddingBottom: 40,
+    padding: uiTokens.spacing.md,
+    paddingBottom: uiTokens.spacing["3xl"],
   },
   scrollContainerWeb: {
     maxWidth: 1200,
@@ -483,31 +516,31 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   tabContent: {
-    gap: 16,
+    gap: uiTokens.spacing.md,
   },
   offlineNotice: {
-    padding: auroraTheme.spacing.lg,
+    padding: uiTokens.spacing.lg,
   },
   offlineNoticeTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: auroraTheme.colors.text.primary,
-    marginBottom: 6,
+    color: uiTokens.colors.textPrimary,
+    marginBottom: uiTokens.spacing.xs,
   },
   offlineNoticeBody: {
     fontSize: 13,
     lineHeight: 20,
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
   },
   metricsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: uiTokens.spacing.md,
   },
   metricCard: {
     flex: 1,
     minWidth: isTablet ? "23%" : "47%",
-    padding: auroraTheme.spacing.lg,
+    padding: uiTokens.spacing.lg,
     alignItems: "center",
   },
   metricIcon: {
@@ -516,46 +549,46 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: uiTokens.spacing.md,
   },
   metricValue: {
     fontSize: 28,
     fontWeight: "800",
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
   },
   metricLabel: {
     fontSize: 10,
     fontWeight: "700",
-    color: auroraTheme.colors.text.muted,
+    color: uiTokens.colors.textMuted,
     textTransform: "uppercase",
-    marginTop: 4,
+    marginTop: uiTokens.spacing.xs,
     textAlign: "center",
   },
   eventsCard: {
-    padding: auroraTheme.spacing.lg,
-    marginTop: 8,
+    padding: uiTokens.spacing.lg,
+    marginTop: uiTokens.spacing.sm,
   },
   subsectionTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: auroraTheme.colors.text.primary,
-    marginBottom: 16,
+    color: uiTokens.colors.textPrimary,
+    marginBottom: uiTokens.spacing.md,
     textTransform: "uppercase",
     letterSpacing: 1,
   },
   eventRow: {
     flexDirection: "row",
-    paddingVertical: 12,
+    paddingVertical: uiTokens.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.05)",
-    gap: 12,
+    borderBottomColor: colorWithAlpha(uiTokens.colors.textMuted, 0.12),
+    gap: uiTokens.spacing.md,
   },
   eventDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: auroraTheme.colors.primary[500],
-    marginTop: 6,
+    backgroundColor: uiTokens.colors.accent,
+    marginTop: uiTokens.spacing.xs,
   },
   eventHeaderRow: {
     flexDirection: "row",
@@ -568,26 +601,29 @@ const styles = StyleSheet.create({
   eventAction: {
     fontSize: 14,
     fontWeight: "700",
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
     textTransform: "capitalize",
   },
   eventTime: {
     fontSize: 11,
-    color: auroraTheme.colors.text.muted,
+    color: uiTokens.colors.textMuted,
   },
   eventUser: {
     fontSize: 12,
-    color: auroraTheme.colors.text.secondary,
-    marginTop: 2,
+    color: uiTokens.colors.textSecondary,
+    marginTop: uiTokens.spacing.xxs,
   },
   listContainer: {
-    gap: 10,
+    gap: uiTokens.spacing.sm,
+  },
+  listGap: {
+    height: uiTokens.spacing.sm,
   },
   listItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: auroraTheme.spacing.lg,
-    gap: 16,
+    padding: uiTokens.spacing.lg,
+    gap: uiTokens.spacing.md,
   },
   listItemIcon: {
     width: 40,
@@ -602,135 +638,138 @@ const styles = StyleSheet.create({
   listItemTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
   },
   listItemSubtitle: {
     fontSize: 12,
-    color: auroraTheme.colors.text.muted,
-    marginTop: 2,
+    color: uiTokens.colors.textMuted,
+    marginTop: uiTokens.spacing.xxs,
   },
   listItemReason: {
     fontSize: 11,
-    color: auroraTheme.colors.error[400],
-    marginTop: 4,
+    color: uiTokens.colors.error,
+    marginTop: uiTokens.spacing.xs,
     fontWeight: "500",
   },
   listItemTime: {
     fontSize: 11,
-    color: auroraTheme.colors.text.muted,
+    color: uiTokens.colors.textMuted,
   },
   suspiciousCard: {
-    padding: auroraTheme.spacing.lg,
-    marginBottom: 12,
+    padding: uiTokens.spacing.lg,
+    marginBottom: uiTokens.spacing.md,
     borderLeftWidth: 4,
-    borderLeftColor: auroraTheme.colors.warning[500],
+    borderLeftColor: uiTokens.colors.warning,
   },
   suspiciousHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    marginBottom: 8,
+    gap: uiTokens.spacing.md,
+    marginBottom: uiTokens.spacing.sm,
   },
   suspiciousTitle: {
     fontSize: 18,
     fontWeight: "800",
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
     flex: 1,
   },
   riskBadge: {
-    backgroundColor: auroraTheme.colors.error[600],
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
+    backgroundColor: uiTokens.colors.error,
+    paddingHorizontal: uiTokens.spacing.sm,
+    paddingVertical: uiTokens.spacing.xxs,
+    borderRadius: uiTokens.radius.sm,
   },
   riskText: {
     fontSize: 9,
     fontWeight: "900",
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.surface,
   },
   suspiciousDetail: {
     fontSize: 14,
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
     lineHeight: 20,
   },
   suspiciousFooter: {
     fontSize: 11,
-    color: auroraTheme.colors.text.muted,
-    marginTop: 12,
+    color: uiTokens.colors.textMuted,
+    marginTop: uiTokens.spacing.md,
     fontStyle: "italic",
   },
   sessionAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: auroraTheme.colors.primary[700],
+    backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.18),
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: auroraTheme.colors.primary[400],
+    borderColor: uiTokens.colors.accent,
   },
   avatarText: {
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.accentStrong,
     fontWeight: "800",
     fontSize: 18,
   },
   roleTag: {
     fontSize: 12,
-    color: auroraTheme.colors.primary[400],
+    color: uiTokens.colors.accent,
     fontWeight: "400",
   },
   activeTag: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(16, 185, 129, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
+    backgroundColor: colorWithAlpha(uiTokens.colors.success, 0.1),
+    paddingHorizontal: uiTokens.spacing.sm,
+    paddingVertical: uiTokens.spacing.xs,
+    borderRadius: uiTokens.radius.lg,
+    gap: uiTokens.spacing.xs,
   },
   pulseDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: auroraTheme.colors.success[500],
+    backgroundColor: uiTokens.colors.success,
   },
   activeLabel: {
     fontSize: 9,
     fontWeight: "900",
-    color: auroraTheme.colors.success[500],
+    color: uiTokens.colors.success,
     textTransform: "uppercase",
   },
   refreshButton: {
-    padding: 8,
+    ...getMinimumTouchTargetStyle(),
+    alignItems: "center",
+    justifyContent: "center",
+    padding: uiTokens.spacing.sm,
   },
   refreshingIcon: {
     opacity: 0.5,
   },
   emptyContainer: {
-    paddingVertical: 40,
+    paddingVertical: uiTokens.spacing["3xl"],
   },
   emptyContent: {
-    padding: 40,
+    padding: uiTokens.spacing["3xl"],
     alignItems: "center",
-    gap: 16,
+    gap: uiTokens.spacing.md,
   },
   emptyText: {
-    color: auroraTheme.colors.text.muted,
+    color: uiTokens.colors.textMuted,
     fontSize: 15,
     textAlign: "center",
   },
   footer: {
-    marginTop: 32,
+    marginTop: uiTokens.spacing.xl,
     alignItems: "center",
-    gap: 4,
+    gap: uiTokens.spacing.xs,
   },
   footerText: {
     fontSize: 12,
     fontWeight: "700",
-    color: auroraTheme.colors.text.muted,
+    color: uiTokens.colors.textMuted,
   },
   footerSubtext: {
     fontSize: 10,
-    color: auroraTheme.colors.text.disabled,
+    color: uiTokens.colors.textMuted,
   },
 });

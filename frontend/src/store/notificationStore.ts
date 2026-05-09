@@ -12,7 +12,7 @@ import {
   markNotificationAsRead,
   markAllNotificationsAsRead,
   type Notification,
-} from "../services/api/api";
+} from "../services/api/api.notifications";
 import { createLogger } from "../services/logging";
 import { shouldPollNotifications } from "./notificationPolling";
 

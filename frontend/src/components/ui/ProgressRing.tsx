@@ -1,12 +1,7 @@
 /**
- * ProgressRing Component - Aurora Design
+ * ProgressRing Component - Operational Progress Feedback
  *
- * Circular progress indicator with gradient
- * Features:
- * - Smooth animation
- * - Gradient stroke
- * - Center label
- * - Customizable size and colors
+ * Circular progress indicator with tokenized motion and semantic colors.
  */
 
 import React, { useEffect } from "react";
@@ -18,8 +13,9 @@ import Animated, {
   withTiming,
   Easing,
 } from "react-native-reanimated";
-import { auroraTheme } from "@/theme/auroraTheme";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { getOperationalMotionDuration } from "@/utils/motion";
 
 interface ProgressRingProps {
   progress: number; // 0-100
@@ -41,9 +37,10 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
   showPercentage = true,
 }) => {
   const uiTokens = useUiTokens();
+  const prefersReducedMotion = useReducedMotion();
   const animatedProgress = useSharedValue(0);
   const resolvedColors = colors ?? [uiTokens.colors.accent, uiTokens.colors.accentStrong];
-  const animationDuration = uiTokens.motion.enabled ? uiTokens.motion.slow : 0;
+  const animationDuration = getOperationalMotionDuration(uiTokens, "slow", prefersReducedMotion);
 
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
@@ -106,7 +103,6 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
             style={[
               styles.percentage,
               {
-                fontFamily: auroraTheme.typography.fontFamily.heading,
                 fontSize: size * 0.2,
                 color: uiTokens.colors.textPrimary,
               },
@@ -120,9 +116,9 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
             style={[
               styles.label,
               {
-                fontFamily: auroraTheme.typography.fontFamily.body,
                 fontSize: size * 0.1,
                 color: uiTokens.colors.textSecondary,
+                marginTop: uiTokens.spacing.xs,
               },
             ]}
           >
@@ -147,10 +143,9 @@ const styles = StyleSheet.create({
   },
   percentage: {
     fontWeight: "700",
-    letterSpacing: -1,
+    letterSpacing: 0,
   },
   label: {
-    marginTop: 4,
     textAlign: "center",
     fontWeight: "500",
   },

@@ -6,6 +6,7 @@ import ModernCard from "@/components/ui/ModernCard";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { Item } from "@/types/scan";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 interface BundleComponent {
   item_code?: string;
@@ -24,6 +25,7 @@ interface ItemSummarySectionProps {
   item: ItemSummaryItem;
   onRefreshStock: () => void;
   showDetails?: boolean;
+  showBarcodeDetails?: boolean;
   showItemImages: boolean;
   showItemPrices: boolean;
   showItemStock: boolean;
@@ -61,11 +63,13 @@ export function ItemSummarySection({
   item,
   onRefreshStock,
   showDetails = false,
+  showBarcodeDetails = true,
   showItemImages,
   showItemPrices,
   showItemStock,
 }: ItemSummarySectionProps) {
   const uiTokens = useUiTokens();
+  const decorativeIconProps = getDecorativeIconProps();
   const { bundleComponents, stockQty, stockUom, displayBarcode, salePrice } =
     resolveSummaryDisplayData(item, barcode);
 
@@ -317,7 +321,12 @@ export function ItemSummarySection({
     <View>
       {item.is_misplaced ? (
         <View style={styles.misplacedBadge}>
-          <Ionicons name="alert-circle" size={24} color={uiTokens.colors.surfaceElevated} />
+          <Ionicons
+            {...decorativeIconProps}
+            name="alert-circle"
+            size={24}
+            color={uiTokens.colors.surfaceElevated}
+          />
           <View style={styles.misplacedContent}>
             <Text style={styles.misplacedTitle}>MISPLACED ITEM</Text>
             <Text style={styles.misplacedText}>
@@ -336,7 +345,12 @@ export function ItemSummarySection({
             {showItemImages && item.image_url ? (
               <Image source={{ uri: item.image_url }} style={styles.itemImage} resizeMode="cover" />
             ) : (
-              <Ionicons name="cube-outline" size={24} color={uiTokens.colors.accentStrong} />
+              <Ionicons
+                {...decorativeIconProps}
+                name="cube-outline"
+                size={24}
+                color={uiTokens.colors.accentStrong}
+              />
             )}
           </View>
 
@@ -374,11 +388,15 @@ export function ItemSummarySection({
             <View style={styles.detailHeader}>
               <Text style={styles.detailLabel}>Stock</Text>
               <TouchableOpacity
+                {...getAccessibleButtonProps({
+                  label: "Refresh stock from ERP",
+                  disabled: isRefreshing,
+                })}
                 onPress={onRefreshStock}
                 disabled={isRefreshing}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Ionicons
+                  {...decorativeIconProps}
                   name={isRefreshing ? "hourglass-outline" : "refresh"}
                   size={14}
                   color={uiTokens.colors.accent}
@@ -414,17 +432,19 @@ export function ItemSummarySection({
 
       {showDetails ? (
         <>
-          <View style={styles.barcodeSection}>
-            <Text style={styles.barcodeLabel}>Barcode</Text>
-            <Text
-              style={styles.barcodeValue}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.6}
-            >
-              {displayBarcode}
-            </Text>
-          </View>
+          {showBarcodeDetails ? (
+            <View style={styles.barcodeSection}>
+              <Text style={styles.barcodeLabel}>Barcode</Text>
+              <Text
+                style={styles.barcodeValue}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}
+              >
+                {displayBarcode}
+              </Text>
+            </View>
+          ) : null}
 
           {item.is_bundle && bundleComponents.length > 0 ? (
             <View style={styles.bundleSection}>
@@ -434,7 +454,12 @@ export function ItemSummarySection({
                   key={`${component.item_code || component.item_name || "bundle"}-${index}`}
                   style={styles.bundleItem}
                 >
-                  <Ionicons name="cube-outline" size={18} color={uiTokens.colors.accentStrong} />
+                  <Ionicons
+                    {...decorativeIconProps}
+                    name="cube-outline"
+                    size={18}
+                    color={uiTokens.colors.accentStrong}
+                  />
                   <Text style={styles.bundleItemName}>
                     {component.item_name || component.item_code}
                   </Text>
@@ -446,7 +471,12 @@ export function ItemSummarySection({
 
           {item._source === "cache" ? (
             <View style={styles.staleWarning}>
-              <Ionicons name="warning" size={18} color={uiTokens.colors.warning} />
+              <Ionicons
+                {...decorativeIconProps}
+                name="warning"
+                size={18}
+                color={uiTokens.colors.warning}
+              />
               <View style={styles.staleWarningContent}>
                 <Text style={styles.staleWarningTitle}>ERP Offline</Text>
                 <Text style={styles.staleWarningText}>

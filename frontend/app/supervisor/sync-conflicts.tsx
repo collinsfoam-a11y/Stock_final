@@ -3,7 +3,7 @@
  * Review and resolve data synchronization conflicts
  * Refactored to use Aurora Design System
  */
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -30,8 +30,12 @@ import {
   getSyncConflictStats,
 } from "../../src/services/api/api";
 import { ModernCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
-import { auroraTheme } from "../../src/theme/auroraTheme";
 import { safeBackNavigation } from "@/utils/navigation";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import {
+  createOperationalStyleBridge,
+  type OperationalStyleBridge,
+} from "@/theme/operationalStyleBridge";
 
 interface SyncConflict {
   _id: string;
@@ -49,6 +53,9 @@ interface SyncConflict {
 
 export default function SyncConflictsScreen() {
   const router = useRouter();
+  const uiTokens = useUiTokens();
+  const operationalTheme = useMemo(() => createOperationalStyleBridge(uiTokens), [uiTokens]);
+  const styles = useMemo(() => createStyles(operationalTheme), [operationalTheme]);
   const { hasPermission } = usePermission();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -181,15 +188,15 @@ export default function SyncConflictsScreen() {
       <AnimatedPressable
         onPress={() => toggleConflictSelection(item._id)}
         onLongPress={() => openConflictDetail(item)}
-        style={{ marginBottom: auroraTheme.spacing.md }}
+        style={{ marginBottom: operationalTheme.spacing.md }}
       >
         <ModernCard
           variant="outlined"
           elevation="none"
-          padding={auroraTheme.spacing.md}
+          padding={operationalTheme.spacing.md}
           style={
             isSelected
-              ? { borderColor: auroraTheme.colors.primary[500], borderWidth: 1 }
+              ? { borderColor: operationalTheme.colors.primary[500], borderWidth: 1 }
               : undefined
           }
         >
@@ -233,7 +240,7 @@ export default function SyncConflictsScreen() {
               <Ionicons
                 name="checkmark-circle-outline"
                 size={14}
-                color={auroraTheme.colors.success[500]}
+                color={operationalTheme.colors.success[500]}
               />
               <Text style={styles.resolvedText}>
                 Resolved: {item.resolution} by {item.resolved_by}
@@ -256,7 +263,7 @@ export default function SyncConflictsScreen() {
               onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
             >
-              <Ionicons name="arrow-back" size={24} color={auroraTheme.colors.text.primary} />
+              <Ionicons name="arrow-back" size={24} color={operationalTheme.colors.text.primary} />
             </AnimatedPressable>
             <View>
               <Text style={styles.pageTitle}>Sync Conflicts</Text>
@@ -305,11 +312,11 @@ export default function SyncConflictsScreen() {
               <ModernCard
                 variant="outlined"
                 elevation="none"
-                padding={auroraTheme.spacing.sm}
+                padding={operationalTheme.spacing.sm}
                 style={[
                   styles.filterButton,
                   filterStatus === status && {
-                    borderColor: auroraTheme.colors.primary[500],
+                    borderColor: operationalTheme.colors.primary[500],
                     borderWidth: 1,
                   },
                 ]}
@@ -318,7 +325,7 @@ export default function SyncConflictsScreen() {
                   style={[
                     styles.filterButtonText,
                     filterStatus === status && {
-                      color: auroraTheme.colors.primary[500],
+                      color: operationalTheme.colors.primary[500],
                     },
                   ]}
                 >
@@ -334,13 +341,13 @@ export default function SyncConflictsScreen() {
             <ModernCard
               variant="outlined"
               elevation="none"
-              padding={auroraTheme.spacing.md}
+              padding={operationalTheme.spacing.md}
               style={styles.batchCard}
             >
               <Text style={styles.batchText}>{selectedConflicts.size} selected</Text>
               <View style={styles.batchButtons}>
                 <AnimatedPressable
-                  style={[styles.batchButton, { backgroundColor: auroraTheme.colors.success[500] }]}
+                  style={[styles.batchButton, { backgroundColor: operationalTheme.colors.success[500] }]}
                   onPress={() => handleBatchResolve("accept_server")}
                 >
                   <Text style={styles.batchButtonText}>Accept Server</Text>
@@ -348,7 +355,7 @@ export default function SyncConflictsScreen() {
                 <AnimatedPressable
                   style={[
                     styles.batchButton,
-                    { backgroundColor: auroraTheme.colors.secondary[500] },
+                    { backgroundColor: operationalTheme.colors.secondary[500] },
                   ]}
                   onPress={() => handleBatchResolve("accept_local")}
                 >
@@ -361,7 +368,7 @@ export default function SyncConflictsScreen() {
 
         {loading && !refreshing ? (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color={auroraTheme.colors.primary[500]} />
+            <ActivityIndicator size="large" color={operationalTheme.colors.primary[500]} />
             <Text style={styles.loadingText}>Loading conflicts...</Text>
           </View>
         ) : conflicts.length === 0 ? (
@@ -369,7 +376,7 @@ export default function SyncConflictsScreen() {
             <Ionicons
               name="checkmark-done-circle-outline"
               size={64}
-              color={auroraTheme.colors.success[500]}
+              color={operationalTheme.colors.success[500]}
             />
             <Text style={styles.emptyText}>No conflicts found</Text>
             <Text style={styles.emptySubtext}>System data is in sync</Text>
@@ -387,8 +394,8 @@ export default function SyncConflictsScreen() {
                 <RefreshControl
                   refreshing={refreshing}
                   onRefresh={handleRefresh}
-                  tintColor={auroraTheme.colors.primary[500]}
-                  colors={[auroraTheme.colors.primary[500]]}
+                  tintColor={operationalTheme.colors.primary[500]}
+                  colors={[operationalTheme.colors.primary[500]]}
                 />
               }
             />
@@ -405,7 +412,7 @@ export default function SyncConflictsScreen() {
             <ModernCard
               variant="outlined"
               elevation="none"
-              padding={auroraTheme.spacing.lg}
+              padding={operationalTheme.spacing.lg}
               style={styles.modalContent}
             >
               <Text style={styles.modalTitle}>Resolve Conflict</Text>
@@ -424,7 +431,7 @@ export default function SyncConflictsScreen() {
                     <ModernCard
                       variant="outlined"
                       elevation="none"
-                      padding={auroraTheme.spacing.md}
+                      padding={operationalTheme.spacing.md}
                     >
                       <Text style={styles.modalValue}>
                         {JSON.stringify(selectedConflict.local_value, null, 2)}
@@ -437,7 +444,7 @@ export default function SyncConflictsScreen() {
                     <ModernCard
                       variant="outlined"
                       elevation="none"
-                      padding={auroraTheme.spacing.md}
+                      padding={operationalTheme.spacing.md}
                     >
                       <Text style={styles.modalValue}>
                         {JSON.stringify(selectedConflict.server_value, null, 2)}
@@ -448,7 +455,7 @@ export default function SyncConflictsScreen() {
                   <TextInput
                     style={[styles.modalInput, styles.modalTextArea]}
                     placeholder="Resolution note (optional)"
-                    placeholderTextColor={auroraTheme.colors.text.tertiary}
+                    placeholderTextColor={operationalTheme.colors.text.tertiary}
                     value={resolutionNote}
                     onChangeText={setResolutionNote}
                     multiline
@@ -458,7 +465,7 @@ export default function SyncConflictsScreen() {
                     <AnimatedPressable
                       style={[
                         styles.modalButton,
-                        { backgroundColor: auroraTheme.colors.success[500] },
+                        { backgroundColor: operationalTheme.colors.success[500] },
                       ]}
                       onPress={() => handleResolve(selectedConflict._id, "accept_server")}
                     >
@@ -468,7 +475,7 @@ export default function SyncConflictsScreen() {
                     <AnimatedPressable
                       style={[
                         styles.modalButton,
-                        { backgroundColor: auroraTheme.colors.secondary[500] },
+                        { backgroundColor: operationalTheme.colors.secondary[500] },
                       ]}
                       onPress={() => handleResolve(selectedConflict._id, "accept_local")}
                     >
@@ -492,15 +499,15 @@ export default function SyncConflictsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: auroraTheme.colors.background.primary,
+    backgroundColor: operationalTheme.colors.background.primary,
   },
   container: {
     flex: 1,
     paddingTop: 60,
-    paddingHorizontal: auroraTheme.spacing.md,
+    paddingHorizontal: operationalTheme.spacing.md,
   },
   centered: {
     flex: 1,
@@ -512,51 +519,51 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: auroraTheme.spacing.md,
+    marginBottom: operationalTheme.spacing.md,
   },
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.md,
+    gap: operationalTheme.spacing.md,
   },
   backButton: {
-    padding: auroraTheme.spacing.xs,
-    backgroundColor: auroraTheme.colors.background.glass,
-    borderRadius: auroraTheme.borderRadius.full,
+    padding: operationalTheme.spacing.xs,
+    backgroundColor: operationalTheme.colors.background.glass,
+    borderRadius: operationalTheme.borderRadius.full,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
+    borderColor: operationalTheme.colors.border.light,
   },
   pageTitle: {
-    fontFamily: auroraTheme.typography.fontFamily.heading,
-    fontSize: auroraTheme.typography.fontSize["2xl"],
-    color: auroraTheme.colors.text.primary,
+    fontFamily: operationalTheme.typography.fontFamily.heading,
+    fontSize: operationalTheme.typography.fontSize["2xl"],
+    color: operationalTheme.colors.text.primary,
     fontWeight: "700",
   },
   pageSubtitle: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
+    fontSize: operationalTheme.typography.fontSize.sm,
+    color: operationalTheme.colors.text.secondary,
   },
   statsContainer: {
     flexDirection: "row",
-    gap: auroraTheme.spacing.sm,
-    marginBottom: auroraTheme.spacing.md,
+    gap: operationalTheme.spacing.sm,
+    marginBottom: operationalTheme.spacing.md,
   },
   filterBar: {
     flexDirection: "row",
-    gap: auroraTheme.spacing.sm,
-    marginBottom: auroraTheme.spacing.md,
+    gap: operationalTheme.spacing.sm,
+    marginBottom: operationalTheme.spacing.md,
   },
   filterButton: {
     alignItems: "center",
     justifyContent: "center",
   },
   filterButtonText: {
-    fontSize: auroraTheme.typography.fontSize.sm,
+    fontSize: operationalTheme.typography.fontSize.sm,
     fontWeight: "600",
-    color: auroraTheme.colors.text.secondary,
+    color: operationalTheme.colors.text.secondary,
   },
   batchActions: {
-    marginBottom: auroraTheme.spacing.md,
+    marginBottom: operationalTheme.spacing.md,
   },
   batchCard: {
     flexDirection: "row",
@@ -564,115 +571,115 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   batchText: {
-    fontSize: auroraTheme.typography.fontSize.md,
+    fontSize: operationalTheme.typography.fontSize.md,
     fontWeight: "600",
-    color: auroraTheme.colors.text.primary,
+    color: operationalTheme.colors.text.primary,
   },
   batchButtons: {
     flexDirection: "row",
-    gap: auroraTheme.spacing.sm,
+    gap: operationalTheme.spacing.sm,
   },
   batchButton: {
-    paddingHorizontal: auroraTheme.spacing.md,
+    paddingHorizontal: operationalTheme.spacing.md,
     paddingVertical: 8,
-    borderRadius: auroraTheme.borderRadius.full,
+    borderRadius: operationalTheme.borderRadius.full,
   },
   batchButtonText: {
     color: "white",
     fontWeight: "bold",
-    fontSize: auroraTheme.typography.fontSize.xs,
+    fontSize: operationalTheme.typography.fontSize.xs,
   },
   listContent: {
-    paddingBottom: auroraTheme.spacing.xl,
+    paddingBottom: operationalTheme.spacing.xl,
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
-    marginBottom: auroraTheme.spacing.md,
+    marginBottom: operationalTheme.spacing.md,
   },
   checkbox: {
     width: 24,
     height: 24,
-    borderRadius: auroraTheme.borderRadius.sm,
+    borderRadius: operationalTheme.borderRadius.sm,
     borderWidth: 2,
-    borderColor: auroraTheme.colors.text.tertiary,
-    marginRight: auroraTheme.spacing.md,
+    borderColor: operationalTheme.colors.text.tertiary,
+    marginRight: operationalTheme.spacing.md,
     justifyContent: "center",
     alignItems: "center",
   },
   checkboxChecked: {
-    backgroundColor: auroraTheme.colors.primary[500],
-    borderColor: auroraTheme.colors.primary[500],
+    backgroundColor: operationalTheme.colors.primary[500],
+    borderColor: operationalTheme.colors.primary[500],
   },
   itemCode: {
-    fontSize: auroraTheme.typography.fontSize.lg,
+    fontSize: operationalTheme.typography.fontSize.lg,
     fontWeight: "700",
-    color: auroraTheme.colors.text.primary,
+    color: operationalTheme.colors.text.primary,
   },
   conflictTypeContainer: {
     alignSelf: "flex-start",
     backgroundColor: "rgba(234, 179, 8, 0.1)",
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: auroraTheme.borderRadius.full,
+    borderRadius: operationalTheme.borderRadius.full,
     marginTop: 4,
   },
   conflictType: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.warning[500],
+    fontSize: operationalTheme.typography.fontSize.xs,
+    color: operationalTheme.colors.warning[500],
     fontWeight: "600",
   },
   conflictData: {
     flexDirection: "row",
-    gap: auroraTheme.spacing.md,
-    marginBottom: auroraTheme.spacing.md,
+    gap: operationalTheme.spacing.md,
+    marginBottom: operationalTheme.spacing.md,
   },
   dataColumn: {
     flex: 1,
   },
   dataLabel: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.tertiary,
+    fontSize: operationalTheme.typography.fontSize.xs,
+    color: operationalTheme.colors.text.tertiary,
     marginBottom: 4,
     textTransform: "uppercase",
   },
   dataValue: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
+    fontSize: operationalTheme.typography.fontSize.sm,
+    color: operationalTheme.colors.text.secondary,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
   timestamp: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.tertiary,
+    fontSize: operationalTheme.typography.fontSize.xs,
+    color: operationalTheme.colors.text.tertiary,
   },
   resolvedInfo: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.xs,
-    marginTop: auroraTheme.spacing.sm,
-    paddingTop: auroraTheme.spacing.sm,
+    gap: operationalTheme.spacing.xs,
+    marginTop: operationalTheme.spacing.sm,
+    paddingTop: operationalTheme.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: auroraTheme.colors.border.light,
+    borderTopColor: operationalTheme.colors.border.light,
   },
   resolvedText: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.success[500],
+    fontSize: operationalTheme.typography.fontSize.xs,
+    color: operationalTheme.colors.success[500],
   },
   loadingText: {
-    marginTop: auroraTheme.spacing.md,
-    fontSize: auroraTheme.typography.fontSize.md,
-    color: auroraTheme.colors.text.secondary,
+    marginTop: operationalTheme.spacing.md,
+    fontSize: operationalTheme.typography.fontSize.md,
+    color: operationalTheme.colors.text.secondary,
   },
   emptyText: {
-    fontSize: auroraTheme.typography.fontSize.lg,
+    fontSize: operationalTheme.typography.fontSize.lg,
     fontWeight: "500",
-    color: auroraTheme.colors.text.secondary,
-    marginTop: auroraTheme.spacing.md,
+    color: operationalTheme.colors.text.secondary,
+    marginTop: operationalTheme.spacing.md,
   },
   emptySubtext: {
-    fontSize: auroraTheme.typography.fontSize.md,
-    color: auroraTheme.colors.text.tertiary,
-    marginTop: auroraTheme.spacing.xs,
+    fontSize: operationalTheme.typography.fontSize.md,
+    color: operationalTheme.colors.text.tertiary,
+    marginTop: operationalTheme.spacing.xs,
   },
   modalOverlay: {
     flex: 1,
@@ -686,57 +693,57 @@ const styles = StyleSheet.create({
     maxWidth: 500,
   },
   modalTitle: {
-    fontSize: auroraTheme.typography.fontSize["2xl"],
+    fontSize: operationalTheme.typography.fontSize["2xl"],
     fontWeight: "bold",
-    color: auroraTheme.colors.text.primary,
-    marginBottom: auroraTheme.spacing.lg,
+    color: operationalTheme.colors.text.primary,
+    marginBottom: operationalTheme.spacing.lg,
     textAlign: "center",
   },
   modalLabel: {
-    fontSize: auroraTheme.typography.fontSize.md,
-    color: auroraTheme.colors.text.secondary,
+    fontSize: operationalTheme.typography.fontSize.md,
+    color: operationalTheme.colors.text.secondary,
     marginBottom: 4,
   },
   modalItemCode: {
-    color: auroraTheme.colors.text.primary,
+    color: operationalTheme.colors.text.primary,
   },
   modalTypeBadge: {
     backgroundColor: "rgba(234, 179, 8, 0.1)",
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: auroraTheme.borderRadius.full,
+    borderRadius: operationalTheme.borderRadius.full,
     alignSelf: "flex-start",
-    marginBottom: auroraTheme.spacing.lg,
+    marginBottom: operationalTheme.spacing.lg,
   },
   modalTypeText: {
-    color: auroraTheme.colors.warning[500],
-    fontSize: auroraTheme.typography.fontSize.sm,
+    color: operationalTheme.colors.warning[500],
+    fontSize: operationalTheme.typography.fontSize.sm,
     fontWeight: "600",
   },
   modalSection: {
-    marginBottom: auroraTheme.spacing.lg,
+    marginBottom: operationalTheme.spacing.lg,
   },
   modalSectionTitle: {
-    fontSize: auroraTheme.typography.fontSize.sm,
+    fontSize: operationalTheme.typography.fontSize.sm,
     fontWeight: "600",
-    color: auroraTheme.colors.text.tertiary,
+    color: operationalTheme.colors.text.tertiary,
     marginBottom: 8,
     textTransform: "uppercase",
   },
   modalValue: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.primary,
+    fontSize: operationalTheme.typography.fontSize.sm,
+    color: operationalTheme.colors.text.primary,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
   modalInput: {
     backgroundColor: "rgba(255,255,255,0.05)",
-    color: auroraTheme.colors.text.primary,
+    color: operationalTheme.colors.text.primary,
     padding: 12,
-    borderRadius: auroraTheme.borderRadius.md,
-    fontSize: auroraTheme.typography.fontSize.md,
-    marginBottom: auroraTheme.spacing.lg,
+    borderRadius: operationalTheme.borderRadius.md,
+    fontSize: operationalTheme.typography.fontSize.md,
+    marginBottom: operationalTheme.spacing.lg,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
+    borderColor: operationalTheme.colors.border.light,
   },
   modalTextArea: {
     minHeight: 100,
@@ -744,23 +751,23 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: "row",
-    gap: auroraTheme.spacing.md,
-    marginBottom: auroraTheme.spacing.md,
+    gap: operationalTheme.spacing.md,
+    marginBottom: operationalTheme.spacing.md,
   },
   modalButton: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: auroraTheme.borderRadius.full,
+    borderRadius: operationalTheme.borderRadius.full,
     alignItems: "center",
   },
   modalButtonCancel: {
-    backgroundColor: auroraTheme.colors.background.glass,
+    backgroundColor: operationalTheme.colors.background.glass,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
+    borderColor: operationalTheme.colors.border.light,
   },
   modalButtonText: {
-    color: auroraTheme.colors.text.primary,
-    fontSize: auroraTheme.typography.fontSize.md,
+    color: operationalTheme.colors.text.primary,
+    fontSize: operationalTheme.typography.fontSize.md,
     fontWeight: "600",
   },
 });

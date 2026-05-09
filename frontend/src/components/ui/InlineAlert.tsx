@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { auroraTheme } from "@/theme/auroraTheme";
 
-import { colors as uiColors } from "@/theme/legacyCompat";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
 export type InlineAlertType = "error" | "warning" | "success" | "info";
 
 interface Props {
@@ -19,49 +19,54 @@ const ICONS: Record<InlineAlertType, keyof typeof Ionicons.glyphMap> = {
   info: "information-circle",
 };
 
-const BG_COLORS: Record<InlineAlertType, string> = {
-  error: "rgba(239, 68, 68, 0.12)",
-  warning: "rgba(245, 158, 11, 0.12)",
-  success: "rgba(16, 185, 129, 0.12)",
-  info: "rgba(99, 102, 241, 0.12)",
-};
-
-const FG_COLORS: Record<InlineAlertType, string> = {
-  error: auroraTheme.colors.error[400] ?? uiColors.error[400],
-  warning: auroraTheme.colors.warning[400] ?? uiColors.warning[400],
-  success: auroraTheme.colors.success[400] ?? uiColors.success[400],
-  info: auroraTheme.colors.accent[400] ?? uiColors.primary[300],
-};
-
 export function InlineAlert({ type = "info", message, testID }: Props) {
+  const uiTokens = useUiTokens();
+  const statusColor = {
+    error: uiTokens.colors.error,
+    warning: uiTokens.colors.warning,
+    success: uiTokens.colors.success,
+    info: uiTokens.colors.info,
+  }[type];
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flexDirection: "row",
+          alignItems: "center",
+          borderWidth: 1,
+          borderRadius: uiTokens.radius.md,
+          paddingVertical: uiTokens.spacing.sm,
+          paddingHorizontal: uiTokens.spacing.md,
+        },
+        icon: {
+          marginRight: uiTokens.spacing.sm,
+        },
+        text: {
+          flex: 1,
+          fontSize: 14,
+          fontWeight: "500",
+        },
+      }),
+    [uiTokens]
+  );
+
   return (
     <View
-      style={[styles.container, { backgroundColor: BG_COLORS[type], borderColor: FG_COLORS[type] }]}
+      style={[
+        styles.container,
+        {
+          backgroundColor: colorWithAlpha(statusColor, uiTokens.mode === "dark" ? 0.18 : 0.1),
+          borderColor: statusColor,
+        },
+      ]}
       testID={testID}
+      accessibilityRole={type === "error" ? "alert" : "text"}
+      accessibilityLabel={`${type} alert: ${message}`}
     >
-      <Ionicons name={ICONS[type]} size={18} color={FG_COLORS[type]} style={styles.icon} />
-      <Text style={[styles.text, { color: auroraTheme.colors.text.primary }]}>{message}</Text>
+      <Ionicons name={ICONS[type]} size={18} color={statusColor} style={styles.icon} />
+      <Text style={[styles.text, { color: uiTokens.colors.textPrimary }]}>{message}</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: auroraTheme.borderRadius.md,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  icon: {
-    marginRight: 8,
-  },
-  text: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: "500",
-  },
-});
 
 export default InlineAlert;

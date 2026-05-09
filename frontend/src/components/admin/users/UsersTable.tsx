@@ -1,10 +1,20 @@
-import React from "react";
-import { Dimensions, Platform, StyleSheet, Text, View } from "react-native";
+import React, { useMemo } from "react";
+import {
+  Dimensions,
+  FlatList,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+  type RefreshControlProps,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { AnimatedPressable } from "@/components/ui";
-import { auroraTheme } from "@/theme/auroraTheme";
 import {
+  getOperationalActionColor,
   getRoleBadgeStyle,
   getStatusStyle,
   SortField,
@@ -12,12 +22,16 @@ import {
   User,
   userTextStyles,
 } from "@/components/admin/users/userManagementShared";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
 
 const { width } = Dimensions.get("window");
 const isWeb = Platform.OS === "web";
 const isTablet = width > 768;
 
 interface UsersTableProps {
+  ListHeaderComponent?: React.ReactElement | null;
   onDeleteUser: (user: User) => void;
   onEditUser: (user: User) => void;
   onPageChange: (page: number) => void;
@@ -33,6 +47,7 @@ interface UsersTableProps {
   total: number;
   totalPages: number;
   users: User[];
+  refreshControl?: React.ReactElement<RefreshControlProps>;
 }
 
 const formatDate = (dateString: string | null) => {
@@ -41,6 +56,7 @@ const formatDate = (dateString: string | null) => {
 };
 
 export function UsersTable({
+  ListHeaderComponent,
   onDeleteUser,
   onEditUser,
   onPageChange,
@@ -56,116 +72,151 @@ export function UsersTable({
   total,
   totalPages,
   users,
+  refreshControl,
 }: UsersTableProps) {
+  const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const showTableLayout = isWeb || isTablet;
 
-  return (
+  const renderUser = ({ item: user }: { item: User }) =>
+    showTableLayout ? (
+      <DesktopUserRow
+        onDelete={onDeleteUser}
+        onEdit={onEditUser}
+        onSelect={onToggleSelectUser}
+        onToggleStatus={onToggleStatus}
+        selected={selectedUsers.has(user.id)}
+        styles={styles}
+        uiTokens={uiTokens}
+        user={user}
+      />
+    ) : (
+      <MobileUserCard
+        onDelete={onDeleteUser}
+        onEdit={onEditUser}
+        onToggleStatus={onToggleStatus}
+        styles={styles}
+        uiTokens={uiTokens}
+        user={user}
+      />
+    );
+
+  const renderHeader = () => (
     <>
+      {ListHeaderComponent}
       <View style={styles.tableContainer} testID="users-table">
         {showTableLayout ? (
-          <>
-            <View style={styles.tableHeader}>
-              <AnimatedPressable style={styles.checkboxCell} onPress={onToggleSelectAll}>
-                <Ionicons
-                  name={
-                    selectedUsers.size === users.length && users.length > 0
-                      ? "checkbox"
-                      : "square-outline"
-                  }
-                  size={20}
-                  color={auroraTheme.colors.primary[600]}
-                />
-              </AnimatedPressable>
-              <SortableHeader
-                active={sortBy === "username"}
-                cellStyle={styles.usernameCell}
-                label="Username"
-                onPress={() => onSort("username")}
-                sortOrder={sortOrder}
+          <View style={styles.tableHeader}>
+            <AnimatedPressable
+              style={styles.checkboxCell}
+              onPress={onToggleSelectAll}
+              {...getAccessibleButtonProps({
+                label:
+                  selectedUsers.size === users.length && users.length > 0
+                    ? "Clear selected users"
+                    : "Select all users",
+                selected: selectedUsers.size === users.length && users.length > 0,
+              })}
+            >
+              <Ionicons
+                name={
+                  selectedUsers.size === users.length && users.length > 0
+                    ? "checkbox"
+                    : "square-outline"
+                }
+                size={20}
+                color={uiTokens.colors.accent}
               />
-              <SortableHeader
-                active={sortBy === "email"}
-                cellStyle={styles.emailCell}
-                label="Email"
-                onPress={() => onSort("email")}
-                sortOrder={sortOrder}
-              />
-              <SortableHeader
-                active={sortBy === "role"}
-                cellStyle={styles.roleCell}
-                label="Role"
-                onPress={() => onSort("role")}
-                sortOrder={sortOrder}
-              />
-              <View style={[styles.headerCell, styles.statusCell]}>
-                <Text style={styles.headerText}>Status</Text>
-              </View>
-              <SortableHeader
-                active={sortBy === "created_at"}
-                cellStyle={styles.dateCell}
-                label="Created"
-                onPress={() => onSort("created_at")}
-                sortOrder={sortOrder}
-              />
-              <View style={[styles.headerCell, styles.actionsCell]}>
-                <Text style={styles.headerText}>Actions</Text>
-              </View>
-            </View>
-
-            {users.length === 0 ? (
-              <EmptyUsersState />
-            ) : (
-              users.map((user) => (
-                <DesktopUserRow
-                  key={user.id}
-                  onDelete={onDeleteUser}
-                  onEdit={onEditUser}
-                  onSelect={onToggleSelectUser}
-                  onToggleStatus={onToggleStatus}
-                  selected={selectedUsers.has(user.id)}
-                  user={user}
-                />
-              ))
-            )}
-          </>
-        ) : users.length === 0 ? (
-          <EmptyUsersState />
-        ) : (
-          users.map((user) => (
-            <MobileUserCard
-              key={user.id}
-              onDelete={onDeleteUser}
-              onEdit={onEditUser}
-              onToggleStatus={onToggleStatus}
-              user={user}
+            </AnimatedPressable>
+            <SortableHeader
+              active={sortBy === "username"}
+              cellStyle={styles.usernameCell}
+              label="Username"
+              onPress={() => onSort("username")}
+              styles={styles}
+              sortOrder={sortOrder}
+              uiTokens={uiTokens}
             />
-          ))
+            <SortableHeader
+              active={sortBy === "email"}
+              cellStyle={styles.emailCell}
+              label="Email"
+              onPress={() => onSort("email")}
+              styles={styles}
+              sortOrder={sortOrder}
+              uiTokens={uiTokens}
+            />
+            <SortableHeader
+              active={sortBy === "role"}
+              cellStyle={styles.roleCell}
+              label="Role"
+              onPress={() => onSort("role")}
+              styles={styles}
+              sortOrder={sortOrder}
+              uiTokens={uiTokens}
+            />
+            <View style={[styles.headerCell, styles.statusCell]}>
+              <Text style={styles.headerText}>Status</Text>
+            </View>
+            <SortableHeader
+              active={sortBy === "created_at"}
+              cellStyle={styles.dateCell}
+              label="Created"
+              onPress={() => onSort("created_at")}
+              styles={styles}
+              sortOrder={sortOrder}
+              uiTokens={uiTokens}
+            />
+            <View style={[styles.headerCell, styles.actionsCell]}>
+              <Text style={styles.headerText}>Actions</Text>
+            </View>
+          </View>
+        ) : (
+          <Text style={styles.mobileListTitle}>Users</Text>
         )}
       </View>
-
-      {total > pageSize && (
-        <View style={styles.pagination}>
-          <Text style={styles.paginationText}>
-            Showing {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, total)} of {total}
-          </Text>
-          <View style={styles.paginationButtons}>
-            <PageButton
-              direction="back"
-              disabled={page === 1}
-              onPress={() => page > 1 && onPageChange(page - 1)}
-            />
-            <Text style={styles.pageNumber}>
-              Page {page} of {totalPages}
-            </Text>
-            <PageButton
-              direction="forward"
-              disabled={page === totalPages}
-              onPress={() => page < totalPages && onPageChange(page + 1)}
-            />
-          </View>
-        </View>
-      )}
     </>
+  );
+
+  const renderFooter = () =>
+    total > pageSize ? (
+      <View style={styles.pagination}>
+        <Text style={styles.paginationText}>
+          Showing {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, total)} of {total}
+        </Text>
+        <View style={styles.paginationButtons}>
+          <PageButton
+            direction="back"
+            disabled={page === 1}
+            onPress={() => page > 1 && onPageChange(page - 1)}
+            styles={styles}
+            uiTokens={uiTokens}
+          />
+          <Text style={styles.pageNumber}>
+            Page {page} of {totalPages}
+          </Text>
+          <PageButton
+            direction="forward"
+            disabled={page === totalPages}
+            onPress={() => page < totalPages && onPageChange(page + 1)}
+            styles={styles}
+            uiTokens={uiTokens}
+          />
+        </View>
+      </View>
+    ) : null;
+
+  return (
+    <FlatList
+      contentContainerStyle={styles.listContent}
+      data={users}
+      keyExtractor={(user) => user.id}
+      ListEmptyComponent={() => <EmptyUsersState styles={styles} uiTokens={uiTokens} />}
+      ListFooterComponent={renderFooter}
+      ListHeaderComponent={renderHeader}
+      refreshControl={refreshControl}
+      renderItem={renderUser}
+    />
   );
 }
 
@@ -174,22 +225,33 @@ function SortableHeader({
   cellStyle,
   label,
   onPress,
+  styles,
   sortOrder,
+  uiTokens,
 }: {
   active: boolean;
-  cellStyle: object;
+  cellStyle: StyleProp<ViewStyle>;
   label: string;
   onPress: () => void;
+  styles: UsersTableStyles;
   sortOrder: SortOrder;
+  uiTokens: UsersTableTokens;
 }) {
   return (
-    <AnimatedPressable style={[styles.headerCell, cellStyle]} onPress={onPress}>
+    <AnimatedPressable
+      style={[styles.headerCell, cellStyle]}
+      onPress={onPress}
+      {...getAccessibleButtonProps({
+        label: `Sort users by ${label}`,
+        selected: active,
+      })}
+    >
       <Text style={styles.headerText}>{label}</Text>
       {active && (
         <Ionicons
           name={sortOrder === "asc" ? "arrow-up" : "arrow-down"}
           size={14}
-          color={auroraTheme.colors.primary[600]}
+          color={uiTokens.colors.accent}
         />
       )}
     </AnimatedPressable>
@@ -202,6 +264,8 @@ function DesktopUserRow({
   onSelect,
   onToggleStatus,
   selected,
+  styles,
+  uiTokens,
   user,
 }: {
   onDelete: (user: User) => void;
@@ -209,21 +273,30 @@ function DesktopUserRow({
   onSelect: (userId: string) => void;
   onToggleStatus: (user: User) => void;
   selected: boolean;
+  styles: UsersTableStyles;
+  uiTokens: UsersTableTokens;
   user: User;
 }) {
-  const roleBadge = getRoleBadgeStyle(user.role);
-  const statusBadge = getStatusStyle(user.isActive);
+  const roleBadge = getRoleBadgeStyle(user.role, uiTokens);
+  const statusBadge = getStatusStyle(user.isActive, uiTokens);
 
   return (
     <View
       style={[styles.tableRow, selected && styles.tableRowSelected]}
       testID={`user-row-${user.username}`}
     >
-      <AnimatedPressable style={styles.checkboxCell} onPress={() => onSelect(user.id)}>
+      <AnimatedPressable
+        style={styles.checkboxCell}
+        onPress={() => onSelect(user.id)}
+        {...getAccessibleButtonProps({
+          label: `${selected ? "Deselect" : "Select"} user ${user.username}`,
+          selected,
+        })}
+      >
         <Ionicons
           name={selected ? "checkbox" : "square-outline"}
           size={20}
-          color={auroraTheme.colors.primary[600]}
+          color={uiTokens.colors.accent}
         />
       </AnimatedPressable>
       <View style={[styles.cell, styles.usernameCell]}>
@@ -264,23 +337,24 @@ function DesktopUserRow({
             label={`Edit user ${user.username}`}
             onPress={() => onEdit(user)}
             testID={`user-edit-${user.username}`}
-            color={auroraTheme.colors.primary[600]}
+            color={getOperationalActionColor("primary", uiTokens)}
+            styles={styles}
           />
           <ActionButton
             icon={user.isActive ? "pause-circle-outline" : "play-circle-outline"}
             label={`${user.isActive ? "Deactivate" : "Activate"} user ${user.username}`}
             onPress={() => onToggleStatus(user)}
             testID={`user-toggle-${user.username}`}
-            color={
-              user.isActive ? auroraTheme.colors.warning[600] : auroraTheme.colors.success[600]
-            }
+            color={getOperationalActionColor(user.isActive ? "warning" : "success", uiTokens)}
+            styles={styles}
           />
           <ActionButton
             icon="trash-outline"
             label={`Delete user ${user.username}`}
             onPress={() => onDelete(user)}
             testID={`user-delete-${user.username}`}
-            color={auroraTheme.colors.error[600]}
+            color={getOperationalActionColor("danger", uiTokens)}
+            styles={styles}
           />
         </View>
       </View>
@@ -292,15 +366,19 @@ function MobileUserCard({
   onDelete,
   onEdit,
   onToggleStatus,
+  styles,
+  uiTokens,
   user,
 }: {
   onDelete: (user: User) => void;
   onEdit: (user: User) => void;
   onToggleStatus: (user: User) => void;
+  styles: UsersTableStyles;
+  uiTokens: UsersTableTokens;
   user: User;
 }) {
-  const roleBadge = getRoleBadgeStyle(user.role);
-  const statusBadge = getStatusStyle(user.isActive);
+  const roleBadge = getRoleBadgeStyle(user.role, uiTokens);
+  const statusBadge = getStatusStyle(user.isActive, uiTokens);
 
   return (
     <View style={styles.mobileCard}>
@@ -330,19 +408,26 @@ function MobileUserCard({
           icon="pencil"
           label="Edit"
           onPress={() => onEdit(user)}
-          color={auroraTheme.colors.primary[600]}
+          color={getOperationalActionColor("primary", uiTokens)}
+          styles={styles}
+          accessibilityLabel={`Edit user ${user.username}`}
         />
         <MobileAction
           icon={user.isActive ? "pause-circle" : "play-circle"}
           label={user.isActive ? "Deactivate" : "Activate"}
           onPress={() => onToggleStatus(user)}
-          color={user.isActive ? auroraTheme.colors.warning[600] : auroraTheme.colors.success[600]}
+          color={getOperationalActionColor(user.isActive ? "warning" : "success", uiTokens)}
+          styles={styles}
+          accessibilityLabel={`${user.isActive ? "Deactivate" : "Activate"} user ${user.username}`}
         />
         <MobileAction
           icon="trash"
           label="Delete"
           onPress={() => onDelete(user)}
-          color={auroraTheme.colors.error[600]}
+          color={getOperationalActionColor("danger", uiTokens)}
+          styles={styles}
+          accessibilityLabel={`Delete user ${user.username}`}
+          destructive
         />
       </View>
     </View>
@@ -354,12 +439,14 @@ function ActionButton({
   icon,
   label,
   onPress,
+  styles,
   testID,
 }: {
   color: string;
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
+  styles: UsersTableStyles;
   testID: string;
 }) {
   return (
@@ -367,7 +454,7 @@ function ActionButton({
       style={styles.actionButton}
       onPress={onPress}
       testID={testID}
-      accessibilityLabel={label}
+      {...getAccessibleButtonProps({ label })}
     >
       <Ionicons name={icon} size={18} color={color} />
     </AnimatedPressable>
@@ -379,16 +466,26 @@ function MobileAction({
   icon,
   label,
   onPress,
+  styles,
+  accessibilityLabel,
+  destructive,
 }: {
   color: string;
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
+  styles: UsersTableStyles;
+  accessibilityLabel: string;
+  destructive?: boolean;
 }) {
   return (
-    <AnimatedPressable style={styles.mobileAction} onPress={onPress}>
+    <AnimatedPressable
+      style={styles.mobileAction}
+      onPress={onPress}
+      {...getAccessibleButtonProps({ label: accessibilityLabel })}
+    >
       <Ionicons name={icon} size={18} color={color} />
-      <Text style={[styles.mobileActionText, color === auroraTheme.colors.error[600] && { color }]}>
+      <Text style={[styles.mobileActionText, destructive && { color }]}>
         {label}
       </Text>
     </AnimatedPressable>
@@ -399,80 +496,112 @@ function PageButton({
   direction,
   disabled,
   onPress,
+  styles,
+  uiTokens,
 }: {
   direction: "back" | "forward";
   disabled: boolean;
   onPress: () => void;
+  styles: UsersTableStyles;
+  uiTokens: UsersTableTokens;
 }) {
   return (
     <AnimatedPressable
       style={[styles.pageButton, disabled && styles.pageButtonDisabled]}
       onPress={onPress}
       disabled={disabled}
+      {...getAccessibleButtonProps({
+        label: direction === "back" ? "Previous users page" : "Next users page",
+        disabled,
+      })}
     >
       <Ionicons
         name={direction === "back" ? "chevron-back" : "chevron-forward"}
         size={20}
-        color={disabled ? auroraTheme.colors.neutral[300] : auroraTheme.colors.primary[600]}
+        color={disabled ? uiTokens.colors.textMuted : uiTokens.colors.accent}
       />
     </AnimatedPressable>
   );
 }
 
-function EmptyUsersState() {
+function EmptyUsersState({
+  styles,
+  uiTokens,
+}: {
+  styles: UsersTableStyles;
+  uiTokens: UsersTableTokens;
+}) {
   return (
     <View style={styles.emptyState} testID="users-empty-state">
-      <Ionicons name="people-outline" size={48} color={auroraTheme.colors.neutral[300]} />
+      <Ionicons name="people-outline" size={48} color={uiTokens.colors.textMuted} />
       <Text style={styles.emptyText}>No users found</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+type UsersTableTokens = ReturnType<typeof useUiTokens>;
+type UsersTableStyles = ReturnType<typeof createStyles>;
+
+const createStyles = (uiTokens: UsersTableTokens) =>
+  StyleSheet.create({
   tableContainer: {
-    marginHorizontal: auroraTheme.spacing.lg,
-    backgroundColor: auroraTheme.colors.background.secondary,
-    borderRadius: auroraTheme.borderRadius.lg,
+    marginHorizontal: uiTokens.spacing.lg,
+    backgroundColor: uiTokens.colors.surface,
+    borderRadius: uiTokens.radius.lg,
     overflow: "hidden",
+  },
+  listContent: {
+    paddingBottom: uiTokens.spacing.lg,
+  },
+  mobileListTitle: {
+    ...userTextStyles.label,
+    color: uiTokens.colors.textSecondary,
+    padding: uiTokens.spacing.md,
+    textTransform: "uppercase",
   },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: auroraTheme.colors.neutral[100],
+    backgroundColor: colorWithAlpha(uiTokens.colors.textMuted, 0.1),
     borderBottomWidth: 1,
-    borderBottomColor: auroraTheme.colors.neutral[200],
-    paddingVertical: auroraTheme.spacing.sm,
+    borderBottomColor: uiTokens.colors.border,
+    paddingVertical: uiTokens.spacing.sm,
   },
   headerCell: {
+    ...getMinimumTouchTargetStyle(),
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.xs,
-    paddingHorizontal: auroraTheme.spacing.sm,
+    gap: uiTokens.spacing.xs,
+    paddingHorizontal: uiTokens.spacing.sm,
   },
   headerText: {
     ...userTextStyles.label,
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
     fontWeight: "600",
   },
   tableRow: {
     flexDirection: "row",
+    marginHorizontal: uiTokens.spacing.lg,
+    backgroundColor: uiTokens.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: auroraTheme.colors.neutral[100],
-    paddingVertical: auroraTheme.spacing.sm,
+    borderBottomColor: colorWithAlpha(uiTokens.colors.textMuted, 0.12),
+    paddingVertical: uiTokens.spacing.sm,
     alignItems: "center",
   },
   tableRowSelected: {
-    backgroundColor: auroraTheme.colors.primary[50],
+    backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.08),
   },
   cell: {
-    paddingHorizontal: auroraTheme.spacing.sm,
+    paddingHorizontal: uiTokens.spacing.sm,
   },
   cellText: {
     ...userTextStyles.body,
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
   },
   checkboxCell: {
-    width: 40,
+    ...getMinimumTouchTargetStyle(),
+    width: 44,
     alignItems: "center",
+    justifyContent: "center",
   },
   usernameCell: {
     flex: 2,
@@ -500,34 +629,34 @@ const styles = StyleSheet.create({
   userInfo: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.sm,
+    gap: uiTokens.spacing.sm,
   },
   avatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: auroraTheme.colors.primary[100],
+    backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.12),
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
     ...userTextStyles.label,
-    color: auroraTheme.colors.primary[700],
+    color: uiTokens.colors.accentStrong,
     fontWeight: "700",
   },
   username: {
     ...userTextStyles.body,
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
     fontWeight: "600",
   },
   fullName: {
     ...userTextStyles.caption,
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
   },
   badge: {
-    paddingHorizontal: auroraTheme.spacing.sm,
-    paddingVertical: 2,
-    borderRadius: auroraTheme.borderRadius.sm,
+    paddingHorizontal: uiTokens.spacing.sm,
+    paddingVertical: uiTokens.spacing.xxs,
+    borderRadius: uiTokens.radius.sm,
   },
   badgeText: {
     ...userTextStyles.caption,
@@ -535,85 +664,93 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: "row",
-    gap: auroraTheme.spacing.xs,
+    gap: uiTokens.spacing.xs,
   },
   actionButton: {
-    padding: auroraTheme.spacing.xs,
-    borderRadius: auroraTheme.borderRadius.sm,
+    ...getMinimumTouchTargetStyle(),
+    alignItems: "center",
+    justifyContent: "center",
+    padding: uiTokens.spacing.xs,
+    borderRadius: uiTokens.radius.sm,
   },
   emptyState: {
-    padding: auroraTheme.spacing["2xl"],
+    padding: uiTokens.spacing["2xl"],
     alignItems: "center",
-    gap: auroraTheme.spacing.md,
+    gap: uiTokens.spacing.md,
   },
   emptyText: {
     ...userTextStyles.body,
-    color: auroraTheme.colors.text.tertiary,
+    color: uiTokens.colors.textMuted,
   },
   pagination: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: auroraTheme.spacing.lg,
-    paddingVertical: auroraTheme.spacing.md,
+    paddingHorizontal: uiTokens.spacing.lg,
+    paddingVertical: uiTokens.spacing.md,
   },
   paginationText: {
     ...userTextStyles.caption,
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
   },
   paginationButtons: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.sm,
+    gap: uiTokens.spacing.sm,
   },
   pageButton: {
-    padding: auroraTheme.spacing.xs,
-    borderRadius: auroraTheme.borderRadius.sm,
+    ...getMinimumTouchTargetStyle(),
+    alignItems: "center",
+    justifyContent: "center",
+    padding: uiTokens.spacing.xs,
+    borderRadius: uiTokens.radius.sm,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.neutral[200],
+    borderColor: uiTokens.colors.border,
   },
   pageButtonDisabled: {
     opacity: 0.5,
   },
   pageNumber: {
     ...userTextStyles.label,
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
   },
   mobileCard: {
-    backgroundColor: auroraTheme.colors.background.primary,
-    margin: auroraTheme.spacing.sm,
-    borderRadius: auroraTheme.borderRadius.md,
-    padding: auroraTheme.spacing.md,
+    backgroundColor: uiTokens.colors.background,
+    margin: uiTokens.spacing.sm,
+    borderRadius: uiTokens.radius.md,
+    padding: uiTokens.spacing.md,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.neutral[100],
+    borderColor: colorWithAlpha(uiTokens.colors.textMuted, 0.12),
   },
   mobileCardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: auroraTheme.spacing.md,
+    marginBottom: uiTokens.spacing.md,
   },
   mobileBadges: {
     flexDirection: "row",
-    gap: auroraTheme.spacing.xs,
+    gap: uiTokens.spacing.xs,
   },
   mobileEmail: {
     ...userTextStyles.caption,
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
   },
   mobileCardActions: {
     flexDirection: "row",
     justifyContent: "space-around",
     borderTopWidth: 1,
-    borderTopColor: auroraTheme.colors.neutral[100],
-    paddingTop: auroraTheme.spacing.sm,
+    borderTopColor: colorWithAlpha(uiTokens.colors.textMuted, 0.12),
+    paddingTop: uiTokens.spacing.sm,
   },
   mobileAction: {
+    ...getMinimumTouchTargetStyle(),
     alignItems: "center",
-    gap: 2,
+    justifyContent: "center",
+    gap: uiTokens.spacing.xxs,
   },
   mobileActionText: {
     ...userTextStyles.caption,
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
   },
 });

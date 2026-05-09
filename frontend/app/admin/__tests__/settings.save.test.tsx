@@ -69,16 +69,34 @@ jest.mock("../../../src/components/ui/AppearanceSettings", () => ({
   },
 }));
 
+jest.mock("../../../src/components/ui/ModernCard", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const React = require("react");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { View } = require("react-native");
+  return ({ children }: { children: React.ReactNode }) => <View>{children}</View>;
+});
+
 jest.mock("../../../src/components/settings", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require("react");
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { Text } = require("react-native");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const actual = jest.requireActual("../../../src/components/settings/SettingsScreenPrimitives");
+  const { Text, TextInput, View } = require("react-native");
 
   return {
-    ...actual,
+    SettingsActionSection: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
+    SettingsActionRow: ({ label }: { label: string }) => <Text>{label}</Text>,
+    SettingsSectionDivider: () => <View />,
+    SettingsSectionHeading: ({ title }: { title: string }) => <Text>{title}</Text>,
+    SettingsTextInputRow: ({
+      value,
+      onChangeText,
+      testID,
+    }: {
+      value: string;
+      onChangeText: (text: string) => void;
+      testID?: string;
+    }) => <TextInput value={value} onChangeText={onChangeText} testID={testID} />,
     SettingsSyncStatus: () => <Text>Settings sync status</Text>,
     UserSettingsSections: () => <Text>User settings sections</Text>,
   };

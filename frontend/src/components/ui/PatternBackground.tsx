@@ -5,6 +5,8 @@
  * - Dots, Grid, Waves, Aurora, Mesh, Circuit, Hexagon
  *
  * Works with ThemeContext for dynamic pattern selection
+ *
+ * @deprecated Use solid ScreenContainer surfaces for operational screens.
  */
 
 import React, { useMemo } from "react";
@@ -20,6 +22,7 @@ import Svg, {
   Stop,
 } from "react-native-svg";
 import { useThemeContext, PatternType } from "../../context/ThemeContext";
+import { warnDeprecatedVisualSystem } from "./legacyVisualSystem";
 
 interface PatternBackgroundProps {
   pattern?: PatternType;
@@ -45,6 +48,7 @@ export const PatternBackground: React.FC<PatternBackgroundProps> = ({
   size = "medium",
   animated: _animated = false,
 }) => {
+  warnDeprecatedVisualSystem("PatternBackground");
   const { width, height } = useWindowDimensions();
   const themeContext = useThemeContext();
   const pattern = patternProp ?? themeContext.pattern;

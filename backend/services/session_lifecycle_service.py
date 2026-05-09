@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Awaitable, Callable, Optional
 
 from bson import ObjectId
 
@@ -45,11 +45,15 @@ class SessionLifecycleService:
         validation_service: Optional[ValidationService] = None,
         audit_service: Optional[GovernanceAuditService] = None,
         projection_service: Optional[ProjectionWriteService] = None,
+        count_line_finalizer: Optional[
+            Callable[..., Awaitable[int]]
+        ] = None,
     ) -> None:
         self.db = db
         self.validation_service = validation_service or ValidationService(db)
         self.audit_service = audit_service or GovernanceAuditService(db)
         self.projection_service = projection_service or ProjectionWriteService(db)
+        self.count_line_finalizer = count_line_finalizer
 
     @staticmethod
     def _lookup(session_id: str) -> dict[str, Any]:
@@ -672,7 +676,6 @@ class SessionLifecycleService:
         db_session: Optional[Any],
     ) -> dict[str, Any]:
         from backend.services.canonical_inventory import is_blocking_finalization
-        from backend.services.count_line_write_service import CountLineWriteService
 
         kwargs = self._kwargs(db_session)
         session = await self.ensure_session_exists(session_id, db_session=db_session)
@@ -710,27 +713,6 @@ class SessionLifecycleService:
             )
 
         finalized_at = _utc_now()
-        line_update: dict[str, Any] = {
-            "status": "locked",
-            "approval_status": "APPROVED",
-            "verified": True,
-            "verified_by": actor,
-            "verified_at": finalized_at,
-            "approved_by": actor,
-            "approved_at": finalized_at,
-            "finalized_by": actor,
-            "finalized_at": finalized_at,
-            "updated_at": finalized_at,
-            "updated_by": actor,
-        }
-        if note:
-            line_update["finalization_note"] = note
-
-        count_line_filter = {
-            "session_id": session_id,
-            "status": {"$nin": ["locked", "SUPERSEDED", "superseded"]},
-            "approval_status": {"$nin": ["REJECTED", "NEEDS_REVIEW"]},
-        }
         count_lines_to_finalize = [
             line
             for line in lines
@@ -738,27 +720,16 @@ class SessionLifecycleService:
             and str(line.get("approval_status") or "") not in {"REJECTED", "NEEDS_REVIEW"}
         ]
         if count_lines_to_finalize:
-            write_service = CountLineWriteService(
-                self.db,
-                validation_service=self.validation_service,
-                lifecycle_service=self,
-                audit_service=self.audit_service,
-            )
-            await write_service.process_write(
-                {
-                    "operation": "update_many",
-                    "filter": count_line_filter,
-                    "update": {"$set": line_update},
-                },
-                context={
-                    "session": session,
-                    "session_id": session_id,
-                    "candidate_lines": count_lines_to_finalize,
-                    "username": actor,
-                    "db_session": db_session,
-                    "governance_mode": "finalization",
-                    "skip_session_totals_update": True,
-                },
+            if self.count_line_finalizer is None:
+                raise GovernanceViolation(
+                    "CRITICAL: Session finalization requires configured count-line finalizer"
+                )
+            await self.count_line_finalizer(
+                session_id=session_id,
+                actor=actor,
+                finalized_at=finalized_at,
+                note=note,
+                db_session=db_session,
             )
 
         totals = await self._compute_session_totals(session_id, db_session=db_session)

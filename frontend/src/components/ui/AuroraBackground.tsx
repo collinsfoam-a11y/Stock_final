@@ -8,6 +8,8 @@
  * - Customizable colors
  * - Smooth transitions
  * - Performance optimized
+ *
+ * @deprecated Use solid ScreenContainer surfaces for operational screens.
  */
 
 import React, { useEffect } from "react";
@@ -33,6 +35,7 @@ import { ParticleField } from "./ParticleField";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 import { colors as uiColors } from "@/theme/legacyCompat";
+import { warnDeprecatedVisualSystem } from "./legacyVisualSystem";
 export type AuroraVariant = "primary" | "secondary" | "success" | "warm" | "dark";
 
 interface AuroraBackgroundProps {
@@ -54,6 +57,7 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
   style,
   children,
 }) => {
+  warnDeprecatedVisualSystem("AuroraBackground");
   const { width, height } = useWindowDimensions();
   const { theme } = useThemeContext();
   const prefersReducedMotion = useReducedMotion();

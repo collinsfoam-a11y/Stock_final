@@ -1,12 +1,15 @@
 /**
  * PremiumButton Component
- * Re-exports ModernButton with consistent naming for premium UI components
+ *
+ * @deprecated Use AppButton. This file is a wrapper-only migration facade.
  */
 
 import React from "react";
 import { ViewStyle, TextStyle } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { ModernButton, ButtonVariant, ButtonSize } from "../ui/ModernButton";
+import { AppButton, type AppButtonVariant } from "../ui/AppButton";
+import type { ButtonVariant, ButtonSize } from "../ui/ModernButton";
+import { warnDeprecatedVisualSystem } from "../ui/legacyVisualSystem";
 
 interface PremiumButtonProps {
   title: string;
@@ -26,7 +29,18 @@ interface PremiumButtonProps {
 }
 
 export const PremiumButton: React.FC<PremiumButtonProps> = (props) => {
-  return <ModernButton {...props} />;
+  warnDeprecatedVisualSystem("PremiumButton");
+  const { variant, gradientColors: _gradientColors, ...rest } = props;
+  const mappedVariant: AppButtonVariant =
+    variant === "danger"
+      ? "destructive"
+      : variant === "ghost" || variant === "outline"
+        ? "tertiary"
+        : variant === "secondary"
+          ? "secondary"
+          : "primary";
+
+  return <AppButton {...rest} variant={mappedVariant} />;
 };
 
 export type { PremiumButtonProps, ButtonVariant, ButtonSize };

@@ -232,6 +232,8 @@ The following primitives must exist as shared components and be reused before fe
 
 Legacy visual components may remain while migration is in progress, but new work must not expand their usage unless explicitly approved. Components with names implying decorative systems, such as glass, aurora, particle, premium, or purely aesthetic animation, require justification before use on operational screens.
 
+Deprecated visual systems must be registered in `frontend/src/components/ui/legacyVisualSystem.ts` with classification, replacement guidance, and a development warning. Legacy components must be thin adapters over approved primitives or explicitly documented exceptions. Do not add feature-level styling logic to deprecated facades.
+
 ## 6. Operational UX Standards
 
 ### 6.1 Barcode Workflows
@@ -303,6 +305,7 @@ Legacy visual components may remain while migration is in progress, but new work
 - Text must support scaling without truncating operationally critical values.
 - Safe areas must be respected for headers, bottom bars, fixed actions, scanners, and dialogs.
 - Reduced motion must be respected.
+- Shared interaction work must use `frontend/src/utils/accessibility.ts` for minimum touch targets, hit slop, accessibility state, and button/toggle labels where applicable.
 
 ### 7.2 Color And Status
 
@@ -353,6 +356,7 @@ Use opacity and transform first. Avoid layout-changing animation.
 - Dialog or sheet transition: 200ms to 300ms
 - Operational scan acknowledgment: immediate visual change, no decorative delay
 - Routine UI motion must not exceed 350ms without approval
+- Shared motion work must route durations through `frontend/src/utils/motion.ts` or `useUiTokens().motion`; avoid new feature-local timing constants.
 
 ### 8.3 Prohibited Motion
 
@@ -711,6 +715,9 @@ Where practical, enforce with:
 - `frontend/scripts/check-ui-governance.cjs --strict` for full UI governance checks
 - `npm run governance:ui:changed:strict` for changed-line PR enforcement
 - `npm run governance:ui:report` for migration, deprecated-usage, accessibility, motion, token, navigation, and virtualization reporting
+- `npm run governance:ui:report:json` for machine-readable governance metrics under `reports/ui-governance-report.json`
+- `npm run governance:ui:health` for post-stabilization health checks against `reports/ui-governance-health-baseline.json`
+- `npm run codemod:premium-primitives` to dry-run deprecated `Premium*` primitive replacement candidates
 - bundle size reports
 - release field checks
 
@@ -726,7 +733,17 @@ Manual review is required for:
 - fatigue resistance
 - semantic color correctness
 
-### 15.4 Stop Conditions
+### 15.4 Sustainability Mode
+
+After blocking governance debt reaches zero, governance work shifts to platform health maintenance.
+
+- Keep hard gates at zero: P0, P1, unsafe navigation, non-virtualized dense rendering, deprecated production imports, and operational aurora usage.
+- Treat token, accessibility, reduced-motion, and quarantine counts as health metrics. They should trend down during feature touches and screen decomposition.
+- Do not run broad cleanup rewrites only to reduce advisory counts unless there is an operational risk or architectural approval.
+- Advisory regression is allowed only with explicit justification and a follow-up path.
+- Quarantined systems may be retired only after a stable release cycle with zero downstream production imports and rollback confidence.
+
+### 15.5 Stop Conditions
 
 Stop and request architecture or product approval when a change:
 

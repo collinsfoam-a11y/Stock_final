@@ -22,8 +22,8 @@ import {
 import { useWebSocket } from "../../src/hooks/useWebSocket";
 import api from "../../src/services/api/api";
 import { useSettingsStore } from "../../src/store/settingsStore";
-import { auroraTheme } from "../../src/theme/auroraTheme";
 import { saveArrayBufferExport } from "../../src/utils/fileExport";
+import { useUiTokens } from "@/hooks/useUiTokens";
 
 const DEFAULT_PAGINATION: Pagination = {
   page: 1,
@@ -41,6 +41,8 @@ export default function RealtimeDashboard() {
   const effectiveAutoRefreshRef = useRef(true);
   const offlineModeRef = useRef(false);
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
+  const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const { isConnected, lastMessage } = useWebSocket();
 
   const [loading, setLoading] = useState(true);
@@ -324,7 +326,6 @@ export default function RealtimeDashboard() {
   if (loading) {
     return (
       <ScreenContainer
-        gradient
         header={{
           title: "Real-Time Dashboard",
           subtitle: `${summary?.filtered_records || 0} items`,
@@ -332,7 +333,7 @@ export default function RealtimeDashboard() {
         }}
       >
         <View style={styles.centered}>
-          <LoadingSpinner size={48} color={auroraTheme.colors.primary[500]} />
+          <LoadingSpinner size={48} color={uiTokens.colors.accent} />
           <Text style={styles.loadingText}>Loading dashboard...</Text>
         </View>
       </ScreenContainer>
@@ -341,7 +342,6 @@ export default function RealtimeDashboard() {
 
   return (
     <ScreenContainer
-      gradient
       header={{
         title: "Real-Time Dashboard",
         subtitle: `${summary?.filtered_records || 0} items`,
@@ -354,7 +354,13 @@ export default function RealtimeDashboard() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         nestedScrollEnabled
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={uiTokens.colors.accent}
+          />
+        }
       >
         {offlineMode && (
           <ModernCard style={styles.offlineNotice}>
@@ -422,45 +428,48 @@ export default function RealtimeDashboard() {
   );
 }
 
-const styles = StyleSheet.create({
+type RealtimeDashboardTokens = ReturnType<typeof useUiTokens>;
+
+const createStyles = (uiTokens: RealtimeDashboardTokens) =>
+  StyleSheet.create({
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
   loadingText: {
-    marginTop: 16,
+    marginTop: uiTokens.spacing.md,
     fontSize: 16,
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
   },
   container: {
     flex: 1,
   },
   contentContainer: {
-    padding: auroraTheme.spacing.md,
-    paddingBottom: 32,
+    padding: uiTokens.spacing.md,
+    paddingBottom: uiTokens.spacing.xl,
   },
   offlineNotice: {
-    marginBottom: auroraTheme.spacing.md,
-    padding: auroraTheme.spacing.md,
+    marginBottom: uiTokens.spacing.md,
+    padding: uiTokens.spacing.md,
   },
   offlineNoticeTitle: {
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: uiTokens.spacing.xs,
   },
   offlineNoticeBody: {
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
     fontSize: 12,
     lineHeight: 18,
   },
   errorNotice: {
-    marginBottom: auroraTheme.spacing.md,
-    padding: auroraTheme.spacing.md,
+    marginBottom: uiTokens.spacing.md,
+    padding: uiTokens.spacing.md,
   },
   errorText: {
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
     fontSize: 12,
   },
 });

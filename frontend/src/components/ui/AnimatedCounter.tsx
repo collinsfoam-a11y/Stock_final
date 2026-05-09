@@ -1,9 +1,9 @@
 /**
- * AnimatedCounter Component - Aurora Design v2.0
+ * AnimatedCounter Component - Operational Numeric Feedback
  *
  * Animated number counter with smooth transitions
  * Features:
- * - Smooth counting animation
+ * - Reduced-motion aware counting animation
  * - Customizable duration
  * - Number formatting
  * - Color transitions
@@ -11,7 +11,10 @@
 
 import React, { useEffect } from "react";
 import { Text, TextStyle, StyleProp } from "react-native";
-import { auroraTheme } from "@/theme/auroraTheme";
+
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { getOperationalMotionDuration } from "@/utils/motion";
 
 interface AnimatedCounterProps {
   value: number;
@@ -32,44 +35,63 @@ export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
   decimalPlaces = 0,
   formatNumber = true,
 }) => {
+  const uiTokens = useUiTokens();
+  const prefersReducedMotion = useReducedMotion();
+  const governedDuration = getOperationalMotionDuration(uiTokens, "slow", prefersReducedMotion);
+  const resolvedDuration = governedDuration === 0 ? 0 : Math.min(duration, governedDuration);
   const [displayValue, setDisplayValue] = React.useState("0");
 
   // Use a simple interval-based approach for display
   useEffect(() => {
+    let animationFrame: number | null = null;
+    const formatDisplayValue = (nextValue: number) => {
+      let formatted = nextValue.toFixed(decimalPlaces);
+      if (formatNumber && decimalPlaces === 0) {
+        formatted = Math.round(nextValue).toLocaleString();
+      }
+      setDisplayValue(`${prefix}${formatted}${suffix}`);
+    };
+
+    if (resolvedDuration === 0) {
+      formatDisplayValue(value);
+      return undefined;
+    }
+
     const startValue = 0;
     const endValue = value;
     const startTime = Date.now();
 
     const updateDisplay = () => {
       const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
+      const progress = Math.min(elapsed / resolvedDuration, 1);
 
       // Ease out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
       const currentValue = startValue + (endValue - startValue) * eased;
 
-      let formatted = currentValue.toFixed(decimalPlaces);
-      if (formatNumber && decimalPlaces === 0) {
-        formatted = Math.round(currentValue).toLocaleString();
-      }
-
-      setDisplayValue(`${prefix}${formatted}${suffix}`);
+      formatDisplayValue(currentValue);
 
       if (progress < 1) {
-        requestAnimationFrame(updateDisplay);
+        animationFrame = requestAnimationFrame(updateDisplay);
       }
     };
 
-    requestAnimationFrame(updateDisplay);
-  }, [value, duration, prefix, suffix, decimalPlaces, formatNumber]);
+    animationFrame = requestAnimationFrame(updateDisplay);
+
+    return () => {
+      if (animationFrame !== null) {
+        cancelAnimationFrame(animationFrame);
+      }
+    };
+  }, [value, resolvedDuration, prefix, suffix, decimalPlaces, formatNumber]);
 
   return (
     <Text
       style={[
         {
-          fontFamily: auroraTheme.typography.fontFamily.heading,
-          fontSize: auroraTheme.typography.fontSize["3xl"],
-          color: auroraTheme.colors.text.primary,
+          fontSize: 32,
+          color: uiTokens.colors.textPrimary,
+          fontWeight: "800",
           fontVariant: ["tabular-nums"],
         },
         style,

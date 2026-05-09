@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -17,7 +17,6 @@ import {
   ModernButton,
   ModernInput,
 } from "@/components/ui";
-import { auroraTheme } from "../../src/theme/auroraTheme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { usePermission } from "../../src/hooks/usePermission";
@@ -29,9 +28,13 @@ import {
 } from "../../src/services/api";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { safeBackNavigation } from "@/utils/navigation";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
 
 export default function UnknownItemsScreen() {
   const router = useRouter();
+  const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const { hasRole } = usePermission();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [loading, setLoading] = useState(true);
@@ -142,7 +145,7 @@ export default function UnknownItemsScreen() {
 
       {item.remark ? (
         <View style={styles.remarkContainer}>
-          <Ionicons name="chatbubble-outline" size={14} color={auroraTheme.colors.text.secondary} />
+          <Ionicons name="chatbubble-outline" size={14} color={uiTokens.colors.textSecondary} />
           <Text style={styles.remarkText}>{item.remark}</Text>
         </View>
       ) : null}
@@ -173,7 +176,6 @@ export default function UnknownItemsScreen() {
 
   return (
     <ScreenContainer
-      gradient
       header={{
         title: "Unknown Items",
         subtitle: "Items not found in system",
@@ -192,7 +194,7 @@ export default function UnknownItemsScreen() {
 
       {loading && items.length === 0 ? (
         <View style={styles.centered}>
-          <LoadingSpinner size={40} color={auroraTheme.colors.primary[500]} />
+          <LoadingSpinner size={40} color={uiTokens.colors.accent} />
         </View>
       ) : (
         <FlatList
@@ -205,9 +207,7 @@ export default function UnknownItemsScreen() {
               <Ionicons
                 name={offlineMode ? "cloud-offline-outline" : "checkmark-circle-outline"}
                 size={64}
-                color={
-                  offlineMode ? auroraTheme.colors.warning[500] : auroraTheme.colors.success[500]
-                }
+                color={offlineMode ? uiTokens.colors.warning : uiTokens.colors.success}
               />
               <Text style={styles.emptyText}>
                 {offlineMode ? "Reconnect to review unknown items" : "All unknown items resolved!"}
@@ -249,13 +249,13 @@ export default function UnknownItemsScreen() {
                 title="Cancel"
                 onPress={() => setMappingModalVisible(false)}
                 variant="outline"
-                style={{ flex: 1, marginRight: 8 }}
+                style={styles.modalButtonGap}
               />
               <ModernButton
                 title="Resolve"
                 onPress={handleMap}
                 variant="primary"
-                style={{ flex: 1 }}
+                style={styles.modalButton}
               />
             </View>
           </ModernCard>
@@ -265,82 +265,85 @@ export default function UnknownItemsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+type UnknownItemsTokens = ReturnType<typeof useUiTokens>;
+
+const createStyles = (uiTokens: UnknownItemsTokens) =>
+  StyleSheet.create({
   listContent: {
-    padding: 16,
-    paddingBottom: 40,
+    padding: uiTokens.spacing.md,
+    paddingBottom: uiTokens.spacing["3xl"],
   },
   offlineNotice: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-    padding: 16,
+    marginHorizontal: uiTokens.spacing.md,
+    marginTop: uiTokens.spacing.md,
+    marginBottom: uiTokens.spacing.sm,
+    padding: uiTokens.spacing.md,
   },
   offlineNoticeTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: auroraTheme.colors.text.primary,
-    marginBottom: 4,
+    color: uiTokens.colors.textPrimary,
+    marginBottom: uiTokens.spacing.xs,
   },
   offlineNoticeBody: {
     fontSize: 12,
     lineHeight: 18,
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
   },
   itemCard: {
-    marginBottom: 16,
-    padding: 16,
+    marginBottom: uiTokens.spacing.md,
+    padding: uiTokens.spacing.md,
   },
   itemHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 8,
+    marginBottom: uiTokens.spacing.sm,
   },
   barcodeText: {
     fontSize: 18,
     fontWeight: "700",
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
   },
   dateText: {
     fontSize: 12,
-    color: auroraTheme.colors.text.secondary,
-    marginTop: 2,
+    color: uiTokens.colors.textSecondary,
+    marginTop: uiTokens.spacing.xxs,
   },
   qtyBadge: {
-    backgroundColor: auroraTheme.colors.primary[500],
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    backgroundColor: uiTokens.colors.accent,
+    paddingHorizontal: uiTokens.spacing.sm,
+    paddingVertical: uiTokens.spacing.xs,
+    borderRadius: uiTokens.radius.lg,
   },
   qtyText: {
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.surface,
     fontWeight: "bold",
     fontSize: 16,
   },
   descriptionText: {
     fontSize: 14,
-    color: auroraTheme.colors.text.primary,
-    marginBottom: 8,
+    color: uiTokens.colors.textPrimary,
+    marginBottom: uiTokens.spacing.sm,
     fontStyle: "italic",
   },
   remarkContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.05)",
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 12,
+    backgroundColor: colorWithAlpha(uiTokens.colors.textMuted, 0.1),
+    padding: uiTokens.spacing.sm,
+    borderRadius: uiTokens.radius.md,
+    marginBottom: uiTokens.spacing.md,
   },
   remarkText: {
     fontSize: 13,
-    color: auroraTheme.colors.text.secondary,
-    marginLeft: 6,
+    color: uiTokens.colors.textSecondary,
+    marginLeft: uiTokens.spacing.xs,
     flex: 1,
   },
   actionButtons: {
     flexDirection: "row",
-    gap: 8,
+    gap: uiTokens.spacing.sm,
   },
   actionBtn: {
     flex: 1,
@@ -352,35 +355,42 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     alignItems: "center",
-    marginTop: 100,
+    marginTop: uiTokens.spacing.xxl,
   },
   emptyText: {
     fontSize: 18,
-    color: auroraTheme.colors.text.secondary,
-    marginTop: 16,
+    color: uiTokens.colors.textSecondary,
+    marginTop: uiTokens.spacing.md,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: uiTokens.colors.overlay,
     justifyContent: "center",
-    padding: 20,
+    padding: uiTokens.spacing.lg,
   },
   modalContent: {
-    padding: 24,
+    padding: uiTokens.spacing.lg,
   },
   modalTitle: {
     fontSize: 22,
     fontWeight: "bold",
-    color: auroraTheme.colors.text.primary,
-    marginBottom: 4,
+    color: uiTokens.colors.textPrimary,
+    marginBottom: uiTokens.spacing.xs,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: auroraTheme.colors.text.secondary,
-    marginBottom: 20,
+    color: uiTokens.colors.textSecondary,
+    marginBottom: uiTokens.spacing.lg,
   },
   modalActions: {
     flexDirection: "row",
-    marginTop: 24,
+    marginTop: uiTokens.spacing.lg,
+  },
+  modalButtonGap: {
+    flex: 1,
+    marginRight: uiTokens.spacing.sm,
+  },
+  modalButton: {
+    flex: 1,
   },
 });
