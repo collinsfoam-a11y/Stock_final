@@ -1,5 +1,6 @@
 export * from "./useTheme";
 export * from "./useAutoLogout";
+export * from "./useUiTokens";
 export * from "./usePermission";
 export * from "./useSafeState";
 export * from "./useSystemTheme";

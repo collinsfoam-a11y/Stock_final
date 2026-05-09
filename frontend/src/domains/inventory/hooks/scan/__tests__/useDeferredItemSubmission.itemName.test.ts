@@ -61,7 +61,7 @@ describe("useDeferredItemSubmission", () => {
         itemExpiryDateFormat: "none",
         onSuccess,
         countdownSeconds: 0,
-      }),
+      })
     );
 
     await act(async () => {
@@ -73,8 +73,8 @@ describe("useDeferredItemSubmission", () => {
         expect.objectContaining({
           item_code: "ITEM001",
           item_name: "Batch Item Name",
-        }),
-      ),
+        })
+      )
     );
   });
 });

@@ -2,6 +2,7 @@ import { Dimensions, Platform, StyleSheet } from "react-native";
 
 import { auroraTheme } from "@/theme/auroraTheme";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export const DASHBOARD_IS_WEB = Platform.OS === "web";
@@ -24,8 +25,7 @@ export const normalizeDashboardMetrics = (payload: unknown) => {
   const totalRequests = Number(requests.total || 0);
   const uptimeSeconds = Number(uptime.seconds || 0);
   const rawErrorRate = Number(requests.error_rate || 0);
-  const hasRequestMetrics =
-    Object.keys(requests).length > 0 || Object.keys(performance).length > 0;
+  const hasRequestMetrics = Object.keys(requests).length > 0 || Object.keys(performance).length > 0;
 
   return {
     ...stats,
@@ -43,12 +43,7 @@ export const normalizeDashboardMetrics = (payload: unknown) => {
   };
 };
 
-export type DashboardTab =
-  | "overview"
-  | "monitoring"
-  | "reports"
-  | "analytics"
-  | "diagnosis";
+export type DashboardTab = "overview" | "monitoring" | "reports" | "analytics" | "diagnosis";
 
 export const DASHBOARD_TABS: DashboardTab[] = [
   "overview",
@@ -59,8 +54,7 @@ export const DASHBOARD_TABS: DashboardTab[] = [
 ];
 
 export const isDashboardTab = (value: unknown): value is DashboardTab =>
-  typeof value === "string" &&
-  DASHBOARD_TABS.includes(value as DashboardTab);
+  typeof value === "string" && DASHBOARD_TABS.includes(value as DashboardTab);
 
 export const toYMD = (date: Date) => {
   const year = date.getFullYear();
@@ -106,8 +100,7 @@ export const prepareStatusChartData = (systemStats: any) => {
     },
     {
       label: "Idle",
-      value:
-        (systemStats.total_sessions || 0) - (systemStats.active_sessions || 0),
+      value: (systemStats.total_sessions || 0) - (systemStats.active_sessions || 0),
       color: auroraTheme.colors.neutral[400],
     },
   ];
@@ -393,7 +386,7 @@ export const dashboardWebStyles = StyleSheet.create({
   },
   serviceActionText: {
     ...typography.label,
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 12,
   },
   metricsGrid: {
@@ -589,7 +582,7 @@ export const dashboardWebStyles = StyleSheet.create({
     gap: 8,
   },
   generateButtonText: {
-    color: "#FFF",
+    color: uiSemanticColors.text.inverse,
     fontWeight: "600",
   },
   analyticsCard: {
@@ -655,7 +648,7 @@ export const dashboardWebStyles = StyleSheet.create({
     borderColor: auroraTheme.colors.primary[500],
   },
   formatText: {
-    color: "#FFF",
+    color: uiSemanticColors.text.inverse,
     fontWeight: "500",
   },
   modalFooter: {
@@ -685,7 +678,7 @@ export const dashboardWebStyles = StyleSheet.create({
     alignItems: "center",
   },
   confirmButtonText: {
-    color: "#FFF",
+    color: uiSemanticColors.text.inverse,
     fontWeight: "600",
   },
 });

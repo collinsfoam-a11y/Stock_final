@@ -4,13 +4,12 @@ import { StyleSheet, Text, View } from "react-native";
 import { auroraTheme } from "@/theme/auroraTheme";
 import { Summary } from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
 
+import { colors as uiColors } from "@/theme/legacyCompat";
 interface RealtimeDashboardSummaryProps {
   summary: Summary | null;
 }
 
-export function RealtimeDashboardSummary({
-  summary,
-}: RealtimeDashboardSummaryProps) {
+export function RealtimeDashboardSummary({ summary }: RealtimeDashboardSummaryProps) {
   if (!summary?.aggregations || Object.keys(summary.aggregations).length === 0) {
     return null;
   }
@@ -30,9 +29,7 @@ export function RealtimeDashboardSummary({
             label="Total Variance"
             value={summary.aggregations.total_variance.toLocaleString()}
             valueStyle={
-              summary.aggregations.total_variance < 0
-                ? styles.negativeValue
-                : styles.positiveValue
+              summary.aggregations.total_variance < 0 ? styles.negativeValue : styles.positiveValue
             }
           />
         )}
@@ -106,9 +103,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   negativeValue: {
-    color: "#F44336",
+    color: uiColors.error[500],
   },
   positiveValue: {
-    color: "#4CAF50",
+    color: uiColors.success[500],
   },
 });

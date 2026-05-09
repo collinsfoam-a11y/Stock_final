@@ -132,6 +132,22 @@ def _build_user_settings(doc: dict[str, Any] | None) -> UserSettings:
             source.get("notification_badge"),
             DEFAULT_SETTINGS["notification_badge"],
         ),
+        notification_recount_alerts=_normalize_bool(
+            source.get("notification_recount_alerts"),
+            DEFAULT_SETTINGS["notification_recount_alerts"],
+        ),
+        notification_approval_alerts=_normalize_bool(
+            source.get("notification_approval_alerts"),
+            DEFAULT_SETTINGS["notification_approval_alerts"],
+        ),
+        notification_sync_failure_alerts=_normalize_bool(
+            source.get("notification_sync_failure_alerts"),
+            DEFAULT_SETTINGS["notification_sync_failure_alerts"],
+        ),
+        notification_session_reminder_alerts=_normalize_bool(
+            source.get("notification_session_reminder_alerts"),
+            DEFAULT_SETTINGS["notification_session_reminder_alerts"],
+        ),
         auto_sync_enabled=_normalize_bool(
             source.get("auto_sync_enabled"),
             DEFAULT_SETTINGS["auto_sync_enabled"],

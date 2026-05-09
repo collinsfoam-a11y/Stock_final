@@ -1,19 +1,14 @@
 import React from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Modal, Text, TouchableOpacity, View } from "react-native";
 import { BlurView } from "expo-blur";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
-import { GlassCard } from "@/components/ui/GlassCard";
+import { ModernCard } from "@/components/ui/ModernCard";
 import { DateRangePicker } from "@/components/forms/DateRangePicker";
 import { auroraTheme } from "@/theme/auroraTheme";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface DashboardReportModalProps {
   generating: boolean;
   onClose: () => void;
@@ -40,22 +35,13 @@ export function DashboardReportModal({
   visible,
 }: DashboardReportModalProps) {
   return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent={true} animationType="fade" onRequestClose={onClose}>
       <BlurView intensity={20} style={styles.modalOverlay}>
-        <GlassCard variant="strong" style={styles.modalContent}>
+        <ModernCard variant="outlined" elevation="none" style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Generate Report</Text>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons
-                name="close"
-                size={24}
-                color={auroraTheme.colors.text.secondary}
-              />
+              <Ionicons name="close" size={24} color={auroraTheme.colors.text.secondary} />
             </TouchableOpacity>
           </View>
           <View style={styles.modalBody}>
@@ -63,21 +49,19 @@ export function DashboardReportModal({
             <DateRangePicker
               startDate={reportDateRange.start}
               endDate={reportDateRange.end}
-              onStartDateChange={(start) =>
-                onReportDateRangeChange({ ...reportDateRange, start })
-              }
-              onEndDateChange={(end) =>
-                onReportDateRangeChange({ ...reportDateRange, end })
-              }
+              onStartDateChange={(start) => onReportDateRangeChange({ ...reportDateRange, start })}
+              onEndDateChange={(end) => onReportDateRangeChange({ ...reportDateRange, end })}
             />
 
             <Text style={styles.modalLabel}>Format</Text>
             <View style={styles.formatOptions}>
-              {([
-                ["excel", "grid-outline", "Excel"],
-                ["csv", "document-text-outline", "CSV"],
-                ["json", "code-outline", "JSON"],
-              ] as const).map(([format, icon, label]) => (
+              {(
+                [
+                  ["excel", "grid-outline", "Excel"],
+                  ["csv", "document-text-outline", "CSV"],
+                  ["json", "code-outline", "JSON"],
+                ] as const
+              ).map(([format, icon, label]) => (
                 <TouchableOpacity
                   key={format}
                   style={[
@@ -91,7 +75,7 @@ export function DashboardReportModal({
                     size={20}
                     color={
                       reportFormat === format
-                        ? "#FFF"
+                        ? uiSemanticColors.text.inverse
                         : auroraTheme.colors.text.secondary
                     }
                   />
@@ -119,13 +103,13 @@ export function DashboardReportModal({
               disabled={generating || !selectedReport}
             >
               {generating ? (
-                <ActivityIndicator size="small" color="#FFF" />
+                <ActivityIndicator size="small" color={uiSemanticColors.text.inverse} />
               ) : (
                 <Text style={styles.confirmButtonText}>Download</Text>
               )}
             </AnimatedPressable>
           </View>
-        </GlassCard>
+        </ModernCard>
       </BlurView>
     </Modal>
   );

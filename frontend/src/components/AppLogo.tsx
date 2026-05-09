@@ -2,17 +2,14 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { BrandLogo } from "./branding/BrandLogo";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface AppLogoProps {
   size?: "small" | "medium" | "large";
   showText?: boolean;
   variant?: "default" | "white" | "gradient";
 }
 
-export function AppLogo({
-  size = "medium",
-  showText = true,
-  variant = "default",
-}: AppLogoProps) {
+export function AppLogo({ size = "medium", showText = true, variant = "default" }: AppLogoProps) {
   const sizes = {
     small: { text: 14, container: 32, logo: 28 },
     medium: { text: 16, container: 40, logo: 34 },
@@ -22,9 +19,9 @@ export function AppLogo({
   const currentSize = sizes[size];
 
   const textColors = {
-    default: "#fff",
-    white: "#fff",
-    gradient: "#fff",
+    default: uiSemanticColors.text.inverse,
+    white: uiSemanticColors.text.inverse,
+    gradient: uiSemanticColors.text.inverse,
   };
 
   return (
@@ -36,16 +33,11 @@ export function AppLogo({
           {
             width: currentSize.container,
             height: currentSize.container,
-            backgroundColor:
-              variant === "gradient" ? "transparent" : "rgba(255, 255, 255, 0.1)",
+            backgroundColor: variant === "gradient" ? "transparent" : "rgba(255, 255, 255, 0.1)",
           },
         ]}
       >
-        <BrandLogo
-          variant="symbol"
-          maxWidth={currentSize.logo}
-          maxHeight={currentSize.logo}
-        />
+        <BrandLogo variant="symbol" maxWidth={currentSize.logo} maxHeight={currentSize.logo} />
       </View>
 
       {/* Company Name */}

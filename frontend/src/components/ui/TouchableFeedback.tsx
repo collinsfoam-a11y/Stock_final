@@ -14,14 +14,8 @@
  */
 
 import React, { useCallback } from "react";
-import {
-  Pressable,
-  PressableProps,
-  StyleProp,
-  ViewStyle,
-  Platform,
-} from "react-native";
-import { hitSlop as hitSlopPresets, touchTargets } from "../../theme/unified";
+import { Pressable, PressableProps, StyleProp, ViewStyle, Platform } from "react-native";
+import { hitSlop as hitSlopPresets, touchTargets } from "@/theme/legacyCompat";
 
 // ==========================================
 // TYPES
@@ -82,13 +76,12 @@ export const TouchableFeedback: React.FC<TouchableFeedbackProps> = ({
       };
 
       // On iOS, apply opacity feedback
-      const pressedStyle: ViewStyle =
-        !isAndroid && pressed ? { opacity: touchOpacity } : {};
+      const pressedStyle: ViewStyle = !isAndroid && pressed ? { opacity: touchOpacity } : {};
 
       // Combine styles
       return [baseStyle, style, pressedStyle];
     },
-    [style, touchOpacity, minTouchTarget],
+    [style, touchOpacity, minTouchTarget]
   );
 
   // Android ripple config
@@ -144,7 +137,7 @@ export const TouchableScale: React.FC<TouchableScaleProps> = ({
         },
       ];
     },
-    [style, scalePressed, disabled],
+    [style, scalePressed, disabled]
   );
 
   return (
@@ -178,12 +171,9 @@ export const TouchableHighlight: React.FC<TouchableHighlightProps> = ({
 }) => {
   const getStyle = useCallback(
     ({ pressed }: { pressed: boolean }): StyleProp<ViewStyle> => {
-      return [
-        style,
-        pressed && !disabled && { backgroundColor: underlayColor },
-      ];
+      return [style, pressed && !disabled && { backgroundColor: underlayColor }];
     },
-    [style, underlayColor, disabled],
+    [style, underlayColor, disabled]
   );
 
   return (

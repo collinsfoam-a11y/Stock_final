@@ -6,13 +6,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Alert,
-  RefreshControl,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { Alert, RefreshControl, ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
@@ -32,7 +26,7 @@ import {
   startService,
   stopService,
 } from "../../src/services/api";
-import { GlassCard } from "../../src/components/ui";
+import { ModernCard } from "../../src/components/ui";
 import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
 import {
   DashboardAnalyticsPanel,
@@ -62,15 +56,11 @@ export default function DashboardWeb() {
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
 
-  const [activeTab, setActiveTab] = useState<DashboardTab>(
-    isDashboardTab(tab) ? tab : "overview",
-  );
+  const [activeTab, setActiveTab] = useState<DashboardTab>(isDashboardTab(tab) ? tab : "overview");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [, setLastUpdate] = useState<Date>(new Date());
-  const [serviceActionLoading, setServiceActionLoading] = useState<string | null>(
-    null,
-  );
+  const [serviceActionLoading, setServiceActionLoading] = useState<string | null>(null);
 
   const [systemStats, setSystemStats] = useState<any>(null);
   const [servicesStatus, setServicesStatus] = useState<any>(null);
@@ -85,9 +75,7 @@ export default function DashboardWeb() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
-  const [reportFormat, setReportFormat] = useState<"excel" | "csv" | "json">(
-    "excel",
-  );
+  const [reportFormat, setReportFormat] = useState<"excel" | "csv" | "json">("excel");
   const [reportDateRange, setReportDateRange] = useState({
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
     end: new Date(),
@@ -189,7 +177,7 @@ export default function DashboardWeb() {
         setRefreshing(false);
       }
     },
-    [fetchAvailableReports, offlineMode],
+    [fetchAvailableReports, offlineMode]
   );
 
   useEffect(() => {
@@ -209,12 +197,7 @@ export default function DashboardWeb() {
   }, [tab]);
 
   useEffect(() => {
-    if (
-      activeTab === "reports" &&
-      reports.length === 0 &&
-      !reportsLoading &&
-      !loading
-    ) {
+    if (activeTab === "reports" && reports.length === 0 && !reportsLoading && !loading) {
       void fetchAvailableReports();
     }
   }, [activeTab, fetchAvailableReports, loading, reports.length, reportsLoading]);
@@ -231,15 +214,15 @@ export default function DashboardWeb() {
         params: { tab: nextTab },
       } as any);
     },
-    [activeTab, router],
+    [activeTab, router]
   );
 
   const adminRouteTools = useMemo(
     () =>
       ADMIN_NAV_GROUPS.flatMap((group) => group.items).filter(
-        (item) => item.route !== "/admin/dashboard-web",
+        (item) => item.route !== "/admin/dashboard-web"
       ),
-    [],
+    []
   );
 
   const recommendedTools = useMemo(() => {
@@ -307,20 +290,14 @@ export default function DashboardWeb() {
       });
 
       if (result.kind === "json") {
-        Alert.alert(
-          "Report Ready",
-          `Report "${reportType}" generated successfully.`,
-        );
+        Alert.alert("Report Ready", `Report "${reportType}" generated successfully.`);
         setShowReportModal(false);
         return;
       }
 
       if (DASHBOARD_IS_WEB && "blob" in result) {
         if (result.blob.size === 0) {
-          Alert.alert(
-            "No Data",
-            "No records found for the selected date range.",
-          );
+          Alert.alert("No Data", "No records found for the selected date range.");
           return;
         }
 
@@ -338,7 +315,7 @@ export default function DashboardWeb() {
 
       Alert.alert(
         "Download Not Supported",
-        "Report download is currently supported in the web dashboard.",
+        "Report download is currently supported in the web dashboard."
       );
       setShowReportModal(false);
     } catch (error) {
@@ -359,7 +336,10 @@ export default function DashboardWeb() {
       setRefreshing(true);
       const result = await attemptAutoFixDiagnosis({
         error_type: issue.error_type || issue.title || "Exception",
-        error_message: issue.error_message || issue.description || "Unknown error",
+        error_message:
+          issue.error_message ||
+          issue.description ||
+          "No diagnostic message was provided by the issue record.",
         context: {
           issue_id: issue.id,
           source: "admin_dashboard",
@@ -372,27 +352,25 @@ export default function DashboardWeb() {
       } else {
         Alert.alert(
           "Failed",
-          result.fix_result ||
-            result.message ||
-            "Could not auto-fix this issue. Please check logs.",
+          result.fix_result || result.message || "Could not auto-fix this issue. Please check logs."
         );
       }
     } catch (error) {
       console.error("Auto-fix error:", error);
-      Alert.alert("Error", "An error occurred while trying to fix the issue.");
+      Alert.alert(
+        "Auto-Fix Failed",
+        "The dashboard could not complete the auto-fix request. Check the connection and review service logs before retrying."
+      );
     } finally {
       setRefreshing(false);
     }
   };
 
-  const handleServiceToggle = async (
-    serviceKey: "backend" | "frontend",
-    service: any,
-  ) => {
+  const handleServiceToggle = async (serviceKey: "backend" | "frontend", service: any) => {
     if (offlineMode) {
       Alert.alert(
         "Offline Mode",
-        "Service controls are unavailable while offline mode is enabled.",
+        "Service controls are unavailable while offline mode is enabled."
       );
       return;
     }
@@ -405,15 +383,13 @@ export default function DashboardWeb() {
 
       Alert.alert(
         "Success",
-        response?.message ||
-          `${serviceKey} ${service?.running ? "stop" : "start"} request sent.`,
+        response?.message || `${serviceKey} ${service?.running ? "stop" : "start"} request sent.`
       );
       await loadDashboardData(true);
     } catch (error: any) {
       Alert.alert(
         "Error",
-        error?.message ||
-          `Failed to ${service?.running ? "stop" : "start"} ${serviceKey}.`,
+        error?.message || `Failed to ${service?.running ? "stop" : "start"} ${serviceKey}.`
       );
     } finally {
       setServiceActionLoading(null);
@@ -453,11 +429,10 @@ export default function DashboardWeb() {
           onPress: () => router.push(item.route as any),
         })),
       ].filter(
-        (tool, index, all) =>
-          all.findIndex((candidate) => candidate.key === tool.key) === index,
+        (tool, index, all) => all.findIndex((candidate) => candidate.key === tool.key) === index
       ),
     ],
-    [adminRouteTools, handleTabChange, recommendedTools, router],
+    [adminRouteTools, handleTabChange, recommendedTools, router]
   );
 
   const sessionChartData = prepareSessionChartData(sessionsAnalytics);
@@ -465,7 +440,7 @@ export default function DashboardWeb() {
 
   return (
     <ScreenContainer
-      backgroundType="aurora"
+      backgroundType="solid"
       auroraVariant="primary"
       auroraIntensity="medium"
       header={{
@@ -494,22 +469,22 @@ export default function DashboardWeb() {
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => loadDashboardData(true)}
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={() => loadDashboardData(true)} />
           }
         >
           {offlineMode && (
-            <GlassCard style={styles.offlineNotice}>
-              <Text style={styles.offlineNoticeTitle}>
-                Admin dashboard is in offline mode
-              </Text>
+            <ModernCard
+              variant="outlined"
+              elevation="none"
+              padding={0}
+              style={styles.offlineNotice}
+            >
+              <Text style={styles.offlineNoticeTitle}>Admin dashboard is in offline mode</Text>
               <Text style={styles.offlineNoticeBody}>
-                Monitoring, reports, diagnosis, and service controls require a
-                live backend connection. Reconnect to refresh this dashboard.
+                Monitoring, reports, diagnosis, and service controls require a live backend
+                connection. Reconnect to refresh this dashboard.
               </Text>
-            </GlassCard>
+            </ModernCard>
           )}
 
           {activeTab === "overview" && (

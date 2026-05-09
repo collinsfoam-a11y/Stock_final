@@ -1,9 +1,6 @@
 import { create } from "zustand";
 import { mmkvStorage } from "../services/mmkvStorage";
-import type {
-  UserSettings,
-  UserSettingsColumnVisibility,
-} from "../services/api/authApi";
+import type { UserSettings, UserSettingsColumnVisibility } from "../services/api/authApi";
 import { createLogger } from "../services/logging";
 import {
   getScopedStorageKey,
@@ -23,6 +20,10 @@ const REMOTE_USER_SETTING_KEYS = new Set<keyof Settings>([
   "notificationsEnabled",
   "notificationSound",
   "notificationBadge",
+  "notificationRecountAlerts",
+  "notificationApprovalAlerts",
+  "notificationSyncFailureAlerts",
+  "notificationSessionReminderAlerts",
   "autoSyncEnabled",
   "autoSyncInterval",
   "syncOnReconnect",
@@ -51,27 +52,19 @@ const REMOTE_USER_SETTING_KEYS = new Set<keyof Settings>([
 ]);
 let syncTimeout: ReturnType<typeof setTimeout> | null = null;
 const IS_TEST_ENV =
-  process.env.NODE_ENV === "test" ||
-  typeof process.env.JEST_WORKER_ID !== "undefined";
-let authApiCache: typeof import("../services/api/authApi")["authApi"] | null =
-  null;
-let themeServiceCache:
-  | typeof import("../services/themeService")["ThemeService"]
-  | null = null;
+  process.env.NODE_ENV === "test" || typeof process.env.JEST_WORKER_ID !== "undefined";
+let authApiCache: (typeof import("../services/api/authApi"))["authApi"] | null = null;
+let themeServiceCache: (typeof import("../services/themeService"))["ThemeService"] | null = null;
 let backupReminderCache:
-  | typeof import("../services/backupReminderService")["syncBackupReminderPreference"]
+  | (typeof import("../services/backupReminderService"))["syncBackupReminderPreference"]
   | null = null;
-let authApiPromise:
-  | Promise<typeof import("../services/api/authApi")["authApi"]>
-  | null = null;
-let themeServicePromise:
-  | Promise<typeof import("../services/themeService")["ThemeService"]>
-  | null = null;
-let backupReminderPromise:
-  | Promise<
-      typeof import("../services/backupReminderService")["syncBackupReminderPreference"]
-    >
-  | null = null;
+let authApiPromise: Promise<(typeof import("../services/api/authApi"))["authApi"]> | null = null;
+let themeServicePromise: Promise<
+  (typeof import("../services/themeService"))["ThemeService"]
+> | null = null;
+let backupReminderPromise: Promise<
+  (typeof import("../services/backupReminderService"))["syncBackupReminderPreference"]
+> | null = null;
 
 const getAuthApi = async () => {
   if (authApiCache) {
@@ -80,9 +73,7 @@ const getAuthApi = async () => {
 
   if (!authApiPromise) {
     authApiPromise = IS_TEST_ENV
-      ? Promise.resolve(
-          getAuthApiSync(),
-        )
+      ? Promise.resolve(getAuthApiSync())
       : import("../services/api/authApi").then((module) => module.authApi);
   }
 
@@ -97,9 +88,7 @@ const getThemeService = async () => {
 
   if (!themeServicePromise) {
     themeServicePromise = IS_TEST_ENV
-      ? Promise.resolve(
-          getThemeServiceSync(),
-        )
+      ? Promise.resolve(getThemeServiceSync())
       : import("../services/themeService").then((module) => module.ThemeService);
   }
 
@@ -114,11 +103,9 @@ const getBackupReminderSync = async () => {
 
   if (!backupReminderPromise) {
     backupReminderPromise = IS_TEST_ENV
-      ? Promise.resolve(
-          getBackupReminderSyncImmediate(),
-        )
+      ? Promise.resolve(getBackupReminderSyncImmediate())
       : import("../services/backupReminderService").then(
-          (module) => module.syncBackupReminderPreference,
+          (module) => module.syncBackupReminderPreference
         );
   }
 
@@ -130,7 +117,8 @@ const getAuthApiSync = () => {
   if (!authApiCache) {
     // Jest `doMock` setups need synchronous resolution after mocks are registered.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    authApiCache = require("../services/api/authApi").authApi as typeof import("../services/api/authApi")["authApi"];
+    authApiCache = require("../services/api/authApi")
+      .authApi as (typeof import("../services/api/authApi"))["authApi"];
   }
 
   return authApiCache;
@@ -140,7 +128,8 @@ const getThemeServiceSync = () => {
   if (!themeServiceCache) {
     // Jest `doMock` setups need synchronous resolution after mocks are registered.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    themeServiceCache = require("../services/themeService").ThemeService as typeof import("../services/themeService")["ThemeService"];
+    themeServiceCache = require("../services/themeService")
+      .ThemeService as (typeof import("../services/themeService"))["ThemeService"];
   }
 
   return themeServiceCache;
@@ -150,7 +139,8 @@ const getBackupReminderSyncImmediate = () => {
   if (!backupReminderCache) {
     // Jest `doMock` setups need synchronous resolution after mocks are registered.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    backupReminderCache = require("../services/backupReminderService").syncBackupReminderPreference as typeof import("../services/backupReminderService")["syncBackupReminderPreference"];
+    backupReminderCache = require("../services/backupReminderService")
+      .syncBackupReminderPreference as (typeof import("../services/backupReminderService"))["syncBackupReminderPreference"];
   }
 
   return backupReminderCache;
@@ -165,6 +155,10 @@ export interface Settings {
   notificationsEnabled: boolean;
   notificationSound: boolean;
   notificationBadge: boolean;
+  notificationRecountAlerts: boolean;
+  notificationApprovalAlerts: boolean;
+  notificationSyncFailureAlerts: boolean;
+  notificationSessionReminderAlerts: boolean;
 
   // Sync
   autoSyncEnabled: boolean;
@@ -229,6 +223,10 @@ const DEFAULT_SETTINGS: Settings = {
   notificationsEnabled: true,
   notificationSound: true,
   notificationBadge: true,
+  notificationRecountAlerts: true,
+  notificationApprovalAlerts: true,
+  notificationSyncFailureAlerts: true,
+  notificationSessionReminderAlerts: true,
   autoSyncEnabled: true,
   autoSyncInterval: 15,
   syncOnReconnect: true,
@@ -305,7 +303,7 @@ const clampNumber = (
   value: unknown,
   fallback: number,
   minimum: number,
-  maximum: number,
+  maximum: number
 ): number => {
   if (typeof value === "number" && Number.isFinite(value)) {
     return Math.max(minimum, Math.min(maximum, Math.round(value)));
@@ -316,31 +314,26 @@ const clampNumber = (
 const normalizeChoice = <T extends string>(
   value: unknown,
   allowed: readonly T[],
-  fallback: T,
+  fallback: T
 ): T => {
   return allowed.includes(value as T) ? (value as T) : fallback;
 };
 
-const normalizeColumnVisibility = (
-  value: unknown,
-): Settings["columnVisibility"] => {
+const normalizeColumnVisibility = (value: unknown): Settings["columnVisibility"] => {
   if (!value || typeof value !== "object") {
     return { ...DEFAULT_COLUMN_VISIBILITY };
   }
 
   const raw = value as Record<string, unknown>;
   return {
-    mfgDate: normalizeBoolean(
-      raw.mfgDate ?? raw.mfg_date,
-      DEFAULT_COLUMN_VISIBILITY.mfgDate,
-    ),
+    mfgDate: normalizeBoolean(raw.mfgDate ?? raw.mfg_date, DEFAULT_COLUMN_VISIBILITY.mfgDate),
     expiryDate: normalizeBoolean(
       raw.expiryDate ?? raw.expiry_date,
-      DEFAULT_COLUMN_VISIBILITY.expiryDate,
+      DEFAULT_COLUMN_VISIBILITY.expiryDate
     ),
     serialNumber: normalizeBoolean(
       raw.serialNumber ?? raw.serial_number,
-      DEFAULT_COLUMN_VISIBILITY.serialNumber,
+      DEFAULT_COLUMN_VISIBILITY.serialNumber
     ),
     mrp: normalizeBoolean(raw.mrp, DEFAULT_COLUMN_VISIBILITY.mrp),
   };
@@ -358,126 +351,73 @@ const normalizeSettings = (settings: Settings): Settings => {
     theme,
     notificationsEnabled: normalizeBoolean(
       settings.notificationsEnabled,
-      defaults.notificationsEnabled,
+      defaults.notificationsEnabled
     ),
-    notificationSound: normalizeBoolean(
-      settings.notificationSound,
-      defaults.notificationSound,
+    notificationSound: normalizeBoolean(settings.notificationSound, defaults.notificationSound),
+    notificationBadge: normalizeBoolean(settings.notificationBadge, defaults.notificationBadge),
+    notificationRecountAlerts: normalizeBoolean(
+      settings.notificationRecountAlerts,
+      defaults.notificationRecountAlerts
     ),
-    notificationBadge: normalizeBoolean(
-      settings.notificationBadge,
-      defaults.notificationBadge,
+    notificationApprovalAlerts: normalizeBoolean(
+      settings.notificationApprovalAlerts,
+      defaults.notificationApprovalAlerts
     ),
-    autoSyncEnabled: normalizeBoolean(
-      settings.autoSyncEnabled,
-      defaults.autoSyncEnabled,
+    notificationSyncFailureAlerts: normalizeBoolean(
+      settings.notificationSyncFailureAlerts,
+      defaults.notificationSyncFailureAlerts
     ),
-    autoSyncInterval: clampNumber(
-      settings.autoSyncInterval,
-      defaults.autoSyncInterval,
-      5,
-      120,
+    notificationSessionReminderAlerts: normalizeBoolean(
+      settings.notificationSessionReminderAlerts,
+      defaults.notificationSessionReminderAlerts
     ),
-    syncOnReconnect: normalizeBoolean(
-      settings.syncOnReconnect,
-      defaults.syncOnReconnect,
-    ),
+    autoSyncEnabled: normalizeBoolean(settings.autoSyncEnabled, defaults.autoSyncEnabled),
+    autoSyncInterval: clampNumber(settings.autoSyncInterval, defaults.autoSyncInterval, 5, 120),
+    syncOnReconnect: normalizeBoolean(settings.syncOnReconnect, defaults.syncOnReconnect),
     offlineMode: normalizeBoolean(settings.offlineMode, defaults.offlineMode),
-    cacheExpiration: clampNumber(
-      settings.cacheExpiration,
-      defaults.cacheExpiration,
-      1,
-      168,
-    ),
-    maxQueueSize: clampNumber(
-      settings.maxQueueSize,
-      defaults.maxQueueSize,
-      100,
-      10000,
-    ),
-    scannerVibration: normalizeBoolean(
-      settings.scannerVibration,
-      defaults.scannerVibration,
-    ),
-    scannerSound: normalizeBoolean(
-      settings.scannerSound,
-      defaults.scannerSound,
-    ),
-    scannerAutoSubmit: normalizeBoolean(
-      settings.scannerAutoSubmit,
-      defaults.scannerAutoSubmit,
-    ),
-    scannerTimeout: clampNumber(
-      settings.scannerTimeout,
-      defaults.scannerTimeout,
-      5,
-      120,
-    ),
+    cacheExpiration: clampNumber(settings.cacheExpiration, defaults.cacheExpiration, 1, 168),
+    maxQueueSize: clampNumber(settings.maxQueueSize, defaults.maxQueueSize, 100, 10000),
+    scannerVibration: normalizeBoolean(settings.scannerVibration, defaults.scannerVibration),
+    scannerSound: normalizeBoolean(settings.scannerSound, defaults.scannerSound),
+    scannerAutoSubmit: normalizeBoolean(settings.scannerAutoSubmit, defaults.scannerAutoSubmit),
+    scannerTimeout: clampNumber(settings.scannerTimeout, defaults.scannerTimeout, 5, 120),
     fontSizeValue,
     fontSize: deriveFontSizeLabel(fontSizeValue),
     fontStyle: normalizeFontStylePreference(settings.fontStyle),
-    showItemImages: normalizeBoolean(
-      settings.showItemImages,
-      defaults.showItemImages,
-    ),
-    showItemPrices: normalizeBoolean(
-      settings.showItemPrices,
-      defaults.showItemPrices,
-    ),
-    showItemStock: normalizeBoolean(
-      settings.showItemStock,
-      defaults.showItemStock,
-    ),
+    showItemImages: normalizeBoolean(settings.showItemImages, defaults.showItemImages),
+    showItemPrices: normalizeBoolean(settings.showItemPrices, defaults.showItemPrices),
+    showItemStock: normalizeBoolean(settings.showItemStock, defaults.showItemStock),
     exportFormat: normalizeChoice(
       settings.exportFormat,
       ["csv", "json"] as const,
-      defaults.exportFormat,
+      defaults.exportFormat
     ),
     backupFrequency: normalizeChoice(
       settings.backupFrequency,
       ["daily", "weekly", "monthly", "never"] as const,
-      defaults.backupFrequency,
+      defaults.backupFrequency
     ),
     requireAuth: normalizeBoolean(settings.requireAuth, defaults.requireAuth),
-    sessionTimeout: clampNumber(
-      settings.sessionTimeout,
-      defaults.sessionTimeout,
-      5,
-      240,
-    ),
-    biometricAuth: normalizeBoolean(
-      settings.biometricAuth,
-      defaults.biometricAuth,
-    ),
+    sessionTimeout: clampNumber(settings.sessionTimeout, defaults.sessionTimeout, 5, 240),
+    biometricAuth: normalizeBoolean(settings.biometricAuth, defaults.biometricAuth),
     operationalMode: normalizeChoice(
       settings.operationalMode,
       SUPPORTED_OPERATIONAL_MODES,
-      defaults.operationalMode,
+      defaults.operationalMode
     ),
     imageCache: normalizeBoolean(settings.imageCache, defaults.imageCache),
     lazyLoading: normalizeBoolean(settings.lazyLoading, defaults.lazyLoading),
-    debounceDelay: clampNumber(
-      settings.debounceDelay,
-      defaults.debounceDelay,
-      0,
-      2000,
-    ),
+    debounceDelay: clampNumber(settings.debounceDelay, defaults.debounceDelay, 0, 2000),
     columnVisibility: normalizeColumnVisibility(settings.columnVisibility),
   };
 };
 
 const fromBackendColumnVisibility = (
-  value: UserSettingsColumnVisibility | undefined,
+  value: UserSettingsColumnVisibility | undefined
 ): Settings["columnVisibility"] => ({
   mfgDate: normalizeBoolean(value?.mfg_date, DEFAULT_COLUMN_VISIBILITY.mfgDate),
-  expiryDate: normalizeBoolean(
-    value?.expiry_date,
-    DEFAULT_COLUMN_VISIBILITY.expiryDate,
-  ),
-  serialNumber: normalizeBoolean(
-    value?.serial_number,
-    DEFAULT_COLUMN_VISIBILITY.serialNumber,
-  ),
+  expiryDate: normalizeBoolean(value?.expiry_date, DEFAULT_COLUMN_VISIBILITY.expiryDate),
+  serialNumber: normalizeBoolean(value?.serial_number, DEFAULT_COLUMN_VISIBILITY.serialNumber),
   mrp: normalizeBoolean(value?.mrp, DEFAULT_COLUMN_VISIBILITY.mrp),
 });
 
@@ -485,118 +425,76 @@ const mapBackendSettings = (backend: UserSettings): Partial<Settings> => ({
   theme: normalizeThemePreference(backend.theme),
   notificationsEnabled: normalizeBoolean(
     backend.notifications_enabled,
-    DEFAULT_SETTINGS.notificationsEnabled,
+    DEFAULT_SETTINGS.notificationsEnabled
   ),
   notificationSound: normalizeBoolean(
     backend.notification_sound,
-    DEFAULT_SETTINGS.notificationSound,
+    DEFAULT_SETTINGS.notificationSound
   ),
   notificationBadge: normalizeBoolean(
     backend.notification_badge,
-    DEFAULT_SETTINGS.notificationBadge,
+    DEFAULT_SETTINGS.notificationBadge
   ),
-  autoSyncEnabled: normalizeBoolean(
-    backend.auto_sync_enabled,
-    DEFAULT_SETTINGS.autoSyncEnabled,
+  notificationRecountAlerts: normalizeBoolean(
+    backend.notification_recount_alerts,
+    DEFAULT_SETTINGS.notificationRecountAlerts
   ),
+  notificationApprovalAlerts: normalizeBoolean(
+    backend.notification_approval_alerts,
+    DEFAULT_SETTINGS.notificationApprovalAlerts
+  ),
+  notificationSyncFailureAlerts: normalizeBoolean(
+    backend.notification_sync_failure_alerts,
+    DEFAULT_SETTINGS.notificationSyncFailureAlerts
+  ),
+  notificationSessionReminderAlerts: normalizeBoolean(
+    backend.notification_session_reminder_alerts,
+    DEFAULT_SETTINGS.notificationSessionReminderAlerts
+  ),
+  autoSyncEnabled: normalizeBoolean(backend.auto_sync_enabled, DEFAULT_SETTINGS.autoSyncEnabled),
   autoSyncInterval: clampNumber(
     backend.auto_sync_interval,
     DEFAULT_SETTINGS.autoSyncInterval,
     5,
-    120,
+    120
   ),
-  syncOnReconnect: normalizeBoolean(
-    backend.sync_on_reconnect,
-    DEFAULT_SETTINGS.syncOnReconnect,
-  ),
-  offlineMode: normalizeBoolean(
-    backend.offline_mode,
-    DEFAULT_SETTINGS.offlineMode,
-  ),
-  cacheExpiration: clampNumber(
-    backend.cache_expiration,
-    DEFAULT_SETTINGS.cacheExpiration,
-    1,
-    168,
-  ),
-  maxQueueSize: clampNumber(
-    backend.max_queue_size,
-    DEFAULT_SETTINGS.maxQueueSize,
-    100,
-    10000,
-  ),
-  scannerVibration: normalizeBoolean(
-    backend.scanner_vibration,
-    DEFAULT_SETTINGS.scannerVibration,
-  ),
-  scannerSound: normalizeBoolean(
-    backend.scanner_sound,
-    DEFAULT_SETTINGS.scannerSound,
-  ),
+  syncOnReconnect: normalizeBoolean(backend.sync_on_reconnect, DEFAULT_SETTINGS.syncOnReconnect),
+  offlineMode: normalizeBoolean(backend.offline_mode, DEFAULT_SETTINGS.offlineMode),
+  cacheExpiration: clampNumber(backend.cache_expiration, DEFAULT_SETTINGS.cacheExpiration, 1, 168),
+  maxQueueSize: clampNumber(backend.max_queue_size, DEFAULT_SETTINGS.maxQueueSize, 100, 10000),
+  scannerVibration: normalizeBoolean(backend.scanner_vibration, DEFAULT_SETTINGS.scannerVibration),
+  scannerSound: normalizeBoolean(backend.scanner_sound, DEFAULT_SETTINGS.scannerSound),
   scannerAutoSubmit: normalizeBoolean(
     backend.scanner_auto_submit,
-    DEFAULT_SETTINGS.scannerAutoSubmit,
+    DEFAULT_SETTINGS.scannerAutoSubmit
   ),
-  scannerTimeout: clampNumber(
-    backend.scanner_timeout,
-    DEFAULT_SETTINGS.scannerTimeout,
-    5,
-    120,
-  ),
+  scannerTimeout: clampNumber(backend.scanner_timeout, DEFAULT_SETTINGS.scannerTimeout, 5, 120),
   fontSizeValue: normalizeFontSizePreference(backend.font_size),
   fontStyle: normalizeFontStylePreference(backend.font_style),
-  showItemImages: normalizeBoolean(
-    backend.show_item_images,
-    DEFAULT_SETTINGS.showItemImages,
-  ),
-  showItemPrices: normalizeBoolean(
-    backend.show_item_prices,
-    DEFAULT_SETTINGS.showItemPrices,
-  ),
-  showItemStock: normalizeBoolean(
-    backend.show_item_stock,
-    DEFAULT_SETTINGS.showItemStock,
-  ),
+  showItemImages: normalizeBoolean(backend.show_item_images, DEFAULT_SETTINGS.showItemImages),
+  showItemPrices: normalizeBoolean(backend.show_item_prices, DEFAULT_SETTINGS.showItemPrices),
+  showItemStock: normalizeBoolean(backend.show_item_stock, DEFAULT_SETTINGS.showItemStock),
   exportFormat: normalizeChoice(
     backend.export_format,
     ["csv", "json"] as const,
-    DEFAULT_SETTINGS.exportFormat,
+    DEFAULT_SETTINGS.exportFormat
   ),
   backupFrequency: normalizeChoice(
     backend.backup_frequency,
     ["daily", "weekly", "monthly", "never"] as const,
-    DEFAULT_SETTINGS.backupFrequency,
+    DEFAULT_SETTINGS.backupFrequency
   ),
-  requireAuth: normalizeBoolean(
-    backend.require_auth,
-    DEFAULT_SETTINGS.requireAuth,
-  ),
-  sessionTimeout: clampNumber(
-    backend.session_timeout,
-    DEFAULT_SETTINGS.sessionTimeout,
-    5,
-    240,
-  ),
-  biometricAuth: normalizeBoolean(
-    backend.biometric_auth,
-    DEFAULT_SETTINGS.biometricAuth,
-  ),
+  requireAuth: normalizeBoolean(backend.require_auth, DEFAULT_SETTINGS.requireAuth),
+  sessionTimeout: clampNumber(backend.session_timeout, DEFAULT_SETTINGS.sessionTimeout, 5, 240),
+  biometricAuth: normalizeBoolean(backend.biometric_auth, DEFAULT_SETTINGS.biometricAuth),
   operationalMode: normalizeChoice(
     backend.operational_mode,
     SUPPORTED_OPERATIONAL_MODES,
-    DEFAULT_SETTINGS.operationalMode,
+    DEFAULT_SETTINGS.operationalMode
   ),
   imageCache: normalizeBoolean(backend.image_cache, DEFAULT_SETTINGS.imageCache),
-  lazyLoading: normalizeBoolean(
-    backend.lazy_loading,
-    DEFAULT_SETTINGS.lazyLoading,
-  ),
-  debounceDelay: clampNumber(
-    backend.debounce_delay,
-    DEFAULT_SETTINGS.debounceDelay,
-    0,
-    2000,
-  ),
+  lazyLoading: normalizeBoolean(backend.lazy_loading, DEFAULT_SETTINGS.lazyLoading),
+  debounceDelay: clampNumber(backend.debounce_delay, DEFAULT_SETTINGS.debounceDelay, 0, 2000),
   columnVisibility: fromBackendColumnVisibility(backend.column_visibility),
 });
 
@@ -605,6 +503,10 @@ const toBackendPayload = (settings: Settings): Partial<UserSettings> => ({
   notifications_enabled: settings.notificationsEnabled,
   notification_sound: settings.notificationSound,
   notification_badge: settings.notificationBadge,
+  notification_recount_alerts: settings.notificationRecountAlerts,
+  notification_approval_alerts: settings.notificationApprovalAlerts,
+  notification_sync_failure_alerts: settings.notificationSyncFailureAlerts,
+  notification_session_reminder_alerts: settings.notificationSessionReminderAlerts,
   auto_sync_enabled: settings.autoSyncEnabled,
   auto_sync_interval: clampNumber(settings.autoSyncInterval, 15, 5, 120),
   sync_on_reconnect: settings.syncOnReconnect,
@@ -759,8 +661,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       applySettingsSideEffects(mergedSettings);
       log.debug("Synced settings from backend");
     } catch (error) {
-      const message =
-        (error as { message?: string } | null)?.message || String(error);
+      const message = (error as { message?: string } | null)?.message || String(error);
       log.warn("Failed to sync from backend", {
         error: message,
       });
@@ -785,8 +686,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       });
       log.debug("Synced settings to backend");
     } catch (error) {
-      const message =
-        (error as { message?: string } | null)?.message || String(error);
+      const message = (error as { message?: string } | null)?.message || String(error);
       log.warn("Failed to sync to backend", {
         error: message,
       });

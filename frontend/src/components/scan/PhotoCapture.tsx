@@ -15,13 +15,12 @@ import {
   Platform,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import {
-  CameraView,
-  type CameraViewRef,
-} from "@/services/device/expoCamera";
+import { CameraView, type CameraViewRef } from "@/services/device/expoCamera";
 import { PhotoProofType, PhotoProofDraft } from "@/types/scan";
 import { PHOTO_PROOF_TYPES } from "@/constants/scanConstants";
 
+import { semanticColors, colors } from "@/theme/legacyCompat";
+import { colorWithAlpha } from "@/theme/themeTokens";
 interface PhotoCaptureProps {
   photos: PhotoProofDraft[];
   selectedPhotoType: PhotoProofType;
@@ -73,8 +72,7 @@ export const PhotoCapture: React.FC<PhotoCaptureProps> = ({
         </Text>
         {isWeb && (
           <Text style={styles.photoWebNotice}>
-            Capture and upload photos from the mobile app. Web access is
-            view-only.
+            Capture and upload photos from the mobile app. Web access is view-only.
           </Text>
         )}
         {serialPhotoShortfall > 0 && (
@@ -89,24 +87,16 @@ export const PhotoCapture: React.FC<PhotoCaptureProps> = ({
             return (
               <TouchableOpacity
                 key={option.value}
-                style={[
-                  styles.photoTypePill,
-                  isActive && styles.photoTypePillActive,
-                ]}
+                style={[styles.photoTypePill, isActive && styles.photoTypePillActive]}
                 onPress={() => onPhotoTypeChange(option.value)}
               >
                 <Ionicons
                   name={option.icon}
                   size={14}
-                  color={isActive ? "#1E293B" : "#3B82F6"}
+                  color={isActive ? colors.neutral[800] : colors.primary[500]}
                   style={styles.photoTypeIcon}
                 />
-                <Text
-                  style={[
-                    styles.photoTypeText,
-                    isActive && styles.photoTypeTextActive,
-                  ]}
-                >
+                <Text style={[styles.photoTypeText, isActive && styles.photoTypeTextActive]}>
                   {option.label}
                 </Text>
               </TouchableOpacity>
@@ -115,14 +105,11 @@ export const PhotoCapture: React.FC<PhotoCaptureProps> = ({
         </View>
         <View style={styles.photoControls}>
           <TouchableOpacity
-            style={[
-              styles.photoCaptureButton,
-              isWeb && styles.photoCaptureButtonDisabled,
-            ]}
+            style={[styles.photoCaptureButton, isWeb && styles.photoCaptureButtonDisabled]}
             onPress={onOpenPhotoCapture}
             disabled={isWeb}
           >
-            <Ionicons name="camera" size={18} color="#1E293B" />
+            <Ionicons name="camera" size={18} color={colors.neutral[800]} />
             <Text style={styles.photoCaptureButtonText}>Capture Photo</Text>
           </TouchableOpacity>
         </View>
@@ -145,7 +132,7 @@ export const PhotoCapture: React.FC<PhotoCaptureProps> = ({
                     style={styles.photoRemoveButton}
                     onPress={() => onRemovePhoto(photo.id ?? "")}
                   >
-                    <Ionicons name="close" size={14} color="#fff" />
+                    <Ionicons name="close" size={14} color={semanticColors.text.inverse} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -172,20 +159,14 @@ export const PhotoCapture: React.FC<PhotoCaptureProps> = ({
             />
             <View style={styles.photoModalOverlay}>
               <View style={styles.photoModalTopBar}>
-                <TouchableOpacity
-                  style={styles.photoModalButton}
-                  onPress={onClosePhotoCapture}
-                >
-                  <Ionicons name="close" size={28} color="#fff" />
+                <TouchableOpacity style={styles.photoModalButton} onPress={onClosePhotoCapture}>
+                  <Ionicons name="close" size={28} color={semanticColors.text.inverse} />
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.photoModalButton}
-                  onPress={onFlipCamera}
-                >
+                <TouchableOpacity style={styles.photoModalButton} onPress={onFlipCamera}>
                   <Ionicons
                     name="camera-reverse-outline"
                     size={24}
-                    color="#fff"
+                    color={semanticColors.text.inverse}
                   />
                 </TouchableOpacity>
               </View>
@@ -196,13 +177,9 @@ export const PhotoCapture: React.FC<PhotoCaptureProps> = ({
                   disabled={photoCaptureLoading}
                 >
                   {photoCaptureLoading ? (
-                    <ActivityIndicator size="small" color="#1E293B" />
+                    <ActivityIndicator size="small" color={colors.neutral[800]} />
                   ) : (
-                    <Ionicons
-                      name="radio-button-on"
-                      size={64}
-                      color="#1E293B"
-                    />
+                    <Ionicons name="radio-button-on" size={64} color={colors.neutral[800]} />
                   )}
                 </TouchableOpacity>
               </View>
@@ -227,26 +204,26 @@ const styles = StyleSheet.create({
   subSectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#fff",
+    color: semanticColors.text.inverse,
   },
   photoCountLabel: {
     fontSize: 14,
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
   },
   photoHelper: {
     fontSize: 14,
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
     marginBottom: 8,
   },
   photoWebNotice: {
     fontSize: 12,
-    color: "#FFB74D",
+    color: colors.warning[400],
     marginBottom: 8,
     fontStyle: "italic",
   },
   photoSerialWarning: {
     fontSize: 12,
-    color: "#EF4444",
+    color: colors.error[500],
     marginBottom: 8,
     fontWeight: "600",
   },
@@ -260,27 +237,27 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#1E293B",
+    backgroundColor: colors.neutral[800],
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: colors.neutral[700],
   },
   photoTypePillActive: {
-    backgroundColor: "#3B82F6",
-    borderColor: "#3B82F6",
+    backgroundColor: colors.primary[500],
+    borderColor: colors.primary[500],
   },
   photoTypeIcon: {
     marginRight: 2,
   },
   photoTypeText: {
     fontSize: 12,
-    color: "#3B82F6",
+    color: colors.primary[500],
     fontWeight: "600",
   },
   photoTypeTextActive: {
-    color: "#1E293B",
+    color: colors.neutral[800],
   },
   photoControls: {
     marginBottom: 16,
@@ -290,7 +267,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#3B82F6",
+    backgroundColor: colors.primary[500],
     borderRadius: 12,
     padding: 16,
   },
@@ -298,7 +275,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   photoCaptureButtonText: {
-    color: "#1E293B",
+    color: colors.neutral[800],
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -311,7 +288,7 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#1E293B",
+    backgroundColor: colors.neutral[800],
   },
   photoPreviewImage: {
     width: "100%",
@@ -322,33 +299,33 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "rgba(0,0,0,0.7)",
+    backgroundColor: colorWithAlpha(colors.black, 0.7),
     padding: 8,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   photoPreviewLabel: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 10,
     fontWeight: "600",
     textTransform: "uppercase",
   },
   photoRemoveButton: {
-    backgroundColor: "#EF4444",
+    backgroundColor: colors.error[500],
     borderRadius: 12,
     padding: 4,
   },
   photoEmptyText: {
     fontSize: 14,
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
     textAlign: "center",
     padding: 20,
     fontStyle: "italic",
   },
   photoModalContainer: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: colors.black,
   },
   photoCamera: {
     flex: 1,
@@ -368,7 +345,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   photoModalButton: {
-    backgroundColor: "rgba(0,0,0,0.7)",
+    backgroundColor: colorWithAlpha(colors.black, 0.7),
     borderRadius: 24,
     padding: 12,
   },
@@ -377,7 +354,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 40 : 24,
   },
   photoShutterButton: {
-    backgroundColor: "rgba(255,255,255,0.9)",
+    backgroundColor: colorWithAlpha(colors.white, 0.9),
     borderRadius: 40,
     width: 80,
     height: 80,

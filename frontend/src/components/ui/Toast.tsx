@@ -16,6 +16,7 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { useTheme } from "../../hooks/useTheme";
+import { zIndex as uiZIndex } from "@/theme/designTokens";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
@@ -199,7 +200,7 @@ export const Toast: React.FC<ToastProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    zIndex: 9999,
+    zIndex: uiZIndex.toast,
   },
   toast: {
     flexDirection: "row",

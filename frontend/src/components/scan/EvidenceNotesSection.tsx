@@ -1,17 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import ModernCard from "@/components/ui/ModernCard";
 import ModernInput from "@/components/ui/ModernInput";
-import {
-  colors,
-  fontSize,
-  fontWeight,
-  radius as borderRadius,
-  semanticColors,
-  spacing,
-} from "@/theme/unified";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
 
 type DamageType = "returnable" | "nonreturnable";
 
@@ -52,47 +46,207 @@ export function EvidenceNotesSection({
   onTakeDamagePhoto,
   onVarianceRemarkChange,
 }: EvidenceNotesSectionProps) {
+  const uiTokens = useUiTokens();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        addPhotoCard: {
+          alignItems: "center",
+          backgroundColor: colorWithAlpha(
+            uiTokens.colors.accent,
+            uiTokens.mode === "dark" ? 0.2 : 0.08
+          ),
+          borderColor: colorWithAlpha(uiTokens.colors.accent, 0.35),
+          borderRadius: uiTokens.radius.md,
+          borderStyle: "dashed",
+          borderWidth: 2,
+          height: 100,
+          justifyContent: "center",
+          width: 100,
+        },
+        addPhotoSubtext: {
+          color: uiTokens.colors.accentStrong,
+          fontSize: 12,
+          fontWeight: "600",
+          marginTop: 4,
+        },
+        damageContainer: {
+          backgroundColor: colorWithAlpha(
+            uiTokens.colors.error,
+            uiTokens.mode === "dark" ? 0.2 : 0.1
+          ),
+          borderColor: colorWithAlpha(uiTokens.colors.error, 0.4),
+          borderRadius: uiTokens.radius.md,
+          borderWidth: 1,
+          marginTop: uiTokens.spacing.sm,
+          padding: uiTokens.spacing.md,
+        },
+        damageQtyInput: {
+          borderColor: colorWithAlpha(uiTokens.colors.error, 0.45),
+          borderRadius: uiTokens.radius.md,
+          borderWidth: 1,
+          fontSize: 24,
+          fontWeight: "800",
+          height: 50,
+          marginTop: 4,
+          paddingHorizontal: uiTokens.spacing.md,
+          backgroundColor: uiTokens.colors.surface,
+          color: uiTokens.colors.textPrimary,
+        },
+        damageTypeButton: {
+          alignItems: "center",
+          backgroundColor: uiTokens.colors.surface,
+          borderColor: colorWithAlpha(uiTokens.colors.error, 0.35),
+          borderRadius: uiTokens.radius.sm,
+          borderWidth: 1,
+          flex: 1,
+          paddingVertical: uiTokens.spacing.sm,
+        },
+        damageTypeContainer: {
+          flexDirection: "row",
+          gap: uiTokens.spacing.sm,
+          marginTop: uiTokens.spacing.sm,
+        },
+        damageTypeSelected: {
+          backgroundColor: colorWithAlpha(
+            uiTokens.colors.error,
+            uiTokens.mode === "dark" ? 0.28 : 0.14
+          ),
+          borderColor: uiTokens.colors.error,
+        },
+        damageTypeText: {
+          color: uiTokens.colors.error,
+          fontSize: 13,
+          fontWeight: "600",
+        },
+        damageTypeTextSelected: {
+          color: uiTokens.colors.error,
+          fontWeight: "800",
+        },
+        detailLabel: {
+          color: uiTokens.colors.textSecondary,
+          fontSize: 12,
+          marginBottom: 2,
+          fontWeight: "600",
+        },
+        itemPhotoCard: {
+          alignItems: "center",
+          height: 100,
+          justifyContent: "center",
+          padding: uiTokens.spacing.md,
+          position: "relative",
+          width: 100,
+          borderWidth: 1,
+          borderColor: uiTokens.colors.border,
+          backgroundColor: uiTokens.colors.surfaceElevated,
+        },
+        itemPhotoWrapper: {
+          marginRight: uiTokens.spacing.sm,
+        },
+        itemPhotosRow: {
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: uiTokens.spacing.sm,
+        },
+        photoButton: {
+          alignItems: "center",
+          backgroundColor: uiTokens.colors.surface,
+          borderColor: colorWithAlpha(uiTokens.colors.error, 0.35),
+          borderRadius: uiTokens.radius.md,
+          borderWidth: 1,
+          flexDirection: "row",
+          gap: uiTokens.spacing.sm,
+          justifyContent: "center",
+          marginTop: uiTokens.spacing.md,
+          padding: uiTokens.spacing.md,
+        },
+        photoButtonSuccess: {
+          backgroundColor: uiTokens.colors.success,
+          borderColor: uiTokens.colors.success,
+        },
+        photoButtonText: {
+          color: uiTokens.colors.error,
+          fontSize: 13,
+          fontWeight: "700",
+        },
+        photoContainer: {
+          marginTop: uiTokens.spacing.md,
+        },
+        photoPreviewText: {
+          color: uiTokens.colors.success,
+          fontSize: 12,
+          fontWeight: "600",
+        },
+        photoPreviewWrapper: {
+          alignItems: "center",
+          flexDirection: "row",
+          gap: uiTokens.spacing.sm,
+          marginTop: uiTokens.spacing.sm,
+        },
+        photoRemoveText: {
+          color: uiTokens.colors.error,
+          fontSize: 12,
+          fontWeight: "600",
+        },
+        removePhotoBadge: {
+          position: "absolute",
+          right: 6,
+          top: 6,
+        },
+        section: {
+          marginBottom: uiTokens.spacing.lg,
+        },
+        sectionTitle: {
+          fontSize: 14,
+          fontWeight: "700",
+          marginBottom: uiTokens.spacing.sm,
+          color: uiTokens.colors.textPrimary,
+        },
+        toggleLabel: {
+          fontSize: 14,
+          fontWeight: "700",
+          color: uiTokens.colors.textPrimary,
+        },
+        toggleLabelContainer: {
+          alignItems: "center",
+          flexDirection: "row",
+          gap: uiTokens.spacing.sm,
+        },
+        toggleRow: {
+          alignItems: "center",
+          flexDirection: "row",
+          justifyContent: "space-between",
+        },
+      }),
+    [uiTokens]
+  );
+
   return (
     <>
       <View style={styles.section}>
         <View style={styles.toggleRow}>
           <View style={styles.toggleLabelContainer}>
-            <Ionicons
-              name="alert-circle-outline"
-              size={20}
-              color={colors.error[600]}
-            />
-            <Text
-              style={[
-                styles.toggleLabel,
-                { color: semanticColors.text.primary },
-              ]}
-            >
-              Is Damaged Item
-            </Text>
+            <Ionicons name="alert-circle-outline" size={20} color={uiTokens.colors.error} />
+            <Text style={styles.toggleLabel}>Is Damaged Item</Text>
           </View>
           <Switch
             value={isDamageEnabled}
             onValueChange={onDamageToggle}
             trackColor={{
-              false: colors.neutral[200],
-              true: colors.error[500],
+              false: colorWithAlpha(
+                uiTokens.colors.textMuted,
+                uiTokens.mode === "dark" ? 0.45 : 0.28
+              ),
+              true: uiTokens.colors.error,
             }}
-            thumbColor={isDamageEnabled ? colors.white : colors.neutral[50]}
+            thumbColor={isDamageEnabled ? uiTokens.colors.surfaceElevated : uiTokens.colors.surface}
           />
         </View>
 
         {isDamageEnabled && (
           <View style={styles.damageContainer}>
-            <Text
-              style={[
-                styles.detailLabel,
-                {
-                  color: colors.error[700],
-                  fontWeight: fontWeight.bold,
-                },
-              ]}
-            >
+            <Text style={[styles.detailLabel, { color: uiTokens.colors.error }]}>
               Select Damage Type
             </Text>
 
@@ -107,8 +261,7 @@ export function EvidenceNotesSection({
                 <Text
                   style={[
                     styles.damageTypeText,
-                    damageType === "returnable" &&
-                      styles.damageTypeTextSelected,
+                    damageType === "returnable" && styles.damageTypeTextSelected,
                   ]}
                 >
                   Returnable
@@ -125,8 +278,7 @@ export function EvidenceNotesSection({
                 <Text
                   style={[
                     styles.damageTypeText,
-                    damageType === "nonreturnable" &&
-                      styles.damageTypeTextSelected,
+                    damageType === "nonreturnable" && styles.damageTypeTextSelected,
                   ]}
                 >
                   Non-Returnable
@@ -134,42 +286,34 @@ export function EvidenceNotesSection({
               </TouchableOpacity>
             </View>
 
-            <View style={{ marginTop: spacing.md }}>
-              <Text style={[styles.detailLabel, { color: colors.error[700] }]}>
+            <View style={{ marginTop: uiTokens.spacing.md }}>
+              <Text style={[styles.detailLabel, { color: uiTokens.colors.error }]}>
                 Damage Quantity
               </Text>
               <TextInput
-                style={[
-                  styles.damageQtyInput,
-                  {
-                    color: semanticColors.text.primary,
-                  },
-                ]}
+                style={styles.damageQtyInput}
                 value={damageQty}
                 onChangeText={onDamageQtyChange}
                 keyboardType="numeric"
                 placeholder="0"
-                placeholderTextColor={semanticColors.text.disabled}
+                placeholderTextColor={uiTokens.colors.textMuted}
               />
             </View>
 
             <View style={styles.photoContainer}>
               <TouchableOpacity
-                style={[
-                  styles.photoButton,
-                  damagePhoto && styles.photoButtonSuccess,
-                ]}
+                style={[styles.photoButton, damagePhoto && styles.photoButtonSuccess]}
                 onPress={onTakeDamagePhoto}
               >
                 <Ionicons
                   name={damagePhoto ? "checkmark-circle" : "camera"}
                   size={24}
-                  color={damagePhoto ? colors.white : colors.error[600]}
+                  color={damagePhoto ? uiTokens.colors.surfaceElevated : uiTokens.colors.error}
                 />
                 <Text
                   style={[
                     styles.photoButtonText,
-                    damagePhoto && { color: colors.white },
+                    damagePhoto && { color: uiTokens.colors.surfaceElevated },
                   ]}
                 >
                   {damagePhoto ? "Update Photo" : "Capture Photo"}
@@ -178,11 +322,7 @@ export function EvidenceNotesSection({
 
               {damagePhoto && (
                 <View style={styles.photoPreviewWrapper}>
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={16}
-                    color={colors.success[600]}
-                  />
+                  <Ionicons name="checkmark-circle" size={16} color={uiTokens.colors.success} />
                   <Text style={styles.photoPreviewText}>Photo captured</Text>
                   <TouchableOpacity onPress={onRemoveDamagePhoto}>
                     <Text style={styles.photoRemoveText}>Remove</Text>
@@ -195,14 +335,7 @@ export function EvidenceNotesSection({
       </View>
 
       <View style={styles.section}>
-        <Text
-          style={[
-            styles.sectionTitle,
-            { color: semanticColors.text.primary },
-          ]}
-        >
-          Item Photos (Optional)
-        </Text>
+        <Text style={styles.sectionTitle}>Item Photos (Optional)</Text>
 
         <View style={styles.itemPhotosRow}>
           {itemPhotos.map((uri, index) => (
@@ -211,17 +344,13 @@ export function EvidenceNotesSection({
                 <Ionicons
                   name="image"
                   size={32}
-                  color={colors.primary[200]}
+                  color={colorWithAlpha(uiTokens.colors.accent, 0.45)}
                 />
                 <TouchableOpacity
                   style={styles.removePhotoBadge}
                   onPress={() => onRemoveItemPhoto(index)}
                 >
-                  <Ionicons
-                    name="close-circle"
-                    size={20}
-                    color={colors.error[600]}
-                  />
+                  <Ionicons name="close-circle" size={20} color={uiTokens.colors.error} />
                 </TouchableOpacity>
               </ModernCard>
             </View>
@@ -229,11 +358,7 @@ export function EvidenceNotesSection({
 
           {itemPhotos.length < 3 && (
             <TouchableOpacity style={styles.addPhotoCard} onPress={onAddItemPhoto}>
-              <Ionicons
-                name="add-circle-outline"
-                size={32}
-                color={colors.primary[600]}
-              />
+              <Ionicons name="add-circle-outline" size={32} color={uiTokens.colors.accent} />
               <Text style={styles.addPhotoSubtext}>Add Photo</Text>
             </TouchableOpacity>
           )}
@@ -262,156 +387,3 @@ export function EvidenceNotesSection({
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  addPhotoCard: {
-    alignItems: "center",
-    backgroundColor: colors.primary[50],
-    borderColor: colors.primary[200],
-    borderRadius: borderRadius.md,
-    borderStyle: "dashed",
-    borderWidth: 2,
-    height: 100,
-    justifyContent: "center",
-    width: 100,
-  },
-  addPhotoSubtext: {
-    color: colors.primary[600],
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.medium,
-    marginTop: 4,
-  },
-  damageContainer: {
-    backgroundColor: colors.error[50],
-    borderColor: colors.error[200],
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    marginTop: spacing.sm,
-    padding: spacing.md,
-  },
-  damageQtyInput: {
-    borderColor: colors.error[200],
-    borderRadius: 8,
-    borderWidth: 1,
-    fontSize: 24,
-    fontWeight: fontWeight.bold,
-    height: 50,
-    marginTop: 4,
-    paddingHorizontal: spacing.md,
-  },
-  damageTypeButton: {
-    alignItems: "center",
-    backgroundColor: colors.white,
-    borderColor: colors.error[200],
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-    flex: 1,
-    paddingVertical: spacing.sm,
-  },
-  damageTypeContainer: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  damageTypeSelected: {
-    backgroundColor: colors.error[100],
-    borderColor: colors.error[500],
-  },
-  damageTypeText: {
-    color: colors.error[700],
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-  },
-  damageTypeTextSelected: {
-    color: colors.error[800],
-    fontWeight: fontWeight.bold,
-  },
-  detailLabel: {
-    color: colors.neutral[500],
-    fontSize: fontSize.xs,
-    marginBottom: 2,
-  },
-  itemPhotoCard: {
-    alignItems: "center",
-    height: 100,
-    justifyContent: "center",
-    padding: spacing.md,
-    position: "relative",
-    width: 100,
-  },
-  itemPhotoWrapper: {
-    marginRight: spacing.sm,
-  },
-  itemPhotosRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  photoButton: {
-    alignItems: "center",
-    backgroundColor: colors.white,
-    borderColor: colors.error[300],
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "center",
-    marginTop: spacing.md,
-    padding: spacing.md,
-  },
-  photoButtonSuccess: {
-    backgroundColor: colors.success[600],
-    borderColor: colors.success[600],
-  },
-  photoButtonText: {
-    color: colors.error[700],
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-  },
-  photoContainer: {
-    marginTop: spacing.md,
-  },
-  photoPreviewText: {
-    color: colors.success[700],
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.medium,
-  },
-  photoPreviewWrapper: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  photoRemoveText: {
-    color: colors.error[600],
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.medium,
-  },
-  removePhotoBadge: {
-    position: "absolute",
-    right: 6,
-    top: 6,
-  },
-  section: {
-    marginBottom: spacing.xl,
-  },
-  sectionTitle: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.sm,
-  },
-  toggleLabel: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.medium,
-  },
-  toggleLabelContainer: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  toggleRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-});

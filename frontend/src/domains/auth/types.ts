@@ -21,6 +21,10 @@ export interface UserSettings {
   notifications_enabled: boolean;
   notification_sound: boolean;
   notification_badge: boolean;
+  notification_recount_alerts: boolean;
+  notification_approval_alerts: boolean;
+  notification_sync_failure_alerts: boolean;
+  notification_session_reminder_alerts: boolean;
   auto_sync_enabled: boolean;
   auto_sync_interval: number;
   sync_on_reconnect: boolean;

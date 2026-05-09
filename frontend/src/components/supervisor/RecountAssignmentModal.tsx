@@ -1,17 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { SearchableSelectModal } from "../modals/SearchableSelectModal";
 import { Modal } from "../ui/Modal";
 import ModernInput from "../ui/ModernInput";
 import { theme } from "../../styles/modernDesignSystem";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 export interface AssignableStaffUser {
   username: string;
   full_name?: string | null;
@@ -56,10 +51,9 @@ export default function RecountAssignmentModal({
     }
     setNotes("");
     setSelectedAssignee(
-      defaultAssignee &&
-        staffOptions.some((user) => user.username === defaultAssignee)
+      defaultAssignee && staffOptions.some((user) => user.username === defaultAssignee)
         ? defaultAssignee
-        : undefined,
+        : undefined
     );
   }, [defaultAssignee, staffOptions, visible]);
 
@@ -83,13 +77,7 @@ export default function RecountAssignmentModal({
 
   return (
     <>
-      <Modal
-        visible={visible}
-        onClose={onClose}
-        title={title}
-        size="medium"
-        animationType="fade"
-      >
+      <Modal visible={visible} onClose={onClose} title={title} size="medium" animationType="fade">
         <View style={styles.content}>
           <Text style={styles.description}>{description}</Text>
 
@@ -101,12 +89,7 @@ export default function RecountAssignmentModal({
               activeOpacity={0.8}
               disabled={loading || staffOptions.length === 0}
             >
-              <Text
-                style={[
-                  styles.selectorText,
-                  !selectedAssignee && styles.selectorPlaceholder,
-                ]}
-              >
+              <Text style={[styles.selectorText, !selectedAssignee && styles.selectorPlaceholder]}>
                 {staffOptions.length === 0 ? "No active staff available" : selectedLabel}
               </Text>
             </TouchableOpacity>
@@ -145,7 +128,7 @@ export default function RecountAssignmentModal({
               activeOpacity={0.8}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={uiSemanticColors.text.inverse} />
               ) : (
                 <Text style={styles.confirmText}>Assign Recount</Text>
               )}
@@ -239,7 +222,7 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   confirmText: {
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 15,
     fontWeight: "700",
   },

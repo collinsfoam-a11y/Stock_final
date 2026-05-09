@@ -1,15 +1,9 @@
 import React from "react";
-import {
-  Modal,
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from "react-native";
+import { Modal, View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useThemeContext } from "../../context/ThemeContext";
 
+import { shadows as uiShadows } from "@/theme/legacyCompat";
 export interface ConflictData {
   barcode: string;
   itemName: string;
@@ -21,20 +15,20 @@ export interface ConflictData {
 interface ConflictResolutionModalProps {
   visible: boolean;
   conflicts: ConflictData[];
-  onResolve: (
-    resolutions: { barcode: string; resolution: "local" | "server" }[],
-  ) => void;
+  onResolve: (resolutions: { barcode: string; resolution: "local" | "server" }[]) => void;
   onCancel: () => void;
   mode?: "sync" | "locked";
 }
 
-export const ConflictResolutionModal: React.FC<
-  ConflictResolutionModalProps
-> = ({ visible, conflicts, onResolve, onCancel, mode = "sync" }) => {
+export const ConflictResolutionModal: React.FC<ConflictResolutionModalProps> = ({
+  visible,
+  conflicts,
+  onResolve,
+  onCancel,
+  mode = "sync",
+}) => {
   const { themeLegacy: theme } = useThemeContext();
-  const [resolutions, setResolutions] = React.useState<
-    Record<string, "local" | "server">
-  >({});
+  const [resolutions, setResolutions] = React.useState<Record<string, "local" | "server">>({});
 
   const handleSelect = (barcode: string, resolution: "local" | "server") => {
     setResolutions((prev) => ({ ...prev, [barcode]: resolution }));
@@ -57,26 +51,15 @@ export const ConflictResolutionModal: React.FC<
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.centeredView}>
-        <View
-          style={[
-            styles.modalView,
-            { backgroundColor: theme.colors.background },
-          ]}
-        >
+        <View style={[styles.modalView, { backgroundColor: theme.colors.background }]}>
           <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.colors.text }]}>
-              {title}
-            </Text>
+            <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
             <TouchableOpacity onPress={onCancel}>
               <Ionicons name="close" size={24} color={theme.colors.text} />
             </TouchableOpacity>
           </View>
 
-          <Text
-            style={[styles.subtitle, { color: theme.colors.textSecondary }]}
-          >
-            {subtitle}
-          </Text>
+          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>{subtitle}</Text>
 
           <ScrollView
             style={styles.scrollArea}
@@ -86,20 +69,12 @@ export const ConflictResolutionModal: React.FC<
             {conflicts.map((conflict) => (
               <View
                 key={conflict.barcode}
-                style={[
-                  styles.conflictItem,
-                  { borderColor: theme.colors.border },
-                ]}
+                style={[styles.conflictItem, { borderColor: theme.colors.border }]}
               >
                 <Text style={[styles.itemName, { color: theme.colors.text }]}>
                   {conflict.itemName}
                 </Text>
-                <Text
-                  style={[
-                    styles.barcode,
-                    { color: theme.colors.textSecondary },
-                  ]}
-                >
+                <Text style={[styles.barcode, { color: theme.colors.textSecondary }]}>
                   Barcode: {conflict.barcode}
                 </Text>
 
@@ -114,17 +89,10 @@ export const ConflictResolutionModal: React.FC<
                     ]}
                     onPress={() => handleSelect(conflict.barcode, "local")}
                   >
-                    <Text
-                      style={[
-                        styles.optionLabel,
-                        { color: theme.colors.accent },
-                      ]}
-                    >
+                    <Text style={[styles.optionLabel, { color: theme.colors.accent }]}>
                       Keep Local
                     </Text>
-                    <Text
-                      style={[styles.optionValue, { color: theme.colors.text }]}
-                    >
+                    <Text style={[styles.optionValue, { color: theme.colors.text }]}>
                       {conflict.field}: {String(conflict.localValue)}
                     </Text>
                   </TouchableOpacity>
@@ -139,17 +107,10 @@ export const ConflictResolutionModal: React.FC<
                     ]}
                     onPress={() => handleSelect(conflict.barcode, "server")}
                   >
-                    <Text
-                      style={[
-                        styles.optionLabel,
-                        { color: theme.colors.success },
-                      ]}
-                    >
+                    <Text style={[styles.optionLabel, { color: theme.colors.success }]}>
                       Keep Server
                     </Text>
-                    <Text
-                      style={[styles.optionValue, { color: theme.colors.text }]}
-                    >
+                    <Text style={[styles.optionValue, { color: theme.colors.text }]}>
                       {conflict.field}: {String(conflict.serverValue)}
                     </Text>
                   </TouchableOpacity>
@@ -159,10 +120,7 @@ export const ConflictResolutionModal: React.FC<
           </ScrollView>
 
           <TouchableOpacity
-            style={[
-              styles.confirmButton,
-              { backgroundColor: theme.colors.accent },
-            ]}
+            style={[styles.confirmButton, { backgroundColor: theme.colors.accent }]}
             onPress={handleConfirm}
           >
             <Text style={styles.confirmButtonText}>Confirm Resolutions</Text>
@@ -185,10 +143,7 @@ const styles = StyleSheet.create({
     maxHeight: "80%",
     borderRadius: 20,
     padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    ...uiShadows.md,
     elevation: 5,
   },
   header: {

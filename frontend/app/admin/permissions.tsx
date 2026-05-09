@@ -1,17 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  Alert,
-  Platform,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView, TextInput, Alert, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { usePermission } from "../../src/hooks/usePermission";
 import { LoadingSpinner, ScreenContainer } from "../../src/components/ui";
-import { GlassCard } from "../../src/components/ui/GlassCard";
+import ModernCard from "../../src/components/ui/ModernCard";
 import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
 import {
   getAvailablePermissions,
@@ -22,6 +14,7 @@ import {
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { auroraTheme } from "../../src/theme/auroraTheme";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { safeBackNavigation } from "@/utils/navigation";
 
 const isWeb = Platform.OS === "web";
 
@@ -38,11 +31,9 @@ export default function PermissionsScreen() {
   // Check if user has admin permissions
   useEffect(() => {
     if (!hasRole("admin")) {
-      Alert.alert(
-        "Access Denied",
-        "You do not have permission to access this screen.",
-        [{ text: "OK", onPress: () => router.back() }],
-      );
+      Alert.alert("Access Denied", "You do not have permission to access this screen.", [
+        { text: "OK", onPress: () => safeBackNavigation(router, { userRole: "admin" }) },
+      ]);
     }
   }, [hasRole, router]);
 
@@ -79,10 +70,7 @@ export default function PermissionsScreen() {
     }
 
     if (!username.trim()) {
-      Alert.alert(
-        "Input Required",
-        "Please enter a username to load permissions.",
-      );
+      Alert.alert("Input Required", "Please enter a username to load permissions.");
       return;
     }
     try {
@@ -143,26 +131,24 @@ export default function PermissionsScreen() {
       ? categoryKeys.filter(
           (cat) =>
             cat.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            categories[cat].some((p: string) =>
-              p.toLowerCase().includes(searchQuery.toLowerCase()),
-            ),
+            categories[cat].some((p: string) => p.toLowerCase().includes(searchQuery.toLowerCase()))
         )
       : categoryKeys;
 
     return filteredCategories.map((category) => {
       const permissions = categories[category];
       const filteredPermissions = searchQuery
-        ? permissions.filter((p: string) =>
-            p.toLowerCase().includes(searchQuery.toLowerCase()),
-          )
+        ? permissions.filter((p: string) => p.toLowerCase().includes(searchQuery.toLowerCase()))
         : permissions;
 
       if (filteredPermissions.length === 0) return null;
 
       return (
-        <GlassCard
+        <ModernCard
           key={category}
-          variant="medium"
+          variant="outlined"
+          elevation="none"
+          padding={0}
           style={styles.categoryContainer}
         >
           <View style={styles.categoryHeader}>
@@ -171,9 +157,7 @@ export default function PermissionsScreen() {
               size={20}
               color={auroraTheme.colors.primary[400]}
             />
-            <Text style={styles.categoryTitle}>
-              {category.toUpperCase().replace("_", " ")}
-            </Text>
+            <Text style={styles.categoryTitle}>{category.toUpperCase().replace("_", " ")}</Text>
           </View>
 
           <View style={styles.permissionsGrid}>
@@ -199,18 +183,16 @@ export default function PermissionsScreen() {
                       <Ionicons
                         name={hasPermission ? "close" : "add"}
                         size={16}
-                        color="#fff"
+                        color={auroraTheme.colors.text.primary}
                       />
-                      <Text style={styles.buttonText}>
-                        {hasPermission ? "Remove" : "Add"}
-                      </Text>
+                      <Text style={styles.buttonText}>{hasPermission ? "Remove" : "Add"}</Text>
                     </AnimatedPressable>
                   )}
                 </View>
               );
             })}
           </View>
-        </GlassCard>
+        </ModernCard>
       );
     });
   };
@@ -229,7 +211,7 @@ export default function PermissionsScreen() {
   if (loading && !availablePermissions) {
     return (
       <ScreenContainer
-        backgroundType="aurora"
+        backgroundType="solid"
         header={{
           title: "Permissions",
           subtitle: "Loading system permissions...",
@@ -245,8 +227,7 @@ export default function PermissionsScreen() {
 
   return (
     <ScreenContainer
-      backgroundType="aurora"
-      auroraVariant="secondary"
+      backgroundType="solid"
       header={{
         title: "Permissions",
         subtitle: "Manage User Access Control",
@@ -255,27 +236,25 @@ export default function PermissionsScreen() {
     >
       {offlineMode && (
         <View style={styles.topPanel}>
-          <GlassCard variant="strong" style={styles.noticeCard}>
+          <ModernCard variant="outlined" elevation="none" padding={0} style={styles.noticeCard}>
             <Ionicons
               name="cloud-offline-outline"
               size={20}
               color={auroraTheme.colors.warning[500]}
             />
             <View style={styles.noticeCopy}>
-              <Text style={styles.noticeTitle}>
-                Permissions are unavailable offline
-              </Text>
+              <Text style={styles.noticeTitle}>Permissions are unavailable offline</Text>
               <Text style={styles.noticeBody}>
-                Available permission rules and user permission assignments are
-                loaded from the backend. Reconnect to view or update access.
+                Available permission rules and user permission assignments are loaded from the
+                backend. Reconnect to view or update access.
               </Text>
             </View>
-          </GlassCard>
+          </ModernCard>
         </View>
       )}
 
       <View style={styles.topPanel}>
-        <GlassCard variant="strong" style={styles.controlPanel}>
+        <ModernCard variant="outlined" elevation="none" padding={0} style={styles.controlPanel}>
           <View style={styles.inputSection}>
             <Text style={styles.sectionLabel}>User Target</Text>
             <View style={styles.inputRow}>
@@ -325,35 +304,25 @@ export default function PermissionsScreen() {
               />
             </View>
           </View>
-        </GlassCard>
+        </ModernCard>
       </View>
 
       <ScrollView
         style={styles.content}
-        contentContainerStyle={[
-          styles.contentContainer,
-          isWeb && styles.contentContainerWeb,
-        ]}
+        contentContainerStyle={[styles.contentContainer, isWeb && styles.contentContainerWeb]}
       >
         <View style={styles.statsRow}>
-          <GlassCard variant="light" style={styles.statBox}>
-            <Text style={styles.statValue}>
-              {availablePermissions?.permissions?.length || 0}
-            </Text>
+          <ModernCard variant="outlined" elevation="none" padding={0} style={styles.statBox}>
+            <Text style={styles.statValue}>{availablePermissions?.permissions?.length || 0}</Text>
             <Text style={styles.statLabel}>Total Perms</Text>
-          </GlassCard>
+          </ModernCard>
           {selectedUsername && (
-            <GlassCard variant="light" style={styles.statBox}>
-              <Text
-                style={[
-                  styles.statValue,
-                  { color: auroraTheme.colors.primary[400] },
-                ]}
-              >
+            <ModernCard variant="outlined" elevation="none" padding={0} style={styles.statBox}>
+              <Text style={[styles.statValue, { color: auroraTheme.colors.primary[400] }]}>
                 {userPermissions.length}
               </Text>
               <Text style={styles.statLabel}>User Active</Text>
-            </GlassCard>
+            </ModernCard>
           )}
         </View>
 
@@ -440,17 +409,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: auroraTheme.borderRadius.md,
-    shadowColor: auroraTheme.colors.primary[500],
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
     elevation: 4,
   },
   disabledButton: {
     opacity: 0.5,
   },
   loadButtonText: {
-    color: "#fff",
+    color: auroraTheme.colors.text.primary,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -541,7 +506,7 @@ const styles = StyleSheet.create({
     backgroundColor: auroraTheme.colors.error[600],
   },
   buttonText: {
-    color: "#fff",
+    color: auroraTheme.colors.text.primary,
     fontSize: 14,
     fontWeight: "700",
   },

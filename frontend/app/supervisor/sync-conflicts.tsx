@@ -29,13 +29,9 @@ import {
   batchResolveSyncConflicts,
   getSyncConflictStats,
 } from "../../src/services/api/api";
-import {
-  AuroraBackground,
-  GlassCard,
-  StatsCard,
-  AnimatedPressable,
-} from "../../src/components/ui";
+import { ModernCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
 import { auroraTheme } from "../../src/theme/auroraTheme";
+import { safeBackNavigation } from "@/utils/navigation";
 
 interface SyncConflict {
   _id: string;
@@ -59,13 +55,9 @@ export default function SyncConflictsScreen() {
   const [conflicts, setConflicts] = useState<SyncConflict[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [filterStatus, setFilterStatus] = useState<string>("pending");
-  const [selectedConflicts, setSelectedConflicts] = useState<Set<string>>(
-    new Set(),
-  );
+  const [selectedConflicts, setSelectedConflicts] = useState<Set<string>>(new Set());
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedConflict, setSelectedConflict] = useState<SyncConflict | null>(
-    null,
-  );
+  const [selectedConflict, setSelectedConflict] = useState<SyncConflict | null>(null);
   const [resolutionNote, setResolutionNote] = useState("");
 
   const loadStats = useCallback(async () => {
@@ -83,8 +75,7 @@ export default function SyncConflictsScreen() {
       const response = await getSyncConflicts(status);
       setConflicts(response.data?.conflicts || []);
     } catch (error: any) {
-      if (Platform.OS !== "web")
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Error", error.message || "Failed to load sync conflicts");
     }
   }, [filterStatus]);
@@ -99,19 +90,16 @@ export default function SyncConflictsScreen() {
   useEffect(() => {
     // Security: Check permission before allowing conflict resolution
     if (!hasPermission("sync.resolve_conflict")) {
-      Alert.alert(
-        "Access Denied",
-        "You do not have permission to resolve sync conflicts.",
-        [{ text: "OK", onPress: () => router.back() }],
-      );
+      Alert.alert("Access Denied", "You do not have permission to resolve sync conflicts.", [
+        { text: "OK", onPress: () => safeBackNavigation(router, { userRole: "supervisor" }) },
+      ]);
       return;
     }
     loadData();
   }, [hasPermission, router, loadData]);
 
   const handleRefresh = () => {
-    if (Platform.OS !== "web")
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     loadData();
   };
@@ -127,8 +115,7 @@ export default function SyncConflictsScreen() {
       setResolutionNote("");
       loadData();
     } catch (error: any) {
-      if (Platform.OS !== "web")
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Error", error.message || "Failed to resolve conflict");
     }
   };
@@ -139,8 +126,7 @@ export default function SyncConflictsScreen() {
       return;
     }
 
-    if (Platform.OS !== "web")
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
     Alert.alert(
       "Confirm Batch Resolution",
@@ -154,25 +140,20 @@ export default function SyncConflictsScreen() {
               await batchResolveSyncConflicts(
                 Array.from(selectedConflicts),
                 resolution,
-                resolutionNote,
+                resolutionNote
               );
               if (Platform.OS !== "web")
-                Haptics.notificationAsync(
-                  Haptics.NotificationFeedbackType.Success,
-                );
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               Alert.alert("Success", "Conflicts resolved successfully");
               setSelectedConflicts(new Set());
               setResolutionNote("");
               loadData();
             } catch (error: any) {
-              Alert.alert(
-                "Error",
-                error.message || "Failed to resolve conflicts",
-              );
+              Alert.alert("Error", error.message || "Failed to resolve conflicts");
             }
           },
         },
-      ],
+      ]
     );
   };
 
@@ -202,10 +183,10 @@ export default function SyncConflictsScreen() {
         onLongPress={() => openConflictDetail(item)}
         style={{ marginBottom: auroraTheme.spacing.md }}
       >
-        <GlassCard
-          variant={isSelected ? "medium" : "light"}
+        <ModernCard
+          variant="outlined"
+          elevation="none"
           padding={auroraTheme.spacing.md}
-          borderRadius={auroraTheme.borderRadius.lg}
           style={
             isSelected
               ? { borderColor: auroraTheme.colors.primary[500], borderWidth: 1 }
@@ -213,12 +194,8 @@ export default function SyncConflictsScreen() {
           }
         >
           <View style={styles.cardHeader}>
-            <View
-              style={[styles.checkbox, isSelected && styles.checkboxChecked]}
-            >
-              {isSelected && (
-                <Ionicons name="checkmark" size={16} color="white" />
-              )}
+            <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+              {isSelected && <Ionicons name="checkmark" size={16} color="white" />}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.itemCode}>{item.item_code}</Text>
@@ -231,29 +208,19 @@ export default function SyncConflictsScreen() {
           <View style={styles.conflictData}>
             <View style={styles.dataColumn}>
               <Text style={styles.dataLabel}>Local Value</Text>
-              <GlassCard
-                variant="dark"
-                intensity={10}
-                padding={8}
-                borderRadius={auroraTheme.borderRadius.sm}
-              >
+              <ModernCard variant="outlined" elevation="none" padding={8}>
                 <Text style={styles.dataValue} numberOfLines={2}>
                   {JSON.stringify(item.local_value)}
                 </Text>
-              </GlassCard>
+              </ModernCard>
             </View>
             <View style={styles.dataColumn}>
               <Text style={styles.dataLabel}>Server Value</Text>
-              <GlassCard
-                variant="dark"
-                intensity={10}
-                padding={8}
-                borderRadius={auroraTheme.borderRadius.sm}
-              >
+              <ModernCard variant="outlined" elevation="none" padding={8}>
                 <Text style={styles.dataValue} numberOfLines={2}>
                   {JSON.stringify(item.server_value)}
                 </Text>
-              </GlassCard>
+              </ModernCard>
             </View>
           </View>
 
@@ -273,45 +240,33 @@ export default function SyncConflictsScreen() {
               </Text>
             </View>
           )}
-        </GlassCard>
+        </ModernCard>
       </AnimatedPressable>
     );
   };
 
   return (
-    <AuroraBackground variant="secondary" intensity="medium" animated>
+    <View style={styles.screen}>
       <StatusBar style="light" />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View
-          entering={FadeInDown.delay(100).springify()}
-          style={styles.header}
-        >
+        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
           <View style={styles.headerLeft}>
             <AnimatedPressable
-              onPress={() => router.back()}
+              onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
             >
-              <Ionicons
-                name="arrow-back"
-                size={24}
-                color={auroraTheme.colors.text.primary}
-              />
+              <Ionicons name="arrow-back" size={24} color={auroraTheme.colors.text.primary} />
             </AnimatedPressable>
             <View>
               <Text style={styles.pageTitle}>Sync Conflicts</Text>
-              <Text style={styles.pageSubtitle}>
-                Resolve data discrepancies
-              </Text>
+              <Text style={styles.pageSubtitle}>Resolve data discrepancies</Text>
             </View>
           </View>
         </Animated.View>
 
         {stats && (
-          <Animated.View
-            entering={FadeInDown.delay(200).springify()}
-            style={styles.statsContainer}
-          >
+          <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.statsContainer}>
             <StatsCard
               title="Total"
               value={stats.total?.toString() || "0"}
@@ -337,10 +292,7 @@ export default function SyncConflictsScreen() {
         )}
 
         {/* Filters */}
-        <Animated.View
-          entering={FadeInDown.delay(300).springify()}
-          style={styles.filterBar}
-        >
+        <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.filterBar}>
           {["pending", "resolved", "all"].map((status) => (
             <AnimatedPressable
               key={status}
@@ -350,10 +302,10 @@ export default function SyncConflictsScreen() {
               }}
               style={{ flex: 1 }}
             >
-              <GlassCard
-                variant={filterStatus === status ? "medium" : "light"}
+              <ModernCard
+                variant="outlined"
+                elevation="none"
                 padding={auroraTheme.spacing.sm}
-                borderRadius={auroraTheme.borderRadius.full}
                 style={[
                   styles.filterButton,
                   filterStatus === status && {
@@ -372,31 +324,23 @@ export default function SyncConflictsScreen() {
                 >
                   {status.charAt(0).toUpperCase() + status.slice(1)}
                 </Text>
-              </GlassCard>
+              </ModernCard>
             </AnimatedPressable>
           ))}
         </Animated.View>
 
         {selectedConflicts.size > 0 && (
-          <Animated.View
-            entering={FadeInDown.delay(100)}
-            style={styles.batchActions}
-          >
-            <GlassCard
-              variant="medium"
+          <Animated.View entering={FadeInDown.delay(100)} style={styles.batchActions}>
+            <ModernCard
+              variant="outlined"
+              elevation="none"
               padding={auroraTheme.spacing.md}
-              borderRadius={auroraTheme.borderRadius.lg}
               style={styles.batchCard}
             >
-              <Text style={styles.batchText}>
-                {selectedConflicts.size} selected
-              </Text>
+              <Text style={styles.batchText}>{selectedConflicts.size} selected</Text>
               <View style={styles.batchButtons}>
                 <AnimatedPressable
-                  style={[
-                    styles.batchButton,
-                    { backgroundColor: auroraTheme.colors.success[500] },
-                  ]}
+                  style={[styles.batchButton, { backgroundColor: auroraTheme.colors.success[500] }]}
                   onPress={() => handleBatchResolve("accept_server")}
                 >
                   <Text style={styles.batchButtonText}>Accept Server</Text>
@@ -411,16 +355,13 @@ export default function SyncConflictsScreen() {
                   <Text style={styles.batchButtonText}>Accept Local</Text>
                 </AnimatedPressable>
               </View>
-            </GlassCard>
+            </ModernCard>
           </Animated.View>
         )}
 
         {loading && !refreshing ? (
           <View style={styles.centered}>
-            <ActivityIndicator
-              size="large"
-              color={auroraTheme.colors.primary[500]}
-            />
+            <ActivityIndicator size="large" color={auroraTheme.colors.primary[500]} />
             <Text style={styles.loadingText}>Loading conflicts...</Text>
           </View>
         ) : conflicts.length === 0 ? (
@@ -460,15 +401,11 @@ export default function SyncConflictsScreen() {
           transparent={true}
           onRequestClose={() => setModalVisible(false)}
         >
-          <AuroraBackground
-            variant="primary"
-            intensity="high"
-            style={styles.modalOverlay}
-          >
-            <GlassCard
-              variant="modal"
+          <View style={styles.modalOverlay}>
+            <ModernCard
+              variant="outlined"
+              elevation="none"
               padding={auroraTheme.spacing.lg}
-              borderRadius={auroraTheme.borderRadius.xl}
               style={styles.modalContent}
             >
               <Text style={styles.modalTitle}>Resolve Conflict</Text>
@@ -476,41 +413,36 @@ export default function SyncConflictsScreen() {
               {selectedConflict && (
                 <>
                   <Text style={styles.modalLabel}>
-                    Item:{" "}
-                    <Text style={{ color: "white" }}>
-                      {selectedConflict.item_code}
-                    </Text>
+                    Item: <Text style={styles.modalItemCode}>{selectedConflict.item_code}</Text>
                   </Text>
                   <View style={styles.modalTypeBadge}>
-                    <Text style={styles.modalTypeText}>
-                      {selectedConflict.conflict_type}
-                    </Text>
+                    <Text style={styles.modalTypeText}>{selectedConflict.conflict_type}</Text>
                   </View>
 
                   <View style={styles.modalSection}>
                     <Text style={styles.modalSectionTitle}>Local Value</Text>
-                    <GlassCard
-                      variant="dark"
+                    <ModernCard
+                      variant="outlined"
+                      elevation="none"
                       padding={auroraTheme.spacing.md}
-                      borderRadius={auroraTheme.borderRadius.md}
                     >
                       <Text style={styles.modalValue}>
                         {JSON.stringify(selectedConflict.local_value, null, 2)}
                       </Text>
-                    </GlassCard>
+                    </ModernCard>
                   </View>
 
                   <View style={styles.modalSection}>
                     <Text style={styles.modalSectionTitle}>Server Value</Text>
-                    <GlassCard
-                      variant="dark"
+                    <ModernCard
+                      variant="outlined"
+                      elevation="none"
                       padding={auroraTheme.spacing.md}
-                      borderRadius={auroraTheme.borderRadius.md}
                     >
                       <Text style={styles.modalValue}>
                         {JSON.stringify(selectedConflict.server_value, null, 2)}
                       </Text>
-                    </GlassCard>
+                    </ModernCard>
                   </View>
 
                   <TextInput
@@ -528,9 +460,7 @@ export default function SyncConflictsScreen() {
                         styles.modalButton,
                         { backgroundColor: auroraTheme.colors.success[500] },
                       ]}
-                      onPress={() =>
-                        handleResolve(selectedConflict._id, "accept_server")
-                      }
+                      onPress={() => handleResolve(selectedConflict._id, "accept_server")}
                     >
                       <Text style={styles.modalButtonText}>Accept Server</Text>
                     </AnimatedPressable>
@@ -540,9 +470,7 @@ export default function SyncConflictsScreen() {
                         styles.modalButton,
                         { backgroundColor: auroraTheme.colors.secondary[500] },
                       ]}
-                      onPress={() =>
-                        handleResolve(selectedConflict._id, "accept_local")
-                      }
+                      onPress={() => handleResolve(selectedConflict._id, "accept_local")}
                     >
                       <Text style={styles.modalButtonText}>Accept Local</Text>
                     </AnimatedPressable>
@@ -556,15 +484,19 @@ export default function SyncConflictsScreen() {
                   </AnimatedPressable>
                 </>
               )}
-            </GlassCard>
-          </AuroraBackground>
+            </ModernCard>
+          </View>
         </Modal>
       </View>
-    </AuroraBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: auroraTheme.colors.background.primary,
+  },
   container: {
     flex: 1,
     paddingTop: 60,
@@ -765,6 +697,9 @@ const styles = StyleSheet.create({
     color: auroraTheme.colors.text.secondary,
     marginBottom: 4,
   },
+  modalItemCode: {
+    color: auroraTheme.colors.text.primary,
+  },
   modalTypeBadge: {
     backgroundColor: "rgba(234, 179, 8, 0.1)",
     paddingHorizontal: 12,
@@ -824,7 +759,7 @@ const styles = StyleSheet.create({
     borderColor: auroraTheme.colors.border.light,
   },
   modalButtonText: {
-    color: "#fff",
+    color: auroraTheme.colors.text.primary,
     fontSize: auroraTheme.typography.fontSize.md,
     fontWeight: "600",
   },

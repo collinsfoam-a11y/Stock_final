@@ -1,18 +1,11 @@
 import React from "react";
-import {
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Modal, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { auroraTheme } from "@/theme/auroraTheme";
 import { Column } from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
 
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface ColumnSettingsModalProps {
   columns: Column[];
   onClose: () => void;
@@ -29,28 +22,17 @@ export function ColumnSettingsModal({
   visible,
 }: ColumnSettingsModalProps) {
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Column Settings</Text>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons
-                name="close"
-                size={24}
-                color={auroraTheme.colors.text.primary}
-              />
+              <Ionicons name="close" size={24} color={auroraTheme.colors.text.primary} />
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.modalSubtitle}>
-            Toggle columns to show or hide them in the table
-          </Text>
+          <Text style={styles.modalSubtitle}>Toggle columns to show or hide them in the table</Text>
 
           <ScrollView
             style={styles.columnList}
@@ -65,11 +47,11 @@ export function ColumnSettingsModal({
                   value={column.visible}
                   onValueChange={() => onToggle(column.field)}
                   trackColor={{
-                    false: "#767577",
+                    false: uiColors.neutral[500],
                     true: auroraTheme.colors.primary[300],
                   }}
                   thumbColor={
-                    column.visible ? auroraTheme.colors.primary[500] : "#f4f3f4"
+                    column.visible ? auroraTheme.colors.primary[500] : uiColors.neutral[100]
                   }
                 />
               </View>
@@ -77,10 +59,7 @@ export function ColumnSettingsModal({
           </ScrollView>
 
           <View style={styles.modalActions}>
-            <TouchableOpacity
-              style={styles.resetButton}
-              onPress={onResetDefaults}
-            >
+            <TouchableOpacity style={styles.resetButton} onPress={onResetDefaults}>
               <Text style={styles.resetButtonText}>Reset to Defaults</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.doneButton} onPress={onClose}>
@@ -167,6 +146,6 @@ const styles = StyleSheet.create({
   doneButtonText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
   },
 });

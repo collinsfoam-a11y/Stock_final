@@ -9,10 +9,10 @@ export const modernBranding = {
   name: "Lavanya Mart",
   tagline: "Stock Verification System",
   colors: {
-    primary: "#3B82F6", // Modern blue
-    primaryDark: "#1D4ED8", // Darker blue for gradients
-    secondary: "#06B6D4", // Cyan accent
-    accent: "#06B6D4", // Cyan accent
+    primary: "#0655A5",
+    primaryDark: "#043C7A",
+    secondary: "#0F766E",
+    accent: "#0F766E",
   },
 } as const;
 
@@ -20,29 +20,29 @@ export const modernBranding = {
 const lightColors = {
   // Primary Brand Colors
   primary: {
-    50: "#EFF6FF",
-    100: "#DBEAFE",
-    200: "#BFDBFE",
-    300: "#93C5FD",
-    400: "#60A5FA",
-    500: "#3B82F6", // Main brand color
-    600: "#2563EB",
-    700: "#1D4ED8",
-    800: "#1E40AF",
-    900: "#1E3A8A",
+    50: "#EBF4FF",
+    100: "#D6E8FF",
+    200: "#AFD1FF",
+    300: "#82B5FF",
+    400: "#5C94FF",
+    500: "#0655A5",
+    600: "#054992",
+    700: "#043C7A",
+    800: "#032B59",
+    900: "#011732",
   },
 
   // Neutral Grays - Modern and Clean
   gray: {
-    50: "#F9FAFB",
-    100: "#F3F4F6",
-    200: "#E5E7EB",
-    300: "#D1D5DB",
-    400: "#9CA3AF",
-    500: "#6B7280",
-    600: "#4B5563",
-    700: "#374151",
-    800: "#1F2937",
+    50: "#F6F8FB",
+    100: "#EEF2F6",
+    200: "#D9E1EA",
+    300: "#B8C4D2",
+    400: "#8EA0B3",
+    500: "#657789",
+    600: "#46586A",
+    700: "#2E3E4F",
+    800: "#1B2A3A",
     900: "#111827",
   },
 
@@ -95,7 +95,7 @@ export const darkColors = {
 } as const;
 
 // Determine static colors based on OS preference at boot time
-const isDark = Appearance.getColorScheme() === 'dark';
+const isDark = Appearance.getColorScheme() === "dark";
 export const colors = isDark ? darkColors : lightColors;
 
 // Spacing System - 8px base grid
@@ -240,9 +240,9 @@ export const componentSizes = {
 
 // Modern Gradients
 export const gradients = {
-  primary: ["#3B82F6", "#1D4ED8"],
-  secondary: ["#06B6D4", "#0891B2"],
-  accent: ["#06B6D4", "#0891B2"],
+  primary: ["#0655A5", "#043C7A"],
+  secondary: ["#0F766E", "#115E59"],
+  accent: ["#0F766E", "#115E59"],
   success: ["#10B981", "#059669"],
   warning: ["#F59E0B", "#D97706"],
   error: ["#EF4444", "#DC2626"],

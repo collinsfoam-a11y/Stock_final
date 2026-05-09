@@ -1,17 +1,11 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  useWindowDimensions,
-} from "react-native";
+import { StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { useFocusEffect } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import {
   Chip,
-  GlassCard,
+  ModernCard,
   ProgressBar,
   ScreenContainer,
   StatsCard,
@@ -149,9 +143,7 @@ const getPriorityVariant = (band: WorkflowPriorityBand) => {
 };
 
 const getSlaTimestamp = (workflow: UserWorkflowSummary) =>
-  workflow.pending_review_since ||
-  workflow.recount_assigned_at ||
-  workflow.last_activity;
+  workflow.pending_review_since || workflow.recount_assigned_at || workflow.last_activity;
 
 const getSlaLabel = (workflow: UserWorkflowSummary) => {
   if (workflow.pending_review_since) return "Review since";
@@ -180,11 +172,7 @@ export default function UserWorkflowsScreen() {
       setWorkflows(data);
       setLastUpdatedAt(new Date());
     } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Failed to load user workflows",
-      );
+      setError(loadError instanceof Error ? loadError.message : "Failed to load user workflows");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -207,7 +195,7 @@ export default function UserWorkflowsScreen() {
           intervalRef.current = null;
         }
       };
-    }, [loadWorkflows]),
+    }, [loadWorkflows])
   );
 
   const filteredWorkflows = useMemo(() => {
@@ -242,21 +230,18 @@ export default function UserWorkflowsScreen() {
   }, [actionFilter, query, stageFilter, workflows]);
 
   const summary = useMemo(() => {
-    const active = workflows.filter((workflow) => Boolean(workflow.active_session_id))
-      .length;
-    const online = workflows.filter(
-      (workflow) => workflow.presence_status === "ONLINE",
-    ).length;
+    const active = workflows.filter((workflow) => Boolean(workflow.active_session_id)).length;
+    const online = workflows.filter((workflow) => workflow.presence_status === "ONLINE").length;
     const reviewQueue = workflows.reduce(
       (total, workflow) => total + workflow.pending_approvals,
-      0,
+      0
     );
     const recountQueue = workflows.reduce(
       (total, workflow) => total + workflow.assigned_recounts,
-      0,
+      0
     );
     const highPriority = workflows.filter((workflow) =>
-      ["HIGH", "CRITICAL"].includes(workflow.priority_band),
+      ["HIGH", "CRITICAL"].includes(workflow.priority_band)
     ).length;
 
     return {
@@ -327,18 +312,12 @@ export default function UserWorkflowsScreen() {
         />
       </View>
 
-      <GlassCard
-        variant="strong"
-        elevation="lg"
-        withGradientBorder
-        style={styles.searchCard}
-      >
+      <ModernCard variant="outlined" elevation="none" style={styles.searchCard}>
         <View style={styles.searchHeader}>
           <View>
             <Text style={styles.sectionTitle}>Running Workflow</Text>
             <Text style={styles.sectionSubtitle}>
-              Track who is counting, who is waiting for review, and who has
-              recount work open.
+              Track who is counting, who is waiting for review, and who has recount work open.
             </Text>
           </View>
           <StatusBadge
@@ -350,11 +329,7 @@ export default function UserWorkflowsScreen() {
         </View>
 
         <View style={styles.searchInputShell}>
-          <Ionicons
-            name="search-outline"
-            size={18}
-            color={auroraTheme.colors.text.tertiary}
-          />
+          <Ionicons name="search-outline" size={18} color={auroraTheme.colors.text.tertiary} />
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -400,29 +375,21 @@ export default function UserWorkflowsScreen() {
           <Text style={styles.errorText}>{error}</Text>
         ) : filteredWorkflows.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons
-              name="hourglass-outline"
-              size={28}
-              color={auroraTheme.colors.text.tertiary}
-            />
+            <Ionicons name="hourglass-outline" size={28} color={auroraTheme.colors.text.tertiary} />
             <Text style={styles.emptyTitle}>No matching workflows</Text>
-            <Text style={styles.emptyText}>
-              Try a different search term or pull to refresh.
-            </Text>
+            <Text style={styles.emptyText}>Try a different search term or pull to refresh.</Text>
           </View>
         ) : (
           filteredWorkflows.map((workflow) => (
-            <GlassCard
+            <ModernCard
               key={`${workflow.username}:${workflow.active_session_id ?? "queue"}`}
-              variant="medium"
-              elevation="md"
+              variant="outlined"
+              elevation="none"
               style={styles.workflowCard}
             >
               <View style={styles.cardHeader}>
                 <View style={styles.userBlock}>
-                  <Text style={styles.userName}>
-                    {workflow.full_name || workflow.username}
-                  </Text>
+                  <Text style={styles.userName}>{workflow.full_name || workflow.username}</Text>
                   <Text style={styles.userMeta}>
                     @{workflow.username} • {workflow.role}
                   </Text>
@@ -449,9 +416,7 @@ export default function UserWorkflowsScreen() {
               <View style={styles.detailGrid}>
                 <View style={styles.detailCell}>
                   <Text style={styles.detailLabel}>Warehouse</Text>
-                  <Text style={styles.detailValue}>
-                    {workflow.warehouse || "Not assigned"}
-                  </Text>
+                  <Text style={styles.detailValue}>{workflow.warehouse || "Not assigned"}</Text>
                 </View>
                 <View style={styles.detailCell}>
                   <Text style={styles.detailLabel}>Rack / Floor</Text>
@@ -462,11 +427,10 @@ export default function UserWorkflowsScreen() {
                 <View style={styles.detailCell}>
                   <Text style={styles.detailLabel}>Session</Text>
                   <Text style={styles.detailValue}>
-                    {(workflow.session_status
+                    {workflow.session_status
                       ? SESSION_STATUS_LABELS[workflow.session_status]
-                      : "Queue only")}{" "}
-                    •{" "}
-                    {compactId(workflow.active_session_id)}
+                      : "Queue only"}{" "}
+                    • {compactId(workflow.active_session_id)}
                   </Text>
                 </View>
                 <View style={styles.detailCell}>
@@ -480,9 +444,7 @@ export default function UserWorkflowsScreen() {
               <View style={styles.actionStrip}>
                 <View style={styles.actionCell}>
                   <Text style={styles.actionLabel}>Next action</Text>
-                  <Text style={styles.actionValue}>
-                    {NEXT_ACTION_LABELS[workflow.next_action]}
-                  </Text>
+                  <Text style={styles.actionValue}>{NEXT_ACTION_LABELS[workflow.next_action]}</Text>
                 </View>
                 <View style={styles.actionCell}>
                   <Text style={styles.actionLabel}>{getSlaLabel(workflow)}</Text>
@@ -514,27 +476,21 @@ export default function UserWorkflowsScreen() {
                 </View>
                 <View style={styles.metricPill}>
                   <Text style={styles.metricLabel}>Pending</Text>
-                  <Text style={styles.metricValue}>
-                    {workflow.pending_approvals}
-                  </Text>
+                  <Text style={styles.metricValue}>{workflow.pending_approvals}</Text>
                 </View>
                 <View style={styles.metricPill}>
                   <Text style={styles.metricLabel}>Recounts</Text>
-                  <Text style={styles.metricValue}>
-                    {workflow.assigned_recounts}
-                  </Text>
+                  <Text style={styles.metricValue}>{workflow.assigned_recounts}</Text>
                 </View>
                 <View style={styles.metricPill}>
                   <Text style={styles.metricLabel}>Variance</Text>
-                  <Text style={styles.metricValue}>
-                    {workflow.total_variance.toFixed(0)}
-                  </Text>
+                  <Text style={styles.metricValue}>{workflow.total_variance.toFixed(0)}</Text>
                 </View>
               </View>
-            </GlassCard>
+            </ModernCard>
           ))
         )}
-      </GlassCard>
+      </ModernCard>
 
       <View style={styles.footerSpace} />
     </ScreenContainer>

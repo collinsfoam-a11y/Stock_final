@@ -6,6 +6,7 @@ import { AnimatedPressable } from "@/components/ui";
 import { auroraTheme } from "@/theme/auroraTheme";
 import { userTextStyles } from "@/components/admin/users/userManagementShared";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface UserFiltersBarProps {
   activeFilter: boolean | null;
   onBulkAction: (action: "activate" | "deactivate" | "delete") => void;
@@ -31,11 +32,7 @@ export function UserFiltersBar({
     <>
       <View style={styles.filterBar}>
         <View style={styles.searchContainer}>
-          <Ionicons
-            name="search"
-            size={20}
-            color={auroraTheme.colors.neutral[400]}
-          />
+          <Ionicons name="search" size={20} color={auroraTheme.colors.neutral[400]} />
           <TextInput
             style={styles.searchInput}
             testID="users-search-input"
@@ -46,11 +43,7 @@ export function UserFiltersBar({
           />
           {search.length > 0 && (
             <AnimatedPressable onPress={() => onChangeSearch("")}>
-              <Ionicons
-                name="close-circle"
-                size={20}
-                color={auroraTheme.colors.neutral[400]}
-              />
+              <Ionicons name="close-circle" size={20} color={auroraTheme.colors.neutral[400]} />
             </AnimatedPressable>
           )}
         </View>
@@ -90,9 +83,7 @@ export function UserFiltersBar({
             <FilterButton
               active={activeFilter === false}
               label="Inactive"
-              onPress={() =>
-                onChangeActiveFilter(activeFilter === false ? null : false)
-              }
+              onPress={() => onChangeActiveFilter(activeFilter === false ? null : false)}
             />
           </View>
         </View>
@@ -161,7 +152,7 @@ function BulkButton({
 }) {
   return (
     <AnimatedPressable style={[styles.bulkButton, style]} onPress={onPress}>
-      <Ionicons name={icon} size={16} color="#fff" />
+      <Ionicons name={icon} size={16} color={uiSemanticColors.text.inverse} />
       <Text style={styles.bulkButtonText}>{label}</Text>
     </AnimatedPressable>
   );
@@ -264,7 +255,7 @@ const styles = StyleSheet.create({
   },
   bulkButtonText: {
     ...userTextStyles.caption,
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontWeight: "600",
   },
 });

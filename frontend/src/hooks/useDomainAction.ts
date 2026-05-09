@@ -63,7 +63,7 @@ export function useDomainAction<T, R>({
             const errorMsg =
               response.error?.message ||
               response.message ||
-              "Unknown error occurred";
+              "The requested action failed without a server error message. Retry the action, then check connectivity if it fails again.";
             throw new Error(errorMsg);
           }
         }

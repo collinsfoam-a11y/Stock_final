@@ -3,18 +3,12 @@
  * Handles serial number input, validation, and management
  */
 import React from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Switch,
-  StyleSheet,
-  Alert,
-} from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Switch, StyleSheet, Alert } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { SerialInput } from "@/types/scan";
 
+import { semanticColors, colors } from "@/theme/legacyCompat";
+import { colorWithAlpha } from "@/theme/themeTokens";
 interface SerialNumberEntryProps {
   serialInputs: SerialInput[];
   requiredSerialCount: number;
@@ -68,7 +62,7 @@ export const SerialNumberEntry: React.FC<SerialNumberEntryProps> = ({
     if (requiredSerialCount > 0 && serialInputs.length <= requiredSerialCount) {
       Alert.alert(
         "Cannot Remove",
-        `At least ${requiredSerialCount} serial number${requiredSerialCount > 1 ? "s are" : " is"} required.`,
+        `At least ${requiredSerialCount} serial number${requiredSerialCount > 1 ? "s are" : " is"} required.`
       );
       return;
     }
@@ -85,20 +79,17 @@ export const SerialNumberEntry: React.FC<SerialNumberEntryProps> = ({
             <Switch
               value={serialCaptureEnabled}
               onValueChange={onToggleSerialCapture}
-              trackColor={{ false: "#555", true: "#3B82F6" }}
-              thumbColor={serialCaptureEnabled ? "#e8f5e9" : "#f4f3f4"}
+              trackColor={{ false: colors.neutral[600], true: colors.primary[500] }}
+              thumbColor={serialCaptureEnabled ? colors.success[50] : colors.neutral[100]}
             />
           </View>
         )}
       </View>
-      <Text style={styles.serialRequirementText}>
-        {serialRequirementMessage}
-      </Text>
+      <Text style={styles.serialRequirementText}>{serialRequirementMessage}</Text>
       {missingSerialCount > 0 && (
         <Text style={styles.serialHelperText}>
           {missingSerialCount} more serial number
-          {missingSerialCount > 1 ? "s" : ""} needed to match the counted
-          quantity.
+          {missingSerialCount > 1 ? "s" : ""} needed to match the counted quantity.
         </Text>
       )}
       {extraSerialCount > 0 && (
@@ -112,18 +103,13 @@ export const SerialNumberEntry: React.FC<SerialNumberEntryProps> = ({
         <View style={styles.serialInputsContainer}>
           {serialInputs.map((entry, index) => {
             const isActiveSerialSlot =
-              showScanner &&
-              scannerMode === "serial" &&
-              serialScanTargetId === entry.id;
+              showScanner && scannerMode === "serial" && serialScanTargetId === entry.id;
             const serialLabel = entry.label || `Serial #${index + 1}`;
 
             return (
               <View
                 key={entry.id}
-                style={[
-                  styles.serialInputRow,
-                  isActiveSerialSlot && styles.serialInputRowActive,
-                ]}
+                style={[styles.serialInputRow, isActiveSerialSlot && styles.serialInputRowActive]}
               >
                 <View style={styles.serialInputHeader}>
                   <Text style={styles.serialInputLabel}>{serialLabel}</Text>
@@ -132,15 +118,14 @@ export const SerialNumberEntry: React.FC<SerialNumberEntryProps> = ({
                       style={styles.serialActionButton}
                       onPress={() => onScanSerialSlot(entry.id ?? "")}
                     >
-                      <Ionicons name="scan-outline" size={18} color="#3B82F6" />
+                      <Ionicons name="scan-outline" size={18} color={colors.primary[500]} />
                     </TouchableOpacity>
-                    {(requiredSerialCount === 0 ||
-                      serialInputs.length > requiredSerialCount) && (
+                    {(requiredSerialCount === 0 || serialInputs.length > requiredSerialCount) && (
                       <TouchableOpacity
                         style={styles.removeSerialButton}
                         onPress={() => handleRemove(entry.id ?? "")}
                       >
-                        <Ionicons name="trash" size={18} color="#EF4444" />
+                        <Ionicons name="trash" size={18} color={colors.error[500]} />
                       </TouchableOpacity>
                     )}
                   </View>
@@ -148,11 +133,9 @@ export const SerialNumberEntry: React.FC<SerialNumberEntryProps> = ({
                 <TextInput
                   style={styles.serialTextInput}
                   placeholder="Scan or enter serial number"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={semanticColors.text.tertiary}
                   value={entry.value}
-                  onChangeText={(text) =>
-                    handleSerialChange(entry.id ?? "", text)
-                  }
+                  onChangeText={(text) => handleSerialChange(entry.id ?? "", text)}
                   autoCapitalize="characters"
                   autoCorrect={false}
                 />
@@ -160,19 +143,13 @@ export const SerialNumberEntry: React.FC<SerialNumberEntryProps> = ({
             );
           })}
           <View style={styles.serialControlsRow}>
-            <TouchableOpacity
-              style={styles.scanSerialButton}
-              onPress={onScanNextSerial}
-            >
-              <Ionicons name="scan-outline" size={18} color="#3B82F6" />
+            <TouchableOpacity style={styles.scanSerialButton} onPress={onScanNextSerial}>
+              <Ionicons name="scan-outline" size={18} color={colors.primary[500]} />
               <Text style={styles.scanSerialButtonText}>Scan Next</Text>
             </TouchableOpacity>
             {serialInputs.length < serialInputTarget && (
-              <TouchableOpacity
-                style={styles.addSerialButton}
-                onPress={onAddSerial}
-              >
-                <Ionicons name="add-circle-outline" size={18} color="#3B82F6" />
+              <TouchableOpacity style={styles.addSerialButton} onPress={onAddSerial}>
+                <Ionicons name="add-circle-outline" size={18} color={colors.primary[500]} />
                 <Text style={styles.addSerialButtonText}>Add Serial</Text>
               </TouchableOpacity>
             )}
@@ -196,7 +173,7 @@ const styles = StyleSheet.create({
   subSectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#fff",
+    color: semanticColors.text.inverse,
   },
   serialToggleRow: {
     flexDirection: "row",
@@ -205,22 +182,22 @@ const styles = StyleSheet.create({
   },
   serialToggleLabel: {
     fontSize: 14,
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
   },
   serialRequirementText: {
     fontSize: 14,
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
     marginBottom: 8,
   },
   serialHelperText: {
     fontSize: 12,
-    color: "#FFB74D",
+    color: colors.warning[400],
     marginBottom: 8,
     fontStyle: "italic",
   },
   serialErrorText: {
     fontSize: 12,
-    color: "#EF4444",
+    color: colors.error[500],
     marginBottom: 8,
     fontWeight: "600",
   },
@@ -228,17 +205,17 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   serialInputRow: {
-    backgroundColor: "#1E293B",
+    backgroundColor: colors.neutral[800],
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: colors.neutral[700],
   },
   serialInputRowActive: {
-    borderColor: "#3B82F6",
+    borderColor: colors.primary[500],
     borderWidth: 2,
-    backgroundColor: "#1a3a1a",
+    backgroundColor: colorWithAlpha(colors.success[800], 0.35),
   },
   serialInputHeader: {
     flexDirection: "row",
@@ -249,30 +226,30 @@ const styles = StyleSheet.create({
   serialInputLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
   },
   serialInputActions: {
     flexDirection: "row",
     gap: 8,
   },
   serialActionButton: {
-    backgroundColor: "#252525",
+    backgroundColor: colors.neutral[800],
     borderRadius: 8,
     padding: 8,
   },
   removeSerialButton: {
-    backgroundColor: "#3a1a1a",
+    backgroundColor: colorWithAlpha(colors.error[800], 0.35),
     borderRadius: 8,
     padding: 8,
   },
   serialTextInput: {
-    backgroundColor: "#252525",
+    backgroundColor: colors.neutral[800],
     borderRadius: 8,
     padding: 12,
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: colors.neutral[700],
   },
   serialControlsRow: {
     flexDirection: "row",
@@ -285,12 +262,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#3B82F6",
+    backgroundColor: colors.primary[500],
     borderRadius: 12,
     padding: 14,
   },
   scanSerialButtonText: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -300,14 +277,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#1E293B",
+    backgroundColor: colors.neutral[800],
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: "#3B82F6",
+    borderColor: colors.primary[500],
   },
   addSerialButtonText: {
-    color: "#3B82F6",
+    color: colors.primary[500],
     fontSize: 16,
     fontWeight: "600",
   },

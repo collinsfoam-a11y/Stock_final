@@ -21,6 +21,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useThemeContext } from "../../context/ThemeContext";
 
+import { shadows as uiShadows } from "@/theme/legacyCompat";
 interface LiveIndicatorProps {
   label?: string;
   color?: string;
@@ -51,19 +52,19 @@ export const LiveIndicator: React.FC<LiveIndicatorProps> = ({
     pulseScale.value = withRepeat(
       withSequence(
         withTiming(1.3, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
       ),
       -1,
-      true,
+      true
     );
 
     pulseOpacity.value = withRepeat(
       withSequence(
         withTiming(0.3, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
       ),
       -1,
-      true,
+      true
     );
   }, [pulseOpacity, pulseScale]);
 
@@ -76,12 +77,7 @@ export const LiveIndicator: React.FC<LiveIndicatorProps> = ({
 
   return (
     <View style={[styles.container, { gap: theme.spacing.sm }, style]}>
-      <View
-        style={[
-          styles.dotContainer,
-          { width: dotSize * 2, height: dotSize * 2 },
-        ]}
-      >
+      <View style={[styles.dotContainer, { width: dotSize * 2, height: dotSize * 2 }]}>
         {/* Pulse ring */}
         <Animated.View
           style={[
@@ -104,10 +100,7 @@ export const LiveIndicator: React.FC<LiveIndicatorProps> = ({
               height: dotSize,
               borderRadius: dotSize / 2,
               backgroundColor: activeColor,
-              shadowColor: activeColor,
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.3,
-              shadowRadius: 2,
+              ...uiShadows.md,
               elevation: 2,
             },
           ]}

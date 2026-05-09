@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  Platform,
-} from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, Platform } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { FlashList } from "@shopify/flash-list";
@@ -22,13 +16,8 @@ import RecountAssignmentModal, {
 import { useToast } from "@/components/feedback/ToastProvider";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useSettingsStore } from "@/store/settingsStore";
-import {
-  colors,
-  spacing,
-  typography,
-  borderRadius,
-  shadows,
-} from "@/theme/modernDesign";
+import { colors, spacing, typography, borderRadius, shadows } from "@/theme/legacyCompat";
+import { safeBackNavigation } from "@/utils/navigation";
 import {
   getSession,
   getCountLines,
@@ -51,17 +40,17 @@ const badgeToneStyles = {
   },
   success: {
     backgroundColor: colors.success[50],
-    borderColor: "#A7F3D0",
+    borderColor: colors.success[200],
     textColor: colors.success[600],
   },
   warning: {
     backgroundColor: colors.warning[50],
-    borderColor: "#FDE68A",
+    borderColor: colors.warning[200],
     textColor: colors.warning[600],
   },
   error: {
     backgroundColor: colors.error[50],
-    borderColor: "#FECACA",
+    borderColor: colors.error[200],
     textColor: colors.error[600],
   },
   info: {
@@ -118,23 +107,16 @@ export default function SessionDetail() {
   const [verifiedLines, setVerifiedLines] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [sessionMissing, setSessionMissing] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<"toVerify" | "verified">(
-    "toVerify",
-  );
+  const [activeTab, setActiveTab] = React.useState<"toVerify" | "verified">("toVerify");
   const [verifying, setVerifying] = React.useState<string | null>(null);
-  const [assignableStaff, setAssignableStaff] = React.useState<
-    AssignableStaffUser[]
-  >([]);
+  const [assignableStaff, setAssignableStaff] = React.useState<AssignableStaffUser[]>([]);
   const [staffLoading, setStaffLoading] = React.useState(false);
   const [recountModalVisible, setRecountModalVisible] = React.useState(false);
-  const [pendingRejectLine, setPendingRejectLine] = React.useState<any | null>(
-    null,
-  );
+  const [pendingRejectLine, setPendingRejectLine] = React.useState<any | null>(null);
 
   const getFadeInDown = React.useCallback(
-    (delay = 0) =>
-      prefersReducedMotion ? undefined : FadeInDown.delay(delay).springify(),
-    [prefersReducedMotion],
+    (delay = 0) => (prefersReducedMotion ? undefined : FadeInDown.delay(delay).springify()),
+    [prefersReducedMotion]
   );
 
   const renderBadge = React.useCallback(
@@ -151,16 +133,12 @@ export default function SessionDetail() {
             },
           ]}
         >
-          {icon ? (
-            <Ionicons name={icon} size={12} color={toneStyle.textColor} />
-          ) : null}
-          <Text style={[styles.badgeText, { color: toneStyle.textColor }]}>
-            {label}
-          </Text>
+          {icon ? <Ionicons name={icon} size={12} color={toneStyle.textColor} /> : null}
+          <Text style={[styles.badgeText, { color: toneStyle.textColor }]}>{label}</Text>
         </View>
       );
     },
-    [],
+    []
   );
 
   const loadData = React.useCallback(async () => {
@@ -264,13 +242,7 @@ export default function SessionDetail() {
     }
   };
 
-  const handleSubmitReject = async ({
-    notes,
-    assignTo,
-  }: {
-    notes: string;
-    assignTo?: string;
-  }) => {
+  const handleSubmitReject = async ({ notes, assignTo }: { notes: string; assignTo?: string }) => {
     if (offlineMode) {
       show("Recount requests require a live connection", "warning");
       return;
@@ -293,10 +265,7 @@ export default function SessionDetail() {
       setRecountModalVisible(false);
       setPendingRejectLine(null);
       await loadData();
-      show(
-        assignTo ? `Recount assigned to ${assignTo}` : "Count line rejected",
-        "success",
-      );
+      show(assignTo ? `Recount assigned to ${assignTo}` : "Count line rejected", "success");
     } catch {
       show("Failed to reject", "error");
       if (Platform.OS !== "web") {
@@ -427,14 +396,8 @@ export default function SessionDetail() {
         </View>
 
         <View style={styles.loadingContainer}>
-          <Ionicons
-            name="alert-circle-outline"
-            size={56}
-            color={colors.warning[500]}
-          />
-          <Text style={styles.loadingText}>
-            This session is no longer available.
-          </Text>
+          <Ionicons name="alert-circle-outline" size={56} color={colors.warning[500]} />
+          <Text style={styles.loadingText}>This session is no longer available.</Text>
           {offlineMode ? (
             <Text style={styles.offlineMissingText}>
               It is not available in the local session cache.
@@ -459,7 +422,7 @@ export default function SessionDetail() {
         <StatusBar style="dark" />
         <View style={styles.header}>
           <AnimatedPressable
-            onPress={() => router.back()}
+            onPress={() => safeBackNavigation(router, { fallbackHref: "/supervisor/sessions" })}
             style={styles.backButton}
             accessibilityRole="button"
             accessibilityLabel="Go back"
@@ -481,8 +444,7 @@ export default function SessionDetail() {
   const currentLines = activeTab === "toVerify" ? toVerifyLines : verifiedLines;
   const totalVariance = Number(session?.total_variance ?? 0);
   const sessionFinalized =
-    session?.status === "COMPLETED" ||
-    session?.finalization_status === "FINALIZED";
+    session?.status === "COMPLETED" || session?.finalization_status === "FINALIZED";
 
   const ListHeader = () => (
     <View>
@@ -500,7 +462,7 @@ export default function SessionDetail() {
             </View>
             {renderBadge(
               String(session.status || "Unknown"),
-              getSessionStatusTone(String(session.status || "")),
+              getSessionStatusTone(String(session.status || ""))
             )}
           </View>
 
@@ -511,12 +473,7 @@ export default function SessionDetail() {
             </View>
             <View style={styles.metricCard}>
               <Text style={styles.metricLabel}>Total Variance</Text>
-              <Text
-                style={[
-                  styles.metricValue,
-                  totalVariance !== 0 && styles.metricValueDanger,
-                ]}
-              >
+              <Text style={[styles.metricValue, totalVariance !== 0 && styles.metricValueDanger]}>
                 {totalVariance.toFixed(2)}
               </Text>
             </View>
@@ -554,16 +511,12 @@ export default function SessionDetail() {
         <Animated.View entering={getFadeInDown(220)}>
           <View style={[styles.noticeCard, styles.noticeSuccess]}>
             <View style={styles.noticeRow}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={18}
-                color={colors.success[600]}
-              />
+              <Ionicons name="lock-closed-outline" size={18} color={colors.success[600]} />
               <View style={styles.noticeCopy}>
                 <Text style={styles.noticeTitle}>Session finalized</Text>
                 <Text style={styles.noticeBody}>
-                  Finalized sessions are locked for audit integrity. Count lines
-                  can be reviewed, but approvals and edits are disabled.
+                  Finalized sessions are locked for audit integrity. Count lines can be reviewed,
+                  but approvals and edits are disabled.
                 </Text>
               </View>
             </View>
@@ -575,17 +528,12 @@ export default function SessionDetail() {
         <Animated.View entering={getFadeInDown(220)}>
           <View style={[styles.noticeCard, styles.noticeWarning]}>
             <View style={styles.noticeRow}>
-              <Ionicons
-                name="cloud-offline-outline"
-                size={18}
-                color={colors.warning[600]}
-              />
+              <Ionicons name="cloud-offline-outline" size={18} color={colors.warning[600]} />
               <View style={styles.noticeCopy}>
                 <Text style={styles.noticeTitle}>Viewing cached session data</Text>
                 <Text style={styles.noticeBody}>
-                  Count lines and session details can be reviewed offline, but
-                  approvals, recounts, verification changes, and status updates
-                  require a live connection.
+                  Count lines and session details can be reviewed offline, but approvals, recounts,
+                  verification changes, and status updates require a live connection.
                 </Text>
               </View>
             </View>
@@ -611,12 +559,7 @@ export default function SessionDetail() {
             size={18}
             color={activeTab === "toVerify" ? colors.white : colors.gray[600]}
           />
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "toVerify" && styles.tabTextActive,
-            ]}
-          >
+          <Text style={[styles.tabText, activeTab === "toVerify" && styles.tabTextActive]}>
             To Verify ({toVerifyLines.length})
           </Text>
         </AnimatedPressable>
@@ -633,12 +576,7 @@ export default function SessionDetail() {
             size={18}
             color={activeTab === "verified" ? colors.white : colors.gray[600]}
           />
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "verified" && styles.tabTextActive,
-            ]}
-          >
+          <Text style={[styles.tabText, activeTab === "verified" && styles.tabTextActive]}>
             Verified ({verifiedLines.length})
           </Text>
         </AnimatedPressable>
@@ -649,8 +587,7 @@ export default function SessionDetail() {
   const renderItem = ({ item }: { item: any }) => {
     const normalizedStatus = String(item.status || "").toLowerCase();
     const requiresSupervisorReview = Number(item.variance ?? 0) !== 0;
-    const varianceColor =
-      item.variance === 0 ? colors.success[600] : colors.error[600];
+    const varianceColor = item.variance === 0 ? colors.success[600] : colors.error[600];
     const verifiedAtLabel = item.verified_at
       ? new Date(item.verified_at).toLocaleString()
       : "Unknown time";
@@ -662,20 +599,16 @@ export default function SessionDetail() {
             {item.item_name}
           </Text>
           <View style={styles.badgeContainer}>
-            {item.verified
-              ? renderBadge("Verified", "success", "checkmark-circle")
-              : null}
+            {item.verified ? renderBadge("Verified", "success", "checkmark-circle") : null}
             {renderBadge(
               (normalizedStatus || "pending").toUpperCase(),
-              getLineStatusTone(normalizedStatus),
+              getLineStatusTone(normalizedStatus)
             )}
           </View>
         </View>
 
         <Text style={styles.lineCode}>Code: {item.item_code}</Text>
-        {item.barcode ? (
-          <Text style={styles.lineCode}>Barcode: {item.barcode}</Text>
-        ) : null}
+        {item.barcode ? <Text style={styles.lineCode}>Barcode: {item.barcode}</Text> : null}
 
         <View style={styles.qtyRow}>
           <View style={styles.qtyItem}>
@@ -688,17 +621,13 @@ export default function SessionDetail() {
           </View>
           <View style={styles.qtyItem}>
             <Text style={styles.qtyLabel}>Variance</Text>
-            <Text style={[styles.qtyValue, { color: varianceColor }]}>
-              {item.variance}
-            </Text>
+            <Text style={[styles.qtyValue, { color: varianceColor }]}>{item.variance}</Text>
           </View>
         </View>
 
         {item.variance_reason ? (
           <View style={styles.reasonBox}>
-            <Text style={styles.reasonLabel}>
-              Reason: {item.variance_reason}
-            </Text>
+            <Text style={styles.reasonLabel}>Reason: {item.variance_reason}</Text>
             {item.variance_note ? (
               <Text style={styles.reasonNote}>{item.variance_note}</Text>
             ) : null}
@@ -709,11 +638,7 @@ export default function SessionDetail() {
 
         {item.verified && item.verified_by ? (
           <View style={styles.verifiedInfo}>
-            <Ionicons
-              name="checkmark-circle"
-              size={16}
-              color={colors.success[600]}
-            />
+            <Ionicons name="checkmark-circle" size={16} color={colors.success[600]} />
             <Text style={styles.verifiedInfoText}>
               Verified by {item.verified_by} on {verifiedAtLabel}
             </Text>
@@ -746,9 +671,7 @@ export default function SessionDetail() {
               </>
             ) : null}
 
-            {requiresSupervisorReview &&
-            activeTab === "toVerify" &&
-            !item.verified ? (
+            {requiresSupervisorReview && activeTab === "toVerify" && !item.verified ? (
               <AnimatedPressable
                 style={[
                   styles.inlineActionButton,
@@ -764,11 +687,7 @@ export default function SessionDetail() {
                   <ActivityIndicator size="small" color={colors.white} />
                 ) : (
                   <>
-                    <Ionicons
-                      name="checkmark-circle-outline"
-                      size={20}
-                      color={colors.white}
-                    />
+                    <Ionicons name="checkmark-circle-outline" size={20} color={colors.white} />
                     <Text style={styles.actionButtonText}>Verify Stock</Text>
                   </>
                 )}
@@ -791,11 +710,7 @@ export default function SessionDetail() {
                   <ActivityIndicator size="small" color={colors.white} />
                 ) : (
                   <>
-                    <Ionicons
-                      name="close-circle-outline"
-                      size={20}
-                      color={colors.white}
-                    />
+                    <Ionicons name="close-circle-outline" size={20} color={colors.white} />
                     <Text style={styles.actionButtonText}>Unverify</Text>
                   </>
                 )}
@@ -830,7 +745,7 @@ export default function SessionDetail() {
 
       <Animated.View entering={getFadeInDown(50)} style={styles.header}>
         <AnimatedPressable
-          onPress={() => router.back()}
+          onPress={() => safeBackNavigation(router, { fallbackHref: "/supervisor/sessions" })}
           style={styles.backButton}
           accessibilityRole="button"
           accessibilityLabel="Go back"
@@ -856,8 +771,7 @@ export default function SessionDetail() {
       <RecountAssignmentModal
         visible={recountModalVisible}
         loading={
-          staffLoading ||
-          (pendingRejectLine?.id ? verifying === pendingRejectLine.id : false)
+          staffLoading || (pendingRejectLine?.id ? verifying === pendingRejectLine.id : false)
         }
         staffOptions={assignableStaff}
         defaultAssignee={pendingRejectLine?.counted_by}
@@ -1028,11 +942,11 @@ const styles = StyleSheet.create({
   },
   noticeSuccess: {
     backgroundColor: colors.success[50],
-    borderColor: "#A7F3D0",
+    borderColor: colors.success[200],
   },
   noticeWarning: {
     backgroundColor: colors.warning[50],
-    borderColor: "#FDE68A",
+    borderColor: colors.warning[200],
   },
   noticeRow: {
     flexDirection: "row",

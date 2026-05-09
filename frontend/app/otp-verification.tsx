@@ -3,15 +3,8 @@
  * Verifies the 6-digit code sent to the user's phone
  */
 
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from "react-native";
+import React, { useState, useEffect, useMemo } from "react";
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -23,16 +16,120 @@ import ModernCard from "../src/components/ui/ModernCard";
 import ModernInput from "../src/components/ui/ModernInput";
 import ModernButton from "../src/components/ui/ModernButton";
 import apiClient from "../src/services/httpClient";
-import { colors, spacing, typography } from "../src/theme/modernDesign";
+import { toastService } from "../src/services/toastService";
+import { useAuthStore } from "../src/store/authStore";
+import { useUiTokens } from "../src/hooks/useUiTokens";
+import { colorWithAlpha } from "../src/theme/themeTokens";
+import { safeBackNavigation } from "@/utils/navigation";
+
+const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
+  if (Platform.OS === "web") {
+    return (
+      <View style={style} {...props}>
+        {children}
+      </View>
+    );
+  }
+
+  return (
+    <Animated.View style={style} entering={entering} {...props}>
+      {children}
+    </Animated.View>
+  );
+};
 
 export default function OtpVerificationScreen() {
   const router = useRouter();
   const { identifier } = useLocalSearchParams<{ identifier: string }>();
+  const clearPendingRedirect = useAuthStore((state) => state.clearPendingRedirect);
+  const uiTokens = useUiTokens();
 
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [timer, setTimer] = useState(300); // 5 minutes
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        button: {
+          marginTop: uiTokens.spacing.lg,
+        },
+        card: {
+          backgroundColor: uiTokens.colors.surfaceElevated,
+          borderWidth: 1,
+          borderColor: uiTokens.colors.border,
+        },
+        container: {
+          flex: 1,
+          backgroundColor: uiTokens.colors.background,
+        },
+        contentContainer: {
+          flex: 1,
+          maxWidth: 400,
+          alignSelf: "center",
+          width: "100%",
+          justifyContent: "center",
+          paddingTop: uiTokens.spacing.xxl,
+        },
+        iconContainer: {
+          width: 80,
+          height: 80,
+          borderRadius: 40,
+          backgroundColor: colorWithAlpha(
+            uiTokens.colors.accent,
+            uiTokens.mode === "dark" ? 0.25 : 0.12
+          ),
+          justifyContent: "center",
+          alignItems: "center",
+          alignSelf: "center",
+          marginBottom: uiTokens.spacing.lg,
+        },
+        keyboardView: {
+          flex: 1,
+        },
+        scrollContent: {
+          flexGrow: 1,
+          paddingHorizontal: uiTokens.spacing.lg,
+          paddingBottom: uiTokens.spacing.xl,
+        },
+        subtitle: {
+          fontSize: 16,
+          color: uiTokens.colors.textSecondary,
+          textAlign: "center",
+          marginBottom: uiTokens.spacing.xl,
+          lineHeight: 24,
+        },
+        timerContainer: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: uiTokens.spacing.xs,
+          marginTop: uiTokens.spacing.sm,
+        },
+        timerText: {
+          fontSize: 12,
+          color: uiTokens.colors.textSecondary,
+        },
+        title: {
+          fontSize: 28,
+          fontWeight: "800",
+          color: uiTokens.colors.textPrimary,
+          textAlign: "center",
+          marginBottom: uiTokens.spacing.sm,
+        },
+      }),
+    [uiTokens]
+  );
+
+  const handleBack = () => {
+    safeBackNavigation(router, { fallbackHref: "/forgot-password" });
+  };
+
+  useEffect(() => {
+    void clearPendingRedirect().catch((error) => {
+      console.warn("[OtpVerification] Failed to clear pending redirect", error);
+    });
+  }, [clearPendingRedirect]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -60,41 +157,42 @@ export default function OtpVerificationScreen() {
       const normalizedIdentifier = (identifier || "").trim();
       const isPhone = /^\+?[0-9]{10,15}$/.test(normalizedIdentifier);
       const response = await apiClient.post("/api/auth/password-reset/verify", {
-        ...(isPhone
-          ? { phone_number: normalizedIdentifier }
-          : { username: normalizedIdentifier }),
+        ...(isPhone ? { phone_number: normalizedIdentifier } : { username: normalizedIdentifier }),
         otp,
       });
 
       if (response.data.success) {
+        toastService.showSuccess("Code verified.");
         // Navigate to Reset Password with token
         router.push({
           pathname: "/reset-password",
           params: { reset_token: response.data.data.reset_token },
         });
       } else {
-        setError(
-          response.data.message || response.data.error?.message || "Invalid OTP",
-        );
+        setError(response.data.message || response.data.error?.message || "Invalid OTP");
       }
     } catch (err: any) {
-      setError(
-        err.response?.data?.message || err.message || "Verification failed",
-      );
+      setError(err.response?.data?.message || err.message || "Verification failed");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <StatusBar style="dark" backgroundColor={colors.gray[50]} />
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: uiTokens.colors.background }]}
+      edges={["top", "left", "right"]}
+    >
+      <StatusBar
+        style={uiTokens.mode === "dark" ? "light" : "dark"}
+        backgroundColor={uiTokens.colors.background}
+      />
 
       <ModernHeader
         title="Verify OTP"
         subtitle="Enter the code sent to your phone"
         showBackButton
-        onBackPress={() => router.back()}
+        onBackPress={handleBack}
       />
 
       <KeyboardAvoidingView
@@ -105,25 +203,25 @@ export default function OtpVerificationScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View
+          <SafeAnimatedView
             entering={FadeInDown.duration(600).springify()}
             style={styles.contentContainer}
           >
             <View style={styles.iconContainer}>
-              <Ionicons
-                name="shield-checkmark"
-                size={48}
-                color={colors.primary[500]}
-              />
+              <Ionicons name="shield-checkmark" size={48} color={uiTokens.colors.accent} />
             </View>
 
-            <Text style={styles.title}>Verification Code</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: uiTokens.colors.textPrimary }]}>
+              Verification Code
+            </Text>
+            <Text style={[styles.subtitle, { color: uiTokens.colors.textSecondary }]}>
               Enter the 6-digit code sent to the phone number associated with{" "}
-              <Text style={{ fontWeight: "bold" }}>{identifier}</Text>.
+              <Text style={{ color: uiTokens.colors.textPrimary, fontWeight: "700" }}>
+                {identifier}
+              </Text>
             </Text>
 
-            <ModernCard padding={spacing.lg} style={styles.card}>
+            <ModernCard padding={uiTokens.spacing.lg} style={styles.card}>
               <ModernInput
                 label="OTP Code"
                 placeholder="123456"
@@ -146,12 +244,8 @@ export default function OtpVerificationScreen() {
               />
 
               <View style={styles.timerContainer}>
-                <Ionicons
-                  name="time-outline"
-                  size={16}
-                  color={colors.gray[500]}
-                />
-                <Text style={styles.timerText}>
+                <Ionicons name="time-outline" size={16} color={uiTokens.colors.textSecondary} />
+                <Text style={[styles.timerText, { color: uiTokens.colors.textSecondary }]}>
                   Code expires in {formatTime(timer)}
                 </Text>
               </View>
@@ -165,73 +259,9 @@ export default function OtpVerificationScreen() {
                 style={styles.button}
               />
             </ModernCard>
-          </Animated.View>
+          </SafeAnimatedView>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.gray[50],
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
-  },
-  contentContainer: {
-    flex: 1,
-    maxWidth: 400,
-    alignSelf: "center",
-    width: "100%",
-    justifyContent: "center",
-    paddingTop: spacing["2xl"],
-  },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.primary[50],
-    justifyContent: "center",
-    alignItems: "center",
-    alignSelf: "center",
-    marginBottom: spacing.lg,
-  },
-  title: {
-    fontSize: typography.fontSize["2xl"],
-    fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
-    textAlign: "center",
-    marginBottom: spacing.sm,
-  },
-  subtitle: {
-    fontSize: typography.fontSize.base,
-    color: colors.gray[600],
-    textAlign: "center",
-    marginBottom: spacing.xl,
-    lineHeight: 24,
-  },
-  card: {
-    backgroundColor: colors.white,
-  },
-  button: {
-    marginTop: spacing.lg,
-  },
-  timerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  timerText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
-  },
-});

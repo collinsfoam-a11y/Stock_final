@@ -6,6 +6,7 @@ import { auroraTheme } from "@/theme/auroraTheme";
 import { Summary } from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
 import { DashboardConnectionState } from "@/components/admin/realtime-dashboard/realtimeDashboardLive";
 
+import { colors as uiColors } from "@/theme/legacyCompat";
 interface RealtimeDashboardToolbarProps {
   actionsDisabled?: boolean;
   autoRefresh: boolean;
@@ -65,9 +66,7 @@ export function RealtimeDashboardToolbar({
               name={autoRefresh ? "sync" : "sync-outline"}
               size={20}
               color={
-                autoRefresh
-                  ? auroraTheme.colors.primary[500]
-                  : auroraTheme.colors.text.secondary
+                autoRefresh ? auroraTheme.colors.primary[500] : auroraTheme.colors.text.secondary
               }
             />
           </TouchableOpacity>
@@ -76,22 +75,10 @@ export function RealtimeDashboardToolbar({
             onPress={onOpenColumnSettings}
             disabled={actionsDisabled}
           >
-            <Ionicons
-              name="options"
-              size={20}
-              color={auroraTheme.colors.text.primary}
-            />
+            <Ionicons name="options" size={20} color={auroraTheme.colors.text.primary} />
           </TouchableOpacity>
-          <ExportButton
-            disabled={actionsDisabled}
-            label="ERPNext CSV"
-            onPress={onExportCSV}
-          />
-          <ExportButton
-            disabled={actionsDisabled}
-            label="ERPNext XLSX"
-            onPress={onExportXLSX}
-          />
+          <ExportButton disabled={actionsDisabled} label="ERPNext CSV" onPress={onExportCSV} />
+          <ExportButton disabled={actionsDisabled} label="ERPNext XLSX" onPress={onExportXLSX} />
         </View>
       </View>
 
@@ -102,8 +89,8 @@ export function RealtimeDashboardToolbar({
       {summary && (
         <View style={styles.generationInfo}>
           <Text style={styles.generationText}>
-            Generated in {summary.generation_time_ms.toFixed(0)}ms •{" "}
-            {summary.filtered_records} of {summary.total_records} records
+            Generated in {summary.generation_time_ms.toFixed(0)}ms • {summary.filtered_records} of{" "}
+            {summary.total_records} records
           </Text>
           <View style={styles.liveIndicator}>
             <View
@@ -239,7 +226,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#4CAF50",
+    backgroundColor: uiColors.success[500],
   },
   exportButton: {
     minWidth: 52,
@@ -256,18 +243,18 @@ const styles = StyleSheet.create({
     color: auroraTheme.colors.text.primary,
   },
   liveDotWarning: {
-    backgroundColor: "#FF9800",
+    backgroundColor: uiColors.warning[500],
   },
   liveDotMuted: {
     backgroundColor: auroraTheme.colors.text.secondary,
   },
   liveText: {
     fontSize: 12,
-    color: "#4CAF50",
+    color: uiColors.success[500],
     fontWeight: "600",
   },
   liveTextWarning: {
-    color: "#FF9800",
+    color: uiColors.warning[500],
   },
   liveTextMuted: {
     color: auroraTheme.colors.text.secondary,

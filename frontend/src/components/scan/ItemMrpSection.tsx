@@ -1,22 +1,9 @@
-import React from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import React, { useMemo } from "react";
+import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 
 import ModernInput from "@/components/ui/ModernInput";
-import {
-  colors,
-  fontSize,
-  fontWeight,
-  radius as borderRadius,
-  semanticColors,
-  spacing,
-} from "@/theme/unified";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
 
 type MrpVariant = Record<string, any> & {
   id?: string | number;
@@ -46,26 +33,83 @@ export function ItemMrpSection({
   showMrp,
   systemMrp,
 }: ItemMrpSectionProps) {
+  const uiTokens = useUiTokens();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        chip: {
+          borderRadius: uiTokens.radius.full,
+          borderWidth: 1,
+          marginRight: uiTokens.spacing.sm,
+          paddingHorizontal: uiTokens.spacing.md,
+          paddingVertical: uiTokens.spacing.sm,
+          backgroundColor: uiTokens.colors.surface,
+          borderColor: uiTokens.colors.border,
+        },
+        chipActive: {
+          borderColor: uiTokens.colors.accent,
+          backgroundColor: colorWithAlpha(
+            uiTokens.colors.accent,
+            uiTokens.mode === "dark" ? 0.24 : 0.12
+          ),
+        },
+        chipText: {
+          fontSize: 13,
+          color: uiTokens.colors.textSecondary,
+          fontWeight: "600",
+        },
+        chipTextActive: {
+          color: uiTokens.colors.accentStrong,
+          fontWeight: "700",
+        },
+        chipsScroll: {
+          marginTop: uiTokens.spacing.xs,
+        },
+        chipsContent: {
+          paddingRight: uiTokens.spacing.sm,
+        },
+        readOnlyValue: {
+          color: uiTokens.colors.textPrimary,
+          fontSize: 20,
+          fontWeight: "800",
+        },
+        section: {
+          marginBottom: uiTokens.spacing.lg,
+        },
+        sectionHeader: {
+          alignItems: "center",
+          flexDirection: "row",
+          justifyContent: "space-between",
+          marginBottom: uiTokens.spacing.sm,
+        },
+        sectionTitle: {
+          fontSize: 14,
+          fontWeight: "700",
+          color: uiTokens.colors.textSecondary,
+          letterSpacing: 0.2,
+          textTransform: "uppercase",
+        },
+      }),
+    [uiTokens]
+  );
+
   if (!showMrp) return null;
 
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text
-          style={[
-            styles.sectionTitle,
-            { color: semanticColors.text.primary },
-          ]}
-        >
-          MRP
-        </Text>
+        <Text style={styles.sectionTitle}>MRP</Text>
         <Switch
           value={mrpEditable}
           onValueChange={onToggleMrpEditable}
           trackColor={{
-            false: colors.neutral[200],
-            true: colors.primary[600],
+            false: colorWithAlpha(
+              uiTokens.colors.textMuted,
+              uiTokens.mode === "dark" ? 0.45 : 0.28
+            ),
+            true: uiTokens.colors.accent,
           }}
+          thumbColor={mrpEditable ? uiTokens.colors.surfaceElevated : uiTokens.colors.surface}
         />
       </View>
 
@@ -74,6 +118,7 @@ export function ItemMrpSection({
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.chipsScroll}
+          contentContainerStyle={styles.chipsContent}
         >
           {mrpVariants.map((variant, index) => {
             const variantKey = variant?.id || variant?.value || index;
@@ -82,29 +127,10 @@ export function ItemMrpSection({
             return (
               <TouchableOpacity
                 key={`mrp-${variantKey}-${index}`}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor: semanticColors.background.paper,
-                    borderColor: semanticColors.border.default,
-                  },
-                  isSelected && {
-                    backgroundColor: colors.primary[50],
-                    borderColor: colors.primary[600],
-                  },
-                ]}
+                style={[styles.chip, isSelected && styles.chipActive]}
                 onPress={() => onSelectMrpVariant(variant)}
               >
-                <Text
-                  style={[
-                    styles.chipText,
-                    { color: semanticColors.text.secondary },
-                    isSelected && {
-                      color: colors.primary[700],
-                      fontWeight: fontWeight.medium,
-                    },
-                  ]}
-                >
+                <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
                   ₹{variant.value}
                 </Text>
               </TouchableOpacity>
@@ -125,39 +151,3 @@ export function ItemMrpSection({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  chip: {
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    marginRight: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  chipText: {
-    fontSize: fontSize.sm,
-  },
-  chipsScroll: {
-    marginHorizontal: -spacing.lg,
-    paddingHorizontal: spacing.lg,
-  },
-  readOnlyValue: {
-    color: semanticColors.text.primary,
-    fontSize: 18,
-    fontWeight: fontWeight.bold,
-  },
-  section: {
-    marginBottom: spacing.xl,
-  },
-  sectionHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: spacing.sm,
-  },
-  sectionTitle: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.sm,
-  },
-});

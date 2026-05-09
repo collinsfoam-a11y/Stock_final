@@ -6,23 +6,12 @@
  */
 
 import React, { useMemo } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-
-  ViewStyle,
-  TextStyle,
-  TouchableOpacity,
-} from "react-native";
+import { View, Text, StyleSheet, ViewStyle, TextStyle, TouchableOpacity } from "react-native";
 import { VirtualList } from "../common/VirtualList";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import {
-  modernColors,
-  modernBorderRadius,
-  modernShadows,
-} from "../../styles/modernDesignSystem";
+import { modernColors, modernBorderRadius, modernShadows } from "../../styles/modernDesignSystem";
 
+import { colors as uiColors } from "@/theme/legacyCompat";
 // --- Domain Types ---
 
 export type UserRole = "admin" | "supervisor" | "staff";
@@ -61,10 +50,7 @@ const STATUS_CONFIG: Record<UserStatus, { color: string; label: string }> = {
   offline: { color: modernColors.text.tertiary, label: "Offline" },
 };
 
-const ROLE_ICONS: Record<
-  UserRole | "default",
-  keyof typeof MaterialCommunityIcons.glyphMap
-> = {
+const ROLE_ICONS: Record<UserRole | "default", keyof typeof MaterialCommunityIcons.glyphMap> = {
   admin: "shield-account",
   supervisor: "account-supervisor",
   staff: "account",
@@ -122,21 +108,14 @@ function deriveUserStatus(lastActivityIso: string): UserStatus {
 
 function normalizeRole(role: string): UserRole {
   const r = role.toLowerCase();
-  if (r === "admin" || r === "supervisor" || r === "staff")
-    return r as UserRole;
+  if (r === "admin" || r === "supervisor" || r === "staff") return r as UserRole;
   return "staff"; // Fallback
 }
 
 // --- Components ---
 
 const UserRow = React.memo(
-  ({
-    user,
-    onPress,
-  }: {
-    user: ActiveUser;
-    onPress?: (u: ActiveUser) => void;
-  }) => {
+  ({ user, onPress }: { user: ActiveUser; onPress?: (u: ActiveUser) => void }) => {
     const derivedStatus = deriveUserStatus(user.last_activity);
     const statusConfig = STATUS_CONFIG[derivedStatus];
 
@@ -154,21 +133,10 @@ const UserRow = React.memo(
       >
         <View style={styles.userInfo}>
           <View style={styles.avatarContainer}>
-            <View
-              style={[styles.avatarStats, { borderColor: statusConfig.color }]}
-            >
-              <MaterialCommunityIcons
-                name={roleIcon}
-                size={20}
-                color={modernColors.primary[500]}
-              />
+            <View style={[styles.avatarStats, { borderColor: statusConfig.color }]}>
+              <MaterialCommunityIcons name={roleIcon} size={20} color={modernColors.primary[500]} />
             </View>
-            <View
-              style={[
-                styles.statusDot,
-                { backgroundColor: statusConfig.color },
-              ]}
-            />
+            <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
           </View>
           <View style={styles.userDetails}>
             <Text style={styles.username} numberOfLines={1}>
@@ -180,9 +148,7 @@ const UserRow = React.memo(
           </View>
         </View>
         <View style={styles.activityInfo}>
-          <Text style={styles.lastActivity}>
-            {formatTimeAgo(user.last_activity)}
-          </Text>
+          <Text style={styles.lastActivity}>{formatTimeAgo(user.last_activity)}</Text>
           {user.current_session && (
             <Text style={styles.sessionInfo} numberOfLines={1}>
               ID: {user.current_session.substring(0, 6)}...
@@ -191,7 +157,7 @@ const UserRow = React.memo(
         </View>
       </TouchableOpacity>
     );
-  },
+  }
 );
 
 UserRow.displayName = "UserRow";
@@ -236,11 +202,7 @@ export function ActiveUsersPanel({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <MaterialCommunityIcons
-          name="account-group"
-          size={20}
-          color={modernColors.primary[500]}
-        />
+        <MaterialCommunityIcons name="account-group" size={20} color={modernColors.primary[500]} />
         <Text style={styles.title}>Active Users</Text>
         <View style={styles.countBadge}>
           <Text style={styles.countText}>{users.length}</Text>
@@ -249,36 +211,27 @@ export function ActiveUsersPanel({
 
       <View style={styles.summary}>
         <View style={styles.summaryItem}>
-          <View
-            style={[styles.dot, { backgroundColor: modernColors.success.main }]}
-          />
+          <View style={[styles.dot, { backgroundColor: modernColors.success.main }]} />
           <Text style={styles.summaryText}>{stats.online} online</Text>
         </View>
         <View style={styles.summaryItem}>
-          <View
-            style={[styles.dot, { backgroundColor: modernColors.warning.main }]}
-          />
+          <View style={[styles.dot, { backgroundColor: modernColors.warning.main }]} />
           <Text style={styles.summaryText}>{stats.idle} idle</Text>
         </View>
       </View>
 
       {users.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <MaterialCommunityIcons
-            name="account-off"
-            size={32}
-            color={modernColors.text.tertiary}
-          />
+          <MaterialCommunityIcons name="account-off" size={32} color={modernColors.text.tertiary} />
           <Text style={styles.emptyText}>No active personnel</Text>
         </View>
       ) : (
-                // ⚡ Bolt: Replaced FlatList with VirtualList (FlashList under the hood) to significantly improve rendering performance and reduce memory usage for potentially long lists of active users.
-        <VirtualList estimatedItemSize={80}
+        // ⚡ Bolt: Replaced FlatList with VirtualList (FlashList under the hood) to significantly improve rendering performance and reduce memory usage for potentially long lists of active users.
+        <VirtualList
+          estimatedItemSize={80}
           data={users}
           keyExtractor={(item) => item.user_id}
-          renderItem={({ item }) => (
-            <UserRow user={item} onPress={onUserPress} />
-          )}
+          renderItem={({ item }) => <UserRow user={item} onPress={onUserPress} />}
           style={styles.list}
           showsVerticalScrollIndicator={false}
           initialNumToRender={10}
@@ -315,17 +268,17 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   } as TextStyle,
   countBadge: {
-    backgroundColor: modernColors.primary[50] || "#EEF2FF",
+    backgroundColor: modernColors.primary[50] || uiColors.primary[50],
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: modernColors.primary[200] || "#C7D2FE",
+    borderColor: modernColors.primary[200] || uiColors.primary[200],
   } as ViewStyle,
   countText: {
     fontSize: 12,
     fontWeight: "600",
-    color: modernColors.primary[700] || "#0369A1",
+    color: modernColors.primary[700] || uiColors.primary[700],
   } as TextStyle,
   summary: {
     flexDirection: "row",

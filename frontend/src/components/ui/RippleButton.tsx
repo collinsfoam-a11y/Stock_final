@@ -82,10 +82,7 @@ const variantStyles = {
     rippleColor: "rgba(255, 255, 255, 0.3)",
   },
   error: {
-    gradient: [
-      auroraTheme.colors.error[500],
-      auroraTheme.colors.error[700],
-    ] as const,
+    gradient: [auroraTheme.colors.error[500], auroraTheme.colors.error[700]] as const,
     textColor: auroraTheme.colors.text.primary,
     rippleColor: "rgba(255, 255, 255, 0.3)",
   },
@@ -169,7 +166,7 @@ export const RippleButton: React.FC<RippleButtonProps> = ({
     // Calculate max ripple size
     const maxDistance = Math.sqrt(
       Math.pow(Math.max(locationX, buttonLayout.width - locationX), 2) +
-        Math.pow(Math.max(locationY, buttonLayout.height - locationY), 2),
+        Math.pow(Math.max(locationY, buttonLayout.height - locationY), 2)
     );
     const maxScale = (maxDistance * 2) / 10; // 10 is base ripple size
 

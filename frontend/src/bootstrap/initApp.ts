@@ -19,15 +19,48 @@ export interface InitializeAppOptions {
   loadSettings: () => Promise<void>;
   isAuthenticated?: () => boolean;
   deferUnauthenticatedSettings?: boolean;
+  onProgress?: (progress: InitializeAppProgress) => void;
 }
 
 export interface InitializeAppResult {
   cleanup: () => void;
 }
 
-export async function initializeApp(
-  options: InitializeAppOptions,
-): Promise<InitializeAppResult> {
+export type InitializeAppProgressPhase =
+  | "monitoring"
+  | "fonts"
+  | "storage"
+  | "auth"
+  | "settings"
+  | "deferred-services"
+  | "runtime"
+  | "ready";
+
+export interface InitializeAppProgress {
+  phase: InitializeAppProgressPhase;
+  progress: number;
+  message: string;
+}
+
+const createProgressReporter = (onProgress: InitializeAppOptions["onProgress"]) => {
+  let currentProgress = 0;
+
+  return (progress: InitializeAppProgress) => {
+    if (!onProgress) {
+      return;
+    }
+
+    const nextProgress = Math.max(currentProgress, Math.max(0, Math.min(100, progress.progress)));
+    currentProgress = nextProgress;
+
+    onProgress({
+      ...progress,
+      progress: nextProgress,
+    });
+  };
+};
+
+export async function initializeApp(options: InitializeAppOptions): Promise<InitializeAppResult> {
   const {
     fontsLoaded,
     isDev,
@@ -35,31 +68,52 @@ export async function initializeApp(
     loadSettings,
     isAuthenticated: isAuthenticatedOverride,
     deferUnauthenticatedSettings = false,
+    onProgress,
   } = options;
+  const reportProgress = createProgressReporter(onProgress);
 
+  reportProgress({
+    phase: "monitoring",
+    progress: 5,
+    message: "Preparing secure runtime",
+  });
   initMonitoringAndDevTools(isDev);
 
   if (!fontsLoaded && isDev) {
     log.warn("Fonts not loaded yet; continuing with fallback fonts");
   }
+  reportProgress({
+    phase: "fonts",
+    progress: fontsLoaded ? 15 : 10,
+    message: fontsLoaded ? "Fonts ready" : "Using fallback fonts while assets finish loading",
+  });
 
   try {
-    await withTimeout(
-      mmkvStorage.initialize(),
-      2000,
-      "MMKV initialization timeout",
-    );
+    reportProgress({
+      phase: "storage",
+      progress: 20,
+      message: "Opening local secure storage",
+    });
+    await withTimeout(mmkvStorage.initialize(), 2000, "MMKV initialization timeout");
   } catch (e) {
     log.warn("MMKV initialization failed or timed out", {
       error: describeError(e),
     });
   }
+  reportProgress({
+    phase: "storage",
+    progress: 30,
+    message: "Local storage ready",
+  });
 
-  const authAndSettingsResult = await initAuthAndSettings(
-    loadStoredAuth,
-    loadSettings,
-    { deferUnauthenticatedSettings },
-  );
+  reportProgress({
+    phase: "auth",
+    progress: 40,
+    message: "Restoring saved session",
+  });
+  const authAndSettingsResult = await initAuthAndSettings(loadStoredAuth, loadSettings, {
+    deferUnauthenticatedSettings,
+  });
 
   const { authResult, settingsResult } = authAndSettingsResult;
   if (authResult.status === "rejected" && isDev) {
@@ -72,20 +126,24 @@ export async function initializeApp(
       error: describeError(settingsResult.reason),
     });
   }
+  reportProgress({
+    phase: "settings",
+    progress: 70,
+    message: "Session and settings checked",
+  });
 
-  const isAuthenticated =
-    isAuthenticatedOverride?.() ?? useAuthStore.getState().isAuthenticated;
+  const isAuthenticated = isAuthenticatedOverride?.() ?? useAuthStore.getState().isAuthenticated;
 
   void (async () => {
-    const themeResult = (await Promise.allSettled([
-      withTimeout(
-        import("../services/themeService").then(({ ThemeService }) =>
-          ThemeService.initialize(),
+    const themeResult = (
+      await Promise.allSettled([
+        withTimeout(
+          import("../services/themeService").then(({ ThemeService }) => ThemeService.initialize()),
+          1000,
+          "Theme initialization timeout"
         ),
-        1000,
-        "Theme initialization timeout",
-      ),
-    ]))[0] as PromiseSettledResult<void>;
+      ])
+    )[0] as PromiseSettledResult<void>;
 
     if (themeResult.status === "rejected" && isDev) {
       log.warn("Theme initialization failed", {
@@ -93,21 +151,28 @@ export async function initializeApp(
       });
     }
   })();
+  reportProgress({
+    phase: "deferred-services",
+    progress: 82,
+    message: "Deferred services scheduled",
+  });
 
   void (async () => {
     if (!isAuthenticated) {
       return;
     }
 
-    const syncResult = (await Promise.allSettled([
-      withTimeout(
-        import("../services/backgroundSync").then(
-          ({ registerBackgroundSync }) => registerBackgroundSync(),
+    const syncResult = (
+      await Promise.allSettled([
+        withTimeout(
+          import("../services/backgroundSync").then(({ registerBackgroundSync }) =>
+            registerBackgroundSync()
+          ),
+          1000,
+          "Background sync timeout"
         ),
-        1000,
-        "Background sync timeout",
-      ),
-    ]))[0] as PromiseSettledResult<void>;
+      ])
+    )[0] as PromiseSettledResult<void>;
 
     if (syncResult.status === "rejected" && isDev) {
       log.warn("Background sync failed", {
@@ -115,6 +180,11 @@ export async function initializeApp(
       });
     }
   })();
+  reportProgress({
+    phase: "runtime",
+    progress: 90,
+    message: "Starting mobile runtime",
+  });
 
   let runtimeCleanup = () => {};
   let runtimeDisposed = false;
@@ -139,5 +209,10 @@ export async function initializeApp(
     runtimeDisposed = true;
     runtimeCleanup();
   };
+  reportProgress({
+    phase: "ready",
+    progress: 100,
+    message: "Ready",
+  });
   return { cleanup };
 }

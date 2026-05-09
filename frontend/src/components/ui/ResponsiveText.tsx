@@ -13,13 +13,8 @@ import React from "react";
 import { Text, TextProps, useWindowDimensions, Platform } from "react-native";
 import { useThemeContext } from "../../context/ThemeContext";
 
-export type TextVariant =
-  | "display"
-  | "heading"
-  | "subheading"
-  | "body"
-  | "label"
-  | "caption";
+import { colors as uiColors } from "@/theme/legacyCompat";
+export type TextVariant = "display" | "heading" | "subheading" | "body" | "label" | "caption";
 
 export interface ResponsiveTextProps extends TextProps {
   variant?: TextVariant;
@@ -93,7 +88,7 @@ export const ResponsiveText: React.FC<ResponsiveTextProps> = ({
       secondary: theme.colors.textSecondary,
       tertiary: theme.colors.textSecondary, // Use textSecondary for tertiary
       error: theme.colors.danger,
-      success: theme.colors.success || "#22C55E",
+      success: theme.colors.success || uiColors.success[500],
       custom: theme.colors.text,
     };
 

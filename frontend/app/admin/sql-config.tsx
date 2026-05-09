@@ -13,7 +13,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { usePermission } from "../../src/hooks/usePermission";
 import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
-import { GlassCard } from "../../src/components/ui/GlassCard";
+import ModernCard from "../../src/components/ui/ModernCard";
 import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { auroraTheme } from "../../src/theme/auroraTheme";
@@ -22,6 +22,7 @@ import {
   updateSqlServerConfig,
   testSqlServerConnection,
 } from "../../src/services/api";
+import { safeBackNavigation } from "@/utils/navigation";
 
 const isWeb = Platform.OS === "web";
 
@@ -77,7 +78,7 @@ export default function SqlConfigScreen() {
   useEffect(() => {
     if (!hasRole("admin")) {
       Alert.alert("Access Denied", "Admin access required", [
-        { text: "OK", onPress: () => router.back() },
+        { text: "OK", onPress: () => safeBackNavigation(router, { userRole: "admin" }) },
       ]);
       return;
     }
@@ -98,10 +99,7 @@ export default function SqlConfigScreen() {
       if (response.data.connected) {
         Alert.alert("Success", "Connection test successful!");
       } else {
-        Alert.alert(
-          "Failed",
-          response.data.message || "Connection test failed",
-        );
+        Alert.alert("Failed", response.data.message || "Connection test failed");
       }
     } catch (error: any) {
       Alert.alert("Error", error.message || "Connection test failed");
@@ -120,11 +118,8 @@ export default function SqlConfigScreen() {
       setSaving(true);
       const response = await updateSqlServerConfig(config);
       if (response.success) {
-        Alert.alert(
-          "Success",
-          "Configuration saved. Restart backend to apply changes.",
-        );
-        router.back();
+        Alert.alert("Success", "Configuration saved. Restart backend to apply changes.");
+        safeBackNavigation(router, { userRole: "admin" });
       }
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to save configuration");
@@ -136,7 +131,7 @@ export default function SqlConfigScreen() {
   if (loading) {
     return (
       <ScreenContainer
-        backgroundType="aurora"
+        backgroundType="solid"
         header={{
           title: "SQL Server",
           subtitle: "Configuration",
@@ -144,10 +139,7 @@ export default function SqlConfigScreen() {
         }}
       >
         <View style={styles.centered}>
-          <ActivityIndicator
-            size="large"
-            color={auroraTheme.colors.primary[500]}
-          />
+          <ActivityIndicator size="large" color={auroraTheme.colors.primary[500]} />
           <Text style={styles.loadingText}>Loading configuration...</Text>
         </View>
       </ScreenContainer>
@@ -156,8 +148,7 @@ export default function SqlConfigScreen() {
 
   return (
     <ScreenContainer
-      backgroundType="aurora"
-      auroraVariant="primary"
+      backgroundType="solid"
       header={{
         title: "SQL Server",
         subtitle: offlineMode
@@ -168,13 +159,10 @@ export default function SqlConfigScreen() {
     >
       <ScrollView
         style={styles.content}
-        contentContainerStyle={[
-          styles.contentContainer,
-          isWeb && styles.contentContainerWeb,
-        ]}
+        contentContainerStyle={[styles.contentContainer, isWeb && styles.contentContainerWeb]}
       >
         {offlineMode && (
-          <GlassCard variant="strong" style={styles.offlineNotice}>
+          <ModernCard variant="outlined" elevation="none" padding={0} style={styles.offlineNotice}>
             <Ionicons
               name="cloud-offline-outline"
               size={24}
@@ -185,20 +173,16 @@ export default function SqlConfigScreen() {
                 SQL configuration requires a live connection
               </Text>
               <Text style={styles.offlineNoticeText}>
-                Server credentials are loaded from the backend and cannot be
-                viewed, tested, or updated while offline mode is enabled.
+                Server credentials are loaded from the backend and cannot be viewed, tested, or
+                updated while offline mode is enabled.
               </Text>
             </View>
-          </GlassCard>
+          </ModernCard>
         )}
 
-        <GlassCard variant="medium" style={styles.section}>
+        <ModernCard variant="outlined" elevation="none" padding={0} style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons
-              name="server-outline"
-              size={24}
-              color={auroraTheme.colors.primary[400]}
-            />
+            <Ionicons name="server-outline" size={24} color={auroraTheme.colors.primary[400]} />
             <Text style={styles.sectionTitle}>Connection Settings</Text>
           </View>
 
@@ -222,9 +206,7 @@ export default function SqlConfigScreen() {
               placeholder="Default: 1433"
               placeholderTextColor={auroraTheme.colors.text.muted}
               value={config.port.toString()}
-              onChangeText={(text) =>
-                setConfig({ ...config, port: parseInt(text) || 1433 })
-              }
+              onChangeText={(text) => setConfig({ ...config, port: parseInt(text) || 1433 })}
               keyboardType="numeric"
               editable={!offlineMode}
             />
@@ -269,11 +251,13 @@ export default function SqlConfigScreen() {
               editable={!offlineMode}
             />
           </View>
-        </GlassCard>
+        </ModernCard>
 
         {testResult && (
-          <GlassCard
-            variant="strong"
+          <ModernCard
+            variant="outlined"
+            elevation="none"
+            padding={0}
             style={[
               styles.testResult,
               {
@@ -306,68 +290,53 @@ export default function SqlConfigScreen() {
                   },
                 ]}
               >
-                {testResult.connected
-                  ? "Connection Successful"
-                  : "Connection Failed"}
+                {testResult.connected ? "Connection Successful" : "Connection Failed"}
               </Text>
               <Text style={styles.testResultText}>{testResult.message}</Text>
             </View>
-          </GlassCard>
+          </ModernCard>
         )}
 
         <View style={styles.actions}>
           <AnimatedPressable
-            style={[
-              styles.button,
-              styles.testButton,
-              offlineMode && styles.buttonDisabled,
-            ]}
+            style={[styles.button, styles.testButton, offlineMode && styles.buttonDisabled]}
             onPress={handleTest}
             disabled={offlineMode || testing || !config.host || !config.database}
           >
             {testing ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={auroraTheme.colors.text.primary} />
             ) : (
               <>
-                <Ionicons name="pulse" size={20} color="#fff" />
+                <Ionicons name="pulse" size={20} color={auroraTheme.colors.text.primary} />
                 <Text style={styles.buttonText}>Test Connection</Text>
               </>
             )}
           </AnimatedPressable>
 
           <AnimatedPressable
-            style={[
-              styles.button,
-              styles.saveButton,
-              offlineMode && styles.buttonDisabled,
-            ]}
+            style={[styles.button, styles.saveButton, offlineMode && styles.buttonDisabled]}
             onPress={handleSave}
             disabled={offlineMode || saving || !config.host || !config.database}
           >
             {saving ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={auroraTheme.colors.text.primary} />
             ) : (
               <>
-                <Ionicons name="save" size={20} color="#fff" />
+                <Ionicons name="save" size={20} color={auroraTheme.colors.text.primary} />
                 <Text style={styles.buttonText}>Save Configuration</Text>
               </>
             )}
           </AnimatedPressable>
         </View>
 
-        <GlassCard variant="light" style={styles.infoBox}>
-          <Ionicons
-            name="information-circle"
-            size={24}
-            color={auroraTheme.colors.primary[400]}
-          />
+        <ModernCard variant="outlined" elevation="none" padding={0} style={styles.infoBox}>
+          <Ionicons name="information-circle" size={24} color={auroraTheme.colors.primary[400]} />
           <Text style={styles.infoText}>
-            SQL Server integration is used for real-time ERP synchronization.
-            The system can operate independently with local data if connectivity
-            is not available. Changes require a backend service restart to take
-            full effect.
+            SQL Server integration is used for real-time ERP synchronization. The system can operate
+            independently with local data if connectivity is not available. Changes require a
+            backend service restart to take full effect.
           </Text>
-        </GlassCard>
+        </ModernCard>
       </ScrollView>
     </ScreenContainer>
   );
@@ -483,10 +452,6 @@ const styles = StyleSheet.create({
     borderRadius: auroraTheme.borderRadius.md,
     gap: 12,
     elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
   buttonDisabled: {
     opacity: 0.55,
@@ -498,7 +463,7 @@ const styles = StyleSheet.create({
     backgroundColor: auroraTheme.colors.primary[500],
   },
   buttonText: {
-    color: "#fff",
+    color: auroraTheme.colors.text.primary,
     fontSize: auroraTheme.typography.fontSize.md,
     fontWeight: "700" as const,
   },

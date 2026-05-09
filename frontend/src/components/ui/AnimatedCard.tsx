@@ -6,14 +6,7 @@
  */
 
 import React, { useCallback } from "react";
-import {
-  Animated,
-  StyleSheet,
-  StyleProp,
-  ViewStyle,
-  Pressable,
-  Platform,
-} from "react-native";
+import { Animated, StyleSheet, StyleProp, ViewStyle, Pressable, Platform } from "react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -24,18 +17,13 @@ import {
   semanticColors,
   gradients,
   animationPresets,
-} from "../../theme/unified";
+} from "@/theme/legacyCompat";
 import { useEntryAnimation, useScalePress } from "../../hooks/useAnimations";
 
 // ==========================================
 // TYPES
 // ==========================================
-export type CardVariant =
-  | "elevated"
-  | "outlined"
-  | "filled"
-  | "glass"
-  | "gradient";
+export type CardVariant = "elevated" | "outlined" | "filled" | "glass" | "gradient";
 
 export interface AnimatedCardProps {
   /** Card content */
@@ -73,20 +61,14 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = ({
   animated = true,
   staggerIndex,
   pressable = !!onPress,
-  gradientColors = gradients.primary as unknown as readonly [
-    string,
-    string,
-    ...string[],
-  ],
+  gradientColors = gradients.primary as unknown as readonly [string, string, ...string[]],
   blurIntensity = 50,
   disabled = false,
   testID,
 }) => {
   // Entry animation
   const isStaggered = staggerIndex !== undefined;
-  const delay = isStaggered
-    ? staggerIndex * animationPresets.staggeredEntry.staggerDelay
-    : 0;
+  const delay = isStaggered ? staggerIndex * animationPresets.staggeredEntry.staggerDelay : 0;
 
   const duration = isStaggered
     ? animationPresets.staggeredEntry.duration
@@ -141,9 +123,7 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = ({
 
       default:
         return (
-          <Animated.View style={[styles.cardBase, variantStyles, style]}>
-            {children}
-          </Animated.View>
+          <Animated.View style={[styles.cardBase, variantStyles, style]}>{children}</Animated.View>
         );
     }
   };
@@ -192,9 +172,7 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = ({
       {variant === "glass" || variant === "gradient" ? (
         renderCardContent()
       ) : (
-        <Animated.View style={[styles.cardBase, variantStyles, style]}>
-          {children}
-        </Animated.View>
+        <Animated.View style={[styles.cardBase, variantStyles, style]}>{children}</Animated.View>
       )}
     </Animated.View>
   );
@@ -291,9 +269,7 @@ export const StatsCardPreset: React.FC<StatsCardProps> = ({
         <Animated.Text style={statsStyles.title}>{title}</Animated.Text>
       </Animated.View>
       <Animated.Text style={statsStyles.value}>{value}</Animated.Text>
-      {subtitle && (
-        <Animated.Text style={statsStyles.subtitle}>{subtitle}</Animated.Text>
-      )}
+      {subtitle && <Animated.Text style={statsStyles.subtitle}>{subtitle}</Animated.Text>}
     </AnimatedCard>
   );
 };

@@ -4,25 +4,15 @@
  * Features: 1D-only mode, scan throttling, haptic feedback, visual overlay
  */
 import React, { useRef, useCallback } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Modal,
-  ActivityIndicator,
-  StyleSheet,
-} from "react-native";
+import { View, Text, TouchableOpacity, Modal, ActivityIndicator, StyleSheet } from "react-native";
 import { CameraView } from "@/services/device/expoCamera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ScannerMode } from "@/types/scan";
-import {
-  SCANNER_CONFIG,
-  ScanThrottleManager,
-  BarcodeValidator,
-} from "@/config/scannerConfig";
+import { SCANNER_CONFIG, ScanThrottleManager, BarcodeValidator } from "@/config/scannerConfig";
 import { ScanAreaOverlay } from "./ScanAreaOverlay";
 import { hapticService } from "@/services/hapticService";
 
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface BarcodeScannerProps {
   visible: boolean;
   scannerMode: ScannerMode;
@@ -53,14 +43,10 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   onToggleContinuousMode,
 }) => {
   // Scan throttle manager to prevent duplicate scans
-  const throttleManagerRef = useRef<ScanThrottleManager>(
-    new ScanThrottleManager(),
-  );
+  const throttleManagerRef = useRef<ScanThrottleManager>(new ScanThrottleManager());
 
   // Track scan feedback state for visual overlay
-  const [scanState, setScanState] = React.useState<
-    "idle" | "success" | "error"
-  >("idle");
+  const [scanState, setScanState] = React.useState<"idle" | "success" | "error">("idle");
 
   // Reset scan state after feedback
   React.useEffect(() => {
@@ -97,7 +83,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
       // Call parent handler
       onBarcodeScanned(data);
     },
-    [onBarcodeScanned],
+    [onBarcodeScanned]
   );
 
   if (isWeb) {
@@ -133,11 +119,8 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
         />
         <View style={styles.scannerOverlay}>
           <View style={styles.scannerTopBar}>
-            <TouchableOpacity
-              style={styles.closeScannerButton}
-              onPress={onClose}
-            >
-              <Ionicons name="close" size={32} color="#fff" />
+            <TouchableOpacity style={styles.closeScannerButton} onPress={onClose}>
+              <Ionicons name="close" size={32} color={uiSemanticColors.text.inverse} />
             </TouchableOpacity>
             {scannerMode === "item" ? (
               <TouchableOpacity
@@ -150,7 +133,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                 <Ionicons
                   name={continuousScanMode ? "infinite" : "scan"}
                   size={24}
-                  color={continuousScanMode ? "#3B82F6" : "#fff"}
+                  color={continuousScanMode ? uiColors.info[500] : uiSemanticColors.text.inverse}
                 />
                 <Text
                   style={[
@@ -173,7 +156,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                   <Ionicons
                     name={continuousScanMode ? "infinite" : "scan"}
                     size={22}
-                    color={continuousScanMode ? "#3B82F6" : "#fff"}
+                    color={continuousScanMode ? uiColors.info[500] : uiSemanticColors.text.inverse}
                   />
                   <Text
                     style={[
@@ -185,42 +168,34 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                   </Text>
                 </TouchableOpacity>
                 <View style={styles.serialOverlayBadge}>
-                  <Ionicons name="pricetag-outline" size={18} color="#fff" />
-                  <Text style={styles.serialOverlayText}>
-                    {serialLabel ?? "Serial capture"}
-                  </Text>
+                  <Ionicons
+                    name="pricetag-outline"
+                    size={18}
+                    color={uiSemanticColors.text.inverse}
+                  />
+                  <Text style={styles.serialOverlayText}>{serialLabel ?? "Serial capture"}</Text>
                 </View>
               </View>
             )}
           </View>
 
           {(scanFeedback || isLoadingItem) && (
-            <View
-              style={[
-                styles.scanFeedbackBanner,
-                isLoadingItem && styles.scanFeedbackLoading,
-              ]}
-            >
+            <View style={[styles.scanFeedbackBanner, isLoadingItem && styles.scanFeedbackLoading]}>
               {isLoadingItem ? (
                 <ActivityIndicator
                   size="small"
-                  color="#fff"
+                  color={uiSemanticColors.text.inverse}
                   style={{ marginRight: 8 }}
                 />
               ) : (
-                <Ionicons name="checkmark-circle" size={24} color="#3B82F6" />
+                <Ionicons name="checkmark-circle" size={24} color={uiColors.info[500]} />
               )}
-              <Text style={styles.scanFeedbackText}>
-                {scanFeedback || "Loading..."}
-              </Text>
+              <Text style={styles.scanFeedbackText}>{scanFeedback || "Loading..."}</Text>
             </View>
           )}
 
           {/* Enhanced scan area overlay with animations */}
-          <ScanAreaOverlay
-            feedbackState={scanState}
-            hintText={scannerInstruction}
-          />
+          <ScanAreaOverlay feedbackState={scanState} hintText={scannerInstruction} />
 
           <View style={styles.scannerInstructionContainer}>
             <Text style={styles.scannerText}>{scannerInstruction}</Text>
@@ -235,7 +210,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
 const styles = StyleSheet.create({
   scannerContainer: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: uiColors.black,
   },
   scannerOverlay: {
     flex: 1,
@@ -269,12 +244,12 @@ const styles = StyleSheet.create({
     borderColor: "rgba(76, 175, 80, 0.45)",
   },
   continuousModeText: {
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 14,
     fontWeight: "600",
   },
   continuousModeActive: {
-    color: "#3B82F6",
+    color: uiColors.info[500],
   },
   serialOverlayRow: {
     flexDirection: "row",
@@ -291,7 +266,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   serialOverlayText: {
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 14,
     fontWeight: "600",
   },
@@ -312,7 +287,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(33, 150, 243, 0.9)",
   },
   scanFeedbackText: {
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 16,
     fontWeight: "bold",
     flex: 1,
@@ -324,7 +299,7 @@ const styles = StyleSheet.create({
     right: 24,
   },
   scannerText: {
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 18,
     fontWeight: "600",
     textAlign: "center",
@@ -333,7 +308,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   scannerSubtext: {
-    color: "#94A3B8",
+    color: uiColors.neutral[400],
     fontSize: 14,
     textAlign: "center",
     backgroundColor: "rgba(0,0,0,0.6)",

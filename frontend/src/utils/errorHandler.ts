@@ -23,7 +23,7 @@ export function getErrorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error) {
     return String(error.message);
   }
-  return "An unexpected error occurred";
+  return "The app could not read the error details. Retry the action or return to the previous screen.";
 }
 
 /**
@@ -88,7 +88,7 @@ export function getUserFriendlyMessage(error: unknown): string {
     return "Server error occurred. Please try again later.";
   }
 
-  return "An error occurred. Please try again.";
+  return "The request failed. Retry the action; if it fails again, check connectivity and return to the previous workflow.";
 }
 
 /**

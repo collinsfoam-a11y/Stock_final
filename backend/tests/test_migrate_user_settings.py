@@ -47,6 +47,8 @@ async def test_migrate_user_settings_normalizes_existing_documents(test_db):
     normalized = await test_db.user_settings.find_one({"user_id": "user-1"})
     assert normalized is not None
     assert normalized["theme"] == "dark"
+    assert normalized["notification_recount_alerts"] is True
+    assert normalized["notification_sync_failure_alerts"] is True
     assert normalized["font_size"] == 18
     assert normalized["font_style"] == "system"
     assert normalized["auto_sync_interval"] == 120
@@ -63,6 +65,8 @@ async def test_migrate_user_settings_normalizes_existing_documents(test_db):
     migrated = await test_db.user_settings.find_one({"user_id": "user-2"})
     assert migrated is not None
     assert migrated["theme"] == "light"
+    assert migrated["notification_approval_alerts"] is True
+    assert migrated["notification_session_reminder_alerts"] is True
     assert migrated["font_size"] == 16
     assert migrated["font_style"] == "system"
     assert migrated["created_at"] is not None

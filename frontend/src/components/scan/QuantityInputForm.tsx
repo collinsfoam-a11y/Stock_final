@@ -13,16 +13,13 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Controller, Control, FieldErrors } from "react-hook-form";
-import {
-  ScanFormData,
-  NormalizedMrpVariant,
-  WorkflowState,
-} from "@/types/scan";
+import { ScanFormData, NormalizedMrpVariant, WorkflowState } from "@/types/scan";
 import { MRPVariantSelector } from "./MRPVariantSelector";
 import { formatMrpValue } from "@/utils/scanUtils";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
+import { semanticColors, colors } from "@/theme/legacyCompat";
 interface QuantityInputFormProps {
   control: Control<ScanFormData>;
   errors: FieldErrors<ScanFormData>;
@@ -85,9 +82,7 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
     const [showSerial, setShowSerial] = useState(serialCaptureEnabled);
     const [showMfgDate, setShowMfgDate] = useState(!!manufacturingDate);
     const [showExpiryDate, setShowExpiryDate] = useState(!!expiryDate);
-    const [showAdditionalDetail, setShowAdditionalDetail] = useState(
-      !!remark || !!markLocation,
-    );
+    const [showAdditionalDetail, setShowAdditionalDetail] = useState(!!remark || !!markLocation);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showExpiryDatePicker, setShowExpiryDatePicker] = useState(false);
 
@@ -96,7 +91,7 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
 
     const handleDamageChange = (
       text: string,
-      _field: "returnableDamageQty" | "nonReturnableDamageQty",
+      _field: "returnableDamageQty" | "nonReturnableDamageQty"
     ) => {
       onActivityReset?.();
       if (text && currentItemCondition === "good" && onItemConditionChange) {
@@ -106,7 +101,7 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
 
     const toggleSwitch = (
       setter: React.Dispatch<React.SetStateAction<boolean>>,
-      value: boolean,
+      value: boolean
     ) => {
       onActivityReset?.();
       setter(value);
@@ -132,7 +127,7 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
               <TextInput
                 style={styles.countInput}
                 placeholder="Enter physical quantity"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={semanticColors.text.tertiary}
                 onBlur={onBlur}
                 onChangeText={(text) => {
                   onActivityReset?.();
@@ -145,9 +140,7 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
               />
             )}
           />
-          {errors.countedQty && (
-            <Text style={styles.errorText}>{errors.countedQty.message}</Text>
-          )}
+          {errors.countedQty && <Text style={styles.errorText}>{errors.countedQty.message}</Text>}
         </View>
 
         {/* Change MRP Toggle */}
@@ -156,8 +149,8 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
           <Switch
             value={showMrpChange}
             onValueChange={(val) => toggleSwitch(setShowMrpChange, val)}
-            trackColor={{ false: "#334155", true: "#3B82F6" }}
-            thumbColor={showMrpChange ? "#fff" : "#94A3B8"}
+            trackColor={{ false: colors.neutral[700], true: colors.primary[500] }}
+            thumbColor={showMrpChange ? colors.white : semanticColors.text.tertiary}
           />
         </View>
 
@@ -172,16 +165,14 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
                   <TextInput
                     style={[styles.countInput, styles.mrpInput]}
                     placeholder="New MRP"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={semanticColors.text.tertiary}
                     onBlur={onBlur}
                     onChangeText={(text) => {
                       onActivityReset?.();
                       onChange(text);
                     }}
                     value={value}
-                    keyboardType={
-                      Platform.OS === "ios" ? "decimal-pad" : "numeric"
-                    }
+                    keyboardType={Platform.OS === "ios" ? "decimal-pad" : "numeric"}
                     autoCapitalize="none"
                     autoCorrect={false}
                     returnKeyType="done"
@@ -222,8 +213,8 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
           <Switch
             value={showDamage}
             onValueChange={(val) => toggleSwitch(setShowDamage, val)}
-            trackColor={{ false: "#334155", true: "#3B82F6" }}
-            thumbColor={showDamage ? "#fff" : "#94A3B8"}
+            trackColor={{ false: colors.neutral[700], true: colors.primary[500] }}
+            thumbColor={showDamage ? colors.white : semanticColors.text.tertiary}
           />
         </View>
 
@@ -238,10 +229,10 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
                   <TextInput
                     style={[
                       styles.countInput,
-                      { borderColor: value ? "#FF9800" : "#334155" },
+                      { borderColor: value ? colors.warning[500] : colors.neutral[700] },
                     ]}
                     placeholder="0"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={semanticColors.text.tertiary}
                     onBlur={onBlur}
                     onChangeText={(text) => {
                       onChange(text);
@@ -265,10 +256,10 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
                   <TextInput
                     style={[
                       styles.countInput,
-                      { borderColor: value ? "#EF4444" : "#334155" },
+                      { borderColor: value ? colors.error[500] : colors.neutral[700] },
                     ]}
                     placeholder="0"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={semanticColors.text.tertiary}
                     onBlur={onBlur}
                     onChangeText={(text) => {
                       onChange(text);
@@ -291,8 +282,8 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
           <Switch
             value={showSerial}
             onValueChange={handleSerialToggle}
-            trackColor={{ false: "#334155", true: "#3B82F6" }}
-            thumbColor={showSerial ? "#fff" : "#94A3B8"}
+            trackColor={{ false: colors.neutral[700], true: colors.primary[500] }}
+            thumbColor={showSerial ? colors.white : semanticColors.text.tertiary}
           />
         </View>
         {/* Serial input logic is handled by SerialNumberEntry component in parent, but toggle is here */}
@@ -303,26 +294,18 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
           <Switch
             value={showMfgDate}
             onValueChange={(val) => toggleSwitch(setShowMfgDate, val)}
-            trackColor={{ false: "#334155", true: "#3B82F6" }}
-            thumbColor={showMfgDate ? "#fff" : "#94A3B8"}
+            trackColor={{ false: colors.neutral[700], true: colors.primary[500] }}
+            thumbColor={showMfgDate ? colors.white : semanticColors.text.tertiary}
           />
         </View>
 
         {showMfgDate && (
           <View style={styles.inputGroup}>
-            <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text
-                style={[
-                  styles.dateButtonText,
-                  !manufacturingDate && styles.placeholderText,
-                ]}
-              >
+            <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
+              <Text style={[styles.dateButtonText, !manufacturingDate && styles.placeholderText]}>
                 {manufacturingDate || "Select Manufacturing Date"}
               </Text>
-              <Ionicons name="calendar-outline" size={20} color="#94A3B8" />
+              <Ionicons name="calendar-outline" size={20} color={semanticColors.text.tertiary} />
             </TouchableOpacity>
           </View>
         )}
@@ -335,9 +318,7 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
             onChange={(event, selectedDate) => {
               setShowDatePicker(false);
               if (selectedDate) {
-                onManufacturingDateChange(
-                  selectedDate.toISOString().split("T")[0] ?? "",
-                );
+                onManufacturingDateChange(selectedDate.toISOString().split("T")[0] ?? "");
               }
             }}
           />
@@ -349,8 +330,8 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
           <Switch
             value={showExpiryDate}
             onValueChange={(val) => toggleSwitch(setShowExpiryDate, val)}
-            trackColor={{ false: "#334155", true: "#3B82F6" }}
-            thumbColor={showExpiryDate ? "#fff" : "#94A3B8"}
+            trackColor={{ false: colors.neutral[700], true: colors.primary[500] }}
+            thumbColor={showExpiryDate ? colors.white : semanticColors.text.tertiary}
           />
         </View>
 
@@ -360,15 +341,10 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
               style={styles.dateButton}
               onPress={() => setShowExpiryDatePicker(true)}
             >
-              <Text
-                style={[
-                  styles.dateButtonText,
-                  !expiryDate && styles.placeholderText,
-                ]}
-              >
+              <Text style={[styles.dateButtonText, !expiryDate && styles.placeholderText]}>
                 {expiryDate || "Select Expiry Date"}
               </Text>
-              <Ionicons name="calendar-outline" size={20} color="#94A3B8" />
+              <Ionicons name="calendar-outline" size={20} color={semanticColors.text.tertiary} />
             </TouchableOpacity>
           </View>
         )}
@@ -381,9 +357,7 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
             onChange={(event, selectedDate) => {
               setShowExpiryDatePicker(false);
               if (selectedDate) {
-                onExpiryDateChange(
-                  selectedDate.toISOString().split("T")[0] ?? "",
-                );
+                onExpiryDateChange(selectedDate.toISOString().split("T")[0] ?? "");
               }
             }}
           />
@@ -395,8 +369,8 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
           <Switch
             value={showAdditionalDetail}
             onValueChange={(val) => toggleSwitch(setShowAdditionalDetail, val)}
-            trackColor={{ false: "#334155", true: "#3B82F6" }}
-            thumbColor={showAdditionalDetail ? "#fff" : "#94A3B8"}
+            trackColor={{ false: colors.neutral[700], true: colors.primary[500] }}
+            thumbColor={showAdditionalDetail ? colors.white : semanticColors.text.tertiary}
           />
         </View>
 
@@ -412,7 +386,7 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
                   onMarkLocationChange(text);
                 }}
                 placeholder="Specific location marker"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={semanticColors.text.tertiary}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
@@ -428,7 +402,7 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
                   onRemarkChange(text);
                 }}
                 placeholder="Add a remark"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={semanticColors.text.tertiary}
                 autoCapitalize="sentences"
                 autoCorrect={true}
                 multiline
@@ -454,7 +428,7 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
       prevProps.expiryDate === nextProps.expiryDate &&
       prevProps.remark === nextProps.remark
     );
-  },
+  }
 );
 
 QuantityInputForm.displayName = "QuantityInputForm";
@@ -466,7 +440,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#fff",
+    color: semanticColors.text.inverse,
     marginBottom: 16,
   },
   inputGroup: {
@@ -475,17 +449,17 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
     marginBottom: 8,
   },
   countInput: {
-    backgroundColor: "#1E293B",
+    backgroundColor: colors.neutral[800],
     borderRadius: 12,
     padding: 16,
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: colors.neutral[700],
   },
   toggleRow: {
     flexDirection: "row",
@@ -493,12 +467,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#334155",
+    borderBottomColor: colors.neutral[700],
     marginBottom: 12,
   },
   toggleLabel: {
     fontSize: 16,
-    color: "#E2E8F0",
+    color: colors.neutral[200],
     fontWeight: "500",
   },
   mrpContainer: {
@@ -510,18 +484,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   mrpInput: {
-    borderColor: "#3B82F6",
+    borderColor: colors.primary[500],
   },
   readOnlyInput: {
-    backgroundColor: "#0F172A",
+    backgroundColor: colors.neutral[900],
     justifyContent: "center",
   },
   readOnlyText: {
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
     fontSize: 16,
   },
   errorText: {
-    color: "#EF4444",
+    color: colors.error[500],
     fontSize: 12,
     marginTop: 4,
   },
@@ -532,21 +506,21 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   dateButton: {
-    backgroundColor: "#1E293B",
+    backgroundColor: colors.neutral[800],
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: colors.neutral[700],
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   dateButtonText: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 16,
   },
   placeholderText: {
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
   },
   remarkInput: {
     minHeight: 80,

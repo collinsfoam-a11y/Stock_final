@@ -7,6 +7,7 @@ import { usePermission } from "../../src/hooks/usePermission";
 import { getServiceLogs } from "../../src/services/api";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { auroraTheme } from "../../src/theme/auroraTheme";
+import { safeBackNavigation } from "@/utils/navigation";
 
 export default function LogsScreen() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function LogsScreen() {
       const response = await getServiceLogs(
         service,
         200,
-        filterLevel === "ALL" ? undefined : filterLevel,
+        filterLevel === "ALL" ? undefined : filterLevel
       );
       if (response.success && response.data) {
         setLogs(response.data.logs || []);
@@ -49,7 +50,7 @@ export default function LogsScreen() {
 
   useEffect(() => {
     if (!hasRole("admin")) {
-      router.back();
+      safeBackNavigation(router, { userRole: "admin" });
       return;
     }
     void loadLogs();
@@ -68,16 +69,16 @@ export default function LogsScreen() {
     switch (level?.toUpperCase()) {
       case "ERROR":
       case "CRITICAL":
-        return "#f44336";
+        return auroraTheme.colors.error[500];
       case "WARN":
       case "WARNING":
-        return "#FF9800";
+        return auroraTheme.colors.warning[500];
       case "INFO":
-        return "#2196F3";
+        return auroraTheme.colors.primary[500];
       case "DEBUG":
-        return "#9E9E9E";
+        return auroraTheme.colors.text.disabled;
       default:
-        return "#aaa";
+        return auroraTheme.colors.text.muted;
     }
   };
 
@@ -92,20 +93,14 @@ export default function LogsScreen() {
     <ScreenContainer
       header={{
         title: `${service.toUpperCase()} Logs`,
-        subtitle: offlineMode
-          ? "Live logs unavailable offline"
-          : "Real-time Log Viewer",
+        subtitle: offlineMode ? "Live logs unavailable offline" : "Real-time Log Viewer",
         showBackButton: true,
         customRightContent: (
           <AnimatedPressable
             style={[styles.refreshButton, offlineMode && styles.disabledButton]}
             onPress={loadLogs}
           >
-            <Ionicons
-              name="refresh"
-              size={24}
-              color={auroraTheme.colors.text.primary}
-            />
+            <Ionicons name="refresh" size={24} color={auroraTheme.colors.text.primary} />
           </AnimatedPressable>
         ),
       }}
@@ -123,8 +118,8 @@ export default function LogsScreen() {
           <View style={styles.noticeCopy}>
             <Text style={styles.noticeTitle}>Live logs unavailable offline</Text>
             <Text style={styles.noticeBody}>
-              Service logs are fetched from the backend and are not cached on this
-              device. Reconnect to inspect live log output.
+              Service logs are fetched from the backend and are not cached on this device. Reconnect
+              to inspect live log output.
             </Text>
           </View>
         </View>
@@ -153,18 +148,10 @@ export default function LogsScreen() {
             return (
               <AnimatedPressable
                 key={level}
-                style={[
-                  styles.levelFilter,
-                  isActive && styles.levelFilterActive,
-                ]}
+                style={[styles.levelFilter, isActive && styles.levelFilterActive]}
                 onPress={() => setFilterLevel(level)}
               >
-                <Text
-                  style={[
-                    styles.levelFilterText,
-                    isActive && styles.levelFilterTextActive,
-                  ]}
-                >
+                <Text style={[styles.levelFilterText, isActive && styles.levelFilterTextActive]}>
                   {level}
                 </Text>
               </AnimatedPressable>
@@ -183,32 +170,21 @@ export default function LogsScreen() {
             />
             <Text style={styles.emptyText}>No logs found</Text>
             <Text style={styles.emptySubtext}>
-              {searchQuery
-                ? "Try a different search term"
-                : "Logs will appear here when available"}
+              {searchQuery ? "Try a different search term" : "Logs will appear here when available"}
             </Text>
           </View>
         ) : (
           filteredLogs.map((log, index) => (
             <View key={index} style={styles.logEntry}>
               <View style={styles.logHeader}>
-                <View
-                  style={[
-                    styles.logLevelBadge,
-                    { backgroundColor: getLevelColor(log.level) },
-                  ]}
-                >
+                <View style={[styles.logLevelBadge, { backgroundColor: getLevelColor(log.level) }]}>
                   <Text style={styles.logLevelText}>{log.level || "INFO"}</Text>
                 </View>
                 <Text style={styles.logTimestamp}>
-                  {log.timestamp
-                    ? new Date(log.timestamp).toLocaleString()
-                    : "N/A"}
+                  {log.timestamp ? new Date(log.timestamp).toLocaleString() : "N/A"}
                 </Text>
               </View>
-              <Text style={styles.logMessage}>
-                {log.message || "No message"}
-              </Text>
+              <Text style={styles.logMessage}>{log.message || "No message"}</Text>
             </View>
           ))
         )}
@@ -309,7 +285,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   levelFilterTextActive: {
-    color: "#fff",
+    color: auroraTheme.colors.text.primary,
   },
   content: {
     flex: 1,
@@ -335,7 +311,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   logLevelText: {
-    color: "#fff",
+    color: auroraTheme.colors.text.primary,
     fontSize: 10,
     fontWeight: "700",
   },

@@ -10,6 +10,7 @@ import {
 import { normalizeSerialValue } from "../../../../utils/scanUtils";
 import { Item, CreateCountLinePayload } from "../../../../types/scan";
 import { useItemForm } from "./useItemForm";
+import { safeBackNavigation } from "@/utils/navigation";
 
 interface UseItemSubmissionProps {
   form: ReturnType<typeof useItemForm>;
@@ -104,6 +105,11 @@ export const useItemSubmission = ({
 }: UseItemSubmissionProps) => {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const returnToScan = () =>
+    safeBackNavigation(router, {
+      sessionFallbackHref: sessionId ? `/staff/scan?sessionId=${encodeURIComponent(sessionId)}` : undefined,
+      userRole: "staff",
+    });
 
   const addToExistingCountLine = async (existingLine: any, finalQty: number) => {
     setLoading(true);
@@ -113,7 +119,7 @@ export const useItemSubmission = ({
       await addQuantityToCountLine(lineId, finalQty, form.isBatchMode ? form.batches : undefined);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Success", "Quantity added successfully", [
-        { text: "OK", onPress: () => router.back() },
+        { text: "OK", onPress: returnToScan },
       ]);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Failed to add quantity";
@@ -159,7 +165,7 @@ export const useItemSubmission = ({
       await createCountLine(payload);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Success", "Item counted successfully", [
-        { text: "OK", onPress: () => router.back() },
+        { text: "OK", onPress: returnToScan },
       ]);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Failed to submit count";

@@ -18,14 +18,14 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 
 import {
   colors as unifiedColors,
-  semanticColors,
   spacing as unifiedSpacing,
   radius as unifiedRadius,
   fontSize,
   fontWeight,
   textStyles,
-} from "../../theme/unified";
+} from "@/theme/legacyCompat";
 
+import { useUiTokens } from "@/hooks/useUiTokens";
 interface ModernInputProps {
   label?: string;
   placeholder?: string;
@@ -46,6 +46,7 @@ interface ModernInputProps {
   onSubmitEditing?: () => void;
   returnKeyType?: "done" | "go" | "next" | "search" | "send";
   required?: boolean;
+  testID?: string;
   style?: ViewStyle;
   inputStyle?: TextStyle;
   containerStyle?: ViewStyle;
@@ -71,10 +72,12 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   onSubmitEditing,
   returnKeyType,
   required = false,
+  testID,
   style,
   inputStyle,
   containerStyle,
 }) => {
+  const uiTokens = useUiTokens();
   const [isFocused, setIsFocused] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -91,22 +94,25 @@ export const ModernInput: React.FC<ModernInputProps> = ({
       borderRadius: unifiedRadius.sm,
       borderWidth: 1,
       backgroundColor: disabled
-        ? unifiedColors.neutral[50]
-        : semanticColors.input.background,
+        ? uiTokens.mode === "dark"
+          ? uiTokens.colors.surfaceElevated
+          : unifiedColors.neutral[50]
+        : uiTokens.colors.surface,
       flexDirection: "row",
       alignItems: multiline ? "flex-start" : "center",
       paddingHorizontal: unifiedSpacing.md,
       paddingVertical: multiline ? unifiedSpacing.md : unifiedSpacing.sm,
       minHeight: multiline ? 80 : 44,
-      borderColor: semanticColors.input.border,
+      borderColor: uiTokens.colors.border,
     };
 
     // Border color logic aligned with DESIGN.md
     if (error) {
-      baseStyles.borderColor = semanticColors.status.error;
-      baseStyles.backgroundColor = unifiedColors.error[50];
+      baseStyles.borderColor = uiTokens.colors.error;
+      baseStyles.backgroundColor =
+        uiTokens.mode === "dark" ? "rgba(248, 81, 73, 0.12)" : unifiedColors.error[50];
     } else if (isFocused) {
-      baseStyles.borderColor = semanticColors.input.focus;
+      baseStyles.borderColor = uiTokens.colors.accent;
       baseStyles.borderWidth = 2;
     }
 
@@ -118,7 +124,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
       flex: 1,
       fontSize: fontSize.lg,
       fontWeight: fontWeight.regular,
-      color: disabled ? unifiedColors.neutral[400] : semanticColors.input.text,
+      color: disabled ? uiTokens.colors.textMuted : uiTokens.colors.textPrimary,
       paddingTop: multiline ? unifiedSpacing.xs : 0,
       textAlignVertical: multiline ? "top" : "center",
     };
@@ -127,7 +133,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   const getLabelStyles = (): TextStyle => {
     return {
       ...textStyles.label,
-      color: error ? semanticColors.status.error : semanticColors.text.primary,
+      color: error ? uiTokens.colors.error : uiTokens.colors.textPrimary,
       marginBottom: unifiedSpacing.xs,
     };
   };
@@ -154,11 +160,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
             <Ionicons
               name={icon}
               size={20}
-              color={
-                error
-                  ? semanticColors.status.error
-                  : semanticColors.input.placeholder
-              }
+              color={error ? uiTokens.colors.error : uiTokens.colors.textSecondary}
             />
           </TouchableOpacity>
         )}
@@ -167,7 +169,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           ref={inputRef}
           style={[getInputStyles(), inputStyle]}
           placeholder={placeholder}
-          placeholderTextColor={semanticColors.input.placeholder}
+          placeholderTextColor={uiTokens.colors.textSecondary}
           value={value}
           onChangeText={onChangeText}
           editable={!disabled}
@@ -181,17 +183,15 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           onBlur={() => setIsFocused(false)}
           onSubmitEditing={onSubmitEditing}
           returnKeyType={returnKeyType}
+          testID={testID}
         />
 
         {showPasswordToggle && (
-          <TouchableOpacity
-            onPress={togglePasswordVisibility}
-            style={styles.iconContainer}
-          >
+          <TouchableOpacity onPress={togglePasswordVisibility} style={styles.iconContainer}>
             <Ionicons
               name={isPasswordVisible ? "eye-off" : "eye"}
               size={20}
-              color={semanticColors.input.placeholder}
+              color={uiTokens.colors.textSecondary}
             />
           </TouchableOpacity>
         )}
@@ -202,16 +202,12 @@ export const ModernInput: React.FC<ModernInputProps> = ({
             style={styles.iconContainer}
             disabled={!onRightIconPress}
           >
-            <Ionicons
-              name={rightIcon}
-              size={20}
-              color={semanticColors.input.placeholder}
-            />
+            <Ionicons name={rightIcon} size={20} color={uiTokens.colors.textSecondary} />
           </TouchableOpacity>
         )}
       </Pressable>
 
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {Boolean(error) && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
 };
@@ -224,11 +220,11 @@ const styles = StyleSheet.create({
     padding: unifiedSpacing.xs,
   },
   required: {
-    color: semanticColors.status.error,
+    color: unifiedColors.error[500],
   },
   errorText: {
     fontSize: fontSize.xs,
-    color: semanticColors.status.error,
+    color: unifiedColors.error[500],
     marginTop: unifiedSpacing.xs,
   },
 });

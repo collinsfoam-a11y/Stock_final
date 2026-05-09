@@ -1,5 +1,6 @@
 import { useColorScheme } from "react-native";
 import { useThemeContextSafe } from "../context/ThemeContext";
+import { colors, darkColors, semanticColors } from "@/theme/legacyCompat";
 
 type LegacyThemeColors = {
   primary: string;
@@ -64,32 +65,35 @@ export type LegacyTheme = {
 };
 
 const buildLegacyTheme = (isDark: boolean): LegacyTheme => {
+  const neutral = colors.neutral ?? colors.gray;
+  const textColors = isDark ? darkColors.text : semanticColors.text;
+  const backgroundColors = isDark ? darkColors.background : semanticColors.background;
+  const borderColors = isDark ? darkColors.border : semanticColors.border;
+
   const theme = {
     theme: isDark ? "dark" : "light",
     isDark,
     colors: {
-      primary: "#007bff",
-      secondary: "#6c757d",
-      background: isDark ? "#121212" : "#ffffff",
-      surface: isDark ? "#1e1e1e" : "#f8f9fa",
-      surfaceElevated: isDark ? "#2a2a2a" : "#ffffff",
+      primary: colors.primary[500],
+      secondary: colors.secondary?.[500] ?? neutral[500],
+      background: backgroundColors.default,
+      surface: backgroundColors.secondary,
+      surfaceElevated: backgroundColors.elevated,
       text: {
-        primary: isDark ? "#ffffff" : "#212529",
-        secondary: isDark ? "#cccccc" : "#6c757d",
+        primary: textColors.primary,
+        secondary: textColors.secondary,
       },
-      border: isDark ? "#333333" : "#dee2e6",
-      borderLight: isDark ? "#444444" : "#e9ecef",
-      error: "#dc3545",
-      success: "#28a745",
-      warning: "#ffc107",
-      info: "#17a2b8",
-      surfaceDark: isDark ? "#1e1e1e" : "#343a40",
-      card: isDark ? "#1e1e1e" : "#ffffff",
-      placeholder: isDark ? "#666666" : "#999999",
-      disabled: isDark ? "#555555" : "#cccccc",
-      overlayPrimary: isDark
-        ? "rgba(13, 110, 253, 0.1)"
-        : "rgba(0, 123, 255, 0.1)",
+      border: borderColors.default,
+      borderLight: borderColors.subtle,
+      error: semanticColors.status.error,
+      success: semanticColors.status.success,
+      warning: semanticColors.status.warning,
+      info: semanticColors.status.info,
+      surfaceDark: darkColors.background.elevated,
+      card: backgroundColors.card,
+      placeholder: textColors.tertiary,
+      disabled: textColors.disabled,
+      overlayPrimary: backgroundColors.overlay,
     },
     spacing: {
       xs: 4,

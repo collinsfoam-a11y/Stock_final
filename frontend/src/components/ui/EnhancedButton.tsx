@@ -12,14 +12,7 @@
  */
 
 import React from "react";
-import {
-  StyleSheet,
-  Text,
-  ActivityIndicator,
-  ViewStyle,
-  TextStyle,
-  StyleProp,
-} from "react-native";
+import { StyleSheet, Text, ActivityIndicator, ViewStyle, TextStyle, StyleProp } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
 import { MyPressable, MyPressableProps } from "./MyPressable";
@@ -34,14 +27,12 @@ import {
   Opacity,
 } from "@/theme/uiConstants";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 export type ButtonType = "solid" | "outline" | "text" | "gradient";
 export type ButtonSize = "sm" | "md" | "lg" | "xl";
 export type IconPosition = "left" | "right" | "top" | "bottom";
 
-export interface EnhancedButtonProps extends Omit<
-  MyPressableProps,
-  "children" | "style"
-> {
+export interface EnhancedButtonProps extends Omit<MyPressableProps, "children" | "style"> {
   /** Button label text */
   title: string;
   /** Button type/variant */
@@ -93,7 +84,7 @@ export interface EnhancedButtonProps extends Omit<
  * <EnhancedButton
  *   title="Premium Action"
  *   type="gradient"
- *   gradientColors={['#667eea', '#764ba2']}
+ *   gradientColors={[uiColors.primary[400], uiColors.secondary[700]]}
  * />
  */
 export const EnhancedButton: React.FC<EnhancedButtonProps> = ({
@@ -120,7 +111,7 @@ export const EnhancedButton: React.FC<EnhancedButtonProps> = ({
   const primaryColor = color || themeLegacy.colors.primary;
   const resolvedTextColor =
     textColor ||
-    (type === "solid" || type === "gradient" ? "#FFFFFF" : primaryColor);
+    (type === "solid" || type === "gradient" ? uiSemanticColors.text.inverse : primaryColor);
 
   // Size configurations
   const sizeConfig = {
@@ -198,22 +189,11 @@ export const EnhancedButton: React.FC<EnhancedButtonProps> = ({
   // Render icon
   const renderIcon = () => {
     if (loading) {
-      return (
-        <ActivityIndicator
-          size="small"
-          color={resolvedTextColor}
-          style={iconMargin}
-        />
-      );
+      return <ActivityIndicator size="small" color={resolvedTextColor} style={iconMargin} />;
     }
     if (!icon) return null;
     return (
-      <Ionicons
-        name={icon}
-        size={finalIconSize}
-        color={resolvedTextColor}
-        style={iconMargin}
-      />
+      <Ionicons name={icon} size={finalIconSize} color={resolvedTextColor} style={iconMargin} />
     );
   };
 
@@ -221,11 +201,7 @@ export const EnhancedButton: React.FC<EnhancedButtonProps> = ({
   const renderContent = () => {
     const textElement = (
       <Text
-        style={[
-          styles.text,
-          { fontSize: config.fontSize, color: resolvedTextColor },
-          textStyle,
-        ]}
+        style={[styles.text, { fontSize: config.fontSize, color: resolvedTextColor }, textStyle]}
         numberOfLines={1}
       >
         {title}

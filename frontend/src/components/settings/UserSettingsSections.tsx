@@ -1,32 +1,22 @@
 import React, { useCallback, useMemo } from "react";
-import { Alert, Linking, Platform, StyleSheet, Switch, Text, View } from "react-native";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Haptics from "expo-haptics";
+import { Alert, Linking, StyleSheet, Text, View } from "react-native";
 
-import { useTheme } from "../../hooks/useTheme";
 import { useAppVersion } from "../../hooks/useAppVersion";
 import { useVersionCheck } from "../../hooks/useVersionCheck";
+import { useUiTokens } from "../../hooks/useUiTokens";
 import { useSettingsStore } from "../../store/settingsStore";
 import type { Settings } from "../../store/settingsStore";
+import { colorWithAlpha } from "../../theme/themeTokens";
 import { resolveAppUpdateUrl } from "../../services/updateService";
-import { GlassCard } from "../ui/GlassCard";
-import { AnimatedPressable } from "../ui/AnimatedPressable";
+import ModernCard from "../ui/ModernCard";
+import {
+  SettingsActionRow as SettingRow,
+  SettingsSectionDivider as SectionDivider,
+} from "./SettingsScreenPrimitives";
 
 type Option<T> = {
   label: string;
   value: T;
-};
-
-type SettingRowProps = {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  description: string;
-  value?: boolean;
-  valueLabel?: string;
-  disabled?: boolean;
-  type: "switch" | "select";
-  onToggle?: (value: boolean) => void;
-  onPress?: () => void;
 };
 
 const SYNC_INTERVAL_OPTIONS: Option<number>[] = [
@@ -90,161 +80,87 @@ const DEBOUNCE_DELAY_OPTIONS: Option<number>[] = [
   { label: "800 ms", value: 800 },
 ];
 
-const triggerSelection = () => {
-  if (Platform.OS !== "web") {
-    Haptics.selectionAsync();
-  }
-};
-
-const triggerToggle = () => {
-  if (Platform.OS !== "web") {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }
-};
-
-function SettingRow({
-  icon,
-  label,
-  description,
-  value,
-  valueLabel,
-  disabled = false,
-  type,
-  onToggle,
-  onPress,
-}: SettingRowProps) {
-  const { colors, spacing, typography, borderRadius } = useTheme();
-
-  const content = (
-    <View style={[styles.row, disabled && styles.rowDisabled]}>
-      <View style={styles.rowLeft}>
-        <View
-          style={[
-            styles.iconWrap,
-            {
-              backgroundColor: colors.overlayPrimary,
-              borderRadius: borderRadius.md,
-              marginRight: spacing.sm,
-            },
-          ]}
-        >
-          <Ionicons name={icon} size={18} color={colors.accent || colors.primary} />
-        </View>
-        <View style={styles.copy}>
-          <Text
-            style={[
-              styles.label,
-              {
-                color: colors.text,
-                fontSize: typography.fontSize.md,
-              },
-            ]}
-          >
-            {label}
-          </Text>
-          <Text
-            style={[
-              styles.description,
-              {
-                color: colors.textSecondary,
-                fontSize: typography.fontSize.sm,
-              },
-            ]}
-          >
-            {description}
-          </Text>
-        </View>
-      </View>
-
-      {type === "switch" ? (
-        <Switch
-          value={Boolean(value)}
-          onValueChange={(nextValue) => {
-            triggerToggle();
-            onToggle?.(nextValue);
-          }}
-          disabled={disabled}
-          trackColor={{
-            false: colors.border,
-            true: colors.accent || colors.primary,
-          }}
-          thumbColor="#FFFFFF"
-          ios_backgroundColor={colors.border}
-        />
-      ) : (
-        <View style={styles.selectValueWrap}>
-          <Text
-            style={[
-              styles.selectValue,
-              {
-                color: disabled ? colors.textTertiary : colors.textSecondary,
-                fontSize: typography.fontSize.sm,
-              },
-            ]}
-          >
-            {valueLabel}
-          </Text>
-          <Ionicons
-            name="chevron-forward"
-            size={16}
-            color={disabled ? colors.textTertiary : colors.textSecondary}
-          />
-        </View>
-      )}
-    </View>
-  );
-
-  if (type === "switch") {
-    return content;
-  }
-
-  return (
-    <AnimatedPressable
-      style={styles.pressableRow}
-      disabled={disabled}
-      onPress={() => {
-        triggerSelection();
-        onPress?.();
-      }}
-    >
-      {content}
-    </AnimatedPressable>
-  );
-}
-
 const Section = ({
   title,
   children,
+  syncState,
 }: {
   title: string;
   children: React.ReactNode;
+  syncState: "saved" | "syncing" | "issue";
 }) => {
-  const { colors, spacing, typography } = useTheme();
+  const uiTokens = useUiTokens();
+  const syncBadge =
+    syncState === "issue"
+      ? {
+          label: "Sync issue",
+          color: uiTokens.colors.warning,
+          background: colorWithAlpha(uiTokens.colors.warning, 0.15),
+          border: colorWithAlpha(uiTokens.colors.warning, 0.3),
+        }
+      : syncState === "syncing"
+        ? {
+            label: "Saving",
+            color: uiTokens.colors.accent,
+            background: colorWithAlpha(uiTokens.colors.accent, 0.15),
+            border: colorWithAlpha(uiTokens.colors.accent, 0.3),
+          }
+        : {
+            label: "Saved",
+            color: uiTokens.colors.success,
+            background: colorWithAlpha(uiTokens.colors.success, 0.15),
+            border: colorWithAlpha(uiTokens.colors.success, 0.3),
+          };
 
   return (
-    <View style={{ gap: spacing.sm }}>
-      <Text
-        style={{
-          color: colors.textSecondary,
-          fontSize: typography.fontSize.xs,
-          fontWeight: "700",
-          letterSpacing: 1,
-          marginLeft: 2,
-          textTransform: "uppercase",
-        }}
+    <View style={{ gap: uiTokens.spacing.sm }}>
+      <View style={styles.sectionTitleRow}>
+        <Text
+          style={{
+            color: uiTokens.colors.textSecondary,
+            fontSize: 12,
+            fontWeight: "700",
+            letterSpacing: 0,
+            marginLeft: 2,
+            textTransform: "uppercase",
+          }}
+        >
+          {title}
+        </Text>
+        <View
+          style={[
+            styles.sectionStatusBadge,
+            {
+              borderColor: syncBadge.border,
+              borderRadius: uiTokens.radius.full,
+              backgroundColor: syncBadge.background,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.sectionStatusText,
+              {
+                color: syncBadge.color,
+                fontSize: 12,
+              },
+            ]}
+          >
+            {syncBadge.label}
+          </Text>
+        </View>
+      </View>
+      <ModernCard
+        accessible={false}
+        variant="outlined"
+        elevation="none"
+        padding={0}
+        style={styles.card}
       >
-        {title}
-      </Text>
-      <GlassCard variant="medium" padding={0} tint="default" style={styles.card}>
         {children}
-      </GlassCard>
+      </ModernCard>
     </View>
   );
-};
-
-const SectionDivider = () => {
-  const { colors } = useTheme();
-  return <View style={[styles.divider, { backgroundColor: colors.borderLight }]} />;
 };
 
 const cycleOption = <T,>(options: Option<T>[], currentValue: T): T => {
@@ -267,13 +183,13 @@ const openExternalUrl = async (url: string): Promise<boolean> => {
 };
 
 export function UserSettingsSections() {
-  const { settings, setSetting } = useSettingsStore();
-  const spacing = useTheme().spacing;
+  const uiTokens = useUiTokens();
+  const { settings, setSetting, isSyncing, hasPendingSync, lastSyncError } = useSettingsStore();
+  const spacing = uiTokens.spacing;
   const { version, buildVersion } = useAppVersion();
-  const { versionInfo, isChecking, checkForUpdates, dismissUpdate, isDismissed } =
-    useVersionCheck({
-      checkOnMount: false,
-    });
+  const { versionInfo, isChecking, checkForUpdates, dismissUpdate, isDismissed } = useVersionCheck({
+    checkOnMount: false,
+  });
 
   const latestVersionLabel = versionInfo?.current_version
     ? `v${versionInfo.current_version}`
@@ -281,33 +197,27 @@ export function UserSettingsSections() {
   const currentVersionLabel = `v${version} (${buildVersion})`;
   const updateUrl = resolveAppUpdateUrl(versionInfo);
 
-  const handleUpdateNow = useCallback(
-    async (url?: string | null) => {
-      if (!url) {
-        Alert.alert(
-          "Update Link Missing",
-          "No update download link is configured yet. Please contact your administrator.",
-        );
-        return;
-      }
+  const handleUpdateNow = useCallback(async (url?: string | null) => {
+    if (!url) {
+      Alert.alert(
+        "Update Link Missing",
+        "No update download link is configured yet. Please contact your administrator."
+      );
+      return;
+    }
 
-      const opened = await openExternalUrl(url);
-      if (!opened) {
-        Alert.alert(
-          "Unable to Open Link",
-          "Could not open the update link on this device.",
-        );
-      }
-    },
-    [],
-  );
+    const opened = await openExternalUrl(url);
+    if (!opened) {
+      Alert.alert("Unable to Open Link", "Could not open the update link on this device.");
+    }
+  }, []);
 
   const handleCheckForUpdates = useCallback(async () => {
     const result = await checkForUpdates();
     if (!result || result.error) {
       Alert.alert(
         "Update Check Failed",
-        "Unable to check for updates right now. Please try again shortly.",
+        "Unable to check for updates right now. Please try again shortly."
       );
       return;
     }
@@ -328,16 +238,16 @@ export function UserSettingsSections() {
         Alert.alert(title, message, [{ text: "Update Now", onPress: updateAction }], {
           cancelable: false,
         });
-        } else {
-          Alert.alert(title, message, [
-            {
-              text: "Later",
-              style: "cancel",
-              onPress: dismissUpdate,
-            },
-            { text: "Update Now", onPress: updateAction },
-          ]);
-        }
+      } else {
+        Alert.alert(title, message, [
+          {
+            text: "Later",
+            style: "cancel",
+            onPress: dismissUpdate,
+          },
+          { text: "Update Now", onPress: updateAction },
+        ]);
+      }
       return;
     }
 
@@ -347,44 +257,45 @@ export function UserSettingsSections() {
   const labels = useMemo(
     () => ({
       autoSyncInterval:
-        SYNC_INTERVAL_OPTIONS.find((option) => option.value === settings.autoSyncInterval)
-          ?.label ?? `${settings.autoSyncInterval} min`,
+        SYNC_INTERVAL_OPTIONS.find((option) => option.value === settings.autoSyncInterval)?.label ??
+        `${settings.autoSyncInterval} min`,
       cacheExpiration:
-        CACHE_EXPIRATION_OPTIONS.find(
-          (option) => option.value === settings.cacheExpiration,
-        )?.label ?? `${settings.cacheExpiration} hrs`,
+        CACHE_EXPIRATION_OPTIONS.find((option) => option.value === settings.cacheExpiration)
+          ?.label ?? `${settings.cacheExpiration} hrs`,
       maxQueueSize:
         MAX_QUEUE_OPTIONS.find((option) => option.value === settings.maxQueueSize)?.label ??
         String(settings.maxQueueSize),
       scannerTimeout:
-        SCANNER_TIMEOUT_OPTIONS.find(
-          (option) => option.value === settings.scannerTimeout,
-        )?.label ?? `${settings.scannerTimeout} sec`,
+        SCANNER_TIMEOUT_OPTIONS.find((option) => option.value === settings.scannerTimeout)?.label ??
+        `${settings.scannerTimeout} sec`,
       exportFormat:
         EXPORT_FORMAT_OPTIONS.find((option) => option.value === settings.exportFormat)?.label ??
         settings.exportFormat.toUpperCase(),
       backupFrequency:
-        BACKUP_FREQUENCY_OPTIONS.find(
-          (option) => option.value === settings.backupFrequency,
-        )?.label ?? settings.backupFrequency,
+        BACKUP_FREQUENCY_OPTIONS.find((option) => option.value === settings.backupFrequency)
+          ?.label ?? settings.backupFrequency,
       sessionTimeout:
-        SESSION_TIMEOUT_OPTIONS.find(
-          (option) => option.value === settings.sessionTimeout,
-        )?.label ?? `${settings.sessionTimeout} min`,
+        SESSION_TIMEOUT_OPTIONS.find((option) => option.value === settings.sessionTimeout)?.label ??
+        `${settings.sessionTimeout} min`,
       operationalMode:
         MODE_OPTIONS.find((option) => option.value === settings.operationalMode)?.label ??
         settings.operationalMode,
       debounceDelay:
-        DEBOUNCE_DELAY_OPTIONS.find(
-          (option) => option.value === settings.debounceDelay,
-        )?.label ?? `${settings.debounceDelay} ms`,
+        DEBOUNCE_DELAY_OPTIONS.find((option) => option.value === settings.debounceDelay)?.label ??
+        `${settings.debounceDelay} ms`,
     }),
-    [settings],
+    [settings]
   );
+
+  const sectionSyncState: "saved" | "syncing" | "issue" = lastSyncError
+    ? "issue"
+    : isSyncing || hasPendingSync
+      ? "syncing"
+      : "saved";
 
   return (
     <View style={{ gap: spacing.lg }}>
-      <Section title="Notifications">
+      <Section title="Notifications" syncState={sectionSyncState}>
         <SettingRow
           icon="notifications-outline"
           label="Notifications"
@@ -413,9 +324,49 @@ export function UserSettingsSections() {
           value={settings.notificationBadge}
           onToggle={(value) => setSetting("notificationBadge", value)}
         />
+        <SectionDivider />
+        <SettingRow
+          icon="repeat-outline"
+          label="Recount Alerts"
+          description="Notify staff and supervisors about recount assignments and results"
+          type="switch"
+          disabled={!settings.notificationsEnabled}
+          value={settings.notificationRecountAlerts}
+          onToggle={(value) => setSetting("notificationRecountAlerts", value)}
+        />
+        <SectionDivider />
+        <SettingRow
+          icon="checkmark-done-outline"
+          label="Approval Alerts"
+          description="Notify operators when counts are approved, rejected, or need review"
+          type="switch"
+          disabled={!settings.notificationsEnabled}
+          value={settings.notificationApprovalAlerts}
+          onToggle={(value) => setSetting("notificationApprovalAlerts", value)}
+        />
+        <SectionDivider />
+        <SettingRow
+          icon="cloud-offline-outline"
+          label="Sync Failure Alerts"
+          description="Notify when queued work cannot sync and needs recovery"
+          type="switch"
+          disabled={!settings.notificationsEnabled}
+          value={settings.notificationSyncFailureAlerts}
+          onToggle={(value) => setSetting("notificationSyncFailureAlerts", value)}
+        />
+        <SectionDivider />
+        <SettingRow
+          icon="timer-outline"
+          label="Session Reminders"
+          description="Notify during long counting sessions and pending handoff work"
+          type="switch"
+          disabled={!settings.notificationsEnabled}
+          value={settings.notificationSessionReminderAlerts}
+          onToggle={(value) => setSetting("notificationSessionReminderAlerts", value)}
+        />
       </Section>
 
-      <Section title="Sync & Offline">
+      <Section title="Sync & Offline" syncState={sectionSyncState}>
         <SettingRow
           icon="sync-outline"
           label="Auto Sync"
@@ -435,7 +386,7 @@ export function UserSettingsSections() {
           onPress={() =>
             setSetting(
               "autoSyncInterval",
-              cycleOption(SYNC_INTERVAL_OPTIONS, settings.autoSyncInterval),
+              cycleOption(SYNC_INTERVAL_OPTIONS, settings.autoSyncInterval)
             )
           }
         />
@@ -468,7 +419,7 @@ export function UserSettingsSections() {
           onPress={() =>
             setSetting(
               "cacheExpiration",
-              cycleOption(CACHE_EXPIRATION_OPTIONS, settings.cacheExpiration),
+              cycleOption(CACHE_EXPIRATION_OPTIONS, settings.cacheExpiration)
             )
           }
         />
@@ -480,15 +431,12 @@ export function UserSettingsSections() {
           type="select"
           valueLabel={labels.maxQueueSize}
           onPress={() =>
-            setSetting(
-              "maxQueueSize",
-              cycleOption(MAX_QUEUE_OPTIONS, settings.maxQueueSize),
-            )
+            setSetting("maxQueueSize", cycleOption(MAX_QUEUE_OPTIONS, settings.maxQueueSize))
           }
         />
       </Section>
 
-      <Section title="Scanner">
+      <Section title="Scanner" syncState={sectionSyncState}>
         <SettingRow
           icon="pulse-outline"
           label="Vibration Feedback"
@@ -525,13 +473,13 @@ export function UserSettingsSections() {
           onPress={() =>
             setSetting(
               "scannerTimeout",
-              cycleOption(SCANNER_TIMEOUT_OPTIONS, settings.scannerTimeout),
+              cycleOption(SCANNER_TIMEOUT_OPTIONS, settings.scannerTimeout)
             )
           }
         />
       </Section>
 
-      <Section title="Inventory View">
+      <Section title="Inventory View" syncState={sectionSyncState}>
         <SettingRow
           icon="image-outline"
           label="Show Item Images"
@@ -616,7 +564,7 @@ export function UserSettingsSections() {
         />
       </Section>
 
-      <Section title="Data Preferences">
+      <Section title="Data Preferences" syncState={sectionSyncState}>
         <SettingRow
           icon="download-outline"
           label="Export Format"
@@ -624,10 +572,7 @@ export function UserSettingsSections() {
           type="select"
           valueLabel={labels.exportFormat}
           onPress={() =>
-            setSetting(
-              "exportFormat",
-              cycleOption(EXPORT_FORMAT_OPTIONS, settings.exportFormat),
-            )
+            setSetting("exportFormat", cycleOption(EXPORT_FORMAT_OPTIONS, settings.exportFormat))
           }
         />
         <SectionDivider />
@@ -640,13 +585,13 @@ export function UserSettingsSections() {
           onPress={() =>
             setSetting(
               "backupFrequency",
-              cycleOption(BACKUP_FREQUENCY_OPTIONS, settings.backupFrequency),
+              cycleOption(BACKUP_FREQUENCY_OPTIONS, settings.backupFrequency)
             )
           }
         />
       </Section>
 
-      <Section title="App Updates">
+      <Section title="App Updates" syncState={sectionSyncState}>
         <SettingRow
           icon="phone-portrait-outline"
           label="Current Version"
@@ -696,9 +641,7 @@ export function UserSettingsSections() {
               icon="download-outline"
               label="Update Now"
               description={
-                updateUrl
-                  ? "Open the latest app download link"
-                  : "Update link not configured"
+                updateUrl ? "Open the latest app download link" : "Update link not configured"
               }
               type="select"
               disabled={!updateUrl}
@@ -711,7 +654,7 @@ export function UserSettingsSections() {
         )}
       </Section>
 
-      <Section title="Access & Workflow">
+      <Section title="Access & Workflow" syncState={sectionSyncState}>
         <SettingRow
           icon="lock-closed-outline"
           label="Require Sign-In"
@@ -731,7 +674,7 @@ export function UserSettingsSections() {
           onPress={() =>
             setSetting(
               "sessionTimeout",
-              cycleOption(SESSION_TIMEOUT_OPTIONS, settings.sessionTimeout),
+              cycleOption(SESSION_TIMEOUT_OPTIONS, settings.sessionTimeout)
             )
           }
         />
@@ -755,7 +698,7 @@ export function UserSettingsSections() {
         />
       </Section>
 
-      <Section title="Performance">
+      <Section title="Performance" syncState={sectionSyncState}>
         <SettingRow
           icon="images-outline"
           label="Image Cache"
@@ -781,10 +724,7 @@ export function UserSettingsSections() {
           type="select"
           valueLabel={labels.debounceDelay}
           onPress={() =>
-            setSetting(
-              "debounceDelay",
-              cycleOption(DEBOUNCE_DELAY_OPTIONS, settings.debounceDelay),
-            )
+            setSetting("debounceDelay", cycleOption(DEBOUNCE_DELAY_OPTIONS, settings.debounceDelay))
           }
         />
       </Section>
@@ -796,53 +736,20 @@ const styles = StyleSheet.create({
   card: {
     overflow: "hidden",
   },
-  pressableRow: {
-    width: "100%",
-  },
-  row: {
-    alignItems: "center",
+  sectionTitleRow: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    minHeight: 72,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    gap: 8,
   },
-  rowDisabled: {
-    opacity: 0.5,
+  sectionStatusBadge: {
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
-  rowLeft: {
-    alignItems: "center",
-    flex: 1,
-    flexDirection: "row",
-    paddingRight: 12,
-  },
-  iconWrap: {
-    alignItems: "center",
-    height: 36,
-    justifyContent: "center",
-    width: 36,
-  },
-  copy: {
-    flex: 1,
-    gap: 2,
-  },
-  label: {
-    fontWeight: "600",
-  },
-  description: {
-    lineHeight: 18,
-  },
-  selectValueWrap: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 6,
-  },
-  selectValue: {
-    fontWeight: "600",
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    marginLeft: 64,
+  sectionStatusText: {
+    fontWeight: "700",
+    letterSpacing: 0,
   },
 });
 

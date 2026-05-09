@@ -3,16 +3,11 @@
  * Shows update available or force update banners
  */
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Linking,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Linking } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { VersionCheckResult } from "../services/versionService";
 
+import { semanticColors, colors } from "@/theme/legacyCompat";
 interface UpgradeNotificationProps {
   /** Version check result */
   versionInfo: VersionCheckResult;
@@ -86,9 +81,9 @@ export const UpgradeNotification: React.FC<UpgradeNotificationProps> = ({
 
   const getIconColor = () => {
     if (forceUpdate) {
-      return "#FF5252";
+      return colors.error[500];
     }
-    return versionInfo.update_type === "major" ? "#4CAF50" : "#2196F3";
+    return versionInfo.update_type === "major" ? colors.success[500] : colors.info[500];
   };
 
   if (variant === "modal") {
@@ -96,11 +91,7 @@ export const UpgradeNotification: React.FC<UpgradeNotificationProps> = ({
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
           <View style={styles.modalIconContainer}>
-            <Ionicons
-              name={getIcon() as any}
-              size={64}
-              color={getIconColor()}
-            />
+            <Ionicons name={getIcon() as any} size={64} color={getIconColor()} />
           </View>
 
           <Text style={styles.modalTitle}>
@@ -111,23 +102,19 @@ export const UpgradeNotification: React.FC<UpgradeNotificationProps> = ({
 
           <View style={styles.versionInfo}>
             <Text style={styles.versionLabel}>Current Version:</Text>
-            <Text style={styles.versionValue}>
-              {versionInfo.client_version ?? "unknown"}
-            </Text>
+            <Text style={styles.versionValue}>{versionInfo.client_version ?? "unknown"}</Text>
           </View>
 
           <View style={styles.versionInfo}>
             <Text style={styles.versionLabel}>Latest Version:</Text>
-            <Text style={styles.versionValue}>
-              {versionInfo.current_version ?? "unknown"}
-            </Text>
+            <Text style={styles.versionValue}>{versionInfo.current_version ?? "unknown"}</Text>
           </View>
 
           <TouchableOpacity
             style={[styles.updateButton, { backgroundColor: getIconColor() }]}
             onPress={handleUpdate}
           >
-            <Ionicons name="download" size={20} color="#fff" />
+            <Ionicons name="download" size={20} color={semanticColors.text.inverse} />
             <Text style={styles.updateButtonText}>Update Now</Text>
           </TouchableOpacity>
 
@@ -146,7 +133,7 @@ export const UpgradeNotification: React.FC<UpgradeNotificationProps> = ({
     <View
       style={[
         styles.bannerContainer,
-        { backgroundColor: forceUpdate ? "#FFEBEE" : "#E3F2FD" },
+        { backgroundColor: forceUpdate ? colors.error[50] : colors.info[50] },
       ]}
     >
       <View style={styles.bannerContent}>
@@ -167,21 +154,15 @@ export const UpgradeNotification: React.FC<UpgradeNotificationProps> = ({
         </View>
 
         <TouchableOpacity
-          style={[
-            styles.bannerUpdateButton,
-            { backgroundColor: getIconColor() },
-          ]}
+          style={[styles.bannerUpdateButton, { backgroundColor: getIconColor() }]}
           onPress={handleUpdate}
         >
           <Text style={styles.bannerUpdateButtonText}>Update</Text>
         </TouchableOpacity>
 
         {!forceUpdate && onDismiss && (
-          <TouchableOpacity
-            style={styles.bannerCloseButton}
-            onPress={onDismiss}
-          >
-            <Ionicons name="close" size={20} color="#666" />
+          <TouchableOpacity style={styles.bannerCloseButton} onPress={onDismiss}>
+            <Ionicons name="close" size={20} color={semanticColors.text.secondary} />
           </TouchableOpacity>
         )}
       </View>
@@ -199,7 +180,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: "#fff",
+    backgroundColor: semanticColors.background.elevated,
     borderRadius: 16,
     padding: 24,
     width: "100%",
@@ -212,13 +193,13 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
+    color: semanticColors.text.primary,
     marginBottom: 12,
     textAlign: "center",
   },
   modalMessage: {
     fontSize: 16,
-    color: "#666",
+    color: semanticColors.text.secondary,
     textAlign: "center",
     marginBottom: 20,
     lineHeight: 22,
@@ -230,12 +211,12 @@ const styles = StyleSheet.create({
   },
   versionLabel: {
     fontSize: 14,
-    color: "#888",
+    color: semanticColors.text.tertiary,
     marginRight: 8,
   },
   versionValue: {
     fontSize: 14,
-    color: "#333",
+    color: semanticColors.text.primary,
     fontWeight: "600",
   },
   updateButton: {
@@ -249,7 +230,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   updateButtonText: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 16,
     fontWeight: "bold",
     marginLeft: 8,
@@ -259,7 +240,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   dismissButtonText: {
-    color: "#666",
+    color: semanticColors.text.secondary,
     fontSize: 14,
   },
 
@@ -285,12 +266,12 @@ const styles = StyleSheet.create({
   bannerTitle: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#333",
+    color: semanticColors.text.primary,
     marginBottom: 2,
   },
   bannerMessage: {
     fontSize: 12,
-    color: "#666",
+    color: semanticColors.text.secondary,
   },
   bannerUpdateButton: {
     paddingVertical: 8,
@@ -298,7 +279,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   bannerUpdateButtonText: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 12,
     fontWeight: "bold",
   },

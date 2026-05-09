@@ -16,11 +16,9 @@ import {
   TextStyle,
 } from "react-native";
 import * as Haptics from "expo-haptics";
-import {
-  modernColors,
-  modernBorderRadius,
-} from "../../styles/modernDesignSystem";
+import { modernColors, modernBorderRadius } from "../../styles/modernDesignSystem";
 
+import { shadows as uiShadows } from "@/theme/legacyCompat";
 interface AnimatedInputProps extends TextInputProps {
   label?: string;
   error?: string;
@@ -85,14 +83,7 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
 
       onFocus?.(e);
     },
-    [
-      borderColor,
-      labelPosition,
-      labelScale,
-      shadowOpacity,
-      hapticOnFocus,
-      onFocus,
-    ],
+    [borderColor, labelPosition, labelScale, shadowOpacity, hapticOnFocus, onFocus]
   );
 
   const handleBlur = useCallback(
@@ -125,7 +116,7 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
 
       onBlur?.(e);
     },
-    [borderColor, labelPosition, labelScale, shadowOpacity, value, onBlur],
+    [borderColor, labelPosition, labelScale, shadowOpacity, value, onBlur]
   );
 
   const animatedBorderColor = borderColor.interpolate({
@@ -172,10 +163,7 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
           getVariantStyles(),
           {
             borderColor: animatedBorderColor,
-            shadowOpacity: shadowOpacity.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 0.1],
-            }),
+            ...uiShadows.md,
           },
         ]}
       >
@@ -185,10 +173,7 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
               styles.label,
               labelStyle,
               {
-                transform: [
-                  { translateY: animatedLabelY },
-                  { scale: labelScale },
-                ],
+                transform: [{ translateY: animatedLabelY }, { scale: labelScale }],
                 color: isFocused
                   ? modernColors.primary[500]
                   : error
@@ -222,9 +207,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     position: "relative",
-    shadowColor: modernColors.primary[500],
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
+    ...uiShadows.md,
     elevation: 4,
   },
   label: {

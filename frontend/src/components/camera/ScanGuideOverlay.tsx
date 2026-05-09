@@ -16,6 +16,7 @@ import Animated, {
 import { colorPalette, spacing, typography } from "@/theme/designTokens";
 import type { ScanRegion } from "@/services/cameraEnhancementService";
 
+import { shadows as uiShadows } from "@/theme/legacyCompat";
 interface ScanGuideOverlayProps {
   scanRegion: ScanRegion;
   isScanning?: boolean;
@@ -36,20 +37,17 @@ export const ScanGuideOverlay: React.FC<ScanGuideOverlayProps> = ({
       scanLinePosition.value = withRepeat(
         withSequence(
           withTiming(scanRegion.height, { duration: 1500 }),
-          withTiming(0, { duration: 1500 }),
+          withTiming(0, { duration: 1500 })
         ),
         -1,
-        false,
+        false
       );
 
       // Pulse corners
       cornerOpacity.value = withRepeat(
-        withSequence(
-          withTiming(0.5, { duration: 800 }),
-          withTiming(1, { duration: 800 }),
-        ),
+        withSequence(withTiming(0.5, { duration: 800 }), withTiming(1, { duration: 800 })),
         -1,
-        true,
+        true
       );
     } else {
       scanLinePosition.value = 0;
@@ -107,11 +105,7 @@ export const ScanGuideOverlay: React.FC<ScanGuideOverlayProps> = ({
                   ]}
                 />
                 <View
-                  style={[
-                    styles.cornerLine,
-                    styles.cornerLineVertical,
-                    { width: cornerThickness },
-                  ]}
+                  style={[styles.cornerLine, styles.cornerLineVertical, { width: cornerThickness }]}
                 />
               </View>
 
@@ -131,11 +125,7 @@ export const ScanGuideOverlay: React.FC<ScanGuideOverlayProps> = ({
                   ]}
                 />
                 <View
-                  style={[
-                    styles.cornerLine,
-                    styles.cornerLineVertical,
-                    { width: cornerThickness },
-                  ]}
+                  style={[styles.cornerLine, styles.cornerLineVertical, { width: cornerThickness }]}
                 />
               </View>
 
@@ -155,11 +145,7 @@ export const ScanGuideOverlay: React.FC<ScanGuideOverlayProps> = ({
                   ]}
                 />
                 <View
-                  style={[
-                    styles.cornerLine,
-                    styles.cornerLineVertical,
-                    { width: cornerThickness },
-                  ]}
+                  style={[styles.cornerLine, styles.cornerLineVertical, { width: cornerThickness }]}
                 />
               </View>
 
@@ -179,19 +165,13 @@ export const ScanGuideOverlay: React.FC<ScanGuideOverlayProps> = ({
                   ]}
                 />
                 <View
-                  style={[
-                    styles.cornerLine,
-                    styles.cornerLineVertical,
-                    { width: cornerThickness },
-                  ]}
+                  style={[styles.cornerLine, styles.cornerLineVertical, { width: cornerThickness }]}
                 />
               </View>
             </Animated.View>
 
             {/* Scan line */}
-            {isScanning && (
-              <Animated.View style={[styles.scanLine, scanLineStyle]} />
-            )}
+            {isScanning && <Animated.View style={[styles.scanLine, scanLineStyle]} />}
           </View>
 
           <View style={[styles.dimmed, { flex: 1 }]} />
@@ -203,10 +183,7 @@ export const ScanGuideOverlay: React.FC<ScanGuideOverlayProps> = ({
 
       {/* Message */}
       <View
-        style={[
-          styles.messageContainer,
-          { top: scanRegion.y + scanRegion.height + spacing.lg },
-        ]}
+        style={[styles.messageContainer, { top: scanRegion.y + scanRegion.height + spacing.lg }]}
       >
         <Text style={styles.message}>{message}</Text>
       </View>
@@ -271,10 +248,7 @@ const styles = StyleSheet.create({
     right: 0,
     height: 2,
     backgroundColor: colorPalette.primary[500],
-    shadowColor: colorPalette.primary[500],
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
+    ...uiShadows.md,
   },
   messageContainer: {
     position: "absolute",

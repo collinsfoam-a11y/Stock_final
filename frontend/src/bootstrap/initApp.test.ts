@@ -100,4 +100,25 @@ describe("initializeApp", () => {
     expect(registerBackgroundSync).not.toHaveBeenCalled();
   });
 
+  it("reports monotonic boot progress without waiting for fonts", async () => {
+    const progressEvents: number[] = [];
+    const messages: string[] = [];
+
+    await initializeApp({
+      fontsLoaded: false,
+      isDev: true,
+      loadStoredAuth: async () => undefined,
+      loadSettings: async () => undefined,
+      isAuthenticated: () => false,
+      onProgress: ({ progress, message }) => {
+        progressEvents.push(progress);
+        messages.push(message);
+      },
+    });
+
+    expect(progressEvents.length).toBeGreaterThan(0);
+    expect(progressEvents).toContain(100);
+    expect(progressEvents).toEqual([...progressEvents].sort((a, b) => a - b));
+    expect(messages).toContain("Using fallback fonts while assets finish loading");
+  });
 });

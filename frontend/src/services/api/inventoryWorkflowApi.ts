@@ -370,11 +370,9 @@ export const checkSerialUniqueness = async (
   floor_no?: string;
   rack_no?: string;
   status?: string;
-  }> => {
+}> => {
   try {
-    const response = await api.get(
-      `/api/count-lines/check-serial/${sessionId}/${serialNumber}`,
-    );
+    const response = await api.get(`/api/count-lines/check-serial/${sessionId}/${serialNumber}`);
     return response.data;
   } catch (error) {
     console.error("Error checking serial uniqueness:", error);
@@ -736,8 +734,7 @@ const ensureCountLineIdempotencyKey = (
 const filterCountLinesByVerified = <T extends { verified?: boolean }>(
   lines: T[],
   verified?: boolean
-): T[] =>
-  verified !== undefined ? lines.filter((line) => line.verified === verified) : lines;
+): T[] => (verified !== undefined ? lines.filter((line) => line.verified === verified) : lines);
 
 const paginateCountLineItems = (
   items: any[],
@@ -864,7 +861,9 @@ export const createCountLine = async (
   const countDataWithIdempotency = ensureCountLineIdempotencyKey(countData);
 
   try {
-    const isOfflineSession = String(countDataWithIdempotency.session_id || "").startsWith("offline_");
+    const isOfflineSession = String(countDataWithIdempotency.session_id || "").startsWith(
+      "offline_"
+    );
 
     if (!isOnline() || isOfflineSession) {
       log.debug("Offline mode or offline session - creating offline count line", {
@@ -942,14 +941,7 @@ export const getCountLines = async (
   try {
     if (!shouldAttemptReadApi()) {
       log.debug("Offline mode - returning cached count lines with pagination");
-      return buildOfflinePaginatedCountLines(
-        sessionId,
-        page,
-        pageSize,
-        "cache",
-        true,
-        verified
-      );
+      return buildOfflinePaginatedCountLines(sessionId, page, pageSize, "cache", true, verified);
     }
 
     let url = `/api/count-lines/session/${sessionId}?page=${page}&page_size=${pageSize}`;
@@ -974,7 +966,7 @@ export const getCountLines = async (
       _source: "api" as DataSource,
     };
   } catch (error: any) {
-    log.error("Error getting count lines, falling back to cache", {
+    log.warn("Count lines API unavailable; falling back to cache", {
       error: error instanceof Error ? error.message : String(error),
     });
 
@@ -1121,10 +1113,7 @@ export const updateSessionStatus = async (sessionId: string, status: string) => 
 /**
  * Finalizes a session through the supervisor-only finalize workflow.
  */
-export const finalizeSession = async (
-  sessionId: string,
-  payload?: { note?: string }
-) => {
+export const finalizeSession = async (sessionId: string, payload?: { note?: string }) => {
   try {
     const response = await api.post(`/api/sessions/${sessionId}/finalize`, payload || {});
     return response.data;

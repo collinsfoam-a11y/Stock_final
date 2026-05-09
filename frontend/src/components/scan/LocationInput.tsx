@@ -5,6 +5,7 @@
 import React from "react";
 import { View, Text, TextInput, StyleSheet } from "react-native";
 
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface LocationInputProps {
   floorNo: string;
   rackNo?: string;
@@ -61,7 +62,7 @@ export const LocationInput: React.FC<LocationInputProps> = ({
           <TextInput
             style={styles.locationInput}
             placeholder="e.g., 1, 2, G"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={uiColors.neutral[400]}
             value={floorNo}
             onChangeText={handleFloorChange}
             autoCapitalize="characters"
@@ -75,7 +76,7 @@ export const LocationInput: React.FC<LocationInputProps> = ({
             <TextInput
               style={styles.locationInput}
               placeholder="e.g., A1, B2"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={uiColors.neutral[400]}
               value={rackNo}
               onChangeText={handleRackChange}
               autoCapitalize="characters"
@@ -90,7 +91,7 @@ export const LocationInput: React.FC<LocationInputProps> = ({
             <TextInput
               style={styles.locationInput}
               placeholder="e.g., 1, 2, 3"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={uiColors.neutral[400]}
               value={shelfNo}
               onChangeText={handleShelfChange}
               autoCapitalize="characters"
@@ -104,7 +105,7 @@ export const LocationInput: React.FC<LocationInputProps> = ({
           <TextInput
             style={styles.locationInput}
             placeholder="e.g., Top, Middle"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={uiColors.neutral[400]}
             value={markLocation}
             onChangeText={handleMarkLocationChange}
             autoCapitalize="words"
@@ -123,7 +124,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     marginBottom: 12,
   },
   locationGrid: {
@@ -135,15 +136,15 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#94A3B8",
+    color: uiColors.neutral[400],
   },
   locationInput: {
-    backgroundColor: "#1E293B",
+    backgroundColor: uiColors.neutral[800],
     borderRadius: 8,
     padding: 12,
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: uiColors.neutral[700],
   },
 });

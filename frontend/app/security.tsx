@@ -1,13 +1,5 @@
 import React, { useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Switch,
-  Alert,
-  Platform,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView, Switch, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -20,29 +12,49 @@ import ModernHeader from "../src/components/ui/ModernHeader";
 import ModernCard from "../src/components/ui/ModernCard";
 import ModernInput from "../src/components/ui/ModernInput";
 import ModernButton from "../src/components/ui/ModernButton";
-import {
-  colors,
-  spacing,
-  typography,
-  borderRadius,
-} from "../src/theme/modernDesign";
+import { spacing, typography, borderRadius } from "@/theme/legacyCompat";
+
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { toastService } from "@/services/toastService";
+import { safeBackNavigation } from "@/utils/navigation";
+const MotionBlock = ({
+  children,
+  delay = 0,
+  style,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  style?: object;
+}) => {
+  if (Platform.OS === "web") {
+    return <View style={style}>{children}</View>;
+  }
+
+  return (
+    <Animated.View entering={FadeInDown.delay(delay).springify()} style={style}>
+      {children}
+    </Animated.View>
+  );
+};
 
 export default function SecuritySettingsScreen() {
   const router = useRouter();
   const { pinSetup, isLoading } = useAuthStore();
   const { settings, setSetting } = useSettingsStore();
+  const uiTokens = useUiTokens();
 
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
 
   const handleSavePin = useCallback(async () => {
     if (pin.length !== 4 || !/^\d+$/.test(pin)) {
-      Alert.alert("Error", "PIN must be exactly 4 digits.");
+      toastService.showError("PIN must be exactly 4 digits.");
       return;
     }
 
     if (pin !== confirmPin) {
-      Alert.alert("Error", "PINs do not match.");
+      toastService.showError("PINs do not match.");
       return;
     }
 
@@ -51,11 +63,11 @@ export default function SecuritySettingsScreen() {
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      Alert.alert("Success", "Security PIN updated successfully.");
+      toastService.showSuccess("Security PIN updated successfully.");
       setPin("");
       setConfirmPin("");
     } else {
-      Alert.alert("Error", result.message || "Failed to update PIN.");
+      toastService.showError(result.message || "Failed to update PIN.");
     }
   }, [pin, confirmPin, pinSetup]);
 
@@ -65,28 +77,30 @@ export default function SecuritySettingsScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
       setSetting("biometricAuth", val);
+      toastService.showInfo(val ? "Biometric login enabled." : "Biometric login disabled.");
     },
-    [setSetting],
+    [setSetting]
   );
 
   const renderSectionHeader = (title: string) => (
-    <Text style={styles.sectionTitle}>{title}</Text>
+    <Text style={[styles.sectionTitle, { color: uiTokens.colors.textMuted }]}>{title}</Text>
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: uiTokens.colors.background }]}>
+      <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
       <ModernHeader
         title="Security Settings"
+        subtitle="PIN and device unlock"
         showBackButton
-        onBackPress={() => router.back()}
+        onBackPress={() => safeBackNavigation(router, { fallbackHref: "/welcome" })}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Animated.View entering={FadeInDown.delay(100).springify()}>
+        <MotionBlock delay={100}>
           {renderSectionHeader("PIN Authentication")}
           <ModernCard style={styles.card}>
-            <Text style={styles.description}>
+            <Text style={[styles.description, { color: uiTokens.colors.textSecondary }]}>
               Set a 4-digit PIN for quick and secure login to this device.
             </Text>
 
@@ -122,23 +136,31 @@ export default function SecuritySettingsScreen() {
               variant="primary"
             />
           </ModernCard>
-        </Animated.View>
+        </MotionBlock>
 
-        <Animated.View entering={FadeInDown.delay(200).springify()}>
+        <MotionBlock delay={200}>
           {renderSectionHeader("Biometric Login")}
           <ModernCard style={styles.card}>
             <View style={styles.row}>
               <View style={styles.rowLeft}>
-                <View style={styles.iconContainer}>
-                  <Ionicons
-                    name="finger-print"
-                    size={20}
-                    color={colors.primary[500]}
-                  />
+                <View
+                  style={[
+                    styles.iconContainer,
+                    {
+                      backgroundColor: colorWithAlpha(
+                        uiTokens.colors.accent,
+                        uiTokens.mode === "dark" ? 0.18 : 0.1
+                      ),
+                    },
+                  ]}
+                >
+                  <Ionicons name="finger-print" size={20} color={uiTokens.colors.accent} />
                 </View>
-                <View>
-                  <Text style={styles.rowLabel}>TouchID / FaceID</Text>
-                  <Text style={styles.rowSublabel}>
+                <View style={styles.rowText}>
+                  <Text style={[styles.rowLabel, { color: uiTokens.colors.textPrimary }]}>
+                    TouchID / FaceID
+                  </Text>
+                  <Text style={[styles.rowSublabel, { color: uiTokens.colors.textSecondary }]}>
                     Use biometrics to unlock
                   </Text>
                 </View>
@@ -147,25 +169,32 @@ export default function SecuritySettingsScreen() {
                 value={settings.biometricAuth}
                 onValueChange={toggleBiometrics}
                 trackColor={{
-                  false: colors.gray[200],
-                  true: colors.primary[500],
+                  false: uiTokens.colors.border,
+                  true: uiTokens.colors.accent,
                 }}
-                thumbColor={colors.white}
+                thumbColor={uiTokens.colors.surfaceElevated}
+                ios_backgroundColor={uiTokens.colors.border}
               />
             </View>
           </ModernCard>
-        </Animated.View>
+        </MotionBlock>
 
-        <View style={styles.infoBox}>
-          <Ionicons
-            name="information-circle-outline"
-            size={20}
-            color={colors.gray[500]}
-          />
-          <Text style={styles.infoText}>
-            Your PIN is hashed using Argon2 and stored on the server. If you
-            enable biometric login, your PIN is stored securely on this device
-            (Keychain/Keystore) so biometrics can unlock without retyping it.
+        <View
+          style={[
+            styles.infoBox,
+            {
+              backgroundColor: colorWithAlpha(
+                uiTokens.colors.info,
+                uiTokens.mode === "dark" ? 0.16 : 0.08
+              ),
+            },
+          ]}
+        >
+          <Ionicons name="information-circle-outline" size={20} color={uiTokens.colors.info} />
+          <Text style={[styles.infoText, { color: uiTokens.colors.textSecondary }]}>
+            Your PIN is hashed using Argon2 and stored on the server. If you enable biometric login,
+            your PIN is stored securely on this device (Keychain/Keystore) so biometrics can unlock
+            without retyping it.
           </Text>
         </View>
       </ScrollView>
@@ -176,7 +205,6 @@ export default function SecuritySettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.gray[50],
   },
   scrollContent: {
     padding: spacing.lg,
@@ -184,9 +212,8 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[500],
     textTransform: "uppercase",
-    letterSpacing: 1,
+    letterSpacing: 0,
     marginBottom: spacing.sm,
     marginLeft: spacing.xs,
   },
@@ -196,7 +223,6 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[600],
     lineHeight: 20,
     marginBottom: spacing.lg,
   },
@@ -211,29 +237,30 @@ const styles = StyleSheet.create({
   rowLeft: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
+    paddingRight: spacing.md,
   },
   iconContainer: {
     width: 36,
     height: 36,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.primary[50],
     justifyContent: "center",
     alignItems: "center",
     marginRight: spacing.sm,
   },
+  rowText: {
+    flex: 1,
+  },
   rowLabel: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
-    color: colors.gray[900],
   },
   rowSublabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray[500],
     marginTop: 2,
   },
   infoBox: {
     flexDirection: "row",
-    backgroundColor: colors.gray[100],
     padding: spacing.md,
     borderRadius: borderRadius.md,
     marginTop: spacing.sm,
@@ -242,7 +269,6 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: typography.fontSize.xs,
-    color: colors.gray[600],
     lineHeight: 18,
   },
 });

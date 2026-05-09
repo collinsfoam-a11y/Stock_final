@@ -1,25 +1,17 @@
 /**
- * SpeedDialMenu Component - Aurora Design
+ * SpeedDialMenu Component - Operational UI
  *
  * Floating action button with expandable menu
  * Features:
- * - Smooth expand/collapse animation
- * - Backdrop blur overlay
+ * - Token-based action surfaces
+ * - Reduced-motion aware expand/collapse animation
+ * - Lightweight overlay
  * - Haptic feedback
- * - Gradient buttons
  */
 
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import Animated, {
   useSharedValue,
@@ -29,7 +21,10 @@ import Animated, {
   interpolate,
   SharedValue,
 } from "react-native-reanimated";
-import { auroraTheme } from "@/theme/auroraTheme";
+import { zIndex as uiZIndex } from "@/theme/designTokens";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha, getTokenShadowStyle, type ThemeTokens } from "@/theme/themeTokens";
+import { semanticColors } from "@/theme/legacyCompat";
 
 export interface SpeedDialAction {
   icon: keyof typeof Ionicons.glyphMap;
@@ -42,38 +37,39 @@ export interface SpeedDialAction {
 export interface SpeedDialMenuProps {
   actions: SpeedDialAction[];
   mainIcon?: keyof typeof Ionicons.glyphMap;
-  mainColor?: readonly [string, string, ...string[]];
+  mainColor?: string | readonly [string, string, ...string[]];
   position?: "bottom-right" | "bottom-left" | "top-right" | "top-left";
 }
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
-const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
 // Extracted action item component to comply with React hooks rules
 interface SpeedDialActionItemProps {
   action: SpeedDialAction;
+  alignRight: boolean;
   index: number;
   animationProgress: SharedValue<number>;
   onPress: (action: SpeedDialAction) => void;
+  tokens: ThemeTokens;
 }
 
 const SpeedDialActionItem: React.FC<SpeedDialActionItemProps> = ({
   action,
+  alignRight,
   index,
   animationProgress,
   onPress,
+  tokens,
 }) => {
+  const actionColor = action.color || tokens.colors.accent;
+
   const actionStyle = useAnimatedStyle(() => {
     const translateY = interpolate(
       animationProgress.value,
       [0, 1],
-      [0, -(72 + auroraTheme.spacing.md) * (index + 1)],
+      [0, -(56 + tokens.spacing.sm) * (index + 1)]
     );
-    const opacity = interpolate(
-      animationProgress.value,
-      [0, 0.5, 1],
-      [0, 0.5, 1],
-    );
+    const opacity = interpolate(animationProgress.value, [0, 0.5, 1], [0, 0.5, 1]);
     const scale = interpolate(animationProgress.value, [0, 1], [0.3, 1]);
 
     return {
@@ -84,19 +80,41 @@ const SpeedDialActionItem: React.FC<SpeedDialActionItemProps> = ({
 
   return (
     <AnimatedTouchable
-      style={[styles.actionButton, actionStyle]}
+      style={[
+        styles.actionButton,
+        alignRight ? styles.actionButtonRight : styles.actionButtonLeft,
+        actionStyle,
+      ]}
       onPress={() => onPress(action)}
       activeOpacity={0.9}
+      accessibilityRole="button"
+      accessibilityLabel={action.label}
     >
-      <View style={styles.actionContent}>
-        {/* Label */}
-        <View style={styles.labelContainer}>
+      <View
+        style={[
+          styles.actionContent,
+          !alignRight && styles.actionContentLeft,
+          { gap: tokens.spacing.sm },
+        ]}
+      >
+        <View
+          style={[
+            styles.labelContainer,
+            {
+              backgroundColor: tokens.colors.surfaceElevated,
+              borderColor: tokens.colors.border,
+              borderRadius: tokens.radius.md,
+              paddingHorizontal: tokens.spacing.md,
+              paddingVertical: tokens.spacing.sm,
+            },
+            getTokenShadowStyle(tokens, "sm"),
+          ]}
+        >
           <Text
             style={[
               styles.label,
               {
-                fontFamily: auroraTheme.typography.fontFamily.label,
-                fontSize: auroraTheme.typography.fontSize.sm,
+                color: tokens.colors.textPrimary,
               },
             ]}
           >
@@ -104,32 +122,29 @@ const SpeedDialActionItem: React.FC<SpeedDialActionItemProps> = ({
           </Text>
         </View>
 
-        {/* Icon Button */}
-        <View style={styles.iconButton}>
-          <LinearGradient
-            colors={
-              action.color
-                ? [action.color, action.color]
-                : [
-                    auroraTheme.colors.aurora.secondary[0],
-                    auroraTheme.colors.aurora.secondary[1],
-                  ]
-            }
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.iconGradient}
-          >
-            <Ionicons
-              name={action.icon}
-              size={24}
-              color={auroraTheme.colors.text.primary}
-            />
-            {action.badge !== undefined && action.badge > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{action.badge}</Text>
-              </View>
-            )}
-          </LinearGradient>
+        <View
+          style={[
+            styles.iconButton,
+            {
+              backgroundColor: colorWithAlpha(actionColor, tokens.mode === "dark" ? 0.24 : 0.12),
+              borderColor: colorWithAlpha(actionColor, 0.36),
+            },
+          ]}
+        >
+          <Ionicons name={action.icon} size={22} color={actionColor} />
+          {action.badge !== undefined && action.badge > 0 && (
+            <View
+              style={[
+                styles.badge,
+                {
+                  backgroundColor: tokens.colors.error,
+                  borderColor: tokens.colors.surfaceElevated,
+                },
+              ]}
+            >
+              <Text style={styles.badgeText}>{action.badge}</Text>
+            </View>
+          )}
         </View>
       </View>
     </AnimatedTouchable>
@@ -139,22 +154,28 @@ const SpeedDialActionItem: React.FC<SpeedDialActionItemProps> = ({
 const SpeedDialMenu: React.FC<SpeedDialMenuProps> = ({
   actions,
   mainIcon = "menu",
-  mainColor = auroraTheme.colors.aurora.primary,
+  mainColor,
   position = "bottom-right",
 }) => {
+  const tokens = useUiTokens();
   const [isOpen, setIsOpen] = useState(false);
   const animationProgress = useSharedValue(0);
   const mainRotation = useSharedValue(0);
+  const resolvedMainColor = Array.isArray(mainColor)
+    ? mainColor[0]
+    : mainColor || tokens.colors.accentStrong;
 
   useEffect(() => {
     if (isOpen) {
-      animationProgress.value = withSpring(1, { damping: 15, stiffness: 150 });
-      mainRotation.value = withSpring(135, { damping: 12 });
+      animationProgress.value = tokens.motion.enabled ? withSpring(1, { damping: 18 }) : 1;
+      mainRotation.value = tokens.motion.enabled ? withSpring(135, { damping: 14 }) : 135;
     } else {
-      animationProgress.value = withTiming(0, { duration: 200 });
-      mainRotation.value = withSpring(0, { damping: 12 });
+      animationProgress.value = tokens.motion.enabled
+        ? withTiming(0, { duration: tokens.motion.fast })
+        : 0;
+      mainRotation.value = tokens.motion.enabled ? withSpring(0, { damping: 14 }) : 0;
     }
-  }, [isOpen, animationProgress, mainRotation]);
+  }, [animationProgress, isOpen, mainRotation, tokens.motion.enabled, tokens.motion.fast]);
 
   const toggleMenu = () => {
     if (Platform.OS !== "web") {
@@ -171,14 +192,14 @@ const SpeedDialMenu: React.FC<SpeedDialMenuProps> = ({
     setIsOpen(false);
   };
 
-  const mainButtonStyle = useAnimatedStyle(() => ({
+  const mainRotationStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${mainRotation.value}deg` }],
   }));
 
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: animationProgress.value,
-    pointerEvents: isOpen ? "auto" : "none",
   }));
+  const alignRight = position.endsWith("right");
 
   const getPositionStyles = () => {
     const base = { position: "absolute" as const };
@@ -186,78 +207,79 @@ const SpeedDialMenu: React.FC<SpeedDialMenuProps> = ({
       case "bottom-right":
         return {
           ...base,
-          bottom: auroraTheme.spacing.lg,
-          right: auroraTheme.spacing.lg,
+          bottom: tokens.spacing.lg,
+          right: tokens.spacing.lg,
         };
       case "bottom-left":
         return {
           ...base,
-          bottom: auroraTheme.spacing.lg,
-          left: auroraTheme.spacing.lg,
+          bottom: tokens.spacing.lg,
+          left: tokens.spacing.lg,
         };
       case "top-right":
         return {
           ...base,
-          top: auroraTheme.spacing.lg,
-          right: auroraTheme.spacing.lg,
+          top: tokens.spacing.lg,
+          right: tokens.spacing.lg,
         };
       case "top-left":
         return {
           ...base,
-          top: auroraTheme.spacing.lg,
-          left: auroraTheme.spacing.lg,
+          top: tokens.spacing.lg,
+          left: tokens.spacing.lg,
         };
     }
   };
 
   return (
     <>
-      {/* Backdrop */}
-      <AnimatedBlurView
-        intensity={20}
-        tint="dark"
-        style={[StyleSheet.absoluteFill, backdropStyle]}
-      >
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          onPress={toggleMenu}
-          activeOpacity={1}
-        />
-      </AnimatedBlurView>
+      {isOpen ? (
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            styles.backdrop,
+            { backgroundColor: colorWithAlpha(tokens.colors.overlay, 0.28) },
+            backdropStyle,
+          ]}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            onPress={toggleMenu}
+            activeOpacity={1}
+          />
+        </Animated.View>
+      ) : null}
 
-      {/* Speed Dial Container */}
       <View style={[styles.container, getPositionStyles()]}>
-        {/* Action Buttons */}
         {actions.map((action, index) => (
           <SpeedDialActionItem
             key={index}
             action={action}
+            alignRight={alignRight}
             index={index}
             animationProgress={animationProgress}
             onPress={handleActionPress}
+            tokens={tokens}
           />
         ))}
 
-        {/* Main Button */}
         <TouchableOpacity
-          style={styles.mainButton}
+          style={[
+            styles.mainButton,
+            {
+              backgroundColor: resolvedMainColor,
+              borderColor: colorWithAlpha(resolvedMainColor, 0.5),
+            },
+            getTokenShadowStyle(tokens, "md"),
+          ]}
           onPress={toggleMenu}
           activeOpacity={0.9}
+          accessibilityRole="button"
+          accessibilityLabel={isOpen ? "Close quick actions" : "Open quick actions"}
         >
-          <LinearGradient
-            colors={mainColor}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.mainGradient}
-          >
-            <Animated.View style={mainButtonStyle}>
-              <Ionicons
-                name={mainIcon}
-                size={32}
-                color={auroraTheme.colors.text.primary}
-              />
-            </Animated.View>
-          </LinearGradient>
+          <Animated.View style={mainRotationStyle}>
+            <Ionicons name={mainIcon} size={28} color={semanticColors.text.inverse} />
+          </Animated.View>
         </TouchableOpacity>
       </View>
     </>
@@ -267,66 +289,59 @@ const SpeedDialMenu: React.FC<SpeedDialMenuProps> = ({
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
-    zIndex: 1000,
+    zIndex: uiZIndex.toast,
+  },
+  backdrop: {
+    zIndex: uiZIndex.overlay,
   },
   mainButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    ...auroraTheme.shadows.xl,
-  },
-  mainGradient: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 32,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.2)",
   },
   actionButton: {
     position: "absolute",
     bottom: 0,
-    alignItems: "center",
+    width: 280,
+  },
+  actionButtonRight: {
+    right: 0,
+    alignItems: "flex-end",
+  },
+  actionButtonLeft: {
+    left: 0,
+    alignItems: "flex-start",
   },
   actionContent: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.sm,
+  },
+  actionContentLeft: {
+    flexDirection: "row-reverse",
   },
   labelContainer: {
-    backgroundColor: auroraTheme.colors.background.glass,
-    paddingHorizontal: auroraTheme.spacing.md,
-    paddingVertical: auroraTheme.spacing.sm,
-    borderRadius: auroraTheme.borderRadius.md,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
-    ...auroraTheme.shadows.md,
+    maxWidth: 220,
   },
   label: {
-    color: auroraTheme.colors.text.primary,
+    fontSize: 14,
     fontWeight: "600",
   },
   iconButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    ...auroraTheme.shadows.lg,
-  },
-  iconGradient: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.2)",
   },
   badge: {
     position: "absolute",
     top: -4,
     right: -4,
-    backgroundColor: auroraTheme.colors.error[500],
     minWidth: 20,
     height: 20,
     borderRadius: 10,
@@ -334,10 +349,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 6,
     borderWidth: 2,
-    borderColor: auroraTheme.colors.background.primary,
   },
   badgeText: {
-    color: auroraTheme.colors.text.primary,
+    color: semanticColors.text.inverse,
     fontSize: 10,
     fontWeight: "700",
   },

@@ -4,16 +4,11 @@
  */
 
 import React, { useState, useMemo } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 export interface TableColumn {
   key: string;
   label: string;
@@ -101,9 +96,7 @@ export const DataTable: React.FC<DataTableProps> = ({
       {columns.map((column) => (
         <TouchableOpacity
           key={column.key}
-          style={
-            [styles.headerCell, column.width && { width: column.width }] as any
-          }
+          style={[styles.headerCell, column.width && { width: column.width }] as any}
           onPress={() => column.sortable && handleSort(column.key)}
           disabled={!column.sortable}
         >
@@ -112,7 +105,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             <Ionicons
               name={sortDirection === "asc" ? "chevron-up" : "chevron-down"}
               size={16}
-              color="#2196F3"
+              color={uiColors.info[500]}
               style={styles.sortIcon}
             />
           )}
@@ -137,9 +130,7 @@ export const DataTable: React.FC<DataTableProps> = ({
           {column.render ? (
             column.render(item[column.key], item)
           ) : (
-            <Text style={styles.cellText}>
-              {String(item[column.key] || "")}
-            </Text>
+            <Text style={styles.cellText}>{String(item[column.key] || "")}</Text>
           )}
         </View>
       ))}
@@ -155,17 +146,14 @@ export const DataTable: React.FC<DataTableProps> = ({
     return (
       <View style={styles.pagination}>
         <TouchableOpacity
-          style={[
-            styles.paginationButton,
-            currentPage === 1 && styles.paginationButtonDisabled,
-          ]}
+          style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
           onPress={() => setCurrentPage(currentPage - 1)}
           disabled={currentPage === 1}
         >
           <Ionicons
             name="chevron-back"
             size={20}
-            color={currentPage === 1 ? "#ccc" : "#2196F3"}
+            color={currentPage === 1 ? uiColors.neutral[300] : uiColors.info[500]}
           />
         </TouchableOpacity>
 
@@ -184,7 +172,7 @@ export const DataTable: React.FC<DataTableProps> = ({
           <Ionicons
             name="chevron-forward"
             size={20}
-            color={currentPage === totalPages ? "#ccc" : "#2196F3"}
+            color={currentPage === totalPages ? uiColors.neutral[300] : uiColors.info[500]}
           />
         </TouchableOpacity>
       </View>
@@ -211,9 +199,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               renderItem={({ item, index }) => renderRow(item, index)}
               keyExtractor={(item, index) => {
                 // Create a stable key from item data
-                const keyParts = columns
-                  .map((col) => String(item[col.key] || ""))
-                  .join("-");
+                const keyParts = columns.map((col) => String(item[col.key] || "")).join("-");
                 return `row-${index}-${keyParts.substring(0, 30)}`;
               }}
               extraData={sortColumn}
@@ -229,7 +215,7 @@ export const DataTable: React.FC<DataTableProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#fff",
+    backgroundColor: uiSemanticColors.text.inverse,
     borderRadius: 8,
     overflow: "hidden",
   },
@@ -244,9 +230,9 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    backgroundColor: "#f5f5f5",
+    backgroundColor: uiColors.neutral[100],
     borderBottomWidth: 1,
-    borderBottomColor: "#ddd",
+    borderBottomColor: uiColors.neutral[300],
   },
   headerCell: {
     flex: 1,
@@ -258,7 +244,7 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#333",
+    color: uiSemanticColors.text.primary,
     flex: 1,
   },
   sortIcon: {
@@ -267,10 +253,10 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    borderBottomColor: uiColors.neutral[100],
   },
   rowEven: {
-    backgroundColor: "#fafafa",
+    backgroundColor: uiColors.neutral[50],
   },
   cell: {
     flex: 1,
@@ -280,16 +266,16 @@ const styles = StyleSheet.create({
   },
   cellText: {
     fontSize: 14,
-    color: "#333",
+    color: uiSemanticColors.text.primary,
   },
   pagination: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     padding: 12,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: uiColors.neutral[100],
     borderTopWidth: 1,
-    borderTopColor: "#ddd",
+    borderTopColor: uiColors.neutral[300],
     gap: 16,
   },
   paginationButton: {
@@ -300,6 +286,6 @@ const styles = StyleSheet.create({
   },
   paginationText: {
     fontSize: 14,
-    color: "#666",
+    color: uiSemanticColors.text.secondary,
   },
 });

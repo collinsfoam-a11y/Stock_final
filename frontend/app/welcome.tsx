@@ -1,11 +1,12 @@
 import React from "react";
 import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
 
+import { semanticColors, colors } from "@/theme/legacyCompat";
 const WelcomeScreen = React.lazy(() =>
   (Platform.OS === "web"
     ? import("../src/screens/routes/WelcomeScreen.web")
     : import("../src/screens/routes/WelcomeScreen.native")
-  ).then((module) => ({ default: module.WelcomeScreen })),
+  ).then((module) => ({ default: module.WelcomeScreen }))
 );
 
 export default function WelcomeRoute() {
@@ -19,7 +20,7 @@ export default function WelcomeRoute() {
 function RouteFallback() {
   return (
     <View style={styles.fallback}>
-      <ActivityIndicator size="small" color="#0f766e" />
+      <ActivityIndicator size="small" color={colors.secondary[700]} />
     </View>
   );
 }
@@ -29,6 +30,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#f4f7f6",
+    backgroundColor: semanticColors.background.secondary,
   },
 });

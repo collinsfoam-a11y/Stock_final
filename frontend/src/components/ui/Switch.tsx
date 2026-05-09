@@ -14,6 +14,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { colorPalette } from "@/theme/designTokens";
 
+import { shadows as uiShadows } from "@/theme/legacyCompat";
 export type SwitchSize = "sm" | "md" | "lg";
 
 interface SwitchProps {
@@ -26,10 +27,7 @@ interface SwitchProps {
   style?: ViewStyle;
 }
 
-const sizeStyles: Record<
-  SwitchSize,
-  { width: number; height: number; thumbSize: number }
-> = {
+const sizeStyles: Record<SwitchSize, { width: number; height: number; thumbSize: number }> = {
   sm: { width: 36, height: 20, thumbSize: 16 },
   md: { width: 44, height: 24, thumbSize: 20 },
   lg: { width: 52, height: 28, thumbSize: 24 },
@@ -55,11 +53,7 @@ export const Switch: React.FC<SwitchProps> = ({
   }, [value, progress]);
 
   const trackStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(
-      progress.value,
-      [0, 1],
-      [inactiveColor, activeColor],
-    ),
+    backgroundColor: interpolateColor(progress.value, [0, 1], [inactiveColor, activeColor]),
   }));
 
   const thumbStyle = useAnimatedStyle(() => ({
@@ -121,10 +115,7 @@ const styles = StyleSheet.create({
   },
   thumb: {
     backgroundColor: colorPalette.neutral[0],
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+    ...uiShadows.md,
     elevation: 2,
   },
 });

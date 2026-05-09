@@ -7,26 +7,18 @@
  */
 
 import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-} from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { auroraTheme } from "../../theme/auroraTheme";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface StaffCrashScreenProps {
   error: Error;
   resetError: () => void;
 }
 
-export const StaffCrashScreen: React.FC<StaffCrashScreenProps> = ({
-  error,
-  resetError,
-}) => {
+export const StaffCrashScreen: React.FC<StaffCrashScreenProps> = ({ error, resetError }) => {
   const router = useRouter();
 
   const handleGoToScan = () => {
@@ -43,22 +35,17 @@ export const StaffCrashScreen: React.FC<StaffCrashScreenProps> = ({
     <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Ionicons
-            name="alert-circle-outline"
-            size={64}
-            color={auroraTheme.colors.status.error}
-          />
+          <Ionicons name="alert-circle-outline" size={64} color={auroraTheme.colors.status.error} />
         </View>
 
-        <Text style={styles.title}>Something Went Wrong</Text>
-        <Text style={styles.subtitle}>
-          The scanning interface encountered an error.
-        </Text>
+        <Text style={styles.title}>Scan Workflow Recovery Required</Text>
+        <Text style={styles.subtitle}>The scanning interface encountered an error.</Text>
 
         <View style={styles.errorBox}>
           <Text style={styles.errorLabel}>Error Details:</Text>
           <Text style={styles.errorMessage}>
-            {error.message || "An unexpected error occurred"}
+            {error.message ||
+              "The scan screen failed before technical details were available. Retry, or return to scan and continue from the last saved item."}
           </Text>
         </View>
 
@@ -70,11 +57,8 @@ export const StaffCrashScreen: React.FC<StaffCrashScreenProps> = ({
         )}
 
         <View style={styles.actions}>
-          <TouchableOpacity
-            style={[styles.button, styles.primaryButton]}
-            onPress={resetError}
-          >
-            <Ionicons name="refresh" size={20} color="#FFFFFF" />
+          <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={resetError}>
+            <Ionicons name="refresh" size={20} color={uiSemanticColors.text.inverse} />
             <Text style={styles.primaryButtonText}>Try Again</Text>
           </TouchableOpacity>
 
@@ -82,23 +66,12 @@ export const StaffCrashScreen: React.FC<StaffCrashScreenProps> = ({
             style={[styles.button, styles.secondaryButton]}
             onPress={handleGoToScan}
           >
-            <Ionicons
-              name="scan-outline"
-              size={20}
-              color={auroraTheme.colors.primary[500]}
-            />
+            <Ionicons name="scan-outline" size={20} color={auroraTheme.colors.primary[500]} />
             <Text style={styles.secondaryButtonText}>Back to Scan</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.button, styles.outlineButton]}
-            onPress={handleLogout}
-          >
-            <Ionicons
-              name="log-out-outline"
-              size={20}
-              color={auroraTheme.colors.text.secondary}
-            />
+          <TouchableOpacity style={[styles.button, styles.outlineButton]} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={20} color={auroraTheme.colors.text.secondary} />
             <Text style={styles.outlineButtonText}>Logout</Text>
           </TouchableOpacity>
         </View>
@@ -200,7 +173,7 @@ const styles = StyleSheet.create({
     backgroundColor: auroraTheme.colors.primary[500],
   },
   primaryButtonText: {
-    color: "#FFFFFF",
+    color: uiSemanticColors.text.inverse,
     fontSize: 16,
     fontWeight: "600",
   },

@@ -3,17 +3,13 @@
  * Visual feedback indicators for barcode scanning results
  */
 import React, { useEffect, useRef } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Animated,
-  Dimensions,
-  Platform,
-} from "react-native";
+import { View, Text, StyleSheet, Animated, Dimensions, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { SCANNER_CONFIG } from "../../config/scannerConfig";
 
+import { semanticColors, shadows, colors } from "@/theme/legacyCompat";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { zIndex } from "@/theme/designTokens";
 interface ScanFeedbackProps {
   /** Type of feedback to display */
   type: "success" | "error" | "none";
@@ -96,19 +92,12 @@ export const ScanFeedback: React.FC<ScanFeedbackProps> = ({
     }, feedbackDuration - 200);
 
     return () => clearTimeout(timer);
-  }, [
-    type,
-    feedbackDuration,
-    opacityAnim,
-    scaleAnim,
-    translateYAnim,
-    onComplete,
-  ]);
+  }, [type, feedbackDuration, opacityAnim, scaleAnim, translateYAnim, onComplete]);
 
   if (type === "none") return null;
 
   const isSuccess = type === "success";
-  const backgroundColor = isSuccess ? "#22C55E" : "#EF4444";
+  const backgroundColor = isSuccess ? colors.success[500] : colors.error[500];
   const iconName = isSuccess ? "checkmark-circle" : "close-circle";
 
   return (
@@ -123,12 +112,10 @@ export const ScanFeedback: React.FC<ScanFeedbackProps> = ({
     >
       <View style={[styles.card, { backgroundColor }]}>
         <View style={styles.iconContainer}>
-          <Ionicons name={iconName} size={40} color="#fff" />
+          <Ionicons name={iconName} size={40} color={semanticColors.text.inverse} />
         </View>
         <View style={styles.contentContainer}>
-          <Text style={styles.title}>
-            {isSuccess ? "Scan Successful!" : "Scan Failed"}
-          </Text>
+          <Text style={styles.title}>{isSuccess ? "Scan Successful!" : "Scan Failed"}</Text>
           {barcode && <Text style={styles.barcode}>{barcode}</Text>}
           {itemName && (
             <Text style={styles.itemName} numberOfLines={2}>
@@ -210,7 +197,7 @@ export const ScanToast: React.FC<ScanToastProps> = ({
 
   if (!visible) return null;
 
-  const backgroundColor = type === "success" ? "#22C55E" : "#EF4444";
+  const backgroundColor = type === "success" ? colors.success[500] : colors.error[500];
   const iconName = type === "success" ? "checkmark-circle" : "close-circle";
 
   return (
@@ -224,7 +211,7 @@ export const ScanToast: React.FC<ScanToastProps> = ({
         },
       ]}
     >
-      <Ionicons name={iconName} size={24} color="#fff" />
+      <Ionicons name={iconName} size={24} color={semanticColors.text.inverse} />
       <Text style={styles.toastMessage} numberOfLines={1}>
         {message}
       </Text>
@@ -240,10 +227,7 @@ interface ScanIndicatorProps {
   scannedCount?: number;
 }
 
-export const ScanIndicator: React.FC<ScanIndicatorProps> = ({
-  isScanning,
-  scannedCount = 0,
-}) => {
+export const ScanIndicator: React.FC<ScanIndicatorProps> = ({ isScanning, scannedCount = 0 }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -260,7 +244,7 @@ export const ScanIndicator: React.FC<ScanIndicatorProps> = ({
             duration: 500,
             useNativeDriver: true,
           }),
-        ]),
+        ])
       );
       animation.start();
       return () => animation.stop();
@@ -293,7 +277,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: "center",
-    zIndex: 1000,
+    zIndex: zIndex.toast,
   },
   card: {
     flexDirection: "row",
@@ -304,12 +288,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     maxWidth: SCREEN_WIDTH - 40,
     ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
+      ios: shadows.lg,
       android: {
         elevation: 8,
       },
@@ -322,23 +301,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 4,
   },
   barcode: {
-    color: "rgba(255, 255, 255, 0.9)",
+    color: colorWithAlpha(semanticColors.text.inverse, 0.9),
     fontSize: 16,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     marginBottom: 4,
   },
   itemName: {
-    color: "rgba(255, 255, 255, 0.85)",
+    color: colorWithAlpha(semanticColors.text.inverse, 0.85),
     fontSize: 14,
   },
   errorMessage: {
-    color: "rgba(255, 255, 255, 0.85)",
+    color: colorWithAlpha(semanticColors.text.inverse, 0.85),
     fontSize: 14,
     fontStyle: "italic",
   },
@@ -353,21 +332,16 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    zIndex: 1001,
+    zIndex: zIndex.toast,
     ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
+      ios: shadows.md,
       android: {
         elevation: 6,
       },
     }),
   },
   toastMessage: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 16,
     fontWeight: "600",
     marginLeft: 12,
@@ -386,14 +360,14 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#94A3B8",
+    backgroundColor: colors.neutral[400],
     marginRight: 8,
   },
   indicatorDotActive: {
-    backgroundColor: "#22C55E",
+    backgroundColor: colors.success[500],
   },
   indicatorText: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 14,
     fontWeight: "500",
   },

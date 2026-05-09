@@ -32,12 +32,8 @@ import { useThemeContext } from "../../context/ThemeContext";
 import { ParticleField } from "./ParticleField";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 
-export type AuroraVariant =
-  | "primary"
-  | "secondary"
-  | "success"
-  | "warm"
-  | "dark";
+import { colors as uiColors } from "@/theme/legacyCompat";
+export type AuroraVariant = "primary" | "secondary" | "success" | "warm" | "dark";
 
 interface AuroraBackgroundProps {
   variant?: AuroraVariant;
@@ -64,7 +60,7 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
   const shouldAnimate = animated && !prefersReducedMotion;
 
   // Use theme colors for aurora variants with a safe fallback for mocks.
-  const fallbackColor = theme.colors.accent || "#0EA5E9";
+  const fallbackColor = theme.colors.accent || uiColors.info[500];
   const auroraPalette = theme.colors.aurora;
   const colors =
     auroraPalette?.[variant] ||
@@ -88,10 +84,10 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
           withTiming(-30, {
             duration: 8000,
             easing: Easing.inOut(Easing.ease),
-          }),
+          })
         ),
         -1,
-        true,
+        true
       );
       blob1Y.value = withRepeat(
         withSequence(
@@ -99,10 +95,10 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
           withTiming(-20, {
             duration: 6000,
             easing: Easing.inOut(Easing.ease),
-          }),
+          })
         ),
         -1,
-        true,
+        true
       );
 
       // Blob 2 animation
@@ -115,10 +111,10 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
           withTiming(40, {
             duration: 10000,
             easing: Easing.inOut(Easing.ease),
-          }),
+          })
         ),
         -1,
-        true,
+        true
       );
       blob2Y.value = withRepeat(
         withSequence(
@@ -126,10 +122,10 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
             duration: 7000,
             easing: Easing.inOut(Easing.ease),
           }),
-          withTiming(30, { duration: 7000, easing: Easing.inOut(Easing.ease) }),
+          withTiming(30, { duration: 7000, easing: Easing.inOut(Easing.ease) })
         ),
         -1,
-        true,
+        true
       );
 
       // Blob 3 animation
@@ -139,10 +135,10 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
           withTiming(-25, {
             duration: 9000,
             easing: Easing.inOut(Easing.ease),
-          }),
+          })
         ),
         -1,
-        true,
+        true
       );
       blob3Y.value = withRepeat(
         withSequence(
@@ -150,10 +146,10 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
             duration: 8500,
             easing: Easing.inOut(Easing.ease),
           }),
-          withTiming(25, { duration: 8500, easing: Easing.inOut(Easing.ease) }),
+          withTiming(25, { duration: 8500, easing: Easing.inOut(Easing.ease) })
         ),
         -1,
-        true,
+        true
       );
       return;
     }
@@ -265,11 +261,7 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
 
       {/* Optional Particle Field overlay */}
       {withParticles && (
-        <ParticleField
-          count={particleCount}
-          color={colors[1]}
-          animated={shouldAnimate}
-        />
+        <ParticleField count={particleCount} color={colors[1]} animated={shouldAnimate} />
       )}
 
       {/* Content overlay */}

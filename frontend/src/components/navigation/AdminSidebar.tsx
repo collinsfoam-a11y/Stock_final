@@ -20,14 +20,10 @@ import { useRouter, useSegments } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuthStore } from "../../store/authStore";
-import {
-  layout,
-  spacing,
-  typography,
-  breakpoints,
-} from "../../styles/globalStyles";
+import { layout, spacing, typography, breakpoints } from "../../styles/globalStyles";
 import { ADMIN_NAV_GROUPS, AdminNavItem } from "./adminNavShared";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface AdminSidebarProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -49,15 +45,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const isMobile = width < breakpoints.tablet;
 
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
-    new Set(ADMIN_NAV_GROUPS.map((group) => group.title)),
+    new Set(ADMIN_NAV_GROUPS.map((group) => group.title))
   );
 
   const currentRoute = segments.join("/");
   const isActive = (route: string) => {
     const routePath = route.replace(/^\//, "");
-    return (
-      currentRoute === routePath || currentRoute.startsWith(routePath + "/")
-    );
+    return currentRoute === routePath || currentRoute.startsWith(routePath + "/");
   };
 
   const handleItemPress = (item: AdminNavItem) => {
@@ -82,13 +76,10 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     setExpandedGroups(newExpanded);
   };
 
-  const sidebarWidth = collapsed
-    ? layout.sidebarCollapsedWidth
-    : layout.sidebarWidth;
+  const sidebarWidth = collapsed ? layout.sidebarCollapsedWidth : layout.sidebarWidth;
   const panelBackground = theme.colors.surfaceElevated || theme.colors.surface;
   const subtleBorder = theme.colors.borderLight || theme.colors.border;
-  const activeBackground =
-    theme.colors.overlayPrimary || "rgba(76, 175, 80, 0.14)";
+  const activeBackground = theme.colors.overlayPrimary || "rgba(76, 175, 80, 0.14)";
 
   if (isMobile && !collapsed) {
     return null;
@@ -103,19 +94,14 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           styles.container,
           {
             width: sidebarWidth,
-            backgroundColor: collapsed
-              ? theme.colors.surface
-              : "rgba(10, 10, 10, 0.4)",
+            backgroundColor: collapsed ? theme.colors.surface : "rgba(10, 10, 10, 0.4)",
             borderRightColor: "rgba(255, 255, 255, 0.1)",
           },
           style,
         ]}
         testID={testID}
       >
-        <ScrollView
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           <View
             style={[
               styles.brandSection,
@@ -140,15 +126,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
             {!collapsed && (
               <View style={styles.brandCopy}>
-                <Text style={[styles.brandTitle, { color: theme.colors.text }]}>
-                  Admin Control
-                </Text>
-                <Text
-                  style={[
-                    styles.brandSubtitle,
-                    { color: theme.colors.textSecondary },
-                  ]}
-                >
+                <Text style={[styles.brandTitle, { color: theme.colors.text }]}>Admin Control</Text>
+                <Text style={[styles.brandSubtitle, { color: theme.colors.textSecondary }]}>
                   System oversight and control
                 </Text>
               </View>
@@ -163,14 +142,10 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                 onPress={onToggleCollapse}
                 activeOpacity={0.7}
                 accessibilityRole="button"
-                accessibilityLabel={
-                  collapsed ? "Expand admin sidebar" : "Collapse admin sidebar"
-                }
+                accessibilityLabel={collapsed ? "Expand admin sidebar" : "Collapse admin sidebar"}
               >
                 <Ionicons
-                  name={
-                    collapsed ? "chevron-forward-outline" : "chevron-back-outline"
-                  }
+                  name={collapsed ? "chevron-forward-outline" : "chevron-back-outline"}
                   size={18}
                   color={theme.colors.text}
                 />
@@ -180,32 +155,15 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
           {/* User Profile Section */}
           {!collapsed && (
-            <View
-              style={[
-                styles.profileSection,
-                { borderBottomColor: theme.colors.border },
-              ]}
-            >
+            <View style={[styles.profileSection, { borderBottomColor: theme.colors.border }]}>
               <View style={styles.profileAvatar}>
-                <Ionicons
-                  name="person"
-                  size={24}
-                  color={theme.colors.primary}
-                />
+                <Ionicons name="person" size={24} color={theme.colors.primary} />
               </View>
               <View style={styles.profileInfo}>
-                <Text
-                  style={[styles.profileName, { color: theme.colors.text }]}
-                  numberOfLines={1}
-                >
+                <Text style={[styles.profileName, { color: theme.colors.text }]} numberOfLines={1}>
                   {user?.full_name || "Admin"}
                 </Text>
-                <Text
-                  style={[
-                    styles.profileRole,
-                    { color: theme.colors.textSecondary },
-                  ]}
-                >
+                <Text style={[styles.profileRole, { color: theme.colors.textSecondary }]}>
                   Administrator
                 </Text>
               </View>
@@ -224,12 +182,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                     onPress={() => toggleGroup(group.title)}
                     activeOpacity={0.7}
                   >
-                    <Text
-                      style={[
-                        styles.groupTitle,
-                        { color: theme.colors.textSecondary },
-                      ]}
-                    >
+                    <Text style={[styles.groupTitle, { color: theme.colors.textSecondary }]}>
                       {group.title}
                     </Text>
                     <Ionicons
@@ -244,12 +197,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   <View style={styles.groupItems}>
                     {group.items.map((item) => {
                       const active = isActive(item.route);
-                      const iconColor = active
-                        ? theme.colors.primary
-                        : theme.colors.textSecondary;
+                      const iconColor = active ? theme.colors.primary : theme.colors.textSecondary;
                       const bgColor = active
-                        ? theme.colors.overlayPrimary ||
-                        "rgba(76, 175, 80, 0.1)"
+                        ? theme.colors.overlayPrimary || "rgba(76, 175, 80, 0.1)"
                         : "transparent";
 
                       return (
@@ -266,20 +216,14 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                           accessibilityState={{ selected: active }}
                           accessibilityLabel={item.label}
                         >
-                          <Ionicons
-                            name={item.icon}
-                            size={20}
-                            color={iconColor}
-                          />
+                          <Ionicons name={item.icon} size={20} color={iconColor} />
                           {!collapsed && (
                             <>
                               <Text
                                 style={[
                                   styles.itemLabel,
                                   {
-                                    color: active
-                                      ? theme.colors.primary
-                                      : theme.colors.text,
+                                    color: active ? theme.colors.primary : theme.colors.text,
                                   },
                                 ]}
                               >
@@ -312,23 +256,14 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         {/* Logout Button */}
         {!collapsed && (
           <TouchableOpacity
-            style={[
-              styles.logoutButton,
-              { borderTopColor: theme.colors.border },
-            ]}
+            style={[styles.logoutButton, { borderTopColor: theme.colors.border }]}
             onPress={handleLogout}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Logout"
           >
-            <Ionicons
-              name="log-out-outline"
-              size={20}
-              color={theme.colors.error}
-            />
-            <Text style={[styles.logoutLabel, { color: theme.colors.error }]}>
-              Logout
-            </Text>
+            <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
+            <Text style={[styles.logoutLabel, { color: theme.colors.error }]}>Logout</Text>
           </TouchableOpacity>
         )}
       </BlurView>
@@ -348,11 +283,11 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     ...(Platform.OS === "web"
       ? {
-        position: "fixed" as const,
-        left: 0,
-        top: 0,
-        bottom: 0,
-      }
+          position: "fixed" as const,
+          left: 0,
+          top: 0,
+          bottom: 0,
+        }
       : {}),
   } as any,
   scrollView: {
@@ -463,7 +398,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   itemBadgeText: {
-    color: "#FFFFFF",
+    color: uiSemanticColors.text.inverse,
     fontSize: 9,
     fontWeight: "bold",
   },

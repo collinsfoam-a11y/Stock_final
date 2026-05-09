@@ -8,6 +8,7 @@ import {
   formatValue,
 } from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
 
+import { colors as uiColors } from "@/theme/legacyCompat";
 interface RealtimeStatsStripProps {
   stats: DashboardStats | null;
 }
@@ -26,42 +27,42 @@ export function RealtimeStatsStrip({ stats }: RealtimeStatsStripProps) {
           label="Total Items"
           value={stats.total_items}
           icon="cube"
-          color="#4CAF50"
+          color={uiColors.success[500]}
           format="number"
         />
         <StatsCard
           label="Verified"
           value={stats.verified_items}
           icon="checkmark-circle"
-          color="#2196F3"
+          color={uiColors.info[500]}
           format="number"
         />
         <StatsCard
           label="Pending"
           value={stats.pending_items}
           icon="time"
-          color="#FF9800"
+          color={uiColors.warning[500]}
           format="number"
         />
         <StatsCard
           label="Verification Rate"
           value={stats.verification_rate}
           icon="trending-up"
-          color="#9C27B0"
+          color={uiColors.secondary[700]}
           format="percentage"
         />
         <StatsCard
           label="Total Variance"
           value={stats.total_variance}
           icon="analytics"
-          color={stats.total_variance < 0 ? "#F44336" : "#4CAF50"}
+          color={stats.total_variance < 0 ? uiColors.error[500] : uiColors.success[500]}
           format="number"
         />
         <StatsCard
           label="Today's Activity"
           value={stats.today_activity}
           icon="today"
-          color="#00BCD4"
+          color={uiColors.secondary[500]}
           format="number"
         />
       </ScrollView>

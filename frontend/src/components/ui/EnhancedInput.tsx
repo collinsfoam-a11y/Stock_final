@@ -41,6 +41,7 @@ import {
   AnimationTimings,
 } from "@/theme/uiConstants";
 
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 /**
  * Shared size options for the enhanced text input.
  */
@@ -120,8 +121,8 @@ const resolveBorderColor = (
   isFocused: boolean,
   themeLegacy: any
 ) => {
-  if (error) return themeLegacy.colors.error || "#DC2626";
-  if (success) return themeLegacy.colors.success || "#16A34A";
+  if (error) return themeLegacy.colors.error || uiColors.error[600];
+  if (success) return themeLegacy.colors.success || uiColors.success[600];
   if (isFocused) return themeLegacy.colors.primary;
   return themeLegacy.colors.border || "rgba(0, 0, 0, 0.1)";
 };
@@ -132,10 +133,10 @@ const resolveIconColor = (
   isFocused: boolean,
   themeLegacy: any
 ) => {
-  if (error) return themeLegacy.colors.error || "#DC2626";
-  if (success) return themeLegacy.colors.success || "#16A34A";
+  if (error) return themeLegacy.colors.error || uiColors.error[600];
+  if (success) return themeLegacy.colors.success || uiColors.success[600];
   if (isFocused) return themeLegacy.colors.primary;
-  return themeLegacy.colors.textSecondary || "#888";
+  return themeLegacy.colors.textSecondary || uiSemanticColors.text.tertiary;
 };
 
 const getHelperMessage = (
@@ -212,13 +213,7 @@ const buildInputStyles = (
   return resolvedStyles;
 };
 
-const FixedLabel = ({
-  label,
-  color,
-}: {
-  label?: string;
-  color: string;
-}) => {
+const FixedLabel = ({ label, color }: { label?: string; color: string }) => {
   if (!label) return null;
   return <Text style={[styles.fixedLabel, { color }]}>{label}</Text>;
 };
@@ -238,13 +233,7 @@ const FloatingLabel = ({
 }) => {
   if (!label || !visible) return null;
   return (
-    <AnimatedText
-      style={[
-        styles.floatingLabel,
-        { color, backgroundColor },
-        animatedStyle,
-      ]}
-    >
+    <AnimatedText style={[styles.floatingLabel, { color, backgroundColor }, animatedStyle]}>
       {label}
     </AnimatedText>
   );
@@ -402,7 +391,7 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
       focusProgress.value = withTiming(1, { duration: AnimationTimings.fast });
       onFocus?.(e);
     },
-    [onFocus, focusProgress],
+    [onFocus, focusProgress]
   );
 
   const handleBlur = useCallback(
@@ -411,7 +400,7 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
       focusProgress.value = withTiming(0, { duration: AnimationTimings.fast });
       onBlur?.(e);
     },
-    [onBlur, focusProgress],
+    [onBlur, focusProgress]
   );
 
   const togglePasswordVisibility = useCallback(() => {
@@ -430,13 +419,9 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
     const translateY = interpolate(
       shouldFloat ? 1 : focusProgress.value,
       [0, 1],
-      [0, -(config.height / 2 + 4)],
+      [0, -(config.height / 2 + 4)]
     );
-    const scale = interpolate(
-      shouldFloat ? 1 : focusProgress.value,
-      [0, 1],
-      [1, 0.85],
-    );
+    const scale = interpolate(shouldFloat ? 1 : focusProgress.value, [0, 1], [1, 0.85]);
 
     return {
       transform: [{ translateY }, { scale }],
@@ -445,10 +430,7 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
 
   return (
     <View style={[styles.container, fullWidth ? styles.fullWidth : undefined, containerStyle]}>
-      <FixedLabel
-        label={fixedLabel}
-        color={fixedLabelColor}
-      />
+      <FixedLabel label={fixedLabel} color={fixedLabelColor} />
 
       <View
         style={[
@@ -481,7 +463,7 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
         <TextInput
           ref={inputRef}
           style={inputStyles}
-          placeholderTextColor={themeLegacy.colors.textSecondary || "#888"}
+          placeholderTextColor={themeLegacy.colors.textSecondary || uiSemanticColors.text.tertiary}
           editable={!disabled}
           value={value}
           onFocus={handleFocus}

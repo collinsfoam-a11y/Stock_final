@@ -3,16 +3,10 @@
  * Modal for selecting variance reason when quantity differs
  */
 import React from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Modal,
-  StyleSheet,
-} from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Modal, StyleSheet } from "react-native";
 import { VarianceReason } from "@/types/scan";
 
+import { semanticColors, colors } from "@/theme/legacyCompat";
 interface VarianceReasonModalProps {
   visible: boolean;
   reasons: VarianceReason[];
@@ -37,17 +31,12 @@ export const VarianceReasonModal: React.FC<VarianceReasonModalProps> = ({
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Variance Reason Required</Text>
-          <Text style={styles.modalSubtitle}>
-            Please select a reason for the variance
-          </Text>
+          <Text style={styles.modalSubtitle}>Please select a reason for the variance</Text>
 
           {reasons.map((reason) => (
             <TouchableOpacity
               key={reason.code}
-              style={[
-                styles.reasonOption,
-                selectedReason === reason.code && styles.reasonSelected,
-              ]}
+              style={[styles.reasonOption, selectedReason === reason.code && styles.reasonSelected]}
               onPress={() => onReasonSelect(reason.code)}
             >
               <Text style={styles.reasonText}>{reason.label}</Text>
@@ -58,7 +47,7 @@ export const VarianceReasonModal: React.FC<VarianceReasonModalProps> = ({
             <TextInput
               style={styles.noteInput}
               placeholder="Enter reason"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={semanticColors.text.tertiary}
               value={varianceNote}
               onChangeText={onNoteChange}
               multiline
@@ -66,10 +55,7 @@ export const VarianceReasonModal: React.FC<VarianceReasonModalProps> = ({
           )}
 
           <TouchableOpacity
-            style={[
-              styles.confirmButton,
-              !selectedReason && styles.buttonDisabled,
-            ]}
+            style={[styles.confirmButton, !selectedReason && styles.buttonDisabled]}
             onPress={onContinue}
             disabled={!selectedReason}
           >
@@ -89,58 +75,58 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modalContent: {
-    backgroundColor: "#1E293B",
+    backgroundColor: colors.neutral[800],
     borderRadius: 16,
     padding: 24,
   },
   modalTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#fff",
+    color: semanticColors.text.inverse,
     marginBottom: 8,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: "#94A3B8",
+    color: colors.neutral[400],
     marginBottom: 24,
   },
   reasonOption: {
-    backgroundColor: "#1E293B",
+    backgroundColor: colors.neutral[800],
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
     borderWidth: 2,
-    borderColor: "#334155",
+    borderColor: colors.neutral[700],
   },
   reasonSelected: {
-    borderColor: "#3B82F6",
-    backgroundColor: "#1a3a1a",
+    borderColor: colors.info[500],
+    backgroundColor: colors.success[900],
   },
   reasonText: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 16,
   },
   noteInput: {
-    backgroundColor: "#1E293B",
+    backgroundColor: colors.neutral[800],
     borderRadius: 12,
     padding: 16,
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 16,
     minHeight: 80,
     marginTop: 8,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: colors.neutral[700],
   },
   confirmButton: {
-    backgroundColor: "#3B82F6",
+    backgroundColor: colors.info[500],
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     marginTop: 16,
   },
   confirmButtonText: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 18,
     fontWeight: "bold",
   },

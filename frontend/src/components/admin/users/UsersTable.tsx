@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  Dimensions,
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Dimensions, Platform, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { AnimatedPressable } from "@/components/ui";
@@ -152,8 +146,7 @@ export function UsersTable({
       {total > pageSize && (
         <View style={styles.pagination}>
           <Text style={styles.paginationText}>
-            Showing {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, total)} of{" "}
-            {total}
+            Showing {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, total)} of {total}
           </Text>
           <View style={styles.paginationButtons}>
             <PageButton
@@ -222,7 +215,10 @@ function DesktopUserRow({
   const statusBadge = getStatusStyle(user.isActive);
 
   return (
-    <View style={[styles.tableRow, selected && styles.tableRowSelected]} testID={`user-row-${user.username}`}>
+    <View
+      style={[styles.tableRow, selected && styles.tableRowSelected]}
+      testID={`user-row-${user.username}`}
+    >
       <AnimatedPressable style={styles.checkboxCell} onPress={() => onSelect(user.id)}>
         <Ionicons
           name={selected ? "checkbox" : "square-outline"}
@@ -276,9 +272,7 @@ function DesktopUserRow({
             onPress={() => onToggleStatus(user)}
             testID={`user-toggle-${user.username}`}
             color={
-              user.isActive
-                ? auroraTheme.colors.warning[600]
-                : auroraTheme.colors.success[600]
+              user.isActive ? auroraTheme.colors.warning[600] : auroraTheme.colors.success[600]
             }
           />
           <ActionButton
@@ -322,9 +316,7 @@ function MobileUserCard({
         </View>
         <View style={styles.mobileBadges}>
           <View style={[styles.badge, { backgroundColor: roleBadge.bg }]}>
-            <Text style={[styles.badgeText, { color: roleBadge.text }]}>
-              {user.role}
-            </Text>
+            <Text style={[styles.badgeText, { color: roleBadge.text }]}>{user.role}</Text>
           </View>
           <View style={[styles.badge, { backgroundColor: statusBadge.bg }]}>
             <Text style={[styles.badgeText, { color: statusBadge.text }]}>
@@ -344,11 +336,7 @@ function MobileUserCard({
           icon={user.isActive ? "pause-circle" : "play-circle"}
           label={user.isActive ? "Deactivate" : "Activate"}
           onPress={() => onToggleStatus(user)}
-          color={
-            user.isActive
-              ? auroraTheme.colors.warning[600]
-              : auroraTheme.colors.success[600]
-          }
+          color={user.isActive ? auroraTheme.colors.warning[600] : auroraTheme.colors.success[600]}
         />
         <MobileAction
           icon="trash"
@@ -425,11 +413,7 @@ function PageButton({
       <Ionicons
         name={direction === "back" ? "chevron-back" : "chevron-forward"}
         size={20}
-        color={
-          disabled
-            ? auroraTheme.colors.neutral[300]
-            : auroraTheme.colors.primary[600]
-        }
+        color={disabled ? auroraTheme.colors.neutral[300] : auroraTheme.colors.primary[600]}
       />
     </AnimatedPressable>
   );
@@ -438,11 +422,7 @@ function PageButton({
 function EmptyUsersState() {
   return (
     <View style={styles.emptyState} testID="users-empty-state">
-      <Ionicons
-        name="people-outline"
-        size={48}
-        color={auroraTheme.colors.neutral[300]}
-      />
+      <Ionicons name="people-outline" size={48} color={auroraTheme.colors.neutral[300]} />
       <Text style={styles.emptyText}>No users found</Text>
     </View>
   );

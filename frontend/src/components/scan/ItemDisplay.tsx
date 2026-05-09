@@ -2,21 +2,15 @@
  * ItemDisplay Component
  * Displays item information, stock quantity, MRP, and verification status
  */
-import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
-  Platform,
-} from "react-native";
+import React, { useMemo } from "react";
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Item } from "@/types/scan";
 import Animated, { FadeInUp, Layout } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { flags } from "@/constants/flags";
-import { colors as unifiedColors, radius } from "@/theme/unified";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha, getTokenShadowStyle } from "@/theme/themeTokens";
 
 interface ItemDisplayProps {
   item: Item;
@@ -26,6 +20,8 @@ interface ItemDisplayProps {
 
 export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
   ({ item, refreshingStock = false, onRefreshStock }) => {
+    const uiTokens = useUiTokens();
+
     const Container = flags.enableAnimations ? Animated.View : View;
     const animatedProps = flags.enableAnimations
       ? {
@@ -34,10 +30,151 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
         }
       : {};
 
+    const styles = useMemo(
+      () =>
+        StyleSheet.create({
+          contentContainer: {
+            padding: uiTokens.spacing.lg,
+          },
+          itemBarcode: {
+            fontSize: 13,
+            color: uiTokens.colors.textSecondary,
+            marginBottom: uiTokens.spacing.sm,
+            fontFamily: "monospace",
+          },
+          itemCard: {
+            borderRadius: uiTokens.radius.lg,
+            marginBottom: uiTokens.spacing.md,
+            overflow: "hidden",
+            borderWidth: 1,
+            borderColor: colorWithAlpha(uiTokens.colors.border, 0.8),
+            backgroundColor: uiTokens.colors.surface,
+          },
+          itemCode: {
+            fontSize: 13,
+            color: uiTokens.colors.textSecondary,
+            marginBottom: 4,
+          },
+          itemInfoGrid: {
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: uiTokens.spacing.sm,
+            marginBottom: uiTokens.spacing.md,
+          },
+          itemInfoItem: {
+            backgroundColor: colorWithAlpha(
+              uiTokens.colors.surfaceElevated,
+              uiTokens.mode === "dark" ? 0.85 : 1
+            ),
+            borderRadius: uiTokens.radius.sm,
+            padding: uiTokens.spacing.sm,
+            flex: 1,
+            minWidth: "45%",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            borderWidth: 1,
+            borderColor: uiTokens.colors.border,
+          },
+          itemInfoText: {
+            color: uiTokens.colors.textPrimary,
+            fontSize: 13,
+            flex: 1,
+          },
+          itemName: {
+            fontSize: 22,
+            fontWeight: "800",
+            color: uiTokens.colors.textPrimary,
+            marginBottom: 8,
+          },
+          locationRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: uiTokens.spacing.sm,
+          },
+          locationText: {
+            color: uiTokens.colors.textSecondary,
+            fontSize: 13,
+          },
+          qtyBox: {
+            flex: 1,
+            backgroundColor: colorWithAlpha(
+              uiTokens.colors.surfaceElevated,
+              uiTokens.mode === "dark" ? 0.9 : 1
+            ),
+            borderRadius: uiTokens.radius.md,
+            padding: uiTokens.spacing.md,
+            borderWidth: 1,
+            borderColor: uiTokens.colors.border,
+          },
+          qtyHeader: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 8,
+          },
+          qtyLabel: {
+            fontSize: 12,
+            color: uiTokens.colors.textSecondary,
+            fontWeight: "600",
+          },
+          qtyValue: {
+            fontSize: 24,
+            fontWeight: "800",
+            color: uiTokens.colors.textPrimary,
+          },
+          qtyValueSmall: {
+            fontSize: 18,
+            fontWeight: "800",
+            color: uiTokens.colors.textPrimary,
+          },
+          refreshButton: {
+            padding: 4,
+          },
+          refreshButtonDisabled: {
+            opacity: 0.5,
+          },
+          shadow: getTokenShadowStyle(uiTokens, "md"),
+          uomText: {
+            fontSize: 12,
+            color: uiTokens.colors.textSecondary,
+            marginTop: 4,
+          },
+          verificationBadge: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            backgroundColor: colorWithAlpha(
+              uiTokens.colors.success,
+              uiTokens.mode === "dark" ? 0.24 : 0.1
+            ),
+            borderRadius: uiTokens.radius.sm,
+            padding: uiTokens.spacing.sm,
+            marginBottom: uiTokens.spacing.md,
+            borderWidth: 1,
+            borderColor: colorWithAlpha(uiTokens.colors.success, 0.38),
+          },
+          verificationText: {
+            color: uiTokens.colors.textPrimary,
+            fontSize: 13,
+            flex: 1,
+          },
+          verificationTime: {
+            color: uiTokens.colors.textSecondary,
+            fontSize: 12,
+          },
+        }),
+      [uiTokens]
+    );
+
     return (
       <Container style={[styles.itemCard, styles.shadow]} {...animatedProps}>
         <LinearGradient
-          colors={[unifiedColors.neutral[800], unifiedColors.neutral[900]]}
+          colors={[
+            colorWithAlpha(uiTokens.colors.surfaceElevated, uiTokens.mode === "dark" ? 0.8 : 1),
+            colorWithAlpha(uiTokens.colors.surface, uiTokens.mode === "dark" ? 0.95 : 1),
+          ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFillObject}
@@ -45,22 +182,13 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
 
         <View style={styles.contentContainer}>
           <Text style={styles.itemName}>{item.name}</Text>
-          {item.item_code && (
-            <Text style={styles.itemCode}>Code: {item.item_code}</Text>
-          )}
-          {item.barcode && (
-            <Text style={styles.itemBarcode}>Barcode: {item.barcode}</Text>
-          )}
+          {item.item_code && <Text style={styles.itemCode}>Code: {item.item_code}</Text>}
+          {item.barcode && <Text style={styles.itemBarcode}>Barcode: {item.barcode}</Text>}
 
-          {/* Additional Item Information */}
           <View style={styles.itemInfoGrid}>
             {item.category && (
               <View style={styles.itemInfoItem}>
-                <Ionicons
-                  name="pricetag"
-                  size={14}
-                  color={unifiedColors.neutral[400]}
-                />
+                <Ionicons name="pricetag" size={14} color={uiTokens.colors.textSecondary} />
                 <Text style={styles.itemInfoText}>
                   {item.category}
                   {item.subcategory && ` • ${item.subcategory}`}
@@ -69,36 +197,21 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
             )}
             {item.item_type && (
               <View style={styles.itemInfoItem}>
-                <Ionicons
-                  name="layers"
-                  size={14}
-                  color={unifiedColors.neutral[400]}
-                />
+                <Ionicons name="layers" size={14} color={uiTokens.colors.textSecondary} />
                 <Text style={styles.itemInfoText}>Type: {item.item_type}</Text>
               </View>
             )}
             {item.item_group && (
               <View style={styles.itemInfoItem}>
-                <Ionicons
-                  name="albums"
-                  size={14}
-                  color={unifiedColors.neutral[400]}
-                />
-                <Text style={styles.itemInfoText}>
-                  Group: {item.item_group}
-                </Text>
+                <Ionicons name="albums" size={14} color={uiTokens.colors.textSecondary} />
+                <Text style={styles.itemInfoText}>Group: {item.item_group}</Text>
               </View>
             )}
           </View>
 
-          {/* Location Display */}
           {(item.location || (item as any).floor || (item as any).rack) && (
             <View style={styles.locationRow}>
-              <Ionicons
-                name="location"
-                size={16}
-                color={unifiedColors.primary[300]}
-              />
+              <Ionicons name="location" size={16} color={uiTokens.colors.accent} />
               <Text style={styles.locationText}>
                 {[(item as any).floor, (item as any).rack, item.location]
                   .filter(Boolean)
@@ -107,14 +220,9 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
             </View>
           )}
 
-          {/* Verification Badge */}
           {(item as any).verified && (
             <View style={styles.verificationBadge}>
-              <Ionicons
-                name="checkmark-circle"
-                size={16}
-                color={unifiedColors.success[400]}
-              />
+              <Ionicons name="checkmark-circle" size={16} color={uiTokens.colors.success} />
               <Text style={styles.verificationText}>
                 Verified by {(item as any).verified_by || "Unknown"}
                 {(item as any).verified_at && (
@@ -127,16 +235,9 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
             </View>
           )}
 
-          {/* Stock, Sales Price, and MRP Rows */}
           <View style={{ flexDirection: "row", gap: 12 }}>
-            {/* Left Column: ERP Stock */}
             <View style={{ flex: 1 }}>
-              <View
-                style={[
-                  styles.qtyBox,
-                  { height: "100%", justifyContent: "center" },
-                ]}
-              >
+              <View style={[styles.qtyBox, { height: "100%", justifyContent: "center" }]}>
                 <View style={styles.qtyHeader}>
                   <Text style={styles.qtyLabel}>ERP Stock</Text>
                   {onRefreshStock && (
@@ -149,16 +250,9 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
                       disabled={refreshingStock}
                     >
                       {refreshingStock ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={unifiedColors.primary[300]}
-                        />
+                        <ActivityIndicator size="small" color={uiTokens.colors.accent} />
                       ) : (
-                        <Ionicons
-                          name="refresh"
-                          size={18}
-                          color={unifiedColors.primary[300]}
-                        />
+                        <Ionicons name="refresh" size={18} color={uiTokens.colors.accent} />
                       )}
                     </TouchableOpacity>
                   )}
@@ -168,15 +262,12 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
                     {item.stock_qty ?? item.quantity ?? 0}
                   </Text>
                   {item.uom_name && (
-                    <Text style={[styles.uomText, { marginTop: 0 }]}>
-                      {item.uom_name}
-                    </Text>
+                    <Text style={[styles.uomText, { marginTop: 0 }]}>{item.uom_name}</Text>
                   )}
                 </View>
               </View>
             </View>
 
-            {/* Right Column: Sales Price & MRP */}
             <View style={{ flex: 1, gap: 12 }}>
               <View style={styles.qtyBox}>
                 <Text style={styles.qtyLabel}>Sales Price</Text>
@@ -196,7 +287,6 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
     );
   },
   (prevProps, nextProps) => {
-    // Custom comparison function for React.memo
     return (
       prevProps.item.id === nextProps.item.id &&
       prevProps.item.stock_qty === nextProps.item.stock_qty &&
@@ -205,144 +295,7 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
       prevProps.item.sales_price === nextProps.item.sales_price &&
       prevProps.refreshingStock === nextProps.refreshingStock
     );
-  },
+  }
 );
 
 ItemDisplay.displayName = "ItemDisplay";
-
-const styles = StyleSheet.create({
-  itemCard: {
-    borderRadius: 24,
-    marginBottom: 16,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-  },
-  shadow: {
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 8,
-      },
-      web: {
-        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
-      },
-    }),
-  },
-  contentContainer: {
-    padding: 24,
-  },
-  itemName: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 8,
-  },
-  itemCode: {
-    fontSize: 14,
-    color: unifiedColors.neutral[400],
-    marginBottom: 4,
-  },
-  itemBarcode: {
-    fontSize: 14,
-    color: unifiedColors.neutral[400],
-    marginBottom: 12,
-    fontFamily: "monospace",
-  },
-  itemInfoGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    marginBottom: 16,
-  },
-  itemInfoItem: {
-    backgroundColor: unifiedColors.neutral[800],
-    borderRadius: radius.sm,
-    padding: 12,
-    flex: 1,
-    minWidth: "45%",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  itemInfoText: {
-    color: "#fff",
-    fontSize: 14,
-    flex: 1,
-  },
-  locationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 12,
-  },
-  locationText: {
-    color: unifiedColors.neutral[400],
-    fontSize: 14,
-  },
-  verificationBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: `${unifiedColors.success[900]}80`,
-    borderRadius: radius.sm,
-    padding: 12,
-    marginBottom: 16,
-  },
-  verificationText: {
-    color: unifiedColors.primary[500],
-    fontSize: 14,
-    flex: 1,
-  },
-  verificationTime: {
-    color: unifiedColors.neutral[400],
-    fontSize: 12,
-  },
-  qtyRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  qtyBox: {
-    flex: 1,
-    backgroundColor: unifiedColors.neutral[800],
-    borderRadius: radius.md,
-    padding: 16,
-  },
-  qtyHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  qtyLabel: {
-    fontSize: 12,
-    color: unifiedColors.neutral[400],
-    fontWeight: "600",
-  },
-  refreshButton: {
-    padding: 4,
-  },
-  refreshButtonDisabled: {
-    opacity: 0.5,
-  },
-  qtyValue: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  qtyValueSmall: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  uomText: {
-    fontSize: 12,
-    color: unifiedColors.neutral[400],
-    marginTop: 4,
-  },
-});

@@ -1,23 +1,21 @@
 import React from "react";
-import {
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import ModernCard from "@/components/ui/ModernCard";
 import ModernInput from "@/components/ui/ModernInput";
 import { getStockQty } from "@/utils/itemBatchUtils";
-import {
-  borderRadius,
-  colors,
-  shadows,
-  spacing,
-  typography,
-} from "@/theme/modernDesign";
+import { borderRadius, colors, spacing, typography } from "@/theme/legacyCompat";
+
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+
+export type ScanLookupNotice = {
+  actionLabel?: string;
+  message: string;
+  title: string;
+  type: "error" | "warning" | "info";
+};
 
 type ScanLookupItem = {
   _id?: string | number;
@@ -33,10 +31,13 @@ interface ScanLookupPanelProps {
   recentItems: ScanLookupItem[];
   searchQuery: string;
   searchResults: ScanLookupItem[];
+  notice?: ScanLookupNotice | null;
   onChangeSearchQuery: (value: string) => void;
   onClearSearchQuery: () => void;
+  onDismissNotice?: () => void;
   onOpenScanner: () => void;
   onPressItem: (item: ScanLookupItem) => void;
+  onRetryNotice?: () => void;
   onSubmitSearch: () => void;
 }
 
@@ -53,13 +54,26 @@ function EmptyState({
   subtitle: string;
   title: string;
 }) {
+  const uiTokens = useUiTokens();
+  const iconWash = uiTokens.mode === "dark" ? "rgba(88, 166, 255, 0.14)" : colors.primary[50];
+
   return (
-    <View style={styles.emptyState}>
-      <View style={styles.emptyIconContainer}>
-        <Ionicons name={icon} size={48} color={colors.gray[300]} />
+    <View
+      style={[
+        styles.emptyState,
+        {
+          backgroundColor: uiTokens.colors.surface,
+          borderColor: uiTokens.colors.border,
+        },
+      ]}
+    >
+      <View style={[styles.emptyIconContainer, { backgroundColor: iconWash }]}>
+        <Ionicons name={icon} size={48} color={uiTokens.colors.textMuted} />
       </View>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptySubtitle}>{subtitle}</Text>
+      <Text style={[styles.emptyTitle, { color: uiTokens.colors.textPrimary }]}>{title}</Text>
+      <Text style={[styles.emptySubtitle, { color: uiTokens.colors.textSecondary }]}>
+        {subtitle}
+      </Text>
     </View>
   );
 }
@@ -78,19 +92,38 @@ const RecentItemCard = React.memo(function RecentItemCard({
   item: ScanLookupItem;
   onPress: () => void;
 }) {
+  const uiTokens = useUiTokens();
+  const iconWash = uiTokens.mode === "dark" ? "rgba(88, 166, 255, 0.14)" : colors.primary[50];
+
   return (
-    <ModernCard style={styles.recentCard} onPress={onPress}>
+    <ModernCard
+      elevation="none"
+      padding={0}
+      style={[
+        styles.recentCard,
+        {
+          backgroundColor: uiTokens.colors.surface,
+          borderColor: uiTokens.colors.border,
+        },
+      ]}
+      onPress={onPress}
+    >
       <View style={styles.recentRow}>
-        <View style={styles.recentIcon}>
-          <Ionicons name="cube-outline" size={22} color={colors.primary[600]} />
+        <View style={[styles.recentIcon, { backgroundColor: iconWash }]}>
+          <Ionicons name="cube-outline" size={22} color={uiTokens.colors.accent} />
         </View>
         <View style={styles.recentInfo}>
-          <Text style={styles.recentName} numberOfLines={1}>
+          <Text
+            style={[styles.recentName, { color: uiTokens.colors.textPrimary }]}
+            numberOfLines={1}
+          >
             {item.item_name}
           </Text>
-          <Text style={styles.recentCode}>{item.item_code}</Text>
+          <Text style={[styles.recentCode, { color: uiTokens.colors.textSecondary }]}>
+            {item.item_code}
+          </Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.gray[400]} />
+        <Ionicons name="chevron-forward" size={20} color={uiTokens.colors.textMuted} />
       </View>
     </ModernCard>
   );
@@ -103,21 +136,27 @@ const SearchResultItem = React.memo(function SearchResultItem({
   item: ScanLookupItem;
   onPress: () => void;
 }) {
+  const uiTokens = useUiTokens();
   const stockQty = getStockQty(item);
+  const iconWash = uiTokens.mode === "dark" ? "rgba(88, 166, 255, 0.14)" : colors.primary[50];
 
   return (
-    <TouchableOpacity
-      style={styles.resultItem}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <Ionicons name="cube-outline" size={20} color={colors.primary[600]} />
-      <View style={styles.resultInfo}>
-        <Text style={styles.resultName}>{item.item_name}</Text>
-        <Text style={styles.resultCode}>{item.item_code}</Text>
-        <Text style={styles.resultStock}>Stock: {stockQty}</Text>
+    <TouchableOpacity style={styles.resultItem} onPress={onPress} activeOpacity={0.7}>
+      <View style={[styles.resultIcon, { backgroundColor: iconWash }]}>
+        <Ionicons name="cube-outline" size={20} color={uiTokens.colors.accent} />
       </View>
-      <Ionicons name="chevron-forward" size={20} color={colors.gray[400]} />
+      <View style={styles.resultInfo}>
+        <Text style={[styles.resultName, { color: uiTokens.colors.textPrimary }]}>
+          {item.item_name}
+        </Text>
+        <Text style={[styles.resultCode, { color: uiTokens.colors.textSecondary }]}>
+          {item.item_code}
+        </Text>
+        <Text style={[styles.resultStock, { color: uiTokens.colors.accentStrong }]}>
+          Stock: {stockQty}
+        </Text>
+      </View>
+      <Ionicons name="chevron-forward" size={20} color={uiTokens.colors.textMuted} />
     </TouchableOpacity>
   );
 });
@@ -125,23 +164,45 @@ const SearchResultItem = React.memo(function SearchResultItem({
 RecentItemCard.displayName = "RecentItemCard";
 SearchResultItem.displayName = "SearchResultItem";
 
+const NOTICE_ICONS: Record<ScanLookupNotice["type"], keyof typeof Ionicons.glyphMap> = {
+  error: "alert-circle-outline",
+  info: "information-circle-outline",
+  warning: "warning-outline",
+};
+
 export function ScanLookupPanel({
   initialLoading,
   loading,
   recentItems,
   searchQuery,
   searchResults,
+  notice,
   onChangeSearchQuery,
   onClearSearchQuery,
+  onDismissNotice,
   onOpenScanner,
   onPressItem,
+  onRetryNotice,
   onSubmitSearch,
 }: ScanLookupPanelProps) {
+  const uiTokens = useUiTokens();
+  const surfaceStyle = {
+    backgroundColor: uiTokens.colors.surface,
+    borderColor: uiTokens.colors.border,
+  };
+  const skeletonSurface = { backgroundColor: uiTokens.colors.border };
+  const noticeColor =
+    notice?.type === "error"
+      ? uiTokens.colors.error
+      : notice?.type === "warning"
+        ? uiTokens.colors.warning
+        : uiTokens.colors.info;
+
   return (
     <>
       <View style={styles.searchSection}>
         <View style={styles.searchRow}>
-          <View style={styles.searchInputWrapper}>
+          <View style={[styles.searchInputWrapper, surfaceStyle]}>
             <ModernInput
               placeholder="Enter barcode or item code..."
               value={searchQuery}
@@ -156,7 +217,22 @@ export function ScanLookupPanel({
             />
           </View>
           <TouchableOpacity
-            style={[styles.searchButton, loading && styles.searchButtonDisabled]}
+            style={[
+              styles.searchButton,
+              {
+                backgroundColor:
+                  uiTokens.mode === "dark" ? colors.primary[500] : uiTokens.colors.accent,
+                borderColor:
+                  uiTokens.mode === "dark" ? colors.primary[600] : uiTokens.colors.accentStrong,
+              },
+              loading && [
+                styles.searchButtonDisabled,
+                {
+                  backgroundColor: uiTokens.colors.border,
+                  borderColor: uiTokens.colors.border,
+                },
+              ],
+            ]}
             testID="scan-search-submit"
             onPress={searchQuery.trim() ? onSubmitSearch : onOpenScanner}
             disabled={loading}
@@ -170,16 +246,74 @@ export function ScanLookupPanel({
           </TouchableOpacity>
         </View>
 
+        {notice ? (
+          <View
+            style={[
+              styles.notice,
+              {
+                backgroundColor: colorWithAlpha(noticeColor, 0.08),
+                borderColor: colorWithAlpha(noticeColor, 0.28),
+              },
+            ]}
+            testID="scan-lookup-notice"
+          >
+            <Ionicons
+              name={NOTICE_ICONS[notice.type]}
+              size={20}
+              color={noticeColor}
+              style={styles.noticeIcon}
+            />
+            <View style={styles.noticeBody}>
+              <Text style={[styles.noticeTitle, { color: uiTokens.colors.textPrimary }]}>
+                {notice.title}
+              </Text>
+              <Text style={[styles.noticeMessage, { color: uiTokens.colors.textSecondary }]}>
+                {notice.message}
+              </Text>
+              {notice.actionLabel && onRetryNotice ? (
+                <TouchableOpacity
+                  style={[
+                    styles.noticeAction,
+                    {
+                      borderColor: colorWithAlpha(noticeColor, 0.36),
+                      backgroundColor: colorWithAlpha(noticeColor, 0.12),
+                    },
+                  ]}
+                  onPress={onRetryNotice}
+                  accessibilityRole="button"
+                  accessibilityLabel={notice.actionLabel}
+                >
+                  <Text style={[styles.noticeActionText, { color: noticeColor }]}>
+                    {notice.actionLabel}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            {onDismissNotice ? (
+              <TouchableOpacity
+                style={styles.noticeDismiss}
+                onPress={onDismissNotice}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss scan message"
+              >
+                <Ionicons name="close" size={18} color={uiTokens.colors.textMuted} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
+
         {searchResults.length > 0 && (
-          <View style={styles.searchResultsContainer}>
+          <View style={[styles.searchResultsContainer, surfaceStyle]}>
             {searchResults.map((item, index) => (
               <React.Fragment key={buildItemKey(item, index)}>
-                <SearchResultItem
-                  item={item}
-                  onPress={() => onPressItem(item)}
-                />
+                <SearchResultItem item={item} onPress={() => onPressItem(item)} />
                 {index < searchResults.length - 1 && (
-                  <View style={styles.searchResultSeparator} />
+                  <View
+                    style={[
+                      styles.searchResultSeparator,
+                      { backgroundColor: uiTokens.colors.border },
+                    ]}
+                  />
                 )}
               </React.Fragment>
             ))}
@@ -189,19 +323,36 @@ export function ScanLookupPanel({
 
       {searchResults.length === 0 && (
         <View style={styles.recentSection}>
-          <Text style={styles.sectionTitle}>Recent Items</Text>
+          <Text style={[styles.sectionTitle, { color: uiTokens.colors.textPrimary }]}>
+            Recent Items
+          </Text>
 
           {initialLoading ? (
             <>
               {[1, 2, 3].map((value) => (
-                <ModernCard key={value} style={styles.recentCard}>
+                <ModernCard
+                  key={value}
+                  elevation="none"
+                  padding={0}
+                  style={[styles.recentCard, surfaceStyle]}
+                >
                   <View style={styles.recentRow}>
                     <SkeletonLoader
-                      style={{ width: 44, height: 44, borderRadius: 12 }}
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 12,
+                        ...skeletonSurface,
+                      }}
                     />
                     <View style={[styles.recentInfo, { marginLeft: spacing.md }]}>
                       <SkeletonLoader
-                        style={{ width: "80%", height: 16, borderRadius: 4 }}
+                        style={{
+                          width: "80%",
+                          height: 16,
+                          borderRadius: 4,
+                          ...skeletonSurface,
+                        }}
                       />
                       <SkeletonLoader
                         style={{
@@ -209,6 +360,7 @@ export function ScanLookupPanel({
                           height: 12,
                           marginTop: 6,
                           borderRadius: 4,
+                          ...skeletonSurface,
                         }}
                       />
                     </View>
@@ -250,31 +402,81 @@ const styles = StyleSheet.create({
   },
   searchInputWrapper: {
     flex: 1,
-    ...shadows.sm,
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
   },
   searchButton: {
-    width: 56,
-    height: 56,
+    width: 52,
+    height: 52,
     borderRadius: borderRadius.md,
     backgroundColor: colors.primary[600],
     alignItems: "center",
     justifyContent: "center",
-    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.primary[700],
   },
   searchButtonDisabled: {
     backgroundColor: colors.gray[300],
-    shadowOpacity: 0,
+    borderColor: colors.gray[300],
+  },
+  notice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginTop: spacing.sm,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+  },
+  noticeIcon: {
+    marginRight: spacing.sm,
+    marginTop: 2,
+  },
+  noticeBody: {
+    flex: 1,
+  },
+  noticeTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.gray[900],
+  },
+  noticeMessage: {
+    marginTop: 2,
+    fontSize: typography.fontSize.xs,
+    lineHeight: 18,
+    color: colors.gray[600],
+  },
+  noticeAction: {
+    alignSelf: "flex-start",
+    justifyContent: "center",
+    minHeight: 44,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+  },
+  noticeActionText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  noticeDismiss: {
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 44,
+    minHeight: 44,
+    marginLeft: spacing.xs,
+    marginTop: -spacing.xs,
   },
   searchResultsContainer: {
     marginTop: spacing.sm,
     paddingVertical: spacing.xs,
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
-    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
     zIndex: 200,
-    elevation: 10,
+    elevation: 2,
   },
   searchResultSeparator: {
     height: 1,
@@ -284,8 +486,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[100],
+    minHeight: 64,
+  },
+  resultIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary[50],
+    alignItems: "center",
+    justifyContent: "center",
   },
   resultInfo: {
     flex: 1,
@@ -315,21 +524,18 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.fontSize.sm,
     fontWeight: "700",
-    color: colors.gray[500],
+    color: colors.gray[700],
     marginBottom: spacing.md,
-    textTransform: "uppercase",
-    letterSpacing: 1,
     marginLeft: spacing.xs,
   },
   recentCard: {
     marginBottom: spacing.sm,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     backgroundColor: colors.white,
-    ...shadows.sm,
     borderWidth: 1,
-    borderColor: colors.gray[100],
+    borderColor: colors.gray[200],
   },
   recentRow: {
     flexDirection: "row",
@@ -338,7 +544,7 @@ const styles = StyleSheet.create({
   recentIcon: {
     width: 40,
     height: 40,
-    borderRadius: borderRadius.full,
+    borderRadius: borderRadius.md,
     backgroundColor: colors.primary[50],
     alignItems: "center",
     justifyContent: "center",
@@ -363,7 +569,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xl,
     paddingHorizontal: spacing.lg,
     backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.gray[100],
     borderStyle: "dashed",

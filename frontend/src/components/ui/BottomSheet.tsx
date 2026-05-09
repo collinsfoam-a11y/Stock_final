@@ -9,6 +9,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { flags } from "../../constants/flags";
 
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface BottomSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -63,24 +64,14 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       transparent
       visible={render}
       animationType={
-        !flags.enableAnimations
-          ? Platform.OS === "ios"
-            ? "slide"
-            : "fade"
-          : undefined
+        !flags.enableAnimations ? (Platform.OS === "ios" ? "slide" : "fade") : undefined
       }
       onRequestClose={onClose}
     >
       <Animated.View style={[styles.backdrop, backdropStyle]}>
-        <TouchableOpacity
-          style={{ flex: 1 }}
-          activeOpacity={1}
-          onPress={onClose}
-        />
+        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={onClose} />
       </Animated.View>
-      <Animated.View style={[styles.sheet, { height }, sheetStyle]}>
-        {children}
-      </Animated.View>
+      <Animated.View style={[styles.sheet, { height }, sheetStyle]}>{children}</Animated.View>
     </Modal>
   );
 };
@@ -95,12 +86,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "#1e1e1e",
+    backgroundColor: uiColors.neutral[900],
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: uiSemanticColors.text.primary,
   },
 });
 

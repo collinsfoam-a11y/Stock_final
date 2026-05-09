@@ -7,6 +7,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { NormalizedMrpVariant } from "@/types/scan";
 import { MRP_MATCH_TOLERANCE } from "@/constants/scanConstants";
 
+import { semanticColors, colors } from "@/theme/legacyCompat";
 interface MRPVariantSelectorProps {
   variants: NormalizedMrpVariant[];
   currentMrp: number | null;
@@ -43,17 +44,11 @@ export const MRPVariantSelector: React.FC<MRPVariantSelectorProps> = ({
             return (
               <TouchableOpacity
                 key={`mrp-variant-${variant.id ?? variant.barcode ?? variantString}`}
-                style={[
-                  styles.mrpVariantChip,
-                  isSelected && styles.mrpVariantChipActive,
-                ]}
+                style={[styles.mrpVariantChip, isSelected && styles.mrpVariantChipActive]}
                 onPress={() => onVariantSelect(variant)}
               >
                 <Text
-                  style={[
-                    styles.mrpVariantChipText,
-                    isSelected && styles.mrpVariantChipTextActive,
-                  ]}
+                  style={[styles.mrpVariantChipText, isSelected && styles.mrpVariantChipTextActive]}
                 >
                   ₹{variantString}
                 </Text>
@@ -109,7 +104,7 @@ const styles = StyleSheet.create({
   mrpVariantsLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
     marginBottom: 12,
   },
   mrpVariantsChips: {
@@ -118,47 +113,47 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   mrpVariantChip: {
-    backgroundColor: "#1E293B",
+    backgroundColor: colors.neutral[800],
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: colors.neutral[700],
     minWidth: 80,
     alignItems: "center",
   },
   mrpVariantChipActive: {
-    backgroundColor: "#1a3a1a",
-    borderColor: "#3B82F6",
+    backgroundColor: colors.success[900],
+    borderColor: colors.info[500],
   },
   mrpVariantChipText: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 16,
     fontWeight: "600",
   },
   mrpVariantChipTextActive: {
-    color: "#3B82F6",
+    color: colors.info[500],
   },
   mrpVariantChipMeta: {
-    color: "#94A3B8",
+    color: colors.neutral[400],
     fontSize: 11,
     marginTop: 2,
   },
   mrpVariantChipMetaActive: {
-    color: "#3B82F6",
+    color: colors.info[500],
   },
   mrpChangeBox: {
-    backgroundColor: "#1E293B",
+    backgroundColor: colors.neutral[800],
     borderRadius: 12,
     padding: 16,
     marginTop: 12,
     borderLeftWidth: 4,
-    borderLeftColor: "#3B82F6",
+    borderLeftColor: colors.info[500],
   },
   mrpChangeLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#94A3B8",
+    color: colors.neutral[400],
     marginBottom: 8,
   },
   mrpChangeValue: {
@@ -167,17 +162,17 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   mrpIncrease: {
-    color: "#4CAF50",
+    color: colors.success[500],
   },
   mrpDecrease: {
-    color: "#EF4444",
+    color: colors.error[500],
   },
   mrpNeutral: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
   },
   mrpChangeNotice: {
     fontSize: 12,
-    color: "#94A3B8",
+    color: colors.neutral[400],
     fontStyle: "italic",
     marginTop: 4,
   },

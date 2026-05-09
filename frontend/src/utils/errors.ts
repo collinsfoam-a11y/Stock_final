@@ -129,7 +129,7 @@ export class AppError extends Error {
   }
 
   /**
-   * Create AppError from an unknown error
+   * Create AppError from an untyped thrown value
    */
   static fromUnknown(
     error: unknown,

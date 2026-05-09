@@ -4,17 +4,12 @@
  */
 
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { getSyncStatus, forceSync, SyncResult } from "../services/syncService";
 import { useNetworkStore } from "../store/networkStore";
 
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface SyncStatus {
   isOnline: boolean;
   queuedOperations: number;
@@ -104,11 +99,9 @@ export const SyncStatusBar: React.FC = () => {
           <Ionicons
             name={syncStatus.isOnline ? "server" : "server-outline"}
             size={16}
-            color={syncStatus.isOnline ? "#4CAF50" : "#f44336"} // Green or Red
+            color={syncStatus.isOnline ? uiColors.success[500] : uiColors.error[500]} // Green or Red
           />
-          <Text style={styles.statusText}>
-            Source
-          </Text>
+          <Text style={styles.statusText}>Source</Text>
         </View>
 
         {/* Mongo/App Data Indicator */}
@@ -116,20 +109,16 @@ export const SyncStatusBar: React.FC = () => {
           <Ionicons
             name="leaf" // Leaf for Mongo/App Data
             size={16}
-            color="#4CAF50" // Always green for local app data
+            color={uiColors.success[500]} // Always green for local app data
           />
-          <Text style={styles.statusText}>
-            App
-          </Text>
+          <Text style={styles.statusText}>App</Text>
         </View>
       </View>
 
       {/* Queue count */}
       {syncStatus.queuedOperations > 0 && (
         <View style={styles.queueRow}>
-          <Text style={styles.queueText}>
-            {syncStatus.queuedOperations} item(s) queued
-          </Text>
+          <Text style={styles.queueText}>{syncStatus.queuedOperations} item(s) queued</Text>
         </View>
       )}
 
@@ -141,13 +130,11 @@ export const SyncStatusBar: React.FC = () => {
           disabled={isSyncing}
         >
           {isSyncing ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={uiSemanticColors.text.inverse} />
           ) : (
-            <Ionicons name="sync" size={16} color="#fff" />
+            <Ionicons name="sync" size={16} color={uiSemanticColors.text.inverse} />
           )}
-          <Text style={styles.syncButtonText}>
-            {isSyncing ? "Syncing..." : "Sync Now"}
-          </Text>
+          <Text style={styles.syncButtonText}>{isSyncing ? "Syncing..." : "Sync Now"}</Text>
         </TouchableOpacity>
       )}
 
@@ -155,9 +142,7 @@ export const SyncStatusBar: React.FC = () => {
       {syncResult && (
         <View style={styles.resultRow}>
           {syncResult.success > 0 && (
-            <Text style={styles.successText}>
-              ✓ {syncResult.success} synced
-            </Text>
+            <Text style={styles.successText}>✓ {syncResult.success} synced</Text>
           )}
           {syncResult.failed > 0 && (
             <Text style={styles.errorText}>✗ {syncResult.failed} failed</Text>
@@ -177,7 +162,7 @@ export const SyncStatusBar: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#2196F3",
+    backgroundColor: uiColors.info[500],
     padding: 8,
     paddingHorizontal: 12,
     flexDirection: "row",
@@ -186,7 +171,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   offlineContainer: {
-    backgroundColor: "#f44336",
+    backgroundColor: uiColors.error[500],
   },
   statusRow: {
     flexDirection: "row",
@@ -194,12 +179,12 @@ const styles = StyleSheet.create({
     gap: 12, // Increased gap between status items
   },
   indicatorItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   statusText: {
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -207,7 +192,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   queueText: {
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 12,
   },
   syncButton: {
@@ -223,7 +208,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   syncButtonText: {
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -233,12 +218,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   successText: {
-    color: "#4CAF50",
+    color: uiColors.success[500],
     fontSize: 11,
     fontWeight: "600",
   },
   errorText: {
-    color: "#ffeb3b",
+    color: uiColors.warning[300],
     fontSize: 11,
     fontWeight: "600",
   },

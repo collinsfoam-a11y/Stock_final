@@ -22,19 +22,12 @@ import * as Haptics from "expo-haptics";
 
 import { getLocalItems } from "../../src/db/localDb";
 import { ItemVerificationAPI } from "../../src/domains/inventory/services/itemVerificationApi";
-import {
-  ItemFilters,
-  FilterValues,
-} from "../../src/domains/inventory/components/ItemFilters";
+import { ItemFilters, FilterValues } from "../../src/domains/inventory/components/ItemFilters";
 import { useSettingsStore } from "../../src/store/settingsStore";
-import {
-  ScreenContainer,
-  GlassCard,
-  StatsCard,
-  AnimatedPressable,
-} from "../../src/components/ui";
+import { ScreenContainer, ModernCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
 import { theme } from "../../src/styles/modernDesignSystem";
 import { saveArrayBufferExport } from "../../src/utils/fileExport";
+import { safeBackNavigation } from "@/utils/navigation";
 
 const filterCachedItems = (items: any[], filters: FilterValues) => {
   const search = filters.search?.trim().toLowerCase();
@@ -45,12 +38,7 @@ const filterCachedItems = (items: any[], filters: FilterValues) => {
     }
 
     if (search) {
-      const haystack = [
-        item.item_name,
-        item.item_code,
-        item.barcode,
-        item.category,
-      ]
+      const haystack = [item.item_name, item.item_code, item.barcode, item.category]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -143,7 +131,7 @@ export default function ItemsScreen() {
         setRefreshing(false);
       }
     },
-    [filters, offlineMode, pagination.limit, pagination.skip],
+    [filters, offlineMode, pagination.limit, pagination.skip]
   );
 
   useEffect(() => {
@@ -151,8 +139,7 @@ export default function ItemsScreen() {
   }, [loadItems]);
 
   const handleRefresh = () => {
-    if (Platform.OS !== "web")
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     loadItems(true);
   };
@@ -186,7 +173,7 @@ export default function ItemsScreen() {
           ...filters,
           verified: filters.verified,
         },
-        format,
+        format
       );
       const filename = `items_erpnext_import_${new Date().toISOString().split("T")[0]}.${format}`;
 
@@ -195,7 +182,7 @@ export default function ItemsScreen() {
         filename,
         format === "csv"
           ? "text/csv"
-          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
     } catch (error: any) {
       Alert.alert("Error", error.message || `Failed to export ${format.toUpperCase()}`);
@@ -211,11 +198,7 @@ export default function ItemsScreen() {
         }}
         style={{ marginBottom: theme.spacing.sm }}
       >
-        <GlassCard
-          intensity={15}
-          padding={theme.spacing.md}
-          borderRadius={theme.borderRadius.lg}
-        >
+        <ModernCard intensity={15} padding={theme.spacing.md}>
           <View style={styles.itemHeader}>
             <View style={styles.itemHeaderLeft}>
               <Text style={styles.itemName}>{item.item_name}</Text>
@@ -223,11 +206,7 @@ export default function ItemsScreen() {
             </View>
             {item.verified && (
               <View style={styles.verifiedBadge}>
-                <Ionicons
-                  name="checkmark-circle"
-                  size={14}
-                  color={theme.colors.success.main}
-                />
+                <Ionicons name="checkmark-circle" size={14} color={theme.colors.success.main} />
               </View>
             )}
           </View>
@@ -241,19 +220,13 @@ export default function ItemsScreen() {
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>MRP</Text>
-              <Text style={styles.detailValue}>
-                ₹{item.mrp?.toFixed(2) || "0.00"}
-              </Text>
+              <Text style={styles.detailValue}>₹{item.mrp?.toFixed(2) || "0.00"}</Text>
             </View>
           </View>
 
           {(item.floor || item.rack) && (
             <View style={styles.locationRow}>
-              <Ionicons
-                name="location-outline"
-                size={14}
-                color={theme.colors.text.tertiary}
-              />
+              <Ionicons name="location-outline" size={14} color={theme.colors.text.tertiary} />
               <Text style={styles.locationText}>
                 {[item.floor, item.rack].filter(Boolean).join(" / ")}
               </Text>
@@ -271,19 +244,14 @@ export default function ItemsScreen() {
 
           {item.verified && item.verified_by && (
             <View style={styles.verificationInfo}>
-              <Ionicons
-                name="person-outline"
-                size={12}
-                color={theme.colors.text.tertiary}
-              />
+              <Ionicons name="person-outline" size={12} color={theme.colors.text.tertiary} />
               <Text style={styles.verificationInfoText}>
                 Verified by {item.verified_by}
-                {item.verified_at &&
-                  ` • ${new Date(item.verified_at).toLocaleDateString()}`}
+                {item.verified_at && ` • ${new Date(item.verified_at).toLocaleDateString()}`}
               </Text>
             </View>
           )}
-        </GlassCard>
+        </ModernCard>
       </AnimatedPressable>
     );
   };
@@ -293,70 +261,44 @@ export default function ItemsScreen() {
       <StatusBar style="light" />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View
-          entering={FadeInDown.delay(100).springify()}
-          style={styles.header}
-        >
+        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
           <View style={styles.headerLeft}>
             <AnimatedPressable
-              onPress={() => router.back()}
+              onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
             >
-              <Ionicons
-                name="arrow-back"
-                size={24}
-                color={theme.colors.text.primary}
-              />
+              <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
             </AnimatedPressable>
             <View>
               <Text style={styles.pageTitle}>Items</Text>
-              <Text style={styles.pageSubtitle}>
-                {pagination.total} items listed
-              </Text>
+              <Text style={styles.pageSubtitle}>{pagination.total} items listed</Text>
             </View>
           </View>
 
           <View style={styles.exportActions}>
             <AnimatedPressable
-              style={[
-                styles.exportFormatButton,
-                items.length === 0 && { opacity: 0.5 },
-              ]}
+              style={[styles.exportFormatButton, items.length === 0 && { opacity: 0.5 }]}
               onPress={() => void handleExport("csv")}
               disabled={items.length === 0}
             >
-              <GlassCard
-                intensity={20}
-                padding={8}
-                borderRadius={theme.borderRadius.full}
-              >
+              <ModernCard intensity={20} padding={8}>
                 <Text style={styles.exportFormatLabel}>CSV</Text>
-              </GlassCard>
+              </ModernCard>
             </AnimatedPressable>
             <AnimatedPressable
-              style={[
-                styles.exportFormatButton,
-                items.length === 0 && { opacity: 0.5 },
-              ]}
+              style={[styles.exportFormatButton, items.length === 0 && { opacity: 0.5 }]}
               onPress={() => void handleExport("xlsx")}
               disabled={items.length === 0}
             >
-              <GlassCard
-                intensity={20}
-                padding={8}
-                borderRadius={theme.borderRadius.full}
-              >
+              <ModernCard intensity={20} padding={8}>
                 <Text style={styles.exportFormatLabel}>XLSX</Text>
-              </GlassCard>
+              </ModernCard>
             </AnimatedPressable>
           </View>
         </Animated.View>
 
         {/* Statistics Cards */}
-        <Animated.View
-          entering={FadeInDown.delay(200).springify()}
-          style={styles.statsContainer}
-        >
+        <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.statsContainer}>
           <StatsCard
             title="Total Items"
             value={statistics.total_items.toString()}
@@ -381,55 +323,46 @@ export default function ItemsScreen() {
         </Animated.View>
 
         {offlineMode && (
-          <GlassCard
+          <ModernCard
             intensity={10}
             padding={theme.spacing.sm}
             style={{ marginBottom: theme.spacing.md }}
           >
             <Text style={styles.offlineNoticeTitle}>Offline mode enabled</Text>
             <Text style={styles.offlineNoticeBody}>
-              This screen is showing cached items only. Stock, MRP, and location
-              fields may be incomplete until you reconnect.
+              This screen is showing cached items only. Stock, MRP, and location fields may be
+              incomplete until you reconnect.
             </Text>
-          </GlassCard>
+          </ModernCard>
         )}
 
         {!offlineMode && (
-          <GlassCard
+          <ModernCard
             intensity={8}
             padding={theme.spacing.sm}
             style={{ marginBottom: theme.spacing.md }}
           >
             <Text style={styles.exportHintTitle}>ERPNext import format</Text>
             <Text style={styles.exportHintBody}>
-              Blank ID inserts new rows. Keep ID to update existing ERPNext
-              records.
+              Blank ID inserts new rows. Keep ID to update existing ERPNext records.
             </Text>
-          </GlassCard>
+          </ModernCard>
         )}
 
         {/* Filters */}
         <Animated.View entering={FadeInDown.delay(300).springify()}>
-          <GlassCard
+          <ModernCard
             intensity={10}
             padding={theme.spacing.sm}
             style={{ marginBottom: theme.spacing.md }}
           >
-            <ItemFilters
-              onFilterChange={setFilters}
-              showVerifiedFilter={true}
-              showSearch={true}
-            />
-          </GlassCard>
+            <ItemFilters onFilterChange={setFilters} showVerifiedFilter={true} showSearch={true} />
+          </ModernCard>
         </Animated.View>
 
         {items.length === 0 && !loading ? (
           <View style={styles.centered}>
-            <Ionicons
-              name="cube-outline"
-              size={64}
-              color={theme.colors.text.tertiary}
-            />
+            <Ionicons name="cube-outline" size={64} color={theme.colors.text.tertiary} />
             <Text style={styles.emptyText}>No items found</Text>
             <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
           </View>
@@ -455,10 +388,7 @@ export default function ItemsScreen() {
               ListFooterComponent={
                 loading && items.length > 0 ? (
                   <View style={{ paddingVertical: 20 }}>
-                    <ActivityIndicator
-                      size="small"
-                      color={theme.colors.primary[500]}
-                    />
+                    <ActivityIndicator size="small" color={theme.colors.primary[500]} />
                   </View>
                 ) : (
                   <View style={{ height: 20 }} />

@@ -18,8 +18,7 @@ type LoginResponse = {
 
 type AuthSession = LoginResponse["data"];
 
-const BACKEND_BASE_URL =
-  process.env.E2E_BACKEND_URL || "http://localhost:8001";
+const BACKEND_BASE_URL = process.env.E2E_BACKEND_URL || "http://localhost:8001";
 
 const credentialsByRole: Record<Role, { username: string; password: string }> = {
   staff: { username: "staff1", password: "staff123" },
@@ -38,7 +37,7 @@ function buildClientHeaders(clientId: string): Record<string, string> {
 
 export async function getAuthenticatedSession(
   request: APIRequestContext,
-  role: Role,
+  role: Role
 ): Promise<AuthSession> {
   const cached = sessionCache.get(role);
   if (cached && Date.now() - cached.cachedAt < SESSION_TTL_MS) {
@@ -74,7 +73,7 @@ export async function seedAuthState(
   },
   options?: {
     clearRefreshToken?: boolean;
-  },
+  }
 ): Promise<void> {
   await page.addInitScript(
     ({ authState, clearRefreshToken }) => {
@@ -90,7 +89,7 @@ export async function seedAuthState(
           username: authState.user.username,
           full_name: authState.user.full_name,
           has_pin: authState.user.has_pin,
-        }),
+        })
       );
       if (clearRefreshToken) {
         window.localStorage.removeItem("refresh_token");
@@ -99,14 +98,14 @@ export async function seedAuthState(
     {
       authState: auth,
       clearRefreshToken: options?.clearRefreshToken ?? false,
-    },
+    }
   );
 }
 
 export async function authenticateAs(
   page: Page,
   request: APIRequestContext,
-  role: Role,
+  role: Role
 ): Promise<void> {
   const session = await getAuthenticatedSession(request, role);
   await seedAuthState(page, {
@@ -122,7 +121,7 @@ export async function createSessionAs(
   sessionData: {
     warehouse: string;
     type?: string;
-  },
+  }
 ): Promise<{ id: string }> {
   const session = await getAuthenticatedSession(request, role);
   const response = await request.post(`${BACKEND_BASE_URL}/api/sessions/`, {
@@ -142,7 +141,7 @@ export async function createSessionAs(
 
 export async function cleanupUserByUsername(
   request: APIRequestContext,
-  username: string,
+  username: string
 ): Promise<void> {
   const adminSession = await getAuthenticatedSession(request, "admin");
 
@@ -152,7 +151,7 @@ export async function cleanupUserByUsername(
 
   const listResponse = await request.get(
     `${BACKEND_BASE_URL}/api/users?search=${encodeURIComponent(username)}&page=1&page_size=100`,
-    { headers },
+    { headers }
   );
   expect(listResponse.ok()).toBeTruthy();
 
@@ -160,15 +159,37 @@ export async function cleanupUserByUsername(
     users?: Array<{ id: string; username: string }>;
   };
 
-  const matches = (listPayload.users || []).filter(
-    (user) => user.username === username,
-  );
+  const matches = (listPayload.users || []).filter((user) => user.username === username);
 
   for (const user of matches) {
-    const deleteResponse = await request.delete(
-      `${BACKEND_BASE_URL}/api/users/${user.id}`,
-      { headers },
-    );
+    const deleteResponse = await request.delete(`${BACKEND_BASE_URL}/api/users/${user.id}`, {
+      headers,
+    });
     expect(deleteResponse.ok()).toBeTruthy();
+  }
+}
+
+export async function ensurePinForRole(
+  request: APIRequestContext,
+  role: Role,
+  pin: string
+): Promise<void> {
+  const session = await getAuthenticatedSession(request, role);
+
+  const response = await request.post(`${BACKEND_BASE_URL}/api/auth/pin-setup`, {
+    data: {
+      pin,
+      confirm_pin: pin,
+    },
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      ...buildClientHeaders(`playwright-${role}-pin`),
+    },
+  });
+
+  expect(response.ok()).toBeTruthy();
+  const payload = await response.json().catch(() => null);
+  if (payload && typeof payload.success === "boolean") {
+    expect(payload.success).toBe(true);
   }
 }

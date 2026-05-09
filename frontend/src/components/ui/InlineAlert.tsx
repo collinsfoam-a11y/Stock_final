@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { auroraTheme } from "@/theme/auroraTheme";
 
+import { colors as uiColors } from "@/theme/legacyCompat";
 export type InlineAlertType = "error" | "warning" | "success" | "info";
 
 interface Props {
@@ -26,30 +27,20 @@ const BG_COLORS: Record<InlineAlertType, string> = {
 };
 
 const FG_COLORS: Record<InlineAlertType, string> = {
-  error: auroraTheme.colors.error[400] ?? "#F87171",
-  warning: auroraTheme.colors.warning[400] ?? "#FBBF24",
-  success: auroraTheme.colors.success[400] ?? "#34D399",
-  info: auroraTheme.colors.accent[400] ?? "#A78BFA",
+  error: auroraTheme.colors.error[400] ?? uiColors.error[400],
+  warning: auroraTheme.colors.warning[400] ?? uiColors.warning[400],
+  success: auroraTheme.colors.success[400] ?? uiColors.success[400],
+  info: auroraTheme.colors.accent[400] ?? uiColors.primary[300],
 };
 
 export function InlineAlert({ type = "info", message, testID }: Props) {
   return (
     <View
-      style={[
-        styles.container,
-        { backgroundColor: BG_COLORS[type], borderColor: FG_COLORS[type] },
-      ]}
+      style={[styles.container, { backgroundColor: BG_COLORS[type], borderColor: FG_COLORS[type] }]}
       testID={testID}
     >
-      <Ionicons
-        name={ICONS[type]}
-        size={18}
-        color={FG_COLORS[type]}
-        style={styles.icon}
-      />
-      <Text style={[styles.text, { color: auroraTheme.colors.text.primary }]}>
-        {message}
-      </Text>
+      <Ionicons name={ICONS[type]} size={18} color={FG_COLORS[type]} style={styles.icon} />
+      <Text style={[styles.text, { color: auroraTheme.colors.text.primary }]}>{message}</Text>
     </View>
   );
 }

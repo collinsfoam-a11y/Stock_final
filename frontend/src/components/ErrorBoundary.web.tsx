@@ -4,6 +4,7 @@ import { ErrorBoundary as ReactErrorBoundary } from "react-error-boundary";
 
 import { errorReporter } from "../services/errorRecovery";
 
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface Props {
   children: ReactNode;
   fallback?: (error: Error, resetError: () => void) => ReactNode;
@@ -32,17 +33,15 @@ const ErrorFallback = ({
         <View style={styles.badge}>
           <Text style={styles.badgeText}>Error</Text>
         </View>
-        <Text style={styles.title}>Something went wrong</Text>
+        <Text style={styles.title}>Application Recovery Required</Text>
         <Text style={styles.message}>
-          {error?.message || "An unexpected error occurred"}
+          {error?.message ||
+            "This screen failed before it could finish rendering. Retry the action; if it fails again, return to the previous workflow and report the screen name."}
         </Text>
         {__DEV__ ? <Text style={styles.details}>{error.toString()}</Text> : null}
         <Pressable
           onPress={resetErrorBoundary}
-          style={({ pressed }) => [
-            styles.button,
-            pressed && styles.buttonPressed,
-          ]}
+          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
         >
           <Text style={styles.buttonText}>Try Again</Text>
         </Pressable>
@@ -56,8 +55,7 @@ export const ErrorBoundary = ({ children, fallback }: Props) => {
     <ReactErrorBoundary
       fallbackRender={
         fallback
-          ? ({ error, resetErrorBoundary }) =>
-              fallback(error as Error, resetErrorBoundary)
+          ? ({ error, resetErrorBoundary }) => fallback(error as Error, resetErrorBoundary)
           : (props) => <ErrorFallback {...(props as any)} />
       }
     >
@@ -69,7 +67,7 @@ export const ErrorBoundary = ({ children, fallback }: Props) => {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: "#f4f7f6",
+    backgroundColor: uiColors.neutral[50],
   },
   content: {
     flexGrow: 1,
@@ -81,11 +79,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: "#fee2e2",
+    backgroundColor: uiColors.error[100],
     marginBottom: 18,
   },
   badgeText: {
-    color: "#991b1b",
+    color: uiColors.error[800],
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 1,
@@ -94,14 +92,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 30,
     fontWeight: "700",
-    color: "#0f172a",
+    color: uiColors.neutral[900],
     marginBottom: 12,
     textAlign: "center",
   },
   message: {
     fontSize: 15,
     lineHeight: 22,
-    color: "#475569",
+    color: uiColors.neutral[600],
     textAlign: "center",
     maxWidth: 520,
     marginBottom: 16,
@@ -109,8 +107,8 @@ const styles = StyleSheet.create({
   details: {
     fontSize: 13,
     lineHeight: 20,
-    color: "#7f1d1d",
-    backgroundColor: "#fff1f2",
+    color: uiColors.error[900],
+    backgroundColor: uiColors.error[50],
     borderRadius: 12,
     padding: 14,
     width: "100%",
@@ -124,13 +122,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0f766e",
+    backgroundColor: uiColors.secondary[700],
   },
   buttonPressed: {
     opacity: 0.9,
   },
   buttonText: {
-    color: "#ffffff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 15,
     fontWeight: "700",
   },

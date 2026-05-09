@@ -20,18 +20,19 @@ import { AdminCrashScreen } from "@/components/feedback/AdminCrashScreen";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { breakpoints } from "@/styles/globalStyles";
 import { isAdminRouteEnabled } from "@/constants/roleFeatureFlags";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { flags } from "@/constants/flags";
 
 export default function AdminLayout() {
   const { width } = useWindowDimensions();
   const segments = useSegments();
   const currentRoute = (segments as string[])[1];
+  const uiTokens = useUiTokens();
   const isLargeScreen = width >= breakpoints.desktop && Platform.OS === "web";
-  const isFeatureDisabledRoute = Boolean(
-    currentRoute && !isAdminRouteEnabled(currentRoute),
-  );
+  const isFeatureDisabledRoute = Boolean(currentRoute && !isAdminRouteEnabled(currentRoute));
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistentState(
     "admin_sidebar_collapsed",
-    false,
+    false
   );
 
   if (isFeatureDisabledRoute) {
@@ -45,12 +46,28 @@ export default function AdminLayout() {
   return (
     <RoleLayoutGuard allowedRoles={["admin"]} layoutName="AdminLayout">
       {isLargeScreen ? (
-        <View style={styles.webContainer}>
+        <View
+          style={[
+            styles.webContainer,
+            {
+              backgroundColor: uiTokens.colors.background,
+            },
+          ]}
+        >
           <AdminSidebar
             collapsed={sidebarCollapsed}
             onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           />
-          <View style={styles.mainContent}>
+          <View
+            style={[
+              styles.mainContent,
+              {
+                backgroundColor: flags.uiVisualSystemV2
+                  ? uiTokens.colors.background
+                  : auroraTheme.colors.background.primary,
+              },
+            ]}
+          >
             <ErrorBoundary
               fallback={(error, resetError) => (
                 <AdminCrashScreen error={error} resetError={resetError} />

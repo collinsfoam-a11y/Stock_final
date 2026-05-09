@@ -1,12 +1,5 @@
 import React from "react";
-import {
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { auroraTheme } from "@/theme/auroraTheme";
@@ -15,17 +8,14 @@ import {
   formatValue,
 } from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface ItemDetailsModalProps {
   item: DashboardItem | null;
   onClose: () => void;
   visible: boolean;
 }
 
-export function ItemDetailsModal({
-  item,
-  onClose,
-  visible,
-}: ItemDetailsModalProps) {
+export function ItemDetailsModal({ item, onClose, visible }: ItemDetailsModalProps) {
   if (!item) return null;
 
   const detailRows = [
@@ -55,22 +45,13 @@ export function ItemDetailsModal({
   ];
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Item Details</Text>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons
-                name="close"
-                size={24}
-                color={auroraTheme.colors.text.primary}
-              />
+              <Ionicons name="close" size={24} color={auroraTheme.colors.text.primary} />
             </TouchableOpacity>
           </View>
 
@@ -86,11 +67,9 @@ export function ItemDetailsModal({
                 row.value !== null && (
                   <View key={index} style={styles.detailRow}>
                     <Text style={styles.detailLabel}>{row.label}</Text>
-                    <Text style={styles.detailValue}>
-                      {formatValue(row.value, row.format)}
-                    </Text>
+                    <Text style={styles.detailValue}>{formatValue(row.value, row.format)}</Text>
                   </View>
-                ),
+                )
             )}
           </ScrollView>
 
@@ -160,6 +139,6 @@ const styles = StyleSheet.create({
   doneButtonText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
   },
 });

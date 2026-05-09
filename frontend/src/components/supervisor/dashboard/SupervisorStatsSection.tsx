@@ -2,8 +2,10 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { GlassCard, ProgressRing, StatsCard } from "@/components/ui";
+import { ModernCard, ProgressRing, StatsCard } from "@/components/ui";
+import { useUiTokens } from "@/hooks/useUiTokens";
 import { theme } from "@/styles/modernDesignSystem";
+import { colorWithAlpha } from "@/theme/themeTokens";
 import { DashboardStats } from "@/components/supervisor/dashboard/supervisorDashboardShared";
 
 interface SupervisorStatsSectionProps {
@@ -17,6 +19,8 @@ export function SupervisorStatsSection({
   onStatPress,
   stats,
 }: SupervisorStatsSectionProps) {
+  const uiTokens = useUiTokens();
+
   return (
     <>
       <View style={styles.statsGrid}>
@@ -69,34 +73,30 @@ export function SupervisorStatsSection({
       </View>
 
       <Animated.View entering={FadeInDown.delay(300).springify()}>
-        <GlassCard
-          variant="medium"
+        <ModernCard
+          variant="outlined"
+          elevation="none"
           intensity={25}
-          borderRadius={theme.borderRadius.xl}
-          padding={theme.spacing.lg}
-          withGradientBorder={true}
-          elevation="lg"
+          padding={uiTokens.spacing.lg}
           style={styles.progressCard}
         >
           <View style={styles.progressContent}>
             <View style={styles.progressInfo}>
-              <Text style={styles.progressTitle}>Session Completion</Text>
-              <Text style={styles.progressSubtitle}>
-                {stats.closedSessions + stats.reconciledSessions} of{" "}
-                {stats.totalSessions} completed
+              <Text style={[styles.progressTitle, { color: uiTokens.colors.textPrimary }]}>
+                Session Completion
+              </Text>
+              <Text style={[styles.progressSubtitle, { color: uiTokens.colors.textSecondary }]}>
+                {stats.closedSessions + stats.reconciledSessions} of {stats.totalSessions} completed
               </Text>
             </View>
             <ProgressRing
               progress={completionPercentage}
               size={100}
               strokeWidth={10}
-              colors={[
-                theme.colors.success.main,
-                theme.colors.success.main + "CC",
-              ]}
+              colors={[uiTokens.colors.success, colorWithAlpha(uiTokens.colors.success, 0.72)]}
             />
           </View>
-        </GlassCard>
+        </ModernCard>
       </Animated.View>
     </>
   );
@@ -129,10 +129,8 @@ const styles = StyleSheet.create({
   progressTitle: {
     fontSize: 20,
     fontWeight: "600",
-    color: theme.colors.text.primary,
   },
   progressSubtitle: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
   },
 });

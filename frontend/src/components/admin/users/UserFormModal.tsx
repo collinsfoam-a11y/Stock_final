@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { AnimatedPressable, GlassCard } from "@/components/ui";
+import { AnimatedPressable, ModernCard } from "@/components/ui";
 import { auroraTheme } from "@/theme/auroraTheme";
 import {
   USER_ROLE_OPTIONS,
@@ -20,16 +20,14 @@ import {
   userTextStyles,
 } from "@/components/admin/users/userManagementShared";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 const isE2E = process.env.EXPO_PUBLIC_E2E === "true";
 const isTablet = Platform.OS === "web";
 
 interface UserFormModalProps {
   editingUser: User | null;
   formError: string | null;
-  onChangeField: (
-    key: keyof UserFormState,
-    value: UserFormState[keyof UserFormState],
-  ) => void;
+  onChangeField: (key: keyof UserFormState, value: UserFormState[keyof UserFormState]) => void;
   onClose: () => void;
   onSubmit: () => void;
   submitting: boolean;
@@ -60,7 +58,7 @@ export function UserFormModal({
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <GlassCard variant="strong" style={styles.modalCard}>
+        <ModernCard variant="outlined" elevation="none" style={styles.modalCard}>
           <View style={styles.modalHeader}>
             <View style={styles.modalHeaderText}>
               <Text style={styles.modalTitle}>{title}</Text>
@@ -71,11 +69,7 @@ export function UserFormModal({
               onPress={onClose}
               testID="user-form-close"
             >
-              <Ionicons
-                name="close"
-                size={20}
-                color={auroraTheme.colors.text.secondary}
-              />
+              <Ionicons name="close" size={20} color={auroraTheme.colors.text.secondary} />
             </AnimatedPressable>
           </View>
 
@@ -86,11 +80,7 @@ export function UserFormModal({
           >
             {formError && (
               <View style={styles.formErrorBanner}>
-                <Ionicons
-                  name="alert-circle"
-                  size={18}
-                  color={auroraTheme.colors.error[600]}
-                />
+                <Ionicons name="alert-circle" size={18} color={auroraTheme.colors.error[600]} />
                 <Text style={styles.formErrorText}>{formError}</Text>
               </View>
             )}
@@ -108,9 +98,7 @@ export function UserFormModal({
                 placeholderTextColor={auroraTheme.colors.neutral[400]}
               />
               {editingUser && (
-                <Text style={styles.formHint}>
-                  Username is immutable after account creation.
-                </Text>
+                <Text style={styles.formHint}>Username is immutable after account creation.</Text>
               )}
             </View>
 
@@ -143,17 +131,13 @@ export function UserFormModal({
 
             <View style={styles.formGrid}>
               <View style={styles.formFieldHalf}>
-                <Text style={styles.formLabel}>
-                  {editingUser ? "New Password" : "Password"}
-                </Text>
+                <Text style={styles.formLabel}>{editingUser ? "New Password" : "Password"}</Text>
                 <TextInput
                   style={styles.formInput}
                   testID="user-form-password"
                   value={userForm.password}
                   onChangeText={(value) => onChangeField("password", value)}
-                  placeholder={
-                    editingUser ? "Leave blank to keep current password" : "Required"
-                  }
+                  placeholder={editingUser ? "Leave blank to keep current password" : "Required"}
                   placeholderTextColor={auroraTheme.colors.neutral[400]}
                   secureTextEntry
                 />
@@ -180,10 +164,7 @@ export function UserFormModal({
                 {USER_ROLE_OPTIONS.map((role) => (
                   <AnimatedPressable
                     key={role}
-                    style={[
-                      styles.roleOption,
-                      userForm.role === role && styles.roleOptionActive,
-                    ]}
+                    style={[styles.roleOption, userForm.role === role && styles.roleOptionActive]}
                     onPress={() => onChangeField("role", role)}
                     testID={`user-form-role-${role}`}
                   >
@@ -205,10 +186,7 @@ export function UserFormModal({
                 <Text style={styles.formLabel}>Account Status</Text>
                 <View style={styles.roleOptionRow}>
                   <AnimatedPressable
-                    style={[
-                      styles.roleOption,
-                      userForm.isActive && styles.roleOptionActive,
-                    ]}
+                    style={[styles.roleOption, userForm.isActive && styles.roleOptionActive]}
                     onPress={() => onChangeField("isActive", true)}
                     testID="user-form-status-active"
                   >
@@ -222,10 +200,7 @@ export function UserFormModal({
                     </Text>
                   </AnimatedPressable>
                   <AnimatedPressable
-                    style={[
-                      styles.roleOption,
-                      !userForm.isActive && styles.roleOptionDanger,
-                    ]}
+                    style={[styles.roleOption, !userForm.isActive && styles.roleOptionDanger]}
                     onPress={() => onChangeField("isActive", false)}
                     testID="user-form-status-inactive"
                   >
@@ -253,19 +228,16 @@ export function UserFormModal({
               <Text style={styles.modalSecondaryButtonText}>Cancel</Text>
             </AnimatedPressable>
             <AnimatedPressable
-              style={[
-                styles.modalPrimaryButton,
-                submitting && styles.modalPrimaryButtonDisabled,
-              ]}
+              style={[styles.modalPrimaryButton, submitting && styles.modalPrimaryButtonDisabled]}
               onPress={onSubmit}
               disabled={submitting}
               testID="user-form-submit"
             >
               {submitting ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={uiSemanticColors.text.inverse} />
               ) : (
                 <>
-                  <Ionicons name="save-outline" size={18} color="#fff" />
+                  <Ionicons name="save-outline" size={18} color={uiSemanticColors.text.inverse} />
                   <Text style={styles.modalPrimaryButtonText}>
                     {editingUser ? "Save Changes" : "Create User"}
                   </Text>
@@ -273,7 +245,7 @@ export function UserFormModal({
               )}
             </AnimatedPressable>
           </View>
-        </GlassCard>
+        </ModernCard>
       </View>
     </Modal>
   );
@@ -445,7 +417,7 @@ const styles = StyleSheet.create({
   },
   modalPrimaryButtonText: {
     ...userTextStyles.label,
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontWeight: "700",
   },
 });

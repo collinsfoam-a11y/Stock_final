@@ -18,6 +18,8 @@ import { Skeleton } from "../ui/Skeleton";
 import { BatchDetailsModal } from "./BatchDetailsModal";
 import { VirtualList } from "../common/VirtualList";
 
+import { semanticColors, colors } from "@/theme/legacyCompat";
+import { colorWithAlpha } from "@/theme/themeTokens";
 interface ItemSearchProps {
   manualBarcode: string;
   manualItemName: string;
@@ -111,27 +113,20 @@ export const ItemSearch: React.FC<ItemSearchProps> = ({
         <View style={styles.searchResultContent}>
           <View style={styles.resultHeader}>
             <Text style={styles.searchResultName}>{item.item_name}</Text>
-            {item.relevance_score !== undefined &&
-              item.relevance_score >= 500 && (
-                <View style={styles.exactMatchBadge}>
-                  <Text style={styles.exactMatchText}>Exact</Text>
-                </View>
-              )}
+            {item.relevance_score !== undefined && item.relevance_score >= 500 && (
+              <View style={styles.exactMatchBadge}>
+                <Text style={styles.exactMatchText}>Exact</Text>
+              </View>
+            )}
           </View>
           <Text style={styles.searchResultCode}>Code: {item.item_code}</Text>
-          {item.barcode && (
-            <Text style={styles.searchResultBarcode}>
-              Barcode: {item.barcode}
-            </Text>
-          )}
-          <Text style={styles.searchResultStock}>
-            Stock: {item.stock_qty || 0}
-          </Text>
+          {item.barcode && <Text style={styles.searchResultBarcode}>Barcode: {item.barcode}</Text>}
+          <Text style={styles.searchResultStock}>Stock: {item.stock_qty || 0}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+        <Ionicons name="chevron-forward" size={20} color={semanticColors.text.tertiary} />
       </TouchableOpacity>
     ),
-    [handleItemSelect],
+    [handleItemSelect]
   );
 
   // Footer component for infinite scroll
@@ -141,7 +136,7 @@ export const ItemSearch: React.FC<ItemSearchProps> = ({
     if (isLoadingMore) {
       return (
         <View style={styles.loadingMoreContainer}>
-          <ActivityIndicator size="small" color="#3B82F6" />
+          <ActivityIndicator size="small" color={colors.primary[500]} />
           <Text style={styles.loadingMoreText}>Loading more...</Text>
         </View>
       );
@@ -150,7 +145,7 @@ export const ItemSearch: React.FC<ItemSearchProps> = ({
     return (
       <TouchableOpacity style={styles.loadMoreButton} onPress={onLoadMore}>
         <Text style={styles.loadMoreText}>Load More Results</Text>
-        <Ionicons name="chevron-down" size={16} color="#3B82F6" />
+        <Ionicons name="chevron-down" size={16} color={colors.primary[500]} />
       </TouchableOpacity>
     );
   }, [hasNextPage, isLoadingMore, onLoadMore]);
@@ -162,9 +157,7 @@ export const ItemSearch: React.FC<ItemSearchProps> = ({
     }
   }, [hasNextPage, isLoadingMore, onLoadMore]);
 
-  const itemNameSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
+  const itemNameSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   return (
     <View style={styles.manualEntryContainer}>
@@ -172,7 +165,7 @@ export const ItemSearch: React.FC<ItemSearchProps> = ({
         <Text style={styles.manualEntryTitle}>Scan or Search Item</Text>
         {onBulkEntry && (
           <TouchableOpacity onPress={onBulkEntry} style={styles.bulkButton}>
-            <Ionicons name="list-outline" size={20} color="#3B82F6" />
+            <Ionicons name="list-outline" size={20} color={colors.primary[500]} />
             <Text style={styles.bulkButtonText}>Bulk Entry</Text>
           </TouchableOpacity>
         )}
@@ -181,14 +174,14 @@ export const ItemSearch: React.FC<ItemSearchProps> = ({
       {/* Barcode Input */}
       <View style={styles.inputGroup}>
         <View style={styles.inputLabelContainer}>
-          <Ionicons name="barcode-outline" size={20} color="#3B82F6" />
+          <Ionicons name="barcode-outline" size={20} color={colors.primary[500]} />
           <Text style={styles.inputLabel}>Scan Barcode</Text>
         </View>
         <View style={styles.combinedInputContainer}>
           <TextInput
             style={styles.manualInput}
             placeholder="Enter barcode"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={semanticColors.text.tertiary}
             value={manualBarcode}
             onChangeText={(text) => {
               onActivityReset?.();
@@ -202,21 +195,18 @@ export const ItemSearch: React.FC<ItemSearchProps> = ({
           />
           {onScan && (
             <TouchableOpacity style={styles.scanButton} onPress={onScan}>
-              <Ionicons name="scan-outline" size={20} color="#fff" />
+              <Ionicons name="scan-outline" size={20} color={semanticColors.text.inverse} />
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            style={[
-              styles.searchButton,
-              !manualBarcode && styles.searchButtonDisabled,
-            ]}
+            style={[styles.searchButton, !manualBarcode && styles.searchButtonDisabled]}
             onPress={() => {
               onActivityReset?.();
               onBarcodeSubmit();
             }}
             disabled={!manualBarcode}
           >
-            <Ionicons name="arrow-forward" size={20} color="#fff" />
+            <Ionicons name="arrow-forward" size={20} color={semanticColors.text.inverse} />
           </TouchableOpacity>
         </View>
       </View>
@@ -224,17 +214,14 @@ export const ItemSearch: React.FC<ItemSearchProps> = ({
       {/* Item Name Search Input */}
       <View style={styles.inputGroup}>
         <View style={styles.inputLabelContainer}>
-          <Ionicons name="search-outline" size={20} color="#3B82F6" />
+          <Ionicons name="search-outline" size={20} color={colors.primary[500]} />
           <Text style={styles.inputLabel}>Search Item Name</Text>
           {onVoiceSearch && (
-            <TouchableOpacity
-              style={styles.voiceButton}
-              onPress={onVoiceSearch}
-            >
+            <TouchableOpacity style={styles.voiceButton} onPress={onVoiceSearch}>
               <Ionicons
                 name={isListening ? "mic" : "mic-outline"}
                 size={20}
-                color={isListening ? "#FF5722" : "#3B82F6"}
+                color={isListening ? colors.error[500] : colors.primary[500]}
               />
             </TouchableOpacity>
           )}
@@ -243,7 +230,7 @@ export const ItemSearch: React.FC<ItemSearchProps> = ({
           <TextInput
             style={styles.manualInput}
             placeholder="Enter item name"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={semanticColors.text.tertiary}
             value={manualItemName}
             onChangeText={(text) => {
               onActivityReset?.();
@@ -269,17 +256,14 @@ export const ItemSearch: React.FC<ItemSearchProps> = ({
             onSubmitEditing={onItemNameSubmit}
           />
           <TouchableOpacity
-            style={[
-              styles.searchButton,
-              !manualItemName && styles.searchButtonDisabled,
-            ]}
+            style={[styles.searchButton, !manualItemName && styles.searchButtonDisabled]}
             onPress={() => {
               onActivityReset?.();
               onItemNameSubmit();
             }}
             disabled={!manualItemName}
           >
-            <Ionicons name="search" size={20} color="#fff" />
+            <Ionicons name="search" size={20} color={semanticColors.text.inverse} />
           </TouchableOpacity>
         </View>
       </View>
@@ -344,7 +328,7 @@ const styles = StyleSheet.create({
   manualEntryTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#fff",
+    color: semanticColors.text.inverse,
     marginBottom: 16,
   },
   headerRow: {
@@ -359,13 +343,13 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: "rgba(59, 130, 246, 0.1)",
+    backgroundColor: colorWithAlpha(colors.primary[500], 0.1),
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "rgba(59, 130, 246, 0.3)",
+    borderColor: colorWithAlpha(colors.primary[500], 0.3),
   },
   bulkButtonText: {
-    color: "#3B82F6",
+    color: colors.primary[500],
     fontSize: 14,
     fontWeight: "600",
   },
@@ -381,11 +365,11 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
     flex: 1,
   },
   voiceButton: {
-    backgroundColor: "#3B82F6",
+    backgroundColor: colors.primary[500],
     borderRadius: 12,
     padding: 8,
     alignItems: "center",
@@ -393,38 +377,38 @@ const styles = StyleSheet.create({
   combinedInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1E293B",
+    backgroundColor: colors.neutral[800],
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: colors.neutral[700],
     paddingHorizontal: 12,
     paddingVertical: 4,
   },
   manualInput: {
     flex: 1,
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 16,
     paddingVertical: 12,
     paddingRight: 8,
   },
   scanButton: {
     padding: 8,
-    backgroundColor: "rgba(59, 130, 246, 0.1)",
+    backgroundColor: colorWithAlpha(colors.primary[500], 0.1),
     borderRadius: 8,
     marginLeft: 4,
   },
   searchButton: {
     padding: 8,
-    backgroundColor: "#3B82F6",
+    backgroundColor: colors.primary[500],
     borderRadius: 8,
     marginLeft: 8,
   },
   searchButtonDisabled: {
     opacity: 0.5,
-    backgroundColor: "#334155",
+    backgroundColor: colors.neutral[700],
   },
   searchButtonText: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -436,15 +420,15 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#334155",
+    backgroundColor: colors.neutral[700],
   },
   orText: {
     marginHorizontal: 16,
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
     fontSize: 14,
   },
   searchResultsContainer: {
-    backgroundColor: "#1E293B",
+    backgroundColor: colors.neutral[800],
     borderRadius: 12,
     padding: 16,
     marginTop: 16,
@@ -459,11 +443,11 @@ const styles = StyleSheet.create({
   searchResultsTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#fff",
+    color: semanticColors.text.inverse,
   },
   searchResultsCount: {
     fontSize: 14,
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
   },
   searchResultsFlatList: {
     maxHeight: 280,
@@ -478,15 +462,15 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   exactMatchBadge: {
-    backgroundColor: "rgba(34, 197, 94, 0.2)",
+    backgroundColor: colorWithAlpha(colors.success[500], 0.2),
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: "rgba(34, 197, 94, 0.4)",
+    borderColor: colorWithAlpha(colors.success[500], 0.4),
   },
   exactMatchText: {
-    color: "#22C55E",
+    color: colors.success[500],
     fontSize: 10,
     fontWeight: "600",
   },
@@ -498,7 +482,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   loadingMoreText: {
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
     fontSize: 14,
   },
   loadMoreButton: {
@@ -507,12 +491,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     paddingVertical: 12,
-    backgroundColor: "rgba(59, 130, 246, 0.1)",
+    backgroundColor: colorWithAlpha(colors.primary[500], 0.1),
     borderRadius: 8,
     marginTop: 8,
   },
   loadMoreText: {
-    color: "#3B82F6",
+    color: colors.primary[500],
     fontSize: 14,
     fontWeight: "600",
   },
@@ -520,7 +504,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#252525",
+    backgroundColor: colors.neutral[800],
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
@@ -531,23 +515,23 @@ const styles = StyleSheet.create({
   searchResultName: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#fff",
+    color: semanticColors.text.inverse,
     marginBottom: 4,
   },
   searchResultCode: {
     fontSize: 12,
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
     marginBottom: 2,
   },
   searchResultBarcode: {
     fontSize: 12,
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
     marginBottom: 2,
     fontFamily: "monospace",
   },
   searchResultStock: {
     fontSize: 12,
-    color: "#3B82F6",
+    color: colors.primary[500],
     marginTop: 4,
   },
   searchingContainer: {
@@ -558,7 +542,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   searchingText: {
-    color: "#94A3B8",
+    color: semanticColors.text.tertiary,
     fontSize: 14,
   },
 });

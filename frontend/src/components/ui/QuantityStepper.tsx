@@ -13,14 +13,7 @@ interface Props {
   testID?: string;
 }
 
-export function QuantityStepper({
-  value,
-  onChange,
-  min = 0,
-  max,
-  disabled,
-  testID,
-}: Props) {
+export function QuantityStepper({ value, onChange, min = 0, max, disabled, testID }: Props) {
   const { themeLegacy: theme } = useThemeContext();
 
   const clamp = (n: number) => {
@@ -43,18 +36,11 @@ export function QuantityStepper({
   };
 
   return (
-    <View
-      style={[styles.container, disabled && { opacity: 0.6 }]}
-      testID={testID}
-    >
+    <View style={[styles.container, disabled && { opacity: 0.6 }]} testID={testID}>
       <TouchableOpacity
         onPress={() => handleChange(-1)}
         disabled={disabled || value <= min}
-        style={[
-          styles.button,
-          buttonStyle,
-          (disabled || value <= min) && styles.buttonDisabled,
-        ]}
+        style={[styles.button, buttonStyle, (disabled || value <= min) && styles.buttonDisabled]}
         accessibilityLabel="decrement"
       >
         <Ionicons name="remove" size={20} color={theme.colors.text} />
@@ -69,9 +55,7 @@ export function QuantityStepper({
           },
         ]}
       >
-        <Text style={[styles.valueText, { color: theme.colors.text }]}>
-          {value}
-        </Text>
+        <Text style={[styles.valueText, { color: theme.colors.text }]}>{value}</Text>
       </View>
 
       <TouchableOpacity
@@ -80,8 +64,7 @@ export function QuantityStepper({
         style={[
           styles.button,
           buttonStyle,
-          (disabled || (typeof max === "number" && value >= max)) &&
-            styles.buttonDisabled,
+          (disabled || (typeof max === "number" && value >= max)) && styles.buttonDisabled,
         ]}
         accessibilityLabel="increment"
       >

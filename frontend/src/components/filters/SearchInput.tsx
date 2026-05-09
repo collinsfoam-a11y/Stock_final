@@ -26,25 +26,11 @@ import {
   Platform,
   TextInputProps,
 } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-  interpolate,
-} from "react-native-reanimated";
+import Animated, { useAnimatedStyle } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import {
-  colors,
-  semanticColors,
-  spacing,
-  radius,
-  shadows,
-} from "../../theme/unified";
+import { colors, semanticColors, spacing, radius, shadows } from "@/theme/legacyCompat";
 
-export interface SearchInputProps extends Omit<
-  TextInputProps,
-  "onChangeText" | "value"
-> {
+export interface SearchInputProps extends Omit<TextInputProps, "onChangeText" | "value"> {
   /** Search callback - receives debounced query */
   onSearch: (query: string) => void;
   /** Debounce delay in milliseconds */
@@ -87,13 +73,10 @@ export function SearchInput({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
 
-  // Animation for focus state
-  const focusProgress = useSharedValue(0);
   const [isFocused, setIsFocused] = useState(false);
 
   // Use controlled value if provided
-  const currentValue =
-    controlledValue !== undefined ? controlledValue : localValue;
+  const currentValue = controlledValue !== undefined ? controlledValue : localValue;
 
   // Debounced search
   useEffect(() => {
@@ -119,7 +102,7 @@ export function SearchInput({
       }
       onChangeText?.(text);
     },
-    [controlledValue, onChangeText],
+    [controlledValue, onChangeText]
   );
 
   const handleClear = useCallback(() => {
@@ -129,20 +112,15 @@ export function SearchInput({
 
   const handleFocus = useCallback(() => {
     setIsFocused(true);
-    focusProgress.value = withTiming(1, { duration: 200 });
-  }, [focusProgress]);
+  }, []);
 
   const handleBlur = useCallback(() => {
     setIsFocused(false);
-    focusProgress.value = withTiming(0, { duration: 200 });
-  }, [focusProgress]);
+  }, []);
 
   // Container animation style
   const containerAnimatedStyle = useAnimatedStyle(() => ({
-    borderColor: isFocused
-      ? colors.primary[500]
-      : semanticColors.border.default,
-    shadowOpacity: interpolate(focusProgress.value, [0, 1], [0, 0.1]),
+    borderColor: isFocused ? colors.primary[500] : semanticColors.border.default,
   }));
 
   // Size-based dimensions
@@ -156,16 +134,12 @@ export function SearchInput({
 
   return (
     <View style={styles.wrapper}>
-      <Animated.View
-        style={[styles.container, containerAnimatedStyle, { height }]}
-      >
+      <Animated.View style={[styles.container, containerAnimatedStyle, { height }]}>
         <View style={styles.searchIconContainer}>
           <Ionicons
             name="search-outline"
             size={iconSize}
-            color={
-              isFocused ? colors.primary[500] : semanticColors.text.tertiary
-            }
+            color={isFocused ? colors.primary[500] : semanticColors.text.tertiary}
           />
         </View>
 
@@ -188,11 +162,7 @@ export function SearchInput({
         {/* Loading or Clear button */}
         <View style={styles.rightContainer}>
           {loading && (
-            <ActivityIndicator
-              size="small"
-              color={colors.primary[500]}
-              style={styles.loader}
-            />
+            <ActivityIndicator size="small" color={colors.primary[500]} style={styles.loader} />
           )}
 
           {!loading && currentValue.length > 0 && (
@@ -202,7 +172,7 @@ export function SearchInput({
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <View style={styles.clearIconContainer}>
-                <Ionicons name="close" size={14} color="#fff" />
+                <Ionicons name="close" size={14} color={semanticColors.text.inverse} />
               </View>
             </TouchableOpacity>
           )}
@@ -219,17 +189,11 @@ export function SearchInput({
           <Ionicons
             name="options-outline"
             size={iconSize}
-            color={
-              activeFilterCount > 0
-                ? colors.primary[500]
-                : semanticColors.text.secondary
-            }
+            color={activeFilterCount > 0 ? colors.primary[500] : semanticColors.text.secondary}
           />
           {activeFilterCount > 0 && (
             <View style={styles.filterBadge}>
-              <Animated.Text style={styles.filterBadgeText}>
-                {activeFilterCount}
-              </Animated.Text>
+              <Animated.Text style={styles.filterBadgeText}>{activeFilterCount}</Animated.Text>
             </View>
           )}
         </TouchableOpacity>
@@ -314,7 +278,7 @@ const styles = StyleSheet.create({
   filterBadgeText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#fff",
+    color: semanticColors.text.inverse,
   },
 });
 

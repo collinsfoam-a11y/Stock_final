@@ -6,9 +6,20 @@
 export { Modal } from "./Modal";
 export { SafeView } from "./SafeView";
 export * from "./Skeleton";
+export { AppButton } from "./AppButton";
+export type { AppButtonProps, AppButtonVariant, AppButtonSize } from "./AppButton";
+export { AppCard } from "./AppCard";
+export type { AppCardProps, AppCardVariant } from "./AppCard";
+export { AppInput } from "./AppInput";
+export type { AppInputProps } from "./AppInput";
+export { ConfirmDialog } from "./ConfirmDialog";
+export type { ConfirmDialogProps } from "./ConfirmDialog";
+export { SyncIndicator } from "./SyncIndicator";
+export type { SyncIndicatorProps } from "./SyncIndicator";
 export * from "./GlassCard";
 export { EmptyState } from "./EmptyState";
 export { LoadingSpinner } from "./LoadingSpinner";
+// Deprecated facades retained for incremental migration. New operational UI must use App*.
 export { ModernCard } from "./ModernCard";
 export { ModernButton } from "./ModernButton";
 export { ModernInput } from "./ModernInput";
@@ -98,12 +109,7 @@ export type { ResponsiveTextProps, TextVariant } from "./ResponsiveText";
 export { MyPressable, PressablePresets } from "./MyPressable";
 export type { MyPressableProps } from "./MyPressable";
 export { EnhancedButton } from "./EnhancedButton";
-export type {
-  EnhancedButtonProps,
-  ButtonType,
-  ButtonSize,
-  IconPosition,
-} from "./EnhancedButton";
+export type { EnhancedButtonProps, ButtonType, ButtonSize, IconPosition } from "./EnhancedButton";
 
 // Missing UI Components (Complete implementations found)
 export { AdminResponsiveGrid } from "./AdminResponsiveGrid";
@@ -126,11 +132,7 @@ export type { SeparatorProps, SeparatorOrientation } from "./Separator";
 export { AnimatedListItem, ListAnimationPresets } from "./AnimatedListItem";
 export type { AnimatedListItemProps } from "./AnimatedListItem";
 export { EnhancedInput } from "./EnhancedInput";
-export type {
-  EnhancedInputProps,
-  InputSize,
-  LabelPosition,
-} from "./EnhancedInput";
+export type { EnhancedInputProps, InputSize, LabelPosition } from "./EnhancedInput";
 
 // Unified Design System Components (v3.0 - Token-based)
 export { UnifiedText } from "./UnifiedText";
@@ -140,7 +142,4 @@ export type {
   TextColor as UnifiedTextColor,
 } from "./UnifiedText";
 export { UnifiedView } from "./UnifiedView";
-export type {
-  UnifiedViewProps,
-  BackgroundColor as UnifiedBackgroundColor,
-} from "./UnifiedView";
+export type { UnifiedViewProps, BackgroundColor as UnifiedBackgroundColor } from "./UnifiedView";

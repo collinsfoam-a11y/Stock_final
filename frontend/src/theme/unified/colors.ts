@@ -15,18 +15,18 @@ export const colors = {
   black: "#000000",
   transparent: "transparent",
 
-  // Primary Brand - Electric Blue (main actions, links, focus)
+  // Primary Brand - Lavanya Corporate Blue
   primary: {
-    50: "#EFF6FF",
-    100: "#DBEAFE",
-    200: "#BFDBFE",
-    300: "#93C5FD",
-    400: "#60A5FA", // Light accent
-    500: "#3B82F6", // Main brand color
-    600: "#2563EB", // Hover state
-    700: "#1D4ED8", // Active state
-    800: "#1E40AF",
-    900: "#1E3A8A",
+    50: "#EBF4FF",
+    100: "#D6E8FF",
+    200: "#AFD1FF",
+    300: "#82B5FF",
+    400: "#5C94FF", // Light accent
+    500: "#0655A5", // Main brand color (Lavanya eMart Blue)
+    600: "#054992", // Hover state
+    700: "#043C7A", // Active state
+    800: "#032B59",
+    900: "#011732",
   },
 
   // Secondary - Teal/Cyan (supporting actions)
@@ -235,11 +235,7 @@ export const gradients = {
   success: [colors.success[500], colors.success[600]],
   sunset: [colors.warning[500], colors.error[500]],
   aurora: ["#0F766E", "#0891B2", "#2563EB"] as const, // Darker teal-cyan-blue gradient
-  auroraLight: [
-    colors.primary[400],
-    colors.secondary[400],
-    colors.success[400],
-  ],
+  auroraLight: [colors.primary[400], colors.secondary[400], colors.success[400]],
   glass: ["rgba(255, 255, 255, 0.15)", "rgba(255, 255, 255, 0.08)"],
 } as const;
 

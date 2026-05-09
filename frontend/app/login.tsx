@@ -37,7 +37,7 @@ import {
   radius as unifiedRadius,
   textStyles,
   shadows,
-} from "../src/theme/unified";
+} from "@/theme/legacyCompat";
 
 // Safe Animated View for Web
 const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
@@ -65,7 +65,7 @@ type LoginResult = {
 
 const getLoginErrorAlert = (
   result: LoginResult,
-  mode: LoginMode,
+  mode: LoginMode
 ): { title: string; message: string } => {
   if (result.code === "AUTH_SESSION_CONFLICT") {
     return {
@@ -78,13 +78,13 @@ const getLoginErrorAlert = (
   if (result.code === "AUTH_INVALID_CREDENTIALS") {
     return mode === "credentials"
       ? {
-        title: "Invalid Credentials",
-        message: result.message || "Incorrect username or password.",
-      }
+          title: "Invalid Credentials",
+          message: result.message || "Incorrect username or password.",
+        }
       : {
-        title: "Invalid PIN",
-        message: result.message || "Incorrect PIN. Please try again.",
-      };
+          title: "Invalid PIN",
+          message: result.message || "Incorrect PIN. Please try again.",
+        };
   }
 
   if (
@@ -120,16 +120,9 @@ const getLoginErrorAlert = (
 export default function LoginScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const {
-    login,
-    loginWithPin,
-    authenticateWithBiometrics,
-    isLoading,
-    lastLoggedUser,
-  } = useAuthStore();
-  const biometricAuthEnabled = useSettingsStore(
-    (state) => state.settings.biometricAuth,
-  );
+  const { login, loginWithPin, authenticateWithBiometrics, isLoading, lastLoggedUser } =
+    useAuthStore();
+  const biometricAuthEnabled = useSettingsStore((state) => state.settings.biometricAuth);
   const [loginMode, setLoginMode] = useState<LoginMode>("credentials");
   const [pin, setPin] = useState("");
   const [username, setUsername] = useState("");
@@ -176,7 +169,7 @@ export default function LoginScreen() {
         if (!lastLoggedUser?.username) {
           Alert.alert(
             "First Login Required",
-            "Please sign in with username and password first, then set your PIN.",
+            "Please sign in with username and password first, then set your PIN."
           );
           setPin("");
           return;
@@ -189,22 +182,17 @@ export default function LoginScreen() {
             const result = await loginWithPin(newPin, lastLoggedUser.username);
             if (!result.success) {
               const alertConfig = getLoginErrorAlert(result, "pin");
-              Alert.alert(alertConfig.title, alertConfig.message, [
-                { text: "OK" },
-              ]);
+              Alert.alert(alertConfig.title, alertConfig.message, [{ text: "OK" }]);
               setPin("");
             }
           } catch (_error) {
-            Alert.alert(
-              "Connection Issue",
-              "Unable to connect to server. Please try again.",
-            );
+            Alert.alert("Connection Issue", "Unable to connect to server. Please try again.");
             setPin("");
           }
         }, 100);
       }
     },
-    [pin, loginWithPin, isLoading, lastLoggedUser],
+    [pin, loginWithPin, isLoading, lastLoggedUser]
   );
 
   const handleBiometricAuth = useCallback(async () => {
@@ -214,25 +202,19 @@ export default function LoginScreen() {
     if (!biometricAuthEnabled) {
       Alert.alert(
         "Biometric Unlock Unavailable",
-        "Biometric login is not enabled on this device yet.",
+        "Biometric login is not enabled on this device yet."
       );
       return;
     }
 
     const result = await authenticateWithBiometrics();
     if (!result.success) {
-      Alert.alert(
-        "Biometric Login Failed",
-        result.message || "Unable to sign in with biometrics.",
-      );
+      Alert.alert("Biometric Login Failed", result.message || "Unable to sign in with biometrics.");
     }
   }, [authenticateWithBiometrics, biometricAuthEnabled, isLoading]);
 
   const handleForgotPin = useCallback(() => {
-    Alert.alert(
-      "Forgot PIN",
-      "Please contact your administrator to reset your PIN.",
-    );
+    Alert.alert("Forgot PIN", "Please contact your administrator to reset your PIN.");
   }, []);
 
   const handleForgotPassword = useCallback(() => {
@@ -240,16 +222,12 @@ export default function LoginScreen() {
   }, [router]);
 
   const handleLogin = useCallback(async () => {
-    const newErrors: { pin?: string; username?: string; password?: string } =
-      {};
+    const newErrors: { pin?: string; username?: string; password?: string } = {};
     setErrors(newErrors);
     try {
       if (loginMode === "pin") {
         if (!lastLoggedUser?.username) {
-          Alert.alert(
-            "First Login Required",
-            "Please sign in with username and password first.",
-          );
+          Alert.alert("First Login Required", "Please sign in with username and password first.");
           return;
         }
         if (pin.length !== 4) {
@@ -279,10 +257,7 @@ export default function LoginScreen() {
         }
       }
     } catch (_error) {
-      Alert.alert(
-        "Connection Issue",
-        "Unable to connect to server. Please try again.",
-      );
+      Alert.alert("Connection Issue", "Unable to connect to server. Please try again.");
     }
   }, [loginMode, pin, username, password, login, loginWithPin, lastLoggedUser]);
 
@@ -290,7 +265,7 @@ export default function LoginScreen() {
     if (loginMode === "credentials" && (!lastLoggedUser || !lastLoggedUser.has_pin)) {
       Alert.alert(
         "First Login Required",
-        "Please login with username/password and set a PIN first.",
+        "Please login with username/password and set a PIN first."
       );
       return;
     }
@@ -299,8 +274,7 @@ export default function LoginScreen() {
     setPin("");
     setUsername("");
     setPassword("");
-    const newErrors: { pin?: string; username?: string; password?: string } =
-      {};
+    const newErrors: { pin?: string; username?: string; password?: string } = {};
     setErrors(newErrors);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [loginMode, lastLoggedUser]);
@@ -309,11 +283,7 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <StatusBar style="dark" backgroundColor={unifiedColors.white} />
 
-      <ModernHeader
-        showLogo
-        title="Lavanya Mart"
-        subtitle="Stock Verification System"
-      />
+      <ModernHeader showLogo title="Lavanya Mart" subtitle="Stock Verification System" />
 
       <KeyboardAvoidingView
         style={styles.keyboardView}
@@ -334,11 +304,7 @@ export default function LoginScreen() {
               {lastLoggedUser && loginMode === "pin" ? (
                 <View style={styles.userBadge}>
                   <View style={styles.userBadgeAvatar}>
-                    <Ionicons
-                      name="person"
-                      size={24}
-                      color={unifiedColors.primary[500]}
-                    />
+                    <Ionicons name="person" size={24} color={unifiedColors.primary[500]} />
                   </View>
                   <Text style={styles.userBadgeName}>
                     {lastLoggedUser.full_name || lastLoggedUser.username}
@@ -346,17 +312,11 @@ export default function LoginScreen() {
                 </View>
               ) : (
                 <View style={styles.logoContainer}>
-                  <BrandLogo
-                    variant="wordmark"
-                    maxWidth={logoMaxWidth}
-                    maxHeight={96}
-                  />
+                  <BrandLogo variant="wordmark" maxWidth={logoMaxWidth} maxHeight={96} />
                 </View>
               )}
               <Text style={styles.welcomeTitle}>
-                {lastLoggedUser && loginMode === "pin"
-                  ? "Welcome Back"
-                  : "Lavanya Mart"}
+                {lastLoggedUser && loginMode === "pin" ? "Welcome Back" : "Lavanya Mart"}
               </Text>
               <Text style={styles.welcomeSubtitle}>
                 {lastLoggedUser && loginMode === "pin"
@@ -377,19 +337,13 @@ export default function LoginScreen() {
                     onPress={toggleLoginMode}
                     style={[
                       styles.modeButton,
-                      loginMode === "pin"
-                        ? styles.modeButtonActive
-                        : styles.modeButtonInactive,
+                      loginMode === "pin" ? styles.modeButtonActive : styles.modeButtonInactive,
                     ]}
                   >
                     <Ionicons
                       name="keypad"
                       size={20}
-                      color={
-                        loginMode === "pin"
-                          ? unifiedColors.white
-                          : unifiedColors.neutral[600]
-                      }
+                      color={loginMode === "pin" ? unifiedColors.white : unifiedColors.neutral[600]}
                     />
                     <Text
                       style={[
@@ -438,9 +392,7 @@ export default function LoginScreen() {
                 {loginMode === "pin" && (
                   <>
                     <Text style={styles.formTitle}>Enter Your PIN</Text>
-                    <Text style={styles.formSubtitle}>
-                      4-digit security code
-                    </Text>
+                    <Text style={styles.formSubtitle}>4-digit security code</Text>
 
                     {/* Hidden Input for Keyboard */}
                     <TextInput
@@ -466,22 +418,16 @@ export default function LoginScreen() {
                           entering={FadeInDown.delay(index * 50).duration(300)}
                           style={[
                             styles.pinDot,
-                            pin.length > index
-                              ? styles.pinDotFilled
-                              : styles.pinDotEmpty,
+                            pin.length > index ? styles.pinDotFilled : styles.pinDotEmpty,
                             pin.length === index && styles.pinDotActive,
                           ]}
                         >
-                          {pin.length > index && (
-                            <View style={styles.pinDotInner} />
-                          )}
+                          {pin.length > index && <View style={styles.pinDotInner} />}
                         </SafeAnimatedView>
                       ))}
                     </TouchableOpacity>
 
-                    {errors.pin && (
-                      <Text style={styles.errorText}>{errors.pin}</Text>
-                    )}
+                    {errors.pin && <Text style={styles.errorText}>{errors.pin}</Text>}
 
                     {/* Biometric & Switch Options */}
                     <View style={styles.pinActions}>
@@ -495,9 +441,7 @@ export default function LoginScreen() {
                             size={44}
                             color={unifiedColors.primary[500]}
                           />
-                          <Text style={styles.biometricText}>
-                            Unlock with Biometrics
-                          </Text>
+                          <Text style={styles.biometricText}>Unlock with Biometrics</Text>
                         </TouchableOpacity>
                       ) : null}
 
@@ -508,12 +452,8 @@ export default function LoginScreen() {
 
                         <View style={styles.actionDivider} />
 
-                        <TouchableOpacity
-                          onPress={() => setLoginMode("credentials")}
-                        >
-                          <Text style={styles.switchAccountLink}>
-                            Switch Account
-                          </Text>
+                        <TouchableOpacity onPress={() => setLoginMode("credentials")}>
+                          <Text style={styles.switchAccountLink}>Switch Account</Text>
                         </TouchableOpacity>
                       </View>
                     </View>

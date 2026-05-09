@@ -9,13 +9,7 @@
  */
 
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ViewStyle,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
@@ -33,8 +27,8 @@ import {
 } from "../../styles/modernDesignSystem";
 import { StatusBadge } from "./StatusBadge";
 
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 type SessionStatus = "active" | "completed" | "paused" | "pending";
 
@@ -111,10 +105,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
             colors={[modernColors.primary[500], modernColors.secondary[500]]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={[
-              styles.progressFill,
-              { width: `${Math.min(progress, 100)}%` },
-            ]}
+            style={[styles.progressFill, { width: `${Math.min(progress, 100)}%` }]}
           />
         </View>
         <Text style={styles.progressText}>
@@ -125,10 +116,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
   };
 
   return (
-    <Animated.View
-      entering={FadeInDown.delay(index * 50).springify()}
-      style={[animatedStyle]}
-    >
+    <Animated.View entering={FadeInDown.delay(index * 50).springify()} style={[animatedStyle]}>
       <AnimatedTouchableOpacity
         style={[styles.container, style]}
         onPress={onPress}
@@ -140,11 +128,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.iconContainer}>
-              <Ionicons
-                name="folder-open"
-                size={20}
-                color={modernColors.primary[400]}
-              />
+              <Ionicons name="folder-open" size={20} color={modernColors.primary[400]} />
             </View>
             <View style={styles.headerInfo}>
               <Text style={styles.name} numberOfLines={1}>
@@ -152,21 +136,13 @@ export const SessionCard: React.FC<SessionCardProps> = ({
               </Text>
               {location && (
                 <View style={styles.locationRow}>
-                  <Ionicons
-                    name="location-outline"
-                    size={12}
-                    color={modernColors.text.tertiary}
-                  />
+                  <Ionicons name="location-outline" size={12} color={modernColors.text.tertiary} />
                   <Text style={styles.location}>{location}</Text>
                 </View>
               )}
               {barcode && (
                 <View style={styles.locationRow}>
-                  <Ionicons
-                    name="barcode-outline"
-                    size={12}
-                    color={modernColors.text.tertiary}
-                  />
+                  <Ionicons name="barcode-outline" size={12} color={modernColors.text.tertiary} />
                   <Text style={styles.location}>{barcode}</Text>
                 </View>
               )}
@@ -189,21 +165,13 @@ export const SessionCard: React.FC<SessionCardProps> = ({
           <View style={styles.footerInfo}>
             {createdBy && (
               <View style={styles.infoItem}>
-                <Ionicons
-                  name="person-outline"
-                  size={12}
-                  color={modernColors.text.tertiary}
-                />
+                <Ionicons name="person-outline" size={12} color={modernColors.text.tertiary} />
                 <Text style={styles.infoText}>{createdBy}</Text>
               </View>
             )}
             {lastUpdated && (
               <View style={styles.infoItem}>
-                <Ionicons
-                  name="time-outline"
-                  size={12}
-                  color={modernColors.text.tertiary}
-                />
+                <Ionicons name="time-outline" size={12} color={modernColors.text.tertiary} />
                 <Text style={styles.infoText}>{lastUpdated}</Text>
               </View>
             )}
@@ -211,7 +179,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
 
           {onResume && status !== "completed" && (
             <TouchableOpacity style={styles.resumeButton} onPress={onResume}>
-              <Ionicons name="play" size={14} color="#FFFFFF" />
+              <Ionicons name="play" size={14} color={uiSemanticColors.text.inverse} />
               <Text style={styles.resumeText}>Resume</Text>
             </TouchableOpacity>
           )}
@@ -331,7 +299,7 @@ const styles = StyleSheet.create({
   },
   resumeText: {
     ...modernTypography.label.small,
-    color: "#FFFFFF",
+    color: uiSemanticColors.text.inverse,
     fontWeight: "600",
   },
   countBadge: {
@@ -351,7 +319,7 @@ const styles = StyleSheet.create({
   countText: {
     ...modernTypography.label.medium,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: uiSemanticColors.text.inverse,
   },
   countLabel: {
     ...modernTypography.label.small,

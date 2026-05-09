@@ -6,6 +6,7 @@ import { StatusBar } from "expo-status-bar";
 import { useAuthStore } from "@/store/authStore";
 import { getRouteForRole, UserRole } from "@/utils/roleNavigation";
 
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 function IndexScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
@@ -36,7 +37,7 @@ function IndexScreen() {
           Preparing the operational workspace and restoring your session.
         </Text>
         <View style={styles.loadingRow}>
-          <ActivityIndicator size="small" color="#0f766e" />
+          <ActivityIndicator size="small" color={uiColors.secondary[700]} />
           <Text style={styles.loadingText}>Initializing secure environment</Text>
         </View>
       </View>
@@ -53,7 +54,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
-    backgroundColor: "#f4f7f6",
+    backgroundColor: uiColors.neutral[50],
   },
   card: {
     width: "100%",
@@ -61,8 +62,8 @@ const styles = StyleSheet.create({
     padding: 28,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#d9e5e2",
-    backgroundColor: "#ffffff",
+    borderColor: uiColors.neutral[200],
+    backgroundColor: uiSemanticColors.text.inverse,
     boxShadow: "0px 16px 40px rgba(15, 23, 42, 0.08)",
   },
   eyebrow: {
@@ -70,19 +71,19 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 1.2,
     textTransform: "uppercase",
-    color: "#0f766e",
+    color: uiColors.secondary[700],
     marginBottom: 12,
   },
   title: {
     fontSize: 30,
     fontWeight: "700",
-    color: "#0f172a",
+    color: uiColors.neutral[900],
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 15,
     lineHeight: 22,
-    color: "#475569",
+    color: uiColors.neutral[600],
     marginBottom: 24,
   },
   loadingRow: {
@@ -92,6 +93,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: "#334155",
+    color: uiColors.neutral[700],
   },
 });

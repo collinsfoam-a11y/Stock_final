@@ -60,6 +60,13 @@ Default pattern:
 - Surface risk clearly when a command can mutate data or operational state.
 - For risky actions, cite exact files/commands you inspected before recommending execution.
 
+## Completion Discipline
+
+- Once an agent starts an approved local work item, continue through the directly related implementation, cleanup, and verification until there is no known remaining work in that scope.
+- Do not stop with known follow-ups, partial fixes, or "remaining work" when the remaining items are local, reversible, and part of the same requested outcome.
+- Before final response, resolve or explicitly gate every related issue discovered during the work. Only defer work when it requires human approval, touches persistent data or external systems, is outside the user-approved scope, or is blocked by unavailable dependencies.
+- Final responses must distinguish completed work from any blocked or approval-gated work; do not present a task as complete while known in-scope related work remains unfinished.
+
 ## Evidence and Data Hygiene
 
 - For approval-gated operations, include source-backed evidence (script paths, flags, and expected counters), not assumptions.

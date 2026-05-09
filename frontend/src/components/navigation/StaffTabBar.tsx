@@ -4,19 +4,13 @@
  */
 
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-  ViewStyle,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ViewStyle } from "react-native";
 import { useRouter, useSegments } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@/hooks/useTheme";
 import { layout, spacing, typography } from "../../styles/globalStyles";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface TabItem {
   key: string;
   label: string;
@@ -66,9 +60,7 @@ export const StaffTabBar: React.FC<StaffTabBarProps> = ({ style, testID }) => {
   const activeTab =
     STAFF_TABS.find((tab) => {
       const tabRoute = tab.route.replace(/^\//, ""); // Remove leading slash
-      return (
-        currentRoute === tabRoute || currentRoute.startsWith(tabRoute + "/")
-      );
+      return currentRoute === tabRoute || currentRoute.startsWith(tabRoute + "/");
     })?.key || "sessions";
 
   const handleTabPress = (tab: TabItem) => {
@@ -91,12 +83,8 @@ export const StaffTabBar: React.FC<StaffTabBarProps> = ({ style, testID }) => {
     >
       {STAFF_TABS.map((tab) => {
         const isActive = activeTab === tab.key;
-        const iconColor = isActive
-          ? theme.colors.primary
-          : theme.colors.textSecondary;
-        const labelColor = isActive
-          ? theme.colors.primary
-          : theme.colors.textSecondary;
+        const iconColor = isActive ? theme.colors.primary : theme.colors.textSecondary;
+        const labelColor = isActive ? theme.colors.primary : theme.colors.textSecondary;
 
         return (
           <TouchableOpacity
@@ -112,28 +100,14 @@ export const StaffTabBar: React.FC<StaffTabBarProps> = ({ style, testID }) => {
               <View style={styles.iconContainer}>
                 <Ionicons name={tab.icon} size={24} color={iconColor} />
                 {tab.badge !== undefined && tab.badge > 0 && (
-                  <View
-                    style={[
-                      styles.badge,
-                      { backgroundColor: theme.colors.error },
-                    ]}
-                  >
-                    <Text style={styles.badgeText}>
-                      {tab.badge > 99 ? "99+" : tab.badge}
-                    </Text>
+                  <View style={[styles.badge, { backgroundColor: theme.colors.error }]}>
+                    <Text style={styles.badgeText}>{tab.badge > 99 ? "99+" : tab.badge}</Text>
                   </View>
                 )}
               </View>
-              <Text style={[styles.label, { color: labelColor }]}>
-                {tab.label}
-              </Text>
+              <Text style={[styles.label, { color: labelColor }]}>{tab.label}</Text>
               {isActive && (
-                <View
-                  style={[
-                    styles.indicator,
-                    { backgroundColor: theme.colors.primary },
-                  ]}
-                />
+                <View style={[styles.indicator, { backgroundColor: theme.colors.primary }]} />
               )}
             </View>
           </TouchableOpacity>
@@ -180,10 +154,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 4,
     borderWidth: 2,
-    borderColor: "#FFFFFF", // Ensure badge is visible
+    borderColor: uiSemanticColors.text.inverse, // Ensure badge is visible
   },
   badgeText: {
-    color: "#FFFFFF",
+    color: uiSemanticColors.text.inverse,
     fontSize: 9,
     fontWeight: "bold",
   },

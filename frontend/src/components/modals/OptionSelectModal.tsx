@@ -1,13 +1,5 @@
 import React from "react";
-import {
-  FlatList,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
   colors,
   fontSize,
@@ -15,7 +7,7 @@ import {
   radius as borderRadius,
   semanticColors,
   spacing,
-} from "@/theme/unified";
+} from "@/theme/legacyCompat";
 
 interface OptionSelectModalProps {
   visible: boolean;

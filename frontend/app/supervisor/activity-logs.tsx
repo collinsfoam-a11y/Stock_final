@@ -4,14 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  RefreshControl,
-  Platform,
-} from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -21,13 +14,9 @@ import { FlashList } from "@shopify/flash-list";
 
 import { getActivityLogs, getActivityStats } from "../../src/services/api/api";
 import { useToast } from "../../src/components/feedback/ToastProvider";
-import {
-  AuroraBackground,
-  GlassCard,
-  StatsCard,
-  AnimatedPressable,
-} from "../../src/components/ui";
+import { ModernCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
 import { auroraTheme } from "../../src/theme/auroraTheme";
+import { safeBackNavigation } from "@/utils/navigation";
 
 interface ActivityLog {
   id: string;
@@ -73,7 +62,7 @@ export default function ActivityLogsScreen() {
         setRefreshing(false);
       }
     },
-    [show],
+    [show]
   );
 
   const loadStats = React.useCallback(async () => {
@@ -91,8 +80,7 @@ export default function ActivityLogsScreen() {
   }, [loadLogs, loadStats]);
 
   const handleRefresh = () => {
-    if (Platform.OS !== "web")
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     setPage(1);
     loadLogs(1);
@@ -129,11 +117,7 @@ export default function ActivityLogsScreen() {
 
   const renderLogItem = ({ item: log }: { item: ActivityLog }) => (
     <AnimatedPressable style={{ marginBottom: auroraTheme.spacing.md }}>
-      <GlassCard
-        variant="light"
-        padding={auroraTheme.spacing.md}
-        borderRadius={auroraTheme.borderRadius.lg}
-      >
+      <ModernCard variant="outlined" elevation="none" padding={auroraTheme.spacing.md}>
         <View style={styles.logHeader}>
           <View style={styles.logHeaderLeft}>
             <View
@@ -141,9 +125,7 @@ export default function ActivityLogsScreen() {
                 styles.iconContainer,
                 {
                   backgroundColor:
-                    log.status === "error"
-                      ? "rgba(239, 68, 68, 0.1)"
-                      : "rgba(59, 130, 246, 0.1)",
+                    log.status === "error" ? "rgba(239, 68, 68, 0.1)" : "rgba(59, 130, 246, 0.1)",
                 },
               ]}
             >
@@ -158,9 +140,7 @@ export default function ActivityLogsScreen() {
               />
             </View>
             <View style={styles.logInfo}>
-              <Text style={styles.logAction}>
-                {log.action.replace(/_/g, " ").toUpperCase()}
-              </Text>
+              <Text style={styles.logAction}>{log.action.replace(/_/g, " ").toUpperCase()}</Text>
               <Text style={styles.logUser}>
                 {log.user} • {log.role}
               </Text>
@@ -186,10 +166,10 @@ export default function ActivityLogsScreen() {
         <Text style={styles.timestamp}>{formatTimestamp(log.timestamp)}</Text>
 
         {log.entity_type && (
-          <GlassCard
-            variant="dark"
+          <ModernCard
+            variant="outlined"
+            elevation="none"
             padding={auroraTheme.spacing.xs}
-            borderRadius={auroraTheme.borderRadius.sm}
             style={{
               alignSelf: "flex-start",
               marginVertical: auroraTheme.spacing.xs,
@@ -198,14 +178,14 @@ export default function ActivityLogsScreen() {
             <Text style={styles.entityText}>
               {log.entity_type}: {log.entity_id || "N/A"}
             </Text>
-          </GlassCard>
+          </ModernCard>
         )}
 
         {log.error_message && (
-          <GlassCard
-            variant="medium"
+          <ModernCard
+            variant="outlined"
+            elevation="none"
             padding={auroraTheme.spacing.sm}
-            borderRadius={auroraTheme.borderRadius.md}
             style={{
               marginTop: auroraTheme.spacing.sm,
               flexDirection: "row",
@@ -215,72 +195,51 @@ export default function ActivityLogsScreen() {
               backgroundColor: "rgba(239, 68, 68, 0.1)",
             }}
           >
-            <Ionicons
-              name="alert-circle"
-              size={16}
-              color={auroraTheme.colors.error[500]}
-            />
-            <Text
-              style={[
-                styles.errorText,
-                { color: auroraTheme.colors.error[500] },
-              ]}
-            >
+            <Ionicons name="alert-circle" size={16} color={auroraTheme.colors.error[500]} />
+            <Text style={[styles.errorText, { color: auroraTheme.colors.error[500] }]}>
               {log.error_message}
             </Text>
-          </GlassCard>
+          </ModernCard>
         )}
 
         {Object.keys(log.details || {}).length > 0 && !log.error_message && (
-          <GlassCard
-            variant="dark"
+          <ModernCard
+            variant="outlined"
+            elevation="none"
             padding={auroraTheme.spacing.sm}
-            borderRadius={auroraTheme.borderRadius.md}
             style={{ marginTop: auroraTheme.spacing.sm }}
           >
             <Text style={styles.detailsText} numberOfLines={3}>
               {JSON.stringify(log.details, null, 2)}
             </Text>
-          </GlassCard>
+          </ModernCard>
         )}
-      </GlassCard>
+      </ModernCard>
     </AnimatedPressable>
   );
 
   return (
-    <AuroraBackground>
+    <View style={styles.screen}>
       <StatusBar style="light" />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View
-          entering={FadeInDown.delay(100).springify()}
-          style={styles.header}
-        >
+        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
           <View style={styles.headerLeft}>
             <AnimatedPressable
-              onPress={() => router.back()}
+              onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
             >
-              <Ionicons
-                name="arrow-back"
-                size={24}
-                color={auroraTheme.colors.text.primary}
-              />
+              <Ionicons name="arrow-back" size={24} color={auroraTheme.colors.text.primary} />
             </AnimatedPressable>
             <View>
               <Text style={styles.pageTitle}>Activity Logs</Text>
-              <Text style={styles.pageSubtitle}>
-                System audit & user actions
-              </Text>
+              <Text style={styles.pageSubtitle}>System audit & user actions</Text>
             </View>
           </View>
         </Animated.View>
 
         {stats && (
-          <Animated.View
-            entering={FadeInDown.delay(200).springify()}
-            style={styles.statsContainer}
-          >
+          <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.statsContainer}>
             <StatsCard
               title="Total Activities"
               value={stats.total?.toString() || "0"}
@@ -308,10 +267,7 @@ export default function ActivityLogsScreen() {
         <View style={styles.listContainer}>
           {loading && logs.length === 0 ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator
-                size="large"
-                color={auroraTheme.colors.primary[500]}
-              />
+              <ActivityIndicator size="large" color={auroraTheme.colors.primary[500]} />
               <Text style={styles.loadingText}>Loading activity logs...</Text>
             </View>
           ) : (
@@ -343,9 +299,7 @@ export default function ActivityLogsScreen() {
               ListFooterComponent={
                 loading && logs.length > 0 ? (
                   <View style={{ padding: 20 }}>
-                    <ActivityIndicator
-                      color={auroraTheme.colors.primary[500]}
-                    />
+                    <ActivityIndicator color={auroraTheme.colors.primary[500]} />
                   </View>
                 ) : null
               }
@@ -354,11 +308,15 @@ export default function ActivityLogsScreen() {
           )}
         </View>
       </View>
-    </AuroraBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: auroraTheme.colors.background.primary,
+  },
   container: {
     flex: 1,
     paddingTop: 60,

@@ -8,18 +8,20 @@ jest.mock("expo-haptics", () => ({
   impactAsync: jest.fn(),
 }));
 
-jest.mock("react-native-modal", () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const React = require("react");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { View } = require("react-native");
-  const MockModal = (props: any) =>
-    props.isVisible
-      ? React.createElement(View, { testID: "modal-view" }, props.children)
-      : null;
-  MockModal.displayName = "MockModal";
-  return MockModal;
-}, { virtual: true });
+jest.mock(
+  "react-native-modal",
+  () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const React = require("react");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { View } = require("react-native");
+    const MockModal = (props: any) =>
+      props.isVisible ? React.createElement(View, { testID: "modal-view" }, props.children) : null;
+    MockModal.displayName = "MockModal";
+    return MockModal;
+  },
+  { virtual: true }
+);
 
 jest.mock("@tanstack/react-query", () => ({
   useQueryClient: jest.fn(() => ({
@@ -64,6 +66,10 @@ jest.mock("../../src/services/toastService", () => ({
   toastService: {
     show: jest.fn(),
   },
+}));
+
+jest.mock("../../src/hooks/useReducedMotion", () => ({
+  useReducedMotion: jest.fn(() => false),
 }));
 
 jest.mock("expo-router", () => ({
@@ -152,7 +158,8 @@ jest.mock("../../src/services/api/api", () => ({
 describe("HomeScreen", () => {
   it("renders correctly", () => {
     const { getByText } = render(<HomeScreen />);
-    expect(getByText("Welcome, staff1")).toBeTruthy();
+    expect(getByText("Stock Verify")).toBeTruthy();
+    expect(getByText("staff1")).toBeTruthy();
   });
 
   // Note: Testing actual floor picker interactions requires deeper mocking of the complex home component state

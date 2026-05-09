@@ -12,6 +12,10 @@ const baseSettings = {
   notificationsEnabled: true,
   notificationSound: true,
   notificationBadge: true,
+  notificationRecountAlerts: true,
+  notificationApprovalAlerts: true,
+  notificationSyncFailureAlerts: true,
+  notificationSessionReminderAlerts: true,
   autoSyncEnabled: true,
   autoSyncInterval: 15,
   syncOnReconnect: true,
@@ -181,7 +185,7 @@ describe("UserSettingsSections", () => {
     await waitFor(() => {
       expect(alertSpy).toHaveBeenCalledWith(
         "Update Check Failed",
-        "Unable to check for updates right now. Please try again shortly.",
+        "Unable to check for updates right now. Please try again shortly."
       );
     });
   });
@@ -209,5 +213,18 @@ describe("UserSettingsSections", () => {
 
     expect(mockSetSetting).not.toHaveBeenCalledWith("operationalMode", "live_audit");
     expect(mockSetSetting).not.toHaveBeenCalledWith("operationalMode", "training");
+  });
+
+  it("exposes granular notification preference toggles", () => {
+    const { getByLabelText, getByText } = render(<UserSettingsSections />);
+
+    expect(getByText("Recount Alerts")).toBeTruthy();
+    expect(getByText("Approval Alerts")).toBeTruthy();
+    expect(getByText("Sync Failure Alerts")).toBeTruthy();
+    expect(getByText("Session Reminders")).toBeTruthy();
+
+    fireEvent(getByLabelText("Sync Failure Alerts"), "valueChange", false);
+
+    expect(mockSetSetting).toHaveBeenCalledWith("notificationSyncFailureAlerts", false);
   });
 });

@@ -3,12 +3,10 @@ import { StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import {
-  AnimatedPressable,
-  GlassCard,
-} from "@/components/ui";
+import { AnimatedPressable, ModernCard } from "@/components/ui";
+import { useUiTokens } from "@/hooks/useUiTokens";
 import { theme } from "@/styles/modernDesignSystem";
-import { colors as unifiedColors } from "@/theme/unified";
+import { semanticColors } from "@/theme/legacyCompat";
 import { Session } from "@/types";
 
 interface SupervisorRecentSessionsSectionProps {
@@ -22,43 +20,42 @@ export function SupervisorRecentSessionsSection({
   onViewAll,
   sessions,
 }: SupervisorRecentSessionsSectionProps) {
+  const uiTokens = useUiTokens();
+
   return (
-    <Animated.View
-      entering={FadeInDown.delay(400).springify()}
-      style={styles.section}
-    >
+    <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Recent Sessions</Text>
+        <Text style={[styles.sectionTitle, { color: uiTokens.colors.textPrimary }]}>
+          Recent Sessions
+        </Text>
         <AnimatedPressable onPress={onViewAll} hapticFeedback="light">
-          <Text style={styles.sectionLink}>View All</Text>
+          <Text style={[styles.sectionLink, { color: uiTokens.colors.accentStrong }]}>
+            View All
+          </Text>
         </AnimatedPressable>
       </View>
 
       {sessions.slice(0, 3).map((session, index) => (
-        <Animated.View
-          key={session.id}
-          entering={FadeInDown.delay(450 + index * 50).springify()}
-        >
-          <AnimatedPressable
-            onPress={() => onOpenSession(session.id)}
-            hapticFeedback="light"
-          >
-            <GlassCard
-              variant="medium"
-              intensity={25}
-              borderRadius={theme.borderRadius.lg}
+        <Animated.View key={session.id} entering={FadeInDown.delay(450 + index * 50).springify()}>
+          <AnimatedPressable onPress={() => onOpenSession(session.id)} hapticFeedback="light">
+            <ModernCard
+              variant="outlined"
+              elevation="sm"
               padding={theme.spacing.md}
-              elevation="md"
               style={styles.sessionCard}
             >
               <View style={styles.sessionHeader}>
                 <View style={styles.sessionInfo}>
-                  <Text style={styles.sessionWarehouse}>{session.warehouse}</Text>
-                  <Text style={styles.sessionStaff}>
+                  <Text style={[styles.sessionWarehouse, { color: uiTokens.colors.textPrimary }]}>
+                    {session.warehouse}
+                  </Text>
+                  <Text style={[styles.sessionStaff, { color: uiTokens.colors.textSecondary }]}>
                     {session.staff_name || "Unknown"}
                   </Text>
                   {session.barcode && (
-                    <Text style={styles.sessionBarcode}>{session.barcode}</Text>
+                    <Text style={[styles.sessionBarcode, { color: uiTokens.colors.textMuted }]}>
+                      {session.barcode}
+                    </Text>
                   )}
                 </View>
                 <View
@@ -67,25 +64,33 @@ export function SupervisorRecentSessionsSection({
                     {
                       backgroundColor:
                         session.status === "OPEN"
-                          ? theme.colors.warning.main
+                          ? uiTokens.colors.warning
                           : session.status === "CLOSED"
-                            ? theme.colors.success.main
-                            : theme.colors.secondary[500],
+                            ? uiTokens.colors.success
+                            : uiTokens.colors.info,
                     },
                   ]}
                 >
-                  <Text style={styles.statusText}>{session.status}</Text>
+                  <Text
+                    style={[
+                      styles.statusText,
+                      {
+                        color:
+                          session.status === "OPEN"
+                            ? semanticColors.text.primary
+                            : semanticColors.text.inverse,
+                      },
+                    ]}
+                  >
+                    {session.status}
+                  </Text>
                 </View>
               </View>
 
               <View style={styles.sessionStats}>
                 <View style={styles.sessionStat}>
-                  <Ionicons
-                    name="cube-outline"
-                    size={16}
-                    color={theme.colors.text.secondary}
-                  />
-                  <Text style={styles.sessionStatText}>
+                  <Ionicons name="cube-outline" size={16} color={uiTokens.colors.textSecondary} />
+                  <Text style={[styles.sessionStatText, { color: uiTokens.colors.textSecondary }]}>
                     {session.total_items} items
                   </Text>
                 </View>
@@ -95,42 +100,44 @@ export function SupervisorRecentSessionsSection({
                     size={16}
                     color={
                       Math.abs(session.total_variance) > 0
-                        ? theme.colors.error.main
-                        : theme.colors.text.secondary
+                        ? uiTokens.colors.error
+                        : uiTokens.colors.textSecondary
                     }
                   />
                   <Text
                     style={[
                       styles.sessionStatText,
-                      Math.abs(session.total_variance) > 0 && styles.varianceText,
+                      {
+                        color:
+                          Math.abs(session.total_variance) > 0
+                            ? uiTokens.colors.error
+                            : uiTokens.colors.textSecondary,
+                      },
                     ]}
                   >
                     Var: {session.total_variance}
                   </Text>
                 </View>
               </View>
-            </GlassCard>
+            </ModernCard>
           </AnimatedPressable>
         </Animated.View>
       ))}
 
       {sessions.length === 0 && (
-        <GlassCard
-          variant="medium"
-          intensity={25}
-          borderRadius={theme.borderRadius.lg}
+        <ModernCard
+          variant="outlined"
+          elevation="sm"
           padding={theme.spacing.lg}
-          elevation="md"
+          style={styles.emptyCard}
         >
           <View style={styles.emptyState}>
-            <Ionicons
-              name="file-tray-outline"
-              size={48}
-              color={theme.colors.text.secondary}
-            />
-            <Text style={styles.emptyText}>No sessions available yet</Text>
+            <Ionicons name="file-tray-outline" size={48} color={uiTokens.colors.textSecondary} />
+            <Text style={[styles.emptyText, { color: uiTokens.colors.textSecondary }]}>
+              No sessions available yet
+            </Text>
           </View>
-        </GlassCard>
+        </ModernCard>
       )}
     </Animated.View>
   );
@@ -149,15 +156,17 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 24,
     fontWeight: "600",
-    color: theme.colors.text.primary,
   },
   sectionLink: {
     fontSize: 14,
     fontWeight: "600",
-    color: theme.colors.primary[500],
   },
   sessionCard: {
     marginBottom: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+  },
+  emptyCard: {
+    borderRadius: theme.borderRadius.lg,
   },
   sessionHeader: {
     flexDirection: "row",
@@ -172,17 +181,14 @@ const styles = StyleSheet.create({
   sessionWarehouse: {
     fontSize: 16,
     fontWeight: "600",
-    color: theme.colors.text.primary,
   },
   sessionStaff: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
   },
   sessionBarcode: {
     marginTop: 2,
     fontSize: 12,
     fontWeight: "500",
-    color: theme.colors.text.tertiary,
   },
   statusBadge: {
     paddingHorizontal: theme.spacing.sm,
@@ -192,7 +198,6 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: "700",
-    color: unifiedColors.white,
   },
   sessionStats: {
     flexDirection: "row",
@@ -205,10 +210,6 @@ const styles = StyleSheet.create({
   },
   sessionStatText: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
-  },
-  varianceText: {
-    color: theme.colors.error.main,
   },
   emptyState: {
     alignItems: "center",
@@ -219,6 +220,5 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: "center",
     fontSize: 16,
-    color: theme.colors.text.secondary,
   },
 });

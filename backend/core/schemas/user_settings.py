@@ -47,6 +47,22 @@ class UserSettings(BaseModel):
         default=True,
         description="Show notification badges",
     )
+    notification_recount_alerts: bool = Field(
+        default=True,
+        description="Show recount assignment and recount result alerts",
+    )
+    notification_approval_alerts: bool = Field(
+        default=True,
+        description="Show supervisor approval and rejection alerts",
+    )
+    notification_sync_failure_alerts: bool = Field(
+        default=True,
+        description="Show offline sync failure alerts",
+    )
+    notification_session_reminder_alerts: bool = Field(
+        default=True,
+        description="Show long-running session reminder alerts",
+    )
     auto_sync_enabled: bool = Field(
         default=True,
         description="Automatically sync data in the background",
@@ -172,6 +188,10 @@ class UserSettings(BaseModel):
                 "notifications_enabled": True,
                 "notification_sound": True,
                 "notification_badge": True,
+                "notification_recount_alerts": True,
+                "notification_approval_alerts": True,
+                "notification_sync_failure_alerts": True,
+                "notification_session_reminder_alerts": True,
                 "auto_sync_enabled": True,
                 "auto_sync_interval": 15,
                 "sync_on_reconnect": True,
@@ -225,6 +245,22 @@ class UserSettingsUpdate(BaseModel):
     notification_badge: Optional[bool] = Field(
         default=None,
         description="Show notification badges",
+    )
+    notification_recount_alerts: Optional[bool] = Field(
+        default=None,
+        description="Show recount assignment and recount result alerts",
+    )
+    notification_approval_alerts: Optional[bool] = Field(
+        default=None,
+        description="Show supervisor approval and rejection alerts",
+    )
+    notification_sync_failure_alerts: Optional[bool] = Field(
+        default=None,
+        description="Show offline sync failure alerts",
+    )
+    notification_session_reminder_alerts: Optional[bool] = Field(
+        default=None,
+        description="Show long-running session reminder alerts",
     )
     auto_sync_enabled: Optional[bool] = Field(
         default=None,
@@ -345,6 +381,9 @@ class UserSettingsUpdate(BaseModel):
         json_schema_extra={
             "example": {
                 "theme": "dark",
+                "notifications_enabled": True,
+                "notification_recount_alerts": True,
+                "notification_sync_failure_alerts": True,
                 "font_size": 18,
                 "font_style": "mono",
                 "auto_sync_enabled": True,

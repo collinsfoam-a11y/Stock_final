@@ -4,21 +4,17 @@
  */
 
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ViewStyle,
-  Platform,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ViewStyle, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/useTheme";
 import { layout, spacing, typography } from "../../styles/globalStyles";
 import { useAuthStore } from "../../store/authStore";
+import { safeBackNavigation } from "../../utils/navigation";
+import type { UserRole } from "../../utils/roleNavigation";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface HeaderAction {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
@@ -52,14 +48,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const { user } = useAuthStore();
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    }
+    safeBackNavigation(router, { userRole: user?.role as UserRole | null });
   };
 
   // Calculate header height including safe area
-  const headerHeight =
-    layout.headerHeight + (Platform.OS === "ios" ? insets.top : 0);
+  const headerHeight = layout.headerHeight + (Platform.OS === "ios" ? insets.top : 0);
   const paddingTop = Platform.OS === "ios" ? insets.top : 0;
 
   return (
@@ -99,9 +92,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               {title}
             </Text>
             {showUser && user && (
-              <Text
-                style={[styles.subtitle, { color: theme.colors.textSecondary }]}
-              >
+              <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
                 Hello, {user.full_name || user.username}
               </Text>
             )}
@@ -130,21 +121,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               accessibilityRole="button"
               accessibilityLabel={action.label}
             >
-              <Ionicons
-                name={action.icon}
-                size={22}
-                color={action.color || theme.colors.text}
-              />
+              <Ionicons name={action.icon} size={22} color={action.color || theme.colors.text} />
               {action.badge !== undefined && action.badge > 0 && (
-                <View
-                  style={[
-                    styles.badge,
-                    { backgroundColor: theme.colors.error },
-                  ]}
-                >
-                  <Text style={styles.badgeText}>
-                    {action.badge > 99 ? "99+" : action.badge}
-                  </Text>
+                <View style={[styles.badge, { backgroundColor: theme.colors.error }]}>
+                  <Text style={styles.badgeText}>{action.badge > 99 ? "99+" : action.badge}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -214,7 +194,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   badgeText: {
-    color: "#FFFFFF",
+    color: uiSemanticColors.text.inverse,
     fontSize: 10,
     fontWeight: "bold",
   },
