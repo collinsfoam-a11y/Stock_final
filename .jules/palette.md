@@ -13,3 +13,7 @@
 ## 2025-05-18 - Standardizing Tactile Feedback across Design System Components
 **Learning:** For a consistent mobile "feel," all interactive primitive components (Switch, Checkbox, Radio, etc.) should provide subtle haptic feedback on state change. Centralizing this logic in a `haptics` service that respects feature flags and platform constraints (e.g., disabling on web) ensures a robust and unified user experience.
 **Action:** Use `haptics.light()` from the centralized haptics service for all primary toggle/selection interactions in new UI components.
+
+## 2025-05-20 - Enhancing Chip Component Accessibility and Tactile Feedback
+**Learning:** Decorative or status-only components often become interactive (e.g., filters, removable tags) without updating their accessibility metadata. Adding `accessibilityRole="button"` and meaningful `accessibilityLabel` to these interactive elements, combined with light haptic feedback, ensures a consistent and inclusive experience across both touch and assistive technologies.
+**Action:** Always verify that interactive variants of "static" components (like Chips or Badges) have proper ARIA roles and labels, and provide tactile confirmation on action.
