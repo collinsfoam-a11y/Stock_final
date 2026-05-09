@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import inspect
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -18,6 +19,15 @@ class GovernanceAuditService:
     @staticmethod
     def _utc_now() -> datetime:
         return datetime.now(timezone.utc).replace(tzinfo=None)
+
+    @staticmethod
+    async def _resolve_awaitable(value: Any) -> Any:
+        resolved = value
+        for _ in range(10):
+            if not inspect.isawaitable(resolved):
+                break
+            resolved = await resolved
+        return resolved
 
     async def log_write_event(
         self,
@@ -55,6 +65,6 @@ class GovernanceAuditService:
             kwargs["session"] = db_session
 
         try:
-            await self.db.governance_events.insert_one(payload, **kwargs)
+            await self._resolve_awaitable(self.db.governance_events.insert_one(payload, **kwargs))
         except Exception as exc:  # pragma: no cover - best-effort by contract
             logger.warning("Governance audit logging failed: %s", exc)

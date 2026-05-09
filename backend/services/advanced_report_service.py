@@ -13,6 +13,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from backend.services.projection_read_service import ProjectionReadService
 from backend.utils.tracing import trace_report_generation, trace_span
 
 logger = logging.getLogger(__name__)
@@ -317,6 +318,18 @@ class AdvancedReportService:
         """Generate report of verified items with full details."""
         start_time = datetime.now(timezone.utc).replace(tzinfo=None)
         filters = config.filters or ReportFilters()
+        columns = config.columns or self.get_column_config("verified_items")
+
+        projection_reads = ProjectionReadService(self.db)
+        if await projection_reads.dashboard_reads_enabled():
+            projection_config = config
+            sort_order = getattr(config, "sort_order", None)
+            if hasattr(sort_order, "value") and hasattr(config, "model_copy"):
+                projection_config = config.model_copy(update={"sort_order": sort_order.value})
+            return await projection_reads.generate_verified_items_report(
+                projection_config,
+                columns=columns,
+            )
 
         # Build query using helpers
         query = self._build_base_query(filters)
@@ -396,8 +409,6 @@ class AdvancedReportService:
         generation_time_ms = (end_time - start_time).total_seconds() * 1000
 
         # Build response
-        columns = config.columns or self.get_column_config("verified_items")
-
         return {
             "success": True,
             "data": data,

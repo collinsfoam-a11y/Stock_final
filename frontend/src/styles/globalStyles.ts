@@ -1,235 +1,183 @@
 /**
- * Global Styles - Shared styles and design tokens
- * Use these constants for consistent styling across the app
- * Enhanced with dual-theme support and semantic color system
+ * Global Styles - legacy compatibility bridge for shared styles and tokens.
+ * This file keeps the older export shape while sourcing values from the
+ * unified theme system used by newer screens and components.
  */
 
-import { StyleSheet, Platform } from "react-native";
-import { themes } from "../theme/themes";
+import { Platform, StyleSheet } from "react-native";
+import {
+  colors as unifiedColors,
+  darkColors,
+  duration,
+  fontSize,
+  fontWeight,
+  gradients as unifiedGradients,
+  layout as unifiedLayout,
+  letterSpacing,
+  lineHeight,
+  radius,
+  semanticColors,
+  shadows as unifiedShadows,
+  spacing as unifiedSpacing,
+  textStyles,
+  touchTargets,
+} from "../theme/unified";
 
-const defaultTheme = (themes.premium ||
-  Object.values(themes)[0] ||
-  themes.dark) as import("../theme/themes").AppTheme;
+const hexToRgba = (hex: string, alpha: number): string => {
+  const normalized = hex.replace("#", "").trim();
+  const isValid = /^([0-9a-f]{3}|[0-9a-f]{6})$/i.test(normalized);
+  if (!isValid) return hex;
 
-// Color palette - Enhanced with semantic roles
+  const expanded =
+    normalized.length === 3
+      ? normalized
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : normalized;
+
+  const r = parseInt(expanded.slice(0, 2), 16);
+  const g = parseInt(expanded.slice(2, 4), 16);
+  const b = parseInt(expanded.slice(4, 6), 16);
+  const clampedAlpha = Math.max(0, Math.min(1, alpha));
+
+  return `rgba(${r}, ${g}, ${b}, ${clampedAlpha})`;
+};
+
+// Color palette - legacy aliases mapped onto unified theme tokens
 export const colors = {
   // Primary colors
-  primary: defaultTheme.colors.accent || "#3B82F6",
-  primaryDark: defaultTheme.colors.accentDark || "#2563EB",
-  primaryLight: defaultTheme.colors.accentLight || "#60A5FA",
-  primaryHover: defaultTheme.colors.accent,
-  primaryPressed: defaultTheme.colors.accentDark,
+  primary: unifiedColors.primary[500],
+  primaryDark: unifiedColors.primary[600],
+  primaryLight: unifiedColors.primary[400],
+  primaryHover: unifiedColors.primary[600],
+  primaryPressed: unifiedColors.primary[700],
 
   // Secondary colors
-  secondary: defaultTheme.colors.info?.main || defaultTheme.colors.accent,
-  secondaryDark: defaultTheme.colors.accentDark,
-  secondaryLight: defaultTheme.colors.info?.light || defaultTheme.colors.accentLight,
+  secondary: unifiedColors.secondary[500],
+  secondaryDark: unifiedColors.secondary[600],
+  secondaryLight: unifiedColors.secondary[400],
 
   // Background colors
-  backgroundDark: defaultTheme.colors.background.default,
-  backgroundLight: "#F8FAFC",
-  surfaceDark: defaultTheme.colors.background.paper,
-  surfaceLight: "#FFFFFF",
-  surfaceElevated: defaultTheme.colors.background.elevated,
+  backgroundDark: semanticColors.background.secondary,
+  backgroundLight: semanticColors.background.secondary,
+  surfaceDark: semanticColors.background.paper,
+  surfaceLight: semanticColors.background.paper,
+  surfaceElevated: semanticColors.background.elevated,
 
   // Text colors
-  textPrimary: defaultTheme.colors.text.primary,
-  textSecondary: defaultTheme.colors.text.secondary,
-  textTertiary: defaultTheme.colors.text.muted,
-  textDisabled: defaultTheme.colors.text.disabled,
-  textInverse: defaultTheme.colors.text.inverse,
+  textPrimary: semanticColors.text.primary,
+  textSecondary: semanticColors.text.secondary,
+  textTertiary: semanticColors.text.tertiary,
+  textDisabled: semanticColors.text.disabled,
+  textInverse: semanticColors.text.inverse,
 
   // Border colors
-  borderLight: defaultTheme.colors.border.light,
-  borderMedium: defaultTheme.colors.border.medium,
-  borderDark: defaultTheme.colors.border.strong,
-  borderFocus: defaultTheme.colors.accent,
+  borderLight: semanticColors.border.default,
+  borderMedium: semanticColors.border.default,
+  borderDark: semanticColors.border.strong,
+  borderFocus: semanticColors.border.focus,
 
   // Status colors with variants
-  success: defaultTheme.colors.success.main,
-  successLight: defaultTheme.colors.success.light,
-  successDark: defaultTheme.colors.success.dark,
-  error: defaultTheme.colors.error.main,
-  errorLight: defaultTheme.colors.error.light,
-  errorDark: defaultTheme.colors.error.dark,
-  warning: defaultTheme.colors.warning.main,
-  warningLight: defaultTheme.colors.warning.light,
-  warningDark: defaultTheme.colors.warning.dark,
-  info: defaultTheme.colors.info.main,
-  infoLight: defaultTheme.colors.info.light,
-  infoDark: defaultTheme.colors.info.light,
+  success: unifiedColors.success[500],
+  successLight: unifiedColors.success[400],
+  successDark: unifiedColors.success[600],
+  error: unifiedColors.error[500],
+  errorLight: unifiedColors.error[400],
+  errorDark: unifiedColors.error[600],
+  warning: unifiedColors.warning[500],
+  warningLight: unifiedColors.warning[400],
+  warningDark: unifiedColors.warning[600],
+  info: unifiedColors.info[500],
+  infoLight: unifiedColors.info[400],
+  infoDark: unifiedColors.info[600],
 
   // Transparent overlays
-  overlay: defaultTheme.colors.background.overlay,
-  overlayLight: "rgba(15, 23, 42, 0.5)",
-  overlayDark: "rgba(3, 7, 18, 0.9)",
-  overlayPrimary: "rgba(14, 165, 233, 0.12)",
-};
+  overlay: semanticColors.background.overlay,
+  overlayLight: semanticColors.background.overlay,
+  overlayDark: darkColors.background.overlay,
+  overlayPrimary: hexToRgba(unifiedColors.primary[500], 0.12),
+} as const;
 
 // Gradients
 export const gradients = {
-  primary: ["#0EA5E9", "#0284C7"] as const,
-  secondary: ["#10B981", "#059669"] as const,
-  accent: ["#06B6D4", "#0891B2"] as const,
-  dark: ["#0F172A", "#020617"] as const,
-  surface: ["#1E293B", "#0F172A"] as const,
-};
+  primary: unifiedGradients.primary,
+  secondary: unifiedGradients.secondary,
+  accent: [unifiedColors.secondary[500], unifiedColors.primary[500]] as const,
+  dark: [darkColors.background.elevated, darkColors.background.default] as const,
+  surface: [semanticColors.background.paper, semanticColors.background.secondary] as const,
+} as const;
 
-// Glassmorphism styles (helper for non-BlurView components)
+// Glass helper for older components that still expect this export
 export const glassStyle = {
-  backgroundColor: "rgba(255, 255, 255, 0.05)",
-  borderColor: "rgba(255, 255, 255, 0.1)",
+  backgroundColor: hexToRgba(unifiedColors.white, 0.72),
+  borderColor: semanticColors.border.default,
   borderWidth: 1,
-};
+} as const;
 
-// Spacing - Enhanced scale
+// Spacing - legacy step names sourced from unified spacing tokens
 export const spacing = {
-  xs: 4,
-  sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
-  xxl: 48,
-  xxxl: 64,
-  // Specific use-case spacing
-  sectionGap: 40, // For consistent section spacing (xxl - 8)
-  actionGap: 12, // For action button gaps (sm + 4)
-  screenPadding: 24, // Default screen padding
-  cardPadding: 16, // Default card padding
-  inputPadding: 12, // Default input padding
-};
+  xs: unifiedSpacing.xs,
+  sm: unifiedSpacing.sm,
+  md: unifiedSpacing.lg,
+  lg: unifiedSpacing["2xl"],
+  xl: unifiedSpacing["3xl"],
+  xxl: unifiedSpacing["5xl"],
+  xxxl: unifiedSpacing["6xl"],
+  sectionGap: unifiedLayout.sectionGap,
+  actionGap: unifiedSpacing.md,
+  screenPadding: unifiedLayout.screenPadding,
+  cardPadding: unifiedLayout.cardPadding,
+  inputPadding: unifiedSpacing.md,
+} as const;
 
-// Typography - Enhanced with weights and line heights
+// Typography - legacy names mapped to unified text styles
 export const typography = {
   hero: {
+    ...textStyles.display,
     fontSize: 36,
-    fontWeight: "bold" as const,
     lineHeight: 44,
-    letterSpacing: -0.5,
+    letterSpacing: letterSpacing.tight,
   },
-  h1: {
-    fontSize: 32,
-    fontWeight: "bold" as const,
-    lineHeight: 40,
-    letterSpacing: -0.5,
-  },
-  h2: {
-    fontSize: 28,
-    fontWeight: "bold" as const,
-    lineHeight: 36,
-    letterSpacing: 0,
-  },
-  h3: {
-    fontSize: 24,
-    fontWeight: "600" as const,
-    lineHeight: 32,
-    letterSpacing: 0,
-  },
-  h4: {
-    fontSize: 20,
-    fontWeight: "600" as const,
-    lineHeight: 28,
-    letterSpacing: 0.15,
-  },
-  h5: {
-    fontSize: 18,
-    fontWeight: "600" as const,
-    lineHeight: 24,
-    letterSpacing: 0.15,
-  },
-  body: {
-    fontSize: 16,
-    fontWeight: "normal" as const,
-    lineHeight: 24,
-    letterSpacing: 0.5,
-  },
+  h1: textStyles.h1,
+  h2: textStyles.h2,
+  h3: textStyles.h3,
+  h4: textStyles.h4,
+  h5: textStyles.h5,
+  body: textStyles.body,
   bodyMedium: {
     fontSize: 15,
-    fontWeight: "normal" as const,
-    lineHeight: 22,
-    letterSpacing: 0.25,
+    fontWeight: fontWeight.regular,
+    lineHeight: 15 * lineHeight.relaxed,
+    letterSpacing: letterSpacing.wide,
   },
-  bodySmall: {
-    fontSize: 14,
-    fontWeight: "normal" as const,
-    lineHeight: 20,
-    letterSpacing: 0.25,
-  },
-  caption: {
-    fontSize: 12,
-    fontWeight: "normal" as const,
-    lineHeight: 16,
-    letterSpacing: 0.4,
-  },
-  overline: {
-    fontSize: 10,
-    fontWeight: "600" as const,
-    lineHeight: 14,
-    letterSpacing: 1.5,
-    textTransform: "uppercase" as const,
-  },
-  button: {
-    fontSize: 16,
-    fontWeight: "600" as const,
-    lineHeight: 20,
-    letterSpacing: 0.5,
-  },
+  bodySmall: textStyles.bodySmall,
+  caption: textStyles.caption,
+  overline: textStyles.overline,
+  button: textStyles.button,
   buttonLarge: {
-    fontSize: 18,
-    fontWeight: "bold" as const,
-    lineHeight: 24,
-    letterSpacing: 0.5,
+    ...textStyles.button,
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    lineHeight: fontSize.xl * lineHeight.normal,
   },
-};
+} as const;
 
 // Border radius
 export const borderRadius = {
-  sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
-  round: 999,
-};
+  sm: radius.sm,
+  md: radius.lg,
+  lg: radius["2xl"],
+  xl: radius["3xl"],
+  round: radius.full,
+} as const;
 
-// Shadows (for iOS)
+// Shadows
 export const shadows = {
-  small: {
-    ...Platform.select({
-      web: { boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.2)" },
-      default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 2,
-      },
-    }),
-  },
-  medium: {
-    ...Platform.select({
-      web: { boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.3)" },
-      default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
-      },
-    }),
-  },
-  large: {
-    ...Platform.select({
-      web: { boxShadow: "0px 8px 16px rgba(0, 0, 0, 0.4)" },
-      default: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
-        elevation: 8,
-      },
-    }),
-  },
-};
+  small: unifiedShadows.sm,
+  medium: unifiedShadows.md,
+  large: unifiedShadows.lg,
+} as const;
 
 // Common component styles
 export const commonStyles = StyleSheet.create({
@@ -246,21 +194,23 @@ export const commonStyles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    padding: spacing.lg,
+    padding: spacing.screenPadding,
   },
 
   // Card styles
   card: {
     backgroundColor: colors.surfaceDark,
     borderRadius: borderRadius.md,
-    padding: spacing.md,
+    padding: spacing.cardPadding,
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
   cardElevated: {
     backgroundColor: colors.surfaceDark,
     borderRadius: borderRadius.md,
-    padding: spacing.md,
+    padding: spacing.cardPadding,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     ...shadows.medium,
   },
 
@@ -288,6 +238,7 @@ export const commonStyles = StyleSheet.create({
   // Button styles
   button: {
     height: 56,
+    minHeight: touchTargets.minimum,
     borderRadius: borderRadius.md,
     justifyContent: "center",
     alignItems: "center",
@@ -297,13 +248,13 @@ export const commonStyles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   buttonSecondary: {
-    backgroundColor: "transparent",
-    borderWidth: 2,
+    backgroundColor: colors.surfaceDark,
+    borderWidth: 1,
     borderColor: colors.primary,
   },
   buttonText: {
     ...typography.button,
-    color: colors.textPrimary,
+    color: colors.textInverse,
   },
   buttonTextSecondary: {
     ...typography.button,
@@ -327,24 +278,24 @@ export const commonStyles = StyleSheet.create({
   },
 
   // Spacing helpers
-  mt8: { marginTop: spacing.sm },
-  mt16: { marginTop: spacing.md },
-  mt24: { marginTop: spacing.lg },
-  mb8: { marginBottom: spacing.sm },
-  mb16: { marginBottom: spacing.md },
-  mb24: { marginBottom: spacing.lg },
-  mx16: { marginHorizontal: spacing.md },
-  my16: { marginVertical: spacing.md },
-  p16: { padding: spacing.md },
-  p24: { padding: spacing.lg },
+  mt8: { marginTop: unifiedSpacing.sm },
+  mt16: { marginTop: unifiedSpacing.lg },
+  mt24: { marginTop: unifiedSpacing["2xl"] },
+  mb8: { marginBottom: unifiedSpacing.sm },
+  mb16: { marginBottom: unifiedSpacing.lg },
+  mb24: { marginBottom: unifiedSpacing["2xl"] },
+  mx16: { marginHorizontal: unifiedSpacing.lg },
+  my16: { marginVertical: unifiedSpacing.lg },
+  p16: { padding: unifiedSpacing.lg },
+  p24: { padding: unifiedSpacing["2xl"] },
 });
 
 // Animation durations
 export const animations = {
-  fast: 150,
-  normal: 300,
-  slow: 500,
-};
+  fast: duration.fast,
+  normal: duration.slow,
+  slow: duration.slower,
+} as const;
 
 // Breakpoints (for responsive design)
 export const breakpoints = {
@@ -352,7 +303,7 @@ export const breakpoints = {
   tablet: 768,
   desktop: 1024,
   wide: 1440,
-};
+} as const;
 
 // Elevation levels (for depth/shadow)
 export const elevation = {
@@ -361,33 +312,33 @@ export const elevation = {
   medium: 4,
   high: 8,
   highest: 16,
-};
+} as const;
 
 // Layout tokens
 export const layout = {
   safeAreaTop: Platform.OS === "ios" ? 44 : 24,
   safeAreaBottom: Platform.OS === "ios" ? 34 : 0,
-  tabBarHeight: 60,
+  tabBarHeight: unifiedLayout.tabBarHeight,
   sidebarWidth: 280,
   sidebarCollapsedWidth: 64,
-  headerHeight: 56,
+  headerHeight: unifiedLayout.headerHeight,
   containerMaxWidth: {
     mobile: "100%",
     tablet: 768,
     desktop: 1200,
   },
-  sectionGap: spacing.xxl, // 48px
-  screenPadding: spacing.lg, // 24px
-};
+  sectionGap: unifiedLayout.sectionGap,
+  screenPadding: unifiedLayout.screenPadding,
+} as const;
 
 // Accessibility tokens
 export const accessibility = {
   focusRingWidth: 2,
   focusRingOffset: 2,
-  minTouchTarget: 44, // iOS/Android minimum
-  minTextSize: 14, // Minimum readable text
-  maxTextSize: 24, // Maximum before layout breaks
-};
+  minTouchTarget: touchTargets.minimum,
+  minTextSize: fontSize.md,
+  maxTextSize: fontSize["3xl"],
+} as const;
 
 // Scanner tokens
 export const scanner = {
@@ -395,9 +346,9 @@ export const scanner = {
   frameWidth: 2,
   cornerSize: 20,
   overlayOpacity: 0.7,
-  feedbackDuration: 2000, // ms
+  feedbackDuration: 2000,
   scanDebounceMs: 500,
-};
+} as const;
 
 // Offline/Queue tokens
 export const offline = {
@@ -409,12 +360,12 @@ export const offline = {
     success: colors.success,
     failed: colors.error,
   },
-};
+} as const;
 
 // Onboarding tokens
 export const onboarding = {
   overlayOpacity: 0.9,
-  spotlightRadius: 8,
+  spotlightRadius: radius.sm,
   tooltipMaxWidth: 280,
-  animationDuration: 300,
-};
+  animationDuration: duration.slow,
+} as const;

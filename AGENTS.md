@@ -44,12 +44,34 @@ Default pattern:
 - Sync direction is `SQL Server -> MongoDB -> Frontend`.
 - Respect `backend/README.md` governance constraints, especially the restricted files and write paths.
 
+## Stock Contract (V3.1)
+
+- Treat the stock verification contract as non-optional. If a requested change conflicts with it, stop and propose a compliant path instead.
+- `event_log` is the long-term stock verification source of truth. New stock-flow work must not introduce alternate truth models or overwrite-based reconciliation.
+- For current transition-phase code, do not bypass the canonical write path. Keep stock-line mutations inside `backend/services/count_line_write_service.py` and preserve mirrored `event_log` / projection behavior.
+- Do not introduce direct stock quantity mutation APIs, direct business-data deletes, or direct business-data updates outside the governed write services.
+- Keep projections aligned with the event model. Required projection collections are:
+  `items_snapshot`, `batch_records`, `serial_records`, `damage_logs`, `variance_logs`, `approvals`, `sync_queue`, `erp_snapshot`, `serial_registry`.
+- Serial uniqueness is scoped per item, not global. Enforce `item_code + serial` uniqueness and never reintroduce global serial uniqueness.
+- Backend UOM rules are authoritative. Store normalized quantities in base UOM, convert before persistence, block fractions for `NOS`-style units, and use contract error codes such as `FRACTION_NOT_ALLOWED` and `PRECISION_EXCEEDED`.
+- Offline sync must stay idempotent and conflict-aware. Require `idempotency_key`, preserve `scan_fingerprint` behavior where applicable, prefer additive/merge semantics, and do not introduce overwrite sync flows.
+- Session control is location-scoped. Preserve single active session per location and keep takeover or reassignment auditable.
+- Variance and recount work must preserve item locking, blind recount, and dual-verification semantics. Do not weaken these controls for convenience.
+- ERP remains read-only reference data. Never add SQL write-back paths.
+
+## Agent Checkpoints For Stock Work
+
+- Require user confirmation before running scripts or commands that backfill `event_log`, rebuild projections, drop or recreate serial-related indexes, or mutate stock/session/snapshot records in MongoDB.
+- Prefer dry-run, read-only inspection, or targeted verification before any mutation that affects event-sourcing rollout state.
+- When changing serial, sync, session, variance, or UOM logic, verify the matching tests or add focused coverage before closing the task.
+
 ## Critical Local Rules
 
 - For barcode logic, use `_normalize_barcode_input` in `backend/api/erp_api.py`.
 - For frontend API changes, keep snake_case to camelCase mapping aligned in `frontend/src/services/api/api.ts`.
 - Prefer existing offline-first patterns in frontend storage and API code.
 - Do not hardcode schema/report behavior that already belongs in dynamic configuration modules.
+- Do not reintroduce global serial checks in validation, sync, or UI precheck flows. Item-scoped serial checks must stay aligned across backend and frontend.
 
 ## Working Style
 

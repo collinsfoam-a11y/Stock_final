@@ -17,8 +17,7 @@ interface UseSerialEntryManagerParams {
   onQuantityChange: (value: string) => void;
 }
 
-const createSerialEntryId = () =>
-  `serial_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+const createSerialEntryId = () => `serial_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
 const getDefaultMrp = (mrp: string, item: Item | null) => {
   const parsedMrp = parseFloat(mrp);
@@ -34,14 +33,12 @@ export const useSerialEntryManager = ({
 }: UseSerialEntryManagerParams) => {
   const [serialEntries, setSerialEntries] = useState<SerialEntryData[]>([]);
   const [isSerializedItem, setIsSerializedItem] = useState(false);
-  const [serialValidationErrors, setSerialValidationErrors] = useState<
-    string[]
-  >([]);
+  const [serialValidationErrors, setSerialValidationErrors] = useState<string[]>([]);
   const [showSerialScanner, setShowSerialScanner] = useState(false);
 
   const serialNumbers = useMemo(
     () => serialEntries.map((entry) => entry.serial_number),
-    [serialEntries],
+    [serialEntries]
   );
 
   useEffect(() => {
@@ -57,38 +54,37 @@ export const useSerialEntryManager = ({
         if (updated[index]) {
           updated[index] = {
             ...updated[index],
-            [field]:
-              field === "serial_number" ? String(value).toUpperCase() : value,
+            [field]: field === "serial_number" ? String(value).toUpperCase() : value,
           };
         }
         return updated;
       });
       setSerialValidationErrors([]);
     },
-    [],
+    []
   );
 
   const handleSerialScanned = useCallback(
-    async (data: {
-      serial_number: string;
-      mrp?: number;
-      manufacturing_date?: string;
-    }) => {
+    async (data: { serial_number: string; mrp?: number; manufacturing_date?: string }) => {
       const normalized = normalizeSerialValue(data.serial_number);
 
       const isLocalDuplicate = serialEntries.some(
-        (entry) => entry.serial_number.toUpperCase() === normalized,
+        (entry) => entry.serial_number.toUpperCase() === normalized
       );
       if (isLocalDuplicate) {
-        Alert.alert(
-          "Duplicate Serial",
-          "This serial number is already in your list.",
-        );
+        Alert.alert("Duplicate Serial", "This serial number is already in your list.");
         return false;
       }
 
       if (sessionId) {
-        const result = await checkSerialUniqueness(sessionId, normalized);
+        const result = await checkSerialUniqueness(sessionId, normalized, item?.item_code);
+        if (result.status === "UNAVAILABLE") {
+          Alert.alert(
+            "Serial Validation Unavailable",
+            "We could not verify this serial number right now. Please try again when the connection is stable."
+          );
+          return false;
+        }
         if (result.exists) {
           Alert.alert(
             "Serial Already Counted",
@@ -96,7 +92,7 @@ export const useSerialEntryManager = ({
               `Item: ${result.item_name || result.item_code}\n` +
               `Location: Floor ${result.floor_no}, Rack ${result.rack_no}\n` +
               `Counted by: ${result.counted_by}`,
-            [{ text: "OK" }],
+            [{ text: "OK" }]
           );
           return false;
         }
@@ -114,7 +110,7 @@ export const useSerialEntryManager = ({
       setSerialEntries((previous) => [...previous, newEntry]);
       return true;
     },
-    [item, mrp, serialEntries, sessionId],
+    [item, mrp, serialEntries, sessionId]
   );
 
   const handleAddSerial = useCallback(() => {
@@ -144,17 +140,15 @@ export const useSerialEntryManager = ({
         return previous.filter((_, currentIndex) => currentIndex !== index);
       });
     },
-    [item, mrp],
+    [item, mrp]
   );
 
   const serialValidationMessages = useMemo(
     () =>
       serialEntries.map((entry) =>
-        entry.serial_number.trim()
-          ? validateSerialNumber(entry.serial_number)
-          : null,
+        entry.serial_number.trim() ? validateSerialNumber(entry.serial_number) : null
       ),
-    [serialEntries],
+    [serialEntries]
   );
 
   const validateSerials = useCallback((): boolean => {

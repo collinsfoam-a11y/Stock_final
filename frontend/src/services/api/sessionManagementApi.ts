@@ -1,19 +1,27 @@
 import { useAuthStore } from "../../store/authStore";
 import api from "../httpClient";
 import {
-  addToOfflineQueue,
   cacheSession,
   cacheSessions,
   getCountLinesBySessionFromCache,
   getSessionFromCache,
   getSessionsCache,
   removeSessionFromCache,
-  type DataSource,
 } from "../offline/offlineStorage";
 import { getNetworkStatus } from "../../utils/network";
 import { createLogger } from "../logging";
-import { generateOfflineId } from "../../utils/uuid";
 import type { Session } from "../../types";
+import {
+  ProjectionReadError,
+  getProjectedSessionStatsRead,
+} from "../control-plane/countLineControlPlane";
+import {
+  createSessionCommand,
+  finalizeSessionCommand,
+  getProjectedSessionRead,
+  getProjectedSessionsRead,
+  updateSessionStatusCommand,
+} from "../control-plane/sessionControlPlane";
 
 const log = createLogger("SessionManagementApi");
 
@@ -66,49 +74,6 @@ const normalizeCreateSessionParams = (
   rackNo: typeof params !== "string" ? params.rack_no : undefined,
 });
 
-const buildOfflineSession = ({
-  warehouse,
-  sessionType,
-  locationType,
-  locationName,
-  rackNo,
-}: SessionCreateConfig) => ({
-  id: generateOfflineId(),
-  warehouse,
-  location_type: locationType,
-  location_name: locationName,
-  rack_no: rackNo,
-  status: "OPEN",
-  type: sessionType || "STANDARD",
-  staff_user: "offline_user",
-  staff_name: "Offline User",
-  started_at: new Date().toISOString(),
-  total_items: 0,
-  total_variance: 0,
-  _source: "offline" as DataSource,
-  _createdOffline: true,
-});
-
-const persistOfflineSession = async (offlineSession: ReturnType<typeof buildOfflineSession>) => {
-  await cacheSession(offlineSession);
-  await addToOfflineQueue("session", offlineSession);
-  return offlineSession;
-};
-
-const buildSessionCreatePayload = ({
-  warehouse,
-  sessionType,
-  locationType,
-  locationName,
-  rackNo,
-}: SessionCreateConfig) => ({
-  warehouse,
-  location_type: locationType,
-  location_name: locationName,
-  rack_no: rackNo,
-  ...(sessionType && { type: sessionType }),
-});
-
 const paginateSessions = (sessions: Session[], page: number, pageSize: number): SessionPage => {
   const skip = (page - 1) * pageSize;
   return {
@@ -128,6 +93,11 @@ const getOfflinePaginatedSessions = async (
   page: number,
   pageSize: number
 ): Promise<SessionPage> => {
+  const projectedSessions = (await getProjectedSessionsRead()) || [];
+  if (projectedSessions.length > 0) {
+    return paginateSessions(projectedSessions as Session[], page, pageSize);
+  }
+
   const cache = await getSessionsCache();
   return paginateSessions(Object.values(cache) as Session[], page, pageSize);
 };
@@ -144,15 +114,14 @@ const normalizeSessionsResponse = (
       : [];
   return {
     items: sessions,
-    pagination:
-      responseData?.pagination || {
-        page,
-        page_size: pageSize,
-        total: sessions.length,
-        total_pages: 1,
-        has_next: false,
-        has_prev: false,
-      },
+    pagination: responseData?.pagination || {
+      page,
+      page_size: pageSize,
+      total: sessions.length,
+      total_pages: 1,
+      has_next: false,
+      has_prev: false,
+    },
   };
 };
 
@@ -171,11 +140,57 @@ const mergeSessionsWithVisibleCache = async (sessions: Session[]): Promise<Sessi
 
   const seenIds = new Set(
     sessions
-      .map((session) => session?.id || session?.session_id || session?._id)
+      .flatMap((session) => [
+        session?.id,
+        session?.session_id,
+        session?._id,
+        (session as any)?._local_session_id,
+      ])
       .filter(Boolean)
   );
-  const missingCached = visibleCached.filter((session) => !seenIds.has(session.id));
+  const missingCached = visibleCached.filter(
+    (session) =>
+      !seenIds.has(session.id) &&
+      !seenIds.has(session.session_id) &&
+      !seenIds.has((session as any)._local_session_id)
+  );
   return missingCached.length > 0 ? [...sessions, ...missingCached] : sessions;
+};
+
+const mergeProjectedSessions = async (sessions: Session[]): Promise<Session[]> => {
+  const projectedSessions = (await getProjectedSessionsRead()) || [];
+  if (projectedSessions.length === 0) {
+    return sessions;
+  }
+
+  const merged = new Map<string, Session>();
+  for (const session of sessions) {
+    const key = String(session?.id || session?.session_id || session?._id);
+    if (key) {
+      merged.set(key, session);
+    }
+  }
+
+  for (const projectedSession of projectedSessions) {
+    const displayId = String(projectedSession.id);
+    const existing = merged.get(displayId);
+    if (!existing) {
+      merged.set(displayId, projectedSession as Session);
+      continue;
+    }
+
+    if (
+      (projectedSession as any)._sync_status &&
+      (projectedSession as any)._sync_status !== "synced"
+    ) {
+      merged.set(displayId, {
+        ...existing,
+        ...projectedSession,
+      } as Session);
+    }
+  }
+
+  return Array.from(merged.values());
 };
 
 /**
@@ -220,29 +235,15 @@ export const createSession = async (params: string | CreateSessionParams) => {
   });
 
   try {
-    if (!isOnline()) {
-      log.info("Creating offline session", {
-        warehouse: config.warehouse,
-        type: config.sessionType,
-      });
-      const offlineSession = await persistOfflineSession(buildOfflineSession(config));
-      log.debug("Created offline session", {
-        id: offlineSession.id,
-        source: offlineSession._source,
-      });
-      return offlineSession;
-    }
-
-    const response = await api.post("/api/sessions", buildSessionCreatePayload(config), {
-      timeout: 3000,
-      skipOfflineQueue: true,
-    } as any);
-    await cacheSession(response.data);
-    log.debug("Created session via API", {
-      id: response.data?.id,
-      status: response.data?.status,
+    const result = await createSessionCommand({
+      warehouse: config.warehouse,
+      type: config.sessionType,
+      location_type: config.locationType,
+      location_name: config.locationName,
+      rack_no: config.rackNo,
     });
-    return response.data;
+    await cacheSession(result);
+    return result;
   } catch (error: unknown) {
     const axiosError = error as {
       response?: { status?: number; data?: { detail?: string } };
@@ -253,17 +254,7 @@ export const createSession = async (params: string | CreateSessionParams) => {
       log.warn("Session creation rejected by server", { error: errorMessage });
       throw new Error(errorMessage);
     }
-
-    log.warn("Error creating session, switching to offline mode", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-
-    const offlineSession = await persistOfflineSession(buildOfflineSession(config));
-    log.debug("Created offline session after API error", {
-      id: offlineSession.id,
-      source: offlineSession._source,
-    });
-    return offlineSession;
+    throw error;
   }
 };
 
@@ -296,9 +287,9 @@ export const getSessions = async (page: number = 1, pageSize: number = 20) => {
       await cacheSessions(normalizedResponse.items);
     }
 
-    let mergedSessions = normalizedResponse.items;
+    let mergedSessions = await mergeProjectedSessions(normalizedResponse.items);
     try {
-      mergedSessions = await mergeSessionsWithVisibleCache(normalizedResponse.items);
+      mergedSessions = await mergeSessionsWithVisibleCache(mergedSessions);
     } catch (cacheError) {
       __DEV__ && console.warn("Unable to merge cached sessions:", cacheError);
     }
@@ -321,29 +312,35 @@ export const getSessions = async (page: number = 1, pageSize: number = 20) => {
  */
 export const getSession = async (sessionId: string) => {
   try {
+    const projectedSession = await getProjectedSessionRead(sessionId);
     if (!shouldAttemptReadApi()) {
-      return await getSessionFromCache(sessionId);
+      return projectedSession || (await getSessionFromCache(sessionId));
     }
 
     if (sessionId.startsWith("offline_")) {
-      return await getSessionFromCache(sessionId);
+      return projectedSession || (await getSessionFromCache(sessionId));
     }
 
     const response = await api.get(`/api/sessions/${sessionId}`);
     await cacheSession(response.data);
-    return response.data;
+    return projectedSession
+      ? {
+          ...response.data,
+          ...projectedSession,
+        }
+      : response.data;
   } catch (error: any) {
     if (error?.response?.status === 404 && !sessionId.startsWith("offline_")) {
       log.warn(`Session ${sessionId} not found on server, removing from cache`);
       await removeSessionFromCache(sessionId);
-      return null;
+      return await getProjectedSessionRead(sessionId);
     }
 
     if (error?.response?.status !== 401) {
       log.warn("Error getting session:", error);
     }
 
-    return await getSessionFromCache(sessionId);
+    return (await getProjectedSessionRead(sessionId)) || (await getSessionFromCache(sessionId));
   }
 };
 
@@ -352,6 +349,17 @@ export const getSession = async (sessionId: string) => {
  */
 export const getSessionStats = async (sessionId: string): Promise<SessionStatsResponse | null> => {
   try {
+    const projectedStats = await getProjectedSessionStatsRead(sessionId);
+    if (projectedStats && !shouldAttemptReadApi()) {
+      return {
+        id: sessionId,
+        totalItems: 0,
+        scannedItems: projectedStats.scannedItems,
+        verifiedItems: projectedStats.verifiedItems,
+        pendingItems: projectedStats.pendingItems,
+      };
+    }
+
     if (!shouldAttemptReadApi()) {
       log.debug("Offline - cannot fetch session stats from API");
       return null;
@@ -367,14 +375,20 @@ export const getSessionStats = async (sessionId: string): Promise<SessionStatsRe
     return {
       id: data.id,
       totalItems: data.total_items ?? 0,
-      scannedItems: (data.verified_items ?? 0) + (data.pending_items ?? 0),
-      verifiedItems: data.verified_items ?? 0,
-      pendingItems: data.pending_items ?? 0,
+      scannedItems: Math.max(
+        (data.verified_items ?? 0) + (data.pending_items ?? 0),
+        projectedStats?.scannedItems ?? 0
+      ),
+      verifiedItems: Math.max(data.verified_items ?? 0, projectedStats?.verifiedItems ?? 0),
+      pendingItems: Math.max(data.pending_items ?? 0, projectedStats?.pendingItems ?? 0),
       damageItems: data.damage_items ?? 0,
       durationSeconds: data.duration_seconds ?? 0,
       itemsPerMinute: data.items_per_minute ?? 0,
     };
   } catch (error: any) {
+    if (error instanceof ProjectionReadError) {
+      throw error;
+    }
     if (error?.response?.status === 404) {
       if (!sessionId.startsWith("offline_")) {
         log.warn(`Session ${sessionId} not found on server, removing from cache`);
@@ -390,7 +404,11 @@ export const getSessionStats = async (sessionId: string): Promise<SessionStatsRe
 export const getRackProgress = async (sessionId: string) => {
   try {
     if (!shouldAttemptReadApi()) {
-      const cachedLines = await getCountLinesBySessionFromCache(sessionId);
+      const { resolveProjectionSessionIds } =
+        await import("../../data/repositories/sessionControlPlaneRepository");
+      const cachedLines = await getCountLinesBySessionFromCache(
+        await resolveProjectionSessionIds(sessionId)
+      );
 
       if (cachedLines.length === 0) {
         return {
@@ -508,3 +526,9 @@ export const getSessionsAnalytics = async () => {
     throw error;
   }
 };
+
+export const updateSessionStatus = async (sessionId: string, status: string, note?: string) =>
+  updateSessionStatusCommand(sessionId, status, note);
+
+export const finalizeSession = async (sessionId: string, payload?: { note?: string }) =>
+  finalizeSessionCommand(sessionId, payload);

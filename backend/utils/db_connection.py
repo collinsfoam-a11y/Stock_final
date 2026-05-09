@@ -1,11 +1,20 @@
+from __future__ import annotations
 """
 Shared database connection utilities to eliminate duplicate connection logic
 """
 
 import logging
+import unittest.mock
 from typing import Optional
 
-import pyodbc
+try:
+    import pyodbc
+    _PYODBC_AVAILABLE = True
+except ImportError:
+    pyodbc = unittest.mock.MagicMock()
+    pyodbc.Error = type("Error", (Exception,), {})
+    pyodbc.Connection = type("Connection", (), {})
+    _PYODBC_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +32,23 @@ class SQLServerConnectionBuilder:
     DEFAULT_TIMEOUT = 30
     _detected_driver: Optional[str] = None
 
+    @staticmethod
+    def _require_pyodbc():
+        if not _PYODBC_AVAILABLE:
+            raise RuntimeError(
+                "SQL Server ODBC support is unavailable because pyodbc is not installed."
+            )
+        return pyodbc
+
     @classmethod
     def get_available_driver(cls) -> Optional[str]:
         """Detect and cache the best available ODBC driver"""
         if cls._detected_driver:
             return cls._detected_driver
+
+        if not _PYODBC_AVAILABLE:
+            logger.error("pyodbc is not installed; SQL Server ODBC drivers cannot be detected")
+            return None
 
         # Get list of installed drivers
         try:
@@ -140,7 +161,7 @@ class SQLServerConnectionBuilder:
         user: Optional[str] = None,
         password: Optional[str] = None,
         timeout: int = DEFAULT_TIMEOUT,
-    ) -> pyodbc.Connection:
+    ) -> "pyodbc.Connection":
         """
         Create an optimized SQL Server connection with consistent settings
 
@@ -150,6 +171,7 @@ class SQLServerConnectionBuilder:
         Raises:
             pyodbc.Error: If connection fails
         """
+        pyodbc_module = SQLServerConnectionBuilder._require_pyodbc()
         conn_str = SQLServerConnectionBuilder.build_connection_string(
             host=host,
             database=database,
@@ -159,7 +181,7 @@ class SQLServerConnectionBuilder:
             timeout=timeout,
         )
 
-        conn = pyodbc.connect(conn_str, timeout=timeout)
+        conn = pyodbc_module.connect(conn_str, timeout=timeout)
 
         # Set connection attributes for performance
         conn.timeout = timeout
@@ -213,7 +235,7 @@ class SQLServerConnectionBuilder:
             return False
 
     @staticmethod
-    def is_connection_valid(conn: pyodbc.Connection) -> bool:
+    def is_connection_valid(conn: "pyodbc.Connection") -> bool:
         """
         Check if an existing connection is still valid
 

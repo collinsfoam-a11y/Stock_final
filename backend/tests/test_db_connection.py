@@ -6,12 +6,12 @@ from backend.utils.db_connection import SQLServerConnectionBuilder, ConnectionSt
 class TestSQLServerConnectionBuilder:
     @pytest.fixture
     def mock_pyodbc_drivers(self):
-        with patch("pyodbc.drivers") as mock:
+        with patch("backend.utils.db_connection.pyodbc.drivers") as mock:
             yield mock
 
     @pytest.fixture
     def mock_pyodbc_connect(self):
-        with patch("pyodbc.connect") as mock:
+        with patch("backend.utils.db_connection.pyodbc.connect") as mock:
             yield mock
 
     def test_get_available_driver_preferred(self, mock_pyodbc_drivers):

@@ -5,7 +5,7 @@ import {
   modernColors,
   modernTypography,
   modernSpacing,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 import { SimpleLineChart as LineChart } from "../charts/SimpleLineChart";
 import { SimpleBarChart as BarChart } from "../charts/SimpleBarChart";
 import { SimplePieChart as PieChart } from "../charts/SimplePieChart";

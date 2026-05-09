@@ -13,12 +13,15 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import {
-  colorPalette,
+  colors,
+  semanticColors,
   spacing,
-  typography,
-  borderRadius,
+  radius,
+  textStyles,
   touchTargets,
-} from "@/theme/designTokens";
+  hitSlop,
+} from "@/theme/unified";
+import { haptics } from "@/services/haptics";
 
 interface CheckboxProps {
   checked: boolean;
@@ -37,14 +40,15 @@ export const Checkbox: React.FC<CheckboxProps> = ({
   disabled = false,
   indeterminate = false,
 }) => {
-  const scale = useSharedValue(checked || indeterminate ? 1 : 0);
+  const isSelected = checked || indeterminate;
+  const scale = useSharedValue(isSelected ? 1 : 0);
 
   React.useEffect(() => {
-    scale.value = withSpring(checked || indeterminate ? 1 : 0, {
+    scale.value = withSpring(isSelected ? 1 : 0, {
       damping: 15,
       stiffness: 150,
     });
-  }, [checked, indeterminate, scale]);
+  }, [isSelected, scale]);
 
   const checkmarkStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -52,6 +56,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
 
   const handlePress = () => {
     if (!disabled) {
+      void haptics.light();
       onChange(!checked);
     }
   };
@@ -61,20 +66,27 @@ export const Checkbox: React.FC<CheckboxProps> = ({
       style={styles.container}
       onPress={handlePress}
       disabled={disabled}
-      activeOpacity={0.7}
+      activeOpacity={0.8}
+      hitSlop={hitSlop.small}
+      accessibilityRole="checkbox"
+      accessibilityState={{
+        checked: indeterminate ? "mixed" : checked,
+        disabled,
+      }}
     >
       <View
         style={[
           styles.checkbox,
-          (checked || indeterminate) && styles.checkboxChecked,
+          isSelected && styles.checkboxChecked,
           disabled && styles.checkboxDisabled,
+          disabled && isSelected && styles.checkboxDisabledChecked,
         ]}
       >
         <Animated.View style={checkmarkStyle}>
           <Ionicons
             name={indeterminate ? "remove" : "checkmark"}
             size={16}
-            color={colorPalette.neutral[0]}
+            color={disabled ? colors.neutral[700] : colors.white}
           />
         </Animated.View>
       </View>
@@ -87,7 +99,13 @@ export const Checkbox: React.FC<CheckboxProps> = ({
             </Text>
           )}
 
-          {description && <Text style={styles.description}>{description}</Text>}
+          {description && (
+            <Text
+              style={[styles.description, disabled && styles.descriptionDisabled]}
+            >
+              {description}
+            </Text>
+          )}
         </View>
       )}
     </TouchableOpacity>
@@ -104,37 +122,45 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 20,
     height: 20,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.xs,
     borderWidth: 2,
-    borderColor: colorPalette.neutral[400],
+    borderColor: semanticColors.input.border,
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.sm,
     marginTop: 2,
-    backgroundColor: colorPalette.neutral[0],
+    backgroundColor: semanticColors.input.background,
   },
   checkboxChecked: {
-    borderColor: colorPalette.primary[500],
-    backgroundColor: colorPalette.primary[500],
+    borderColor: semanticColors.interactive.default,
+    backgroundColor: semanticColors.interactive.default,
   },
   checkboxDisabled: {
-    borderColor: colorPalette.neutral[300],
-    backgroundColor: colorPalette.neutral[100],
+    borderColor: colors.neutral[300],
+    backgroundColor: colors.neutral[100],
+  },
+  checkboxDisabledChecked: {
+    borderColor: colors.neutral[400],
+    backgroundColor: colors.neutral[300],
   },
   labelContainer: {
     flex: 1,
+    paddingTop: 1,
   },
   label: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium,
-    color: colorPalette.neutral[900],
+    ...textStyles.bodySmall,
+    fontWeight: "500",
+    color: semanticColors.text.primary,
   },
   labelDisabled: {
-    color: colorPalette.neutral[400],
+    color: semanticColors.text.disabled,
   },
   description: {
-    fontSize: typography.fontSize.sm,
-    color: colorPalette.neutral[600],
+    ...textStyles.caption,
+    color: semanticColors.text.secondary,
     marginTop: spacing.xs,
+  },
+  descriptionDisabled: {
+    color: semanticColors.text.disabled,
   },
 });

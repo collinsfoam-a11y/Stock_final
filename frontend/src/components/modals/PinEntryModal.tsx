@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Modal } from "../ui/Modal";
-import { modernColors } from "@/styles/modernDesignSystem";
+import { modernColors } from "@/styles/unifiedSystem";
 import { verifyPin } from "@/services/api/api"; // We will add this next
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 

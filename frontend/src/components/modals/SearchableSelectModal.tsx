@@ -22,7 +22,7 @@ import {
   modernTypography,
   modernSpacing,
   modernBorderRadius,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 
 interface SearchableSelectModalProps {
   visible: boolean;

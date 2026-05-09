@@ -6,29 +6,36 @@ import { flags } from "../constants/flags";
 export type HapticIntensity = "light" | "medium" | "heavy";
 export type HapticNotification = "success" | "warning" | "error";
 
-const impactStyles: Record<HapticIntensity, Haptics.ImpactFeedbackStyle> = {
-  light: Haptics.ImpactFeedbackStyle.Light,
-  medium: Haptics.ImpactFeedbackStyle.Medium,
-  heavy: Haptics.ImpactFeedbackStyle.Heavy,
-};
-
-const notificationTypes: Record<
-  HapticNotification,
-  Haptics.NotificationFeedbackType
-> = {
-  success: Haptics.NotificationFeedbackType.Success,
-  warning: Haptics.NotificationFeedbackType.Warning,
-  error: Haptics.NotificationFeedbackType.Error,
-};
-
 const canHaptic = () => flags.enableHaptics && Platform.OS !== "web";
+
+const resolveImpactStyle = (
+  intensity: HapticIntensity
+): Haptics.ImpactFeedbackStyle | undefined => {
+  const styles = Haptics.ImpactFeedbackStyle;
+  if (!styles) return undefined;
+
+  if (intensity === "light") return styles.Light;
+  if (intensity === "heavy") return styles.Heavy;
+  return styles.Medium;
+};
+
+const resolveNotificationType = (
+  type: HapticNotification
+): Haptics.NotificationFeedbackType | undefined => {
+  const notificationTypes = Haptics.NotificationFeedbackType;
+  if (!notificationTypes) return undefined;
+
+  if (type === "success") return notificationTypes.Success;
+  if (type === "warning") return notificationTypes.Warning;
+  return notificationTypes.Error;
+};
 
 export const haptics = {
   isAvailable: () => canHaptic(),
   impact: async (intensity: HapticIntensity = "medium") => {
     if (!canHaptic()) return;
     try {
-      await Haptics.impactAsync(impactStyles[intensity]);
+      await Haptics.impactAsync(resolveImpactStyle(intensity));
     } catch {
       // ignore
     }
@@ -36,7 +43,7 @@ export const haptics = {
   notification: async (type: HapticNotification) => {
     if (!canHaptic()) return;
     try {
-      await Haptics.notificationAsync(notificationTypes[type]);
+      await Haptics.notificationAsync(resolveNotificationType(type));
     } catch {
       // ignore
     }

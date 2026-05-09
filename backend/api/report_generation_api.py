@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from backend.auth.dependencies import get_current_user, require_role
 from backend.db.runtime import get_db
+from backend.services.projection_read_service import ProjectionReadService
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +137,10 @@ def _write_xlsx_data(ws: Any, data: list[dict], headers: list[str]) -> None:
 
 async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
     """Generate stock summary report data."""
+    projection_reads = ProjectionReadService(db)
+    if await projection_reads.report_reads_enabled():
+        return await projection_reads.generate_stock_summary(filters)
+
     item_query: dict[str, Any] = {}
     if filters.warehouse:
         item_query["warehouse"] = filters.warehouse
@@ -222,6 +227,10 @@ async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
 
 async def generate_variance_report(db, filters: ReportFilter) -> list[dict]:
     """Generate variance report data."""
+    projection_reads = ProjectionReadService(db)
+    if await projection_reads.report_reads_enabled():
+        return await projection_reads.generate_variance_report(filters)
+
     line_query: dict[str, Any] = {"variance": {"$ne": 0}}
     if filters.status:
         line_query["status"] = filters.status.lower()
@@ -350,6 +359,10 @@ async def generate_user_activity_report(db, filters: ReportFilter) -> list[dict]
 
 async def generate_session_history_report(db, filters: ReportFilter) -> list[dict]:
     """Generate session history report data."""
+    projection_reads = ProjectionReadService(db)
+    if await projection_reads.report_reads_enabled():
+        return await projection_reads.generate_session_history_report(filters)
+
     query: dict[str, Any] = {}
 
     if filters.status:
@@ -651,8 +664,33 @@ async def get_report_filter_options(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid report type")
 
     db = get_db()
+    projection_reads = ProjectionReadService(db)
 
     try:
+        if await projection_reads.report_reads_enabled():
+            projection_filters = await projection_reads.get_report_filter_options()
+            users = []
+            if current_user.get("role") in ["admin", "supervisor"]:
+                users = [
+                    {
+                        "id": username,
+                        "username": username,
+                        "role": "staff",
+                    }
+                    for username in projection_filters["users"]
+                ]
+
+            return {
+                "report_type": report_type,
+                "filters": {
+                    "warehouses": projection_filters["warehouses"],
+                    "floors": projection_filters["floors"],
+                    "categories": projection_filters["categories"],
+                    "statuses": projection_filters["statuses"],
+                    "users": users,
+                },
+            }
+
         # Get distinct values for common filters
         warehouses = await db.erp_items.distinct("warehouse")
         floors = await db.erp_items.distinct("floor")

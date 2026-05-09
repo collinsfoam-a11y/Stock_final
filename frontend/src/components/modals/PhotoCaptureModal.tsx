@@ -24,7 +24,7 @@ import {
   modernTypography,
   modernSpacing,
   modernBorderRadius,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface PhotoCaptureModalProps {

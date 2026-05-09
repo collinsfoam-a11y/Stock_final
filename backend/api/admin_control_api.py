@@ -30,6 +30,7 @@ from backend.auth import get_current_user  # noqa: E402
 from backend.auth.dependencies import auth_deps  # noqa: E402
 from backend.config import settings  # noqa: E402
 from backend.db.runtime import get_db  # noqa: E402
+from backend.services.projection_read_service import ProjectionReadService  # noqa: E402
 from backend.services.system_report_service import SystemReportService  # noqa: E402
 from backend.services.watchdog_service import WatchdogService  # noqa: E402
 from backend.sql_server_connector import sql_connector  # noqa: E402
@@ -224,7 +225,10 @@ async def _get_mongodb_status() -> ServiceStatus:
                 "status": "connected",
             }
     except Exception as e:
-        logger.warning("Direct MongoDB check failed, falling back to PortDetector: %s", sanitize_for_logging(str(e)))
+        logger.warning(
+            "Direct MongoDB check failed, falling back to PortDetector: %s",
+            sanitize_for_logging(str(e)),
+        )
 
     mongo_status = PortDetector.get_mongo_status()
     running_flag = mongo_status.get("is_running")
@@ -975,15 +979,21 @@ async def get_system_stats(current_user: dict = Depends(require_admin)):
     """Get system statistics summary"""
     try:
         db = get_db()
+        projection_reads = ProjectionReadService(db)
 
         # Get basic stats
         total_users = await db.users.count_documents({})
-        total_sessions = await db.sessions.count_documents({})
-        # last_activity assumed to be an ISO string or timestamp; convert comparison appropriately
-        active_threshold = datetime.now() - timedelta(hours=1)
-        active_sessions = await db.sessions.count_documents(
-            {"last_activity": {"$gte": active_threshold}}
-        )
+        if await projection_reads.dashboard_reads_enabled():
+            business_stats = await projection_reads.get_system_stats_business()
+            total_sessions = int(business_stats["total_sessions"])
+            active_sessions = int(business_stats["active_sessions"])
+        else:
+            total_sessions = await db.sessions.count_documents({})
+            # last_activity assumed to be an ISO string or timestamp; convert comparison appropriately
+            active_threshold = datetime.now() - timedelta(hours=1)
+            active_sessions = await db.sessions.count_documents(
+                {"last_activity": {"$gte": active_threshold}}
+            )
 
         # Get services status
         services_status = await get_services_status(current_user)

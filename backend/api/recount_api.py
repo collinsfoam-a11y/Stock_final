@@ -137,6 +137,9 @@ async def create_recount_request(
             "completed_at": None,
             "result_qty": None,
             "recount_iteration": int(count_line.get("recount_iteration", 0) or 0) + 1,
+            "blind_recount_required": True,
+            "dual_verification_required": True,
+            "original_counter": count_line.get("counted_by") or count_line.get("created_by"),
         }
         lifecycle_service = SessionLifecycleService(db)
         recount_doc = await lifecycle_service.create_recount_request(
@@ -371,6 +374,22 @@ async def complete_recount_request(
                 )
                 if not existing_line:
                     raise HTTPException(status_code=404, detail="Count line for recount not found")
+                original_counter = str(
+                    recount.get("original_counter")
+                    or existing_line.get("counted_by")
+                    or existing_line.get("created_by")
+                    or ""
+                ).strip()
+                if (
+                    recount.get("blind_recount_required")
+                    and not is_privileged
+                    and original_counter
+                    and original_counter == username
+                ):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Blind recount requires a different staff user than the original count",
+                    )
 
                 session_id = str(existing_line.get("session_id") or recount.get("session_id") or "")
                 session = await lifecycle_service.ensure_session_active(session_id, db_session=tx)
@@ -432,6 +451,8 @@ async def complete_recount_request(
                 new_line["recount_iteration"] = (
                     int(existing_line.get("recount_iteration", 0) or 0) + 1
                 )
+                new_line["blind_recount_completed_by_distinct_user"] = original_counter != username
+                new_line["dual_verification_required"] = True
 
                 write_service = CountLineWriteService(db)
                 tx_context = {

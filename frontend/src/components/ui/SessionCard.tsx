@@ -24,7 +24,7 @@ import {
   modernSpacing,
   modernBorderRadius,
   modernShadows,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 import { StatusBadge } from "./StatusBadge";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";

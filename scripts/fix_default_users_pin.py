@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 from motor.motor_asyncio import AsyncIOMotorClient
-from backend.utils.auth_utils import get_password_hash
+from backend.utils.auth_utils import get_pin_hash
 from backend.utils.crypto_utils import get_pin_lookup_hash
 from backend.config import settings
 
@@ -32,7 +32,7 @@ async def fix_pins():
             continue
 
         # Always update to ensure correct PIN hashes
-        pin_hash = get_password_hash(pin)
+        pin_hash = get_pin_hash(pin)
         pin_lookup_hash = get_pin_lookup_hash(pin)
 
         result = await db.users.update_one(

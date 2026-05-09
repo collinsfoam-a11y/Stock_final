@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/useTheme";
+import { operationalTheme } from "@/theme/operationalTheme";
 import { layout } from "../../styles/globalStyles";
 
 export type ScreenVariant = "default" | "scrollable" | "fullscreen";
@@ -42,7 +43,8 @@ export const Screen: React.FC<ScreenProps> = ({
   testID,
 }) => {
   const theme = useTheme();
-  const bgColor = backgroundColor || theme.colors.background;
+  const bgColor =
+    backgroundColor || (theme.isDark ? theme.colors.background : operationalTheme.background);
 
   // Fullscreen variant (for scanner, modals)
   if (variant === "fullscreen") {

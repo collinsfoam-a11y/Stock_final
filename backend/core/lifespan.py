@@ -662,7 +662,13 @@ async def lifespan(app: FastAPI):  # noqa: C901
 
         # Use global activity_log_service
 
-        init_count_lines_api(activity_log_service, lock_service, snapshot_service, variant_service)
+        init_count_lines_api(
+            activity_log_service,
+            lock_service,
+            snapshot_service,
+            variant_service,
+            sql_connector,
+        )
         logger.info("✓ CountLines API initialized with dependencies (including VariantService)")
     except Exception as e:
         logger.error("Failed to initialize CountLines API: %s", str(e))
@@ -738,7 +744,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
 
     try:
         # Initialize ERP API
-        init_erp_api(db, cache_service)
+        init_erp_api(db, cache_service, sql_connector)
         logger.info("✓ ERP API initialized")
     except Exception as e:
         logger.error("Failed to initialize ERP API: %s", str(e))

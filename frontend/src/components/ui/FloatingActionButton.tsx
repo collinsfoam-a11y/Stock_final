@@ -27,7 +27,7 @@ import {
   modernSpacing,
   modernBorderRadius,
   modernShadows,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);

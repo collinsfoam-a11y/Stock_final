@@ -35,7 +35,7 @@ import {
   modernSpacing,
   modernBorderRadius,
   modernAnimations,
-} from "../../styles/modernDesignSystem";
+} from "../../styles/unifiedSystem";
 
 import {
   colors as uiColors,

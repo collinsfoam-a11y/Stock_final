@@ -4,7 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "rea
 import { SearchableSelectModal } from "../modals/SearchableSelectModal";
 import { Modal } from "../ui/Modal";
 import ModernInput from "../ui/ModernInput";
-import { theme } from "../../styles/modernDesignSystem";
+import { theme } from "../../styles/unifiedSystem";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 export interface AssignableStaffUser {

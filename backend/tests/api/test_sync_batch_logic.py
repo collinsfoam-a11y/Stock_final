@@ -5,7 +5,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from backend.api.sync_batch_api import SyncRecord, _process_count_line_op, sync_single_record
+from backend.api.sync_batch_api import (
+    SyncRecord,
+    _process_count_line_op,
+    sync_single_record,
+    validate_record,
+)
+from backend.tests.utils.in_memory_db import InMemoryDatabase
 
 
 @pytest.mark.asyncio
@@ -182,3 +188,53 @@ async def test_process_count_line_op_drops_object_id_from_recount_update(monkeyp
     assert insert_payload["status"] == "pending"
     update_payload = write_service.process_write.await_args_list[1].args[0]["update"]["$set"]
     assert update_payload["status"] == "SUPERSEDED"
+
+
+@pytest.mark.asyncio
+async def test_validate_record_allows_same_serial_for_different_item():
+    db = InMemoryDatabase()
+    await db.item_serials.insert_one({"serial_number": "SER-1", "item_code": "ITEM-1"})
+
+    record = SyncRecord(
+        client_record_id="offline-line-2",
+        session_id="session-a",
+        location_id="showroom",
+        floor_id="1",
+        rack_id="A1",
+        item_code="ITEM-2",
+        verified_qty=1,
+        serial_numbers=["ser-1"],
+        created_at=datetime.now(timezone.utc).isoformat(),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    lock_manager = SimpleNamespace(get_rack_lock_owner=AsyncMock(return_value=None))
+
+    conflict = await validate_record(record, db, lock_manager)
+
+    assert conflict is None
+
+
+@pytest.mark.asyncio
+async def test_validate_record_blocks_same_serial_for_same_item():
+    db = InMemoryDatabase()
+    await db.item_serials.insert_one({"serial_number": "SER-1", "item_code": "ITEM-1"})
+
+    record = SyncRecord(
+        client_record_id="offline-line-3",
+        session_id="session-a",
+        location_id="showroom",
+        floor_id="1",
+        rack_id="A1",
+        item_code="ITEM-1",
+        verified_qty=1,
+        serial_numbers=["ser-1"],
+        created_at=datetime.now(timezone.utc).isoformat(),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    lock_manager = SimpleNamespace(get_rack_lock_owner=AsyncMock(return_value=None))
+
+    conflict = await validate_record(record, db, lock_manager)
+
+    assert conflict is not None
+    assert conflict.conflict_type == "duplicate_serial"
+    assert conflict.message == "Serial already exists for this item."

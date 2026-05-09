@@ -24,20 +24,15 @@ export const clientWinsStrategy: ConflictStrategy = {
 
 /**
  * Merge Strategy (for numeric quantities)
- * H16 fix: Use the higher quantity (last-write-wins for stock counts).
- * In a stock verification system, both sides counted the same physical items,
- * so we take the maximum rather than summing (which would double inventory).
- * Assumes data has a 'quantity' field.
+ * Uses additive delta semantics when the client sends an explicit delta.
+ * If there is no delta, we fall back to server data rather than guessing.
  */
 export const mergeQuantityStrategy: ConflictStrategy = {
   resolve: (clientData: any, serverData: any) => {
-    if (
-      typeof clientData.quantity === "number" &&
-      typeof serverData.quantity === "number"
-    ) {
+    if (typeof clientData.delta === "number" && typeof serverData.quantity === "number") {
       return {
         ...serverData,
-        quantity: Math.max(serverData.quantity, clientData.quantity),
+        quantity: serverData.quantity + clientData.delta,
       };
     }
     return serverData; // Fallback to server wins
@@ -50,7 +45,7 @@ export const mergeQuantityStrategy: ConflictStrategy = {
 export const resolveConflict = <T>(
   clientData: T,
   serverData: T,
-  strategy: ConflictStrategy = serverWinsStrategy,
+  strategy: ConflictStrategy = serverWinsStrategy
 ): T => {
   return strategy.resolve(clientData, serverData);
 };

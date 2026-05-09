@@ -11,13 +11,20 @@ jest.mock("../httpClient", () => ({
 }));
 
 jest.mock("../offline/offlineStorage", () => ({
-  addToOfflineQueue: jest.fn(),
   cacheSession: jest.fn(),
   cacheSessions: jest.fn(),
   getCountLinesBySessionFromCache: jest.fn(),
   getSessionFromCache: jest.fn(),
   getSessionsCache: jest.fn(),
   removeSessionFromCache: jest.fn(),
+}));
+
+jest.mock("../control-plane/sessionControlPlane", () => ({
+  createSessionCommand: jest.fn(),
+  finalizeSessionCommand: jest.fn(),
+  getProjectedSessionRead: jest.fn(),
+  getProjectedSessionsRead: jest.fn(),
+  updateSessionStatusCommand: jest.fn(),
 }));
 
 jest.mock("../../utils/network", () => ({
@@ -42,10 +49,6 @@ jest.mock("../logging", () => ({
   }),
 }));
 
-jest.mock("../../utils/uuid", () => ({
-  generateOfflineId: jest.fn(() => "offline_session_1"),
-}));
-
 describe("sessionManagementApi.getSession", () => {
   beforeEach(() => {
     jest.resetModules();
@@ -56,6 +59,7 @@ describe("sessionManagementApi.getSession", () => {
     let httpClient: any;
     let offlineStorage: any;
     let network: any;
+    let controlPlane: any;
     let getSession: any;
 
     jest.isolateModules(() => {
@@ -65,6 +69,8 @@ describe("sessionManagementApi.getSession", () => {
       offlineStorage = require("../offline/offlineStorage");
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       network = require("../../utils/network");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      controlPlane = require("../control-plane/sessionControlPlane");
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       ({ getSession } = require("../api/sessionManagementApi"));
     });
@@ -78,13 +84,12 @@ describe("sessionManagementApi.getSession", () => {
     httpClient.get.mockRejectedValue({
       response: { status: 404 },
     });
+    controlPlane.getProjectedSessionRead.mockResolvedValue(null);
     offlineStorage.removeSessionFromCache.mockResolvedValue(undefined);
 
     const result = await getSession("session-404");
 
-    expect(offlineStorage.removeSessionFromCache).toHaveBeenCalledWith(
-      "session-404",
-    );
+    expect(offlineStorage.removeSessionFromCache).toHaveBeenCalledWith("session-404");
     expect(result).toBeNull();
   });
 
@@ -92,6 +97,7 @@ describe("sessionManagementApi.getSession", () => {
     let httpClient: any;
     let offlineStorage: any;
     let network: any;
+    let controlPlane: any;
     let getSession: any;
 
     jest.isolateModules(() => {
@@ -101,6 +107,8 @@ describe("sessionManagementApi.getSession", () => {
       offlineStorage = require("../offline/offlineStorage");
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       network = require("../../utils/network");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      controlPlane = require("../control-plane/sessionControlPlane");
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       ({ getSession } = require("../api/sessionManagementApi"));
     });
@@ -114,6 +122,7 @@ describe("sessionManagementApi.getSession", () => {
     httpClient.get.mockRejectedValue({
       response: { status: 500 },
     });
+    controlPlane.getProjectedSessionRead.mockResolvedValue(null);
     offlineStorage.getSessionFromCache.mockResolvedValue({
       id: "cached-session",
       status: "OPEN",
@@ -122,9 +131,7 @@ describe("sessionManagementApi.getSession", () => {
     const result = await getSession("session-500");
 
     expect(offlineStorage.removeSessionFromCache).not.toHaveBeenCalled();
-    expect(offlineStorage.getSessionFromCache).toHaveBeenCalledWith(
-      "session-500",
-    );
+    expect(offlineStorage.getSessionFromCache).toHaveBeenCalledWith("session-500");
     expect(result).toEqual({
       id: "cached-session",
       status: "OPEN",
@@ -134,6 +141,7 @@ describe("sessionManagementApi.getSession", () => {
   it("attempts a live session read when network status is unknown", async () => {
     let httpClient: any;
     let network: any;
+    let controlPlane: any;
     let getSession: any;
 
     jest.isolateModules(() => {
@@ -141,6 +149,8 @@ describe("sessionManagementApi.getSession", () => {
       httpClient = require("../httpClient").default;
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       network = require("../../utils/network");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      controlPlane = require("../control-plane/sessionControlPlane");
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       ({ getSession } = require("../api/sessionManagementApi"));
     });
@@ -157,6 +167,7 @@ describe("sessionManagementApi.getSession", () => {
         status: "OPEN",
       },
     });
+    controlPlane.getProjectedSessionRead.mockResolvedValue(null);
 
     const result = await getSession("session-unknown");
 
@@ -168,11 +179,14 @@ describe("sessionManagementApi.getSession", () => {
   });
 
   it("creates and queues an offline session when offline", async () => {
+    let controlPlane: any;
     let offlineStorage: any;
     let network: any;
     let createSession: any;
 
     jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      controlPlane = require("../control-plane/sessionControlPlane");
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       offlineStorage = require("../offline/offlineStorage");
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -187,19 +201,34 @@ describe("sessionManagementApi.getSession", () => {
       isInternetReachable: false,
       connectionType: "none",
     });
+    controlPlane.createSessionCommand.mockResolvedValue({
+      id: "offline_session_1",
+      warehouse: "WH-OFFLINE",
+      status: "OPEN",
+      type: "STANDARD",
+      staff_user: "offline_user",
+      staff_name: "Offline User",
+      started_at: new Date().toISOString(),
+      total_items: 0,
+      total_variance: 0,
+      _createdOffline: true,
+      _source: "local",
+    });
     offlineStorage.cacheSession.mockResolvedValue(undefined);
-    offlineStorage.addToOfflineQueue.mockResolvedValue(undefined);
 
     const result = await createSession("WH-OFFLINE");
 
     expect(result.id).toBe("offline_session_1");
     expect(result._createdOffline).toBe(true);
+    expect(controlPlane.createSessionCommand).toHaveBeenCalledWith({
+      warehouse: "WH-OFFLINE",
+      type: undefined,
+      location_type: undefined,
+      location_name: undefined,
+      rack_no: undefined,
+    });
     expect(offlineStorage.cacheSession).toHaveBeenCalledWith(
-      expect.objectContaining({ warehouse: "WH-OFFLINE" }),
-    );
-    expect(offlineStorage.addToOfflineQueue).toHaveBeenCalledWith(
-      "session",
-      expect.objectContaining({ warehouse: "WH-OFFLINE" }),
+      expect.objectContaining({ warehouse: "WH-OFFLINE" })
     );
   });
 
@@ -208,6 +237,7 @@ describe("sessionManagementApi.getSession", () => {
     let httpClient: any;
     let offlineStorage: any;
     let network: any;
+    let controlPlane: any;
     let getSessions: any;
 
     jest.isolateModules(() => {
@@ -219,6 +249,8 @@ describe("sessionManagementApi.getSession", () => {
       offlineStorage = require("../offline/offlineStorage");
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       network = require("../../utils/network");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      controlPlane = require("../control-plane/sessionControlPlane");
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       ({ getSessions } = require("../api/sessionManagementApi"));
     });
@@ -252,12 +284,10 @@ describe("sessionManagementApi.getSession", () => {
       "session-other": { id: "session-other", staff_user: "staff2", status: "OPEN" },
     });
     offlineStorage.cacheSessions.mockResolvedValue(undefined);
+    controlPlane.getProjectedSessionsRead.mockResolvedValue([]);
 
     const result = await getSessions(1, 20);
 
-    expect(result.items.map((item: any) => item.id)).toEqual([
-      "session-api",
-      "session-cache",
-    ]);
+    expect(result.items.map((item: any) => item.id)).toEqual(["session-api", "session-cache"]);
   });
 });

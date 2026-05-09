@@ -53,7 +53,7 @@ export const GlassCard = ({
   const themeContext = useThemeContextSafe();
   const theme = themeContext?.theme;
 
-  // Defaults using theme tokens or fallback to modernDesignSystem
+  // Defaults using theme tokens or fallback to unifiedSystem
   const activeBorderRadius = borderRadius ?? (theme?.borderRadius?.md || 12);
   const activePadding = padding ?? (theme?.spacing?.md || 16);
 
