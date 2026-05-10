@@ -12,9 +12,8 @@ import {
   ViewStyle,
   Animated,
   StyleProp,
-  Platform,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import { haptics, HapticIntensity } from "../../services/haptics";
 
 interface AnimatedPressableProps extends Omit<PressableProps, "style"> {
   style?: StyleProp<ViewStyle>;
@@ -55,14 +54,8 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
       ]).start();
 
       // Haptic feedback
-      if (Platform.OS !== "web" && hapticFeedback !== "none") {
-        const impactStyle =
-          hapticFeedback === "light"
-            ? Haptics.ImpactFeedbackStyle.Light
-            : hapticFeedback === "medium"
-              ? Haptics.ImpactFeedbackStyle.Medium
-              : Haptics.ImpactFeedbackStyle.Heavy;
-        Haptics.impactAsync(impactStyle);
+      if (hapticFeedback !== "none") {
+        void haptics.impact(hapticFeedback as HapticIntensity);
       }
 
       onPressIn?.(event);

@@ -13,3 +13,7 @@
 ## 2025-05-18 - Standardizing Tactile Feedback across Design System Components
 **Learning:** For a consistent mobile "feel," all interactive primitive components (Switch, Checkbox, Radio, etc.) should provide subtle haptic feedback on state change. Centralizing this logic in a `haptics` service that respects feature flags and platform constraints (e.g., disabling on web) ensures a robust and unified user experience.
 **Action:** Use `haptics.light()` from the centralized haptics service for all primary toggle/selection interactions in new UI components.
+
+## 2025-05-20 - Enhancing Input Accessibility and Interaction
+**Learning:** Adding accessibility labels and haptic feedback to utility icons within form inputs (like password toggles and clear buttons) provides critical state feedback for both screen reader users and those relying on tactile confirmation. Centralizing haptic calls even for these "micro" interactions ensures the application-wide `enableHaptics` flag is always respected.
+**Action:** Always provide `accessibilityLabel` and `accessibilityRole="button"` for interactive icons inside `ModernInput` and use the `haptics` service for their interactions.

@@ -15,11 +15,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   ViewStyle,
-  Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Haptics from "expo-haptics";
+import { haptics } from "../../services/haptics";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -88,9 +87,7 @@ export const FloatingScanButton: React.FC<FloatingScanButtonProps> = ({
 
   const handlePressIn = () => {
     scale.value = withTiming(0.95, { duration: 100 });
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    void haptics.medium();
   };
 
   const handlePressOut = () => {
@@ -99,9 +96,7 @@ export const FloatingScanButton: React.FC<FloatingScanButtonProps> = ({
 
   const handlePress = () => {
     if (!disabled) {
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }
+      void haptics.heavy();
       onPress();
     }
   };

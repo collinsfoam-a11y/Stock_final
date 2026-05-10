@@ -6,7 +6,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { Text, StyleSheet, Animated } from "react-native";
-import * as Haptics from "expo-haptics";
+import { haptics, HapticNotification } from "../../services/haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { modernColors } from "../../styles/unifiedSystem";
 
@@ -38,21 +38,21 @@ export const SuccessFeedback: React.FC<SuccessFeedbackProps> = ({
           color: modernColors.warning.main,
           bgColor: modernColors.warning.light,
           icon: "warning" as const,
-          hapticType: Haptics.NotificationFeedbackType.Warning,
+          hapticType: "warning" as HapticNotification,
         };
       case "error":
         return {
           color: modernColors.error.main,
           bgColor: modernColors.error.light,
           icon: "close-circle" as const,
-          hapticType: Haptics.NotificationFeedbackType.Error,
+          hapticType: "error" as HapticNotification,
         };
       case "info":
         return {
           color: modernColors.primary[500],
           bgColor: modernColors.primary[50],
           icon: "information-circle" as const,
-          hapticType: Haptics.NotificationFeedbackType.Success,
+          hapticType: "success" as HapticNotification,
         };
       case "success":
       default:
@@ -60,7 +60,7 @@ export const SuccessFeedback: React.FC<SuccessFeedbackProps> = ({
           color: modernColors.success.main,
           bgColor: modernColors.success.light,
           icon: "checkmark-circle" as const,
-          hapticType: Haptics.NotificationFeedbackType.Success,
+          hapticType: "success" as HapticNotification,
         };
     }
   };
@@ -71,7 +71,7 @@ export const SuccessFeedback: React.FC<SuccessFeedbackProps> = ({
     if (visible) {
       // Trigger haptic feedback
       if (haptic) {
-        Haptics.notificationAsync(config.hapticType);
+        void haptics.notification(config.hapticType);
       }
 
       // Animate in
@@ -191,7 +191,7 @@ export const ToastFeedback: React.FC<ToastFeedbackProps> = ({
 
   useEffect(() => {
     if (visible) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      void haptics.light();
 
       Animated.parallel([
         Animated.spring(translateY, {

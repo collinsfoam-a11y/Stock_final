@@ -86,6 +86,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   const showPasswordToggle = isPassword && value.length > 0;
 
   const togglePasswordVisibility = () => {
+    void haptics.light();
     setIsPasswordVisible(!isPasswordVisible);
   };
 
@@ -211,6 +212,8 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           <TouchableOpacity
             onPress={togglePasswordVisibility}
             style={styles.iconContainer}
+            accessibilityLabel={isPasswordVisible ? "Hide password" : "Show password"}
+            accessibilityRole="button"
           >
             <Ionicons
               name={isPasswordVisible ? "eye-off" : "eye"}
@@ -225,6 +228,8 @@ export const ModernInput: React.FC<ModernInputProps> = ({
             onPress={onRightIconPress}
             style={styles.iconContainer}
             disabled={!onRightIconPress}
+            accessibilityLabel={rightIcon.replace("-outline", "").replace(/-/g, " ")}
+            accessibilityRole="button"
           >
             <Ionicons
               name={rightIcon}
