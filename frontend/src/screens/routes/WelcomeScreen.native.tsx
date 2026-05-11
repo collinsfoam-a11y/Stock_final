@@ -15,11 +15,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
-import { colors, spacing, radius, gradients } from "@/theme/unified";
+import { colors, spacing, radius, gradients } from "@/theme/legacyCompat";
 import { useAuthStore } from "@/store/authStore";
 import { getRouteForRole, type UserRole } from "@/utils/roleNavigation";
 import { BrandLogo } from "@/components/branding/BrandLogo";
 
+import { semanticColors } from "@/theme/legacyCompat";
+import { getFlag } from "@/constants/flags";
 const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
   if (Platform.OS === "web") {
     return (
@@ -79,10 +81,7 @@ const FeatureCard = ({
   title: string;
   delay: number;
 }) => (
-  <SafeAnimatedView
-    entering={FadeInDown.delay(delay).springify()}
-    style={styles.featureWrapper}
-  >
+  <SafeAnimatedView entering={FadeInDown.delay(delay).springify()} style={styles.featureWrapper}>
     <GlassSurface intensity={20} tint="light" style={styles.featureCard}>
       <View style={styles.iconCircle}>
         <Ionicons name={icon} size={24} color={colors.primary[400]} />
@@ -101,13 +100,10 @@ export function WelcomeScreen() {
   const isDesktop = width >= 1024;
   const logoCardWidth = Math.min(width - spacing.lg * 2, isDesktop ? 420 : 332);
   const logoCardHeight = Math.max(128, Math.round(logoCardWidth * 0.42));
+  const publicRegistrationEnabled = getFlag("enablePublicRegistration");
 
   React.useEffect(() => {
     if (!isLoading && user) {
-      __DEV__ &&
-        console.log("🔄 [WELCOME] User already logged in, redirecting:", {
-          role: user.role,
-        });
       const target = getRouteForRole(user.role as UserRole);
       router.replace(target as any);
     }
@@ -125,10 +121,6 @@ export function WelcomeScreen() {
         colors={[colors.neutral[950], colors.neutral[900], colors.neutral[950]]}
         style={StyleSheet.absoluteFill}
       />
-
-      <View style={[styles.decorativeCircle1, styles.pointerEventsNone]} />
-      <View style={[styles.decorativeCircle2, styles.pointerEventsNone]} />
-
       <View
         style={[
           styles.content,
@@ -139,10 +131,7 @@ export function WelcomeScreen() {
           },
         ]}
       >
-        <SafeAnimatedView
-          entering={FadeInUp.duration(1000).springify()}
-          style={styles.header}
-        >
+        <SafeAnimatedView entering={FadeInUp.duration(1000).springify()} style={styles.header}>
           <View style={styles.logoContainer}>
             <LinearGradient
               colors={gradients.primary}
@@ -160,7 +149,7 @@ export function WelcomeScreen() {
               <View
                 style={{
                   flex: 1,
-                  backgroundColor: "#fff",
+                  backgroundColor: semanticColors.background.primary,
                   borderRadius: 29,
                   justifyContent: "center",
                   alignItems: "center",
@@ -195,23 +184,12 @@ export function WelcomeScreen() {
         </SafeAnimatedView>
 
         <View style={styles.featuresContainer}>
-          <FeatureCard
-            icon="barcode-outline"
-            title="Smart Scanning"
-            delay={400}
-          />
+          <FeatureCard icon="barcode-outline" title="Smart Scanning" delay={400} />
           <FeatureCard icon="sync-outline" title="Live Sync" delay={600} />
-          <FeatureCard
-            icon="shield-checkmark-outline"
-            title="Verified"
-            delay={800}
-          />
+          <FeatureCard icon="shield-checkmark-outline" title="Verified" delay={800} />
         </View>
 
-        <SafeAnimatedView
-          entering={FadeInDown.delay(1000).springify()}
-          style={styles.actions}
-        >
+        <SafeAnimatedView entering={FadeInDown.delay(1000).springify()} style={styles.actions}>
           <TouchableOpacity
             onPress={() => handlePress("/login")}
             activeOpacity={0.9}
@@ -224,29 +202,24 @@ export function WelcomeScreen() {
               style={styles.loginButton}
             >
               <Text style={styles.loginButtonText}>Get Started</Text>
-              <Ionicons name="arrow-forward" size={20} color="#fff" />
+              <Ionicons name="arrow-forward" size={20} color={semanticColors.text.inverse} />
             </LinearGradient>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => handlePress("/register")}
-            activeOpacity={0.7}
-            style={styles.registerButtonWrapper}
-          >
-            <GlassSurface
-              intensity={10}
-              tint="light"
-              style={styles.registerButton}
+          {publicRegistrationEnabled ? (
+            <TouchableOpacity
+              onPress={() => handlePress("/register")}
+              activeOpacity={0.7}
+              style={styles.registerButtonWrapper}
             >
-              <Text style={styles.registerButtonText}>Create Account</Text>
-            </GlassSurface>
-          </TouchableOpacity>
+              <GlassSurface intensity={10} tint="light" style={styles.registerButton}>
+                <Text style={styles.registerButtonText}>Create Account</Text>
+              </GlassSurface>
+            </TouchableOpacity>
+          ) : null}
         </SafeAnimatedView>
 
-        <SafeAnimatedView
-          entering={FadeInDown.delay(1200)}
-          style={styles.footer}
-        >
+        <SafeAnimatedView entering={FadeInDown.delay(1200)} style={styles.footer}>
           <Text style={styles.footerText}>Lavanya Mart 2026</Text>
           <Text style={styles.footerSubtext}>
             Modern inventory operations for structured floor counts
@@ -294,8 +267,8 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 36,
     fontWeight: "800",
-    color: "#fff",
-    letterSpacing: -1,
+    color: semanticColors.text.inverse,
+    letterSpacing: 0,
   },
   subtitle: {
     fontSize: 17,
@@ -315,7 +288,7 @@ const styles = StyleSheet.create({
     color: colors.primary[300],
     fontSize: 12,
     fontWeight: "700",
-    letterSpacing: 1,
+    letterSpacing: 0,
     textTransform: "uppercase",
   },
   featuresContainer: {
@@ -342,7 +315,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   featureText: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -350,10 +323,6 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   buttonShadow: {
-    shadowColor: "#22c55e",
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
     elevation: 12,
   },
   loginButton: {
@@ -365,7 +334,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   loginButtonText: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -382,7 +351,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.12)",
   },
   registerButtonText: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -395,32 +364,11 @@ const styles = StyleSheet.create({
     color: colors.neutral[500],
     fontSize: 12,
     fontWeight: "600",
-    letterSpacing: 1,
+    letterSpacing: 0,
     textTransform: "uppercase",
   },
   footerSubtext: {
     color: colors.neutral[600],
     fontSize: 12,
-  },
-  decorativeCircle1: {
-    position: "absolute",
-    top: -120,
-    right: -80,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: "rgba(34,197,94,0.08)",
-  },
-  decorativeCircle2: {
-    position: "absolute",
-    bottom: -140,
-    left: -100,
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: "rgba(59,130,246,0.08)",
-  },
-  pointerEventsNone: {
-    pointerEvents: "none",
   },
 });

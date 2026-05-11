@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"barcode":{"$numberInt":"1"}},"name":"idx_product_barcode","unique":true},{"v":{"$numberInt":"2"},"key":{"last_updated":{"$numberInt":"-1"}},"name":"idx_product_updated"}],"uuid":"b098a520e6ec4816bc59a43c8ec978e9","collectionName":"products","type":"collection"}

@@ -1,0 +1,91 @@
+{
+  "decision": {
+    "decision": "NO-GO",
+    "healthy": false,
+    "healthy_for_seconds": 0.0,
+    "metrics": {
+      "endpoints": {},
+      "error": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "reason": "no_shadow_data",
+      "timeout": 0,
+      "timeout_rate": 0.0,
+      "total": 0
+    },
+    "reason": "insufficient samples (0 < 500)",
+    "required_window_seconds": 0
+  },
+  "guard_reasons": [
+    "insufficient samples (0 < 500)",
+    "readiness gate not healthy (projection_freshness_exceeded)",
+    "no_shadow_data",
+    "recent window unhealthy (recent_unhealthy_point)"
+  ],
+  "mode": "dry_run",
+  "readiness": {
+    "freshness_age_seconds": 234376.914153,
+    "healthy": false,
+    "lag_seconds": 0.0,
+    "reason": "projection_freshness_exceeded"
+  },
+  "rollout": {
+    "apply_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+    "cooldown_remaining_seconds": 0.0,
+    "current_stage": 0,
+    "environment_updates": {
+      "ROLLOUT_STAGE": "0",
+      "SHADOW_READ_ENABLED": "true",
+      "SHADOW_READ_SAMPLE_RATE": "0.10",
+      "V3_PROJECTION_DASHBOARD_READS": "false",
+      "V3_PROJECTION_REPORT_READS": "false"
+    },
+    "manual_confirmation_required": true,
+    "next_stage": 0,
+    "patch_errors": [],
+    "reason": "insufficient samples (0 < 500)",
+    "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+    "rollback_updates": {
+      "ROLLOUT_STAGE": "0",
+      "SHADOW_READ_ENABLED": "true",
+      "SHADOW_READ_SAMPLE_RATE": "0.10",
+      "V3_PROJECTION_DASHBOARD_READS": "false",
+      "V3_PROJECTION_REPORT_READS": "false"
+    },
+    "stage_name": "shadow_only",
+    "status": "HELD"
+  },
+  "shadow_health": {
+    "endpoints": {},
+    "error": 0,
+    "error_rate": 0.0,
+    "healthy": false,
+    "mismatch": 0,
+    "mismatch_rate": 0.0,
+    "reason": "no_shadow_data",
+    "recent": {
+      "discarded_points": 0,
+      "error_rate": 0.0,
+      "healthy": false,
+      "mismatch_rate": 0.0,
+      "points": 1,
+      "reason": "recent_unhealthy_point",
+      "timeout_rate": 0.0,
+      "window_seconds": 900
+    },
+    "stability": {
+      "discarded_points": 0,
+      "min_points": 24,
+      "points": 1,
+      "reason": "insufficient_stability_points",
+      "required_window_seconds": 7200,
+      "stable": false,
+      "window_seconds": 0.0
+    },
+    "timeout": 0,
+    "timeout_rate": 0.0,
+    "total": 0
+  }
+}

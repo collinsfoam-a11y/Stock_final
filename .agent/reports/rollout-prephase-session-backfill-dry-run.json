@@ -1,0 +1,33 @@
+{
+  "mode": "dry-run",
+  "sessions_scanned": 48,
+  "missing_sessions": 1,
+  "repairable_sessions": 1,
+  "inserted_sessions": 0,
+  "skipped_existing": 0,
+  "skipped_missing_id": 0,
+  "errors": 0,
+  "missing_session_ids": [
+    "02b1832f-4eb6-44e2-a1fe-12b740d814b3"
+  ],
+  "candidate_rows": [
+    {
+      "session_id": "02b1832f-4eb6-44e2-a1fe-12b740d814b3",
+      "total_items": 0,
+      "verified_items": 0,
+      "pending_items": 0,
+      "status": "ACTIVE",
+      "warehouse": "Showroom - Ground Floor - DRAFTTEST",
+      "started_at": "2026-05-02T12:19:14.857000",
+      "source_updated_at": "2026-05-02T12:19:14.878000"
+    }
+  ],
+  "coverage_before": {
+    "total_sessions": 48,
+    "covered_sessions": 47
+  },
+  "coverage_after": {
+    "total_sessions": 48,
+    "covered_sessions": 48
+  }
+}

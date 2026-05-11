@@ -1,11 +1,13 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { AnimatedPressable, GlassCard, LiveIndicator } from "@/components/ui";
-import { theme } from "@/styles/unifiedSystem";
-import { colors as unifiedColors } from "@/theme/unified";
+import { AnimatedPressable, ModernCard, LiveIndicator } from "@/components/ui";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { theme } from "@/styles/modernDesignSystem";
+import { colors as unifiedColors, semanticColors } from "@/theme/legacyCompat";
+import { colorWithAlpha } from "@/theme/themeTokens";
 
 export interface OverviewAction {
   key: string;
@@ -28,49 +30,72 @@ export function SupervisorOverviewCard({
   openSessions,
   overviewActions,
 }: SupervisorOverviewCardProps) {
+  const uiTokens = useUiTokens();
+  const { width } = useWindowDimensions();
+  const isCompact = width < 640;
+
   return (
-    <Animated.View
-      entering={FadeInDown.delay(0).springify()}
-      style={styles.section}
-    >
-      <GlassCard
-        variant="medium"
-        intensity={24}
-        borderRadius={theme.borderRadius.xl}
-        padding={theme.spacing.lg}
-        withGradientBorder={true}
-        elevation="lg"
+    <Animated.View entering={FadeInDown.delay(0).springify()} style={styles.section}>
+      <ModernCard
+        variant="outlined"
+        elevation="none"
+        padding={uiTokens.spacing.lg}
+        style={styles.overviewCard}
       >
-        <View style={styles.topRow}>
+        <View style={[styles.topRow, isCompact && styles.topRowCompact]}>
+          {isCompact ? (
+            <View style={styles.indicator}>
+              <LiveIndicator label="Real-time monitoring" size="small" />
+            </View>
+          ) : null}
           <View style={styles.copy}>
-            <Text style={styles.eyebrow}>Supervisor overview</Text>
-            <Text style={styles.title}>
+            <Text style={[styles.eyebrow, { color: uiTokens.colors.accentStrong }]}>
+              Supervisor overview
+            </Text>
+            <Text
+              style={[
+                styles.title,
+                isCompact && styles.titleCompact,
+                { color: uiTokens.colors.textPrimary },
+              ]}
+            >
               Keep counting on track and fix issues early.
             </Text>
-            <Text style={styles.subtitle}>
-              Track progress, check team activity, and resolve count differences
-              from one place.
+            <Text style={[styles.subtitle, { color: uiTokens.colors.textSecondary }]}>
+              Track progress, check team activity, and resolve count differences from one place.
             </Text>
           </View>
-          <View style={styles.indicator}>
-            <LiveIndicator label="Real-time monitoring" size="small" />
-          </View>
+          {!isCompact ? (
+            <View style={styles.indicator}>
+              <LiveIndicator label="Real-time monitoring" size="small" />
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.metrics}>
           <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{openSessions}</Text>
-            <Text style={styles.metricLabel}>Open sessions</Text>
+            <Text style={[styles.metricValue, { color: uiTokens.colors.textPrimary }]}>
+              {openSessions}
+            </Text>
+            <Text style={[styles.metricLabel, { color: uiTokens.colors.textSecondary }]}>
+              Open sessions
+            </Text>
           </View>
           <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{highRiskSessions}</Text>
-            <Text style={styles.metricLabel}>High risk</Text>
+            <Text style={[styles.metricValue, { color: uiTokens.colors.textPrimary }]}>
+              {highRiskSessions}
+            </Text>
+            <Text style={[styles.metricLabel, { color: uiTokens.colors.textSecondary }]}>
+              High risk
+            </Text>
           </View>
           <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>
+            <Text style={[styles.metricValue, { color: uiTokens.colors.textPrimary }]}>
               {Math.round(completionPercentage)}%
             </Text>
-            <Text style={styles.metricLabel}>Completion</Text>
+            <Text style={[styles.metricLabel, { color: uiTokens.colors.textSecondary }]}>
+              Completion
+            </Text>
           </View>
         </View>
 
@@ -82,22 +107,29 @@ export function SupervisorOverviewCard({
               hapticFeedback="light"
               style={[
                 styles.actionButton,
-                action.primary && styles.actionButtonPrimary,
+                {
+                  backgroundColor: action.primary
+                    ? uiTokens.colors.accentStrong
+                    : uiTokens.colors.surface,
+                  borderColor: action.primary
+                    ? uiTokens.colors.accentStrong
+                    : uiTokens.colors.border,
+                },
               ]}
             >
               <Ionicons
                 name={action.icon}
                 size={18}
-                color={
-                  action.primary
-                    ? unifiedColors.white
-                    : theme.colors.text.primary
-                }
+                color={action.primary ? semanticColors.text.inverse : uiTokens.colors.textPrimary}
               />
               <Text
                 style={[
                   styles.actionLabel,
-                  action.primary && styles.actionLabelPrimary,
+                  {
+                    color: action.primary
+                      ? semanticColors.text.inverse
+                      : uiTokens.colors.textPrimary,
+                  },
                 ]}
               >
                 {action.label}
@@ -105,7 +137,7 @@ export function SupervisorOverviewCard({
             </AnimatedPressable>
           ))}
         </View>
-      </GlassCard>
+      </ModernCard>
     </Animated.View>
   );
 }
@@ -114,10 +146,16 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: theme.spacing.xl,
   },
+  overviewCard: {
+    borderRadius: theme.borderRadius.xl,
+  },
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     gap: theme.spacing.md,
+  },
+  topRowCompact: {
+    flexDirection: "column",
   },
   copy: {
     flex: 1,
@@ -127,20 +165,21 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   eyebrow: {
-    color: theme.colors.primary[300],
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
   title: {
-    color: theme.colors.text.primary,
     fontSize: 28,
     fontWeight: "700",
     lineHeight: 34,
   },
+  titleCompact: {
+    fontSize: 24,
+    lineHeight: 30,
+  },
   subtitle: {
-    color: theme.colors.text.secondary,
     fontSize: 14,
     lineHeight: 22,
   },
@@ -155,18 +194,16 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.lg,
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    backgroundColor: colorWithAlpha(unifiedColors.primary[500], 0.06),
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderColor: colorWithAlpha(unifiedColors.primary[500], 0.12),
     gap: theme.spacing.xs,
   },
   metricValue: {
-    color: theme.colors.text.primary,
     fontSize: 26,
     fontWeight: "700",
   },
   metricLabel: {
-    color: theme.colors.text.secondary,
     fontSize: 13,
     fontWeight: "500",
   },
@@ -185,19 +222,9 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.borderRadius.full,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.16)",
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-  },
-  actionButtonPrimary: {
-    backgroundColor: theme.colors.primary[500],
-    borderColor: theme.colors.primary[400],
   },
   actionLabel: {
-    color: theme.colors.text.primary,
     fontSize: 14,
     fontWeight: "600",
-  },
-  actionLabelPrimary: {
-    color: unifiedColors.white,
   },
 });

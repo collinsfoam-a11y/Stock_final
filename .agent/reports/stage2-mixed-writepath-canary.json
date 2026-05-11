@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-05-03T16:41:56.247331+00:00",
+  "duration_seconds": 45,
+  "session_id": "mix-b4958c30-6a33-4de5-9e8b-a0a1962df036",
+  "writes": {
+    "ok": 308,
+    "fail": 0
+  },
+  "reads": {
+    "ok": 0,
+    "fail": 600,
+    "projection_503": 0,
+    "total": 600
+  },
+  "failing_session_ids": [],
+  "visibility_ms": [
+    1
+  ],
+  "parity": {
+    "session_version": 308,
+    "projection_version": 308,
+    "line_count": 308,
+    "verified_projection_count": 308,
+    "variance_projection_count": 308,
+    "financial_projection_count": 1,
+    "version_guard_pass": true,
+    "item_projection_coverage_pass": true,
+    "financial_projection_pass": true,
+    "write_to_projection_visibility_ms": 1
+  },
+  "result": "PASS"
+}

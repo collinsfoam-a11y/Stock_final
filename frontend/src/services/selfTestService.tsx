@@ -17,7 +17,7 @@ import {
 import { authService } from "@/services/auth";
 import * as SecureStore from "expo-secure-store";
 import apiClient from "@/services/httpClient";
-import { colors, semanticColors, spacing, radius } from "@/theme/unified";
+import { colors, semanticColors, spacing, radius } from "@/theme/legacyCompat";
 
 export interface TestResult {
   name: string;
@@ -91,7 +91,7 @@ export class SelfTestService {
         }
 
         return true;
-      }),
+      })
     );
 
     // Test token refresh
@@ -103,7 +103,7 @@ export class SelfTestService {
           throw new Error("Token refresh failed");
         }
         return true;
-      }),
+      })
     );
 
     // Test user info retrieval
@@ -114,7 +114,7 @@ export class SelfTestService {
           throw new Error("Failed to get user info");
         }
         return true;
-      }),
+      })
     );
 
     // Test logout
@@ -126,7 +126,7 @@ export class SelfTestService {
           return true;
         }
         throw new Error("Not logged in");
-      }),
+      })
     );
 
     return this.createSuite("Authentication", tests);
@@ -143,7 +143,7 @@ export class SelfTestService {
           throw new Error("Invalid PIN length");
         }
         return true;
-      }),
+      })
     );
 
     // Test PIN validation
@@ -155,7 +155,7 @@ export class SelfTestService {
           throw new Error("Invalid PIN format");
         }
         return true;
-      }),
+      })
     );
 
     // Test PIN comparison
@@ -167,7 +167,7 @@ export class SelfTestService {
           throw new Error("PIN mismatch");
         }
         return true;
-      }),
+      })
     );
 
     // Test PIN storage
@@ -184,7 +184,7 @@ export class SelfTestService {
         } catch (error) {
           throw new Error(`Secure storage unavailable: ${error}`);
         }
-      }),
+      })
     );
 
     return this.createSuite("PIN Authentication", tests);
@@ -205,7 +205,7 @@ export class SelfTestService {
         } catch (error) {
           throw new Error(`Backend unreachable: ${error}`);
         }
-      }),
+      })
     );
 
     // Test API timeout handling
@@ -215,15 +215,13 @@ export class SelfTestService {
           // This should timeout if network is slow
           const _response = await Promise.race([
             apiClient.get("/health"),
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error("Timeout")), 5000),
-            ),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000)),
           ]);
           return true;
         } catch (error) {
           throw new Error(`Timeout handling failed: ${error}`);
         }
-      }),
+      })
     );
 
     // Test error response handling
@@ -237,11 +235,10 @@ export class SelfTestService {
           if (error.response?.status === 404) {
             return true;
           }
-          const typedError =
-            error instanceof Error ? error : new Error(String(error));
+          const typedError = error instanceof Error ? error : new Error(String(error));
           throw typedError;
         }
-      }),
+      })
     );
 
     // Test bearer token inclusion
@@ -253,7 +250,7 @@ export class SelfTestService {
         }
         // Token should be included in requests
         return true;
-      }),
+      })
     );
 
     return this.createSuite("API Connectivity", tests);
@@ -271,7 +268,7 @@ export class SelfTestService {
         } catch (error) {
           throw new Error(`Failed to write to secure storage: ${error}`);
         }
-      }),
+      })
     );
 
     // Test secure storage read
@@ -286,7 +283,7 @@ export class SelfTestService {
         } catch (error) {
           throw new Error(`Failed to read from secure storage: ${error}`);
         }
-      }),
+      })
     );
 
     // Test secure storage delete
@@ -302,7 +299,7 @@ export class SelfTestService {
         } catch (error) {
           throw new Error(`Failed to delete from secure storage: ${error}`);
         }
-      }),
+      })
     );
 
     // Test encryption
@@ -320,7 +317,7 @@ export class SelfTestService {
         } catch (error) {
           throw new Error(`Encryption test error: ${error}`);
         }
-      }),
+      })
     );
 
     return this.createSuite("Secure Storage", tests);
@@ -348,7 +345,7 @@ export class SelfTestService {
         }
 
         return true;
-      }),
+      })
     );
 
     // Test quantity validation
@@ -364,7 +361,7 @@ export class SelfTestService {
         }
 
         return true;
-      }),
+      })
     );
 
     // Test email validation
@@ -388,7 +385,7 @@ export class SelfTestService {
         }
 
         return true;
-      }),
+      })
     );
 
     return this.createSuite("Data Validation", tests);
@@ -405,7 +402,7 @@ export class SelfTestService {
         } catch {
           return true;
         }
-      }),
+      })
     );
 
     // Test fallback UI
@@ -413,7 +410,7 @@ export class SelfTestService {
       await this.runTest("Error Fallback Display", async () => {
         // Test that error state can be displayed
         return true;
-      }),
+      })
     );
 
     // Test recovery
@@ -429,7 +426,7 @@ export class SelfTestService {
           throw new Error("Recovery failed");
         }
         return true;
-      }),
+      })
     );
 
     return this.createSuite("Error Handling", tests);
@@ -450,7 +447,7 @@ export class SelfTestService {
         } catch (error) {
           throw new Error(`Notification permission error: ${error}`);
         }
-      }),
+      })
     );
 
     // Test notification scheduling
@@ -458,7 +455,7 @@ export class SelfTestService {
       await this.runTest("Notification Scheduling", async () => {
         // Test notification scheduling capability
         return true;
-      }),
+      })
     );
 
     return this.createSuite("Notifications", tests);
@@ -472,7 +469,7 @@ export class SelfTestService {
       await this.runTest("WiFi Status Detection", async () => {
         // WiFi detection should be available
         return true;
-      }),
+      })
     );
 
     // Test connection change detection
@@ -480,16 +477,13 @@ export class SelfTestService {
       await this.runTest("Connection Change Detection", async () => {
         // System should detect connection changes
         return true;
-      }),
+      })
     );
 
     return this.createSuite("WiFi Detection", tests);
   }
 
-  private async runTest(
-    name: string,
-    testFn: () => Promise<boolean>,
-  ): Promise<TestResult> {
+  private async runTest(name: string, testFn: () => Promise<boolean>): Promise<TestResult> {
     const startTime = Date.now();
 
     try {
@@ -575,9 +569,7 @@ export const SelfTestUI: React.FC = () => {
         <View key={idx} style={styles.suite}>
           <Button
             title={`${suite.name} (${suite.passed}/${suite.tests.length})`}
-            onPress={() =>
-              setExpanded(expanded === suite.name ? null : suite.name)
-            }
+            onPress={() => setExpanded(expanded === suite.name ? null : suite.name)}
           />
 
           {expanded === suite.name && (
@@ -585,18 +577,13 @@ export const SelfTestUI: React.FC = () => {
               {suite.tests.map((test, tidx) => (
                 <View
                   key={tidx}
-                  style={[
-                    styles.testItem,
-                    { borderLeftColor: getStatusColor(test.status) },
-                  ]}
+                  style={[styles.testItem, { borderLeftColor: getStatusColor(test.status) }]}
                 >
                   <Text style={styles.testName}>{test.name}</Text>
                   <Text style={styles.testStatus}>
                     {test.status.toUpperCase()} ({test.duration}ms)
                   </Text>
-                  {test.error && (
-                    <Text style={styles.testError}>{test.error}</Text>
-                  )}
+                  {test.error && <Text style={styles.testError}>{test.error}</Text>}
                 </View>
               ))}
             </View>

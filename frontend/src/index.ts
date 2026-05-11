@@ -8,6 +8,7 @@ export { useSettingsStore } from "./store/settingsStore";
 
 // Re-export commonly used hooks
 export { useTheme } from "./hooks/useTheme";
+export { useUiTokens } from "./hooks/useUiTokens";
 
 // Re-export types - Item is now unified (types/item.ts re-exports from types/scan.ts)
 export { Item } from "./types/scan";

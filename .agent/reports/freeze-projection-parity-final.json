@@ -1,0 +1,121 @@
+{
+  "is_consistent": true,
+  "summary": {
+    "session_totals_match": true,
+    "verified_items_match": true,
+    "variance_match": true,
+    "financial_match": true,
+    "sample_validation_passed": true,
+    "event_lag_ok": true
+  },
+  "metrics": {
+    "projection_drift_count": 0,
+    "projection_gap_count": 0,
+    "event_lag_seconds": 0.0,
+    "event_lag_threshold_seconds": 5.0
+  },
+  "samples_checked": 8,
+  "timestamp": "2026-05-02T11:51:48.735202Z",
+  "collections": {
+    "session_projection": "session_dashboard_projection",
+    "verified_projection": "verified_items_projection",
+    "variance_projection": "variance_summary_projection",
+    "financial_projection": "financial_projection",
+    "batch_projection": "batch_records",
+    "event_log": "event_log"
+  },
+  "details": {
+    "sample_session_ids": [
+      "ef1d1c12-dc95-40aa-b390-3e0c9e45bab6",
+      "da792277-7d84-4b89-9ac5-8219892014ec",
+      "cb1fe359-28cd-4f07-9bbb-b5780f0b2593",
+      "93b4c9fe-63dd-4301-b430-4ec01e27a0dd",
+      "6a44750b-aeae-4f3a-8fd4-d4e841a8e2cc",
+      "1aa99c8a-5fbb-4cff-928c-5407411d043c",
+      "75060e76-75c8-4abd-8c0e-72afab696bf6",
+      "6adb4900-ff7e-49b6-bfe8-01aac70e9964"
+    ],
+    "session_totals": {
+      "legacy": {
+        "session_count": 40,
+        "total_items": 8,
+        "verified_items": 0,
+        "pending_items": 8,
+        "damage_items": 0,
+        "total_variance": 17.0
+      },
+      "projection": {
+        "session_count": 40,
+        "total_items": 8,
+        "verified_items": 0,
+        "pending_items": 8,
+        "damage_items": 0,
+        "total_variance": 17.0
+      }
+    },
+    "verified_items": {
+      "legacy": 0,
+      "projection": 0
+    },
+    "variance_totals": {
+      "legacy": 17.0,
+      "projection": 17.0
+    },
+    "financial_totals": {
+      "legacy": 0.0,
+      "projection": 0.0
+    },
+    "sample_results": [
+      {
+        "session_id": "ef1d1c12-dc95-40aa-b390-3e0c9e45bab6",
+        "items_compared": 1,
+        "mismatches": []
+      },
+      {
+        "session_id": "da792277-7d84-4b89-9ac5-8219892014ec",
+        "items_compared": 1,
+        "mismatches": []
+      },
+      {
+        "session_id": "cb1fe359-28cd-4f07-9bbb-b5780f0b2593",
+        "items_compared": 1,
+        "mismatches": []
+      },
+      {
+        "session_id": "93b4c9fe-63dd-4301-b430-4ec01e27a0dd",
+        "items_compared": 1,
+        "mismatches": []
+      },
+      {
+        "session_id": "6a44750b-aeae-4f3a-8fd4-d4e841a8e2cc",
+        "items_compared": 1,
+        "mismatches": []
+      },
+      {
+        "session_id": "1aa99c8a-5fbb-4cff-928c-5407411d043c",
+        "items_compared": 1,
+        "mismatches": []
+      },
+      {
+        "session_id": "75060e76-75c8-4abd-8c0e-72afab696bf6",
+        "items_compared": 1,
+        "mismatches": []
+      },
+      {
+        "session_id": "6adb4900-ff7e-49b6-bfe8-01aac70e9964",
+        "items_compared": 1,
+        "mismatches": []
+      }
+    ],
+    "event_lag": {
+      "latest_event_timestamp": "2026-04-29T07:40:33.524000Z",
+      "latest_projection_timestamp": "2026-05-02T11:51:39.712000Z"
+    }
+  },
+  "controls": {
+    "max_records": 10000,
+    "timeout_seconds": 60.0,
+    "sample_seed": null
+  },
+  "failures": []
+}

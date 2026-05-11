@@ -9,7 +9,6 @@ import * as Haptics from "expo-haptics";
 
 import { Screen } from "@/components/layout/Screen";
 import ModernCard from "@/components/ui/ModernCard";
-import ModernInput from "@/components/ui/ModernInput";
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 import RecountAssignmentModal, {
   type AssignableStaffUser,
@@ -17,7 +16,8 @@ import RecountAssignmentModal, {
 import { useToast } from "@/components/feedback/ToastProvider";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useSettingsStore } from "@/store/settingsStore";
-import { colors, spacing, typography, borderRadius, shadows } from "@/theme/unified";
+import { colors, spacing, typography, borderRadius, shadows } from "@/theme/legacyCompat";
+import { safeBackNavigation } from "@/utils/navigation";
 import {
   getSession,
   getCountLines,
@@ -32,18 +32,6 @@ import {
 
 type BadgeTone = "neutral" | "success" | "warning" | "error" | "info";
 
-const operationalPalette = {
-  background: "#FAF9F6",
-  surface: "#FFFFFF",
-  surfaceMuted: "#F4F3F1",
-  border: "#E2E2E2",
-  primary: "#007B83",
-  primaryStrong: "#006067",
-  primaryTint: "#E4F5F6",
-  ink: "#1A1C1A",
-  muted: "#586377",
-};
-
 const badgeToneStyles = {
   neutral: {
     backgroundColor: colors.gray[100],
@@ -52,17 +40,17 @@ const badgeToneStyles = {
   },
   success: {
     backgroundColor: colors.success[50],
-    borderColor: "#A7F3D0",
+    borderColor: colors.success[200],
     textColor: colors.success[600],
   },
   warning: {
     backgroundColor: colors.warning[50],
-    borderColor: "#FDE68A",
+    borderColor: colors.warning[200],
     textColor: colors.warning[600],
   },
   error: {
     backgroundColor: colors.error[50],
-    borderColor: "#FECACA",
+    borderColor: colors.error[200],
     textColor: colors.error[600],
   },
   info: {
@@ -106,96 +94,6 @@ const getLineStatusTone = (status: string): BadgeTone => {
   }
 };
 
-const toDate = (value: unknown): Date | null => {
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value;
-  }
-
-  if (typeof value === "number") {
-    const ms = value < 1e12 ? value * 1000 : value;
-    const parsed = new Date(ms);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-
-  if (typeof value === "string" && value.trim()) {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-
-  return null;
-};
-
-const getLastSessionTimestamp = (session: any): Date | null => {
-  const candidates = [
-    session?.updated_at,
-    session?.last_activity,
-    session?.verified_at,
-    session?.started_at,
-    session?.created_at,
-  ];
-
-  let latest: Date | null = null;
-  for (const value of candidates) {
-    const date = toDate(value);
-    if (!date) continue;
-    if (!latest || date.getTime() > latest.getTime()) {
-      latest = date;
-    }
-  }
-
-  return latest;
-};
-
-const formatRelativeUpdate = (session: any): string => {
-  const date = getLastSessionTimestamp(session);
-  if (!date) {
-    return "Update time unavailable";
-  }
-
-  const diffMs = Date.now() - date.getTime();
-  const diffMinutes = Math.max(0, Math.round(diffMs / 60000));
-
-  if (diffMinutes < 1) {
-    return "Updated just now";
-  }
-
-  if (diffMinutes < 60) {
-    return `Updated ${diffMinutes} min ago`;
-  }
-
-  const diffHours = Math.round(diffMinutes / 60);
-  if (diffHours < 24) {
-    return `Updated ${diffHours} hr ago`;
-  }
-
-  return `Updated ${date.toLocaleDateString()}`;
-};
-
-const getLineSurfaceTone = (item: any, activeTab: "toVerify" | "verified") => {
-  const variance = Number(item?.variance ?? 0);
-  if (variance !== 0) {
-    return {
-      backgroundColor: colors.warning[50],
-      borderColor: colors.warning[200],
-      accentColor: colors.warning[700],
-    };
-  }
-
-  if (activeTab === "verified" || item?.verified) {
-    return {
-      backgroundColor: colors.success[50],
-      borderColor: colors.success[200],
-      accentColor: colors.success[700],
-    };
-  }
-
-  return {
-    backgroundColor: operationalPalette.surface,
-    borderColor: operationalPalette.border,
-    accentColor: operationalPalette.primaryStrong,
-  };
-};
-
 export default function SessionDetail() {
   const { id, sessionId } = useLocalSearchParams();
   const targetSessionId = (id || sessionId) as string;
@@ -210,7 +108,6 @@ export default function SessionDetail() {
   const [loading, setLoading] = React.useState(true);
   const [sessionMissing, setSessionMissing] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<"toVerify" | "verified">("toVerify");
-  const [searchQuery, setSearchQuery] = React.useState("");
   const [verifying, setVerifying] = React.useState<string | null>(null);
   const [assignableStaff, setAssignableStaff] = React.useState<AssignableStaffUser[]>([]);
   const [staffLoading, setStaffLoading] = React.useState(false);
@@ -364,7 +261,6 @@ export default function SessionDetail() {
       await rejectCountLine(pendingRejectLine.id, {
         notes: notes || undefined,
         assign_to: assignTo,
-        session_id: pendingRejectLine.session_id,
       });
       setRecountModalVisible(false);
       setPendingRejectLine(null);
@@ -482,54 +378,9 @@ export default function SessionDetail() {
     setActiveTab(tab);
   };
 
-  const allLines = React.useMemo(
-    () => [...toVerifyLines, ...verifiedLines],
-    [toVerifyLines, verifiedLines]
-  );
-  const currentLines = activeTab === "toVerify" ? toVerifyLines : verifiedLines;
-  const filteredLines = React.useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) {
-      return currentLines;
-    }
-
-    return currentLines.filter((item) =>
-      [item?.item_name, item?.item_code, item?.barcode].some(
-        (value) => typeof value === "string" && value.toLowerCase().includes(query)
-      )
-    );
-  }, [currentLines, searchQuery]);
-  const totalVariance = Number(session?.total_variance ?? 0);
-  const totalLineCount = allLines.length;
-  const varianceCount = allLines.filter((line) => Number(line?.variance ?? 0) !== 0).length;
-  const matchedCount = allLines.filter((line) => Number(line?.variance ?? 0) === 0).length;
-  const progressPercent =
-    totalLineCount > 0
-      ? Math.min(100, Math.round((verifiedLines.length / totalLineCount) * 100))
-      : 0;
-  const pendingCount = Math.max(totalLineCount - verifiedLines.length, 0);
-  const sessionStatusLabel = String(session?.status || "Unknown");
-  const lastUpdateLabel = formatRelativeUpdate(session);
-  const sessionFinalized =
-    session?.status === "COMPLETED" || session?.finalization_status === "FINALIZED";
-  const stickyAction =
-    !offlineMode && !sessionFinalized && session?.status === "OPEN"
-      ? {
-          title: "Review line approvals before handoff",
-          action: "Move to Reconcile",
-          onPress: () => handleUpdateStatus("RECONCILE"),
-        }
-      : !offlineMode && !sessionFinalized && session?.status === "RECONCILE"
-        ? {
-            title: "Ready for final lock and audit handoff",
-            action: "Finalize Session",
-            onPress: () => void handleFinalizeSession(),
-          }
-        : null;
-
   if (!loading && sessionMissing) {
     return (
-      <Screen padding={0} backgroundColor={operationalPalette.background}>
+      <Screen padding={0} backgroundColor={colors.gray[50]}>
         <StatusBar style="dark" />
         <View style={styles.header}>
           <AnimatedPressable
@@ -567,11 +418,11 @@ export default function SessionDetail() {
 
   if (loading || !session) {
     return (
-      <Screen padding={0} backgroundColor={operationalPalette.background}>
+      <Screen padding={0} backgroundColor={colors.gray[50]}>
         <StatusBar style="dark" />
         <View style={styles.header}>
           <AnimatedPressable
-            onPress={() => router.back()}
+            onPress={() => safeBackNavigation(router, { fallbackHref: "/supervisor/sessions" })}
             style={styles.backButton}
             accessibilityRole="button"
             accessibilityLabel="Go back"
@@ -590,13 +441,18 @@ export default function SessionDetail() {
     );
   }
 
+  const currentLines = activeTab === "toVerify" ? toVerifyLines : verifiedLines;
+  const totalVariance = Number(session?.total_variance ?? 0);
+  const sessionFinalized =
+    session?.status === "COMPLETED" || session?.finalization_status === "FINALIZED";
+
   const ListHeader = () => (
     <View>
       <Animated.View entering={getFadeInDown(100)}>
-        <ModernCard variant="outlined" style={styles.sessionInfoCard}>
+        <ModernCard variant="elevated" style={styles.sessionInfoCard}>
           <View style={styles.sessionInfoHeader}>
             <View style={styles.sessionIdentity}>
-              <Text style={styles.sectionLabel}>Active session</Text>
+              <Text style={styles.sectionLabel}>Warehouse</Text>
               <Text style={styles.sessionTitle} numberOfLines={2}>
                 {session.warehouse || "Unknown warehouse"}
               </Text>
@@ -604,66 +460,52 @@ export default function SessionDetail() {
                 Counted by {session.staff_name || "Unassigned staff"}
               </Text>
             </View>
-            {renderBadge(sessionStatusLabel, getSessionStatusTone(sessionStatusLabel))}
-          </View>
-
-          <View style={styles.progressSummaryRow}>
-            <View>
-              <Text style={styles.progressSummaryLabel}>Progress</Text>
-              <Text style={styles.progressSummaryValue}>{progressPercent}% complete</Text>
-            </View>
-            <Text style={styles.progressSummaryMeta}>
-              {verifiedLines.length}/{totalLineCount || 0} verified
-            </Text>
-          </View>
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${Math.max(progressPercent, progressPercent === 0 ? 0 : 6)}%` },
-              ]}
-            />
+            {renderBadge(
+              String(session.status || "Unknown"),
+              getSessionStatusTone(String(session.status || ""))
+            )}
           </View>
 
           <View style={styles.metricRow}>
             <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>Matched</Text>
-              <Text style={styles.metricValue}>{matchedCount}</Text>
+              <Text style={styles.metricLabel}>Items</Text>
+              <Text style={styles.metricValue}>{session.total_items ?? 0}</Text>
             </View>
             <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>Variance</Text>
-              <Text style={[styles.metricValue, varianceCount > 0 && styles.metricValueWarning]}>
-                {varianceCount}
-              </Text>
-            </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>Pending</Text>
-              <Text style={styles.metricValue}>{pendingCount}</Text>
-            </View>
-          </View>
-
-          <View style={styles.signalRow}>
-            <View style={styles.syncPill}>
-              <Ionicons
-                name={offlineMode ? "cloud-offline-outline" : "sync-outline"}
-                size={14}
-                color={offlineMode ? colors.warning[700] : operationalPalette.primaryStrong}
-              />
-              <Text style={[styles.syncPillText, offlineMode && styles.syncPillTextWarning]}>
-                {offlineMode ? "Offline cache active" : lastUpdateLabel}
-              </Text>
-            </View>
-
-            <View style={styles.variancePill}>
-              <Text
-                style={[styles.variancePillText, totalVariance !== 0 && styles.metricValueDanger]}
-              >
-                Total variance {totalVariance.toFixed(2)}
+              <Text style={styles.metricLabel}>Total Variance</Text>
+              <Text style={[styles.metricValue, totalVariance !== 0 && styles.metricValueDanger]}>
+                {totalVariance.toFixed(2)}
               </Text>
             </View>
           </View>
         </ModernCard>
       </Animated.View>
+
+      {session.status === "OPEN" && !offlineMode ? (
+        <Animated.View entering={getFadeInDown(200)} style={styles.actionButtons}>
+          <AnimatedPressable
+            style={[styles.primaryActionButton, styles.warningActionButton]}
+            onPress={() => handleUpdateStatus("RECONCILE")}
+            accessibilityRole="button"
+            accessibilityLabel="Move session to reconcile"
+          >
+            <Text style={styles.buttonText}>Move to Reconcile</Text>
+          </AnimatedPressable>
+        </Animated.View>
+      ) : null}
+
+      {session.status === "RECONCILE" && !offlineMode ? (
+        <Animated.View entering={getFadeInDown(200)} style={styles.actionButtons}>
+          <AnimatedPressable
+            style={[styles.primaryActionButton, styles.successActionButton]}
+            onPress={() => void handleFinalizeSession()}
+            accessibilityRole="button"
+            accessibilityLabel="Finalize session"
+          >
+            <Text style={styles.buttonText}>Finalize Session</Text>
+          </AnimatedPressable>
+        </Animated.View>
+      ) : null}
 
       {sessionFinalized ? (
         <Animated.View entering={getFadeInDown(220)}>
@@ -699,20 +541,6 @@ export default function SessionDetail() {
         </Animated.View>
       ) : null}
 
-      <Animated.View entering={getFadeInDown(240)}>
-        <ModernInput
-          placeholder={`Search ${activeTab === "toVerify" ? "pending" : "verified"} items`}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          icon="search-outline"
-          rightIcon={searchQuery ? "close-circle" : undefined}
-          onRightIconPress={searchQuery ? () => setSearchQuery("") : undefined}
-          containerStyle={styles.searchFieldContainer}
-          style={styles.searchField}
-          inputStyle={styles.searchInput}
-        />
-      </Animated.View>
-
       <Animated.View
         entering={getFadeInDown(300)}
         style={styles.tabContainer}
@@ -729,7 +557,7 @@ export default function SessionDetail() {
           <Ionicons
             name="list-outline"
             size={18}
-            color={activeTab === "toVerify" ? operationalPalette.primaryStrong : colors.gray[600]}
+            color={activeTab === "toVerify" ? colors.white : colors.gray[600]}
           />
           <Text style={[styles.tabText, activeTab === "toVerify" && styles.tabTextActive]}>
             To Verify ({toVerifyLines.length})
@@ -746,7 +574,7 @@ export default function SessionDetail() {
           <Ionicons
             name="checkmark-circle-outline"
             size={18}
-            color={activeTab === "verified" ? operationalPalette.primaryStrong : colors.gray[600]}
+            color={activeTab === "verified" ? colors.white : colors.gray[600]}
           />
           <Text style={[styles.tabText, activeTab === "verified" && styles.tabTextActive]}>
             Verified ({verifiedLines.length})
@@ -763,21 +591,9 @@ export default function SessionDetail() {
     const verifiedAtLabel = item.verified_at
       ? new Date(item.verified_at).toLocaleString()
       : "Unknown time";
-    const surfaceTone = getLineSurfaceTone(item, activeTab);
 
     return (
-      <ModernCard
-        variant="outlined"
-        style={[
-          styles.lineCard,
-          {
-            backgroundColor: surfaceTone.backgroundColor,
-            borderColor: surfaceTone.borderColor,
-            borderLeftWidth: 4,
-            borderLeftColor: surfaceTone.accentColor,
-          },
-        ]}
-      >
+      <ModernCard variant="elevated" style={styles.lineCard}>
         <View style={styles.lineHeader}>
           <Text style={styles.lineName} numberOfLines={2}>
             {item.item_name}
@@ -908,7 +724,7 @@ export default function SessionDetail() {
 
   const renderEmpty = () => (
     <ModernCard
-      variant="outlined"
+      variant="elevated"
       style={styles.emptyContainer}
       contentStyle={styles.emptyCardContent}
     >
@@ -918,22 +734,18 @@ export default function SessionDetail() {
         color={colors.gray[300]}
       />
       <Text style={styles.emptyText}>
-        {searchQuery
-          ? "No items match this search"
-          : activeTab === "toVerify"
-            ? "No items to verify"
-            : "No verified items"}
+        {activeTab === "toVerify" ? "No items to verify" : "No verified items"}
       </Text>
     </ModernCard>
   );
 
   return (
-    <Screen padding={0} backgroundColor={operationalPalette.background}>
+    <Screen padding={0} backgroundColor={colors.gray[50]}>
       <StatusBar style="dark" />
 
       <Animated.View entering={getFadeInDown(50)} style={styles.header}>
         <AnimatedPressable
-          onPress={() => router.back()}
+          onPress={() => safeBackNavigation(router, { fallbackHref: "/supervisor/sessions" })}
           style={styles.backButton}
           accessibilityRole="button"
           accessibilityLabel="Go back"
@@ -946,36 +758,15 @@ export default function SessionDetail() {
 
       <View style={styles.listContainer}>
         <FlashList
-          data={filteredLines}
+          data={currentLines}
           renderItem={renderItem}
           // @ts-ignore
           estimatedItemSize={260}
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={renderEmpty}
-          contentContainerStyle={[
-            styles.listContent,
-            stickyAction ? styles.listContentWithFooter : null,
-          ]}
-          keyboardShouldPersistTaps="handled"
-          keyExtractor={(item, index) =>
-            String(item?.id || item?._id || `${item?.item_code || "item"}-${index}`)
-          }
+          contentContainerStyle={styles.listContent}
         />
       </View>
-
-      {stickyAction ? (
-        <View style={styles.stickyActionBar}>
-          <Text style={styles.stickyActionTitle}>{stickyAction.title}</Text>
-          <AnimatedPressable
-            style={[styles.primaryActionButton, styles.footerPrimaryButton]}
-            onPress={stickyAction.onPress}
-            accessibilityRole="button"
-            accessibilityLabel={stickyAction.action}
-          >
-            <Text style={styles.buttonText}>{stickyAction.action}</Text>
-          </AnimatedPressable>
-        </View>
-      ) : null}
 
       <RecountAssignmentModal
         visible={recountModalVisible}
@@ -1005,17 +796,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
-    backgroundColor: operationalPalette.background,
+    backgroundColor: colors.gray[50],
     borderBottomWidth: 1,
-    borderBottomColor: operationalPalette.border,
+    borderBottomColor: colors.gray[200],
   },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: borderRadius.full,
-    backgroundColor: operationalPalette.surface,
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: operationalPalette.border,
+    borderColor: colors.gray[200],
     alignItems: "center",
     justifyContent: "center",
     ...shadows.sm,
@@ -1029,7 +820,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: operationalPalette.ink,
+    color: colors.gray[900],
   },
   loadingContainer: {
     flex: 1,
@@ -1059,13 +850,8 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing["2xl"],
   },
-  listContentWithFooter: {
-    paddingBottom: 140,
-  },
   sessionInfoCard: {
     marginBottom: spacing.lg,
-    backgroundColor: operationalPalette.surface,
-    borderColor: operationalPalette.border,
   },
   sessionInfoHeader: {
     flexDirection: "row",
@@ -1081,49 +867,18 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: operationalPalette.primaryStrong,
+    color: colors.gray[500],
     textTransform: "uppercase",
     letterSpacing: 0.6,
   },
   sessionTitle: {
-    fontSize: typography.fontSize["2xl"],
+    fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: operationalPalette.ink,
+    color: colors.gray[900],
   },
   sessionSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: operationalPalette.muted,
-  },
-  progressSummaryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.xs,
-  },
-  progressSummaryLabel: {
-    fontSize: typography.fontSize.sm,
-    color: operationalPalette.muted,
-  },
-  progressSummaryValue: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: operationalPalette.primaryStrong,
-  },
-  progressSummaryMeta: {
-    fontSize: typography.fontSize.sm,
-    color: operationalPalette.muted,
-  },
-  progressTrack: {
-    height: 8,
-    borderRadius: borderRadius.full,
-    backgroundColor: operationalPalette.surfaceMuted,
-    overflow: "hidden",
-    marginBottom: spacing.md,
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: borderRadius.full,
-    backgroundColor: operationalPalette.primary,
+    color: colors.gray[600],
   },
   metricRow: {
     flexDirection: "row",
@@ -1131,69 +886,30 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     flex: 1,
-    backgroundColor: operationalPalette.surfaceMuted,
+    backgroundColor: colors.gray[50],
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: operationalPalette.border,
+    borderColor: colors.gray[200],
     padding: spacing.md,
   },
   metricLabel: {
     fontSize: typography.fontSize.sm,
-    color: operationalPalette.muted,
+    color: colors.gray[500],
     marginBottom: 4,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
   },
   metricValue: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: operationalPalette.ink,
+    color: colors.gray[900],
   },
   metricValueDanger: {
     color: colors.error[600],
   },
-  metricValueWarning: {
-    color: colors.warning[700],
-  },
-  signalRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-    marginTop: spacing.md,
-    flexWrap: "wrap",
-  },
-  syncPill: {
-    minHeight: 34,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.full,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    backgroundColor: operationalPalette.primaryTint,
-  },
-  syncPillText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: operationalPalette.primaryStrong,
-  },
-  syncPillTextWarning: {
-    color: colors.warning[700],
-  },
-  variancePill: {
-    minHeight: 34,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.gray[100],
-    justifyContent: "center",
-  },
-  variancePillText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: operationalPalette.ink,
+  actionButtons: {
+    marginBottom: spacing.lg,
   },
   primaryActionButton: {
-    minHeight: 56,
+    minHeight: 48,
     borderRadius: borderRadius.lg,
     alignItems: "center",
     justifyContent: "center",
@@ -1202,7 +918,7 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   primaryActionFill: {
-    backgroundColor: operationalPalette.primary,
+    backgroundColor: colors.primary[600],
   },
   successActionButton: {
     backgroundColor: colors.success[600],
@@ -1226,11 +942,11 @@ const styles = StyleSheet.create({
   },
   noticeSuccess: {
     backgroundColor: colors.success[50],
-    borderColor: "#A7F3D0",
+    borderColor: colors.success[200],
   },
   noticeWarning: {
     backgroundColor: colors.warning[50],
-    borderColor: "#FDE68A",
+    borderColor: colors.warning[200],
   },
   noticeRow: {
     flexDirection: "row",
@@ -1253,12 +969,12 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: "row",
-    backgroundColor: operationalPalette.surface,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
     padding: 4,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: operationalPalette.border,
+    borderColor: colors.gray[200],
   },
   tab: {
     flex: 1,
@@ -1271,15 +987,15 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
   },
   tabActive: {
-    backgroundColor: operationalPalette.primaryTint,
+    backgroundColor: colors.primary[600],
   },
   tabText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: operationalPalette.muted,
+    color: colors.gray[600],
   },
   tabTextActive: {
-    color: operationalPalette.primaryStrong,
+    color: colors.white,
     fontWeight: typography.fontWeight.bold,
   },
   badge: {
@@ -1297,8 +1013,6 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     marginTop: spacing.xl,
-    backgroundColor: operationalPalette.surface,
-    borderColor: operationalPalette.border,
   },
   emptyCardContent: {
     paddingVertical: spacing["2xl"],
@@ -1325,7 +1039,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: operationalPalette.ink,
+    color: colors.gray[900],
   },
   badgeContainer: {
     flexDirection: "row",
@@ -1335,7 +1049,7 @@ const styles = StyleSheet.create({
   },
   lineCode: {
     fontSize: typography.fontSize.sm,
-    color: operationalPalette.muted,
+    color: colors.gray[600],
     marginBottom: spacing.md,
   },
   qtyRow: {
@@ -1344,9 +1058,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     padding: spacing.sm,
     borderRadius: borderRadius.md,
-    backgroundColor: operationalPalette.surface,
+    backgroundColor: colors.gray[50],
     borderWidth: 1,
-    borderColor: operationalPalette.border,
+    borderColor: colors.gray[200],
   },
   qtyItem: {
     flex: 1,
@@ -1354,15 +1068,13 @@ const styles = StyleSheet.create({
   },
   qtyLabel: {
     fontSize: typography.fontSize.xs,
-    color: operationalPalette.muted,
+    color: colors.gray[500],
     marginBottom: 4,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
   },
   qtyValue: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: operationalPalette.ink,
+    color: colors.gray[900],
   },
   reasonBox: {
     backgroundColor: colors.warning[50],
@@ -1384,7 +1096,7 @@ const styles = StyleSheet.create({
   },
   remark: {
     fontSize: typography.fontSize.sm,
-    color: operationalPalette.muted,
+    color: colors.gray[700],
     fontStyle: "italic",
     marginBottom: spacing.sm,
   },
@@ -1411,7 +1123,7 @@ const styles = StyleSheet.create({
   inlineActionButton: {
     flex: 1,
     minWidth: 120,
-    minHeight: 48,
+    minHeight: 44,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1428,37 +1140,5 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.bold,
-  },
-  searchFieldContainer: {
-    marginBottom: spacing.lg,
-  },
-  searchField: {
-    backgroundColor: operationalPalette.surface,
-    borderColor: operationalPalette.border,
-    minHeight: 52,
-  },
-  searchInput: {
-    color: operationalPalette.ink,
-    fontSize: typography.fontSize.base,
-  },
-  stickyActionBar: {
-    position: "absolute",
-    left: spacing.lg,
-    right: spacing.lg,
-    bottom: Platform.OS === "ios" ? spacing.lg : spacing.md,
-    backgroundColor: operationalPalette.surface,
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    borderColor: operationalPalette.border,
-    padding: spacing.md,
-    gap: spacing.sm,
-    ...shadows.md,
-  },
-  stickyActionTitle: {
-    fontSize: typography.fontSize.sm,
-    color: operationalPalette.muted,
-  },
-  footerPrimaryButton: {
-    backgroundColor: operationalPalette.primary,
   },
 });

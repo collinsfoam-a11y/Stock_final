@@ -19,8 +19,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useThemeContext } from "../../context/ThemeContext";
 import { PatternBackground } from "./PatternBackground";
-import { colors as unifiedColors } from "../../theme/unified";
 
+import { shadows as unifiedShadows } from "@/theme/legacyCompat";
 interface ThemedScreenProps {
   children: React.ReactNode;
   style?: ViewStyle;
@@ -65,8 +65,7 @@ export const ThemedScreen: React.FC<ThemedScreenProps> = ({
 
   const containerStyle: ViewStyle = {
     flex: 1,
-    backgroundColor:
-      variant === "solid" ? theme.colors.surface : theme.colors.background,
+    backgroundColor: variant === "solid" ? theme.colors.surface : theme.colors.background,
   };
 
   const contentStyle: ViewStyle = {
@@ -135,8 +134,7 @@ export const ThemedCard: React.FC<ThemedCardProps> = ({
 
   // Get padding based on layout and padding prop
   const getPadding = () => {
-    const baseMultiplier =
-      layout === "compact" ? 0.75 : layout === "spacious" ? 1.25 : 1;
+    const baseMultiplier = layout === "compact" ? 0.75 : layout === "spacious" ? 1.25 : 1;
     const sizes = { none: 0, small: 8, medium: 16, large: 24 };
     return sizes[padding] * baseMultiplier;
   };
@@ -166,12 +164,7 @@ export const ThemedCard: React.FC<ThemedCardProps> = ({
               boxShadow: `0 4px 12px ${isDark ? "rgba(0,0,0,0.3)" : "rgba(100,116,139,0.1)"}`,
             },
             default: {
-              shadowColor: isDark
-                ? unifiedColors.black
-                : unifiedColors.neutral[500],
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: isDark ? 0.3 : 0.1,
-              shadowRadius: 12,
+              ...unifiedShadows.lg,
               elevation: 8,
             },
           }),

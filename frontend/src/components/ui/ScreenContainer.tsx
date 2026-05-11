@@ -20,6 +20,7 @@ import { Stack } from "expo-router";
 import { ScreenHeader, ScreenHeaderProps } from "./ScreenHeader";
 import { PatternBackground } from "./PatternBackground";
 import { SkeletonScreen } from "./SkeletonList";
+import { useUiTokens } from "../../hooks/useUiTokens";
 
 export type BackgroundType = "solid" | "aurora" | "pattern";
 export type ContentMode = "static" | "scroll";
@@ -77,53 +78,52 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
   safeArea = true,
   noPadding = false,
   overlay,
-  statusBarStyle = "light-content",
+  statusBarStyle,
   dismissKeyboardOnTap = false,
 }) => {
   const { themeLegacy: theme } = useThemeContext();
+  const uiTokens = useUiTokens();
   const resolvedBackground = backgroundType || (gradient ? "aurora" : "solid");
-  const resolvedScrollable = contentMode
-    ? contentMode === "scroll"
-    : scrollable;
-  const resolvedStatusBarStyle =
-    statusBarStyle === "light"
-      ? "light-content"
-      : statusBarStyle === "dark"
-        ? "dark-content"
-        : statusBarStyle;
+  const resolvedScrollable = contentMode ? contentMode === "scroll" : scrollable;
+  const defaultStatusBarStyle = uiTokens.mode === "dark" ? "light-content" : "dark-content";
+  const requestedStatusBarStyle = statusBarStyle ?? defaultStatusBarStyle;
+  const resolvedStatusBarStyle: "light-content" | "dark-content" =
+    requestedStatusBarStyle === "dark" || requestedStatusBarStyle === "dark-content"
+      ? "dark-content"
+      : "light-content";
   const isSkeletonLoading = loadingType === "skeleton";
 
   const Container = resolvedScrollable ? ScrollView : View;
   const containerProps = resolvedScrollable
     ? {
-      contentContainerStyle: [
-        styles.scrollContent,
-        !noPadding && { paddingBottom: theme.layout?.safeArea?.bottom || 34 },
-        contentContainerStyle,
-      ],
-      refreshControl: onRefresh ? (
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={theme.colors.accent}
-          colors={[theme.colors.accent]} // Android
-          progressBackgroundColor={theme.colors.surfaceElevated}
-        />
-      ) : undefined,
-      keyboardShouldPersistTaps: "handled" as const,
-      keyboardDismissMode: "on-drag" as const,
-      bounces: true,
-      alwaysBounceVertical: true,
-      nestedScrollEnabled: true,
-    }
+        contentContainerStyle: [
+          styles.scrollContent,
+          !noPadding && { paddingBottom: theme.layout?.safeArea?.bottom || 34 },
+          contentContainerStyle,
+        ],
+        refreshControl: onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={uiTokens.colors.accent}
+            colors={[uiTokens.colors.accent]} // Android
+            progressBackgroundColor={uiTokens.colors.surfaceElevated}
+          />
+        ) : undefined,
+        keyboardShouldPersistTaps: "handled" as const,
+        keyboardDismissMode: "on-drag" as const,
+        bounces: true,
+        alwaysBounceVertical: true,
+        nestedScrollEnabled: true,
+      }
     : {
-      style: [styles.content, style],
-    };
+        style: [styles.content, style],
+      };
 
   const renderContent = () => (
     <>
       <StatusBar barStyle={resolvedStatusBarStyle} />
-      {header && <ScreenHeader {...header} transparent={gradient} />}
+      {header && <ScreenHeader {...header} transparent={resolvedBackground === "aurora"} />}
       {/* Configure Stack Screen if header props provided */}
       {(headerTitle || headerRight || headerLeft) && (
         <Stack.Screen
@@ -132,12 +132,11 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
             headerRight: () => headerRight,
             headerLeft: () => headerLeft,
             headerShown: true,
-            headerTransparent: gradient,
-            headerTintColor: theme.colors.text,
+            headerTransparent: resolvedBackground === "aurora",
+            headerTintColor: uiTokens.colors.textPrimary,
             headerStyle: {
-              backgroundColor: gradient
-                ? "transparent"
-                : theme.colors.background,
+              backgroundColor:
+                resolvedBackground === "aurora" ? "transparent" : uiTokens.colors.background,
             },
           }}
         />
@@ -149,9 +148,11 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
             <SkeletonScreen />
           ) : (
             <>
-              <ActivityIndicator size="large" color={theme.colors.accent} />
+              <ActivityIndicator size="large" color={uiTokens.colors.accent} />
               {loadingText ? (
-                <Text style={styles.loadingText}>{loadingText}</Text>
+                <Text style={[styles.loadingText, { color: uiTokens.colors.textSecondary }]}>
+                  {loadingText}
+                </Text>
               ) : null}
             </>
           )}
@@ -162,10 +163,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
           {children}
         </Container>
       ) : dismissKeyboardOnTap ? (
-        <TouchableWithoutFeedback
-          onPress={Keyboard.dismiss}
-          accessible={false}
-        >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           {/* @ts-ignore */}
           <Container style={[styles.flex, style]} {...containerProps}>
             {children}
@@ -180,9 +178,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
         </Container>
       )}
       {overlay ? (
-        <View style={[StyleSheet.absoluteFill, styles.pointerEventsBoxNone]}>
-          {overlay}
-        </View>
+        <View style={[StyleSheet.absoluteFill, styles.pointerEventsBoxNone]}>{overlay}</View>
       ) : null}
     </>
   );
@@ -213,11 +209,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
   if (resolvedBackground === "pattern") {
     return (
       <View
-        style={[
-          styles.container,
-          { backgroundColor: theme.colors.background },
-          containerStyle,
-        ]}
+        style={[styles.container, { backgroundColor: uiTokens.colors.background }, containerStyle]}
       >
         <PatternBackground />
         {baseContent}
@@ -227,11 +219,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
 
   return (
     <View
-      style={[
-        styles.container,
-        { backgroundColor: theme.colors.background },
-        containerStyle,
-      ]}
+      style={[styles.container, { backgroundColor: uiTokens.colors.background }, containerStyle]}
     >
       {baseContent}
     </View>
@@ -264,7 +252,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    color: "#94A3B8",
     fontSize: 14,
   },
 });

@@ -1,0 +1,118 @@
+{
+  "generated_at": "2026-05-03T01:47:25Z",
+  "baseline_runtime": {
+    "shadow_total": 800,
+    "shadow_mismatch": 0,
+    "shadow_timeout": 0,
+    "shadow_error": 0,
+    "projection_drift_count": 0.0,
+    "projection_gap_count": 0.0,
+    "projection_freshness_lag": 30.014321,
+    "projection_readiness_status": 1.0,
+    "sync_queue_size": null,
+    "sync_failure_rate": null,
+    "retry_count": null
+  },
+  "phases": [
+    {
+      "phase": "canary_20pct",
+      "iterations": 50,
+      "requests": 200,
+      "failures": 0,
+      "error_rate": 0.0,
+      "status_503": 0,
+      "avg_latency_ms": 19.48,
+      "shadow_counter_delta": {
+        "shadow_total": 200,
+        "shadow_mismatch": 0,
+        "shadow_timeout": 0,
+        "shadow_error": 0
+      },
+      "shadow_mismatch_rate_delta": 0.0,
+      "runtime_after_phase": {
+        "shadow_total": 1000,
+        "shadow_mismatch": 0,
+        "shadow_timeout": 0,
+        "shadow_error": 0,
+        "projection_drift_count": 0.0,
+        "projection_gap_count": 0.0,
+        "projection_freshness_lag": 30.014321,
+        "projection_readiness_status": 1.0,
+        "sync_queue_size": null,
+        "sync_failure_rate": null,
+        "retry_count": null
+      }
+    },
+    {
+      "phase": "canary_50pct",
+      "iterations": 125,
+      "requests": 500,
+      "failures": 0,
+      "error_rate": 0.0,
+      "status_503": 0,
+      "avg_latency_ms": 19.47,
+      "shadow_counter_delta": {
+        "shadow_total": 500,
+        "shadow_mismatch": 0,
+        "shadow_timeout": 0,
+        "shadow_error": 0
+      },
+      "shadow_mismatch_rate_delta": 0.0,
+      "runtime_after_phase": {
+        "shadow_total": 1500,
+        "shadow_mismatch": 0,
+        "shadow_timeout": 0,
+        "shadow_error": 0,
+        "projection_drift_count": 0.0,
+        "projection_gap_count": 0.0,
+        "projection_freshness_lag": 30.014321,
+        "projection_readiness_status": 1.0,
+        "sync_queue_size": null,
+        "sync_failure_rate": null,
+        "retry_count": null
+      }
+    },
+    {
+      "phase": "canary_100pct",
+      "iterations": 250,
+      "requests": 1000,
+      "failures": 0,
+      "error_rate": 0.0,
+      "status_503": 0,
+      "avg_latency_ms": 19.28,
+      "shadow_counter_delta": {
+        "shadow_total": 1000,
+        "shadow_mismatch": 0,
+        "shadow_timeout": 0,
+        "shadow_error": 0
+      },
+      "shadow_mismatch_rate_delta": 0.0,
+      "runtime_after_phase": {
+        "shadow_total": 2500,
+        "shadow_mismatch": 0,
+        "shadow_timeout": 0,
+        "shadow_error": 0,
+        "projection_drift_count": 0.0,
+        "projection_gap_count": 0.0,
+        "projection_freshness_lag": 60.050699,
+        "projection_readiness_status": 1.0,
+        "sync_queue_size": null,
+        "sync_failure_rate": null,
+        "retry_count": null
+      }
+    }
+  ],
+  "final_runtime": {
+    "shadow_total": 2500,
+    "shadow_mismatch": 0,
+    "shadow_timeout": 0,
+    "shadow_error": 0,
+    "projection_drift_count": 0.0,
+    "projection_gap_count": 0.0,
+    "projection_freshness_lag": 60.050699,
+    "projection_readiness_status": 1.0,
+    "sync_queue_size": null,
+    "sync_failure_rate": null,
+    "retry_count": null
+  }
+}

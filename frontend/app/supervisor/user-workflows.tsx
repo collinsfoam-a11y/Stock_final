@@ -1,23 +1,21 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  useWindowDimensions,
-} from "react-native";
+import { StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { useFocusEffect } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import {
   Chip,
-  GlassCard,
+  ModernCard,
   ProgressBar,
   ScreenContainer,
   StatsCard,
   StatusBadge,
 } from "@/components/ui";
-import { auroraTheme } from "@/theme/auroraTheme";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import {
+  createOperationalStyleBridge,
+  type OperationalStyleBridge,
+} from "@/theme/operationalStyleBridge";
 import {
   CanonicalSessionStatus,
   UserWorkflowSummary,
@@ -149,9 +147,7 @@ const getPriorityVariant = (band: WorkflowPriorityBand) => {
 };
 
 const getSlaTimestamp = (workflow: UserWorkflowSummary) =>
-  workflow.pending_review_since ||
-  workflow.recount_assigned_at ||
-  workflow.last_activity;
+  workflow.pending_review_since || workflow.recount_assigned_at || workflow.last_activity;
 
 const getSlaLabel = (workflow: UserWorkflowSummary) => {
   if (workflow.pending_review_since) return "Review since";
@@ -160,6 +156,9 @@ const getSlaLabel = (workflow: UserWorkflowSummary) => {
 };
 
 export default function UserWorkflowsScreen() {
+  const uiTokens = useUiTokens();
+  const operationalTheme = useMemo(() => createOperationalStyleBridge(uiTokens), [uiTokens]);
+  const styles = useMemo(() => createStyles(operationalTheme), [operationalTheme]);
   const { width } = useWindowDimensions();
   const isWide = width >= 980;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -180,11 +179,7 @@ export default function UserWorkflowsScreen() {
       setWorkflows(data);
       setLastUpdatedAt(new Date());
     } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Failed to load user workflows",
-      );
+      setError(loadError instanceof Error ? loadError.message : "Failed to load user workflows");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -207,7 +202,7 @@ export default function UserWorkflowsScreen() {
           intervalRef.current = null;
         }
       };
-    }, [loadWorkflows]),
+    }, [loadWorkflows])
   );
 
   const filteredWorkflows = useMemo(() => {
@@ -242,21 +237,18 @@ export default function UserWorkflowsScreen() {
   }, [actionFilter, query, stageFilter, workflows]);
 
   const summary = useMemo(() => {
-    const active = workflows.filter((workflow) => Boolean(workflow.active_session_id))
-      .length;
-    const online = workflows.filter(
-      (workflow) => workflow.presence_status === "ONLINE",
-    ).length;
+    const active = workflows.filter((workflow) => Boolean(workflow.active_session_id)).length;
+    const online = workflows.filter((workflow) => workflow.presence_status === "ONLINE").length;
     const reviewQueue = workflows.reduce(
       (total, workflow) => total + workflow.pending_approvals,
-      0,
+      0
     );
     const recountQueue = workflows.reduce(
       (total, workflow) => total + workflow.assigned_recounts,
-      0,
+      0
     );
     const highPriority = workflows.filter((workflow) =>
-      ["HIGH", "CRITICAL"].includes(workflow.priority_band),
+      ["HIGH", "CRITICAL"].includes(workflow.priority_band)
     ).length;
 
     return {
@@ -327,18 +319,12 @@ export default function UserWorkflowsScreen() {
         />
       </View>
 
-      <GlassCard
-        variant="strong"
-        elevation="lg"
-        withGradientBorder
-        style={styles.searchCard}
-      >
+      <ModernCard variant="outlined" elevation="none" style={styles.searchCard}>
         <View style={styles.searchHeader}>
           <View>
             <Text style={styles.sectionTitle}>Running Workflow</Text>
             <Text style={styles.sectionSubtitle}>
-              Track who is counting, who is waiting for review, and who has
-              recount work open.
+              Track who is counting, who is waiting for review, and who has recount work open.
             </Text>
           </View>
           <StatusBadge
@@ -350,16 +336,12 @@ export default function UserWorkflowsScreen() {
         </View>
 
         <View style={styles.searchInputShell}>
-          <Ionicons
-            name="search-outline"
-            size={18}
-            color={auroraTheme.colors.text.tertiary}
-          />
+          <Ionicons name="search-outline" size={18} color={operationalTheme.colors.text.tertiary} />
           <TextInput
             value={query}
             onChangeText={setQuery}
             placeholder="Search by user, warehouse, stage, or rack"
-            placeholderTextColor={auroraTheme.colors.text.tertiary}
+            placeholderTextColor={operationalTheme.colors.text.tertiary}
             style={styles.searchInput}
           />
         </View>
@@ -400,29 +382,21 @@ export default function UserWorkflowsScreen() {
           <Text style={styles.errorText}>{error}</Text>
         ) : filteredWorkflows.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons
-              name="hourglass-outline"
-              size={28}
-              color={auroraTheme.colors.text.tertiary}
-            />
+            <Ionicons name="hourglass-outline" size={28} color={operationalTheme.colors.text.tertiary} />
             <Text style={styles.emptyTitle}>No matching workflows</Text>
-            <Text style={styles.emptyText}>
-              Try a different search term or pull to refresh.
-            </Text>
+            <Text style={styles.emptyText}>Try a different search term or pull to refresh.</Text>
           </View>
         ) : (
           filteredWorkflows.map((workflow) => (
-            <GlassCard
+            <ModernCard
               key={`${workflow.username}:${workflow.active_session_id ?? "queue"}`}
-              variant="medium"
-              elevation="md"
+              variant="outlined"
+              elevation="none"
               style={styles.workflowCard}
             >
               <View style={styles.cardHeader}>
                 <View style={styles.userBlock}>
-                  <Text style={styles.userName}>
-                    {workflow.full_name || workflow.username}
-                  </Text>
+                  <Text style={styles.userName}>{workflow.full_name || workflow.username}</Text>
                   <Text style={styles.userMeta}>
                     @{workflow.username} • {workflow.role}
                   </Text>
@@ -449,9 +423,7 @@ export default function UserWorkflowsScreen() {
               <View style={styles.detailGrid}>
                 <View style={styles.detailCell}>
                   <Text style={styles.detailLabel}>Warehouse</Text>
-                  <Text style={styles.detailValue}>
-                    {workflow.warehouse || "Not assigned"}
-                  </Text>
+                  <Text style={styles.detailValue}>{workflow.warehouse || "Not assigned"}</Text>
                 </View>
                 <View style={styles.detailCell}>
                   <Text style={styles.detailLabel}>Rack / Floor</Text>
@@ -462,11 +434,10 @@ export default function UserWorkflowsScreen() {
                 <View style={styles.detailCell}>
                   <Text style={styles.detailLabel}>Session</Text>
                   <Text style={styles.detailValue}>
-                    {(workflow.session_status
+                    {workflow.session_status
                       ? SESSION_STATUS_LABELS[workflow.session_status]
-                      : "Queue only")}{" "}
-                    •{" "}
-                    {compactId(workflow.active_session_id)}
+                      : "Queue only"}{" "}
+                    • {compactId(workflow.active_session_id)}
                   </Text>
                 </View>
                 <View style={styles.detailCell}>
@@ -480,9 +451,7 @@ export default function UserWorkflowsScreen() {
               <View style={styles.actionStrip}>
                 <View style={styles.actionCell}>
                   <Text style={styles.actionLabel}>Next action</Text>
-                  <Text style={styles.actionValue}>
-                    {NEXT_ACTION_LABELS[workflow.next_action]}
-                  </Text>
+                  <Text style={styles.actionValue}>{NEXT_ACTION_LABELS[workflow.next_action]}</Text>
                 </View>
                 <View style={styles.actionCell}>
                   <Text style={styles.actionLabel}>{getSlaLabel(workflow)}</Text>
@@ -514,42 +483,36 @@ export default function UserWorkflowsScreen() {
                 </View>
                 <View style={styles.metricPill}>
                   <Text style={styles.metricLabel}>Pending</Text>
-                  <Text style={styles.metricValue}>
-                    {workflow.pending_approvals}
-                  </Text>
+                  <Text style={styles.metricValue}>{workflow.pending_approvals}</Text>
                 </View>
                 <View style={styles.metricPill}>
                   <Text style={styles.metricLabel}>Recounts</Text>
-                  <Text style={styles.metricValue}>
-                    {workflow.assigned_recounts}
-                  </Text>
+                  <Text style={styles.metricValue}>{workflow.assigned_recounts}</Text>
                 </View>
                 <View style={styles.metricPill}>
                   <Text style={styles.metricLabel}>Variance</Text>
-                  <Text style={styles.metricValue}>
-                    {workflow.total_variance.toFixed(0)}
-                  </Text>
+                  <Text style={styles.metricValue}>{workflow.total_variance.toFixed(0)}</Text>
                 </View>
               </View>
-            </GlassCard>
+            </ModernCard>
           ))
         )}
-      </GlassCard>
+      </ModernCard>
 
       <View style={styles.footerSpace} />
     </ScreenContainer>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.create({
   contentContainer: {
-    paddingHorizontal: auroraTheme.spacing.lg,
-    paddingTop: auroraTheme.spacing.lg,
-    paddingBottom: auroraTheme.spacing["3xl"],
-    gap: auroraTheme.spacing.lg,
+    paddingHorizontal: operationalTheme.spacing.lg,
+    paddingTop: operationalTheme.spacing.lg,
+    paddingBottom: operationalTheme.spacing["3xl"],
+    gap: operationalTheme.spacing.lg,
   },
   statsGrid: {
-    gap: auroraTheme.spacing.md,
+    gap: operationalTheme.spacing.md,
   },
   statsGridWide: {
     flexDirection: "row",
@@ -560,143 +523,143 @@ const styles = StyleSheet.create({
     minWidth: 180,
   },
   searchCard: {
-    gap: auroraTheme.spacing.lg,
+    gap: operationalTheme.spacing.lg,
   },
   searchHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: auroraTheme.spacing.md,
+    gap: operationalTheme.spacing.md,
   },
   sectionTitle: {
-    fontFamily: auroraTheme.typography.fontFamily.heading,
-    fontSize: auroraTheme.typography.fontSize["2xl"],
-    color: auroraTheme.colors.text.primary,
+    fontFamily: operationalTheme.typography.fontFamily.heading,
+    fontSize: operationalTheme.typography.fontSize["2xl"],
+    color: operationalTheme.colors.text.primary,
   },
   sectionSubtitle: {
     marginTop: 6,
-    fontFamily: auroraTheme.typography.fontFamily.body,
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
+    fontFamily: operationalTheme.typography.fontFamily.body,
+    fontSize: operationalTheme.typography.fontSize.sm,
+    color: operationalTheme.colors.text.secondary,
     maxWidth: 620,
     lineHeight: 20,
   },
   searchInputShell: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.sm,
+    gap: operationalTheme.spacing.sm,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.medium,
-    borderRadius: auroraTheme.borderRadius.lg,
-    backgroundColor: auroraTheme.colors.background.glass,
-    paddingHorizontal: auroraTheme.spacing.md,
-    paddingVertical: auroraTheme.spacing.sm,
+    borderColor: operationalTheme.colors.border.medium,
+    borderRadius: operationalTheme.borderRadius.lg,
+    backgroundColor: operationalTheme.colors.background.glass,
+    paddingHorizontal: operationalTheme.spacing.md,
+    paddingVertical: operationalTheme.spacing.sm,
   },
   searchInput: {
     flex: 1,
     minHeight: 40,
-    color: auroraTheme.colors.text.primary,
-    fontFamily: auroraTheme.typography.fontFamily.body,
-    fontSize: auroraTheme.typography.fontSize.base,
+    color: operationalTheme.colors.text.primary,
+    fontFamily: operationalTheme.typography.fontFamily.body,
+    fontSize: operationalTheme.typography.fontSize.base,
   },
   filterGroup: {
-    gap: auroraTheme.spacing.sm,
+    gap: operationalTheme.spacing.sm,
   },
   filterLabel: {
-    fontFamily: auroraTheme.typography.fontFamily.label,
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.tertiary,
+    fontFamily: operationalTheme.typography.fontFamily.label,
+    fontSize: operationalTheme.typography.fontSize.xs,
+    color: operationalTheme.colors.text.tertiary,
     textTransform: "uppercase",
     letterSpacing: 0.4,
   },
   filterRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: auroraTheme.spacing.sm,
+    gap: operationalTheme.spacing.sm,
   },
   workflowCard: {
-    marginTop: auroraTheme.spacing.md,
+    marginTop: operationalTheme.spacing.md,
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: auroraTheme.spacing.md,
+    gap: operationalTheme.spacing.md,
   },
   userBlock: {
     flex: 1,
   },
   userName: {
-    fontFamily: auroraTheme.typography.fontFamily.heading,
-    fontSize: auroraTheme.typography.fontSize.xl,
-    color: auroraTheme.colors.text.primary,
+    fontFamily: operationalTheme.typography.fontFamily.heading,
+    fontSize: operationalTheme.typography.fontSize.xl,
+    color: operationalTheme.colors.text.primary,
   },
   userMeta: {
     marginTop: 4,
-    fontFamily: auroraTheme.typography.fontFamily.body,
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
+    fontFamily: operationalTheme.typography.fontFamily.body,
+    fontSize: operationalTheme.typography.fontSize.sm,
+    color: operationalTheme.colors.text.secondary,
   },
   badgeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "flex-end",
-    gap: auroraTheme.spacing.sm,
+    gap: operationalTheme.spacing.sm,
   },
   detailGrid: {
-    marginTop: auroraTheme.spacing.lg,
+    marginTop: operationalTheme.spacing.lg,
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: auroraTheme.spacing.md,
+    gap: operationalTheme.spacing.md,
   },
   detailCell: {
     minWidth: 150,
     flex: 1,
   },
   detailLabel: {
-    fontFamily: auroraTheme.typography.fontFamily.label,
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.tertiary,
+    fontFamily: operationalTheme.typography.fontFamily.label,
+    fontSize: operationalTheme.typography.fontSize.xs,
+    color: operationalTheme.colors.text.tertiary,
     textTransform: "uppercase",
     letterSpacing: 0.4,
   },
   detailValue: {
     marginTop: 6,
-    fontFamily: auroraTheme.typography.fontFamily.body,
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.primary,
+    fontFamily: operationalTheme.typography.fontFamily.body,
+    fontSize: operationalTheme.typography.fontSize.sm,
+    color: operationalTheme.colors.text.primary,
   },
   actionStrip: {
-    marginTop: auroraTheme.spacing.lg,
+    marginTop: operationalTheme.spacing.lg,
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: auroraTheme.spacing.md,
-    borderRadius: auroraTheme.borderRadius.lg,
+    gap: operationalTheme.spacing.md,
+    borderRadius: operationalTheme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
-    backgroundColor: auroraTheme.colors.background.blur,
-    paddingHorizontal: auroraTheme.spacing.md,
-    paddingVertical: auroraTheme.spacing.sm,
+    borderColor: operationalTheme.colors.border.light,
+    backgroundColor: operationalTheme.colors.background.blur,
+    paddingHorizontal: operationalTheme.spacing.md,
+    paddingVertical: operationalTheme.spacing.sm,
   },
   actionCell: {
     flex: 1,
     minWidth: 180,
   },
   actionLabel: {
-    fontFamily: auroraTheme.typography.fontFamily.label,
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.tertiary,
+    fontFamily: operationalTheme.typography.fontFamily.label,
+    fontSize: operationalTheme.typography.fontSize.xs,
+    color: operationalTheme.colors.text.tertiary,
     textTransform: "uppercase",
   },
   actionValue: {
     marginTop: 6,
-    fontFamily: auroraTheme.typography.fontFamily.heading,
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.primary,
+    fontFamily: operationalTheme.typography.fontFamily.heading,
+    fontSize: operationalTheme.typography.fontSize.sm,
+    color: operationalTheme.colors.text.primary,
   },
   progressBlock: {
-    marginTop: auroraTheme.spacing.lg,
-    gap: auroraTheme.spacing.sm,
+    marginTop: operationalTheme.spacing.lg,
+    gap: operationalTheme.spacing.sm,
   },
   progressHeader: {
     flexDirection: "row",
@@ -704,67 +667,67 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   progressTitle: {
-    fontFamily: auroraTheme.typography.fontFamily.label,
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
+    fontFamily: operationalTheme.typography.fontFamily.label,
+    fontSize: operationalTheme.typography.fontSize.sm,
+    color: operationalTheme.colors.text.secondary,
   },
   progressValue: {
-    fontFamily: auroraTheme.typography.fontFamily.body,
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.primary,
+    fontFamily: operationalTheme.typography.fontFamily.body,
+    fontSize: operationalTheme.typography.fontSize.sm,
+    color: operationalTheme.colors.text.primary,
   },
   metricRow: {
-    marginTop: auroraTheme.spacing.lg,
+    marginTop: operationalTheme.spacing.lg,
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: auroraTheme.spacing.sm,
+    gap: operationalTheme.spacing.sm,
   },
   metricPill: {
     minWidth: 110,
     flex: 1,
-    borderRadius: auroraTheme.borderRadius.md,
-    paddingHorizontal: auroraTheme.spacing.md,
-    paddingVertical: auroraTheme.spacing.sm,
-    backgroundColor: auroraTheme.colors.background.blur,
+    borderRadius: operationalTheme.borderRadius.md,
+    paddingHorizontal: operationalTheme.spacing.md,
+    paddingVertical: operationalTheme.spacing.sm,
+    backgroundColor: operationalTheme.colors.background.blur,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
+    borderColor: operationalTheme.colors.border.light,
   },
   metricLabel: {
-    fontFamily: auroraTheme.typography.fontFamily.label,
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.tertiary,
+    fontFamily: operationalTheme.typography.fontFamily.label,
+    fontSize: operationalTheme.typography.fontSize.xs,
+    color: operationalTheme.colors.text.tertiary,
     textTransform: "uppercase",
   },
   metricValue: {
     marginTop: 6,
-    fontFamily: auroraTheme.typography.fontFamily.heading,
-    fontSize: auroraTheme.typography.fontSize.lg,
-    color: auroraTheme.colors.text.primary,
+    fontFamily: operationalTheme.typography.fontFamily.heading,
+    fontSize: operationalTheme.typography.fontSize.lg,
+    color: operationalTheme.colors.text.primary,
   },
   errorText: {
-    marginTop: auroraTheme.spacing.md,
-    color: auroraTheme.colors.error[400],
-    fontFamily: auroraTheme.typography.fontFamily.body,
-    fontSize: auroraTheme.typography.fontSize.sm,
+    marginTop: operationalTheme.spacing.md,
+    color: operationalTheme.colors.error[400],
+    fontFamily: operationalTheme.typography.fontFamily.body,
+    fontSize: operationalTheme.typography.fontSize.sm,
   },
   emptyState: {
-    marginTop: auroraTheme.spacing.lg,
-    paddingVertical: auroraTheme.spacing["2xl"],
+    marginTop: operationalTheme.spacing.lg,
+    paddingVertical: operationalTheme.spacing["2xl"],
     alignItems: "center",
-    gap: auroraTheme.spacing.sm,
+    gap: operationalTheme.spacing.sm,
   },
   emptyTitle: {
-    fontFamily: auroraTheme.typography.fontFamily.heading,
-    fontSize: auroraTheme.typography.fontSize.lg,
-    color: auroraTheme.colors.text.primary,
+    fontFamily: operationalTheme.typography.fontFamily.heading,
+    fontSize: operationalTheme.typography.fontSize.lg,
+    color: operationalTheme.colors.text.primary,
   },
   emptyText: {
-    fontFamily: auroraTheme.typography.fontFamily.body,
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
+    fontFamily: operationalTheme.typography.fontFamily.body,
+    fontSize: operationalTheme.typography.fontSize.sm,
+    color: operationalTheme.colors.text.secondary,
     textAlign: "center",
   },
   footerSpace: {
-    height: auroraTheme.spacing.xl,
+    height: operationalTheme.spacing.xl,
   },
 });

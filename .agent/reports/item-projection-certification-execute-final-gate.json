@@ -1,0 +1,125 @@
+{
+  "mode": "execute",
+  "count_lines_scanned": 37,
+  "active_count_lines": 37,
+  "missing_verified_items": 10,
+  "missing_variance_items": 10,
+  "missing_batch_rows": 10,
+  "missing_financial_rows": 3,
+  "inserted_verified_items": 10,
+  "inserted_variance_items": 10,
+  "inserted_batch_rows": 10,
+  "inserted_financial_rows": 3,
+  "skipped_superseded": 0,
+  "skipped_missing_id": 0,
+  "errors": 0,
+  "candidate_lines": [
+    {
+      "count_line_id": "eb811fef-b4b9-4f2f-8219-b425dc85028c",
+      "session_id": "8236b63a-6ec6-4a8d-8982-98ffe78bfc36",
+      "item_code": "10103",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "8a075518-ffb5-4e78-bff0-50558491ac60",
+      "session_id": "8236b63a-6ec6-4a8d-8982-98ffe78bfc36",
+      "item_code": "10124",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "a2c2ae9f-7ff9-4336-97f1-5c6cf4e9dfdf",
+      "session_id": "8236b63a-6ec6-4a8d-8982-98ffe78bfc36",
+      "item_code": "10105",
+      "variance": -2.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "86f921f8-6e91-42a7-b556-79558b7a96f4",
+      "session_id": "8236b63a-6ec6-4a8d-8982-98ffe78bfc36",
+      "item_code": "10125",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "50e78bbf-d90c-452f-85f5-febd6a45c11c",
+      "session_id": "8236b63a-6ec6-4a8d-8982-98ffe78bfc36",
+      "item_code": "10138",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "af059f9f-9011-4442-9c94-db0c2b424907",
+      "session_id": "8236b63a-6ec6-4a8d-8982-98ffe78bfc36",
+      "item_code": "10252",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "9959213f-6e3f-4c2e-8429-179e74c95913",
+      "session_id": "0d7b1afd-9096-4e16-ac55-0e75b1abff37",
+      "item_code": "10103",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "75f38bcf-93f2-4a04-b98b-b64c910f18a6",
+      "session_id": "0d7b1afd-9096-4e16-ac55-0e75b1abff37",
+      "item_code": "10105",
+      "variance": -7.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "6a4006c0-bc3d-4a90-9028-0b55ab8490fa",
+      "session_id": "0d7b1afd-9096-4e16-ac55-0e75b1abff37",
+      "item_code": "10124",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "b35908bf-56f3-46d6-b9eb-44f0a5677817",
+      "session_id": "4816923f-d6ae-4c9f-be69-7770c2b50479",
+      "item_code": "10124",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    }
+  ],
+  "candidate_financial_sessions": [
+    {
+      "session_id": "8236b63a-6ec6-4a8d-8982-98ffe78bfc36",
+      "line_count": 6,
+      "financial_total": -22.0
+    },
+    {
+      "session_id": "0d7b1afd-9096-4e16-ac55-0e75b1abff37",
+      "line_count": 3,
+      "financial_total": -273.0
+    },
+    {
+      "session_id": "4816923f-d6ae-4c9f-be69-7770c2b50479",
+      "line_count": 1,
+      "financial_total": 0.0
+    }
+  ]
+}

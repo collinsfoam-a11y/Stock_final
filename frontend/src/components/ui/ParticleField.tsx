@@ -8,6 +8,8 @@
  * - Performance optimized
  * - Customizable density and colors
  * - Theme-aware defaults
+ *
+ * @deprecated Particles are decorative and not approved for operational workflows.
  */
 
 import React, { useEffect, useMemo } from "react";
@@ -23,6 +25,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { useThemeContext } from "../../context/ThemeContext";
 
+import { shadows as uiShadows } from "@/theme/legacyCompat";
+import { warnDeprecatedVisualSystem } from "./legacyVisualSystem";
 interface Particle {
   id: number;
   x: number;
@@ -63,11 +67,11 @@ const ParticleElement: React.FC<{
             withTiming(30, {
               duration: 3000 + Math.random() * 2000,
               easing: Easing.inOut(Easing.ease),
-            }),
+            })
           ),
           -1,
-          true,
-        ),
+          true
+        )
       );
 
       // Pulse opacity
@@ -82,11 +86,11 @@ const ParticleElement: React.FC<{
             withTiming(particle.opacity * 0.5, {
               duration: 2000,
               easing: Easing.inOut(Easing.ease),
-            }),
+            })
           ),
           -1,
-          true,
-        ),
+          true
+        )
       );
 
       // Slight scale pulse
@@ -101,11 +105,11 @@ const ParticleElement: React.FC<{
             withTiming(0.8, {
               duration: 2500,
               easing: Easing.inOut(Easing.ease),
-            }),
+            })
           ),
           -1,
-          true,
-        ),
+          true
+        )
       );
     }
   }, [animated, opacity, particle.delay, particle.opacity, scale, translateY]);
@@ -128,10 +132,7 @@ const ParticleElement: React.FC<{
           height: particle.size,
           borderRadius: particle.size / 2,
           backgroundColor: color,
-          shadowColor: color,
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.8,
-          shadowRadius: particle.size,
+          ...uiShadows.md,
         },
         Platform.OS !== "web" && animatedStyle,
       ]}
@@ -146,6 +147,7 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({
   maxSize = 6,
   animated = true,
 }) => {
+  warnDeprecatedVisualSystem("ParticleField");
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { theme } = useThemeContext();
 

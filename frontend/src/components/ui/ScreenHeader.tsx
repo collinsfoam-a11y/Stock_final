@@ -39,6 +39,8 @@ import Animated, {
 
 import { useAuthStore } from "../../store/authStore";
 import { useThemeContext } from "../../context/ThemeContext";
+import { safeBackNavigation } from "../../utils/navigation";
+import type { UserRole } from "../../utils/roleNavigation";
 
 // ============================================================================
 // Types
@@ -51,7 +53,7 @@ export interface ScreenHeaderProps {
   subtitle?: string;
   /** Show back button (defaults to false) */
   showBackButton?: boolean;
-  /** Custom back button handler (defaults to router.back()) */
+  /** Custom back button handler (defaults to safe role-aware back navigation) */
   onBackPress?: () => void;
   /** Show logout button (defaults to true) */
   showLogoutButton?: boolean;
@@ -175,10 +177,11 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
     }
     if (onBackPress) {
       onBackPress();
-    } else {
-      router.back();
+      return;
     }
-  }, [onBackPress, router]);
+
+    safeBackNavigation(router, { userRole: user?.role as UserRole | null });
+  }, [onBackPress, router, user?.role]);
 
   const handleLogout = useCallback(async () => {
     if (Platform.OS !== "web") {
@@ -246,25 +249,14 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 
     return (
       <Animated.View entering={FadeIn.delay(100)} style={styles.userSection}>
-        <View
-          style={[
-            styles.avatarContainer,
-            { backgroundColor: `${theme.colors.accent}20` },
-          ]}
-        >
+        <View style={[styles.avatarContainer, { backgroundColor: `${theme.colors.accent}20` }]}>
           <Ionicons name="person" size={16} color={theme.colors.accent} />
         </View>
         <View style={styles.userTextContainer}>
-          <Text
-            style={[styles.welcomeText, { color: colors.textSecondary }]}
-            numberOfLines={1}
-          >
+          <Text style={[styles.welcomeText, { color: colors.textSecondary }]} numberOfLines={1}>
             Welcome back
           </Text>
-          <Text
-            style={[styles.usernameText, { color: colors.text }]}
-            numberOfLines={1}
-          >
+          <Text style={[styles.usernameText, { color: colors.text }]} numberOfLines={1}>
             {user.full_name || user.username}
           </Text>
         </View>
@@ -278,17 +270,11 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 
     return (
       <Animated.View entering={FadeIn.delay(50)} style={styles.titleSection}>
-        <Text
-          style={[styles.titleText, { color: colors.text }]}
-          numberOfLines={1}
-        >
+        <Text style={[styles.titleText, { color: colors.text }]} numberOfLines={1}>
           {title}
         </Text>
         {subtitle && (
-          <Text
-            style={[styles.subtitleText, { color: colors.textSecondary }]}
-            numberOfLines={1}
-          >
+          <Text style={[styles.subtitleText, { color: colors.textSecondary }]} numberOfLines={1}>
             {subtitle}
           </Text>
         )}
@@ -339,17 +325,15 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
         onLayout={handleRightLayout}
       >
         {customRightContent}
-        {showSettingsButton &&
-          user &&
-          rightAction?.icon !== "settings-outline" && (
-            <AnimatedButton
-              onPress={handleSettingsPress}
-              icon="settings-outline"
-              iconColor={colors.accent}
-              backgroundColor={colors.buttonBg}
-              testID="settings-button"
-            />
-          )}
+        {showSettingsButton && user && rightAction?.icon !== "settings-outline" && (
+          <AnimatedButton
+            onPress={handleSettingsPress}
+            icon="settings-outline"
+            iconColor={colors.accent}
+            backgroundColor={colors.buttonBg}
+            testID="settings-button"
+          />
+        )}
         {rightAction && (
           <AnimatedButton
             onPress={handleRightAction}

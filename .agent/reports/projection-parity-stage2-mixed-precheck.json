@@ -1,0 +1,226 @@
+{
+  "is_consistent": false,
+  "summary": {
+    "session_totals_match": false,
+    "verified_items_match": false,
+    "variance_match": false,
+    "financial_match": false,
+    "sample_validation_passed": false,
+    "event_lag_ok": true
+  },
+  "metrics": {
+    "projection_drift_count": 4,
+    "projection_gap_count": 3,
+    "event_lag_seconds": 0.0,
+    "event_lag_threshold_seconds": 5.0
+  },
+  "samples_checked": 3,
+  "timestamp": "2026-05-03T06:16:55.895616Z",
+  "collections": {
+    "session_projection": "session_dashboard_projection",
+    "verified_projection": "verified_items_projection",
+    "variance_projection": "variance_summary_projection",
+    "financial_projection": "financial_projection",
+    "batch_projection": "batch_records",
+    "event_log": "event_log"
+  },
+  "details": {
+    "sample_session_ids": [
+      "4816923f-d6ae-4c9f-be69-7770c2b50479",
+      "0d7b1afd-9096-4e16-ac55-0e75b1abff37",
+      "8236b63a-6ec6-4a8d-8982-98ffe78bfc36"
+    ],
+    "session_totals": {
+      "legacy": {
+        "session_count": 78,
+        "total_items": 44,
+        "verified_items": 10,
+        "pending_items": 34,
+        "damage_items": 0,
+        "total_variance": 130.73
+      },
+      "projection": {
+        "session_count": 72,
+        "total_items": 37,
+        "verified_items": 7,
+        "pending_items": 30,
+        "damage_items": 0,
+        "total_variance": 109.0
+      }
+    },
+    "verified_items": {
+      "legacy": 10,
+      "projection": 7
+    },
+    "variance_totals": {
+      "legacy": 130.73,
+      "projection": 109.0
+    },
+    "financial_totals": {
+      "legacy": -469.15,
+      "projection": -295.0
+    },
+    "sample_results": [
+      {
+        "session_id": "4816923f-d6ae-4c9f-be69-7770c2b50479",
+        "items_compared": 1,
+        "mismatches": []
+      },
+      {
+        "session_id": "0d7b1afd-9096-4e16-ac55-0e75b1abff37",
+        "items_compared": 3,
+        "mismatches": []
+      },
+      {
+        "session_id": "8236b63a-6ec6-4a8d-8982-98ffe78bfc36",
+        "items_compared": 9,
+        "mismatches": [
+          {
+            "item_code": "10135",
+            "field": "row_presence",
+            "legacy": true,
+            "projection": false
+          },
+          {
+            "item_code": "10137",
+            "field": "row_presence",
+            "legacy": true,
+            "projection": false
+          },
+          {
+            "item_code": "10253",
+            "field": "row_presence",
+            "legacy": true,
+            "projection": false
+          }
+        ]
+      }
+    ],
+    "event_lag": {
+      "latest_event_timestamp": "2026-04-29T07:40:33.524000Z",
+      "latest_projection_event_timestamp": "2026-05-02T17:02:54.388000Z"
+    }
+  },
+  "controls": {
+    "max_records": null,
+    "timeout_seconds": null,
+    "sample_seed": null
+  },
+  "failures": [
+    {
+      "kind": "drift",
+      "check": "session_totals",
+      "message": "Legacy session totals do not match session dashboard projection",
+      "legacy": {
+        "session_count": 78,
+        "total_items": 44,
+        "verified_items": 10,
+        "pending_items": 34,
+        "damage_items": 0,
+        "total_variance": 130.73
+      },
+      "projection": {
+        "session_count": 72,
+        "total_items": 37,
+        "verified_items": 7,
+        "pending_items": 30,
+        "damage_items": 0,
+        "total_variance": 109.0
+      },
+      "context": {}
+    },
+    {
+      "kind": "drift",
+      "check": "verified_items",
+      "message": "Legacy verified item count does not match projection item count",
+      "legacy": 10,
+      "projection": 7,
+      "context": {}
+    },
+    {
+      "kind": "drift",
+      "check": "variance_totals",
+      "message": "Legacy variance total does not match projection variance total",
+      "legacy": 130.73,
+      "projection": 109.0,
+      "context": {}
+    },
+    {
+      "kind": "drift",
+      "check": "financial_totals",
+      "message": "Legacy financial total does not match projection financial total",
+      "legacy": -469.15,
+      "projection": -295.0,
+      "context": {}
+    },
+    {
+      "kind": "gap",
+      "check": "sample_item_row",
+      "message": "Missing projection item row for sampled legacy item",
+      "legacy": {
+        "item_code": "10135",
+        "counted_qty": 1.0,
+        "variance": -0.27,
+        "financial_impact": -174.14999999999998,
+        "approval_status": "APPROVED",
+        "batch_values": [
+          {
+            "batch": "NO_BATCH",
+            "qty": 1.0
+          }
+        ]
+      },
+      "projection": null,
+      "context": {
+        "session_id": "8236b63a-6ec6-4a8d-8982-98ffe78bfc36",
+        "item_code": "10135"
+      }
+    },
+    {
+      "kind": "gap",
+      "check": "sample_item_row",
+      "message": "Missing projection item row for sampled legacy item",
+      "legacy": {
+        "item_code": "10137",
+        "counted_qty": 1.7,
+        "variance": 0.0,
+        "financial_impact": 0.0,
+        "approval_status": "APPROVED",
+        "batch_values": [
+          {
+            "batch": "NO_BATCH",
+            "qty": 1.7
+          }
+        ]
+      },
+      "projection": null,
+      "context": {
+        "session_id": "8236b63a-6ec6-4a8d-8982-98ffe78bfc36",
+        "item_code": "10137"
+      }
+    },
+    {
+      "kind": "gap",
+      "check": "sample_item_row",
+      "message": "Missing projection item row for sampled legacy item",
+      "legacy": {
+        "item_code": "10253",
+        "counted_qty": 1.0,
+        "variance": 0.0,
+        "financial_impact": 0.0,
+        "approval_status": "APPROVED",
+        "batch_values": [
+          {
+            "batch": "NO_BATCH",
+            "qty": 1.0
+          }
+        ]
+      },
+      "projection": null,
+      "context": {
+        "session_id": "8236b63a-6ec6-4a8d-8982-98ffe78bfc36",
+        "item_code": "10253"
+      }
+    }
+  ]
+}

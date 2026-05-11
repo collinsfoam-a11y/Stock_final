@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-05-08",
+  "purpose": "Sustainability baseline for post-stabilization frontend UI governance. Hard limits must remain zero. Advisory ceilings are current platform-health debt and should trend down through feature touches, not broad cleanup rewrites.",
+  "hardLimits": {
+    "blockingFindings": 0,
+    "P0": 0,
+    "P1": 0,
+    "deprecatedProduction": 0,
+    "navigationFindings": 0,
+    "virtualizationFindings": 0,
+    "auroraThemeFindings": 0,
+    "decorativeBackgroundFindings": 0
+  },
+  "advisoryCeilings": {
+    "totalFindings": 1211,
+    "advisoryFindings": 1179,
+    "quarantineFindings": 32,
+    "tokenAdoptionFindings": 922,
+    "accessibilityFindings": 193,
+    "motionFindings": 64
+  },
+  "coverageFloors": {
+    "tokenAdoptionEstimate": 0.6493827160493827,
+    "accessibilityFileCoverage": 0.425,
+    "reducedMotionCoverage": 0.10810810810810811,
+    "virtualizationCoverage": 0.19117647058823528
+  }
+}

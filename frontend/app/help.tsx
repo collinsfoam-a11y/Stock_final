@@ -3,17 +3,15 @@
  */
 
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { Header } from "@/components/layout/Header";
-import { useTheme } from "@/hooks/useTheme";
+import { StatusBar } from "expo-status-bar";
+import ModernCard from "@/components/ui/ModernCard";
+import ModernHeader from "@/components/ui/ModernHeader";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { safeBackNavigation } from "@/utils/navigation";
 
 interface HelpSection {
   title: string;
@@ -100,8 +98,7 @@ const helpSections: HelpSection[] = [
       },
       {
         question: "How do I view activity logs?",
-        answer:
-          "Go to Dashboard > Activity Logs to view all user activities and system events.",
+        answer: "Go to Dashboard > Activity Logs to view all user activities and system events.",
         icon: "list",
       },
     ],
@@ -130,8 +127,7 @@ const helpSections: HelpSection[] = [
       },
       {
         question: "App crashes or freezes",
-        answer:
-          "Close and restart the app. If problem persists, clear app cache or reinstall.",
+        answer: "Close and restart the app. If problem persists, clear app cache or reinstall.",
         icon: "warning",
       },
     ],
@@ -140,10 +136,12 @@ const helpSections: HelpSection[] = [
 
 export default function HelpScreen() {
   const router = useRouter();
-  const theme = useTheme();
-  const [expandedItems, setExpandedItems] = React.useState<Set<string>>(
-    new Set(),
-  );
+  const uiTokens = useUiTokens();
+  const [expandedItems, setExpandedItems] = React.useState<Set<string>>(new Set());
+
+  const handleBack = React.useCallback(() => {
+    safeBackNavigation(router, { fallbackHref: "/welcome" });
+  }, [router]);
 
   const toggleItem = (sectionIndex: number, itemIndex: number) => {
     const key = `${sectionIndex}-${itemIndex}`;
@@ -157,28 +155,41 @@ export default function HelpScreen() {
   };
 
   return (
-    <View
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-    >
-      <Header
-        title="Help & Documentation"
-        leftIcon="arrow-back"
-        onLeftPress={() => router.back()}
+    <View style={[styles.container, { backgroundColor: uiTokens.colors.background }]}>
+      <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
+      <ModernHeader
+        title="Help"
+        subtitle="Quick answers and support"
+        showBackButton
+        onBackPress={handleBack}
       />
 
-      <ScrollView style={styles.scrollView}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {helpSections.map((section, sectionIndex) => (
-          <View
-            key={sectionIndex}
-            style={[styles.section, { backgroundColor: theme.colors.card }]}
+          <ModernCard
+            key={section.title}
+            padding={0}
+            style={[styles.section, { backgroundColor: uiTokens.colors.surfaceElevated }]}
           >
             <View style={styles.sectionHeader}>
-              <Ionicons
-                name={section.icon as any}
-                size={24}
-                color={theme.colors.primary}
-              />
-              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              <View
+                style={[
+                  styles.sectionIcon,
+                  {
+                    backgroundColor: colorWithAlpha(
+                      uiTokens.colors.accent,
+                      uiTokens.mode === "dark" ? 0.18 : 0.1
+                    ),
+                  },
+                ]}
+              >
+                <Ionicons name={section.icon as any} size={22} color={uiTokens.colors.accent} />
+              </View>
+              <Text style={[styles.sectionTitle, { color: uiTokens.colors.textPrimary }]}>
                 {section.title}
               </Text>
             </View>
@@ -190,29 +201,37 @@ export default function HelpScreen() {
               return (
                 <View key={itemIndex} style={styles.itemContainer}>
                   <TouchableOpacity
-                    style={styles.questionContainer}
+                    style={[
+                      styles.questionContainer,
+                      isExpanded && {
+                        backgroundColor: colorWithAlpha(
+                          uiTokens.colors.accent,
+                          uiTokens.mode === "dark" ? 0.12 : 0.06
+                        ),
+                      },
+                    ]}
                     onPress={() => toggleItem(sectionIndex, itemIndex)}
                     activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: isExpanded }}
                   >
                     <View style={styles.questionContent}>
                       {item.icon && (
                         <Ionicons
                           name={item.icon as any}
                           size={20}
-                          color={theme.colors.textSecondary}
+                          color={uiTokens.colors.textSecondary}
                           style={styles.itemIcon}
                         />
                       )}
-                      <Text
-                        style={[styles.question, { color: theme.colors.text }]}
-                      >
+                      <Text style={[styles.question, { color: uiTokens.colors.textPrimary }]}>
                         {item.question}
                       </Text>
                     </View>
                     <Ionicons
                       name={isExpanded ? "chevron-up" : "chevron-down"}
                       size={20}
-                      color={theme.colors.textSecondary}
+                      color={uiTokens.colors.textSecondary}
                     />
                   </TouchableOpacity>
 
@@ -220,15 +239,15 @@ export default function HelpScreen() {
                     <View
                       style={[
                         styles.answerContainer,
-                        { backgroundColor: theme.colors.background },
+                        {
+                          backgroundColor: colorWithAlpha(
+                            uiTokens.colors.accent,
+                            uiTokens.mode === "dark" ? 0.08 : 0.04
+                          ),
+                        },
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.answer,
-                          { color: theme.colors.textSecondary },
-                        ]}
-                      >
+                      <Text style={[styles.answer, { color: uiTokens.colors.textSecondary }]}>
                         {item.answer}
                       </Text>
                     </View>
@@ -236,27 +255,34 @@ export default function HelpScreen() {
                 </View>
               );
             })}
-          </View>
+          </ModernCard>
         ))}
 
         {/* Contact Support */}
-        <View
-          style={[
-            styles.contactSection,
-            { backgroundColor: theme.colors.card },
-          ]}
+        <ModernCard
+          padding={24}
+          style={[styles.contactSection, { backgroundColor: uiTokens.colors.surfaceElevated }]}
         >
-          <Ionicons name="mail" size={32} color={theme.colors.primary} />
-          <Text style={[styles.contactTitle, { color: theme.colors.text }]}>
+          <View
+            style={[
+              styles.contactIcon,
+              {
+                backgroundColor: colorWithAlpha(
+                  uiTokens.colors.info,
+                  uiTokens.mode === "dark" ? 0.18 : 0.1
+                ),
+              },
+            ]}
+          >
+            <Ionicons name="mail" size={24} color={uiTokens.colors.info} />
+          </View>
+          <Text style={[styles.contactTitle, { color: uiTokens.colors.textPrimary }]}>
             Need More Help?
           </Text>
-          <Text
-            style={[styles.contactText, { color: theme.colors.textSecondary }]}
-          >
-            Contact your system administrator or IT support team for additional
-            assistance.
+          <Text style={[styles.contactText, { color: uiTokens.colors.textSecondary }]}>
+            Contact your system administrator or IT support team for additional assistance.
           </Text>
-        </View>
+        </ModernCard>
       </ScrollView>
     </View>
   );
@@ -269,29 +295,47 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  section: {
-    margin: 16,
+  scrollContent: {
     padding: 16,
+    paddingBottom: 32,
+    gap: 16,
+  },
+  section: {
     borderRadius: 12,
+    overflow: "hidden",
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 10,
     gap: 12,
   },
+  sectionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: "600",
+    flex: 1,
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "700",
   },
   itemContainer: {
-    marginBottom: 12,
+    paddingHorizontal: 10,
+    paddingBottom: 8,
   },
   questionContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 12,
+    minHeight: 48,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     borderRadius: 8,
   },
   questionContent: {
@@ -305,27 +349,33 @@ const styles = StyleSheet.create({
   },
   question: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: "500",
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: "600",
   },
   answerContainer: {
-    padding: 16,
+    padding: 14,
     borderRadius: 8,
-    marginTop: 4,
+    marginTop: 6,
   },
   answer: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 21,
   },
   contactSection: {
-    margin: 16,
-    padding: 24,
-    borderRadius: 12,
     alignItems: "center",
   },
+  contactIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   contactTitle: {
-    fontSize: 20,
-    fontWeight: "600",
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "700",
     marginTop: 12,
     marginBottom: 8,
   },

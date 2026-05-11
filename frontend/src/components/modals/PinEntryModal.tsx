@@ -10,6 +10,7 @@ import {
 import { Modal } from "../ui/Modal";
 import { modernColors } from "@/styles/unifiedSystem";
 import { verifyPin } from "@/services/api/api"; // We will add this next
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 
 interface PinEntryModalProps {
   visible: boolean;
@@ -82,15 +83,9 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
   };
 
   return (
-    <Modal
-      visible={visible}
-      onClose={handleClose}
-      title="Supervisor Override Required"
-    >
+    <Modal visible={visible} onClose={handleClose} title="Supervisor Override Required">
       <View style={styles.container}>
-        <Text style={styles.description}>
-          This action requires supervisor authorization.
-        </Text>
+        <Text style={styles.description}>This action requires supervisor authorization.</Text>
 
         {error && <Text style={styles.errorText}>{error}</Text>}
 
@@ -151,7 +146,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#FFF" />
+              <ActivityIndicator color={uiSemanticColors.text.inverse} />
             ) : (
               <Text style={styles.primaryButtonText}>Authorize</Text>
             )}
@@ -224,7 +219,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   primaryButtonText: {
-    color: "#FFF",
+    color: uiSemanticColors.text.inverse,
     fontWeight: "600",
   },
 });

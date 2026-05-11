@@ -130,6 +130,25 @@ def _register_lan_enforcement(app: FastAPI, settings: Any, logger: Any) -> None:
         logger.warning("LAN enforcement middleware registration failed: %s", exc)
 
 
+def _register_projection_consistency_guard(app: FastAPI, settings: Any, logger: Any) -> None:
+    enabled = getattr(settings, "PROJECTION_GUARD_ENABLED", None)
+    if enabled is None:
+        enabled = os.getenv("PROJECTION_GUARD_ENABLED", "true")
+    if str(enabled).lower() != "true":
+        logger.info("Projection consistency guard middleware disabled")
+        return
+
+    try:
+        from backend.middleware.projection_consistency_guard import (
+            ProjectionConsistencyGuardMiddleware,
+        )
+
+        app.add_middleware(ProjectionConsistencyGuardMiddleware)
+        logger.info("Projection consistency guard middleware enabled")
+    except Exception as exc:
+        logger.warning("Projection consistency guard middleware registration failed: %s", exc)
+
+
 def register_middleware(
     app: FastAPI,
     *,
@@ -164,6 +183,7 @@ def register_middleware(
     _register_trusted_host_middleware(app, allowed_hosts=allowed_hosts, env=env, logger=logger)
     _register_security_headers(app, security_headers_middleware, logger)
     _register_lan_enforcement(app, settings, logger)
+    _register_projection_consistency_guard(app, settings, logger)
 
     app.add_middleware(APIVersionMiddleware)
     logger.info("API version middleware enabled (version: %s)", API_VERSION)

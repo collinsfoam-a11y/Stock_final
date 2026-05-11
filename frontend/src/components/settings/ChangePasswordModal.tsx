@@ -23,6 +23,11 @@ import { typography } from "../../theme/designTokens";
 import { authApi } from "../../services/api/authApi";
 import * as Haptics from "expo-haptics";
 
+import {
+  colors as uiColors,
+  semanticColors as uiSemanticColors,
+  shadows as uiShadows,
+} from "@/theme/legacyCompat";
 interface ChangePasswordModalProps {
   visible: boolean;
   onClose: () => void;
@@ -49,11 +54,7 @@ const PASSWORD_REQUIREMENTS = [
   { key: "number", label: "One number", test: (p: string) => /\d/.test(p) },
 ];
 
-export function ChangePasswordModal({
-  visible,
-  onClose,
-  onSuccess,
-}: ChangePasswordModalProps) {
+export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePasswordModalProps) {
   const { themeLegacy: theme } = useThemeContext();
   const { colors } = theme;
   const [currentPassword, setCurrentPassword] = useState("");
@@ -122,9 +123,7 @@ export function ChangePasswordModal({
 
       // Success haptic feedback
       if (Platform.OS !== "web") {
-        await Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        );
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
 
       Alert.alert(
@@ -139,7 +138,7 @@ export function ChangePasswordModal({
               onClose();
             },
           },
-        ],
+        ]
       );
     } catch (err: any) {
       // Error haptic feedback
@@ -148,21 +147,13 @@ export function ChangePasswordModal({
       }
 
       const errorMessage =
-        err?.response?.data?.detail?.message ||
-        "Failed to change password. Please try again.";
+        err?.response?.data?.detail?.message || "Failed to change password. Please try again.";
 
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [
-    currentPassword,
-    newPassword,
-    confirmPassword,
-    resetForm,
-    onSuccess,
-    onClose,
-  ]);
+  }, [currentPassword, newPassword, confirmPassword, resetForm, onSuccess, onClose]);
 
   const passwordStrength = getPasswordStrength(newPassword);
   const isValid = currentPassword && newPassword.length >= 8 && confirmPassword;
@@ -181,10 +172,7 @@ export function ChangePasswordModal({
       width: "90%",
       maxWidth: 400,
       maxHeight: "85%",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
+      ...uiShadows.md,
       elevation: 8,
     },
     scrollContent: {
@@ -302,25 +290,20 @@ export function ChangePasswordModal({
       color: colors.text,
     },
     submitButtonText: {
-      color: "#FFFFFF",
+      color: uiSemanticColors.text.inverse,
     },
   });
 
   const getStrengthColor = () => {
     if (passwordStrength.score === 0) return colors.border;
     if (passwordStrength.score === 1) return colors.danger;
-    if (passwordStrength.score === 2) return "#F59E0B";
-    if (passwordStrength.score === 3) return "#10B981";
+    if (passwordStrength.score === 2) return uiColors.warning[500];
+    if (passwordStrength.score === 3) return uiColors.success[500];
     return colors.success;
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={handleClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
       <KeyboardAvoidingView
         style={styles.overlay}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -334,20 +317,13 @@ export function ChangePasswordModal({
             nestedScrollEnabled
           >
             <Text style={styles.title}>Change Password</Text>
-            <Text style={styles.subtitle}>
-              Choose a strong password with at least 8 characters
-            </Text>
+            <Text style={styles.subtitle}>Choose a strong password with at least 8 characters</Text>
 
             {error && <Text style={styles.error}>{error}</Text>}
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Current Password</Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  error?.includes("Current") && styles.inputError,
-                ]}
-              >
+              <View style={[styles.inputWrapper, error?.includes("Current") && styles.inputError]}>
                 <TextInput
                   style={styles.input}
                   value={currentPassword}
@@ -363,21 +339,14 @@ export function ChangePasswordModal({
                   style={styles.showButton}
                   onPress={() => setShowCurrentPassword(!showCurrentPassword)}
                 >
-                  <Text style={styles.showButtonText}>
-                    {showCurrentPassword ? "Hide" : "Show"}
-                  </Text>
+                  <Text style={styles.showButtonText}>{showCurrentPassword ? "Hide" : "Show"}</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>New Password</Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  error?.includes("New") && styles.inputError,
-                ]}
-              >
+              <View style={[styles.inputWrapper, error?.includes("New") && styles.inputError]}>
                 <TextInput
                   style={styles.input}
                   value={newPassword}
@@ -393,9 +362,7 @@ export function ChangePasswordModal({
                   style={styles.showButton}
                   onPress={() => setShowNewPassword(!showNewPassword)}
                 >
-                  <Text style={styles.showButtonText}>
-                    {showNewPassword ? "Hide" : "Show"}
-                  </Text>
+                  <Text style={styles.showButtonText}>{showNewPassword ? "Hide" : "Show"}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -420,9 +387,7 @@ export function ChangePasswordModal({
                         style={[
                           styles.requirementIcon,
                           {
-                            color: req.met
-                              ? colors.success
-                              : colors.textSecondary,
+                            color: req.met ? colors.success : colors.textSecondary,
                           },
                         ]}
                       >
@@ -432,9 +397,7 @@ export function ChangePasswordModal({
                         style={[
                           styles.requirementText,
                           {
-                            color: req.met
-                              ? colors.success
-                              : colors.textSecondary,
+                            color: req.met ? colors.success : colors.textSecondary,
                           },
                         ]}
                       >
@@ -448,12 +411,7 @@ export function ChangePasswordModal({
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Confirm New Password</Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  error?.includes("match") && styles.inputError,
-                ]}
-              >
+              <View style={[styles.inputWrapper, error?.includes("match") && styles.inputError]}>
                 <TextInput
                   style={styles.input}
                   value={confirmPassword}
@@ -474,9 +432,7 @@ export function ChangePasswordModal({
                 onPress={handleClose}
                 disabled={loading}
               >
-                <Text style={[styles.buttonText, styles.cancelButtonText]}>
-                  Cancel
-                </Text>
+                <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -489,11 +445,9 @@ export function ChangePasswordModal({
                 disabled={!isValid || loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
+                  <ActivityIndicator color={uiSemanticColors.text.inverse} size="small" />
                 ) : (
-                  <Text style={[styles.buttonText, styles.submitButtonText]}>
-                    Change Password
-                  </Text>
+                  <Text style={[styles.buttonText, styles.submitButtonText]}>Change Password</Text>
                 )}
               </TouchableOpacity>
             </View>

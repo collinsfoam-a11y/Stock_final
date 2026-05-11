@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"window_start":{"$numberInt":"1"}},"name":"idx_rate_limit_ttl","expireAfterSeconds":{"$numberInt":"600"}}],"uuid":"49aab29bcdfb4e31967d02f206958e72","collectionName":"rate_limits","type":"collection"}

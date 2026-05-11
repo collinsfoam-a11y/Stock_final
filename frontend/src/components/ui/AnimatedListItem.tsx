@@ -22,11 +22,7 @@ import Animated, {
   Easing,
   runOnJS,
 } from "react-native-reanimated";
-import {
-  AnimationTimings,
-  AnimationEasings,
-  Spacing,
-} from "@/theme/uiConstants";
+import { AnimationTimings, AnimationEasings, Spacing } from "@/theme/uiConstants";
 
 export interface AnimatedListItemProps {
   /** Index of the item in the list (used for stagger delay) */
@@ -102,7 +98,7 @@ export const AnimatedListItem: React.FC<AnimatedListItemProps> = ({
           if (finished && onAnimationComplete) {
             runOnJS(onAnimationComplete)();
           }
-        }),
+        })
       );
     } else {
       progress.value = withDelay(
@@ -117,19 +113,11 @@ export const AnimatedListItem: React.FC<AnimatedListItemProps> = ({
             if (finished && onAnimationComplete) {
               runOnJS(onAnimationComplete)();
             }
-          },
-        ),
+          }
+        )
       );
     }
-  }, [
-    animate,
-    index,
-    delayPerItem,
-    useSpringPhysics,
-    duration,
-    progress,
-    onAnimationComplete,
-  ]);
+  }, [animate, index, delayPerItem, useSpringPhysics, duration, progress, onAnimationComplete]);
 
   const animatedStyle = useAnimatedStyle(() => {
     switch (animationType) {
@@ -171,9 +159,7 @@ export const AnimatedListItem: React.FC<AnimatedListItemProps> = ({
     }
   });
 
-  return (
-    <Animated.View style={[animatedStyle, style]}>{children}</Animated.View>
-  );
+  return <Animated.View style={[animatedStyle, style]}>{children}</Animated.View>;
 };
 
 /**

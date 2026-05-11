@@ -10,4 +10,11 @@ export { ChangePasswordModal } from "./ChangePasswordModal";
 export { FontSizeSlider } from "./FontSizeSlider";
 export { FontStylePicker } from "./FontStylePicker";
 export { SettingsSyncStatus } from "./SettingsSyncStatus";
+export {
+  SettingsActionRow,
+  SettingsActionSection,
+  SettingsSectionDivider,
+  SettingsSectionHeading,
+  SettingsTextInputRow,
+} from "./SettingsScreenPrimitives";
 export { UserSettingsSections } from "./UserSettingsSections";

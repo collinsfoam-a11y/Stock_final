@@ -7,6 +7,8 @@
  * - Gradient border option
  * - Shadow and elevation
  * - Customizable variants
+ *
+ * @deprecated Use AppCard. GlassCard is limited to approved appearance/demo surfaces.
  */
 
 import React from "react";
@@ -15,6 +17,8 @@ import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useThemeContextSafe } from "../../context/ThemeContext";
 
+import { colors as uiColors } from "@/theme/legacyCompat";
+import { warnDeprecatedVisualSystem } from "./legacyVisualSystem";
 export type GlassVariant = "light" | "medium" | "strong" | "dark" | "modal";
 export type GlassElevation = "none" | "xs" | "sm" | "md" | "lg" | "xl";
 
@@ -45,6 +49,7 @@ export const GlassCard = ({
   accessibilityLabel,
   accessibilityHint,
 }: GlassCardProps) => {
+  warnDeprecatedVisualSystem("GlassCard");
   const themeContext = useThemeContextSafe();
   const theme = themeContext?.theme;
 
@@ -53,34 +58,27 @@ export const GlassCard = ({
   const activePadding = padding ?? (theme?.spacing?.md || 16);
 
   const glassStyle = theme?.glass[variant] || theme?.glass.medium || {};
-  const shadowStyle =
-    elevation !== "none" ? (theme?.shadows[elevation] as ViewStyle) : {};
+  const shadowStyle = elevation !== "none" ? (theme?.shadows[elevation] as ViewStyle) : {};
   const useBlur = Platform.OS !== "web";
 
   // Resolve tint based on theme if default
   const activeTint =
     tint === "default"
-      ? theme?.colors.background.default === "#000000"
+      ? theme?.colors.background.default === uiColors.black
         ? "dark"
         : "light"
       : tint;
 
-  const fallbackBackground =
-    theme?.colors.background.paper || "rgba(15, 23, 42, 0.85)";
+  const fallbackBackground = theme?.colors.background.paper || "rgba(15, 23, 42, 0.85)";
   const gradientBorderColors = [
-    `${theme?.colors.accent || "#0EA5E9"}66`,
+    `${theme?.colors.accent || uiColors.info[500]}66`,
     "rgba(255, 255, 255, 0.10)",
   ] as const;
 
   if (withGradientBorder) {
     return (
       <View
-        style={[
-          styles.container,
-          shadowStyle,
-          { borderRadius: activeBorderRadius },
-          style,
-        ]}
+        style={[styles.container, shadowStyle, { borderRadius: activeBorderRadius }, style]}
         accessible={true}
         accessibilityLabel={accessibilityLabel}
         accessibilityHint={accessibilityHint}
@@ -104,8 +102,7 @@ export const GlassCard = ({
               style={[
                 styles.blur,
                 {
-                  borderRadius:
-                    activeBorderRadius - ((glassStyle as any).borderWidth || 1),
+                  borderRadius: activeBorderRadius - ((glassStyle as any).borderWidth || 1),
                   backgroundColor: "transparent", // BlurView handles background
                 },
               ]}
@@ -125,15 +122,12 @@ export const GlassCard = ({
               style={[
                 styles.webFallbackSurface,
                 {
-                  borderRadius:
-                    activeBorderRadius - ((glassStyle as any).borderWidth || 1),
+                  borderRadius: activeBorderRadius - ((glassStyle as any).borderWidth || 1),
                   backgroundColor: fallbackBackground,
                 },
               ]}
             >
-              <View style={[styles.content, { padding: activePadding }]}>
-                {children}
-              </View>
+              <View style={[styles.content, { padding: activePadding }]}>{children}</View>
             </View>
           )}
         </LinearGradient>
@@ -160,9 +154,7 @@ export const GlassCard = ({
           tint={activeTint}
           style={[styles.blur, { borderRadius: activeBorderRadius }]}
         >
-          <View style={[styles.content, { padding: activePadding }]}>
-            {children}
-          </View>
+          <View style={[styles.content, { padding: activePadding }]}>{children}</View>
         </BlurView>
       ) : (
         <View
@@ -174,9 +166,7 @@ export const GlassCard = ({
             },
           ]}
         >
-          <View style={[styles.content, { padding: activePadding }]}>
-            {children}
-          </View>
+          <View style={[styles.content, { padding: activePadding }]}>{children}</View>
         </View>
       )}
     </View>

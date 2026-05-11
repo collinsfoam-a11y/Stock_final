@@ -1,0 +1,9 @@
+{
+  "stale_status_code": 503,
+  "stale_body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":41,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":0.009109,\"projection_drift_count\":0,\"projection_gap_cou",
+  "immediate_after_publish_status": 503,
+  "immediate_after_publish_body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":41,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":0.009109,\"projection_drift_count\":0,\"projection_gap_cou",
+  "delayed_after_publish_status": 503,
+  "delayed_after_publish_body": "{\"detail\":{\"code\":\"PROJECTION_INCONSISTENT\",\"reason\":\"STALE_DATA\",\"retry_after_seconds\":18,\"message\":\"Projection readiness stability window has not elapsed.\",\"metrics\":{\"projection_lag_seconds\":0.0,\"projection_freshness_lag\":0.007551,\"projection_drift_count\":0,\"projection_gap_cou",
+  "timestamp": "2026-05-02T16:24:59.411595+00:00"
+}

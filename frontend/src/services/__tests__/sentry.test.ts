@@ -1,5 +1,3 @@
-import { describe, it, expect, beforeEach, jest } from "@jest/globals";
-
 describe("sentry service smoke tests", () => {
   beforeEach(() => {
     jest.resetModules();

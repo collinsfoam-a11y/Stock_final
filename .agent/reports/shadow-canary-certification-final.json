@@ -1,0 +1,102 @@
+{
+  "generated_at": "2026-05-03T01:53:06Z",
+  "phase1_shadow_generation": {
+    "stage0_shadow_data_present": true,
+    "stage0_shadow_total_requests": 800,
+    "stage0_shadow_mismatch_count": 0,
+    "stage0_shadow_error_count": 0,
+    "stage0_shadow_timeout_count": 0
+  },
+  "phase2_canary_10_20": {
+    "attempted_stage": 1,
+    "result": "FAILED",
+    "non_2xx_events_captured": 81,
+    "iterations_observed": 41,
+    "dominant_error": "503 PROJECTION_INCONSISTENT on dashboard/admin projection reads"
+  },
+  "phase3_ramp_50_100": {
+    "result": "BLOCKED",
+    "reason": "stage1 canary failed; guard prevented promotion"
+  },
+  "deployment_decision_log": {
+    "go_records_stage0": 3,
+    "stage1_no_go_records": 9,
+    "latest_record": {
+      "decision": "NO-GO",
+      "kind": "background_decision",
+      "metrics": {
+        "endpoints": {},
+        "error": 0,
+        "error_rate": 0.0,
+        "healthy": false,
+        "mismatch": 0,
+        "mismatch_rate": 0.0,
+        "reason": "no_shadow_data",
+        "timeout": 0,
+        "timeout_rate": 0.0,
+        "total": 0
+      },
+      "payload": {
+        "decision": {
+          "decision": "NO-GO",
+          "healthy": false,
+          "healthy_for_seconds": 0.0,
+          "metrics": {
+            "endpoints": {},
+            "error": 0,
+            "error_rate": 0.0,
+            "healthy": false,
+            "mismatch": 0,
+            "mismatch_rate": 0.0,
+            "reason": "no_shadow_data",
+            "timeout": 0,
+            "timeout_rate": 0.0,
+            "total": 0
+          },
+          "reason": "no_shadow_data",
+          "required_window_seconds": 40
+        },
+        "rollback": {
+          "environment_updates": {},
+          "manual_confirmation_required": false,
+          "reason": "shadow_health_within_rollback_thresholds",
+          "rollback_patch": "# checksum: empty",
+          "state": "STABLE",
+          "triggered": false
+        },
+        "rollout": {
+          "apply_patch": "# checksum: b6ca2f790d5e\nROLLOUT_STAGE=1\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=true\nV3_PROJECTION_REPORT_READS=false",
+          "cooldown_remaining_seconds": 0.0,
+          "current_stage": 1,
+          "environment_updates": {
+            "ROLLOUT_STAGE": "1",
+            "SHADOW_READ_ENABLED": "true",
+            "SHADOW_READ_SAMPLE_RATE": "0.10",
+            "V3_PROJECTION_DASHBOARD_READS": "true",
+            "V3_PROJECTION_REPORT_READS": "false"
+          },
+          "manual_confirmation_required": true,
+          "next_stage": 1,
+          "patch_errors": [],
+          "reason": "no_shadow_data",
+          "rollback_patch": "# checksum: 6052116087f8\nROLLOUT_STAGE=0\nSHADOW_READ_ENABLED=true\nSHADOW_READ_SAMPLE_RATE=0.10\nV3_PROJECTION_DASHBOARD_READS=false\nV3_PROJECTION_REPORT_READS=false",
+          "rollback_updates": {
+            "ROLLOUT_STAGE": "0",
+            "SHADOW_READ_ENABLED": "true",
+            "SHADOW_READ_SAMPLE_RATE": "0.10",
+            "V3_PROJECTION_DASHBOARD_READS": "false",
+            "V3_PROJECTION_REPORT_READS": "false"
+          },
+          "stage_name": "admin_projection",
+          "status": "HELD"
+        }
+      },
+      "reason": "no_shadow_data",
+      "ts": "2026-05-03T01:52:28Z"
+    }
+  },
+  "final_status": {
+    "decision": "NO-GO_FOR_100_PERCENT_ROLLOUT",
+    "gate": "blocked_by_projection_inconsistency_on_stage1_reads"
+  }
+}

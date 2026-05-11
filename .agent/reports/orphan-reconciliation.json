@@ -1,0 +1,188 @@
+{
+  "strategy": "archive",
+  "execute": true,
+  "reconciliation_id": "orphan_reconciliation_20260503T1725Z",
+  "timestamp": "2026-05-04T10:33:50.228692Z",
+  "operator": "system/codex",
+  "session_ids": [
+    "00011e6f-d298-4448-b683-5a22da5c94fe",
+    "0cba0ad4-4ea0-4ebc-a590-33bcc04b6e1f",
+    "3aaa3ab1-4420-409b-bb6e-d226c2e8c68f",
+    "3e70a682-8015-4d33-93b6-80502b2a7486",
+    "a0498b9e-baeb-4431-9a5e-7f4003292e65",
+    "ab955f64-d478-4c6f-b08c-eb2bacf40a08",
+    "c9fc3d83-e6d0-4246-9218-d0c7db5570cb",
+    "dece1d49-771b-409c-a5c9-a3b5bb33a264",
+    "e0ac66b3-8fa9-4117-a0b1-e67aa4d32d85"
+  ],
+  "requested_session_ids": [
+    "00011e6f-d298-4448-b683-5a22da5c94fe",
+    "0cba0ad4-4ea0-4ebc-a590-33bcc04b6e1f",
+    "3aaa3ab1-4420-409b-bb6e-d226c2e8c68f",
+    "3e70a682-8015-4d33-93b6-80502b2a7486",
+    "a0498b9e-baeb-4431-9a5e-7f4003292e65",
+    "ab955f64-d478-4c6f-b08c-eb2bacf40a08",
+    "c9fc3d83-e6d0-4246-9218-d0c7db5570cb",
+    "dece1d49-771b-409c-a5c9-a3b5bb33a264",
+    "e0ac66b3-8fa9-4117-a0b1-e67aa4d32d85"
+  ],
+  "discovered": false,
+  "affected_count_lines": 15,
+  "all_count_lines_for_session_ids": 15,
+  "before_totals": {
+    "count_lines": 15,
+    "counted_qty": 32.0,
+    "erp_qty": 34.0,
+    "variance": -2.0,
+    "financial_value_delta": -107079.0,
+    "damage_value": 0.0
+  },
+  "before_counts": {
+    "active_sessions": 0,
+    "active_count_lines": 15,
+    "archived_count_lines": 0,
+    "archive_collection_docs": 0,
+    "active_projection_rows": {
+      "session_dashboard_projection": 0,
+      "verified_items_projection": 14,
+      "variance_summary_projection": 14,
+      "financial_projection": 9,
+      "batch_records": 14,
+      "event_log": 0
+    }
+  },
+  "held_session_locks": [],
+  "backup": {
+    "type": "mongodump",
+    "path": "/Users/noufi1/stk_final/Stock_final/.agent/backups/orphan_reconciliation_20260503T1725Z",
+    "collections": [
+      "sessions",
+      "count_lines",
+      "count_lines_archive",
+      "session_dashboard_projection",
+      "verified_items_projection",
+      "variance_summary_projection",
+      "financial_projection",
+      "batch_records",
+      "event_log",
+      "orphan_reconciliation_log"
+    ],
+    "results": [
+      {
+        "collection": "sessions",
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "2026-05-04T16:03:50.244+0530\twriting stock_verification.sessions to /Users/noufi1/stk_final/Stock_final/.agent/backups/orphan_reconciliation_20260503T1725Z/stock_verification/sessions.bson.gz\n2026-05-04T16:03:50.245+0530\tdone dumping stock_verification.sessions (46 documents)"
+      },
+      {
+        "collection": "count_lines",
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "2026-05-04T16:03:50.258+0530\twriting stock_verification.count_lines to /Users/noufi1/stk_final/Stock_final/.agent/backups/orphan_reconciliation_20260503T1725Z/stock_verification/count_lines.bson.gz\n2026-05-04T16:03:50.263+0530\tdone dumping stock_verification.count_lines (30 documents)"
+      },
+      {
+        "collection": "count_lines_archive",
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "2026-05-04T16:03:50.274+0530\tnamespace with DB stock_verification and collection count_lines_archive does not exist"
+      },
+      {
+        "collection": "session_dashboard_projection",
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "2026-05-04T16:03:50.286+0530\twriting stock_verification.session_dashboard_projection to /Users/noufi1/stk_final/Stock_final/.agent/backups/orphan_reconciliation_20260503T1725Z/stock_verification/session_dashboard_projection.bson.gz\n2026-05-04T16:03:50.287+0530\tdone dumping stock_verification.session_dashboard_projection (46 documents)"
+      },
+      {
+        "collection": "verified_items_projection",
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "2026-05-04T16:03:50.299+0530\twriting stock_verification.verified_items_projection to /Users/noufi1/stk_final/Stock_final/.agent/backups/orphan_reconciliation_20260503T1725Z/stock_verification/verified_items_projection.bson.gz\n2026-05-04T16:03:50.300+0530\tdone dumping stock_verification.verified_items_projection (29 documents)"
+      },
+      {
+        "collection": "variance_summary_projection",
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "2026-05-04T16:03:50.312+0530\twriting stock_verification.variance_summary_projection to /Users/noufi1/stk_final/Stock_final/.agent/backups/orphan_reconciliation_20260503T1725Z/stock_verification/variance_summary_projection.bson.gz\n2026-05-04T16:03:50.313+0530\tdone dumping stock_verification.variance_summary_projection (29 documents)"
+      },
+      {
+        "collection": "financial_projection",
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "2026-05-04T16:03:50.325+0530\twriting stock_verification.financial_projection to /Users/noufi1/stk_final/Stock_final/.agent/backups/orphan_reconciliation_20260503T1725Z/stock_verification/financial_projection.bson.gz\n2026-05-04T16:03:50.325+0530\tdone dumping stock_verification.financial_projection (55 documents)"
+      },
+      {
+        "collection": "batch_records",
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "2026-05-04T16:03:50.337+0530\twriting stock_verification.batch_records to /Users/noufi1/stk_final/Stock_final/.agent/backups/orphan_reconciliation_20260503T1725Z/stock_verification/batch_records.bson.gz\n2026-05-04T16:03:50.338+0530\tdone dumping stock_verification.batch_records (28 documents)"
+      },
+      {
+        "collection": "event_log",
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "2026-05-04T16:03:50.350+0530\twriting stock_verification.event_log to /Users/noufi1/stk_final/Stock_final/.agent/backups/orphan_reconciliation_20260503T1725Z/stock_verification/event_log.bson.gz\n2026-05-04T16:03:50.351+0530\tdone dumping stock_verification.event_log (224 documents)"
+      },
+      {
+        "collection": "orphan_reconciliation_log",
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "2026-05-04T16:03:50.362+0530\tnamespace with DB stock_verification and collection orphan_reconciliation_log does not exist"
+      }
+    ]
+  },
+  "archive_result": {
+    "archive_docs_upserted": 15,
+    "count_lines_matched": 15,
+    "count_lines_modified": 15,
+    "projection_results": {
+      "session_dashboard_projection": {
+        "matched": 0,
+        "modified": 0
+      },
+      "verified_items_projection": {
+        "matched": 14,
+        "modified": 14
+      },
+      "variance_summary_projection": {
+        "matched": 14,
+        "modified": 14
+      },
+      "financial_projection": {
+        "matched": 9,
+        "modified": 9
+      },
+      "batch_records": {
+        "matched": 14,
+        "modified": 14
+      },
+      "event_log": {
+        "matched": 0,
+        "modified": 0
+      }
+    }
+  },
+  "after_totals": {
+    "count_lines": 0,
+    "counted_qty": 0.0,
+    "erp_qty": 0.0,
+    "variance": 0.0,
+    "financial_value_delta": 0.0,
+    "damage_value": 0.0
+  },
+  "after_counts": {
+    "active_sessions": 0,
+    "active_count_lines": 0,
+    "archived_count_lines": 15,
+    "archive_collection_docs": 15,
+    "active_projection_rows": {
+      "session_dashboard_projection": 0,
+      "verified_items_projection": 0,
+      "variance_summary_projection": 0,
+      "financial_projection": 0,
+      "batch_records": 0,
+      "event_log": 0
+    }
+  },
+  "success": true,
+  "errors": []
+}

@@ -1,5 +1,3 @@
-import { jest } from "@jest/globals";
-
 const mockPlatform = { OS: "web" };
 const mockExpoConstants = { expoConfig: { hostUri: undefined, extra: {} } };
 const mockIsValidBackendHealthResponse = jest.fn(async () => true);

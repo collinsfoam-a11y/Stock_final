@@ -1,0 +1,110 @@
+{
+  "duration_seconds": 240,
+  "total_requests": 1781,
+  "counts": {
+    "total": 1781,
+    "status_401": 1781
+  },
+  "sample_errors": [
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/admin/dashboard/kpis",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    },
+    {
+      "endpoint": "/api/dashboard/filters/options",
+      "status": 401,
+      "body": "{\"detail\":{\"message\":\"Invalid session. Please login again.\",\"detail\":\"Authentication credentials were not provided\",\"code\":\"AUTH_004\",\"category\":\"authentication\"}}"
+    }
+  ]
+}

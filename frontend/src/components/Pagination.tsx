@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
@@ -63,10 +64,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 
       <View style={styles.controls}>
         <TouchableOpacity
-          style={[
-            styles.button,
-            (currentPage === 1 || isLoading) && styles.buttonDisabled,
-          ]}
+          style={[styles.button, (currentPage === 1 || isLoading) && styles.buttonDisabled]}
           onPress={handleFirst}
           disabled={currentPage === 1 || isLoading}
         >
@@ -81,10 +79,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[
-            styles.button,
-            (currentPage === 1 || isLoading) && styles.buttonDisabled,
-          ]}
+          style={[styles.button, (currentPage === 1 || isLoading) && styles.buttonDisabled]}
           onPress={handlePrevious}
           disabled={currentPage === 1 || isLoading}
         >
@@ -115,8 +110,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           <Text
             style={[
               styles.buttonText,
-              (currentPage === totalPages || isLoading) &&
-                styles.buttonTextDisabled,
+              (currentPage === totalPages || isLoading) && styles.buttonTextDisabled,
             ]}
           >
             »
@@ -134,8 +128,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           <Text
             style={[
               styles.buttonText,
-              (currentPage === totalPages || isLoading) &&
-                styles.buttonTextDisabled,
+              (currentPage === totalPages || isLoading) && styles.buttonTextDisabled,
             ]}
           >
             »»
@@ -150,13 +143,13 @@ const styles = StyleSheet.create({
   container: {
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: uiColors.neutral[50],
     borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
+    borderTopColor: uiSemanticColors.border.default,
   },
   infoText: {
     fontSize: 14,
-    color: "#666",
+    color: uiSemanticColors.text.secondary,
     marginBottom: 8,
     textAlign: "center",
   },
@@ -169,37 +162,37 @@ const styles = StyleSheet.create({
   button: {
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: "#007bff",
+    backgroundColor: uiColors.info[500],
     borderRadius: 4,
     minWidth: 44,
     alignItems: "center",
     justifyContent: "center",
   },
   buttonDisabled: {
-    backgroundColor: "#ccc",
+    backgroundColor: uiColors.neutral[300],
     opacity: 0.6,
   },
   buttonText: {
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 16,
     fontWeight: "bold",
   },
   buttonTextDisabled: {
-    color: "#999",
+    color: uiSemanticColors.text.tertiary,
   },
   pageInfo: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: "#fff",
+    backgroundColor: uiSemanticColors.text.inverse,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: uiColors.neutral[300],
     minWidth: 100,
     alignItems: "center",
   },
   pageText: {
     fontSize: 14,
-    color: "#333",
+    color: uiSemanticColors.text.primary,
     fontWeight: "500",
   },
 });

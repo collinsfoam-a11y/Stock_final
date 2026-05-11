@@ -4,6 +4,7 @@ import { secureStorage } from "../services/storage/secureStorage";
 import { useSettingsStore } from "./settingsStore";
 import { setUnauthorizedHandler } from "../services/authUnauthorizedHandler";
 import { createLogger } from "../services/logging";
+import { registerSyncAuthStateProvider } from "../services/syncService";
 import { setUserPreferenceScope } from "../services/userPreferenceScope";
 
 interface User {
@@ -17,8 +18,7 @@ interface User {
   has_pin?: boolean;
 }
 
-const BASE64_ALPHABET =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const BASE64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const BASE64_LOOKUP: number[] = (() => {
   const table = new Array<number>(256).fill(-1);
   for (let i = 0; i < BASE64_ALPHABET.length; i++) {
@@ -107,19 +107,13 @@ export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitialized: boolean;
+  pendingRedirectPath: string | null;
   hasValidToken: () => boolean;
   checkTokenExpired: (token: string) => boolean;
   startHeartbeat: () => void;
   stopHeartbeat: () => void;
-  login: (
-    username: string,
-    password: string,
-    rememberMe?: boolean,
-  ) => Promise<AuthResult>;
-  loginWithPin: (
-    pin: string,
-    username?: string,
-  ) => Promise<AuthResult>;
+  login: (username: string, password: string, rememberMe?: boolean) => Promise<AuthResult>;
+  loginWithPin: (pin: string, username?: string) => Promise<AuthResult>;
   authenticateWithBiometrics: () => Promise<{
     success: boolean;
     message?: string;
@@ -129,18 +123,17 @@ export interface AuthState {
   establishSession: (payload: AuthSessionPayload) => Promise<void>;
   setUser: (user: User) => void;
   logout: () => Promise<void>;
-  logoutAll: (
-    username?: string,
-  ) => Promise<AuthResult>;
-  pinSetup: (
-    pin: string,
-    confirmPin: string,
-  ) => Promise<AuthResult>;
+  logoutAll: (username?: string) => Promise<AuthResult>;
+  pinSetup: (pin: string, confirmPin: string) => Promise<AuthResult>;
   setLoading: (loading: boolean) => void;
   loadStoredAuth: () => Promise<void>;
   lastLoggedUser: LastLoggedUser | null;
   setLastLoggedUser: (user: LastLoggedUser | null) => void;
   clearLastLoggedUser: () => Promise<void>;
+  setPendingRedirect: (path: string | null) => Promise<void>;
+  peekPendingRedirect: () => Promise<string | null>;
+  consumePendingRedirect: () => Promise<string | null>;
+  clearPendingRedirect: () => Promise<void>;
 }
 
 const AUTH_STORAGE_KEY = "auth_user";
@@ -148,18 +141,14 @@ const TOKEN_STORAGE_KEY = "auth_token";
 const REFRESH_TOKEN_STORAGE_KEY = "refresh_token";
 const BIOMETRIC_PIN_KEY = "biometric_pin";
 const LAST_USER_STORAGE_KEY = "last_logged_user";
+const PENDING_REDIRECT_STORAGE_KEY = "auth_pending_redirect";
 
 const log = createLogger("authStore");
 let heartbeatInterval: NodeJS.Timeout | null = null;
 const IS_TEST_ENV =
-  process.env.NODE_ENV === "test" ||
-  typeof process.env.JEST_WORKER_ID !== "undefined";
-let apiClientPromise:
-  | Promise<typeof import("../services/httpClient")["default"]>
-  | null = null;
-let localAuthenticationPromise:
-  | Promise<typeof import("expo-local-authentication")>
-  | null = null;
+  process.env.NODE_ENV === "test" || typeof process.env.JEST_WORKER_ID !== "undefined";
+let apiClientPromise: Promise<(typeof import("../services/httpClient"))["default"]> | null = null;
+let localAuthenticationPromise: Promise<typeof import("expo-local-authentication")> | null = null;
 
 const getApiClient = async () => {
   if (!apiClientPromise) {
@@ -167,7 +156,8 @@ const getApiClient = async () => {
       ? Promise.resolve(
           // Jest `doMock` setups need synchronous resolution after mocks are registered.
           // eslint-disable-next-line @typescript-eslint/no-require-imports
-          require("../services/httpClient").default as typeof import("../services/httpClient")["default"],
+          require("../services/httpClient")
+            .default as (typeof import("../services/httpClient"))["default"]
         )
       : import("../services/httpClient").then((module) => module.default);
   }
@@ -181,7 +171,7 @@ const getLocalAuthentication = async () => {
       ? Promise.resolve(
           // Jest `doMock` setups need synchronous resolution after mocks are registered.
           // eslint-disable-next-line @typescript-eslint/no-require-imports
-          require("expo-local-authentication") as typeof import("expo-local-authentication"),
+          require("expo-local-authentication") as typeof import("expo-local-authentication")
         )
       : import("expo-local-authentication");
   }
@@ -192,7 +182,7 @@ const getLocalAuthentication = async () => {
 const parseAuthError = (
   error: any,
   fallbackMessage: string,
-  invalidCredentialsMessage = "Incorrect username or password",
+  invalidCredentialsMessage = "Incorrect username or password"
 ): AuthResult => {
   const status = error?.response?.status;
   const detail = error?.response?.data?.detail;
@@ -203,9 +193,7 @@ const parseAuthError = (
     return {
       success: false,
       code: "AUTH_SESSION_CONFLICT",
-      message:
-        apiMessage ||
-        "This account is already active on another device.",
+      message: apiMessage || "This account is already active on another device.",
     };
   }
 
@@ -245,8 +233,7 @@ const parseAuthError = (
     return {
       success: false,
       code: "NETWORK_CONNECTION_ERROR",
-      message:
-        "Unable to connect to server. Check internet connection and backend status.",
+      message: "Unable to connect to server. Check internet connection and backend status.",
     };
   }
 
@@ -261,14 +248,44 @@ const parseAuthError = (
   return { success: false, message: apiMessage || fallbackMessage, code };
 };
 
-const buildLastLoggedUser = (
-  user: User,
-  hasPinOverride?: boolean,
-): LastLoggedUser => ({
+const buildLastLoggedUser = (user: User, hasPinOverride?: boolean): LastLoggedUser => ({
   username: user.username,
   full_name: user.full_name,
   has_pin: hasPinOverride ?? user.has_pin,
 });
+
+const PUBLIC_PENDING_REDIRECT_SEGMENTS = new Set([
+  "(auth)",
+  "login",
+  "welcome",
+  "register",
+  "help",
+  "forgot-password",
+  "otp-verification",
+  "reset-password",
+]);
+
+const normalizePendingRedirect = (path: string | null | undefined): string | null => {
+  if (!path || typeof path !== "string") return null;
+  const trimmed = path.trim();
+  if (!trimmed.startsWith("/")) return null;
+  if (trimmed.startsWith("//") || trimmed.includes("\\")) return null;
+
+  try {
+    const baseUrl = "https://stock-verify.local";
+    const parsed = new URL(trimmed, baseUrl);
+    if (parsed.origin !== baseUrl) return null;
+
+    const firstSegment = parsed.pathname.split("/").filter(Boolean)[0];
+    if (!firstSegment || PUBLIC_PENDING_REDIRECT_SEGMENTS.has(firstSegment)) {
+      return null;
+    }
+
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return null;
+  }
+};
 
 const syncOfflineQueueInBackground = async () => {
   const { useNetworkStore } = IS_TEST_ENV
@@ -276,7 +293,7 @@ const syncOfflineQueueInBackground = async () => {
         // Jest `doMock` setups need synchronous resolution after mocks are registered.
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         useNetworkStore: require("./networkStore")
-          .useNetworkStore as typeof import("./networkStore")["useNetworkStore"],
+          .useNetworkStore as (typeof import("./networkStore"))["useNetworkStore"],
       }
     : await import("./networkStore");
   const networkState = useNetworkStore.getState();
@@ -287,7 +304,7 @@ const syncOfflineQueueInBackground = async () => {
         // Jest `doMock` setups need synchronous resolution after mocks are registered.
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         syncOfflineQueue: require("../services/syncService")
-          .syncOfflineQueue as typeof import("../services/syncService")["syncOfflineQueue"],
+          .syncOfflineQueue as (typeof import("../services/syncService"))["syncOfflineQueue"],
       }
     : await import("../services/syncService");
   syncOfflineQueue({ background: true }).catch((err: unknown) => {
@@ -304,7 +321,7 @@ const initializeNotificationsInBackground = async () => {
           // Jest `doMock` setups need synchronous resolution after mocks are registered.
           // eslint-disable-next-line @typescript-eslint/no-require-imports
           NotificationService: require("../services/utils/notificationService")
-            .NotificationService as typeof import("../services/utils/notificationService")["NotificationService"],
+            .NotificationService as (typeof import("../services/utils/notificationService"))["NotificationService"],
         }
       : await import("../services/utils/notificationService");
     await NotificationService.initialize();
@@ -322,7 +339,7 @@ const unregisterNotificationsInBackground = async () => {
           // Jest `doMock` setups need synchronous resolution after mocks are registered.
           // eslint-disable-next-line @typescript-eslint/no-require-imports
           NotificationService: require("../services/utils/notificationService")
-            .NotificationService as typeof import("../services/utils/notificationService")["NotificationService"],
+            .NotificationService as (typeof import("../services/utils/notificationService"))["NotificationService"],
         }
       : await import("../services/utils/notificationService");
     await NotificationService.unregisterCurrentDevice();
@@ -340,7 +357,7 @@ const rehydrateFilterStoreForCurrentScope = async () => {
           // Jest `doMock` setups need synchronous resolution after mocks are registered.
           // eslint-disable-next-line @typescript-eslint/no-require-imports
           rehydrateFilterStore: require("./filterStore")
-            .rehydrateFilterStore as typeof import("./filterStore")["rehydrateFilterStore"],
+            .rehydrateFilterStore as (typeof import("./filterStore"))["rehydrateFilterStore"],
         }
       : await import("./filterStore");
     await rehydrateFilterStore();
@@ -358,7 +375,7 @@ const resetFilterStoreForLoggedOutUser = async () => {
           // Jest `doMock` setups need synchronous resolution after mocks are registered.
           // eslint-disable-next-line @typescript-eslint/no-require-imports
           resetFilterStore: require("./filterStore")
-            .resetFilterStore as typeof import("./filterStore")["resetFilterStore"],
+            .resetFilterStore as (typeof import("./filterStore"))["resetFilterStore"],
         }
       : await import("./filterStore");
     await resetFilterStore();
@@ -373,7 +390,7 @@ const hydrateAuthenticatedSession = async (
   user: User,
   options?: {
     syncOfflineQueue?: boolean;
-  },
+  }
 ) => {
   setUserPreferenceScope(user.id);
   await rehydrateFilterStoreForCurrentScope();
@@ -393,10 +410,7 @@ const hydrateAuthenticatedSession = async (
   results.forEach((result) => {
     if (result.status === "rejected") {
       log.warn("Post-auth task failed", {
-        error:
-          result.reason instanceof Error
-            ? result.reason.message
-            : String(result.reason),
+        error: result.reason instanceof Error ? result.reason.message : String(result.reason),
       });
     }
   });
@@ -406,7 +420,7 @@ const hydrateAuthenticatedSessionInBackground = (
   user: User,
   options?: {
     syncOfflineQueue?: boolean;
-  },
+  }
 ) => {
   void hydrateAuthenticatedSession(user, options).catch((error) => {
     log.warn("Authenticated session hydration failed", {
@@ -422,6 +436,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: false,
   isInitialized: false,
   lastLoggedUser: null,
+  pendingRedirectPath: null,
   hasValidToken: (): boolean => {
     return !!get().user;
   },
@@ -440,6 +455,51 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ lastLoggedUser: null });
   },
 
+  setPendingRedirect: async (path: string | null) => {
+    const normalized = normalizePendingRedirect(path);
+    set({ pendingRedirectPath: normalized });
+    if (normalized) {
+      await secureStorage.setItem(PENDING_REDIRECT_STORAGE_KEY, normalized);
+    } else {
+      await secureStorage.removeItem(PENDING_REDIRECT_STORAGE_KEY);
+    }
+  },
+
+  peekPendingRedirect: async () => {
+    const inState = normalizePendingRedirect(get().pendingRedirectPath);
+    if (inState) {
+      return inState;
+    }
+
+    const storedRaw = await secureStorage.getItem(PENDING_REDIRECT_STORAGE_KEY);
+    const stored = normalizePendingRedirect(storedRaw);
+    if (stored) {
+      set({ pendingRedirectPath: stored });
+      return stored;
+    }
+
+    if (storedRaw) {
+      set({ pendingRedirectPath: null });
+      await secureStorage.removeItem(PENDING_REDIRECT_STORAGE_KEY);
+    }
+    return null;
+  },
+
+  consumePendingRedirect: async () => {
+    const pendingPath = await get().peekPendingRedirect();
+    if (!pendingPath) {
+      return null;
+    }
+    set({ pendingRedirectPath: null });
+    await secureStorage.removeItem(PENDING_REDIRECT_STORAGE_KEY);
+    return pendingPath;
+  },
+
+  clearPendingRedirect: async () => {
+    set({ pendingRedirectPath: null });
+    await secureStorage.removeItem(PENDING_REDIRECT_STORAGE_KEY);
+  },
+
   establishSession: async ({
     access_token,
     refresh_token,
@@ -452,8 +512,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     const apiClient = await getApiClient();
-    const authenticatedUser =
-      has_pin === undefined ? user : { ...user, has_pin };
+    const authenticatedUser = has_pin === undefined ? user : { ...user, has_pin };
     const lastUser = buildLastLoggedUser(authenticatedUser, has_pin);
 
     apiClient.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
@@ -465,14 +524,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await secureStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
     }
 
-    await secureStorage.setItem(
-      AUTH_STORAGE_KEY,
-      JSON.stringify(authenticatedUser),
-    );
-    await secureStorage.setItem(
-      LAST_USER_STORAGE_KEY,
-      JSON.stringify(lastUser),
-    );
+    await secureStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authenticatedUser));
+    await secureStorage.setItem(LAST_USER_STORAGE_KEY, JSON.stringify(lastUser));
 
     if (biometricPin) {
       await secureStorage.setItem(BIOMETRIC_PIN_KEY, biometricPin);
@@ -489,11 +542,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     hydrateAuthenticatedSessionInBackground(authenticatedUser);
   },
 
-  login: async (
-    username: string,
-    password: string,
-    _rememberMe?: boolean,
-  ): Promise<AuthResult> => {
+  login: async (username: string, password: string, _rememberMe?: boolean): Promise<AuthResult> => {
     set({ isLoading: true });
     try {
       const apiClient = await getApiClient();
@@ -522,18 +571,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       };
     } catch (_error: any) {
       set({ isLoading: false });
-      return parseAuthError(
-        _error,
-        "Login failed",
-        "Incorrect username or password",
-      );
+      return parseAuthError(_error, "Login failed", "Incorrect username or password");
     }
   },
 
-  loginWithPin: async (
-    pin: string,
-    username?: string,
-  ): Promise<AuthResult> => {
+  loginWithPin: async (pin: string, username?: string): Promise<AuthResult> => {
     set({ isLoading: true });
     try {
       const apiClient = await getApiClient();
@@ -591,10 +633,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (result.success) {
         const storedPin = await secureStorage.getItem(BIOMETRIC_PIN_KEY);
         if (storedPin) {
-          return await get().loginWithPin(
-            storedPin,
-            get().lastLoggedUser?.username,
-          );
+          return await get().loginWithPin(storedPin, get().lastLoggedUser?.username);
         }
         return {
           success: false,
@@ -651,12 +690,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         error: String(error),
       });
     }
-    
+
     // Clear state early to ensure synchronous UI unmounts and Auth Guards redirect properly
     set({
       user: null,
       isAuthenticated: false,
       isLoading: false,
+      pendingRedirectPath: null,
     });
 
     try {
@@ -664,6 +704,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await secureStorage.removeItem(TOKEN_STORAGE_KEY);
       await secureStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
       await secureStorage.removeItem(BIOMETRIC_PIN_KEY);
+      await secureStorage.removeItem(PENDING_REDIRECT_STORAGE_KEY);
       delete apiClient.defaults.headers.common["Authorization"];
     } catch (err) {
       log.warn("Storage cleanup failed during logout", {
@@ -683,7 +724,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             // Jest `doMock` setups need synchronous resolution after mocks are registered.
             // eslint-disable-next-line @typescript-eslint/no-require-imports
             clearNotificationStore: require("./notificationStore")
-              .clearNotificationStore as typeof import("./notificationStore")["clearNotificationStore"],
+              .clearNotificationStore as (typeof import("./notificationStore"))["clearNotificationStore"],
           }
         : await import("./notificationStore");
       await clearNotificationStore();
@@ -697,7 +738,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             // Jest `doMock` setups need synchronous resolution after mocks are registered.
             // eslint-disable-next-line @typescript-eslint/no-require-imports
             queryClient: require("../services/queryClient")
-              .queryClient as typeof import("../services/queryClient")["queryClient"],
+              .queryClient as (typeof import("../services/queryClient"))["queryClient"],
           }
         : await import("../services/queryClient");
       await queryClient.cancelQueries();
@@ -712,7 +753,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             // Jest `doMock` setups need synchronous resolution after mocks are registered.
             // eslint-disable-next-line @typescript-eslint/no-require-imports
             clearScanSessionStore: require("./scanSessionStore")
-              .clearScanSessionStore as typeof import("./scanSessionStore")["clearScanSessionStore"],
+              .clearScanSessionStore as (typeof import("./scanSessionStore"))["clearScanSessionStore"],
           }
         : await import("./scanSessionStore");
       await clearScanSessionStore();
@@ -726,7 +767,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             // Jest `doMock` setups need synchronous resolution after mocks are registered.
             // eslint-disable-next-line @typescript-eslint/no-require-imports
             RecentItemsService: require("../services/enhancedFeatures")
-              .RecentItemsService as typeof import("../services/enhancedFeatures")["RecentItemsService"],
+              .RecentItemsService as (typeof import("../services/enhancedFeatures"))["RecentItemsService"],
           }
         : await import("../services/enhancedFeatures");
       await RecentItemsService.clearRecent();
@@ -740,7 +781,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             // Jest `doMock` setups need synchronous resolution after mocks are registered.
             // eslint-disable-next-line @typescript-eslint/no-require-imports
             clearAllCache: require("../services/offline/offlineStorage")
-              .clearAllCache as typeof import("../services/offline/offlineStorage")["clearAllCache"],
+              .clearAllCache as (typeof import("../services/offline/offlineStorage"))["clearAllCache"],
           }
         : await import("../services/offline/offlineStorage");
       await clearAllCache();
@@ -749,9 +790,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  logoutAll: async (
-    _username?: string,
-  ): Promise<AuthResult> => {
+  logoutAll: async (_username?: string): Promise<AuthResult> => {
     set({ isLoading: true });
     try {
       const apiClient = await getApiClient();
@@ -765,10 +804,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  pinSetup: async (
-    pin: string,
-    confirmPin: string,
-  ): Promise<AuthResult> => {
+  pinSetup: async (pin: string, confirmPin: string): Promise<AuthResult> => {
     set({ isLoading: true });
     try {
       const apiClient = await getApiClient();
@@ -793,20 +829,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             full_name: currentUser.full_name,
             has_pin: true,
           };
-          await secureStorage.setItem(
-            LAST_USER_STORAGE_KEY,
-            JSON.stringify(updatedLastUser),
-          );
+          await secureStorage.setItem(LAST_USER_STORAGE_KEY, JSON.stringify(updatedLastUser));
           set({
             lastLoggedUser: updatedLastUser,
             user: { ...currentUser, has_pin: true },
           });
         } else if (lastUser) {
           const updatedLastUser = { ...lastUser, has_pin: true };
-          await secureStorage.setItem(
-            LAST_USER_STORAGE_KEY,
-            JSON.stringify(updatedLastUser),
-          );
+          await secureStorage.setItem(LAST_USER_STORAGE_KEY, JSON.stringify(updatedLastUser));
           set({ lastLoggedUser: updatedLastUser });
         }
         return { success: true, message: "PIN updated" };
@@ -852,9 +882,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const storedUser = await secureStorage.getItem(AUTH_STORAGE_KEY);
       const storedToken = await secureStorage.getItem(TOKEN_STORAGE_KEY);
       const storedLastUser = await secureStorage.getItem(LAST_USER_STORAGE_KEY);
+      const storedPendingRedirect = await secureStorage.getItem(PENDING_REDIRECT_STORAGE_KEY);
 
       if (storedLastUser) {
         set({ lastLoggedUser: JSON.parse(storedLastUser) });
+      }
+      if (storedPendingRedirect) {
+        const normalizedPendingRedirect = normalizePendingRedirect(storedPendingRedirect);
+        set({
+          pendingRedirectPath: normalizedPendingRedirect,
+        });
+        if (!normalizedPendingRedirect) {
+          await secureStorage.removeItem(PENDING_REDIRECT_STORAGE_KEY);
+        }
       }
 
       if (storedUser && storedToken) {
@@ -868,8 +908,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
 
         const user = JSON.parse(storedUser) as User;
-        apiClient.defaults.headers.common["Authorization"] =
-          `Bearer ${storedToken}`;
+        apiClient.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
         set({
           user,
           isAuthenticated: true,
@@ -962,4 +1001,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
 setUnauthorizedHandler(() => {
   void useAuthStore.getState().logout();
+});
+
+registerSyncAuthStateProvider(() => {
+  const state = useAuthStore.getState();
+  return {
+    isAuthenticated: state.isAuthenticated,
+    user: state.user,
+  };
 });

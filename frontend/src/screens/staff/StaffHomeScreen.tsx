@@ -26,10 +26,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuthStore } from "@/store/authStore";
 import { useNotificationStore } from "@/store/notificationStore";
-import { useOfflineStore } from "@/store/offlineStore";
-import { useNetworkStore } from "@/store/networkStore";
 import { useScanSessionStore } from "@/store/scanSessionStore";
-import { useSettingsStore } from "@/store/settingsStore";
 import { useSessionsQuery } from "@/hooks/useSessionsQuery";
 import { createSession, getZones, getWarehouses } from "@/services/api/api";
 import { SESSION_PAGE_SIZE } from "@/constants/config";
@@ -40,7 +37,7 @@ import ModernCard from "@/components/ui/ModernCard";
 import ModernButton from "@/components/ui/ModernButton";
 import ModernInput from "@/components/ui/ModernInput";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
-import { colors, spacing, typography, borderRadius } from "@/theme/unified";
+import { colors, spacing, typography, borderRadius } from "@/theme/legacyCompat";
 
 interface Zone {
   id: string;
@@ -51,18 +48,6 @@ interface Warehouse {
   id: string;
   warehouse_name: string;
 }
-
-const operationalPalette = {
-  background: "#FAF9F6",
-  surface: "#FFFFFF",
-  surfaceMuted: "#F4F3F1",
-  border: "#E2E2E2",
-  primary: "#007B83",
-  primaryStrong: "#006067",
-  primaryTint: "#E4F5F6",
-  ink: "#1A1C1A",
-  muted: "#586377",
-};
 
 const toDate = (value: unknown): Date | null => {
   if (value instanceof Date) {
@@ -147,90 +132,6 @@ const normalizeWarehouse = (value: unknown): string => {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
 };
 
-const getWarehouseParts = (warehouse: unknown) => {
-  if (typeof warehouse !== "string" || !warehouse.trim()) {
-    return {
-      zone: "Unassigned",
-      area: "Unknown area",
-      rack: "",
-    };
-  }
-
-  const parts = warehouse
-    .split(" - ")
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  return {
-    zone: parts[0] || "Location",
-    area: parts[1] || parts[0] || warehouse,
-    rack: parts.length > 2 ? parts.slice(2).join(" • ") : "",
-  };
-};
-
-const getSessionProgress = (session: any) => {
-  const scanned = getScannedCount(session);
-  const totalRaw = session?.total_items ?? session?.expected_items ?? 0;
-  const total = Number.isFinite(Number(totalRaw)) ? Number(totalRaw) : 0;
-
-  if (total <= 0) {
-    return {
-      scanned,
-      total,
-      percent: scanned > 0 ? 100 : 0,
-      label: scanned > 0 ? "Captured lines" : "Waiting for first scan",
-    };
-  }
-
-  const percent = Math.min(100, Math.round((scanned / total) * 100));
-  return {
-    scanned,
-    total,
-    percent,
-    label: `${scanned} of ${total} scanned`,
-  };
-};
-
-const getSessionStatusStyle = (status: unknown) => {
-  const normalized = String(status || "OPEN")
-    .trim()
-    .toUpperCase();
-
-  switch (normalized) {
-    case "ACTIVE":
-    case "OPEN":
-      return {
-        label: normalized,
-        backgroundColor: operationalPalette.primaryTint,
-        borderColor: "#BEE7E9",
-        textColor: operationalPalette.primaryStrong,
-      };
-    case "RECONCILE":
-    case "PENDING":
-      return {
-        label: normalized,
-        backgroundColor: colors.warning[50],
-        borderColor: colors.warning[200],
-        textColor: colors.warning[700],
-      };
-    case "COMPLETED":
-    case "CLOSED":
-      return {
-        label: normalized,
-        backgroundColor: colors.success[50],
-        borderColor: colors.success[200],
-        textColor: colors.success[700],
-      };
-    default:
-      return {
-        label: normalized,
-        backgroundColor: colors.gray[100],
-        borderColor: colors.gray[200],
-        textColor: colors.gray[700],
-      };
-  }
-};
-
 const StaffHome = React.memo(function StaffHome() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -239,9 +140,6 @@ const StaffHome = React.memo(function StaffHome() {
   const logout = useAuthStore((state) => state.logout);
   const unreadCount = useNotificationStore((state) => state.unreadCount);
   const fetchUnreadCount = useNotificationStore((state) => state.fetchUnreadCount);
-  const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
-  const isOnline = useNetworkStore((state) => state.isOnline);
-  const queuedOperations = useOfflineStore((state) => state.syncQueue.length);
 
   // Check for PIN setup
   useEffect(() => {
@@ -334,32 +232,6 @@ const StaffHome = React.memo(function StaffHome() {
       });
   }, [sessions]);
 
-  const isSessionLocationComplete = Boolean(locationType && selectedFloor && rackName.trim());
-
-  const readinessItems = useMemo(
-    () => [
-      {
-        id: "zone",
-        done: Boolean(locationType),
-        label: "Location type",
-        value: locationType || "Choose a zone",
-      },
-      {
-        id: "floor",
-        done: Boolean(selectedFloor),
-        label: "Floor or area",
-        value: selectedFloor || "Choose a floor",
-      },
-      {
-        id: "rack",
-        done: Boolean(rackName.trim()),
-        label: "Rack or shelf",
-        value: rackName.trim() || "Enter rack code",
-      },
-    ],
-    [locationType, rackName, selectedFloor]
-  );
-
   const uniqueActiveSessions = useMemo(() => {
     const seen = new Set<string>();
     const unique: any[] = [];
@@ -392,43 +264,19 @@ const StaffHome = React.memo(function StaffHome() {
     });
   }, [sessions]);
 
-  const activeIssueCount = useMemo(
-    () =>
-      uniqueActiveSessions.reduce(
-        (total, session) => total + Number(session?.discrepancy_count ?? 0),
-        0
-      ),
-    [uniqueActiveSessions]
-  );
-
-  const activeScanCount = useMemo(
-    () => uniqueActiveSessions.reduce((total, session) => total + getScannedCount(session), 0),
-    [uniqueActiveSessions]
-  );
-
-  const liveStatus = useMemo(() => {
-    if (offlineMode) {
-      return {
-        icon: "cloud-offline-outline" as const,
-        label: queuedOperations > 0 ? `${queuedOperations} queued` : "Offline mode",
-        tone: "warning" as const,
-      };
-    }
-
-    if (!isOnline) {
-      return {
-        icon: "alert-circle-outline" as const,
-        label: "Connection paused",
-        tone: "neutral" as const,
-      };
-    }
-
-    return {
-      icon: "radio-outline" as const,
-      label: queuedOperations > 0 ? `${queuedOperations} pending sync` : "Live sync",
-      tone: "success" as const,
-    };
-  }, [isOnline, offlineMode, queuedOperations]);
+  const activeSummary = useMemo(() => {
+    return uniqueActiveSessions.reduce(
+      (summary, session: any) => ({
+        scanned: summary.scanned + getScannedCount(session),
+        issues:
+          summary.issues +
+          (Number.isFinite(Number(session.discrepancy_count))
+            ? Number(session.discrepancy_count)
+            : 0),
+      }),
+      { scanned: 0, issues: 0 }
+    );
+  }, [uniqueActiveSessions]);
 
   // Fetch Zones
   useEffect(() => {
@@ -613,110 +461,46 @@ const StaffHome = React.memo(function StaffHome() {
     } as any);
   };
 
-  const renderStatusSignal = () => {
-    if (liveStatus.tone === "warning") {
-      return (
-        <View style={[styles.heroSignalPill, styles.heroSignalWarning]}>
-          <Ionicons name={liveStatus.icon} size={14} color={colors.warning[700]} />
-          <Text style={[styles.heroSignalText, styles.heroSignalWarningText]}>
-            {liveStatus.label}
-          </Text>
-        </View>
-      );
-    }
-
-    if (liveStatus.tone === "success") {
-      return (
-        <View style={[styles.heroSignalPill, styles.heroSignalSuccess]}>
-          <Ionicons name={liveStatus.icon} size={14} color={colors.success[700]} />
-          <Text style={[styles.heroSignalText, styles.heroSignalSuccessText]}>
-            {liveStatus.label}
-          </Text>
-        </View>
-      );
-    }
-
-    return (
-      <View style={[styles.heroSignalPill, styles.heroSignalNeutral]}>
-        <Ionicons name={liveStatus.icon} size={14} color={colors.gray[700]} />
-        <Text style={[styles.heroSignalText, styles.heroSignalNeutralText]}>
-          {liveStatus.label}
-        </Text>
-      </View>
-    );
-  };
-
   const renderSessionCard = (
     session: any,
     onPress: (session: any) => void = handleResumeSession
   ) => {
-    const progress = getSessionProgress(session);
-    const statusStyle = getSessionStatusStyle(session?.status);
-    const location = getWarehouseParts(session?.warehouse);
-    const issueCount = Number(session?.discrepancy_count ?? 0);
+    const status = String(session.status || "OPEN")
+      .trim()
+      .toUpperCase();
+    const isOpenStatus = status === "OPEN" || status === "ACTIVE";
+    const issueCount = Number.isFinite(Number(session.discrepancy_count))
+      ? Number(session.discrepancy_count)
+      : 0;
 
     return (
       <ModernCard
         key={session.id || session._id}
-        variant="outlined"
         style={styles.sessionCard}
         padding={spacing.md}
         onPress={() => onPress(session)}
       >
-        <View style={styles.sessionTopRow}>
-          <View style={styles.sessionIdentityBlock}>
-            <View style={styles.sessionMetaRow}>
-              <View style={styles.sessionLocationPill}>
-                <Ionicons
-                  name="navigate-outline"
-                  size={14}
-                  color={operationalPalette.primaryStrong}
-                />
-                <Text style={styles.sessionLocationPillText}>{location.zone}</Text>
-              </View>
-              <View
-                style={[
-                  styles.sessionStatusBadge,
-                  {
-                    backgroundColor: statusStyle.backgroundColor,
-                    borderColor: statusStyle.borderColor,
-                  },
-                ]}
-              >
-                <Text style={[styles.sessionStatusBadgeText, { color: statusStyle.textColor }]}>
-                  {statusStyle.label}
-                </Text>
-              </View>
-            </View>
-
-            <Text style={styles.warehouseText}>{location.area}</Text>
-            <Text style={styles.dateText}>
-              {location.rack ? `Rack ${location.rack} • ` : ""}
-              Last used {formatSessionDateTime(session)}
+        <View style={styles.sessionHeader}>
+          <View style={styles.sessionIcon}>
+            <Ionicons name="cube-outline" size={22} color={colors.primary[700]} />
+          </View>
+          <View style={styles.sessionInfo}>
+            <Text style={styles.warehouseText} numberOfLines={2}>
+              {session.warehouse}
+            </Text>
+            <Text style={styles.dateText}>Last used: {formatSessionDateTime(session)}</Text>
+          </View>
+          <View style={[styles.statusPill, !isOpenStatus && styles.statusPillMuted]}>
+            <View style={[styles.statusDot, !isOpenStatus && styles.statusDotMuted]} />
+            <Text style={[styles.statusPillText, !isOpenStatus && styles.statusPillTextMuted]}>
+              {status}
             </Text>
           </View>
-
-          <View style={styles.chevron}>
-            <Ionicons name="chevron-forward" size={20} color={colors.gray[400]} />
-          </View>
-        </View>
-
-        <View style={styles.progressHeader}>
-          <Text style={styles.progressLabel}>{progress.label}</Text>
-          <Text style={styles.progressPercent}>{progress.percent}%</Text>
-        </View>
-        <View style={styles.progressTrack}>
-          <View
-            style={[
-              styles.progressFill,
-              { width: `${Math.max(progress.percent, progress.percent === 0 ? 0 : 6)}%` },
-            ]}
-          />
         </View>
 
         <View style={styles.sessionStats}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{progress.scanned}</Text>
+            <Text style={styles.statValue}>{getScannedCount(session)}</Text>
             <Text style={styles.statLabel}>Scanned</Text>
           </View>
           <View style={styles.statDivider} />
@@ -724,7 +508,9 @@ const StaffHome = React.memo(function StaffHome() {
             <Text
               style={[
                 styles.statValue,
-                issueCount > 0 ? styles.statValueDanger : styles.statValueSuccess,
+                {
+                  color: issueCount > 0 ? colors.error[600] : colors.success[600],
+                },
               ]}
             >
               {issueCount}
@@ -733,86 +519,24 @@ const StaffHome = React.memo(function StaffHome() {
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{progress.total > 0 ? progress.total : "--"}</Text>
-            <Text style={styles.statLabel}>Target</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.gray[500]} />
+            <Text style={styles.statLabel}>Details</Text>
           </View>
         </View>
       </ModernCard>
     );
   };
 
-  const renderDashboardHero = (mode: "active" | "history") => (
-    <ModernCard variant="outlined" style={styles.heroCard} padding={spacing.lg}>
-      <View style={styles.heroHeader}>
-        <View style={styles.heroCopy}>
-          <Text style={styles.heroEyebrow}>
-            {mode === "active" ? "Operational Snapshot" : "Session History"}
-          </Text>
-          <Text style={styles.heroTitle}>
-            {mode === "active"
-              ? "Keep location counts moving with fewer handoff mistakes."
-              : "Review completed areas without losing audit context."}
-          </Text>
-          <Text style={styles.heroSubtitle}>
-            {mode === "active"
-              ? "Start a fresh verification or continue the most recent open location."
-              : "Completed sessions stay visible here for quick traceability and follow-up."}
-          </Text>
-        </View>
-        {renderStatusSignal()}
-      </View>
-
-      <View style={styles.heroMetricGrid}>
-        <View style={styles.heroMetricCard}>
-          <Text style={styles.heroMetricValue}>
-            {mode === "active" ? uniqueActiveSessions.length : finishedSessions.length}
-          </Text>
-          <Text style={styles.heroMetricLabel}>
-            {mode === "active" ? "Open locations" : "Completed sessions"}
-          </Text>
-        </View>
-        <View style={styles.heroMetricCard}>
-          <Text style={styles.heroMetricValue}>
-            {mode === "active" ? activeScanCount : unreadCount}
-          </Text>
-          <Text style={styles.heroMetricLabel}>
-            {mode === "active" ? "Captured scans" : "Unread alerts"}
-          </Text>
-        </View>
-        <View style={styles.heroMetricCard}>
-          <Text
-            style={[styles.heroMetricValue, activeIssueCount > 0 && styles.heroMetricValueWarning]}
-          >
-            {mode === "active" ? activeIssueCount : queuedOperations}
-          </Text>
-          <Text style={styles.heroMetricLabel}>
-            {mode === "active" ? "Variance flags" : "Queued sync"}
-          </Text>
-        </View>
-      </View>
-
-      {mode === "active" ? (
-        <ModernButton
-          title="Start New Session"
-          icon="add-circle-outline"
-          onPress={() => setShowCreateModal(true)}
-          style={styles.createButton}
-          fullWidth
-        />
-      ) : null}
-    </ModernCard>
-  );
-
   const renderContent = () => {
     if (activeTab === "active") {
       return (
         <Animated.View entering={prefersReducedMotion ? undefined : FadeInDown.duration(500)}>
-          {renderDashboardHero("active")}
-
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderTitle}>Continue active locations</Text>
-            <Text style={styles.sectionHeaderMeta}>{uniqueActiveSessions.length} active</Text>
-          </View>
+          <ModernButton
+            title="Start New Session"
+            icon="barcode-outline"
+            onPress={() => setShowCreateModal(true)}
+            style={styles.createButton}
+          />
 
           {uniqueActiveSessions.length === 0 ? (
             <View style={styles.emptyState}>
@@ -830,13 +554,6 @@ const StaffHome = React.memo(function StaffHome() {
     if (activeTab === "history") {
       return (
         <Animated.View entering={prefersReducedMotion ? undefined : FadeInDown.duration(500)}>
-          {renderDashboardHero("history")}
-
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderTitle}>Recent completed sessions</Text>
-            <Text style={styles.sectionHeaderMeta}>{finishedSessions.length} saved</Text>
-          </View>
-
           {finishedSessions.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="time-outline" size={48} color={colors.gray[300]} />
@@ -855,8 +572,9 @@ const StaffHome = React.memo(function StaffHome() {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ModernHeader
-        title="Dashboard"
-        subtitle={`Welcome, ${user?.username || "Staff"}`}
+        title="Stock Verify"
+        subtitle={user?.full_name || user?.username || "Staff"}
+        showSettingsButton={false}
         rightComponent={
           <TouchableOpacity
             style={styles.headerIconButton}
@@ -903,8 +621,32 @@ const StaffHome = React.memo(function StaffHome() {
             ]);
           },
         }}
-        rightActionAccessibilityLabel="Logout"
       />
+
+      <View style={styles.summaryPanel}>
+        <View style={styles.summaryCopy}>
+          <Text style={styles.summaryEyebrow}>Current workload</Text>
+          <Text style={styles.summaryTitle}>
+            {uniqueActiveSessions.length} active{" "}
+            {uniqueActiveSessions.length === 1 ? "session" : "sessions"}
+          </Text>
+        </View>
+        <View style={styles.summaryMetrics}>
+          <View style={styles.summaryMetric}>
+            <Text style={styles.summaryValue}>{activeSummary.scanned}</Text>
+            <Text style={styles.summaryLabel}>Scanned</Text>
+          </View>
+          <View style={styles.summaryMetricDivider} />
+          <View style={styles.summaryMetric}>
+            <Text
+              style={[styles.summaryValue, activeSummary.issues > 0 && styles.summaryValueWarning]}
+            >
+              {activeSummary.issues}
+            </Text>
+            <Text style={styles.summaryLabel}>Issues</Text>
+          </View>
+        </View>
+      </View>
 
       <View
         style={styles.tabs}
@@ -918,11 +660,6 @@ const StaffHome = React.memo(function StaffHome() {
           accessibilityState={{ selected: activeTab === "active" }}
           accessibilityLabel={`Active sessions, ${uniqueActiveSessions.length} items`}
         >
-          <Ionicons
-            name="radio-outline"
-            size={16}
-            color={activeTab === "active" ? operationalPalette.primaryStrong : colors.gray[600]}
-          />
           <Text style={[styles.tabText, activeTab === "active" && styles.activeTabText]}>
             Active ({uniqueActiveSessions.length})
           </Text>
@@ -934,11 +671,6 @@ const StaffHome = React.memo(function StaffHome() {
           accessibilityState={{ selected: activeTab === "history" }}
           accessibilityLabel={`Session history, ${finishedSessions.length} items`}
         >
-          <Ionicons
-            name="time-outline"
-            size={16}
-            color={activeTab === "history" ? operationalPalette.primaryStrong : colors.gray[600]}
-          />
           <Text style={[styles.tabText, activeTab === "history" && styles.activeTabText]}>
             History
           </Text>
@@ -961,201 +693,117 @@ const StaffHome = React.memo(function StaffHome() {
       <Modal
         visible={showCreateModal}
         animationType={prefersReducedMotion ? "none" : "slide"}
-        transparent
+        presentationStyle="pageSheet"
         onRequestClose={() => setShowCreateModal(false)}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.modalContainer}
         >
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowCreateModal(false)}
-            accessibilityRole="button"
-            accessibilityLabel="Close new session modal"
-          />
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>New Session</Text>
+            <TouchableOpacity
+              onPress={() => setShowCreateModal(false)}
+              style={styles.modalCloseButton}
+              accessibilityRole="button"
+              accessibilityLabel="Close new session modal"
+            >
+              <Ionicons name="close" size={24} color={colors.gray[500]} />
+            </TouchableOpacity>
+          </View>
 
-          <View style={styles.modalSheet}>
-            <View style={styles.sheetHandle} />
-
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderText}>
-                <Text style={styles.modalEyebrow}>Start Verification</Text>
-                <Text style={styles.modalTitle}>New Session</Text>
-                <Text style={styles.modalSubtitle}>
-                  Select the location, confirm the count area, and then begin scanning.
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setShowCreateModal(false)}
-                style={styles.modalCloseButton}
-                accessibilityRole="button"
-                accessibilityLabel="Close new session modal"
-              >
-                <Ionicons name="close" size={22} color={colors.gray[600]} />
-              </TouchableOpacity>
-            </View>
-
+          <ScrollView
+            contentContainerStyle={styles.modalContent}
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="none"
+            nestedScrollEnabled
+          >
+            <Text style={styles.sectionLabel}>Select Location</Text>
             <View
-              style={[
-                styles.statusPill,
-                isSessionLocationComplete ? styles.statusPillReady : styles.statusPillPending,
-              ]}
+              style={styles.chipContainer}
+              accessibilityRole="radiogroup"
+              accessibilityLabel="Select location"
             >
-              <View
-                style={[
-                  styles.statusDot,
-                  isSessionLocationComplete ? styles.statusDotReady : styles.statusDotPending,
-                ]}
-              />
-              <Text
-                style={[
-                  styles.statusPillText,
-                  isSessionLocationComplete
-                    ? styles.statusPillTextReady
-                    : styles.statusPillTextPending,
-                ]}
-              >
-                {isSessionLocationComplete ? "Ready to start" : "Setup required"}
-              </Text>
+              {zones.map((zone) => (
+                <TouchableOpacity
+                  key={zone.id}
+                  style={[styles.chip, locationType === zone.zone_name && styles.chipActive]}
+                  onPress={() => setLocationType(zone.zone_name)}
+                  accessibilityRole="radio"
+                  accessibilityState={{
+                    selected: locationType === zone.zone_name,
+                  }}
+                  accessibilityLabel={`Location ${zone.zone_name}`}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      locationType === zone.zone_name && styles.chipTextActive,
+                    ]}
+                  >
+                    {zone.zone_name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
-            <ScrollView
-              contentContainerStyle={styles.modalContent}
-              keyboardShouldPersistTaps="always"
-              keyboardDismissMode="none"
-              nestedScrollEnabled
-            >
-              <View style={styles.readinessCard}>
-                <Text style={styles.readinessTitle}>Session setup</Text>
-                <Text style={styles.readinessSubtitle}>
-                  Keep the location details explicit so the session opens in the correct zone.
-                </Text>
-
-                {readinessItems.map((item) => (
-                  <View key={item.id} style={styles.readinessRow}>
-                    <View
+            {locationType && (
+              <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(250)}>
+                <Text style={styles.sectionLabel}>Select Floor / Area</Text>
+                <View
+                  style={styles.chipContainer}
+                  accessibilityRole="radiogroup"
+                  accessibilityLabel="Select floor or area"
+                >
+                  {warehouses.map((wh) => (
+                    <TouchableOpacity
+                      key={wh.id}
                       style={[
-                        styles.readinessIcon,
-                        item.done ? styles.readinessIconDone : styles.readinessIconPending,
+                        styles.chip,
+                        selectedFloor === wh.warehouse_name && styles.chipActive,
                       ]}
+                      onPress={() => setSelectedFloor(wh.warehouse_name)}
+                      accessibilityRole="radio"
+                      accessibilityState={{
+                        selected: selectedFloor === wh.warehouse_name,
+                      }}
+                      accessibilityLabel={`Floor or area ${wh.warehouse_name}`}
                     >
-                      <Ionicons
-                        name={item.done ? "checkmark" : "ellipse-outline"}
-                        size={14}
-                        color={item.done ? colors.success[600] : colors.gray[500]}
-                      />
-                    </View>
-
-                    <View style={styles.readinessTextGroup}>
-                      <Text style={styles.readinessLabel}>{item.label}</Text>
-                      <Text style={styles.readinessValue}>{item.value}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-
-              <Text style={styles.sectionLabel}>Select Location</Text>
-              <Text style={styles.sectionHelper}>
-                Choose the zone or location type for this count session.
-              </Text>
-              <View
-                style={styles.chipContainer}
-                accessibilityRole="radiogroup"
-                accessibilityLabel="Select location"
-              >
-                {zones.map((zone) => (
-                  <TouchableOpacity
-                    key={zone.id}
-                    style={[styles.chip, locationType === zone.zone_name && styles.chipActive]}
-                    onPress={() => setLocationType(zone.zone_name)}
-                    accessibilityRole="radio"
-                    accessibilityState={{
-                      selected: locationType === zone.zone_name,
-                    }}
-                    accessibilityLabel={`Location ${zone.zone_name}`}
-                  >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        locationType === zone.zone_name && styles.chipTextActive,
-                      ]}
-                    >
-                      {zone.zone_name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {locationType && (
-                <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(250)}>
-                  <Text style={styles.sectionLabel}>Select Floor / Area</Text>
-                  <Text style={styles.sectionHelper}>
-                    Narrow the session to the correct floor or operational area.
-                  </Text>
-                  <View
-                    style={styles.chipContainer}
-                    accessibilityRole="radiogroup"
-                    accessibilityLabel="Select floor or area"
-                  >
-                    {warehouses.map((wh) => (
-                      <TouchableOpacity
-                        key={wh.id}
+                      <Text
                         style={[
-                          styles.chip,
-                          selectedFloor === wh.warehouse_name && styles.chipActive,
+                          styles.chipText,
+                          selectedFloor === wh.warehouse_name && styles.chipTextActive,
                         ]}
-                        onPress={() => setSelectedFloor(wh.warehouse_name)}
-                        accessibilityRole="radio"
-                        accessibilityState={{
-                          selected: selectedFloor === wh.warehouse_name,
-                        }}
-                        accessibilityLabel={`Floor or area ${wh.warehouse_name}`}
                       >
-                        <Text
-                          style={[
-                            styles.chipText,
-                            selectedFloor === wh.warehouse_name && styles.chipTextActive,
-                          ]}
-                        >
-                          {wh.warehouse_name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </Animated.View>
-              )}
+                        {wh.warehouse_name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </Animated.View>
+            )}
 
-              {selectedFloor && (
-                <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(250)}>
-                  <Text style={styles.sectionLabel}>Rack / Shelf Number</Text>
-                  <Text style={styles.sectionHelper}>
-                    Use the exact rack code visible to staff on the floor.
-                  </Text>
-                  <ModernInput
-                    label="Rack / Shelf Number"
-                    placeholder="e.g. A-123"
-                    value={rackName}
-                    onChangeText={setRackName}
-                    autoCapitalize="characters"
-                    showClearButton
-                    containerStyle={styles.modalInputField}
-                  />
-                </Animated.View>
-              )}
-            </ScrollView>
+            {selectedFloor && (
+              <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(250)}>
+                <ModernInput
+                  label="Rack / Shelf Number"
+                  placeholder="e.g. A-123"
+                  value={rackName}
+                  onChangeText={setRackName}
+                  autoCapitalize="characters"
+                />
+              </Animated.View>
+            )}
+          </ScrollView>
 
-            <View style={styles.modalFooter}>
-              <ModernButton
-                title="Start Session"
-                onPress={handleStartSession}
-                loading={isCreating}
-                disabled={!locationType || !selectedFloor || !rackName.trim()}
-                icon="play"
-                fullWidth
-              />
-            </View>
+          <View style={styles.modalFooter}>
+            <ModernButton
+              title="Start Session"
+              onPress={handleStartSession}
+              loading={isCreating}
+              disabled={!locationType || !selectedFloor || !rackName.trim()}
+              fullWidth
+            />
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -1166,231 +814,141 @@ const StaffHome = React.memo(function StaffHome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: operationalPalette.background,
+    backgroundColor: colors.gray[50],
+  },
+  summaryPanel: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+  },
+  summaryCopy: {
+    marginBottom: spacing.md,
+  },
+  summaryEyebrow: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[700],
+    textTransform: "uppercase",
+  },
+  summaryTitle: {
+    marginTop: 2,
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.gray[900],
+  },
+  summaryMetrics: {
+    minHeight: 64,
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.gray[50],
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+  },
+  summaryMetric: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.sm,
+  },
+  summaryMetricDivider: {
+    width: 1,
+    height: "70%",
+    backgroundColor: colors.gray[200],
+  },
+  summaryValue: {
+    fontSize: typography.fontSize["2xl"],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.gray[900],
+  },
+  summaryValueWarning: {
+    color: colors.error[600],
+  },
+  summaryLabel: {
+    marginTop: 2,
+    fontSize: typography.fontSize.xs,
+    color: colors.gray[600],
   },
   tabs: {
     flexDirection: "row",
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xs,
     marginBottom: spacing.md,
-    gap: spacing.sm,
-    backgroundColor: operationalPalette.background,
+    gap: spacing.xs,
   },
   tab: {
     flex: 1,
     minHeight: 44,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.lg,
-    backgroundColor: operationalPalette.surface,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: operationalPalette.border,
-    flexDirection: "row",
-    gap: spacing.xs,
+    borderColor: colors.gray[200],
     alignItems: "center",
     justifyContent: "center",
   },
   activeTab: {
-    backgroundColor: operationalPalette.primaryTint,
-    borderColor: "#BEE7E9",
+    backgroundColor: colors.primary[50],
+    borderColor: colors.primary[500],
   },
   tabText: {
     fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
+    fontWeight: typography.fontWeight.medium,
     color: colors.gray[600],
   },
   activeTabText: {
-    color: operationalPalette.primaryStrong,
+    color: colors.primary[700],
   },
   scrollContent: {
     padding: spacing.lg,
     paddingTop: 0,
-    paddingBottom: spacing["2xl"],
   },
   createButton: {
-    marginTop: spacing.md,
-    backgroundColor: operationalPalette.primary,
+    marginBottom: spacing.lg,
   },
   sessionCard: {
     marginBottom: spacing.md,
-    backgroundColor: operationalPalette.surface,
-    borderColor: operationalPalette.border,
   },
-  heroCard: {
-    backgroundColor: operationalPalette.surface,
-    borderColor: operationalPalette.border,
-    marginBottom: spacing.lg,
-  },
-  heroHeader: {
-    gap: spacing.md,
-  },
-  heroCopy: {
-    gap: spacing.xs,
-  },
-  heroEyebrow: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
-    color: operationalPalette.primaryStrong,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  heroTitle: {
-    fontSize: typography.fontSize["2xl"],
-    fontWeight: typography.fontWeight.bold,
-    color: operationalPalette.ink,
-    lineHeight: 30,
-  },
-  heroSubtitle: {
-    fontSize: typography.fontSize.sm,
-    color: operationalPalette.muted,
-    lineHeight: 20,
-  },
-  heroSignalPill: {
-    minHeight: 36,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.full,
+  sessionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
-    alignSelf: "flex-start",
+    marginBottom: spacing.sm,
   },
-  heroSignalSuccess: {
-    backgroundColor: colors.success[50],
-  },
-  heroSignalWarning: {
-    backgroundColor: colors.warning[50],
-  },
-  heroSignalNeutral: {
-    backgroundColor: colors.gray[100],
-  },
-  heroSignalText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  heroSignalSuccessText: {
-    color: colors.success[700],
-  },
-  heroSignalWarningText: {
-    color: colors.warning[700],
-  },
-  heroSignalNeutralText: {
-    color: colors.gray[700],
-  },
-  heroMetricGrid: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  heroMetricCard: {
-    flex: 1,
-    backgroundColor: operationalPalette.surfaceMuted,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: operationalPalette.border,
-    padding: spacing.md,
-    gap: 4,
-  },
-  heroMetricValue: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: operationalPalette.ink,
-  },
-  heroMetricValueWarning: {
-    color: colors.warning[700],
-  },
-  heroMetricLabel: {
-    fontSize: typography.fontSize.xs,
-    color: operationalPalette.muted,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.md,
-  },
-  sectionHeaderTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    color: operationalPalette.ink,
-  },
-  sectionHeaderMeta: {
-    fontSize: typography.fontSize.sm,
-    color: operationalPalette.muted,
-  },
-  sessionTopRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: spacing.md,
-    marginBottom: spacing.md,
-  },
-  sessionIdentityBlock: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  sessionMetaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  sessionLocationPill: {
-    minHeight: 28,
-    paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.full,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: operationalPalette.primaryTint,
-  },
-  sessionLocationPillText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
-    color: operationalPalette.primaryStrong,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-  sessionStatusBadge: {
-    minHeight: 28,
-    paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
+  sessionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary[50],
     alignItems: "center",
     justifyContent: "center",
+    marginRight: spacing.md,
   },
-  sessionStatusBadgeText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
+  sessionInfo: {
+    flex: 1,
   },
   warehouseText: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: operationalPalette.ink,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.gray[900],
   },
   dateText: {
-    fontSize: typography.fontSize.sm,
-    color: operationalPalette.muted,
-  },
-  chevron: {
-    width: 36,
-    height: 36,
-    borderRadius: borderRadius.full,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: operationalPalette.surfaceMuted,
+    fontSize: typography.fontSize.xs,
+    color: colors.gray[500],
+    marginTop: 2,
   },
   headerIconButton: {
     width: 44,
     height: 44,
-    borderRadius: borderRadius.full,
+    borderRadius: borderRadius.md,
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.xs,
-    backgroundColor: operationalPalette.surface,
-    borderWidth: 1,
-    borderColor: operationalPalette.border,
+    backgroundColor: colors.gray[100],
   },
   notificationBadge: {
     position: "absolute",
@@ -1411,242 +969,107 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: typography.fontWeight.bold,
   },
-  progressHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.xs,
-  },
-  progressLabel: {
-    fontSize: typography.fontSize.sm,
-    color: operationalPalette.muted,
-  },
-  progressPercent: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-    color: operationalPalette.primaryStrong,
-  },
-  progressTrack: {
-    height: 8,
-    borderRadius: borderRadius.full,
-    backgroundColor: operationalPalette.surfaceMuted,
-    overflow: "hidden",
-    marginBottom: spacing.md,
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: borderRadius.full,
-    backgroundColor: operationalPalette.primary,
-  },
   sessionStats: {
     flexDirection: "row",
-    backgroundColor: operationalPalette.surfaceMuted,
-    borderRadius: borderRadius.lg,
-    padding: spacing.sm,
+    backgroundColor: colors.gray[50],
+    borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: operationalPalette.border,
+    borderColor: colors.gray[200],
+    paddingVertical: spacing.sm,
   },
   statItem: {
     flex: 1,
     alignItems: "center",
-    gap: 2,
   },
   statDivider: {
     width: 1,
-    backgroundColor: operationalPalette.border,
+    backgroundColor: colors.gray[200],
   },
   statValue: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: operationalPalette.ink,
-  },
-  statValueSuccess: {
-    color: colors.success[700],
-  },
-  statValueDanger: {
-    color: colors.error[600],
+    color: colors.gray[900],
   },
   statLabel: {
     fontSize: typography.fontSize.xs,
-    color: operationalPalette.muted,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    color: colors.gray[500],
+  },
+  statusPill: {
+    minHeight: 28,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.success[50],
+    borderWidth: 1,
+    borderColor: colors.success[200],
+    marginLeft: spacing.sm,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.success[600],
+  },
+  statusDotMuted: {
+    backgroundColor: colors.gray[500],
+  },
+  statusPillText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.success[600],
+  },
+  statusPillMuted: {
+    backgroundColor: colors.gray[100],
+    borderColor: colors.gray[200],
+  },
+  statusPillTextMuted: {
+    color: colors.gray[600],
   },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: spacing["3xl"],
-    backgroundColor: operationalPalette.surface,
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    borderColor: operationalPalette.border,
   },
   emptyText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.medium,
-    color: operationalPalette.ink,
+    color: colors.gray[900],
     marginTop: spacing.md,
   },
   emptySubtext: {
     fontSize: typography.fontSize.sm,
-    color: operationalPalette.muted,
+    color: colors.gray[500],
     marginTop: spacing.xs,
   },
   // Modal Styles
   modalContainer: {
     flex: 1,
-    justifyContent: "flex-end",
-  },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(26, 28, 26, 0.22)",
-  },
-  modalSheet: {
-    maxHeight: "88%",
-    backgroundColor: operationalPalette.background,
-    borderTopLeftRadius: borderRadius["3xl"],
-    borderTopRightRadius: borderRadius["3xl"],
-    paddingTop: spacing.sm,
-  },
-  sheetHandle: {
-    alignSelf: "center",
-    width: 56,
-    height: 5,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.gray[200],
-    marginBottom: spacing.sm,
+    backgroundColor: colors.white,
   },
   modalHeader: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
-  },
-  modalHeaderText: {
-    flex: 1,
-  },
-  modalEyebrow: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[700],
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: spacing.xs,
+    padding: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[100],
   },
   modalTitle: {
-    fontSize: typography.fontSize["2xl"],
+    fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
     color: colors.gray[900],
-  },
-  modalSubtitle: {
-    marginTop: spacing.xs,
-    fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
-    lineHeight: 20,
   },
   modalCloseButton: {
     width: 44,
     height: 44,
-    borderRadius: borderRadius.full,
+    borderRadius: borderRadius.md,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: operationalPalette.surface,
-    borderWidth: 1,
-    borderColor: operationalPalette.border,
-  },
-  statusPill: {
-    marginTop: spacing.md,
-    marginHorizontal: spacing.lg,
-    minHeight: 40,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.full,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    alignSelf: "flex-start",
-  },
-  statusPillReady: {
-    backgroundColor: colors.success[50],
-  },
-  statusPillPending: {
-    backgroundColor: colors.warning[50],
-  },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: borderRadius.full,
-  },
-  statusDotReady: {
-    backgroundColor: colors.success[600],
-  },
-  statusDotPending: {
-    backgroundColor: colors.warning[600],
-  },
-  statusPillText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  statusPillTextReady: {
-    color: colors.success[600],
-  },
-  statusPillTextPending: {
-    color: colors.warning[600],
   },
   modalContent: {
     padding: spacing.lg,
-  },
-  readinessCard: {
-    padding: spacing.lg,
-    borderRadius: borderRadius.xl,
-    backgroundColor: operationalPalette.surface,
-    borderWidth: 1,
-    borderColor: operationalPalette.border,
-    marginBottom: spacing.lg,
-  },
-  readinessTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
-  },
-  readinessSubtitle: {
-    marginTop: spacing.xs,
-    fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
-    lineHeight: 20,
-    marginBottom: spacing.md,
-  },
-  readinessRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-  },
-  readinessIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: borderRadius.full,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  readinessIconDone: {
-    backgroundColor: colors.success[50],
-  },
-  readinessIconPending: {
-    backgroundColor: colors.gray[100],
-  },
-  readinessTextGroup: {
-    flex: 1,
-  },
-  readinessLabel: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[700],
-  },
-  readinessValue: {
-    marginTop: 2,
-    fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
   },
   sectionLabel: {
     fontSize: typography.fontSize.sm,
@@ -1654,12 +1077,6 @@ const styles = StyleSheet.create({
     color: colors.gray[700],
     marginBottom: spacing.sm,
     marginTop: spacing.md,
-  },
-  sectionHelper: {
-    fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
-    marginBottom: spacing.sm,
-    lineHeight: 20,
   },
   chipContainer: {
     flexDirection: "row",
@@ -1671,35 +1088,30 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.lg,
-    backgroundColor: operationalPalette.surface,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.gray[100],
     borderWidth: 1,
-    borderColor: operationalPalette.border,
+    borderColor: colors.gray[200],
     alignItems: "center",
     justifyContent: "center",
   },
   chipActive: {
-    backgroundColor: operationalPalette.primaryTint,
-    borderColor: operationalPalette.primary,
+    backgroundColor: colors.primary[50],
+    borderColor: colors.primary[500],
   },
   chipText: {
     fontSize: typography.fontSize.sm,
     color: colors.gray[700],
-    fontWeight: typography.fontWeight.medium,
   },
   chipTextActive: {
-    color: operationalPalette.primaryStrong,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  modalInputField: {
-    marginBottom: spacing.sm,
+    color: colors.primary[700],
+    fontWeight: typography.fontWeight.medium,
   },
   modalFooter: {
     padding: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: operationalPalette.border,
+    borderTopColor: colors.gray[100],
     paddingBottom: Platform.OS === "ios" ? spacing["2xl"] : spacing.lg,
-    backgroundColor: operationalPalette.surface,
   },
 });
 

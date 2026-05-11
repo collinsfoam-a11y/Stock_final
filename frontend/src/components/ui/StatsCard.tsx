@@ -1,12 +1,11 @@
 /**
- * StatsCard Component - Aurora Design v2.1
+ * StatsCard Component - Operational UI
  *
- * Glassmorphic stats card with gradient accents
+ * Token-based KPI card for dense operational dashboards.
  * Features:
- * - Glass morphism effect
- * - Gradient border option
- * - Icon with gradient background
- * - Smooth entrance animations
+ * - Semantic status accent
+ * - Token-aligned card surface
+ * - Stable dimensions for dense grids
  * - Animated counter values
  * - Haptic feedback
  */
@@ -14,12 +13,12 @@
 import React from "react";
 import { View, Text, StyleSheet, ViewStyle } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { GlassCard } from "./GlassCard";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { AnimatedCounter } from "./AnimatedCounter";
-import { auroraTheme } from "@/theme/auroraTheme";
+import { ModernCard } from "./ModernCard";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 
 export type StatVariant = "primary" | "success" | "warning" | "error" | "info";
 
@@ -41,27 +40,20 @@ interface StatsCardProps {
   suffix?: string; // Suffix for value (e.g., "%")
 }
 
-const variantColors = {
-  primary: {
-    gradient: auroraTheme.colors.aurora.primary,
-    color: auroraTheme.colors.primary[500],
-  },
-  success: {
-    gradient: auroraTheme.colors.aurora.success,
-    color: auroraTheme.colors.success[500],
-  },
-  warning: {
-    gradient: auroraTheme.colors.aurora.warm,
-    color: auroraTheme.colors.warning[500],
-  },
-  error: {
-    gradient: [auroraTheme.colors.error[500], auroraTheme.colors.error[700]],
-    color: auroraTheme.colors.error[500],
-  },
-  info: {
-    gradient: auroraTheme.colors.aurora.secondary,
-    color: auroraTheme.colors.secondary[500],
-  },
+const getVariantColor = (tokens: ThemeTokens, variant: StatVariant): string => {
+  switch (variant) {
+    case "success":
+      return tokens.colors.success;
+    case "warning":
+      return tokens.colors.warning;
+    case "error":
+      return tokens.colors.error;
+    case "info":
+      return tokens.colors.info;
+    case "primary":
+    default:
+      return tokens.colors.accent;
+  }
 };
 
 export const StatsCard: React.FC<StatsCardProps> = ({
@@ -78,28 +70,31 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   prefix = "",
   suffix = "",
 }) => {
-  const { gradient } = variantColors[variant];
-  const numericValue =
-    typeof value === "number" ? value : parseFloat(value) || 0;
+  const uiTokens = useUiTokens();
+  const variantColor = getVariantColor(uiTokens, variant);
+  const numericValue = typeof value === "number" ? value : parseFloat(value) || 0;
+  const iconSize = uiTokens.spacing.xl + uiTokens.spacing.lg;
+  const iconBackgroundAlpha = uiTokens.mode === "dark" ? 0.24 : 0.12;
 
   const content = (
-    <View style={styles.content}>
-      {/* Icon with gradient background */}
-      <LinearGradient
-        colors={gradient as readonly [string, string, ...string[]]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.iconContainer}
+    <View style={[styles.content, { gap: uiTokens.spacing.sm }]}>
+      <View
+        style={[
+          styles.iconContainer,
+          {
+            width: iconSize,
+            height: iconSize,
+            borderRadius: uiTokens.radius.lg,
+            backgroundColor: colorWithAlpha(variantColor, iconBackgroundAlpha),
+            borderColor: colorWithAlpha(variantColor, 0.28),
+          },
+        ]}
       >
-        <Ionicons
-          name={icon}
-          size={28}
-          color={auroraTheme.colors.text.primary}
-        />
-      </LinearGradient>
+        <Ionicons name={icon} size={28} color={variantColor} />
+      </View>
 
       {/* Stats */}
-      <View style={styles.stats}>
+      <View style={[styles.stats, { gap: uiTokens.spacing.xs }]}>
         {animated && typeof value === "number" ? (
           <AnimatedCounter
             value={numericValue}
@@ -108,9 +103,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
             style={[
               styles.value,
               {
-                fontFamily: auroraTheme.typography.fontFamily.heading,
-                fontSize: auroraTheme.typography.fontSize["3xl"],
-                color: auroraTheme.colors.text.primary,
+                color: uiTokens.colors.textPrimary,
               },
             ]}
           />
@@ -119,9 +112,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
             style={[
               styles.value,
               {
-                fontFamily: auroraTheme.typography.fontFamily.heading,
-                fontSize: auroraTheme.typography.fontSize["3xl"],
-                color: auroraTheme.colors.text.primary,
+                color: uiTokens.colors.textPrimary,
               },
             ]}
           >
@@ -135,9 +126,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
           style={[
             styles.title,
             {
-              fontFamily: auroraTheme.typography.fontFamily.body,
-              fontSize: auroraTheme.typography.fontSize.sm,
-              color: auroraTheme.colors.text.secondary,
+              color: uiTokens.colors.textSecondary,
             },
           ]}
         >
@@ -149,9 +138,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
             style={[
               styles.subtitle,
               {
-                fontFamily: auroraTheme.typography.fontFamily.body,
-                fontSize: auroraTheme.typography.fontSize.xs,
-                color: auroraTheme.colors.text.tertiary,
+                color: uiTokens.colors.textMuted,
               },
             ]}
           >
@@ -164,21 +151,13 @@ export const StatsCard: React.FC<StatsCardProps> = ({
             <Ionicons
               name={trend.isPositive ? "trending-up" : "trending-down"}
               size={14}
-              color={
-                trend.isPositive
-                  ? auroraTheme.colors.success[500]
-                  : auroraTheme.colors.error[500]
-              }
+              color={trend.isPositive ? uiTokens.colors.success : uiTokens.colors.error}
             />
             <Text
               style={[
                 styles.trendText,
                 {
-                  color: trend.isPositive
-                    ? auroraTheme.colors.success[500]
-                    : auroraTheme.colors.error[500],
-                  fontFamily: auroraTheme.typography.fontFamily.label,
-                  fontSize: auroraTheme.typography.fontSize.xs,
+                  color: trend.isPositive ? uiTokens.colors.success : uiTokens.colors.error,
                 },
               ]}
             >
@@ -192,17 +171,9 @@ export const StatsCard: React.FC<StatsCardProps> = ({
 
   const cardContent = (
     <Animated.View entering={FadeInDown.delay(delay).springify()}>
-      <GlassCard
-        variant="medium"
-        intensity={25}
-        borderRadius={auroraTheme.borderRadius.xl}
-        padding={auroraTheme.spacing.lg}
-        withGradientBorder={true}
-        elevation="lg"
-        style={style}
-      >
+      <ModernCard variant="outlined" elevation="none" padding={uiTokens.spacing.md} style={style}>
         {content}
-      </GlassCard>
+      </ModernCard>
     </Animated.View>
   );
 
@@ -220,39 +191,37 @@ export const StatsCard: React.FC<StatsCardProps> = ({
 const styles = StyleSheet.create({
   content: {
     alignItems: "center",
-    gap: auroraTheme.spacing.md,
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: auroraTheme.borderRadius.xl,
     justifyContent: "center",
     alignItems: "center",
-    ...auroraTheme.shadows.md,
+    borderWidth: 1,
   },
   stats: {
     alignItems: "center",
-    gap: auroraTheme.spacing.xs,
   },
   value: {
+    fontSize: 26,
     fontWeight: "700",
-    letterSpacing: -0.5,
   },
   title: {
     textAlign: "center",
+    fontSize: 13,
     fontWeight: "500",
   },
   subtitle: {
     textAlign: "center",
-    marginTop: auroraTheme.spacing.xs,
+    fontSize: 12,
+    marginTop: 4,
   },
   trendContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.xs,
-    marginTop: auroraTheme.spacing.xs,
+    gap: 4,
+    marginTop: 4,
   },
   trendText: {
+    fontSize: 12,
     fontWeight: "600",
   },
 });

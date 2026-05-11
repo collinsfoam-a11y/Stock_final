@@ -11,13 +11,14 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { PremiumInput } from "@/components/premium/PremiumInput";
+import { AppInput } from "@/components/ui/AppInput";
 import {
   WarehouseOption,
   ZoneOption,
 } from "@/components/supervisor/dashboard/supervisorDashboardShared";
 import { theme } from "@/styles/unifiedSystem";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface CreateSessionModalProps {
   isCreatingSession: boolean;
   isLoadingWarehouses: boolean;
@@ -64,11 +65,7 @@ export function CreateSessionModal({
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create New Session</Text>
               <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
-                <Ionicons
-                  name="close"
-                  size={24}
-                  color={theme.colors.text.primary}
-                />
+                <Ionicons name="close" size={24} color={theme.colors.text.primary} />
               </TouchableOpacity>
             </View>
 
@@ -86,16 +83,14 @@ export function CreateSessionModal({
                       key={zone.id}
                       style={[
                         styles.optionButton,
-                        locationType === zone.zone_name &&
-                          styles.optionButtonSelected,
+                        locationType === zone.zone_name && styles.optionButtonSelected,
                       ]}
                       onPress={() => onChangeLocationType(zone.zone_name)}
                     >
                       <Text
                         style={[
                           styles.optionText,
-                          locationType === zone.zone_name &&
-                            styles.optionTextSelected,
+                          locationType === zone.zone_name && styles.optionTextSelected,
                         ]}
                       >
                         {zone.zone_name}
@@ -120,9 +115,7 @@ export function CreateSessionModal({
                             selectedFloor === warehouse.warehouse_name &&
                               styles.optionButtonSelected,
                           ]}
-                          onPress={() =>
-                            onChangeSelectedFloor(warehouse.warehouse_name)
-                          }
+                          onPress={() => onChangeSelectedFloor(warehouse.warehouse_name)}
                         >
                           <Text
                             style={[
@@ -143,7 +136,7 @@ export function CreateSessionModal({
               {selectedFloor && (
                 <View style={styles.stepContainer}>
                   <Text style={styles.stepLabel}>3. Rack / Shelf Identifier</Text>
-                  <PremiumInput
+                  <AppInput
                     value={rackName}
                     onChangeText={onChangeRackName}
                     placeholder="e.g. RACK-A1"
@@ -156,22 +149,14 @@ export function CreateSessionModal({
               <TouchableOpacity
                 style={[
                   styles.createButton,
-                  (!locationType ||
-                    !selectedFloor ||
-                    !rackName.trim() ||
-                    isCreatingSession) &&
+                  (!locationType || !selectedFloor || !rackName.trim() || isCreatingSession) &&
                     styles.createButtonDisabled,
                 ]}
                 onPress={onSubmit}
-                disabled={
-                  !locationType ||
-                  !selectedFloor ||
-                  !rackName.trim() ||
-                  isCreatingSession
-                }
+                disabled={!locationType || !selectedFloor || !rackName.trim() || isCreatingSession}
               >
                 {isCreatingSession ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <ActivityIndicator color={uiSemanticColors.text.inverse} />
                 ) : (
                   <Text style={styles.createButtonText}>Start Session</Text>
                 )}
@@ -264,7 +249,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   createButtonText: {
-    color: "#FFFFFF",
+    color: uiSemanticColors.text.inverse,
     fontSize: 16,
     fontWeight: "700",
   },

@@ -47,10 +47,13 @@ case "${frontend_code}" in
 esac
 
 docs_code="$(curl -sS -o /tmp/post_deploy_docs.html -w '%{http_code}' "${SMOKE_BASE_URL}/docs")"
-if [ "${docs_code}" != "200" ]; then
-  echo "Docs smoke failed with HTTP ${docs_code}" >&2
-  exit 1
-fi
+case "${docs_code}" in
+  401|403|404) ;;
+  *)
+    echo "API docs must be disabled or protected in production; /docs returned HTTP ${docs_code}" >&2
+    exit 1
+    ;;
+esac
 
 if [ -n "${SMOKE_USERNAME}" ] && [ -n "${SMOKE_PASSWORD}" ]; then
   echo "Running authenticated smoke checks"

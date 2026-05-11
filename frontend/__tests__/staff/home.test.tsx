@@ -2,24 +2,42 @@ import React from "react";
 import { render } from "@testing-library/react-native";
 import HomeScreen from "../../app/staff/home";
 
+jest.mock("../../src/services/connectionManager", () => ({
+  __esModule: true,
+  default: {
+    getInstance: jest.fn(() => ({
+      isHealthy: true,
+      backendUrl: "http://mock:8001",
+      backendPort: 8001,
+      backendIp: "mock",
+      lastChecked: new Date().toISOString(),
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      initialize: jest.fn().mockResolvedValue(undefined),
+    })),
+  },
+}));
+
 jest.mock("expo-haptics", () => ({
   selectionAsync: jest.fn(),
   notificationAsync: jest.fn(),
   impactAsync: jest.fn(),
 }));
 
-jest.mock("react-native-modal", () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const React = require("react");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { View } = require("react-native");
-  const MockModal = (props: any) =>
-    props.isVisible
-      ? React.createElement(View, { testID: "modal-view" }, props.children)
-      : null;
-  MockModal.displayName = "MockModal";
-  return MockModal;
-}, { virtual: true });
+jest.mock(
+  "react-native-modal",
+  () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const React = require("react");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { View } = require("react-native");
+    const MockModal = (props: any) =>
+      props.isVisible ? React.createElement(View, { testID: "modal-view" }, props.children) : null;
+    MockModal.displayName = "MockModal";
+    return MockModal;
+  },
+  { virtual: true }
+);
 
 jest.mock("@tanstack/react-query", () => ({
   useQueryClient: jest.fn(() => ({
@@ -66,12 +84,17 @@ jest.mock("../../src/services/toastService", () => ({
   },
 }));
 
+jest.mock("../../src/hooks/useReducedMotion", () => ({
+  useReducedMotion: jest.fn(() => false),
+}));
+
 jest.mock("expo-router", () => ({
   router: { push: jest.fn() },
   useRouter: () => ({
     push: jest.fn(),
     replace: jest.fn(),
     back: jest.fn(),
+    canGoBack: jest.fn(() => true),
   }),
   useFocusEffect: jest.fn((cb) => cb()),
   Stack: {
@@ -152,7 +175,8 @@ jest.mock("../../src/services/api/api", () => ({
 describe("HomeScreen", () => {
   it("renders correctly", () => {
     const { getByText } = render(<HomeScreen />);
-    expect(getByText("Welcome, staff1")).toBeTruthy();
+    expect(getByText("Stock Verify")).toBeTruthy();
+    expect(getByText("staff1")).toBeTruthy();
   });
 
   // Note: Testing actual floor picker interactions requires deeper mocking of the complex home component state

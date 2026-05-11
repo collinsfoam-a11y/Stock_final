@@ -1,0 +1,165 @@
+{
+  "is_consistent": false,
+  "summary": {
+    "session_totals_match": false,
+    "verified_items_match": false,
+    "variance_match": false,
+    "financial_match": false,
+    "sample_validation_passed": true,
+    "event_lag_ok": true
+  },
+  "metrics": {
+    "projection_drift_count": 11,
+    "projection_gap_count": 1,
+    "event_lag_seconds": 0.0,
+    "event_lag_threshold_seconds": 5.0,
+    "active_count_lines": 30,
+    "active_sessions": 46,
+    "active_session_projection_rows": 46
+  },
+  "samples_checked": 0,
+  "timestamp": "2026-05-03T17:22:41.659771Z",
+  "collections": {
+    "session_projection": "session_dashboard_projection",
+    "verified_projection": "verified_items_projection",
+    "variance_projection": "variance_summary_projection",
+    "financial_projection": "financial_projection",
+    "batch_projection": "batch_records",
+    "event_log": "event_log"
+  },
+  "details": {
+    "source_session_totals": {
+      "total_items": 30,
+      "verified_items": 10,
+      "pending_items": 20,
+      "damage_items": 2,
+      "total_variance": 7.0
+    },
+    "projection_session_totals": {
+      "total_items": 15,
+      "verified_items": 4,
+      "pending_items": 11,
+      "damage_items": 1,
+      "total_variance": 9.0
+    },
+    "source_financial_totals": {
+      "total_stock_value": 602615.0,
+      "total_counted_value": 496992.0,
+      "overage_value": 6358.0,
+      "shortage_value": 111981.0,
+      "damage_value": 14650.0
+    },
+    "projection_financial_totals": {
+      "total_stock_value": 535121.0,
+      "total_counted_value": 299554.0,
+      "overage_value": 2050.0,
+      "shortage_value": 237617.0,
+      "damage_value": 14650.0
+    },
+    "orphan_line_session_ids": [
+      "00011e6f-d298-4448-b683-5a22da5c94fe",
+      "0cba0ad4-4ea0-4ebc-a590-33bcc04b6e1f",
+      "3aaa3ab1-4420-409b-bb6e-d226c2e8c68f",
+      "3e70a682-8015-4d33-93b6-80502b2a7486",
+      "a0498b9e-baeb-4431-9a5e-7f4003292e65",
+      "ab955f64-d478-4c6f-b08c-eb2bacf40a08",
+      "c9fc3d83-e6d0-4246-9218-d0c7db5570cb",
+      "dece1d49-771b-409c-a5c9-a3b5bb33a264",
+      "e0ac66b3-8fa9-4117-a0b1-e67aa4d32d85"
+    ]
+  },
+  "controls": {
+    "strict": true,
+    "float_tolerance": 0.0001,
+    "event_lag_threshold_seconds": 5.0,
+    "archived_filter": {
+      "archived": {
+        "$ne": true
+      }
+    }
+  },
+  "failures": [
+    {
+      "kind": "gap",
+      "check": "orphan_count_lines",
+      "message": "Active count lines reference missing sessions.",
+      "session_ids": [
+        "00011e6f-d298-4448-b683-5a22da5c94fe",
+        "0cba0ad4-4ea0-4ebc-a590-33bcc04b6e1f",
+        "3aaa3ab1-4420-409b-bb6e-d226c2e8c68f",
+        "3e70a682-8015-4d33-93b6-80502b2a7486",
+        "a0498b9e-baeb-4431-9a5e-7f4003292e65",
+        "ab955f64-d478-4c6f-b08c-eb2bacf40a08",
+        "c9fc3d83-e6d0-4246-9218-d0c7db5570cb",
+        "dece1d49-771b-409c-a5c9-a3b5bb33a264",
+        "e0ac66b3-8fa9-4117-a0b1-e67aa4d32d85"
+      ]
+    },
+    {
+      "kind": "drift",
+      "check": "session_totals.total_items",
+      "legacy": 30,
+      "projection": 15
+    },
+    {
+      "kind": "drift",
+      "check": "session_totals.verified_items",
+      "legacy": 10,
+      "projection": 4
+    },
+    {
+      "kind": "drift",
+      "check": "session_totals.pending_items",
+      "legacy": 20,
+      "projection": 11
+    },
+    {
+      "kind": "drift",
+      "check": "session_totals.damage_items",
+      "legacy": 2,
+      "projection": 1
+    },
+    {
+      "kind": "drift",
+      "check": "session_totals.total_variance",
+      "legacy": 7.0,
+      "projection": 9.0
+    },
+    {
+      "kind": "drift",
+      "check": "financial_totals.total_stock_value",
+      "legacy": 602615.0,
+      "projection": 535121.0
+    },
+    {
+      "kind": "drift",
+      "check": "financial_totals.total_counted_value",
+      "legacy": 496992.0,
+      "projection": 299554.0
+    },
+    {
+      "kind": "drift",
+      "check": "financial_totals.overage_value",
+      "legacy": 6358.0,
+      "projection": 2050.0
+    },
+    {
+      "kind": "drift",
+      "check": "financial_totals.shortage_value",
+      "legacy": 111981.0,
+      "projection": 237617.0
+    },
+    {
+      "kind": "drift",
+      "check": "verified_projection_count",
+      "legacy": 30,
+      "projection": 29
+    },
+    {
+      "kind": "drift",
+      "check": "variance_projection_count",
+      "legacy": 30,
+      "projection": 29
+    }
+  ]
+}

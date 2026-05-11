@@ -1,17 +1,13 @@
 import React from "react";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
 import { useAuthStore } from "@/store/authStore";
 import { getRouteForRole, type UserRole } from "@/utils/roleNavigation";
 
+import { semanticColors, colors } from "@/theme/legacyCompat";
+import { getFlag } from "@/constants/flags";
 const FEATURE_ITEMS = [
   "Offline-first stock counts",
   "Role-based supervisor routing",
@@ -24,6 +20,7 @@ function WelcomeScreen() {
   const isLoading = useAuthStore((state) => state.isLoading);
   const { width } = useWindowDimensions();
   const isWide = width >= 960;
+  const publicRegistrationEnabled = getFlag("enablePublicRegistration");
 
   React.useEffect(() => {
     if (!isLoading && user) {
@@ -40,8 +37,7 @@ function WelcomeScreen() {
           <Text style={styles.kicker}>Lavanya Mart</Text>
           <Text style={styles.title}>Stock Verification</Text>
           <Text style={styles.subtitle}>
-            Secure counting workflows for field teams, supervisors, and admin
-            review.
+            Secure counting workflows for field teams, supervisors, and admin review.
           </Text>
           <View style={styles.featureList}>
             {FEATURE_ITEMS.map((item) => (
@@ -56,29 +52,29 @@ function WelcomeScreen() {
         <View style={[styles.panel, styles.actionPanel]}>
           <Text style={styles.actionTitle}>Start a session</Text>
           <Text style={styles.actionCopy}>
-            Sign in for operational access or create a new account for setup and
-            onboarding.
+            {publicRegistrationEnabled
+              ? "Sign in for operational access or create a new account for setup and onboarding."
+              : "Sign in with the account assigned by your administrator."}
           </Text>
 
           <Pressable
             onPress={() => router.push("/login")}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              pressed && styles.primaryButtonPressed,
-            ]}
+            style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
           >
             <Text style={styles.primaryButtonText}>Sign In</Text>
           </Pressable>
 
-          <Pressable
-            onPress={() => router.push("/register")}
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              pressed && styles.secondaryButtonPressed,
-            ]}
-          >
-            <Text style={styles.secondaryButtonText}>Create Account</Text>
-          </Pressable>
+          {publicRegistrationEnabled ? (
+            <Pressable
+              onPress={() => router.push("/register")}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                pressed && styles.secondaryButtonPressed,
+              ]}
+            >
+              <Text style={styles.secondaryButtonText}>Create Account</Text>
+            </Pressable>
+          ) : null}
 
           <Text style={styles.footer}>Lavanya Mart 2026</Text>
         </View>
@@ -93,7 +89,7 @@ export default WelcomeScreen;
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: "#f4f7f6",
+    backgroundColor: semanticColors.background.secondary,
     padding: 24,
     justifyContent: "center",
   },
@@ -111,8 +107,8 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "#d9e5e2",
-    backgroundColor: "#ffffff",
+    borderColor: semanticColors.border.default,
+    backgroundColor: semanticColors.background.primary,
     padding: 28,
     boxShadow: "0px 16px 40px rgba(15, 23, 42, 0.08)",
   },
@@ -127,22 +123,22 @@ const styles = StyleSheet.create({
   kicker: {
     fontSize: 12,
     fontWeight: "700",
-    letterSpacing: 1.2,
+    letterSpacing: 0,
     textTransform: "uppercase",
-    color: "#0f766e",
+    color: colors.secondary[700],
     marginBottom: 14,
   },
   title: {
     fontSize: 40,
     lineHeight: 44,
     fontWeight: "700",
-    color: "#0f172a",
+    color: semanticColors.text.primary,
     marginBottom: 14,
   },
   subtitle: {
     fontSize: 16,
     lineHeight: 24,
-    color: "#475569",
+    color: semanticColors.text.secondary,
     marginBottom: 28,
     maxWidth: 520,
   },
@@ -156,30 +152,30 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 14,
-    backgroundColor: "#f8fafc",
+    backgroundColor: semanticColors.background.secondary,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: semanticColors.border.default,
   },
   featureDot: {
     width: 10,
     height: 10,
     borderRadius: 999,
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.secondary[700],
   },
   featureText: {
     fontSize: 15,
-    color: "#334155",
+    color: semanticColors.text.primary,
   },
   actionTitle: {
     fontSize: 24,
     fontWeight: "700",
-    color: "#0f172a",
+    color: semanticColors.text.primary,
     marginBottom: 10,
   },
   actionCopy: {
     fontSize: 15,
     lineHeight: 22,
-    color: "#475569",
+    color: semanticColors.text.secondary,
     marginBottom: 28,
   },
   primaryButton: {
@@ -187,14 +183,14 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.secondary[700],
     marginBottom: 12,
   },
   primaryButtonPressed: {
     opacity: 0.9,
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: semanticColors.text.inverse,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -203,21 +199,21 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#ffffff",
+    backgroundColor: semanticColors.background.primary,
     borderWidth: 1,
-    borderColor: "#cbd5e1",
+    borderColor: semanticColors.border.strong,
   },
   secondaryButtonPressed: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: semanticColors.background.secondary,
   },
   secondaryButtonText: {
-    color: "#0f172a",
+    color: semanticColors.text.primary,
     fontSize: 16,
     fontWeight: "700",
   },
   footer: {
     marginTop: 22,
     fontSize: 12,
-    color: "#64748b",
+    color: semanticColors.text.tertiary,
   },
 });

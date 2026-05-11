@@ -8,10 +8,7 @@ const mockPush = jest.fn();
 
 let mockOfflineMode = false;
 let mockSegments: string[] = ["supervisor", "dashboard"];
-const mockUseWindowDimensions = jest.spyOn(
-  ReactNative,
-  "useWindowDimensions",
-);
+const mockUseWindowDimensions = jest.spyOn(ReactNative, "useWindowDimensions");
 
 jest.mock("expo-router", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -55,14 +52,11 @@ jest.mock("@/components/ui", () => {
     }: {
       children: React.ReactNode;
       onPress?: () => void;
-    }) =>
-      React.createElement(TouchableOpacity, { onPress, ...props }, children),
-    GlassCard: ({
-      children,
-      ...props
-    }: {
-      children: React.ReactNode;
-    }) => React.createElement(View, props, children),
+    }) => React.createElement(TouchableOpacity, { onPress, ...props }, children),
+    GlassCard: ({ children, ...props }: { children: React.ReactNode }) =>
+      React.createElement(View, props, children),
+    ModernCard: ({ children, ...props }: { children: React.ReactNode }) =>
+      React.createElement(View, props, children),
     ScreenContainer: ({
       children,
       header,
@@ -74,18 +68,14 @@ jest.mock("@/components/ui", () => {
         View,
         null,
         header?.title ? React.createElement(Text, null, header.title) : null,
-        header?.subtitle
-          ? React.createElement(Text, null, header.subtitle)
-          : null,
-        children,
+        header?.subtitle ? React.createElement(Text, null, header.subtitle) : null,
+        children
       ),
   };
 });
 
 jest.mock("@/store/settingsStore", () => ({
-  useSettingsStore: (
-    selector: (state: { settings: { offlineMode: boolean } }) => unknown,
-  ) =>
+  useSettingsStore: (selector: (state: { settings: { offlineMode: boolean } }) => unknown) =>
     selector({
       settings: {
         offlineMode: mockOfflineMode,
@@ -116,9 +106,7 @@ describe("SupervisorLayout offline gate", () => {
 
     const { getByText, queryByTestId } = render(<SupervisorLayout />);
 
-    expect(
-      getByText("This supervisor screen needs a live connection"),
-    ).toBeTruthy();
+    expect(getByText("This supervisor screen needs a live connection")).toBeTruthy();
     expect(queryByTestId("slot")).toBeNull();
 
     fireEvent.press(getByText("Items"));

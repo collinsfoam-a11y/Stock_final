@@ -28,18 +28,10 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
   initialIndex,
   onClose,
 }) => {
-  const safeInitialIndex = Math.min(
-    Math.max(initialIndex, 0),
-    Math.max(images.length - 1, 0),
-  );
+  const safeInitialIndex = Math.min(Math.max(initialIndex, 0), Math.max(images.length - 1, 0));
 
   return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent={true} animationType="fade" onRequestClose={onClose}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.container}>
           <StatusBar hidden={true} />
@@ -57,11 +49,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
             })}
             renderItem={({ item }) => (
               <View style={styles.page}>
-                <Image
-                  source={{ uri: item }}
-                  style={styles.image}
-                  resizeMode="contain"
-                />
+                <Image source={{ uri: item }} style={styles.image} resizeMode="contain" />
               </View>
             )}
           />

@@ -28,6 +28,27 @@ module.exports = {
         caughtErrorsIgnorePattern: "^_",
       },
     ],
+    "no-restricted-imports": [
+      "error",
+      {
+        patterns: [
+          {
+            group: [
+              "@/theme/modernDesign",
+              "@/theme/modernDesign/*",
+              "@/theme/unified",
+              "@/theme/unified/*",
+              "**/theme/modernDesign",
+              "**/theme/modernDesign/*",
+              "**/theme/unified",
+              "**/theme/unified/*",
+            ],
+            message:
+              "UI governance: use useUiTokens/themeTokens or the approved App* primitives. legacyCompat is the only migration bridge for old theme systems.",
+          },
+        ],
+      },
+    ],
   },
   overrides: [
     {

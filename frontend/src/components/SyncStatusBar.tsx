@@ -6,42 +6,42 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { getSyncStatus, forceSync, SyncResult } from "../services/syncService";
+import { forceSync, SyncResult } from "../services/syncService";
+import {
+  refreshSyncStatus,
+  subscribeSyncStatus,
+  type SyncStatusSnapshot,
+} from "../services/syncStatusPolling";
 import { useNetworkStore } from "../store/networkStore";
-import { colors, spacing, borderRadius, shadows } from "@/theme/unified";
-import { operationalTheme } from "@/theme/operationalTheme";
 
-interface SyncStatus {
-  isOnline: boolean;
-  queuedOperations: number;
-  lastSync: string | null;
-  cacheSize: number;
-  needsSync: boolean;
-}
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 
 export const SyncStatusBar: React.FC = () => {
-  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatusSnapshot | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const isOnline = useNetworkStore((state: any) => state.isOnline);
+  const syncResultTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const loadSyncStatus = React.useCallback(async () => {
-    try {
-      const status = await getSyncStatus();
+  useEffect(() => {
+    const unsubscribe = subscribeSyncStatus((status) => {
       setSyncStatus(status);
-    } catch (error) {
-      console.error("Error loading sync status:", error);
-    }
+    });
+    void refreshSyncStatus();
+    return () => {
+      unsubscribe();
+      if (syncResultTimerRef.current) {
+        clearTimeout(syncResultTimerRef.current);
+        syncResultTimerRef.current = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
-    loadSyncStatus();
-
-    // Update sync status every 5 seconds
-    const interval = setInterval(loadSyncStatus, 5000);
-
-    return () => clearInterval(interval);
-  }, [isOnline, loadSyncStatus]);
+    if (isOnline) {
+      void refreshSyncStatus();
+    }
+  }, [isOnline]);
 
   const handleSync = async () => {
     if (!isOnline || isSyncing) return;
@@ -57,12 +57,16 @@ export const SyncStatusBar: React.FC = () => {
       });
 
       setSyncResult(result);
-
-      // Reload status after sync
-      setTimeout(loadSyncStatus, 1000);
+      await refreshSyncStatus();
 
       // Clear result after 3 seconds
-      setTimeout(() => setSyncResult(null), 3000);
+      if (syncResultTimerRef.current) {
+        clearTimeout(syncResultTimerRef.current);
+      }
+      syncResultTimerRef.current = setTimeout(() => {
+        setSyncResult(null);
+        syncResultTimerRef.current = null;
+      }, 3000);
     } catch (error: any) {
       console.error("Sync error:", error);
       setSyncResult({
@@ -86,19 +90,32 @@ export const SyncStatusBar: React.FC = () => {
   }
 
   return (
-    <View style={[styles.container]}>
+    <View
+      style={[
+        styles.container,
+        // Removed offlineContainer style to keep bar consistent blue
+      ]}
+    >
+      {/* Online indicator */}
+      {/* Status Indicators */}
       <View style={styles.statusRow}>
+        {/* SQL Source Indicator */}
         <View style={styles.indicatorItem}>
           <Ionicons
             name={syncStatus.isOnline ? "server" : "server-outline"}
             size={16}
-            color={syncStatus.isOnline ? colors.success[700] : colors.error[600]}
+            color={syncStatus.isOnline ? uiColors.success[500] : uiColors.error[500]} // Green or Red
           />
           <Text style={styles.statusText}>Source</Text>
         </View>
 
+        {/* Mongo/App Data Indicator */}
         <View style={styles.indicatorItem}>
-          <Ionicons name="leaf" size={16} color={colors.success[700]} />
+          <Ionicons
+            name="leaf" // Leaf for Mongo/App Data
+            size={16}
+            color={uiColors.success[500]} // Always green for local app data
+          />
           <Text style={styles.statusText}>App</Text>
         </View>
       </View>
@@ -118,9 +135,9 @@ export const SyncStatusBar: React.FC = () => {
           disabled={isSyncing}
         >
           {isSyncing ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={uiSemanticColors.text.inverse} />
           ) : (
-            <Ionicons name="sync" size={16} color="#fff" />
+            <Ionicons name="sync" size={16} color={uiSemanticColors.text.inverse} />
           )}
           <Text style={styles.syncButtonText}>{isSyncing ? "Syncing..." : "Sync Now"}</Text>
         </TouchableOpacity>
@@ -150,25 +167,21 @@ export const SyncStatusBar: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: operationalTheme.surface,
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.sm,
-    marginBottom: spacing.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    backgroundColor: uiColors.info[500],
+    padding: 8,
+    paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: operationalTheme.border,
-    ...shadows.sm,
+  },
+  offlineContainer: {
+    backgroundColor: uiColors.error[500],
   },
   statusRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 12, // Increased gap between status items
   },
   indicatorItem: {
     flexDirection: "row",
@@ -176,7 +189,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   statusText: {
-    color: operationalTheme.textSecondary,
+    color: uiSemanticColors.text.inverse,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -184,12 +197,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   queueText: {
-    color: operationalTheme.text,
+    color: uiSemanticColors.text.inverse,
     fontSize: 12,
-    fontWeight: "600",
   },
   syncButton: {
-    backgroundColor: operationalTheme.primary,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -201,7 +213,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   syncButtonText: {
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -211,17 +223,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   successText: {
-    color: colors.success[700],
+    color: uiColors.success[500],
     fontSize: 11,
     fontWeight: "600",
   },
   errorText: {
-    color: colors.error[600],
+    color: uiColors.warning[300],
     fontSize: 11,
     fontWeight: "600",
   },
   lastSyncText: {
-    color: operationalTheme.textSecondary,
+    color: "rgba(255, 255, 255, 0.8)",
     fontSize: 11,
   },
 });

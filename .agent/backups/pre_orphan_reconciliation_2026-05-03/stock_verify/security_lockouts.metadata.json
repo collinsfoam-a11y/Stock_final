@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"username":{"$numberInt":"1"}},"name":"username_1"},{"v":{"$numberInt":"2"},"key":{"expires_at":{"$numberInt":"1"}},"name":"expires_at_1"}],"uuid":"afd2498c124f4dcf910c3d6cda79254f","collectionName":"security_lockouts","type":"collection"}

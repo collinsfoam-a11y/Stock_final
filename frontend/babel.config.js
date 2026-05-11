@@ -1,7 +1,14 @@
 module.exports = function (api) {
   api.cache(true);
+  const expoPreset = (() => {
+    try {
+      return require.resolve("babel-preset-expo");
+    } catch {
+      return require.resolve("babel-preset-expo", { paths: [require.resolve("jest-expo/package.json")] });
+    }
+  })();
   return {
-    presets: ["babel-preset-expo"],
+    presets: [expoPreset],
     env: {
       production: {
         plugins: ["transform-remove-console"],

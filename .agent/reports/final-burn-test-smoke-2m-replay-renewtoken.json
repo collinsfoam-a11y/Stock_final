@@ -1,0 +1,902 @@
+{
+  "timestamp": "2026-05-02T18:13:52.472421+00:00",
+  "duration_seconds": 120,
+  "session_id": "0d7b1afd-9096-4e16-ac55-0e75b1abff37",
+  "username": "ui_owner_desktopchrom_moo7r4hn_2",
+  "inventory_items_available": 969,
+  "inventory_items_used": 0,
+  "sync": {
+    "create_ok": 0,
+    "create_fail": 0,
+    "create_attempted": 0,
+    "replay_ok": 2,
+    "replay_fail": 0,
+    "total_requests": 2,
+    "success_rate": 1.0
+  },
+  "reads": {
+    "ok": 240,
+    "fail": 0,
+    "gate_503": 0,
+    "total_requests": 240,
+    "success_rate": 1.0
+  },
+  "metrics": {
+    "samples": 12,
+    "max_projection_freshness_lag": 0.0,
+    "max_sync_queue_size": 0.0,
+    "max_sync_failure_rate": 0.0,
+    "max_projection_drift_count": 0,
+    "max_projection_gap_count": 0
+  },
+  "anomalies": [],
+  "passed": true,
+  "time_series_metrics": [
+    {
+      "ts": "2026-05-02T18:11:52.435816+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:12:02.475927+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:12:12.483268+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:12:22.448226+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:12:32.436582+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:12:42.459509+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:12:52.482578+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:13:02.445226+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:13:12.439314+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:13:22.463740+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:13:32.486565+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:13:42.476031+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    }
+  ],
+  "samples": {
+    "sync": [
+      {
+        "ts": "2026-05-02T18:11:52.432037+00:00",
+        "phase": "replay",
+        "status": 200,
+        "latency_ms": 7.8324170026462525,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": null,
+        "body_snippet": "{\"ok\":[\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"burn-replay-fbfca9f2b15a\",\"processing_time_ms\":0.3337860107421875,\"total_records\":1,\"results\":[{\"id\":\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\",\"s"
+      },
+      {
+        "ts": "2026-05-02T18:13:07.431588+00:00",
+        "phase": "replay",
+        "status": 200,
+        "latency_ms": 6.278082997596357,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": null,
+        "body_snippet": "{\"ok\":[\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"burn-replay-ec9a8f9d8d25\",\"processing_time_ms\":1.119852066040039,\"total_records\":1,\"results\":[{\"id\":\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\",\"su"
+      }
+    ],
+    "reads": [
+      {
+        "ts": "2026-05-02T18:12:52.477410+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.58000000071479
+      },
+      {
+        "ts": "2026-05-02T18:12:52.481342+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.799208003329113
+      },
+      {
+        "ts": "2026-05-02T18:12:53.472428+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.36483299563406
+      },
+      {
+        "ts": "2026-05-02T18:12:53.476380+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.844167003990151
+      },
+      {
+        "ts": "2026-05-02T18:12:54.436765+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.028332998335827
+      },
+      {
+        "ts": "2026-05-02T18:12:54.441722+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.774417000589892
+      },
+      {
+        "ts": "2026-05-02T18:12:55.470725+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.274290997476783
+      },
+      {
+        "ts": "2026-05-02T18:12:55.475147+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.247666998708155
+      },
+      {
+        "ts": "2026-05-02T18:12:56.478166+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 2.362415994866751
+      },
+      {
+        "ts": "2026-05-02T18:12:56.480538+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 2.2973750019446015
+      },
+      {
+        "ts": "2026-05-02T18:12:57.445218+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 2.6326250008423813
+      },
+      {
+        "ts": "2026-05-02T18:12:57.448024+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 2.725209000345785
+      },
+      {
+        "ts": "2026-05-02T18:12:58.456639+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.113207993214019
+      },
+      {
+        "ts": "2026-05-02T18:12:58.459124+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 2.3589589982293546
+      },
+      {
+        "ts": "2026-05-02T18:12:59.437198+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.003541999030858
+      },
+      {
+        "ts": "2026-05-02T18:12:59.441685+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.226124998240266
+      },
+      {
+        "ts": "2026-05-02T18:13:00.478240+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.979249999450985
+      },
+      {
+        "ts": "2026-05-02T18:13:00.481943+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.563207996194251
+      },
+      {
+        "ts": "2026-05-02T18:13:01.456567+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 3.312833003292326
+      },
+      {
+        "ts": "2026-05-02T18:13:01.459859+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.1717920064693317
+      },
+      {
+        "ts": "2026-05-02T18:13:02.437932+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 7.409749996440951
+      },
+      {
+        "ts": "2026-05-02T18:13:02.444128+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 5.938124995736871
+      },
+      {
+        "ts": "2026-05-02T18:13:03.467011+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 6.437834003008902
+      },
+      {
+        "ts": "2026-05-02T18:13:03.474291+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 7.007542000792455
+      },
+      {
+        "ts": "2026-05-02T18:13:04.445992+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.7927080013323575
+      },
+      {
+        "ts": "2026-05-02T18:13:04.450115+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.9690829944447614
+      },
+      {
+        "ts": "2026-05-02T18:13:05.435129+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.343042001186404
+      },
+      {
+        "ts": "2026-05-02T18:13:05.440397+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.959291996783577
+      },
+      {
+        "ts": "2026-05-02T18:13:06.457418+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.221624996920582
+      },
+      {
+        "ts": "2026-05-02T18:13:06.462602+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.988375003449619
+      },
+      {
+        "ts": "2026-05-02T18:13:07.438151+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 6.265000003622845
+      },
+      {
+        "ts": "2026-05-02T18:13:07.443505+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 5.142541995155625
+      },
+      {
+        "ts": "2026-05-02T18:13:08.470071+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.381834002037067
+      },
+      {
+        "ts": "2026-05-02T18:13:08.474826+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.583958005241584
+      },
+      {
+        "ts": "2026-05-02T18:13:09.443676+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 3.7901249961578287
+      },
+      {
+        "ts": "2026-05-02T18:13:09.447543+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.7146660033613443
+      },
+      {
+        "ts": "2026-05-02T18:13:10.466499+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 6.138457996712532
+      },
+      {
+        "ts": "2026-05-02T18:13:10.475150+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 8.306374998937827
+      },
+      {
+        "ts": "2026-05-02T18:13:11.450039+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.837792002945207
+      },
+      {
+        "ts": "2026-05-02T18:13:11.454802+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.6288329976960085
+      },
+      {
+        "ts": "2026-05-02T18:13:12.433548+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.978999997547362
+      },
+      {
+        "ts": "2026-05-02T18:13:12.438188+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.489957995247096
+      },
+      {
+        "ts": "2026-05-02T18:13:13.480345+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.419665998488199
+      },
+      {
+        "ts": "2026-05-02T18:13:13.484726+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.23475000570761
+      },
+      {
+        "ts": "2026-05-02T18:13:14.462688+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.226332999882288
+      },
+      {
+        "ts": "2026-05-02T18:13:14.467258+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.409209002915304
+      },
+      {
+        "ts": "2026-05-02T18:13:15.441168+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 6.883166002808139
+      },
+      {
+        "ts": "2026-05-02T18:13:15.446155+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.78129099792568
+      },
+      {
+        "ts": "2026-05-02T18:13:16.473355+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 6.2409160018432885
+      },
+      {
+        "ts": "2026-05-02T18:13:16.478411+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.842083995754365
+      },
+      {
+        "ts": "2026-05-02T18:13:17.457466+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.985084000509232
+      },
+      {
+        "ts": "2026-05-02T18:13:17.462227+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.5927910032332875
+      },
+      {
+        "ts": "2026-05-02T18:13:18.435228+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.997291002131533
+      },
+      {
+        "ts": "2026-05-02T18:13:18.440765+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 5.224542001087684
+      },
+      {
+        "ts": "2026-05-02T18:13:19.456950+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.352625001047272
+      },
+      {
+        "ts": "2026-05-02T18:13:19.461282+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.1561660036677495
+      },
+      {
+        "ts": "2026-05-02T18:13:20.433833+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.641542000172194
+      },
+      {
+        "ts": "2026-05-02T18:13:20.437673+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.6557500061462633
+      },
+      {
+        "ts": "2026-05-02T18:13:21.472434+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.243792005581781
+      },
+      {
+        "ts": "2026-05-02T18:13:21.476513+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.918458998668939
+      },
+      {
+        "ts": "2026-05-02T18:13:22.458282+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 6.544332994963042
+      },
+      {
+        "ts": "2026-05-02T18:13:22.462768+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.327957998611964
+      },
+      {
+        "ts": "2026-05-02T18:13:23.448521+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.352542000764515
+      },
+      {
+        "ts": "2026-05-02T18:13:23.453309+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.498958005569875
+      },
+      {
+        "ts": "2026-05-02T18:13:24.441349+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.936417004500981
+      },
+      {
+        "ts": "2026-05-02T18:13:24.447188+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 5.6389170058537275
+      },
+      {
+        "ts": "2026-05-02T18:13:25.478579+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.551041005470324
+      },
+      {
+        "ts": "2026-05-02T18:13:25.482497+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.7614999964716844
+      },
+      {
+        "ts": "2026-05-02T18:13:26.452176+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.407124997873325
+      },
+      {
+        "ts": "2026-05-02T18:13:26.457037+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.660083002818283
+      },
+      {
+        "ts": "2026-05-02T18:13:27.439573+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.020207994675729
+      },
+      {
+        "ts": "2026-05-02T18:13:27.443676+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.9419160020770505
+      },
+      {
+        "ts": "2026-05-02T18:13:28.482762+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.299416999856476
+      },
+      {
+        "ts": "2026-05-02T18:13:28.486086+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.2182499999180436
+      },
+      {
+        "ts": "2026-05-02T18:13:29.471518+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.900708001514431
+      },
+      {
+        "ts": "2026-05-02T18:13:29.476235+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.500459006521851
+      },
+      {
+        "ts": "2026-05-02T18:13:30.455503+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.873249999945983
+      },
+      {
+        "ts": "2026-05-02T18:13:30.460043+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.346583002188709
+      },
+      {
+        "ts": "2026-05-02T18:13:31.435067+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 6.0572500005946495
+      },
+      {
+        "ts": "2026-05-02T18:13:31.440268+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 5.004332997486927
+      },
+      {
+        "ts": "2026-05-02T18:13:32.480906+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.726000006485265
+      },
+      {
+        "ts": "2026-05-02T18:13:32.485449+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.391915994347073
+      },
+      {
+        "ts": "2026-05-02T18:13:33.479351+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.339791998267174
+      },
+      {
+        "ts": "2026-05-02T18:13:33.483194+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.6972499947296456
+      },
+      {
+        "ts": "2026-05-02T18:13:34.466353+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.161166998732369
+      },
+      {
+        "ts": "2026-05-02T18:13:34.470916+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.434917005710304
+      },
+      {
+        "ts": "2026-05-02T18:13:35.457904+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 6.492874999821652
+      },
+      {
+        "ts": "2026-05-02T18:13:35.462749+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.639958999177907
+      },
+      {
+        "ts": "2026-05-02T18:13:36.443362+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.995625000447035
+      },
+      {
+        "ts": "2026-05-02T18:13:36.447337+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.813374998571817
+      },
+      {
+        "ts": "2026-05-02T18:13:37.483900+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.874417005339637
+      },
+      {
+        "ts": "2026-05-02T18:13:37.488134+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.078040998138022
+      },
+      {
+        "ts": "2026-05-02T18:13:38.452079+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 3.540749996318482
+      },
+      {
+        "ts": "2026-05-02T18:13:38.457493+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 5.233333002252039
+      },
+      {
+        "ts": "2026-05-02T18:13:39.440387+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 6.256915999983903
+      },
+      {
+        "ts": "2026-05-02T18:13:39.445386+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.773208005644847
+      },
+      {
+        "ts": "2026-05-02T18:13:40.474949+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.295874994772021
+      },
+      {
+        "ts": "2026-05-02T18:13:40.479067+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.9657919987803325
+      },
+      {
+        "ts": "2026-05-02T18:13:41.444082+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.199333998258226
+      },
+      {
+        "ts": "2026-05-02T18:13:41.447812+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.6080410063732415
+      },
+      {
+        "ts": "2026-05-02T18:13:42.470326+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.04591700155288
+      },
+      {
+        "ts": "2026-05-02T18:13:42.475082+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.575124999973923
+      },
+      {
+        "ts": "2026-05-02T18:13:43.455603+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.763209002907388
+      },
+      {
+        "ts": "2026-05-02T18:13:43.460420+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.6355000013136305
+      },
+      {
+        "ts": "2026-05-02T18:13:44.433781+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.8323329974664375
+      },
+      {
+        "ts": "2026-05-02T18:13:44.438317+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.36654200166231
+      },
+      {
+        "ts": "2026-05-02T18:13:45.457618+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.262749997200444
+      },
+      {
+        "ts": "2026-05-02T18:13:45.462209+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.412959002365824
+      },
+      {
+        "ts": "2026-05-02T18:13:46.442504+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.860957997152582
+      },
+      {
+        "ts": "2026-05-02T18:13:46.446624+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.9793749965610914
+      },
+      {
+        "ts": "2026-05-02T18:13:47.483656+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.6907910000300035
+      },
+      {
+        "ts": "2026-05-02T18:13:47.488142+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.328833005274646
+      },
+      {
+        "ts": "2026-05-02T18:13:48.461776+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.517749999649823
+      },
+      {
+        "ts": "2026-05-02T18:13:48.465567+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 3.652792001958005
+      },
+      {
+        "ts": "2026-05-02T18:13:49.437378+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 4.75383300363319
+      },
+      {
+        "ts": "2026-05-02T18:13:49.442303+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.688209002779331
+      },
+      {
+        "ts": "2026-05-02T18:13:50.468868+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.294709000736475
+      },
+      {
+        "ts": "2026-05-02T18:13:50.473475+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.424875005497597
+      },
+      {
+        "ts": "2026-05-02T18:13:51.440744+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 200,
+        "latency_ms": 5.837207994773053
+      },
+      {
+        "ts": "2026-05-02T18:13:51.445149+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 200,
+        "latency_ms": 4.204083001241088
+      }
+    ]
+  }
+}

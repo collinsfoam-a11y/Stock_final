@@ -1,0 +1,23 @@
+{
+  "timestamp": "2026-05-04T10:41:12+05:30",
+  "mode": "inprocess_authenticated_smoke",
+  "endpoints": [
+    "/api/dashboard/stats",
+    "/api/dashboard/filters/options",
+    "/api/admin/dashboard/kpis"
+  ],
+  "http": {
+    "200": 3,
+    "503": 0,
+    "projection_503": 0
+  },
+  "projection_guard": {
+    "checks": 3,
+    "trigger_count": 3,
+    "trigger_rate_pct": 100.0,
+    "repair_count": 0,
+    "failing_session_ids": []
+  },
+  "result": "FAIL",
+  "failure_reason": "Projection guard triggered on every guarded read because it compared latest session completed_at timestamp against projection version 0.0. This is a guard/readiness semantics issue, not a parity drift issue. Mixed traffic was not run."
+}

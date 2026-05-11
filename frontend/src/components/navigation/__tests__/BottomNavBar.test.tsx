@@ -3,8 +3,11 @@
  * Tests for the shared bottom navigation bar component
  */
 
-import { describe, it, expect, jest, beforeEach } from "@jest/globals";
-import { getDefaultInventoryTabs } from "../bottomNavShared";
+import {
+  BOTTOM_NAV_HIT_SLOP,
+  getDefaultInventoryTabs,
+  getResponsiveBottomNavTabMinWidth,
+} from "../bottomNavShared";
 
 describe("BottomNavBar Component", () => {
   beforeEach(() => {
@@ -49,11 +52,7 @@ describe("BottomNavBar Component", () => {
   describe("getDefaultInventoryTabs function", () => {
     it("should create home tab with correct navigation", () => {
       const mockPush = jest.fn();
-      const homeTab = getDefaultInventoryTabs(
-        { push: mockPush },
-        "session-123",
-        jest.fn(),
-      )[0];
+      const homeTab = getDefaultInventoryTabs({ push: mockPush }, "session-123", jest.fn())[0];
 
       if (!homeTab) {
         throw new Error("Expected home tab to be defined");
@@ -64,19 +63,13 @@ describe("BottomNavBar Component", () => {
 
     it("should create review tab with sessionId in URL", () => {
       const mockPush = jest.fn();
-      const reviewTab = getDefaultInventoryTabs(
-        { push: mockPush },
-        "session-123",
-        jest.fn(),
-      )[2];
+      const reviewTab = getDefaultInventoryTabs({ push: mockPush }, "session-123", jest.fn())[2];
 
       if (!reviewTab) {
         throw new Error("Expected review tab to be defined");
       }
       reviewTab.onPress();
-      expect(mockPush).toHaveBeenCalledWith(
-        "/staff/history?sessionId=session-123",
-      );
+      expect(mockPush).toHaveBeenCalledWith("/staff/history?sessionId=session-123");
     });
 
     it("should create inventory tab with no-op onPress", () => {
@@ -181,16 +174,28 @@ describe("BottomNavBar Component", () => {
 
       expect(finishActiveColor).toBe(successColor);
     });
+
+    it("should keep responsive tap targets at or above 44 points", () => {
+      expect(getResponsiveBottomNavTabMinWidth(360, 4, "ios")).toBe(64);
+      expect(getResponsiveBottomNavTabMinWidth(1024, 4, "ios")).toBe(72);
+      expect(getResponsiveBottomNavTabMinWidth(1024, 4, "web")).toBe(56);
+      expect(getResponsiveBottomNavTabMinWidth(320, 8, "android")).toBe(44);
+    });
+
+    it("should expand the tappable area with hit slop", () => {
+      expect(BOTTOM_NAV_HIT_SLOP).toEqual({
+        top: 12,
+        bottom: 12,
+        left: 12,
+        right: 12,
+      });
+    });
   });
 
   describe("Edge cases", () => {
     it("should handle empty sessionId gracefully", () => {
       const mockPush = jest.fn();
-      const reviewTab = getDefaultInventoryTabs(
-        { push: mockPush },
-        null,
-        jest.fn(),
-      )[2];
+      const reviewTab = getDefaultInventoryTabs({ push: mockPush }, null, jest.fn())[2];
 
       if (!reviewTab) {
         throw new Error("Expected review tab to be defined");

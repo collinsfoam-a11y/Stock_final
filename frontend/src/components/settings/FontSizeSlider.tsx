@@ -9,7 +9,9 @@ import Slider from "@react-native-community/slider";
 import { selectionAsync } from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { auroraTheme } from "../../theme/auroraTheme";
+import { useUiTokens } from "../../hooks/useUiTokens";
+import { fontFamily, typography } from "../../theme/legacyCompat";
+import { colorWithAlpha } from "../../theme/themeTokens";
 
 interface FontSizeSliderProps {
   value: number;
@@ -37,6 +39,19 @@ export const FontSizeSlider: React.FC<FontSizeSliderProps> = ({
   step = 2,
   disabled = false,
 }) => {
+  const uiTokens = useUiTokens();
+  const labelColor = disabled ? uiTokens.colors.textMuted : uiTokens.colors.textPrimary;
+  const secondaryTextColor = disabled ? uiTokens.colors.textMuted : uiTokens.colors.textSecondary;
+  const accentColor = disabled ? uiTokens.colors.textMuted : uiTokens.colors.accent;
+  const previewBackground = colorWithAlpha(
+    uiTokens.colors.accent,
+    uiTokens.mode === "dark" ? 0.16 : 0.08
+  );
+  const mutedTrackColor = colorWithAlpha(
+    uiTokens.colors.textMuted,
+    uiTokens.mode === "dark" ? 0.48 : 0.34
+  );
+
   const handleValueChange = (newValue: number) => {
     // Snap to step values
     const snappedValue = Math.round(newValue / step) * step;
@@ -55,29 +70,25 @@ export const FontSizeSlider: React.FC<FontSizeSliderProps> = ({
   };
 
   return (
-    <View style={[styles.container, disabled && styles.disabledContainer]}>
+    <View
+      style={[
+        styles.container,
+        { gap: uiTokens.spacing.sm, padding: uiTokens.spacing.md },
+        disabled && styles.disabledContainer,
+      ]}
+    >
       <View style={styles.header}>
-        <View style={styles.labelRow}>
-          <Ionicons
-            name="text-outline"
-            size={18}
-            color={
-              disabled
-                ? auroraTheme.colors.text.tertiary
-                : auroraTheme.colors.text.primary
-            }
-          />
-          <Text style={[styles.label, disabled && styles.disabledLabel]}>
-            Font Size
-          </Text>
+        <View style={[styles.labelRow, { gap: uiTokens.spacing.xs }]}>
+          <Ionicons name="text-outline" size={18} color={labelColor} />
+          <Text style={[styles.label, { color: labelColor }]}>Font Size</Text>
         </View>
-        <Text style={[styles.valueLabel, disabled && styles.disabledLabel]}>
-          {getSizeLabel()}
-        </Text>
+        <Text style={[styles.valueLabel, { color: accentColor }]}>{getSizeLabel()}</Text>
       </View>
 
-      <View style={styles.sliderContainer}>
-        <Text style={[styles.minMaxLabel, { fontSize: minValue }]}>A</Text>
+      <View style={[styles.sliderContainer, { gap: uiTokens.spacing.sm }]}>
+        <Text style={[styles.minMaxLabel, { color: secondaryTextColor, fontSize: minValue }]}>
+          A
+        </Text>
 
         <Slider
           style={styles.slider}
@@ -86,24 +97,33 @@ export const FontSizeSlider: React.FC<FontSizeSliderProps> = ({
           minimumValue={minValue}
           maximumValue={maxValue}
           step={step}
-          minimumTrackTintColor={auroraTheme.colors.primary[500]}
-          maximumTrackTintColor={auroraTheme.colors.neutral[600]}
-          thumbTintColor={auroraTheme.colors.primary[400]}
+          minimumTrackTintColor={accentColor}
+          maximumTrackTintColor={mutedTrackColor}
+          thumbTintColor={disabled ? uiTokens.colors.textMuted : uiTokens.colors.accentStrong}
           disabled={disabled}
         />
 
-        <Text style={[styles.minMaxLabel, { fontSize: maxValue }]}>A</Text>
+        <Text style={[styles.minMaxLabel, { color: secondaryTextColor, fontSize: maxValue }]}>
+          A
+        </Text>
       </View>
 
       {/* Preview Text */}
-      <View style={styles.previewContainer}>
-        <Text
-          style={[
-            styles.previewText,
-            { fontSize: value },
-            disabled && styles.disabledLabel,
-          ]}
-        >
+      <View
+        style={[
+          styles.previewContainer,
+          {
+            backgroundColor: previewBackground,
+            borderColor: colorWithAlpha(
+              uiTokens.colors.accent,
+              uiTokens.mode === "dark" ? 0.28 : 0.18
+            ),
+            borderRadius: uiTokens.radius.md,
+            padding: uiTokens.spacing.sm,
+          },
+        ]}
+      >
+        <Text style={[styles.previewText, { color: labelColor, fontSize: value }]}>
           Sample Text Preview
         </Text>
       </View>
@@ -113,8 +133,7 @@ export const FontSizeSlider: React.FC<FontSizeSliderProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    padding: auroraTheme.spacing.md,
-    gap: auroraTheme.spacing.sm,
+    width: "100%",
   },
   disabledContainer: {
     opacity: 0.5,
@@ -127,25 +146,18 @@ const styles = StyleSheet.create({
   labelRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.xs,
   },
   label: {
-    fontSize: auroraTheme.typography.fontSize.base,
+    fontSize: typography.fontSize.base,
     fontWeight: "500",
-    color: auroraTheme.colors.text.primary,
-  },
-  disabledLabel: {
-    color: auroraTheme.colors.text.tertiary,
   },
   valueLabel: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.primary[400],
+    fontSize: typography.fontSize.sm,
     fontWeight: "600",
   },
   sliderContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.sm,
   },
   slider: {
     flex: 1,
@@ -153,19 +165,15 @@ const styles = StyleSheet.create({
   },
   minMaxLabel: {
     fontWeight: "600",
-    color: auroraTheme.colors.text.secondary,
     width: 28,
     textAlign: "center",
   },
   previewContainer: {
-    backgroundColor: auroraTheme.colors.background.glass,
-    borderRadius: auroraTheme.borderRadius.md,
-    padding: auroraTheme.spacing.sm,
+    borderWidth: 1,
     alignItems: "center",
   },
   previewText: {
-    color: auroraTheme.colors.text.primary,
-    fontFamily: auroraTheme.typography.fontFamily.body,
+    fontFamily: fontFamily.regular,
   },
 });
 

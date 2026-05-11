@@ -1,0 +1,79 @@
+{
+  "generated_at": "2026-05-03T02:49:01Z",
+  "postfix_stage1_shadow_metrics": {
+    "total": 60,
+    "mismatch": 0,
+    "timeout": 0,
+    "error": 0,
+    "endpoints": {
+      "admin_dashboard.kpis": {
+        "error": 0,
+        "error_rate": 0.0,
+        "mismatch": 0,
+        "mismatch_rate": 0.0,
+        "timeout": 0,
+        "timeout_rate": 0.0,
+        "total": 30
+      },
+      "dashboard.filter_options": {
+        "error": 0,
+        "error_rate": 0.0,
+        "mismatch": 0,
+        "mismatch_rate": 0.0,
+        "timeout": 0,
+        "timeout_rate": 0.0,
+        "total": 30
+      }
+    }
+  },
+  "postfix_decisions": [
+    {
+      "ts": "2026-05-03T02:46:43Z",
+      "decision": "NO-GO",
+      "reason": "no_shadow_data",
+      "total": 0,
+      "healthy": false,
+      "rollout": "HELD",
+      "next_stage": 1
+    },
+    {
+      "ts": "2026-05-03T02:47:03Z",
+      "decision": "NO-GO",
+      "reason": "shadow_health_window_pending",
+      "total": 60,
+      "healthy": true,
+      "rollout": "HELD",
+      "next_stage": 1
+    },
+    {
+      "ts": "2026-05-03T02:47:23Z",
+      "decision": "NO-GO",
+      "reason": "shadow_health_window_pending",
+      "total": 60,
+      "healthy": true,
+      "rollout": "HELD",
+      "next_stage": 1
+    },
+    {
+      "ts": "2026-05-03T02:47:43Z",
+      "decision": "GO",
+      "reason": "shadow_health_window_satisfied",
+      "total": 60,
+      "healthy": true,
+      "rollout": "READY",
+      "next_stage": 2
+    }
+  ],
+  "gate_evaluator_filter": {
+    "metric_sources": [
+      "shadow_total_requests",
+      "shadow_mismatch_count",
+      "shadow_timeout_count",
+      "shadow_error_count"
+    ],
+    "grouping": "labels.endpoint",
+    "health_rule": "total>0 and rates under thresholds",
+    "no_shadow_data_condition": "total<=0",
+    "window": "continuous healthy_for_seconds >= SHADOW_DECISION_WINDOW_SECONDS"
+  }
+}

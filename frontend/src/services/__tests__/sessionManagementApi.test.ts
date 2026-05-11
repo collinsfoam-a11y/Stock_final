@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-
 jest.mock("../httpClient", () => ({
   __esModule: true,
   default: {

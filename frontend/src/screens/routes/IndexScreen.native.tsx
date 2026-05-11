@@ -1,18 +1,11 @@
 import React, { useEffect, useMemo } from "react";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  View,
-  Text,
-  Platform,
-} from "react-native";
+import { ActivityIndicator, StyleSheet, View, Text, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { useAuthStore } from "@/store/authStore";
-import { AuroraBackground } from "@/components/ui/AuroraBackground";
-import { GlassCard } from "@/components/ui/GlassCard";
+import { ModernCard } from "@/components/ui/ModernCard";
 import { BrandLogo } from "@/components/branding/BrandLogo";
 import { useThemeContext } from "@/context/ThemeContext";
 import type { AppTheme } from "@/theme/themes";
@@ -61,7 +54,7 @@ export function IndexScreen() {
         entering={FadeInDown.delay(300).springify()}
         style={styles.contentContainer}
       >
-        <GlassCard variant="strong" elevation="lg" style={styles.card}>
+        <ModernCard variant="outlined" elevation="none" style={styles.card}>
           <View style={styles.logoContainer}>
             <BrandLogo variant="wordmarkTagline" maxWidth={250} maxHeight={110} />
             <Text style={styles.title}>Lavanya Mart</Text>
@@ -70,11 +63,9 @@ export function IndexScreen() {
 
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.accentLight} />
-            <Text style={styles.loadingText}>
-              Initializing Secure Environment...
-            </Text>
+            <Text style={styles.loadingText}>Initializing Secure Environment...</Text>
           </View>
-        </GlassCard>
+        </ModernCard>
       </SafeAnimatedView>
 
       <SafeAnimatedView entering={FadeInDown.delay(600).duration(1000)}>
@@ -84,15 +75,19 @@ export function IndexScreen() {
   );
 
   return (
-    <AuroraBackground variant="primary" intensity="high" animated>
+    <View style={styles.screen}>
       <StatusBar style="light" />
       {content}
-    </AuroraBackground>
+    </View>
   );
 }
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: theme.colors.background.default,
+    },
     container: {
       flex: 1,
       justifyContent: "center",

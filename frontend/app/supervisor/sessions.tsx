@@ -5,14 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  RefreshControl,
-  Platform,
-} from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { FlashList } from "@shopify/flash-list";
@@ -21,14 +14,11 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
 import { getSessions } from "../../src/services/api/api";
-import {
-  GlassCard,
-  AnimatedPressable,
-  ScreenContainer,
-} from "../../src/components/ui";
+import { ModernCard, AnimatedPressable, ScreenContainer } from "../../src/components/ui";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { theme } from "../../src/styles/unifiedSystem";
 import { useToast } from "../../src/components/feedback/ToastProvider";
+import { safeBackNavigation } from "@/utils/navigation";
 
 export default function SessionsList() {
   const router = useRouter();
@@ -66,7 +56,7 @@ export default function SessionsList() {
         setLoadingMore(false);
       }
     },
-    [show],
+    [show]
   );
 
   useEffect(() => {
@@ -74,8 +64,7 @@ export default function SessionsList() {
   }, [loadSessions]);
 
   const handleRefresh = () => {
-    if (Platform.OS !== "web")
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     setPage(1);
     loadSessions(1, true);
@@ -114,31 +103,16 @@ export default function SessionsList() {
           onPress={() => router.push(`/supervisor/session/${item.id}` as any)}
           style={{ marginBottom: theme.spacing.md }}
         >
-          <GlassCard
-            variant="medium"
-            padding={theme.spacing.md}
-            borderRadius={theme.borderRadius.lg}
-            intensity={20}
-          >
+          <ModernCard variant="outlined" elevation="none" padding={theme.spacing.md} intensity={20}>
             <View style={styles.cardHeader}>
               <View style={styles.cardHeaderLeft}>
                 <View style={styles.titleRow}>
-                  <Ionicons
-                    name="business-outline"
-                    size={20}
-                    color={theme.colors.primary[500]}
-                  />
+                  <Ionicons name="business-outline" size={20} color={theme.colors.primary[500]} />
                   <Text style={styles.warehouseName}>{item.warehouse}</Text>
                 </View>
                 <View style={styles.staffContainer}>
-                  <Ionicons
-                    name="person-outline"
-                    size={14}
-                    color={theme.colors.text.secondary}
-                  />
-                  <Text style={styles.staffName}>
-                    {item.staff_name || "Unknown Staff"}
-                  </Text>
+                  <Ionicons name="person-outline" size={14} color={theme.colors.text.secondary} />
+                  <Text style={styles.staffName}>{item.staff_name || "Unknown Staff"}</Text>
                 </View>
                 {item.barcode && (
                   <View style={styles.barcodeContainer}>
@@ -160,19 +134,13 @@ export default function SessionsList() {
                   },
                 ]}
               >
-                <Text style={[styles.statusText, { color: statusColor }]}>
-                  {item.status}
-                </Text>
+                <Text style={[styles.statusText, { color: statusColor }]}>{item.status}</Text>
               </View>
             </View>
 
             <View style={styles.cardBody}>
               <View style={styles.statItem}>
-                <Ionicons
-                  name="cube-outline"
-                  size={16}
-                  color={theme.colors.text.secondary}
-                />
+                <Ionicons name="cube-outline" size={16} color={theme.colors.text.secondary} />
                 <Text style={styles.statText}>{item.total_items} Items</Text>
               </View>
 
@@ -180,11 +148,7 @@ export default function SessionsList() {
                 <Ionicons
                   name="analytics-outline"
                   size={16}
-                  color={
-                    hasVariance
-                      ? theme.colors.error.main
-                      : theme.colors.text.secondary
-                  }
+                  color={hasVariance ? theme.colors.error.main : theme.colors.text.secondary}
                 />
                 <Text
                   style={[
@@ -204,7 +168,7 @@ export default function SessionsList() {
                 </Text>
               </View>
             </View>
-          </GlassCard>
+          </ModernCard>
         </AnimatedPressable>
       </Animated.View>
     );
@@ -212,8 +176,9 @@ export default function SessionsList() {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <GlassCard
-        variant="medium"
+      <ModernCard
+        variant="outlined"
+        elevation="none"
         style={styles.emptyCard}
         padding={theme.spacing.xl}
         intensity={15}
@@ -221,15 +186,13 @@ export default function SessionsList() {
         <Ionicons
           name={offlineMode ? "cloud-offline-outline" : "cube-outline"}
           size={64}
-          color={
-            offlineMode ? theme.colors.warning.main : theme.colors.text.secondary
-          }
+          color={offlineMode ? theme.colors.warning.main : theme.colors.text.secondary}
           style={{ opacity: 0.5 }}
         />
         <Text style={styles.emptyText}>
           {offlineMode ? "No cached sessions available" : "No sessions found"}
         </Text>
-      </GlassCard>
+      </ModernCard>
     </View>
   );
 
@@ -247,51 +210,32 @@ export default function SessionsList() {
       <StatusBar style="light" />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View
-          entering={FadeInDown.delay(100).springify()}
-          style={styles.header}
-        >
+        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
           <View style={styles.headerLeft}>
             <AnimatedPressable
-              onPress={() => router.back()}
+              onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
             >
-              <Ionicons
-                name="arrow-back"
-                size={24}
-                color={theme.colors.text.primary}
-              />
+              <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
             </AnimatedPressable>
             <View>
               <Text style={styles.pageTitle}>All Sessions</Text>
               <Text style={styles.pageSubtitle}>
-                {offlineMode
-                  ? "Cached session history"
-                  : "Stock Verification History"}
+                {offlineMode ? "Cached session history" : "Stock Verification History"}
               </Text>
             </View>
           </View>
-          <AnimatedPressable
-            onPress={handleRefresh}
-            style={styles.refreshButton}
-          >
-            <Ionicons
-              name="refresh"
-              size={24}
-              color={theme.colors.primary[500]}
-            />
+          <AnimatedPressable onPress={handleRefresh} style={styles.refreshButton}>
+            <Ionicons name="refresh" size={24} color={theme.colors.primary[500]} />
           </AnimatedPressable>
         </Animated.View>
 
         {offlineMode && (
-          <Animated.View
-            entering={FadeInDown.delay(140).springify()}
-            style={styles.noticeWrap}
-          >
-            <GlassCard
-              variant="medium"
+          <Animated.View entering={FadeInDown.delay(140).springify()} style={styles.noticeWrap}>
+            <ModernCard
+              variant="outlined"
+              elevation="none"
               padding={theme.spacing.md}
-              borderRadius={theme.borderRadius.lg}
               intensity={15}
             >
               <View style={styles.noticeRow}>
@@ -301,17 +245,14 @@ export default function SessionsList() {
                   color={theme.colors.warning.main}
                 />
                 <View style={styles.noticeCopy}>
-                  <Text style={styles.noticeTitle}>
-                    Showing cached sessions only
-                  </Text>
+                  <Text style={styles.noticeTitle}>Showing cached sessions only</Text>
                   <Text style={styles.noticeText}>
-                    You can review locally cached session data offline. Live
-                    status changes and server refresh still require a
-                    connection.
+                    You can review locally cached session data offline. Live status changes and
+                    server refresh still require a connection.
                   </Text>
                 </View>
               </View>
-            </GlassCard>
+            </ModernCard>
           </Animated.View>
         )}
 

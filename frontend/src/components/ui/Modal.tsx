@@ -28,6 +28,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
 import { BlurView } from "expo-blur";
 
+import { shadows as uiShadows } from "@/theme/legacyCompat";
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export interface ModalProps {
@@ -136,12 +137,7 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <RNModal
-      visible={visible}
-      transparent
-      animationType={animationType}
-      onRequestClose={onClose}
-    >
+    <RNModal visible={visible} transparent animationType={animationType} onRequestClose={onClose}>
       <AnimatedPressable
         onPress={closeOnBackdropPress ? onClose : undefined}
         style={[styles.backdrop, backdropAnimatedStyle]}
@@ -149,12 +145,7 @@ export const Modal: React.FC<ModalProps> = ({
         {Platform.OS !== "web" ? (
           <BlurView intensity={20} style={StyleSheet.absoluteFill} />
         ) : (
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              { backgroundColor: "rgba(0,0,0,0.5)" },
-            ]}
-          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.5)" }]} />
         )}
         <Pressable
           onPress={(e: GestureResponderEvent) => e.stopPropagation()}
@@ -176,18 +167,9 @@ export const Modal: React.FC<ModalProps> = ({
               ]}
             >
               {(title || showCloseButton) && (
-                <View
-                  style={[
-                    styles.header,
-                    { borderBottomColor: theme.colors.border },
-                  ]}
-                >
+                <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
                   {title && (
-                    <Text
-                      style={[styles.title, { color: theme.colors.text }]}
-                    >
-                      {title}
-                    </Text>
+                    <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
                   )}
                   {showCloseButton && (
                     <TouchableOpacity
@@ -195,11 +177,7 @@ export const Modal: React.FC<ModalProps> = ({
                       style={styles.closeButton}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                      <Ionicons
-                        name="close"
-                        size={24}
-                        color={theme.colors.textSecondary}
-                      />
+                      <Ionicons name="close" size={24} color={theme.colors.textSecondary} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -243,10 +221,7 @@ const styles = StyleSheet.create({
       },
       default: {
         elevation: 8,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        ...uiShadows.md,
       },
     }),
   },

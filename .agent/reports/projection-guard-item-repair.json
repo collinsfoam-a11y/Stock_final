@@ -1,0 +1,377 @@
+{
+  "mode": "execute",
+  "count_lines_scanned": 30,
+  "active_count_lines": 30,
+  "missing_verified_items": 28,
+  "missing_variance_items": 28,
+  "missing_batch_rows": 28,
+  "missing_financial_rows": 21,
+  "inserted_verified_items": 28,
+  "inserted_variance_items": 28,
+  "inserted_batch_rows": 28,
+  "inserted_financial_rows": 21,
+  "skipped_superseded": 0,
+  "skipped_missing_id": 0,
+  "errors": 0,
+  "candidate_lines": [
+    {
+      "count_line_id": "695c05abceeb18c2c478ba7d",
+      "session_id": "0cba0ad4-4ea0-4ebc-a590-33bcc04b6e1f",
+      "item_code": "12716",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "7bf0682d-a294-4270-b8cc-e6abfb3c28e4",
+      "session_id": "c9fc3d83-e6d0-4246-9218-d0c7db5570cb",
+      "item_code": "17029",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "07501134-be47-45ea-81a3-84a2da1a1b71",
+      "session_id": "ab955f64-d478-4c6f-b08c-eb2bacf40a08",
+      "item_code": "17029",
+      "variance": 2.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "e8567638-61f5-4c41-a4e0-15bacab28e23",
+      "session_id": "3aaa3ab1-4420-409b-bb6e-d226c2e8c68f",
+      "item_code": "17029",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "2c321b9c-4652-440c-87e6-4eae5d42dfa7",
+      "session_id": "3e70a682-8015-4d33-93b6-80502b2a7486",
+      "item_code": "17029",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "f2e88f5b-f44b-419f-8cdf-d78c30e12876",
+      "session_id": "3e70a682-8015-4d33-93b6-80502b2a7486",
+      "item_code": "14122",
+      "variance": -2.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "58dc5eef-5e13-4f08-8744-af6e55a291d7",
+      "session_id": "a0498b9e-baeb-4431-9a5e-7f4003292e65",
+      "item_code": "2657",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "7cffb10a-d325-4565-849f-7ab25c1f2f51",
+      "session_id": "a0498b9e-baeb-4431-9a5e-7f4003292e65",
+      "item_code": "17443",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "d5f8c4a5-b25b-463c-bcd4-87dbb083fa16",
+      "session_id": "3e70a682-8015-4d33-93b6-80502b2a7486",
+      "item_code": "13503",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "dfadd3a1-8702-424a-93d1-71e96002047d",
+      "session_id": "3e70a682-8015-4d33-93b6-80502b2a7486",
+      "item_code": "14151",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "e94f7c9f-4faf-4171-a298-ff217fdffcc6",
+      "session_id": "dece1d49-771b-409c-a5c9-a3b5bb33a264",
+      "item_code": "12695",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "59311953-c5aa-428b-bbcb-a08aa87f7419",
+      "session_id": "00011e6f-d298-4448-b683-5a22da5c94fe",
+      "item_code": "13243",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "2f0de9ab-9ed6-42b5-9310-8dcc0af538c3",
+      "session_id": "00011e6f-d298-4448-b683-5a22da5c94fe",
+      "item_code": "12704",
+      "variance": -1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "6345d5f7-47f0-4650-8729-d17e5cca429a",
+      "session_id": "e0ac66b3-8fa9-4117-a0b1-e67aa4d32d85",
+      "item_code": "13503",
+      "variance": -2.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "cffe5e89-9b79-4422-b4c5-da3689916c89",
+      "session_id": "95a080f1-db54-4001-b2b6-60d888e3dc29",
+      "item_code": "11734",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "manual-inject-sujata-001",
+      "session_id": "95a080f1-db54-4001-b2b6-60d888e3dc29",
+      "item_code": "SUJ001",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "0a1319e5-6888-497a-ba89-0a5c8d193397",
+      "session_id": "95a080f1-db54-4001-b2b6-60d888e3dc29",
+      "item_code": "18093",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "343b43b2-09ba-4d73-b5be-114294462a01",
+      "session_id": "7cc68ce4-5d98-41ed-81bd-6ea12646e2a4",
+      "item_code": "3455",
+      "variance": 2.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "565f1798-b60b-4771-a53b-f48ac183a4a9",
+      "session_id": "c9216fd9-d453-47a3-9830-cbb36cb9aead",
+      "item_code": "18019",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "820795bd-3521-49cb-a513-4660c73f275e",
+      "session_id": "0225de3d-a66f-4f14-9412-f1a48c94eb11",
+      "item_code": "18019",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "814bab50-34ce-4895-a3d3-8481b7ab6bb2",
+      "session_id": "7175d1f6-1cc8-4b4e-88a9-8a85179054b5",
+      "item_code": "18019",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "cb2d07de-64e1-424c-a49a-e83fbcef942a",
+      "session_id": "ffcf1485-9639-45f9-af05-30e07fb241be",
+      "item_code": "19050",
+      "variance": 0.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "6f6fcdda-68cd-4ec3-a94b-30a0c745df72",
+      "session_id": "9fa0189c-38e7-4387-a642-14c90a7147c9",
+      "item_code": "19050",
+      "variance": -1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "2a1c7527-c9b1-4f40-9aaa-c239afcfe911",
+      "session_id": "1b55979f-618d-4d2c-b685-0a533b8c868a",
+      "item_code": "18019",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "01357d67-5cdf-40f8-b5d0-141f2ed6cd76",
+      "session_id": "87048fbf-780e-4f69-9e42-ef6eb9227792",
+      "item_code": "18019",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "e8cd18c5-d0b2-45b2-9ce4-1da7bc94f7b9",
+      "session_id": "3aee6a58-08d7-47f0-adbe-66cc1a6db719",
+      "item_code": "18019",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "4c501ee6-2b4e-4e84-a872-71ada98a2d70",
+      "session_id": "59c5b8a9-96ca-41d9-b3fd-57b57e574310",
+      "item_code": "18019",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "a4c0625f-dc54-4876-bcf1-56784d04ecc6",
+      "session_id": "edae9046-b1bb-4f03-9177-b9d8828291c3",
+      "item_code": "18019",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    }
+  ],
+  "candidate_financial_sessions": [
+    {
+      "session_id": "0cba0ad4-4ea0-4ebc-a590-33bcc04b6e1f",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "c9fc3d83-e6d0-4246-9218-d0c7db5570cb",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "ab955f64-d478-4c6f-b08c-eb2bacf40a08",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "3aaa3ab1-4420-409b-bb6e-d226c2e8c68f",
+      "line_count": 1,
+      "financial_total": 12.0
+    },
+    {
+      "session_id": "3e70a682-8015-4d33-93b6-80502b2a7486",
+      "line_count": 5,
+      "financial_total": 22502.0
+    },
+    {
+      "session_id": "a0498b9e-baeb-4431-9a5e-7f4003292e65",
+      "line_count": 2,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "dece1d49-771b-409c-a5c9-a3b5bb33a264",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "00011e6f-d298-4448-b683-5a22da5c94fe",
+      "line_count": 2,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "e0ac66b3-8fa9-4117-a0b1-e67aa4d32d85",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "95a080f1-db54-4001-b2b6-60d888e3dc29",
+      "line_count": 4,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "7cc68ce4-5d98-41ed-81bd-6ea12646e2a4",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "c9216fd9-d453-47a3-9830-cbb36cb9aead",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "0225de3d-a66f-4f14-9412-f1a48c94eb11",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "7175d1f6-1cc8-4b4e-88a9-8a85179054b5",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "ffcf1485-9639-45f9-af05-30e07fb241be",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "9fa0189c-38e7-4387-a642-14c90a7147c9",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "1b55979f-618d-4d2c-b685-0a533b8c868a",
+      "line_count": 1,
+      "financial_total": 230.0
+    },
+    {
+      "session_id": "87048fbf-780e-4f69-9e42-ef6eb9227792",
+      "line_count": 1,
+      "financial_total": 230.0
+    },
+    {
+      "session_id": "3aee6a58-08d7-47f0-adbe-66cc1a6db719",
+      "line_count": 1,
+      "financial_total": 230.0
+    },
+    {
+      "session_id": "59c5b8a9-96ca-41d9-b3fd-57b57e574310",
+      "line_count": 1,
+      "financial_total": 230.0
+    },
+    {
+      "session_id": "edae9046-b1bb-4f03-9177-b9d8828291c3",
+      "line_count": 1,
+      "financial_total": 230.0
+    }
+  ]
+}

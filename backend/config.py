@@ -513,6 +513,13 @@ try:
 except Exception as e:
     import warnings  # noqa: E402
 
+    fallback_env = os.getenv("ENVIRONMENT", os.getenv("APP_ENV", "development")).lower()
+    if fallback_env in {"production", "staging"}:
+        raise RuntimeError(
+            "CRITICAL: Settings validation failed in production/staging. "
+            "Fallback settings are not allowed for production startup."
+        ) from e
+
     warnings.warn(
         f"Configuration Error: {e}. Using environment variables with defaults.",
         stacklevel=2,
@@ -546,8 +553,6 @@ except Exception as e:
             jwt_secret = _secret_env_first("JWT_SECRET")
             if not jwt_secret:
                 raise ValueError("JWT_SECRET environment variable is required")
-            if len(jwt_secret) < 32:
-                raise ValueError("JWT_SECRET must be at least 32 characters long")
             if jwt_secret in INSECURE_JWT_SECRET_VALUES:
                 raise ValueError("JWT_SECRET contains a known insecure default value")
             self.JWT_SECRET = jwt_secret
@@ -555,8 +560,6 @@ except Exception as e:
             jwt_refresh_secret = _secret_env_first("JWT_REFRESH_SECRET")
             if not jwt_refresh_secret:
                 raise ValueError("JWT_REFRESH_SECRET environment variable is required")
-            if len(jwt_refresh_secret) < 32:
-                raise ValueError("JWT_REFRESH_SECRET must be at least 32 characters long")
             if jwt_refresh_secret in INSECURE_JWT_REFRESH_SECRET_VALUES:
                 raise ValueError("JWT_REFRESH_SECRET contains a known insecure default value")
             self.JWT_REFRESH_SECRET = jwt_refresh_secret
@@ -659,6 +662,11 @@ def perform_security_checks(settings_obj):
                 )
 
     except Exception as e:
+        environment = getattr(
+            settings_obj, "ENVIRONMENT", os.getenv("ENVIRONMENT", "development")
+        ).lower()
+        if environment in {"production", "staging"}:
+            raise RuntimeError(f"Security check failed in {environment}: {e}") from e
         if str(getattr(settings_obj, "DEBUG", False)).lower() not in ("1", "true"):
             logger.warning(f"Security check warning: {e}")
 

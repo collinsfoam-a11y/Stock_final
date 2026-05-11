@@ -1,7 +1,6 @@
 // Learn more https://docs.expo.io/guides/customizing-metro
 const path = require("path");
 const { getDefaultConfig } = require("expo/metro-config");
-const { resolve } = require("metro-resolver");
 
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
@@ -18,7 +17,9 @@ config.resolver = {
   ...config.resolver,
 };
 
-const defaultResolveRequest = config.resolver.resolveRequest || resolve;
+const defaultResolveRequest =
+  config.resolver.resolveRequest ||
+  ((context, moduleName, platform) => context.resolveRequest(context, moduleName, platform));
 const zustandMiddlewareFile = path.join(
   __dirname,
   "node_modules",

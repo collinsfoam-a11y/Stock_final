@@ -1,20 +1,17 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import React from "react";
-import {
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import React, { useMemo } from "react";
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
 import {
-  colors,
-  fontWeight,
-  radius as borderRadius,
-  semanticColors,
-  spacing,
-} from "@/theme/unified";
+  COMFORTABLE_TOUCH_TARGET,
+  getAccessibleButtonProps,
+  getAccessibleToggleProps,
+  getDecorativeIconProps,
+  getMinimumTouchTargetStyle,
+  OPERATIONAL_HIT_SLOP,
+} from "@/utils/accessibility";
 
 interface CountQuantitySectionProps {
   isSplitMode: boolean;
@@ -53,43 +50,228 @@ export function CountQuantitySection({
   onSplitCountChange,
   onToggleSplitMode,
 }: CountQuantitySectionProps) {
+  const uiTokens = useUiTokens();
+  const decorativeIconProps = getDecorativeIconProps();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        actionRow: {
+          flexDirection: "row",
+          gap: uiTokens.spacing.sm,
+          marginTop: uiTokens.spacing.xs,
+        },
+        addSplitButton: {
+          alignItems: "center",
+          backgroundColor: uiTokens.colors.accent,
+          borderRadius: uiTokens.radius.md,
+          flexDirection: "row",
+          gap: uiTokens.spacing.xs,
+          justifyContent: "center",
+          flex: 1,
+          height: 44,
+        },
+        addSplitButtonText: {
+          color: uiTokens.colors.surfaceElevated,
+          fontWeight: "700",
+          fontSize: 13,
+        },
+        clearButton: {
+          alignItems: "center",
+          backgroundColor: colorWithAlpha(
+            uiTokens.colors.error,
+            uiTokens.mode === "dark" ? 0.2 : 0.08
+          ),
+          borderColor: colorWithAlpha(uiTokens.colors.error, 0.35),
+          borderRadius: uiTokens.radius.md,
+          borderWidth: 1,
+          height: 44,
+          justifyContent: "center",
+          width: 44,
+        },
+        header: {
+          alignItems: "center",
+          flexDirection: "row",
+        },
+        headerText: {
+          flex: 1,
+        },
+        helperText: {
+          color: uiTokens.colors.textSecondary,
+          fontSize: 12,
+          fontWeight: "500",
+          marginBottom: uiTokens.spacing.sm,
+        },
+        metaRow: {
+          alignItems: "center",
+          flexDirection: "row",
+          gap: uiTokens.spacing.xs,
+        },
+        modeBadge: {
+          backgroundColor: colorWithAlpha(
+            uiTokens.colors.accent,
+            uiTokens.mode === "dark" ? 0.25 : 0.12
+          ),
+          borderColor: colorWithAlpha(uiTokens.colors.accent, 0.35),
+          borderRadius: uiTokens.radius.sm,
+          borderWidth: 1,
+          paddingHorizontal: uiTokens.spacing.sm,
+          paddingVertical: uiTokens.spacing.xxs,
+        },
+        modeBadgeText: {
+          color: uiTokens.colors.accentStrong,
+          fontSize: 10,
+          fontWeight: "700",
+          textTransform: "uppercase",
+        },
+        qtyButton: {
+          alignItems: "center",
+          borderRadius: uiTokens.radius.lg,
+          height: 56,
+          justifyContent: "center",
+          width: 56,
+        },
+        qtyDisplay: {
+          alignItems: "center",
+          borderRadius: uiTokens.radius.lg,
+          borderWidth: 2,
+          flex: 1,
+          height: 56,
+          justifyContent: "center",
+          marginHorizontal: uiTokens.spacing.sm,
+        },
+        qtyText: {
+          fontSize: 28,
+          fontWeight: "800",
+          textAlign: "center",
+          width: "100%",
+          color: uiTokens.colors.textPrimary,
+        },
+        quantityContainer: {
+          alignItems: "center",
+          flexDirection: "row",
+          marginTop: uiTokens.spacing.md,
+          marginBottom: uiTokens.spacing.md,
+        },
+        removeButton: {
+          ...getMinimumTouchTargetStyle(),
+          alignItems: "center",
+          justifyContent: "center",
+          padding: uiTokens.spacing.sm,
+        },
+        sectionMeta: {
+          fontSize: 13,
+          fontWeight: "600",
+          color: uiTokens.colors.textSecondary,
+        },
+        sectionTitle: {
+          fontSize: 16,
+          fontWeight: "700",
+          color: uiTokens.colors.textPrimary,
+          marginBottom: 2,
+        },
+        splitCountContainer: {
+          backgroundColor: uiTokens.colors.surface,
+          borderColor: uiTokens.colors.border,
+          borderRadius: uiTokens.radius.lg,
+          borderWidth: 1,
+          marginTop: uiTokens.spacing.sm,
+          padding: uiTokens.spacing.md,
+        },
+        splitIndexBadge: {
+          alignItems: "center",
+          backgroundColor: uiTokens.colors.surfaceElevated,
+          borderRadius: uiTokens.radius.full,
+          height: 32,
+          justifyContent: "center",
+          width: 32,
+          borderWidth: 1,
+          borderColor: uiTokens.colors.border,
+        },
+        splitIndexText: {
+          color: uiTokens.colors.textSecondary,
+          fontSize: 12,
+          fontWeight: "700",
+        },
+        splitInput: {
+          backgroundColor: uiTokens.colors.surface,
+          borderColor: uiTokens.colors.border,
+          borderRadius: uiTokens.radius.md,
+          borderWidth: 1,
+          color: uiTokens.colors.textPrimary,
+          flex: 1,
+          fontSize: 18,
+          fontWeight: "700",
+          marginHorizontal: uiTokens.spacing.sm,
+          paddingHorizontal: uiTokens.spacing.md,
+          paddingVertical: uiTokens.spacing.sm,
+        },
+        splitRow: {
+          alignItems: "center",
+          flexDirection: "row",
+          marginBottom: uiTokens.spacing.sm,
+        },
+        toggleButton: {
+          alignItems: "center",
+          borderRadius: uiTokens.radius.full,
+          flexDirection: "row",
+          gap: uiTokens.spacing.xs,
+          paddingHorizontal: uiTokens.spacing.sm + uiTokens.spacing.xxs,
+          paddingVertical: uiTokens.spacing.xs + uiTokens.spacing.xxs,
+          borderWidth: 1,
+          minHeight: COMFORTABLE_TOUCH_TARGET,
+        },
+        toggleButtonText: {
+          fontSize: 12,
+          fontWeight: "700",
+        },
+      }),
+    [uiTokens]
+  );
+
   return (
     <>
       <View style={styles.header}>
         <View style={styles.headerText}>
-          <Text
-            style={[
-              styles.sectionTitle,
-              { color: semanticColors.text.primary, marginBottom: 2 },
-            ]}
-          >
-            Count
-          </Text>
+          <Text style={styles.sectionTitle}>Count</Text>
           <View style={styles.metaRow}>
             <View style={styles.modeBadge}>
               <Text style={styles.modeBadgeText}>{uomLabel} Mode</Text>
             </View>
-            <Text
-              style={[
-                styles.sectionMeta,
-                { color: semanticColors.text.secondary, fontSize: 12 },
-              ]}
-            >
-              Unit: {uomUnit}
-            </Text>
+            <Text style={styles.sectionMeta}>Unit: {uomUnit}</Text>
           </View>
         </View>
 
-        <TouchableOpacity onPress={onToggleSplitMode} style={styles.toggleButton}>
+        <TouchableOpacity
+          {...getAccessibleToggleProps({
+            label: isSplitMode ? "Switch to piece count mode" : "Switch to split count mode",
+            selected: isSplitMode,
+          })}
+          onPress={onToggleSplitMode}
+          style={[
+            styles.toggleButton,
+            {
+              backgroundColor: isSplitMode
+                ? uiTokens.colors.accent
+                : colorWithAlpha(uiTokens.colors.accent, uiTokens.mode === "dark" ? 0.16 : 0.08),
+              borderColor: isSplitMode
+                ? uiTokens.colors.accent
+                : colorWithAlpha(uiTokens.colors.accent, 0.32),
+            },
+          ]}
+        >
           <Ionicons
+            {...decorativeIconProps}
             name={isSplitMode ? "grid" : "grid-outline"}
             size={14}
-            color={isSplitMode ? colors.white : colors.primary[600]}
+            color={isSplitMode ? uiTokens.colors.surfaceElevated : uiTokens.colors.accentStrong}
           />
           <Text
             style={[
               styles.toggleButtonText,
-              { color: isSplitMode ? colors.white : colors.primary[600] },
+              {
+                color: isSplitMode ? uiTokens.colors.surfaceElevated : uiTokens.colors.accentStrong,
+              },
             ]}
           >
             {isSplitMode ? "Piece Count" : "Split Count"}
@@ -99,12 +281,19 @@ export function CountQuantitySection({
 
       <View style={styles.quantityContainer}>
         <TouchableOpacity
+          {...getAccessibleButtonProps({
+            label: "Decrease counted quantity",
+            disabled: isSplitMode,
+            hitSlop: OPERATIONAL_HIT_SLOP.comfortable,
+          })}
           style={[
             styles.qtyButton,
             {
               backgroundColor: isSplitMode
-                ? colors.neutral[100]
-                : colors.neutral[200],
+                ? uiTokens.colors.surface
+                : uiTokens.colors.surfaceElevated,
+              borderWidth: 1,
+              borderColor: uiTokens.colors.border,
             },
           ]}
           onPress={onDecrement}
@@ -112,11 +301,10 @@ export function CountQuantitySection({
           activeOpacity={0.7}
         >
           <Ionicons
+            {...decorativeIconProps}
             name="remove"
             size={28}
-            color={
-              isSplitMode ? colors.neutral[300] : semanticColors.text.primary
-            }
+            color={isSplitMode ? uiTokens.colors.textMuted : uiTokens.colors.textPrimary}
           />
         </TouchableOpacity>
 
@@ -124,8 +312,8 @@ export function CountQuantitySection({
           style={[
             styles.qtyDisplay,
             {
-              backgroundColor: semanticColors.background.paper,
-              borderColor: colors.primary[200],
+              backgroundColor: uiTokens.colors.surface,
+              borderColor: colorWithAlpha(uiTokens.colors.accent, 0.4),
             },
           ]}
         >
@@ -133,9 +321,7 @@ export function CountQuantitySection({
             style={[
               styles.qtyText,
               {
-                color: isSplitMode
-                  ? colors.primary[700]
-                  : semanticColors.text.primary,
+                color: isSplitMode ? uiTokens.colors.accentStrong : uiTokens.colors.textPrimary,
               },
             ]}
             value={quantity}
@@ -145,17 +331,24 @@ export function CountQuantitySection({
             keyboardType={isWeightBasedUOM ? "decimal-pad" : "number-pad"}
             selectTextOnFocus
             placeholder="0"
-            placeholderTextColor={semanticColors.text.disabled}
+            placeholderTextColor={uiTokens.colors.textMuted}
+            accessibilityLabel={`Counted quantity in ${uomUnit}`}
+            accessibilityHint="Enter the counted quantity for this item"
           />
         </View>
 
         <TouchableOpacity
+          {...getAccessibleButtonProps({
+            label: "Increase counted quantity",
+            disabled: isSplitMode,
+            hitSlop: OPERATIONAL_HIT_SLOP.comfortable,
+          })}
           style={[
             styles.qtyButton,
             {
-              backgroundColor: isSplitMode
-                ? colors.neutral[100]
-                : colors.primary[600],
+              backgroundColor: isSplitMode ? uiTokens.colors.surface : uiTokens.colors.accent,
+              borderWidth: 1,
+              borderColor: isSplitMode ? uiTokens.colors.border : uiTokens.colors.accent,
             },
           ]}
           onPress={onIncrement}
@@ -163,9 +356,10 @@ export function CountQuantitySection({
           activeOpacity={0.7}
         >
           <Ionicons
+            {...decorativeIconProps}
             name="add"
             size={28}
-            color={isSplitMode ? colors.neutral[300] : colors.white}
+            color={isSplitMode ? uiTokens.colors.textMuted : uiTokens.colors.surfaceElevated}
           />
         </TouchableOpacity>
       </View>
@@ -185,23 +379,28 @@ export function CountQuantitySection({
               <TextInput
                 style={styles.splitInput}
                 value={value}
-                onChangeText={(nextValue) =>
-                  onSplitCountChange(index, nextValue)
-                }
+                onChangeText={(nextValue) => onSplitCountChange(index, nextValue)}
                 onBlur={() => onSplitCountBlur(index)}
                 keyboardType={isWeightBasedUOM ? "decimal-pad" : "number-pad"}
                 placeholder="0"
+                placeholderTextColor={uiTokens.colors.textMuted}
                 selectTextOnFocus
+                accessibilityLabel={`Split count ${index + 1}`}
               />
 
               <TouchableOpacity
+                {...getAccessibleButtonProps({
+                  label: `Remove split count ${index + 1}`,
+                  hitSlop: OPERATIONAL_HIT_SLOP.standard,
+                })}
                 onPress={() => onRemoveSplitCount(index)}
                 style={styles.removeButton}
               >
                 <Ionicons
+                  {...decorativeIconProps}
                   name="remove-circle"
                   size={24}
-                  color={colors.error[400]}
+                  color={uiTokens.colors.error}
                 />
               </TouchableOpacity>
             </View>
@@ -209,18 +408,32 @@ export function CountQuantitySection({
 
           <View style={styles.actionRow}>
             <TouchableOpacity
-              style={[styles.addSplitButton, { flex: 1, height: 44 }]}
+              {...getAccessibleButtonProps({ label: "Add split count row" })}
+              style={styles.addSplitButton}
               onPress={onAddSplitCount}
             >
-              <Ionicons name="add-circle" size={20} color={colors.white} />
+              <Ionicons
+                {...decorativeIconProps}
+                name="add-circle"
+                size={20}
+                color={uiTokens.colors.surfaceElevated}
+              />
               <Text style={styles.addSplitButtonText}>Add Piece</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.clearButton} onPress={onClearSplitCounts}>
+            <TouchableOpacity
+              {...getAccessibleButtonProps({
+                label: "Clear all split counts",
+                hitSlop: OPERATIONAL_HIT_SLOP.standard,
+              })}
+              style={styles.clearButton}
+              onPress={onClearSplitCounts}
+            >
               <Ionicons
+                {...decorativeIconProps}
                 name="trash-outline"
                 size={20}
-                color={colors.error[500]}
+                color={uiTokens.colors.error}
               />
             </TouchableOpacity>
           </View>
@@ -229,156 +442,3 @@ export function CountQuantitySection({
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  actionRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  addSplitButton: {
-    alignItems: "center",
-    backgroundColor: colors.primary[600],
-    borderRadius: borderRadius.md,
-    flexDirection: "row",
-    gap: spacing.xs,
-    justifyContent: "center",
-  },
-  addSplitButtonText: {
-    color: colors.white,
-    fontWeight: fontWeight.bold,
-  },
-  clearButton: {
-    alignItems: "center",
-    backgroundColor: colors.neutral[100],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    height: 44,
-    justifyContent: "center",
-    width: 44,
-  },
-  header: {
-    alignItems: "center",
-    flexDirection: "row",
-  },
-  headerText: {
-    flex: 1,
-  },
-  helperText: {
-    color: semanticColors.text.secondary,
-    fontSize: 12,
-    fontWeight: "500",
-    marginBottom: spacing.sm,
-  },
-  metaRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 6,
-  },
-  modeBadge: {
-    backgroundColor: colors.primary[50],
-    borderColor: colors.primary[100],
-    borderRadius: 4,
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  modeBadgeText: {
-    color: colors.primary[700],
-    fontSize: 10,
-    fontWeight: fontWeight.bold,
-    textTransform: "uppercase",
-  },
-  qtyButton: {
-    alignItems: "center",
-    borderRadius: borderRadius.lg,
-    height: 56,
-    justifyContent: "center",
-    width: 56,
-  },
-  qtyDisplay: {
-    alignItems: "center",
-    borderRadius: borderRadius.lg,
-    borderWidth: 2,
-    flex: 1,
-    height: 56,
-    justifyContent: "center",
-    marginHorizontal: spacing.sm,
-  },
-  qtyText: {
-    fontSize: 28,
-    fontWeight: fontWeight.bold,
-    textAlign: "center",
-    width: "100%",
-  },
-  quantityContainer: {
-    alignItems: "center",
-    flexDirection: "row",
-    marginTop: spacing.md,
-    marginBottom: spacing.md,
-  },
-  removeButton: {
-    padding: 8,
-  },
-  sectionMeta: {
-    fontSize: 13,
-    fontWeight: fontWeight.medium,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: fontWeight.semiBold,
-  },
-  splitCountContainer: {
-    backgroundColor: semanticColors.background.card,
-    borderColor: semanticColors.border.default,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    marginTop: spacing.sm,
-    padding: spacing.md,
-  },
-  splitIndexBadge: {
-    alignItems: "center",
-    backgroundColor: colors.neutral[100],
-    borderRadius: 16,
-    height: 32,
-    justifyContent: "center",
-    width: 32,
-  },
-  splitIndexText: {
-    color: colors.neutral[600],
-    fontSize: 12,
-    fontWeight: fontWeight.bold,
-  },
-  splitInput: {
-    backgroundColor: semanticColors.background.paper,
-    borderColor: semanticColors.border.default,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    color: semanticColors.text.primary,
-    flex: 1,
-    fontSize: 18,
-    fontWeight: fontWeight.semiBold,
-    marginHorizontal: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  splitRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    marginBottom: spacing.sm,
-  },
-  toggleButton: {
-    alignItems: "center",
-    backgroundColor: colors.neutral[100],
-    borderRadius: 20,
-    flexDirection: "row",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  toggleButtonText: {
-    fontSize: 12,
-    fontWeight: fontWeight.bold,
-  },
-});

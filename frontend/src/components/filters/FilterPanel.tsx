@@ -17,29 +17,10 @@
  * ```
  */
 import React, { useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Modal,
-} from "react-native";
-import Animated, {
-  FadeIn,
-  FadeOut,
-  SlideInRight,
-  SlideOutRight,
-} from "react-native-reanimated";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from "react-native";
+import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import {
-  colors,
-  semanticColors,
-  spacing,
-  radius,
-  shadows,
-  textStyles,
-} from "../../theme/unified";
+import { colors, semanticColors, spacing, radius, shadows, textStyles } from "@/theme/legacyCompat";
 
 /** Filter value types */
 export interface FilterValues {
@@ -123,10 +104,9 @@ export function FilterPanel({
   position = "right",
 }: FilterPanelProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set(sections.filter((s) => s.defaultExpanded).map((s) => s.id)),
+    new Set(sections.filter((s) => s.defaultExpanded).map((s) => s.id))
   );
-  const [selectedValues, setSelectedValues] =
-    useState<FilterValues>(initialValues);
+  const [selectedValues, setSelectedValues] = useState<FilterValues>(initialValues);
 
   const toggleSection = useCallback((sectionId: string) => {
     setExpandedSections((prev) => {
@@ -140,19 +120,15 @@ export function FilterPanel({
     });
   }, []);
 
-  const toggleCheckboxValue = useCallback(
-    (sectionId: string, value: string) => {
-      setSelectedValues((prev) => {
-        const current =
-          (prev[sectionId as keyof FilterValues] as string[]) || [];
-        const newValues = current.includes(value)
-          ? current.filter((v) => v !== value)
-          : [...current, value];
-        return { ...prev, [sectionId]: newValues };
-      });
-    },
-    [],
-  );
+  const toggleCheckboxValue = useCallback((sectionId: string, value: string) => {
+    setSelectedValues((prev) => {
+      const current = (prev[sectionId as keyof FilterValues] as string[]) || [];
+      const newValues = current.includes(value)
+        ? current.filter((v) => v !== value)
+        : [...current, value];
+      return { ...prev, [sectionId]: newValues };
+    });
+  }, []);
 
   const handleApply = useCallback(() => {
     onApply(selectedValues);
@@ -168,8 +144,7 @@ export function FilterPanel({
     let count = 0;
     if (selectedValues.status?.length) count += selectedValues.status.length;
     if (selectedValues.type?.length) count += selectedValues.type.length;
-    if (selectedValues.dateRange?.start || selectedValues.dateRange?.end)
-      count += 1;
+    if (selectedValues.dateRange?.start || selectedValues.dateRange?.end) count += 1;
     return count;
   }, [selectedValues]);
 
@@ -177,47 +152,29 @@ export function FilterPanel({
 
   const isExpanded = (sectionId: string) => expandedSections.has(sectionId);
   const isChecked = (sectionId: string, value: string) =>
-    (
-      (selectedValues[sectionId as keyof FilterValues] as string[]) || []
-    ).includes(value);
+    ((selectedValues[sectionId as keyof FilterValues] as string[]) || []).includes(value);
 
   const slideAnim = SlideInRight;
   const slideOutAnim = SlideOutRight;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <Animated.View
         entering={FadeIn.duration(200)}
         exiting={FadeOut.duration(200)}
         style={styles.overlay}
       >
-        <TouchableOpacity
-          style={styles.overlayTouchable}
-          activeOpacity={1}
-          onPress={onClose}
-        />
+        <TouchableOpacity style={styles.overlayTouchable} activeOpacity={1} onPress={onClose} />
 
         <Animated.View
           entering={slideAnim.duration(300)}
           exiting={slideOutAnim.duration(200)}
-          style={[
-            styles.panel,
-            position === "right" ? styles.panelRight : styles.panelLeft,
-          ]}
+          style={[styles.panel, position === "right" ? styles.panelRight : styles.panelLeft]}
         >
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>
-              <Ionicons
-                name="filter-outline"
-                size={22}
-                color={semanticColors.text.primary}
-              />
+              <Ionicons name="filter-outline" size={22} color={semanticColors.text.primary} />
               <Text style={styles.title}>{title}</Text>
               {getActiveFilterCount() > 0 && (
                 <View style={styles.badge}>
@@ -230,11 +187,7 @@ export function FilterPanel({
               style={styles.closeButton}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <Ionicons
-                name="close"
-                size={24}
-                color={semanticColors.text.secondary}
-              />
+              <Ionicons name="close" size={24} color={semanticColors.text.secondary} />
             </TouchableOpacity>
           </View>
 
@@ -254,9 +207,7 @@ export function FilterPanel({
                 >
                   <Text style={styles.sectionTitle}>{section.title}</Text>
                   <Ionicons
-                    name={
-                      isExpanded(section.id) ? "chevron-up" : "chevron-down"
-                    }
+                    name={isExpanded(section.id) ? "chevron-up" : "chevron-down"}
                     size={20}
                     color={semanticColors.text.secondary}
                   />
@@ -268,27 +219,26 @@ export function FilterPanel({
                       <TouchableOpacity
                         key={option.value}
                         style={styles.optionRow}
-                        onPress={() =>
-                          toggleCheckboxValue(section.id, option.value)
-                        }
+                        onPress={() => toggleCheckboxValue(section.id, option.value)}
                         activeOpacity={0.7}
                       >
                         <View
                           style={[
                             styles.checkbox,
-                            isChecked(section.id, option.value) &&
-                              styles.checkboxChecked,
+                            isChecked(section.id, option.value) && styles.checkboxChecked,
                           ]}
                         >
                           {isChecked(section.id, option.value) && (
-                            <Ionicons name="checkmark" size={14} color="#fff" />
+                            <Ionicons
+                              name="checkmark"
+                              size={14}
+                              color={semanticColors.text.inverse}
+                            />
                           )}
                         </View>
                         <Text style={styles.optionLabel}>{option.label}</Text>
                         {option.count !== undefined && (
-                          <Text style={styles.optionCount}>
-                            ({option.count})
-                          </Text>
+                          <Text style={styles.optionCount}>({option.count})</Text>
                         )}
                       </TouchableOpacity>
                     ))}
@@ -300,24 +250,12 @@ export function FilterPanel({
 
           {/* Footer Actions */}
           <View style={styles.footer}>
-            <TouchableOpacity
-              style={styles.resetButton}
-              onPress={handleReset}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name="refresh-outline"
-                size={18}
-                color={semanticColors.text.secondary}
-              />
+            <TouchableOpacity style={styles.resetButton} onPress={handleReset} activeOpacity={0.7}>
+              <Ionicons name="refresh-outline" size={18} color={semanticColors.text.secondary} />
               <Text style={styles.resetText}>Reset</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.applyButton}
-              onPress={handleApply}
-              activeOpacity={0.8}
-            >
+            <TouchableOpacity style={styles.applyButton} onPress={handleApply} activeOpacity={0.8}>
               <Text style={styles.applyText}>Apply Filters</Text>
             </TouchableOpacity>
           </View>
@@ -381,7 +319,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     ...textStyles.caption,
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontWeight: "600",
   },
   closeButton: {
@@ -472,7 +410,7 @@ const styles = StyleSheet.create({
   applyText: {
     ...textStyles.label,
     fontWeight: "600",
-    color: "#fff",
+    color: semanticColors.text.inverse,
   },
 });
 

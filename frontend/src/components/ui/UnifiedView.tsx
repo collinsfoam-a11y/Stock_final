@@ -11,13 +11,7 @@
  */
 
 import React from "react";
-import {
-  View,
-  ViewStyle,
-  StyleProp,
-  StyleSheet,
-  ViewProps,
-} from "react-native";
+import { View, ViewStyle, StyleProp, StyleSheet, ViewProps } from "react-native";
 import {
   colors,
   spacing,
@@ -27,7 +21,7 @@ import {
   type RadiusKey,
   type ShadowKey,
   type SpacingKey,
-} from "../../theme/unified";
+} from "@/theme/legacyCompat";
 
 // ==========================================
 // TYPES

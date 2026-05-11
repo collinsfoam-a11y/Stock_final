@@ -3,7 +3,7 @@
  * Modern, unified status indicator for synchronization state
  */
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -12,51 +12,48 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { getSyncStatus, forceSync } from "../../services/syncService";
+import { forceSync } from "../../services/syncService";
 import {
-  modernColors,
-  modernBorderRadius,
-} from "../../styles/unifiedSystem";
+  refreshSyncStatus,
+  subscribeSyncStatus,
+  type SyncStatusSnapshot,
+} from "../../services/syncStatusPolling";
+import { modernAnimations, modernBorderRadius } from "../../styles/modernDesignSystem";
 
-interface SyncStatus {
-  isOnline: boolean;
-  queuedOperations: number;
-  lastSync: string | null;
-  cacheSize: number;
-  needsSync: boolean;
-}
-
+import { colors } from "@/theme/legacyCompat";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 export const SyncStatusPill = () => {
-  const [status, setStatus] = useState<SyncStatus | null>(null);
+  const uiTokens = useUiTokens();
+  const reduceMotion = useReducedMotion();
+  const [status, setStatus] = useState<SyncStatusSnapshot | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
   // Animation for sync rotation
   const rotation = useSharedValue(0);
 
-  const loadStatus = useCallback(async () => {
-    try {
-      const s = await getSyncStatus();
-      setStatus(s);
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
-
   useEffect(() => {
-    loadStatus();
-    const interval = setInterval(loadStatus, 5000);
-    return () => clearInterval(interval);
-  }, [loadStatus]);
+    const unsubscribe = subscribeSyncStatus((nextStatus) => {
+      setStatus(nextStatus);
+    });
+    void refreshSyncStatus();
+    return unsubscribe;
+  }, []);
 
   const handleSync = async () => {
     if (!status?.isOnline || isSyncing) return;
 
     setIsSyncing(true);
-    rotation.value = withRepeat(withTiming(360, { duration: 1000 }), -1);
+    if (!reduceMotion) {
+      rotation.value = withRepeat(
+        withTiming(360, { duration: modernAnimations.duration.slow }),
+        -1
+      );
+    }
 
     try {
       await forceSync();
-      await loadStatus();
+      await refreshSyncStatus();
     } catch (e) {
       console.error("Sync failed", e);
     } finally {
@@ -77,24 +74,29 @@ export const SyncStatusPill = () => {
   const isOffline = !status.isOnline;
   const hasPending = status.queuedOperations > 0;
 
-  let pillColor = modernColors.success.main;
-  let pillBg = "rgba(34, 197, 94, 0.15)"; // Green bg
+  const isDark = uiTokens.mode === "dark";
+  const successColor = isDark ? uiTokens.colors.success : colors.success[700];
+  const warningColor = isDark ? uiTokens.colors.warning : colors.warning[800];
+  const infoColor = isDark ? uiTokens.colors.accent : colors.primary[700];
+
+  let pillColor = successColor;
+  let pillBg = isDark ? "rgba(63, 185, 80, 0.18)" : colors.success[50];
   let iconName: keyof typeof Ionicons.glyphMap = "cloud-done";
   let label = "Synced";
 
   if (isOffline) {
-    pillColor = modernColors.warning.main;
-    pillBg = "rgba(234, 179, 8, 0.15)";
+    pillColor = warningColor;
+    pillBg = isDark ? "rgba(210, 153, 34, 0.18)" : colors.warning[50];
     iconName = "cloud-offline";
     label = hasPending ? `Offline (${status.queuedOperations})` : "Offline";
   } else if (isSyncing) {
-    pillColor = modernColors.primary[400];
-    pillBg = "rgba(99, 102, 241, 0.15)";
+    pillColor = infoColor;
+    pillBg = isDark ? "rgba(88, 166, 255, 0.18)" : colors.primary[50];
     iconName = "sync";
     label = "Syncing...";
   } else if (hasPending) {
-    pillColor = modernColors.warning.main;
-    pillBg = "rgba(234, 179, 8, 0.15)";
+    pillColor = warningColor;
+    pillBg = isDark ? "rgba(210, 153, 34, 0.18)" : colors.warning[50];
     iconName = "cloud-upload";
     label = `${status.queuedOperations} Pending`;
   }
@@ -104,14 +106,17 @@ export const SyncStatusPill = () => {
       onPress={handleSync}
       disabled={isOffline || isSyncing || (!hasPending && !isOffline)}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`Sync status: ${label}`}
+      accessibilityHint={hasPending ? "Attempts to sync pending offline work." : undefined}
+      accessibilityState={{
+        disabled: isOffline || isSyncing || (!hasPending && !isOffline),
+        busy: isSyncing,
+      }}
+      hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
     >
-      <View
-        style={[
-          styles.pill,
-          { backgroundColor: pillBg, borderColor: pillColor },
-        ]}
-      >
-        <Animated.View style={isSyncing ? animatedIconStyle : undefined}>
+      <View style={[styles.pill, { backgroundColor: pillBg, borderColor: pillColor }]}>
+        <Animated.View style={isSyncing && !reduceMotion ? animatedIconStyle : undefined}>
           <Ionicons name={iconName} size={14} color={pillColor} />
         </Animated.View>
         <Text style={[styles.label, { color: pillColor }]}>{label}</Text>

@@ -1,12 +1,5 @@
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-  Alert,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -21,19 +14,36 @@ import { BottomSheet } from "../../src/components/ui/BottomSheet";
 import { SkeletonList } from "../../src/components/LoadingSkeleton";
 import { SwipeableRow } from "../../src/components/SwipeableRow";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { GlassCard } from "../../src/components/ui/GlassCard";
-import { theme } from "../../src/styles/unifiedSystem";
-import { colors as unifiedColors } from "../../src/theme/unified";
+import { ModernCard } from "../../src/components/ui/ModernCard";
+import { theme } from "../../src/styles/modernDesignSystem";
+import { colors as unifiedColors } from "@/theme/legacyCompat";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { useUiTokens } from "@/hooks/useUiTokens";
 import { ScreenContainer } from "../../src/components/ui";
+
+const getHistoryFailureReason = (error: unknown): string => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (typeof error === "object" && error !== null) {
+    const detail = (error as { response?: { data?: { detail?: unknown } } }).response?.data?.detail;
+    if (typeof detail === "string" && detail.trim()) {
+      return detail;
+    }
+  }
+
+  return "The request did not finish.";
+};
 
 export default function HistoryScreen() {
   const params = useLocalSearchParams();
   const sessionId = params.sessionId as string | undefined;
   const initialApproved =
-    flags.enableDeepLinks &&
-    (params.approved === "1" || params.approved === "true");
+    flags.enableDeepLinks && (params.approved === "1" || params.approved === "true");
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const uiTokens = useUiTokens();
 
   interface CountLine {
     id: string;
@@ -52,14 +62,14 @@ export default function HistoryScreen() {
   const [countLines, setCountLines] = React.useState<CountLine[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [loadWarning, setLoadWarning] = React.useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
-  const [showApprovedOnly, setShowApprovedOnly] =
-    React.useState<boolean>(!!initialApproved);
+  const [showApprovedOnly, setShowApprovedOnly] = React.useState<boolean>(!!initialApproved);
 
   // Pin Entry Modal State
   const [pinModalVisible, setPinModalVisible] = React.useState(false);
-  const [selectedLineForDelete, setSelectedLineForDelete] =
-    React.useState<CountLine | null>(null);
+  const [selectedLineForDelete, setSelectedLineForDelete] = React.useState<CountLine | null>(null);
 
   const normalizeStatus = React.useCallback((status?: string | null) => {
     return (status || "").toLowerCase();
@@ -68,26 +78,36 @@ export default function HistoryScreen() {
   const loadCountLines = React.useCallback(async () => {
     if (!sessionId) {
       setCountLines([]);
+      setLoadError(null);
+      setLoadWarning(null);
       setLoading(false);
       return;
     }
 
     try {
+      setLoadError(null);
       const data = await getCountLines(sessionId as string);
       const safeData = Array.isArray(data?.items) ? data.items : [];
+      setLoadWarning(
+        (data as { _degraded?: boolean })?._degraded
+          ? "Live history refresh failed. Showing cached count lines from this device. Pull down to refresh or retry when connected."
+          : null
+      );
       setCountLines(
         showApprovedOnly
           ? safeData.filter((d: any) => {
               const status = normalizeStatus(d.status);
               return status === "approved" || d.approval_status === "APPROVED";
             })
-          : safeData,
+          : safeData
       );
       if (safeData.length && flags.enableHaptics) {
         haptics.success();
       }
     } catch (error) {
       console.error("Load count lines error:", error);
+      setLoadError(getHistoryFailureReason(error));
+      setLoadWarning(null);
       if (flags.enableHaptics) haptics.error();
     } finally {
       setLoading(false);
@@ -147,8 +167,8 @@ export default function HistoryScreen() {
     } catch (error: any) {
       console.error("Delete error:", error);
       Alert.alert(
-        "Error",
-        error.response?.data?.detail || "Failed to delete count line",
+        "Delete Failed",
+        `${error.response?.data?.detail || "The count line could not be deleted."}\n\nThe item remains unchanged. Check connectivity and retry, or ask a supervisor to review it.`
       );
       if (flags.enableHaptics) haptics.error();
     } finally {
@@ -156,79 +176,123 @@ export default function HistoryScreen() {
     }
   };
 
-  const renderCountLine = ({
-    item,
-    index,
-  }: {
-    item: CountLine;
-    index: number;
-  }) => {
-    const varianceColor =
-      item.variance === 0
-        ? unifiedColors.success[500]
-        : unifiedColors.error[500];
+  const renderCountLine = ({ item, index }: { item: CountLine; index: number }) => {
+    const varianceColor = item.variance === 0 ? uiTokens.colors.success : uiTokens.colors.error;
     const normalizedStatus = normalizeStatus(item.status);
     const statusColor =
       normalizedStatus === "approved"
-        ? unifiedColors.success[500]
+        ? uiTokens.colors.success
         : normalizedStatus === "rejected"
-          ? unifiedColors.error[500]
-          : unifiedColors.warning[500];
+          ? uiTokens.colors.error
+          : uiTokens.colors.warning;
+    const statusTextColor =
+      normalizedStatus === "pending" ? uiTokens.colors.textPrimary : unifiedColors.white;
 
     const CardContent = (
-      <GlassCard variant="medium" style={styles.countCard}>
+      <ModernCard
+        variant="outlined"
+        elevation="none"
+        padding={0}
+        style={[
+          styles.countCard,
+          { backgroundColor: uiTokens.colors.surface, borderColor: uiTokens.colors.border },
+        ]}
+      >
         <View style={styles.cardHeader}>
-          <Text style={styles.itemName}>
+          <Text style={[styles.itemName, { color: uiTokens.colors.textPrimary }]}>
             {item.item_name || "Unknown Item"}
           </Text>
           <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-            <Text style={styles.statusText}>
+            <Text style={[styles.statusText, { color: statusTextColor }]}>
               {(normalizedStatus || "pending").toUpperCase()}
             </Text>
           </View>
         </View>
 
         <View style={styles.codeRow}>
-          <Text style={styles.itemCode}>Code: {item.item_code || "N/A"}</Text>
+          <Text style={[styles.itemCode, { color: uiTokens.colors.textSecondary }]}>
+            Code: {item.item_code || "N/A"}
+          </Text>
           {item.batch_id && (
-            <View style={styles.batchBadge}>
-              <Text style={styles.batchBadgeText}>Batch: {item.batch_id}</Text>
+            <View
+              style={[
+                styles.batchBadge,
+                {
+                  backgroundColor: colorWithAlpha(uiTokens.colors.info, 0.1),
+                  borderColor: colorWithAlpha(uiTokens.colors.info, 0.24),
+                },
+              ]}
+            >
+              <Text style={[styles.batchBadgeText, { color: uiTokens.colors.info }]}>
+                Batch: {item.batch_id}
+              </Text>
             </View>
           )}
         </View>
 
         <View style={styles.qtyRow}>
-          <View style={styles.qtyItem}>
-            <Text style={styles.qtyLabel}>ERP</Text>
-            <Text style={styles.qtyValue}>{item.erp_qty ?? 0}</Text>
-          </View>
-          <View style={styles.qtyItem}>
-            <Text style={styles.qtyLabel}>Counted</Text>
-            <Text style={styles.qtyValue}>{item.counted_qty ?? 0}</Text>
-          </View>
-          <View style={styles.qtyItem}>
-            <Text style={styles.qtyLabel}>Variance</Text>
-            <Text style={[styles.qtyValue, { color: varianceColor }]}>
-              {item.variance ?? 0}
+          <View
+            style={[
+              styles.qtyItem,
+              { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.06) },
+            ]}
+          >
+            <Text style={[styles.qtyLabel, { color: uiTokens.colors.textMuted }]}>ERP</Text>
+            <Text style={[styles.qtyValue, { color: uiTokens.colors.textPrimary }]}>
+              {item.erp_qty ?? 0}
             </Text>
+          </View>
+          <View
+            style={[
+              styles.qtyItem,
+              { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.06) },
+            ]}
+          >
+            <Text style={[styles.qtyLabel, { color: uiTokens.colors.textMuted }]}>Counted</Text>
+            <Text style={[styles.qtyValue, { color: uiTokens.colors.textPrimary }]}>
+              {item.counted_qty ?? 0}
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.qtyItem,
+              { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.06) },
+            ]}
+          >
+            <Text style={[styles.qtyLabel, { color: uiTokens.colors.textMuted }]}>Variance</Text>
+            <Text style={[styles.qtyValue, { color: varianceColor }]}>{item.variance ?? 0}</Text>
           </View>
         </View>
 
         {item.variance_reason && (
-          <View style={styles.reasonBox}>
-            <Text style={styles.reasonLabel}>Reason:</Text>
-            <Text style={styles.reasonText}>{item.variance_reason}</Text>
+          <View
+            style={[
+              styles.reasonBox,
+              {
+                backgroundColor: colorWithAlpha(uiTokens.colors.warning, 0.08),
+                borderColor: colorWithAlpha(uiTokens.colors.warning, 0.22),
+              },
+            ]}
+          >
+            <Text style={[styles.reasonLabel, { color: uiTokens.colors.textSecondary }]}>
+              Reason:
+            </Text>
+            <Text style={[styles.reasonText, { color: uiTokens.colors.warning }]}>
+              {item.variance_reason}
+            </Text>
           </View>
         )}
 
         {item.remark && (
-          <Text style={styles.remark}>Remark: {item.remark}</Text>
+          <Text style={[styles.remark, { color: uiTokens.colors.textSecondary }]}>
+            Remark: {item.remark}
+          </Text>
         )}
 
-        <Text style={styles.timestamp}>
+        <Text style={[styles.timestamp, { color: uiTokens.colors.textMuted }]}>
           {new Date(item.counted_at).toLocaleString()}
         </Text>
-      </GlassCard>
+      </ModernCard>
     );
 
     const AnimatedCard = flags.enableAnimations ? (
@@ -262,13 +326,13 @@ export default function HistoryScreen() {
 
   return (
     <ScreenContainer
-      backgroundType="aurora"
-      auroraVariant="primary"
+      backgroundType="solid"
       header={{
         title: "Count History",
         showBackButton: true,
         showUsername: false,
         showLogoutButton: true,
+        showSettingsButton: false,
         rightAction: {
           icon: "options-outline",
           label: "Filters",
@@ -277,7 +341,7 @@ export default function HistoryScreen() {
       }}
       contentMode="static"
       noPadding
-      statusBarStyle="light"
+      statusBarStyle="dark"
     >
       {loading && !refreshing ? (
         <View style={{ padding: 16 }}>
@@ -290,36 +354,99 @@ export default function HistoryScreen() {
             renderItem={renderCountLine}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.list}
+            ListHeaderComponent={
+              loadWarning ? (
+                <View
+                  style={[
+                    styles.warningContainer,
+                    {
+                      backgroundColor: colorWithAlpha(uiTokens.colors.warning, 0.08),
+                      borderColor: colorWithAlpha(uiTokens.colors.warning, 0.28),
+                    },
+                  ]}
+                  testID="history-load-warning"
+                >
+                  <Ionicons name="warning-outline" size={20} color={uiTokens.colors.warning} />
+                  <Text style={[styles.warningText, { color: uiTokens.colors.textSecondary }]}>
+                    {loadWarning}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.warningRetry}
+                    onPress={onRefresh}
+                    accessibilityRole="button"
+                    accessibilityLabel="Retry live history refresh"
+                  >
+                    <Ionicons name="refresh" size={18} color={uiTokens.colors.warning} />
+                  </TouchableOpacity>
+                </View>
+              ) : null
+            }
             ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Ionicons
-                  name="file-tray-outline"
-                  size={64}
-                  color={theme.colors.text.tertiary}
-                />
-                <Text style={styles.emptyText}>
-                  {loading
-                    ? "Loading..."
-                    : sessionId
-                      ? "No counts yet"
-                      : "Open a session from Dashboard history to view its counts"}
-                </Text>
-              </View>
+              loadError ? (
+                <View
+                  style={[
+                    styles.errorContainer,
+                    {
+                      backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.08),
+                      borderColor: colorWithAlpha(uiTokens.colors.error, 0.26),
+                    },
+                  ]}
+                  testID="history-load-error"
+                >
+                  <Ionicons name="alert-circle-outline" size={44} color={uiTokens.colors.error} />
+                  <Text style={[styles.errorTitle, { color: uiTokens.colors.textPrimary }]}>
+                    Count history unavailable
+                  </Text>
+                  <Text style={[styles.errorBody, { color: uiTokens.colors.textSecondary }]}>
+                    Could not load this session's count lines. Reason: {loadError} Pull down to
+                    refresh or retry now.
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.retryButton,
+                      {
+                        backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.12),
+                        borderColor: colorWithAlpha(uiTokens.colors.error, 0.34),
+                      },
+                    ]}
+                    onPress={onRefresh}
+                    accessibilityRole="button"
+                    accessibilityLabel="Retry loading count history"
+                  >
+                    <Ionicons name="refresh" size={18} color={uiTokens.colors.error} />
+                    <Text style={[styles.retryButtonText, { color: uiTokens.colors.error }]}>
+                      Retry
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="file-tray-outline" size={64} color={uiTokens.colors.textMuted} />
+                  <Text style={[styles.emptyText, { color: uiTokens.colors.textSecondary }]}>
+                    {loading
+                      ? "Loading..."
+                      : sessionId
+                        ? "No counts yet"
+                        : "Open a session from Dashboard history to view its counts"}
+                  </Text>
+                </View>
+              )
             }
           />
         </PullToRefresh>
       )}
 
-      <BottomSheet
-        visible={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        height={260}
-      >
-        <Text style={styles.filterTitle}>Filters</Text>
+      <BottomSheet visible={filtersOpen} onClose={() => setFiltersOpen(false)} height={260}>
+        <Text style={[styles.filterTitle, { color: uiTokens.colors.textPrimary }]}>Filters</Text>
         <TouchableOpacity
           style={[
             styles.filterChip,
-            showApprovedOnly && styles.filterChipActive,
+            {
+              backgroundColor: showApprovedOnly
+                ? uiTokens.colors.success
+                : colorWithAlpha(uiTokens.colors.surfaceElevated, 0.92),
+              borderColor: showApprovedOnly ? uiTokens.colors.success : uiTokens.colors.border,
+            },
           ]}
           onPress={() => {
             const next = !showApprovedOnly;
@@ -331,22 +458,19 @@ export default function HistoryScreen() {
                 params: { sessionId, approved: next ? "1" : undefined },
               });
             }
-            loadCountLines();
           }}
         >
           <Ionicons
             name="checkmark-done-outline"
             size={18}
-            color={
-              showApprovedOnly
-                ? unifiedColors.neutral[950]
-                : theme.colors.text.tertiary
-            }
+            color={showApprovedOnly ? unifiedColors.white : uiTokens.colors.textMuted}
           />
           <Text
             style={[
               styles.filterChipText,
-              showApprovedOnly && styles.filterChipTextActive,
+              {
+                color: showApprovedOnly ? unifiedColors.white : uiTokens.colors.textSecondary,
+              },
             ]}
           >
             Approved Only
@@ -562,5 +686,62 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginTop: 16,
     fontWeight: "500",
+  },
+  errorContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 48,
+    marginHorizontal: 16,
+    padding: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  errorTitle: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  errorBody: {
+    marginTop: 8,
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: "center",
+  },
+  retryButton: {
+    minHeight: 44,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  warningContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "500",
+  },
+  warningRetry: {
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 44,
+    minHeight: 44,
   },
 });

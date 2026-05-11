@@ -1,12 +1,12 @@
 import React from "react";
-import {
-  View,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
-} from "react-native";
+import { View, TouchableOpacity, ActivityIndicator, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+import {
+  colors as uiColors,
+  semanticColors as uiSemanticColors,
+  shadows as uiShadows,
+} from "@/theme/legacyCompat";
 interface ResultOverlayProps {
   onClose: () => void;
   onFlip: () => void;
@@ -24,22 +24,18 @@ export const ResultOverlay: React.FC<ResultOverlayProps> = ({
     <View style={styles.overlay}>
       <View style={styles.topBar}>
         <TouchableOpacity style={styles.button} onPress={onClose}>
-          <Ionicons name="close" size={28} color="#fff" />
+          <Ionicons name="close" size={28} color={uiSemanticColors.text.inverse} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.button} onPress={onFlip}>
-          <Ionicons name="camera-reverse-outline" size={24} color="#fff" />
+          <Ionicons name="camera-reverse-outline" size={24} color={uiSemanticColors.text.inverse} />
         </TouchableOpacity>
       </View>
       <View style={styles.shutterBar}>
-        <TouchableOpacity
-          style={styles.shutterButton}
-          onPress={onCapture}
-          disabled={loading}
-        >
+        <TouchableOpacity style={styles.shutterButton} onPress={onCapture} disabled={loading}>
           {loading ? (
-            <ActivityIndicator size="small" color="#1E293B" />
+            <ActivityIndicator size="small" color={uiColors.neutral[800]} />
           ) : (
-            <Ionicons name="radio-button-on" size={64} color="#1E293B" />
+            <Ionicons name="radio-button-on" size={64} color={uiColors.neutral[800]} />
           )}
         </TouchableOpacity>
       </View>
@@ -71,13 +67,10 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#fff",
+    backgroundColor: uiSemanticColors.text.inverse,
     justifyContent: "center",
     alignItems: "center",
     elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    ...uiShadows.md,
   },
 });

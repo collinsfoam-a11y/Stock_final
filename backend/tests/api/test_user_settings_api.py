@@ -60,6 +60,11 @@ async def test_get_settings_defaults(async_client: AsyncClient, auth_headers):
     data = response.json()
     assert data["status"] == "success"
     assert data["data"]["theme"] == "light"
+    assert data["data"]["notifications_enabled"] is True
+    assert data["data"]["notification_recount_alerts"] is True
+    assert data["data"]["notification_approval_alerts"] is True
+    assert data["data"]["notification_sync_failure_alerts"] is True
+    assert data["data"]["notification_session_reminder_alerts"] is True
     assert data["data"]["auto_sync_enabled"] is True
     assert data["data"]["scanner_auto_submit"] is True
     assert data["data"]["show_item_images"] is True
@@ -78,6 +83,8 @@ async def test_update_settings(async_client: AsyncClient, auth_headers, test_db)
     """Test updating user settings."""
     payload = {
         "theme": "dark",
+        "notification_recount_alerts": False,
+        "notification_sync_failure_alerts": False,
         "auto_sync_enabled": False,
         "auto_sync_interval": 30,
         "scanner_timeout": 45,
@@ -99,6 +106,10 @@ async def test_update_settings(async_client: AsyncClient, auth_headers, test_db)
     data = response.json()
     assert data["status"] == "success"
     assert data["data"]["theme"] == "dark"
+    assert data["data"]["notification_recount_alerts"] is False
+    assert data["data"]["notification_approval_alerts"] is True
+    assert data["data"]["notification_sync_failure_alerts"] is False
+    assert data["data"]["notification_session_reminder_alerts"] is True
     assert data["data"]["auto_sync_enabled"] is False
     assert data["data"]["auto_sync_interval"] == 30
     assert data["data"]["scanner_timeout"] == 45
@@ -119,6 +130,8 @@ async def test_update_settings(async_client: AsyncClient, auth_headers, test_db)
     settings = await test_db.user_settings.find_one({"user_id": TEST_USER_ID})
     assert settings is not None
     assert settings["theme"] == "dark"
+    assert settings["notification_recount_alerts"] is False
+    assert settings["notification_sync_failure_alerts"] is False
     assert settings["font_style"] == "serif"
     assert settings["column_visibility"]["serial_number"] is False
 

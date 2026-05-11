@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-
 const loadHttpClientModule = () => {
   // This module must load only after per-test jest.doMock registrations.
   // eslint-disable-next-line @typescript-eslint/no-require-imports

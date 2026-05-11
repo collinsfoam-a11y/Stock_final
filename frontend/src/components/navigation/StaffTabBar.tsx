@@ -8,9 +8,9 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform, ViewStyle } from "r
 import { useRouter, useSegments } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@/hooks/useTheme";
-import { operationalTheme } from "@/theme/operationalTheme";
 import { layout, spacing, typography } from "../../styles/globalStyles";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface TabItem {
   key: string;
   label: string;
@@ -74,8 +74,8 @@ export const StaffTabBar: React.FC<StaffTabBarProps> = ({ style, testID }) => {
       style={[
         styles.container,
         {
-          backgroundColor: theme.isDark ? theme.colors.surface : operationalTheme.surface,
-          borderTopColor: theme.isDark ? theme.colors.border : operationalTheme.border,
+          backgroundColor: theme.colors.surface,
+          borderTopColor: theme.colors.border,
         },
         style,
       ]}
@@ -83,20 +83,8 @@ export const StaffTabBar: React.FC<StaffTabBarProps> = ({ style, testID }) => {
     >
       {STAFF_TABS.map((tab) => {
         const isActive = activeTab === tab.key;
-        const iconColor = isActive
-          ? theme.isDark
-            ? theme.colors.primary
-            : operationalTheme.primaryStrong
-          : theme.isDark
-            ? theme.colors.textSecondary
-            : operationalTheme.textSecondary;
-        const labelColor = isActive
-          ? theme.isDark
-            ? theme.colors.primary
-            : operationalTheme.primaryStrong
-          : theme.isDark
-            ? theme.colors.textSecondary
-            : operationalTheme.textSecondary;
+        const iconColor = isActive ? theme.colors.primary : theme.colors.textSecondary;
+        const labelColor = isActive ? theme.colors.primary : theme.colors.textSecondary;
 
         return (
           <TouchableOpacity
@@ -108,12 +96,7 @@ export const StaffTabBar: React.FC<StaffTabBarProps> = ({ style, testID }) => {
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={tab.label}
           >
-            <View
-              style={[
-                styles.tabContent,
-                isActive && !theme.isDark ? styles.tabContentActive : null,
-              ]}
-            >
+            <View style={styles.tabContent}>
               <View style={styles.iconContainer}>
                 <Ionicons name={tab.icon} size={24} color={iconColor} />
                 {tab.badge !== undefined && tab.badge > 0 && (
@@ -124,16 +107,7 @@ export const StaffTabBar: React.FC<StaffTabBarProps> = ({ style, testID }) => {
               </View>
               <Text style={[styles.label, { color: labelColor }]}>{tab.label}</Text>
               {isActive && (
-                <View
-                  style={[
-                    styles.indicator,
-                    {
-                      backgroundColor: theme.isDark
-                        ? theme.colors.primary
-                        : operationalTheme.primary,
-                    },
-                  ]}
-                />
+                <View style={[styles.indicator, { backgroundColor: theme.colors.primary }]} />
               )}
             </View>
           </TouchableOpacity>
@@ -145,13 +119,12 @@ export const StaffTabBar: React.FC<StaffTabBarProps> = ({ style, testID }) => {
 
 const styles = StyleSheet.create({
   container: {
-    height: layout.tabBarHeight + (Platform.OS === "ios" ? spacing.sm : 0),
+    height: layout.tabBarHeight,
     flexDirection: "row",
     borderTopWidth: 1,
-    paddingHorizontal: spacing.sm,
     ...Platform.select({
       ios: {
-        paddingBottom: spacing.sm,
+        paddingBottom: spacing.sm, // Account for safe area
       },
     }),
   },
@@ -165,12 +138,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
-    width: "100%",
-    paddingVertical: spacing.xs,
-    borderRadius: 16,
-  },
-  tabContentActive: {
-    backgroundColor: operationalTheme.primarySoft,
   },
   iconContainer: {
     position: "relative",
@@ -187,10 +154,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 4,
     borderWidth: 2,
-    borderColor: "#FFFFFF", // Ensure badge is visible
+    borderColor: uiSemanticColors.text.inverse, // Ensure badge is visible
   },
   badgeText: {
-    color: "#FFFFFF",
+    color: uiSemanticColors.text.inverse,
     fontSize: 9,
     fontWeight: "bold",
   },

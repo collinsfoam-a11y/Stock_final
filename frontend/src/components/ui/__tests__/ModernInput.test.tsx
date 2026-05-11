@@ -1,15 +1,6 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
 import { ModernInput } from "../ModernInput";
-import * as Haptics from "expo-haptics";
-import { Platform } from "react-native";
-
-jest.mock("expo-haptics", () => ({
-  impactAsync: jest.fn().mockResolvedValue(undefined),
-  ImpactFeedbackStyle: {
-    Light: "light",
-  },
-}));
 
 describe("ModernInput", () => {
   it("renders correctly with label", () => {
@@ -37,70 +28,28 @@ describe("ModernInput", () => {
     expect(onChangeText).toHaveBeenCalledWith("Hello");
   });
 
-  it("shows clear button when showClearButton is true and value is not empty", () => {
-    const { queryByLabelText } = render(
+  it("renders helper text", () => {
+    const { getByText } = render(
       <ModernInput
-        showClearButton={true}
-        value="Some text"
-        onChangeText={() => {}}
-      />
-    );
-
-    expect(queryByLabelText("Clear input")).toBeTruthy();
-  });
-
-  it("does not show clear button when showClearButton is false", () => {
-    const { queryByLabelText } = render(
-      <ModernInput
-        showClearButton={false}
-        value="Some text"
-        onChangeText={() => {}}
-      />
-    );
-
-    expect(queryByLabelText("Clear input")).toBeNull();
-  });
-
-  it("does not show clear button when value is empty", () => {
-    const { queryByLabelText } = render(
-      <ModernInput
-        showClearButton={true}
         value=""
         onChangeText={() => {}}
+        helperText="Helper message"
       />
     );
 
-    expect(queryByLabelText("Clear input")).toBeNull();
+    expect(getByText("Helper message")).toBeTruthy();
   });
 
-  it("clears input and triggers haptic when clear button is pressed", () => {
-    const onChangeText = jest.fn();
-    const { getByLabelText } = render(
+  it("respects disabled state on the input", () => {
+    const { getByTestId } = render(
       <ModernInput
-        showClearButton={true}
-        value="Some text"
-        onChangeText={onChangeText}
-      />
-    );
-
-    fireEvent.press(getByLabelText("Clear input"));
-
-    expect(onChangeText).toHaveBeenCalledWith("");
-    if (Platform.OS !== "web") {
-      expect(Haptics.impactAsync).toHaveBeenCalled();
-    }
-  });
-
-  it("does not show clear button when disabled", () => {
-    const { queryByLabelText } = render(
-      <ModernInput
-        disabled={true}
-        showClearButton={true}
+        disabled
+        testID="modern-input"
         value="Some text"
         onChangeText={() => {}}
       />
     );
 
-    expect(queryByLabelText("Clear input")).toBeNull();
+    expect(getByTestId("modern-input").props.editable).toBe(false);
   });
 });

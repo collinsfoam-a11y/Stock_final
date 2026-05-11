@@ -1,39 +1,48 @@
-import React, { useState, useEffect, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  TextInput,
-  Switch,
-  Platform,
-} from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
+
 import { usePermission } from "../../src/hooks/usePermission";
+import { useUiTokens } from "../../src/hooks/useUiTokens";
 import { AppearanceSettings } from "../../src/components/ui/AppearanceSettings";
 import {
+  SettingsActionRow,
+  SettingsActionSection,
+  SettingsSectionDivider,
+  SettingsSectionHeading,
   SettingsSyncStatus,
+  SettingsTextInputRow,
   UserSettingsSections,
 } from "../../src/components/settings";
 import { ScreenContainer } from "../../src/components/ui";
-import {
-  getSystemSettings,
-  updateSystemSettings,
-} from "../../src/services/api";
+import ModernCard from "../../src/components/ui/ModernCard";
+import { getSystemSettings, updateSystemSettings } from "../../src/services/api";
 import { useSettingsStore } from "../../src/store/settingsStore";
-import { auroraTheme } from "../../src/theme/auroraTheme";
+import { colorWithAlpha } from "../../src/theme/themeTokens";
+import { safeBackNavigation } from "@/utils/navigation";
+
+type SystemSettings = Record<string, unknown>;
+type SettingsIcon = React.ComponentProps<typeof SettingsTextInputRow>["icon"];
+
+const getReadableError = (error: unknown): string => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+  return "System settings request failed without a readable error message.";
+};
 
 export default function MasterSettingsScreen() {
   const router = useRouter();
   const { hasRole } = usePermission();
+  const uiTokens = useUiTokens();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [settings, setSettings] = useState<any>(null);
+  const [settings, setSettings] = useState<SystemSettings | null>(null);
 
   const loadSettings = useCallback(async () => {
     if (offlineMode) {
@@ -46,12 +55,12 @@ export default function MasterSettingsScreen() {
       setLoading(true);
       const response = await getSystemSettings();
       if (response.success) {
-        setSettings(response.data);
+        setSettings(response.data ?? {});
       } else {
-        Alert.alert("Error", "Failed to load settings");
+        Alert.alert("Settings Error", "Failed to load system settings.");
       }
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to load settings");
+    } catch (error: unknown) {
+      Alert.alert("Settings Error", getReadableError(error));
     } finally {
       setLoading(false);
     }
@@ -59,22 +68,25 @@ export default function MasterSettingsScreen() {
 
   useEffect(() => {
     if (!hasRole("admin")) {
-      Alert.alert(
-        "Access Denied",
-        "You do not have permission to view master settings.",
-        [{ text: "OK", onPress: () => router.back() }],
-      );
+      Alert.alert("Access Denied", "You do not have permission to view master settings.", [
+        {
+          text: "OK",
+          onPress: () => safeBackNavigation(router, { userRole: "admin" }),
+        },
+      ]);
       return;
     }
     void loadSettings();
   }, [hasRole, loadSettings, router]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (offlineMode) {
-      Alert.alert(
-        "Offline Mode",
-        "System settings require a live connection to save.",
-      );
+      Alert.alert("Offline Mode", "System settings require a live connection to save.");
+      return;
+    }
+
+    if (!settings) {
+      Alert.alert("Settings Not Loaded", "Load system settings before saving changes.");
       return;
     }
 
@@ -82,114 +94,113 @@ export default function MasterSettingsScreen() {
       setSaving(true);
       const response = await updateSystemSettings(settings);
       if (response.success) {
-        Alert.alert("Success", "Settings updated successfully");
+        Alert.alert("Settings Saved", "System settings updated successfully.");
         if (response.note) {
-          Alert.alert("Note", response.note);
+          Alert.alert("Settings Note", response.note);
         }
       } else {
-        Alert.alert("Error", "Failed to update settings");
+        Alert.alert("Save Failed", "Failed to update system settings.");
       }
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to update settings");
+    } catch (error: unknown) {
+      Alert.alert("Save Failed", getReadableError(error));
     } finally {
       setSaving(false);
     }
-  };
+  }, [offlineMode, settings]);
 
-  const updateSetting = (key: string, value: any) => {
-    setSettings((prev: any) => ({
-      ...prev,
+  const updateSetting = useCallback((key: string, value: unknown) => {
+    setSettings((prev) => ({
+      ...(prev ?? {}),
       [key]: value,
     }));
-  };
+  }, []);
 
-  const renderSectionHeader = (title: string, icon: any) => (
-    <View style={styles.sectionHeader}>
-      <Ionicons name={icon} size={24} color={auroraTheme.colors.primary[500]} />
-      <Text style={styles.sectionTitle}>{title}</Text>
-    </View>
-  );
-
-  const renderInput = (
+  const renderSystemInput = (
+    icon: SettingsIcon,
     label: string,
     key: string,
     keyboardType: "default" | "numeric" = "default",
-    description?: string,
+    description?: string
   ) => (
-    <View style={styles.inputContainer}>
-      <Text style={styles.inputLabel}>{label}</Text>
-      <TextInput
-        style={styles.input}
-        value={settings?.[key]?.toString() || ""}
-        onChangeText={(text) => {
-          const value = keyboardType === "numeric" ? parseInt(text) || 0 : text;
-          updateSetting(key, value);
-        }}
-        keyboardType={keyboardType}
-        placeholder={label}
-        placeholderTextColor={auroraTheme.colors.text.muted}
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-      {description && (
-        <Text style={styles.inputDescription}>{description}</Text>
-      )}
-    </View>
+    <SettingsTextInputRow
+      icon={icon}
+      label={label}
+      description={description}
+      keyboardType={keyboardType}
+      value={settings?.[key]?.toString() ?? ""}
+      onChangeText={(text) => {
+        const value = keyboardType === "numeric" ? Number.parseInt(text, 10) || 0 : text;
+        updateSetting(key, value);
+      }}
+      testID={`system-setting-${key}`}
+    />
   );
 
-  const renderSwitch = (label: string, key: string, description?: string) => (
-    <View style={styles.switchContainer}>
-      <View style={styles.switchTextContainer}>
-        <Text style={styles.switchLabel}>{label}</Text>
-        {description && (
-          <Text style={styles.switchDescription}>{description}</Text>
-        )}
-      </View>
-      <Switch
-        value={settings?.[key] || false}
-        onValueChange={(value) => updateSetting(key, value)}
-        trackColor={{
-          false: auroraTheme.colors.border.medium,
-          true: auroraTheme.colors.primary[300],
-        }}
-        thumbColor={
-          settings?.[key]
-            ? auroraTheme.colors.primary[500]
-            : auroraTheme.colors.surface.elevated
-        }
-      />
-    </View>
+  const renderSystemSwitch = (
+    icon: SettingsIcon,
+    label: string,
+    key: string,
+    description?: string
+  ) => (
+    <SettingsActionRow
+      icon={icon}
+      label={label}
+      description={description}
+      type="switch"
+      value={Boolean(settings?.[key])}
+      onValueChange={(value) => updateSetting(key, value)}
+    />
   );
+
+  const saveDisabled = offlineMode || saving || !settings;
+  const saveButton = (
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel="Save system settings"
+      disabled={saveDisabled}
+      onPress={() => {
+        void handleSave();
+      }}
+      style={[
+        styles.saveButton,
+        {
+          backgroundColor: saveDisabled
+            ? colorWithAlpha(uiTokens.colors.textMuted, 0.28)
+            : uiTokens.colors.accent,
+          borderRadius: uiTokens.radius.full,
+        },
+      ]}
+    >
+      {saving ? (
+        <ActivityIndicator size="small" color={uiTokens.colors.surfaceElevated} />
+      ) : (
+        <>
+          <Ionicons name="save-outline" size={17} color={uiTokens.colors.surfaceElevated} />
+          <Text style={[styles.saveButtonText, { color: uiTokens.colors.surfaceElevated }]}>
+            Save
+          </Text>
+        </>
+      )}
+    </TouchableOpacity>
+  );
+
+  const header = {
+    title: "System Settings",
+    subtitle: "Configuration & preferences",
+    showBackButton: true,
+    showSettingsButton: false,
+    showUsername: false,
+    customRightContent: saveButton,
+  };
 
   if (loading) {
     return (
-      <ScreenContainer
-        gradient
-        header={{
-          title: "System Settings",
-          subtitle: "Configuration & Preferences",
-          showBackButton: true,
-          customRightContent: (
-            <TouchableOpacity
-              onPress={handleSave}
-              style={[styles.saveButton, offlineMode && styles.disabledButton]}
-              disabled={offlineMode || saving}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.saveButtonText}>Save</Text>
-              )}
-            </TouchableOpacity>
-          ),
-        }}
-      >
+      <ScreenContainer backgroundType="solid" header={header}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator
-            size="large"
-            color={auroraTheme.colors.primary[500]}
-          />
-          <Text style={styles.loadingText}>Loading settings...</Text>
+          <ActivityIndicator size="large" color={uiTokens.colors.accent} />
+          <Text style={[styles.loadingText, { color: uiTokens.colors.textSecondary }]}>
+            Loading settings...
+          </Text>
         </View>
       </ScreenContainer>
     );
@@ -197,313 +208,318 @@ export default function MasterSettingsScreen() {
 
   return (
     <ScreenContainer
-      gradient
-      header={{
-        title: "System Settings",
-        subtitle: "Configuration & Preferences",
-        showBackButton: true,
-        customRightContent: (
-          <TouchableOpacity
-            onPress={handleSave}
-            style={[styles.saveButton, offlineMode && styles.disabledButton]}
-            disabled={offlineMode || saving}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.saveButtonText}>Save</Text>
-            )}
-          </TouchableOpacity>
-        ),
-      }}
+      backgroundType="solid"
+      contentContainerStyle={styles.content}
+      header={header}
+      scrollable
     >
-      <ScrollView style={styles.content}>
-        {/* Personal Settings */}
-        <View style={styles.section}>
-          {renderSectionHeader("My App Preferences", "person-circle-outline")}
-          <Text style={styles.sectionDescription}>
-            These preferences are saved automatically for your account. The
-            page save button below only applies to system parameters.
-          </Text>
-          <SettingsSyncStatus />
-          <View style={styles.personalPreferencesSpacer} />
-          <AppearanceSettings
-            showTitle={false}
-            scrollable={false}
-            compact={true}
-          />
-          <View style={styles.personalPreferencesSpacer} />
-          <UserSettingsSections />
-          <TouchableOpacity
-            style={styles.personalSecurityButton}
-            onPress={() => router.push("/security" as any)}
-          >
-            <Ionicons
-              name="shield-checkmark-outline"
-              size={18}
-              color={auroraTheme.colors.primary[500]}
-            />
-            <Text style={styles.personalSecurityButtonText}>
-              Open Personal Security
-            </Text>
-          </TouchableOpacity>
+      <SettingsSectionHeading title="My App Preferences" />
+      <ModernCard accessible={false} variant="outlined" elevation="none" style={styles.introCard}>
+        <View
+          style={[
+            styles.introIcon,
+            {
+              backgroundColor: colorWithAlpha(
+                uiTokens.colors.accent,
+                uiTokens.mode === "dark" ? 0.2 : 0.1
+              ),
+              borderRadius: uiTokens.radius.md,
+            },
+          ]}
+        >
+          <Ionicons name="person-circle-outline" size={24} color={uiTokens.colors.accent} />
         </View>
+        <View style={styles.introCopy}>
+          <Text style={[styles.introTitle, { color: uiTokens.colors.textPrimary }]}>
+            Personal preferences
+          </Text>
+          <Text style={[styles.introDescription, { color: uiTokens.colors.textSecondary }]}>
+            These settings save automatically for your account. The page save button only applies to
+            backend system parameters.
+          </Text>
+        </View>
+      </ModernCard>
 
-        {offlineMode ? (
-          <View style={styles.section}>
-            {renderSectionHeader("System Parameters", "cloud-offline-outline")}
-            <Text style={styles.sectionDescription}>
-              System-level admin settings are loaded from the backend and cannot
-              be reviewed or changed while offline mode is enabled. Your
-              personal app preferences above still work normally.
-            </Text>
-          </View>
-        ) : (
-          <>
-            <View style={styles.section}>
-              {renderSectionHeader("API Configuration", "globe-outline")}
-              {renderInput(
-                "API Timeout (seconds)",
-                "api_timeout",
-                "numeric",
-                "Request timeout duration",
-              )}
-              {renderInput(
-                "Rate Limit (per minute)",
-                "api_rate_limit",
-                "numeric",
-                "Maximum requests per minute",
-              )}
-            </View>
+      <SettingsSyncStatus />
 
-            <View style={styles.section}>
-              {renderSectionHeader("Caching", "hardware-chip-outline")}
-              {renderSwitch("Enable Caching", "cache_enabled")}
-              {renderInput(
-                "Cache TTL (seconds)",
-                "cache_ttl",
-                "numeric",
-                "Time to live for cached items",
-              )}
-              {renderInput(
-                "Max Cache Size",
-                "cache_max_size",
-                "numeric",
-                "Maximum number of items in cache",
-              )}
-            </View>
+      <SettingsSectionHeading title="Appearance" />
+      <View style={styles.embeddedPanel}>
+        <AppearanceSettings showTitle={false} scrollable={false} compact />
+      </View>
 
-            <View style={styles.section}>
-              {renderSectionHeader("Synchronization", "sync-outline")}
-              {renderSwitch("Auto Sync", "auto_sync_enabled")}
-              {renderInput(
-                "Sync Interval (seconds)",
-                "sync_interval",
-                "numeric",
-                "Time between automatic syncs",
-              )}
-              {renderInput(
-                "Batch Size",
-                "sync_batch_size",
-                "numeric",
-                "Items per sync batch",
-              )}
-            </View>
+      <SettingsSectionHeading title="Personal Preferences" />
+      <UserSettingsSections />
 
-            <View style={styles.section}>
-              {renderSectionHeader("Sessions", "people-outline")}
-              {renderInput(
-                "Session Timeout (seconds)",
-                "session_timeout",
-                "numeric",
-              )}
-              {renderInput(
-                "Max Concurrent Sessions",
-                "max_concurrent_sessions",
-                "numeric",
-              )}
-            </View>
+      <SettingsActionSection title="Personal Security">
+        <SettingsActionRow
+          icon="shield-checkmark-outline"
+          label="Open Personal Security"
+          description="Manage PIN, password, and biometric login"
+          onPress={() => router.push("/security" as any)}
+        />
+      </SettingsActionSection>
 
-            <View style={styles.section}>
-              {renderSectionHeader("Logging", "document-text-outline")}
-              {renderSwitch("Enable Audit Log", "enable_audit_log")}
-              {renderInput("Log Retention (days)", "log_retention_days", "numeric")}
-              {renderInput(
-                "Log Level",
-                "log_level",
-                "default",
-                "DEBUG, INFO, WARN, ERROR",
-              )}
-            </View>
-
-            <View style={styles.section}>
-              {renderSectionHeader("Database", "server-outline")}
-              {renderInput("MongoDB Pool Size", "mongo_pool_size", "numeric")}
-              {renderInput("SQL Pool Size", "sql_pool_size", "numeric")}
-              {renderInput("Query Timeout (seconds)", "query_timeout", "numeric")}
-            </View>
-
-            <View style={styles.section}>
-              {renderSectionHeader("Security", "shield-checkmark-outline")}
-              {renderInput("Min Password Length", "password_min_length", "numeric")}
-              {renderSwitch("Require Uppercase", "password_require_uppercase")}
-              {renderSwitch("Require Lowercase", "password_require_lowercase")}
-              {renderSwitch("Require Numbers", "password_require_numbers")}
-              {renderInput("JWT Expiration (seconds)", "jwt_expiration", "numeric")}
-            </View>
-
-            <View style={styles.section}>
-              {renderSectionHeader("Performance", "speedometer-outline")}
-              {renderSwitch("Enable Compression", "enable_compression")}
-              {renderSwitch("Enable CORS", "enable_cors")}
-              {renderInput(
-                "Max Request Size (bytes)",
-                "max_request_size",
-                "numeric",
-              )}
-            </View>
-
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>
-                Note: Some changes may require a system restart to take full effect.
+      {offlineMode ? (
+        <SettingsActionSection title="System Parameters">
+          <View style={styles.noticeBlock}>
+            <Ionicons name="cloud-offline-outline" size={22} color={uiTokens.colors.warning} />
+            <View style={styles.noticeCopy}>
+              <Text style={[styles.noticeTitle, { color: uiTokens.colors.textPrimary }]}>
+                System parameters unavailable offline
+              </Text>
+              <Text style={[styles.noticeText, { color: uiTokens.colors.textSecondary }]}>
+                Backend configuration cannot be reviewed or changed while offline mode is enabled.
+                Personal app preferences above still work normally.
               </Text>
             </View>
-          </>
-        )}
-      </ScrollView>
+          </View>
+        </SettingsActionSection>
+      ) : (
+        <>
+          <SettingsActionSection title="API Configuration">
+            {renderSystemInput(
+              "timer-outline",
+              "API Timeout",
+              "api_timeout",
+              "numeric",
+              "Request timeout in seconds"
+            )}
+            <SettingsSectionDivider />
+            {renderSystemInput(
+              "speedometer-outline",
+              "Rate Limit",
+              "api_rate_limit",
+              "numeric",
+              "Maximum requests per minute"
+            )}
+          </SettingsActionSection>
+
+          <SettingsActionSection title="Caching">
+            {renderSystemSwitch("hardware-chip-outline", "Enable Caching", "cache_enabled")}
+            <SettingsSectionDivider />
+            {renderSystemInput(
+              "timer-outline",
+              "Cache TTL",
+              "cache_ttl",
+              "numeric",
+              "Time to live for cached items in seconds"
+            )}
+            <SettingsSectionDivider />
+            {renderSystemInput(
+              "albums-outline",
+              "Max Cache Size",
+              "cache_max_size",
+              "numeric",
+              "Maximum number of items kept in cache"
+            )}
+          </SettingsActionSection>
+
+          <SettingsActionSection title="Synchronization">
+            {renderSystemSwitch("sync-outline", "Auto Sync", "auto_sync_enabled")}
+            <SettingsSectionDivider />
+            {renderSystemInput(
+              "time-outline",
+              "Sync Interval",
+              "sync_interval",
+              "numeric",
+              "Time between automatic sync runs in seconds"
+            )}
+            <SettingsSectionDivider />
+            {renderSystemInput(
+              "layers-outline",
+              "Batch Size",
+              "sync_batch_size",
+              "numeric",
+              "Items processed per sync batch"
+            )}
+          </SettingsActionSection>
+
+          <SettingsActionSection title="Sessions">
+            {renderSystemInput(
+              "hourglass-outline",
+              "Session Timeout",
+              "session_timeout",
+              "numeric",
+              "Operator session timeout in seconds"
+            )}
+            <SettingsSectionDivider />
+            {renderSystemInput(
+              "people-outline",
+              "Max Concurrent Sessions",
+              "max_concurrent_sessions",
+              "numeric",
+              "Maximum active sessions allowed"
+            )}
+          </SettingsActionSection>
+
+          <SettingsActionSection title="Logging">
+            {renderSystemSwitch("document-text-outline", "Enable Audit Log", "enable_audit_log")}
+            <SettingsSectionDivider />
+            {renderSystemInput(
+              "calendar-outline",
+              "Log Retention",
+              "log_retention_days",
+              "numeric",
+              "Retention period in days"
+            )}
+            <SettingsSectionDivider />
+            {renderSystemInput(
+              "list-outline",
+              "Log Level",
+              "log_level",
+              "default",
+              "DEBUG, INFO, WARN, or ERROR"
+            )}
+          </SettingsActionSection>
+
+          <SettingsActionSection title="Database">
+            {renderSystemInput("server-outline", "MongoDB Pool Size", "mongo_pool_size", "numeric")}
+            <SettingsSectionDivider />
+            {renderSystemInput("server-outline", "SQL Pool Size", "sql_pool_size", "numeric")}
+            <SettingsSectionDivider />
+            {renderSystemInput(
+              "timer-outline",
+              "Query Timeout",
+              "query_timeout",
+              "numeric",
+              "Database query timeout in seconds"
+            )}
+          </SettingsActionSection>
+
+          <SettingsActionSection title="Security">
+            {renderSystemInput(
+              "key-outline",
+              "Min Password Length",
+              "password_min_length",
+              "numeric"
+            )}
+            <SettingsSectionDivider />
+            {renderSystemSwitch("text-outline", "Require Uppercase", "password_require_uppercase")}
+            <SettingsSectionDivider />
+            {renderSystemSwitch("text-outline", "Require Lowercase", "password_require_lowercase")}
+            <SettingsSectionDivider />
+            {renderSystemSwitch(
+              "calculator-outline",
+              "Require Numbers",
+              "password_require_numbers"
+            )}
+            <SettingsSectionDivider />
+            {renderSystemInput(
+              "shield-checkmark-outline",
+              "JWT Expiration",
+              "jwt_expiration",
+              "numeric",
+              "Token lifetime in seconds"
+            )}
+          </SettingsActionSection>
+
+          <SettingsActionSection title="Performance">
+            {renderSystemSwitch("archive-outline", "Enable Compression", "enable_compression")}
+            <SettingsSectionDivider />
+            {renderSystemSwitch("globe-outline", "Enable CORS", "enable_cors")}
+            <SettingsSectionDivider />
+            {renderSystemInput(
+              "cloud-upload-outline",
+              "Max Request Size",
+              "max_request_size",
+              "numeric",
+              "Maximum request payload size in bytes"
+            )}
+          </SettingsActionSection>
+
+          <View style={styles.footer}>
+            <Text style={[styles.footerText, { color: uiTokens.colors.textSecondary }]}>
+              Some system parameter changes may require a backend restart to take full effect.
+            </Text>
+          </View>
+        </>
+      )}
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  content: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
   loadingContainer: {
+    alignItems: "center",
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
   },
   loadingText: {
-    marginTop: 10,
-    color: auroraTheme.colors.text.secondary,
+    fontSize: 14,
+    marginTop: 12,
   },
   saveButton: {
-    backgroundColor: auroraTheme.colors.primary[500],
-    paddingHorizontal: auroraTheme.spacing.md,
-    paddingVertical: auroraTheme.spacing.sm,
-    borderRadius: auroraTheme.borderRadius.full,
-    minWidth: 70,
     alignItems: "center",
-  },
-  disabledButton: {
-    opacity: 0.5,
+    flexDirection: "row",
+    gap: 6,
+    minHeight: 40,
+    minWidth: 82,
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 9,
   },
   saveButtonText: {
-    color: "#fff",
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "800",
   },
-  content: {
+  introCard: {
+    alignItems: "center",
+    flexDirection: "row",
+    marginBottom: 16,
+    padding: 16,
+  },
+  introIcon: {
+    alignItems: "center",
+    height: 44,
+    justifyContent: "center",
+    marginRight: 12,
+    width: 44,
+  },
+  introCopy: {
     flex: 1,
-    padding: auroraTheme.spacing.lg,
   },
-  section: {
-    backgroundColor: auroraTheme.colors.surface.base,
-    borderRadius: auroraTheme.borderRadius.lg,
-    padding: auroraTheme.spacing.lg,
-    marginBottom: auroraTheme.spacing.lg,
-    borderWidth: 1,
-    borderColor: auroraTheme.colors.border.subtle,
-    ...(Platform.OS === "web" && {
-      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-    }),
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: auroraTheme.colors.border.subtle,
-    paddingBottom: 8,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: auroraTheme.colors.text.primary,
-    marginLeft: 8,
-  },
-  sectionDescription: {
-    color: auroraTheme.colors.text.secondary,
-    fontSize: 13,
-    lineHeight: 20,
-    marginBottom: auroraTheme.spacing.md,
-  },
-  personalPreferencesSpacer: {
-    height: auroraTheme.spacing.md,
-  },
-  personalSecurityButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    borderColor: auroraTheme.colors.border.subtle,
-    borderRadius: auroraTheme.borderRadius.full,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: auroraTheme.spacing.xs,
-    marginTop: auroraTheme.spacing.md,
-    paddingHorizontal: auroraTheme.spacing.md,
-    paddingVertical: auroraTheme.spacing.sm,
-  },
-  personalSecurityButtonText: {
-    color: auroraTheme.colors.text.primary,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    color: auroraTheme.colors.text.secondary,
+  introTitle: {
+    fontSize: 16,
+    fontWeight: "800",
     marginBottom: 4,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: auroraTheme.colors.border.subtle,
-    borderRadius: auroraTheme.borderRadius.md,
-    padding: auroraTheme.spacing.md,
-    fontSize: 16,
-    backgroundColor: auroraTheme.colors.surface.secondary,
-    color: auroraTheme.colors.text.primary,
+  introDescription: {
+    fontSize: 13,
+    lineHeight: 19,
   },
-  inputDescription: {
-    fontSize: 12,
-    color: auroraTheme.colors.text.muted,
-    marginTop: 4,
+  embeddedPanel: {
+    overflow: "hidden",
   },
-  switchContainer: {
+  noticeBlock: {
+    alignItems: "flex-start",
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 16,
+    gap: 12,
+    padding: 16,
   },
-  switchTextContainer: {
+  noticeCopy: {
     flex: 1,
-    marginRight: 16,
   },
-  switchLabel: {
-    fontSize: 16,
-    color: auroraTheme.colors.text.primary,
+  noticeTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    marginBottom: 4,
   },
-  switchDescription: {
-    fontSize: 12,
-    color: auroraTheme.colors.text.muted,
-    marginTop: 2,
+  noticeText: {
+    fontSize: 13,
+    lineHeight: 19,
   },
   footer: {
-    padding: auroraTheme.spacing.lg,
     alignItems: "center",
-    marginBottom: 32,
+    paddingHorizontal: 16,
+    paddingVertical: 24,
   },
   footerText: {
-    color: auroraTheme.colors.text.secondary,
+    fontSize: 13,
+    lineHeight: 19,
     textAlign: "center",
-    fontStyle: "italic",
   },
 });

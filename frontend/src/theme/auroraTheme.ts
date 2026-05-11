@@ -7,6 +7,9 @@
  * - Modern color palette from Kombai API
  * - Professional typography (Manrope + Source Sans 3)
  * - Comprehensive design tokens
+ *
+ * @deprecated Migrate feature code to useUiTokens/themeTokens. auroraTheme is a
+ * legacy visual-system bridge and must not be used for new operational UI.
  */
 
 import { ViewStyle } from "react-native";

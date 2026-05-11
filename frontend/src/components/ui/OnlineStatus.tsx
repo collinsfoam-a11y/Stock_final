@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 export default function OnlineStatus() {
   const [isConnected, setIsConnected] = useState<boolean | null>(true);
 
@@ -19,13 +20,11 @@ export default function OnlineStatus() {
   if (isConnected === null) return null;
 
   return (
-    <View
-      style={[styles.container, isConnected ? styles.online : styles.offline]}
-    >
+    <View style={[styles.container, isConnected ? styles.online : styles.offline]}>
       <Ionicons
         name={isConnected ? "cloud-done" : "cloud-offline"}
         size={14}
-        color="#fff"
+        color={uiSemanticColors.text.inverse}
       />
       <Text style={styles.text}>{isConnected ? "Online" : "Offline"}</Text>
     </View>
@@ -43,13 +42,13 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   online: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: uiColors.success[500],
   },
   offline: {
-    backgroundColor: "#FF5252",
+    backgroundColor: uiColors.error[500],
   },
   text: {
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 12,
     fontWeight: "600",
   },

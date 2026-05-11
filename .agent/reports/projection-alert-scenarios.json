@@ -1,0 +1,11 @@
+{
+  "stale_scenario": {
+    "status_code": 200,
+    "body": "{\"success\":true,\"stats\":{\"total_items\":27,\"verified_items\":0,\"pending_items\":27,\"today_activity\":25,\"total_variance\":117.0,\"positive_variance\":117.0,\"negative_variance\":0,\"avg_variance\":4.333333333333333,\"verification_rate\":0.0},\"by_warehouse\":[{\"warehouse\":\"Unknown\",\"count\":27}],\"by_status\":[{\"status\":\"pending\",\"count\":12},{\"status\":\"rejected\",\"count\":15}],\"timestamp\":\"2026-05-02T16:17:51.164279\"}"
+  },
+  "drift_scenario": {
+    "status_code": 200,
+    "body": "{\"success\":true,\"stats\":{\"total_items\":27,\"verified_items\":0,\"pending_items\":27,\"today_activity\":25,\"total_variance\":117.0,\"positive_variance\":117.0,\"negative_variance\":0,\"avg_variance\":4.333333333333333,\"verification_rate\":0.0},\"by_warehouse\":[{\"warehouse\":\"Unknown\",\"count\":27}],\"by_status\":[{\"status\":\"pending\",\"count\":12},{\"status\":\"rejected\",\"count\":15}],\"timestamp\":\"2026-05-02T16:17:51.178669\"}"
+  },
+  "timestamp": "2026-05-02T16:17:51.179280+00:00"
+}

@@ -4,6 +4,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useThemeContext } from "../../context/ThemeContext";
 import { useHapticFeedback } from "../../hooks/useHapticFeedback";
 
+import { shadows as uiShadows } from "@/theme/legacyCompat";
 export const ThemeToggle: React.FC = () => {
   const { themeLegacy: theme, themeMode, setThemeMode } = useThemeContext();
   const { colors } = theme;
@@ -69,10 +70,7 @@ export const ThemeToggle: React.FC = () => {
 
   return (
     <TouchableOpacity
-      style={[
-        styles.container,
-        { backgroundColor: colors.surface, borderColor: colors.border },
-      ]}
+      style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}
       onPress={handleToggle}
       activeOpacity={0.7}
       accessibilityLabel={getAccessibilityLabel()}
@@ -95,13 +93,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     backgroundColor: "transparent",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
+    ...uiShadows.md,
     elevation: 5,
   },
   label: {

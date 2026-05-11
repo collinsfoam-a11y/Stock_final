@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Modal } from "react-native";
 import { useSessionTimeout } from "../hooks/useSessionTimeout";
 import { createLogger } from "../services/logging";
 
+import { semanticColors, shadows, colors } from "@/theme/legacyCompat";
 const log = createLogger("SessionTimeoutWarning");
 
 const formatTime = (seconds: number): string => {
@@ -12,8 +13,7 @@ const formatTime = (seconds: number): string => {
 };
 
 export function SessionTimeoutWarning(): React.ReactElement | null {
-  const { showWarning, secondsRemaining, dismissWarning, refreshSession } =
-    useSessionTimeout();
+  const { showWarning, secondsRemaining, dismissWarning, refreshSession } = useSessionTimeout();
 
   if (!showWarning) {
     return null;
@@ -30,12 +30,7 @@ export function SessionTimeoutWarning(): React.ReactElement | null {
   };
 
   return (
-    <Modal
-      visible={showWarning}
-      transparent
-      animationType="fade"
-      onRequestClose={handleDismiss}
-    >
+    <Modal visible={showWarning} transparent animationType="fade" onRequestClose={handleDismiss}>
       <View style={styles.overlay}>
         <View style={styles.container}>
           <Text style={styles.icon}>⏰</Text>
@@ -44,15 +39,10 @@ export function SessionTimeoutWarning(): React.ReactElement | null {
             Your session will expire in{" "}
             <Text style={styles.highlight}>{formatTime(secondsRemaining)}</Text>
           </Text>
-          <Text style={styles.subtitle}>
-            Would you like to stay signed in?
-          </Text>
+          <Text style={styles.subtitle}>Would you like to stay signed in?</Text>
 
           <View style={styles.buttons}>
-            <TouchableOpacity
-              style={[styles.button, styles.primaryButton]}
-              onPress={handleRefresh}
-            >
+            <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleRefresh}>
               <Text style={styles.primaryButtonText}>Stay Signed In</Text>
             </TouchableOpacity>
 
@@ -78,16 +68,13 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   container: {
-    backgroundColor: "#fff",
+    backgroundColor: semanticColors.background.elevated,
     borderRadius: 16,
     padding: 24,
     width: "100%",
     maxWidth: 340,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
+    ...shadows.lg,
     elevation: 8,
   },
   icon: {
@@ -97,24 +84,24 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#1a1a1a",
+    color: semanticColors.text.primary,
     marginBottom: 8,
     textAlign: "center",
   },
   message: {
     fontSize: 16,
-    color: "#666",
+    color: semanticColors.text.secondary,
     textAlign: "center",
     marginBottom: 8,
     lineHeight: 22,
   },
   highlight: {
     fontWeight: "700",
-    color: "#e65100",
+    color: colors.warning[700],
   },
   subtitle: {
     fontSize: 14,
-    color: "#888",
+    color: semanticColors.text.tertiary,
     textAlign: "center",
     marginBottom: 24,
   },
@@ -130,20 +117,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   primaryButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: colors.info[600],
   },
   primaryButtonText: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 16,
     fontWeight: "600",
   },
   secondaryButton: {
     backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: "#e0e0e0",
+    borderColor: semanticColors.border.default,
   },
   secondaryButtonText: {
-    color: "#666",
+    color: semanticColors.text.secondary,
     fontSize: 14,
     fontWeight: "500",
   },

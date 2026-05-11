@@ -7,6 +7,7 @@ import React from "react";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { useTheme } from "../hooks/useTheme";
 import { LottieAnimation } from "./LottieAnimation";
+import { zIndex as uiZIndex } from "@/theme/designTokens";
 
 interface LottieLoadingProps {
   message?: string;
@@ -54,9 +55,7 @@ export const LottieLoading: React.FC<LottieLoadingProps> = ({
         }
       />
       {message && (
-        <Text style={[styles.message, { color: theme.colors.textSecondary }]}>
-          {message}
-        </Text>
+        <Text style={[styles.message, { color: theme.colors.textSecondary }]}>{message}</Text>
       )}
     </View>
   );
@@ -75,7 +74,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex: 1000,
+    zIndex: uiZIndex.toast,
   },
   fallback: {
     alignItems: "center",

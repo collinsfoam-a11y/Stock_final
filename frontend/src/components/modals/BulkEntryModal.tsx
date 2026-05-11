@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Modal } from "../ui/Modal";
-import { PremiumButton } from "../premium/PremiumButton";
+import { AppButton } from "../ui/AppButton";
 import {
   modernColors,
   modernTypography,
@@ -90,13 +90,13 @@ export const BulkEntryModal: React.FC<BulkEntryModalProps> = ({
               autoCorrect={false}
             />
             <View style={styles.footer}>
-              <PremiumButton
+              <AppButton
                 title="Cancel"
                 variant="secondary"
                 onPress={resetAndClose}
                 style={styles.button}
               />
-              <PremiumButton
+              <AppButton
                 title="Preview"
                 onPress={handleParse}
                 style={styles.button}
@@ -126,13 +126,13 @@ export const BulkEntryModal: React.FC<BulkEntryModalProps> = ({
             </ScrollView>
 
             <View style={styles.footer}>
-              <PremiumButton
+              <AppButton
                 title="Back"
                 variant="secondary"
                 onPress={() => setStep("input")}
                 style={styles.button}
               />
-              <PremiumButton
+              <AppButton
                 title={`Add All (${parsedItems.length})`}
                 onPress={handleConfirm}
                 style={styles.button}

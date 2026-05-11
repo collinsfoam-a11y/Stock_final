@@ -3,16 +3,9 @@
  * Modal for starting a scanning session with location details
  */
 import React from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Modal,
-  Alert,
-  StyleSheet,
-} from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Modal, Alert, StyleSheet } from "react-native";
 
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface SessionStartModalProps {
   visible: boolean;
   floorNo: string;
@@ -39,18 +32,11 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={() => {}}
-    >
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={() => {}}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Start Session</Text>
-          <Text style={styles.modalSubtitle}>
-            Enter location details to begin
-          </Text>
+          <Text style={styles.modalSubtitle}>Enter location details to begin</Text>
 
           <Text style={styles.modalLabel}>Floor Number</Text>
           <TextInput
@@ -58,7 +44,7 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
             value={floorNo}
             onChangeText={onFloorChange}
             placeholder="e.g. 1, 2, G"
-            placeholderTextColor="#666"
+            placeholderTextColor={uiSemanticColors.text.secondary}
             autoCapitalize="characters"
             autoCorrect={false}
           />
@@ -69,16 +55,13 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
             value={rackNo}
             onChangeText={onRackChange}
             placeholder="e.g. A1, B2"
-            placeholderTextColor="#666"
+            placeholderTextColor={uiSemanticColors.text.secondary}
             autoCapitalize="characters"
             autoCorrect={false}
           />
 
           <TouchableOpacity
-            style={[
-              styles.confirmButton,
-              !floorNo.trim() && styles.buttonDisabled,
-            ]}
+            style={[styles.confirmButton, !floorNo.trim() && styles.buttonDisabled]}
             onPress={handleStart}
             disabled={!floorNo.trim()}
           >
@@ -98,46 +81,46 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modalContent: {
-    backgroundColor: "#1E293B",
+    backgroundColor: uiColors.neutral[800],
     borderRadius: 16,
     padding: 24,
   },
   modalTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     marginBottom: 8,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: "#94A3B8",
+    color: uiColors.neutral[400],
     marginBottom: 24,
   },
   modalLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#94A3B8",
+    color: uiColors.neutral[400],
     marginBottom: 8,
     marginTop: 16,
   },
   input: {
-    backgroundColor: "#1E293B",
+    backgroundColor: uiColors.neutral[800],
     borderRadius: 12,
     padding: 16,
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: uiColors.neutral[700],
   },
   confirmButton: {
-    backgroundColor: "#3B82F6",
+    backgroundColor: uiColors.info[500],
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     marginTop: 24,
   },
   confirmButtonText: {
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 18,
     fontWeight: "bold",
   },

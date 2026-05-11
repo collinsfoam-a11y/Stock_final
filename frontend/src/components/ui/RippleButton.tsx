@@ -1,38 +1,19 @@
 /**
- * RippleButton Component - Aurora Design v2.0
+ * @deprecated Use AppButton for new work.
  *
- * Material-style ripple button with gradient support
- * Features:
- * - Ripple effect on press
- * - Gradient backgrounds
- * - Multiple variants
- * - Loading state
- * - Haptic feedback
+ * RippleButton remains as a compatibility facade for legacy imports. It no longer
+ * owns a visual system, gradient language, or custom ripple implementation.
  */
 
-import React, { useState } from "react";
-import {
-  TouchableOpacity,
-  View,
-  Text,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-  Platform,
-  LayoutChangeEvent,
-  GestureResponderEvent,
-  ActivityIndicator,
-} from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import React, { useMemo } from "react";
+import { ActivityIndicator, StyleSheet, Text, TextStyle, View, ViewStyle } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Haptics from "expo-haptics";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-} from "react-native-reanimated";
-import { auroraTheme } from "@/theme/auroraTheme";
+
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { getMinimumTouchTargetStyle } from "@/utils/accessibility";
+import { AnimatedPressable } from "./AnimatedPressable";
+import { warnDeprecatedVisualSystem } from "./legacyVisualSystem";
 
 type ButtonVariant =
   | "primary"
@@ -60,77 +41,88 @@ interface RippleButtonProps {
   hapticFeedback?: "light" | "medium" | "heavy" | "none";
 }
 
-const variantStyles = {
-  primary: {
-    gradient: auroraTheme.colors.aurora.primary,
-    textColor: auroraTheme.colors.text.primary,
-    rippleColor: "rgba(255, 255, 255, 0.3)",
-  },
-  secondary: {
-    gradient: auroraTheme.colors.aurora.secondary,
-    textColor: auroraTheme.colors.text.primary,
-    rippleColor: "rgba(255, 255, 255, 0.3)",
-  },
-  success: {
-    gradient: auroraTheme.colors.aurora.success,
-    textColor: auroraTheme.colors.text.primary,
-    rippleColor: "rgba(255, 255, 255, 0.3)",
-  },
-  warning: {
-    gradient: auroraTheme.colors.aurora.warm,
-    textColor: auroraTheme.colors.text.primary,
-    rippleColor: "rgba(255, 255, 255, 0.3)",
-  },
-  error: {
-    gradient: [
-      auroraTheme.colors.error[500],
-      auroraTheme.colors.error[700],
-    ] as const,
-    textColor: auroraTheme.colors.text.primary,
-    rippleColor: "rgba(255, 255, 255, 0.3)",
-  },
-  ghost: {
-    gradient: ["transparent", "transparent"] as const,
-    textColor: auroraTheme.colors.text.primary,
-    rippleColor: "rgba(255, 255, 255, 0.1)",
-  },
-  outline: {
-    gradient: ["transparent", "transparent"] as const,
-    textColor: auroraTheme.colors.primary[400],
-    rippleColor: "rgba(21, 96, 189, 0.2)",
-  },
-};
+type RippleTokens = ReturnType<typeof useUiTokens>;
 
-const sizeStyles = {
-  sm: {
-    paddingVertical: auroraTheme.spacing.sm,
-    paddingHorizontal: auroraTheme.spacing.md,
-    fontSize: auroraTheme.typography.fontSize.sm,
-    iconSize: 16,
-    borderRadius: auroraTheme.borderRadius.md,
-  },
-  md: {
-    paddingVertical: auroraTheme.spacing.md,
-    paddingHorizontal: auroraTheme.spacing.lg,
-    fontSize: auroraTheme.typography.fontSize.md,
-    iconSize: 20,
-    borderRadius: auroraTheme.borderRadius.lg,
-  },
-  lg: {
-    paddingVertical: auroraTheme.spacing.lg,
-    paddingHorizontal: auroraTheme.spacing.xl,
-    fontSize: auroraTheme.typography.fontSize.lg,
-    iconSize: 24,
-    borderRadius: auroraTheme.borderRadius.xl,
-  },
-  xl: {
-    paddingVertical: auroraTheme.spacing.xl,
-    paddingHorizontal: auroraTheme.spacing["2xl"],
-    fontSize: auroraTheme.typography.fontSize.xl,
-    iconSize: 28,
-    borderRadius: auroraTheme.borderRadius["2xl"],
-  },
-};
+function getSizeConfig(uiTokens: RippleTokens, size: ButtonSize) {
+  const configs = {
+    sm: {
+      paddingVertical: uiTokens.spacing.sm,
+      paddingHorizontal: uiTokens.spacing.md,
+      fontSize: 14,
+      iconSize: 16,
+      borderRadius: uiTokens.radius.md,
+      minHeight: 44,
+    },
+    md: {
+      paddingVertical: uiTokens.spacing.md,
+      paddingHorizontal: uiTokens.spacing.lg,
+      fontSize: 16,
+      iconSize: 20,
+      borderRadius: uiTokens.radius.lg,
+      minHeight: 48,
+    },
+    lg: {
+      paddingVertical: uiTokens.spacing.lg,
+      paddingHorizontal: uiTokens.spacing.xl,
+      fontSize: 18,
+      iconSize: 24,
+      borderRadius: uiTokens.radius.xl,
+      minHeight: 52,
+    },
+    xl: {
+      paddingVertical: uiTokens.spacing.xl,
+      paddingHorizontal: uiTokens.spacing["2xl"],
+      fontSize: 20,
+      iconSize: 28,
+      borderRadius: uiTokens.radius.xl,
+      minHeight: 56,
+    },
+  };
+
+  return configs[size];
+}
+
+function getVariantConfig(uiTokens: RippleTokens, variant: ButtonVariant) {
+  const configs = {
+    primary: {
+      backgroundColor: uiTokens.colors.accent,
+      borderColor: uiTokens.colors.accent,
+      textColor: uiTokens.colors.surface,
+    },
+    secondary: {
+      backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.1),
+      borderColor: colorWithAlpha(uiTokens.colors.accent, 0.24),
+      textColor: uiTokens.colors.accent,
+    },
+    success: {
+      backgroundColor: colorWithAlpha(uiTokens.colors.success, 0.12),
+      borderColor: colorWithAlpha(uiTokens.colors.success, 0.3),
+      textColor: uiTokens.colors.success,
+    },
+    warning: {
+      backgroundColor: colorWithAlpha(uiTokens.colors.warning, 0.12),
+      borderColor: colorWithAlpha(uiTokens.colors.warning, 0.3),
+      textColor: uiTokens.colors.warning,
+    },
+    error: {
+      backgroundColor: uiTokens.colors.error,
+      borderColor: uiTokens.colors.error,
+      textColor: uiTokens.colors.surface,
+    },
+    ghost: {
+      backgroundColor: "transparent",
+      borderColor: "transparent",
+      textColor: uiTokens.colors.accent,
+    },
+    outline: {
+      backgroundColor: "transparent",
+      borderColor: uiTokens.colors.border,
+      textColor: uiTokens.colors.textPrimary,
+    },
+  };
+
+  return configs[variant];
+}
 
 export const RippleButton: React.FC<RippleButtonProps> = ({
   children,
@@ -147,83 +139,45 @@ export const RippleButton: React.FC<RippleButtonProps> = ({
   textStyle,
   hapticFeedback = "medium",
 }) => {
-  const [buttonLayout, setButtonLayout] = useState({ width: 0, height: 0 });
-  const rippleScale = useSharedValue(0);
-  const rippleOpacity = useSharedValue(0);
-  const rippleX = useSharedValue(0);
-  const rippleY = useSharedValue(0);
+  warnDeprecatedVisualSystem("RippleButton");
+  const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
+  const variantConfig = getVariantConfig(uiTokens, variant);
+  const sizeConfig = getSizeConfig(uiTokens, size);
+  const contentLabel = label ?? (typeof children === "string" ? children : "Action");
+  const isDisabled = disabled || loading;
 
-  const variantStyle = variantStyles[variant];
-  const sizeStyle = sizeStyles[size];
-
-  const handleLayout = (event: LayoutChangeEvent) => {
-    const { width, height } = event.nativeEvent.layout;
-    setButtonLayout({ width, height });
-  };
-
-  const triggerRipple = (event: GestureResponderEvent) => {
-    const { locationX, locationY } = event.nativeEvent;
-    rippleX.value = locationX;
-    rippleY.value = locationY;
-
-    // Calculate max ripple size
-    const maxDistance = Math.sqrt(
-      Math.pow(Math.max(locationX, buttonLayout.width - locationX), 2) +
-        Math.pow(Math.max(locationY, buttonLayout.height - locationY), 2),
-    );
-    const maxScale = (maxDistance * 2) / 10; // 10 is base ripple size
-
-    rippleScale.value = 0;
-    rippleOpacity.value = 1;
-
-    rippleScale.value = withTiming(maxScale, {
-      duration: 400,
-      easing: Easing.out(Easing.cubic),
-    });
-
-    rippleOpacity.value = withTiming(0, {
-      duration: 600,
-      easing: Easing.out(Easing.cubic),
-    });
-  };
-
-  const handlePress = (event: GestureResponderEvent) => {
-    if (disabled || loading) return;
-
-    triggerRipple(event);
-
-    if (Platform.OS !== "web" && hapticFeedback !== "none") {
-      const hapticType = {
-        light: Haptics.ImpactFeedbackStyle.Light,
-        medium: Haptics.ImpactFeedbackStyle.Medium,
-        heavy: Haptics.ImpactFeedbackStyle.Heavy,
-      }[hapticFeedback];
-      Haptics.impactAsync(hapticType);
-    }
-
-    onPress?.();
-  };
-
-  const rippleStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: rippleX.value - 5 },
-      { translateY: rippleY.value - 5 },
-      { scale: rippleScale.value },
-    ],
-    opacity: rippleOpacity.value,
-  }));
-
-  const content = (
-    <>
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      disabled={isDisabled}
+      hapticFeedback={hapticFeedback}
+      accessibilityLabel={contentLabel}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      style={[
+        styles.button,
+        getMinimumTouchTargetStyle(sizeConfig.minHeight),
+        {
+          paddingVertical: sizeConfig.paddingVertical,
+          paddingHorizontal: sizeConfig.paddingHorizontal,
+          borderRadius: sizeConfig.borderRadius,
+          backgroundColor: variantConfig.backgroundColor,
+          borderColor: variantConfig.borderColor,
+          opacity: isDisabled ? 0.55 : 1,
+        },
+        fullWidth ? styles.fullWidth : null,
+        style,
+      ]}
+    >
       {loading ? (
-        <ActivityIndicator size="small" color={variantStyle.textColor} />
+        <ActivityIndicator size="small" color={variantConfig.textColor} />
       ) : (
         <View style={styles.contentContainer}>
           {icon && iconPosition === "left" && (
             <Ionicons
               name={icon}
-              size={sizeStyle.iconSize}
-              color={variantStyle.textColor}
+              size={sizeConfig.iconSize}
+              color={variantConfig.textColor}
               style={styles.iconLeft}
             />
           )}
@@ -232,9 +186,8 @@ export const RippleButton: React.FC<RippleButtonProps> = ({
               style={[
                 styles.label,
                 {
-                  fontSize: sizeStyle.fontSize,
-                  color: variantStyle.textColor,
-                  fontFamily: auroraTheme.typography.fontFamily.label,
+                  fontSize: sizeConfig.fontSize,
+                  color: variantConfig.textColor,
                 },
                 textStyle,
               ]}
@@ -245,114 +198,43 @@ export const RippleButton: React.FC<RippleButtonProps> = ({
           {icon && iconPosition === "right" && (
             <Ionicons
               name={icon}
-              size={sizeStyle.iconSize}
-              color={variantStyle.textColor}
+              size={sizeConfig.iconSize}
+              color={variantConfig.textColor}
               style={styles.iconRight}
             />
           )}
         </View>
       )}
-
-      {/* Ripple effect */}
-      <Animated.View
-        style={[
-          styles.ripple,
-          { backgroundColor: variantStyle.rippleColor },
-          rippleStyle,
-          styles.pointerEventsNone,
-        ]}
-      />
-    </>
-  );
-
-  const buttonStyles: ViewStyle[] = [
-    styles.button,
-    {
-      paddingVertical: sizeStyle.paddingVertical,
-      paddingHorizontal: sizeStyle.paddingHorizontal,
-      borderRadius: sizeStyle.borderRadius,
-      opacity: disabled ? 0.5 : 1,
-    },
-    fullWidth ? styles.fullWidth : {},
-    variant === "outline"
-      ? {
-          borderWidth: 2,
-          borderColor: auroraTheme.colors.primary[400],
-        }
-      : {},
-    style ?? {},
-  ];
-
-  if (variant === "ghost" || variant === "outline") {
-    return (
-      <TouchableOpacity
-        style={buttonStyles}
-        onPress={handlePress}
-        onLayout={handleLayout}
-        disabled={disabled || loading}
-        activeOpacity={0.8}
-      >
-        {content}
-      </TouchableOpacity>
-    );
-  }
-
-  return (
-    <TouchableOpacity
-      onPress={handlePress}
-      onLayout={handleLayout}
-      disabled={disabled || loading}
-      activeOpacity={0.9}
-      style={[fullWidth && styles.fullWidth]}
-    >
-      <LinearGradient
-        colors={variantStyle.gradient as readonly [string, string, ...string[]]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[buttonStyles, styles.gradient]}
-      >
-        {content}
-      </LinearGradient>
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 };
 
-const styles = StyleSheet.create({
-  button: {
-    overflow: "hidden",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  gradient: {
-    overflow: "hidden",
-  },
-  fullWidth: {
-    width: "100%",
-  },
-  contentContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  label: {
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  iconLeft: {
-    marginRight: auroraTheme.spacing.sm,
-  },
-  iconRight: {
-    marginLeft: auroraTheme.spacing.sm,
-  },
-  ripple: {
-    position: "absolute",
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  pointerEventsNone: {
-    pointerEvents: "none",
-  },
-});
+const createStyles = (uiTokens: RippleTokens) =>
+  StyleSheet.create({
+    button: {
+      overflow: "hidden",
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 1,
+    },
+    fullWidth: {
+      width: "100%",
+    },
+    contentContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    label: {
+      fontWeight: "600",
+      textAlign: "center",
+    },
+    iconLeft: {
+      marginRight: uiTokens.spacing.sm,
+    },
+    iconRight: {
+      marginLeft: uiTokens.spacing.sm,
+    },
+  });
 
 export default RippleButton;

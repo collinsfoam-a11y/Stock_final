@@ -1,0 +1,150 @@
+{
+  "duration_seconds": 600,
+  "iterations": 2623,
+  "sync": {
+    "ok": 100,
+    "fail": 2523,
+    "success_rate": 0.03812428516965307,
+    "latency_ms": {
+      "min": 4.328374998294748,
+      "avg": 13.186274389702158,
+      "p95": 16.95787499920698,
+      "max": 46.27379199882853
+    }
+  },
+  "reads": {
+    "ok": 4732,
+    "fail": 514,
+    "success_rate": 0.9020205871139916,
+    "gate_503": 0,
+    "latency_ms": {
+      "min": 3.6405419996299315,
+      "avg": 8.481573857361713,
+      "p95": 12.262583000847371,
+      "max": 75.59820799724548
+    }
+  },
+  "failure_samples": [
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":57,\"limit\":10}}",
+      "iteration": 11
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":57,\"limit\":10}}",
+      "iteration": 12
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":57,\"limit\":10}}",
+      "iteration": 13
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":57,\"limit\":10}}",
+      "iteration": 14
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":56,\"limit\":10}}",
+      "iteration": 15
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":56,\"limit\":10}}",
+      "iteration": 16
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":56,\"limit\":10}}",
+      "iteration": 17
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":56,\"limit\":10}}",
+      "iteration": 18
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":55,\"limit\":10}}",
+      "iteration": 19
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":55,\"limit\":10}}",
+      "iteration": 20
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":55,\"limit\":10}}",
+      "iteration": 21
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":55,\"limit\":10}}",
+      "iteration": 22
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":54,\"limit\":10}}",
+      "iteration": 23
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":54,\"limit\":10}}",
+      "iteration": 24
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":54,\"limit\":10}}",
+      "iteration": 25
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":54,\"limit\":10}}",
+      "iteration": 26
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":54,\"limit\":10}}",
+      "iteration": 27
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":53,\"limit\":10}}",
+      "iteration": 28
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":53,\"limit\":10}}",
+      "iteration": 29
+    },
+    {
+      "kind": "sync_status",
+      "status": 429,
+      "body": "{\"detail\":{\"message\":\"Rate limit exceeded for batch sync\",\"retry_after\":53,\"limit\":10}}",
+      "iteration": 30
+    }
+  ],
+  "timestamp": "2026-05-02T15:58:04.727186+00:00"
+}

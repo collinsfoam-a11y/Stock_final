@@ -1,16 +1,11 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import ModernCard from "@/components/ui/ModernCard";
-import {
-  borderRadius,
-  colors,
-  spacing,
-  typography,
-} from "@/theme/unified";
+import { borderRadius, colors, spacing, typography } from "@/theme/legacyCompat";
 
+import { useUiTokens } from "@/hooks/useUiTokens";
 interface ScanStats {
   pendingItems: number;
   scannedItems: number;
@@ -25,39 +20,47 @@ interface ScanStatsCardProps {
 function SkeletonLoader({ style }: { style?: object }) {
   return (
     <View style={[styles.skeleton, style]}>
-      <Animated.View
-        style={styles.skeletonShimmer}
-        entering={FadeInDown.duration(300)}
-      />
+      <Animated.View style={styles.skeletonShimmer} entering={FadeInDown.duration(300)} />
     </View>
   );
 }
 
-export function ScanStatsCard({
-  initialLoading,
-  sessionStats,
-}: ScanStatsCardProps) {
-  const readyToFinish =
-    sessionStats.scannedItems > 0 && sessionStats.pendingItems === 0;
+export function ScanStatsCard({ initialLoading, sessionStats }: ScanStatsCardProps) {
+  const uiTokens = useUiTokens();
+  const cardSurface = {
+    backgroundColor: uiTokens.colors.surface,
+    borderColor: uiTokens.colors.border,
+  };
+  const dividerSurface = { backgroundColor: uiTokens.colors.border };
+  const skeletonSurface = { backgroundColor: uiTokens.colors.border };
 
   if (initialLoading) {
     return (
-      <ModernCard variant="outlined" elevation="none" style={styles.statsCard}>
+      <ModernCard elevation="none" padding={0} style={[styles.statsCard, cardSurface]}>
         <View style={styles.statsRow}>
           {[0, 1, 2].map((index) => (
-            <View key={index} style={styles.statTile}>
-              <SkeletonLoader
-                style={{ width: 48, height: 32, borderRadius: 8 }}
-              />
-              <SkeletonLoader
-                style={{
-                  width: 60,
-                  height: 12,
-                  marginTop: 8,
-                  borderRadius: 4,
-                }}
-              />
-            </View>
+            <React.Fragment key={index}>
+              <View style={styles.statItem}>
+                <SkeletonLoader
+                  style={{
+                    width: 48,
+                    height: 32,
+                    borderRadius: 8,
+                    ...skeletonSurface,
+                  }}
+                />
+                <SkeletonLoader
+                  style={{
+                    width: 60,
+                    height: 12,
+                    marginTop: 8,
+                    borderRadius: 4,
+                    ...skeletonSurface,
+                  }}
+                />
+              </View>
+              {index < 2 && <View style={[styles.statDivider, dividerSurface]} />}
+            </React.Fragment>
           ))}
         </View>
       </ModernCard>
@@ -65,55 +68,27 @@ export function ScanStatsCard({
   }
 
   return (
-    <ModernCard variant="outlined" elevation="none" style={styles.statsCard}>
-      <View style={styles.cardHeader}>
-        <View>
-          <Text style={styles.cardEyebrow}>Rack Progress</Text>
-          <Text style={styles.cardTitle}>
-            Keep the rack clean before submitting it for review
-          </Text>
-        </View>
-
-        <View
-          style={[
-            styles.statusChip,
-            readyToFinish ? styles.statusChipReady : styles.statusChipPending,
-          ]}
-        >
-          <Ionicons
-            name={readyToFinish ? "checkmark-circle" : "time-outline"}
-            size={14}
-            color={readyToFinish ? colors.success[600] : colors.warning[600]}
-          />
-          <Text
-            style={[
-              styles.statusChipText,
-              readyToFinish
-                ? styles.statusChipTextReady
-                : styles.statusChipTextPending,
-            ]}
-          >
-            {readyToFinish ? "Ready" : `${sessionStats.pendingItems} pending`}
-          </Text>
-        </View>
-      </View>
-
+    <ModernCard elevation="none" padding={0} style={[styles.statsCard, cardSurface]}>
       <View style={styles.statsRow}>
-        <View style={styles.statTile}>
-          <Text style={styles.statValue}>{sessionStats.scannedItems}</Text>
-          <Text style={styles.statLabel}>Scanned</Text>
+        <View style={styles.statItem}>
+          <Text style={[styles.statValue, { color: uiTokens.colors.textPrimary }]}>
+            {sessionStats.scannedItems}
+          </Text>
+          <Text style={[styles.statLabel, { color: uiTokens.colors.textSecondary }]}>Scanned</Text>
         </View>
-        <View style={styles.statTile}>
-          <Text style={[styles.statValue, { color: colors.success[600] }]}>
+        <View style={[styles.statDivider, dividerSurface]} />
+        <View style={styles.statItem}>
+          <Text style={[styles.statValue, { color: uiTokens.colors.success }]}>
             {sessionStats.verifiedItems}
           </Text>
-          <Text style={styles.statLabel}>Verified</Text>
+          <Text style={[styles.statLabel, { color: uiTokens.colors.textSecondary }]}>Verified</Text>
         </View>
-        <View style={styles.statTile}>
-          <Text style={[styles.statValue, { color: colors.warning[600] }]}>
+        <View style={[styles.statDivider, dividerSurface]} />
+        <View style={styles.statItem}>
+          <Text style={[styles.statValue, { color: uiTokens.colors.warning }]}>
             {sessionStats.pendingItems}
           </Text>
-          <Text style={styles.statLabel}>Pending</Text>
+          <Text style={[styles.statLabel, { color: uiTokens.colors.textSecondary }]}>Pending</Text>
         </View>
       </View>
     </ModernCard>
@@ -122,83 +97,38 @@ export function ScanStatsCard({
 
 const styles = StyleSheet.create({
   statsCard: {
-    marginBottom: spacing.xl,
-    padding: spacing.lg,
+    marginBottom: spacing.md,
+    padding: spacing.md,
     backgroundColor: colors.white,
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.gray[200],
   },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  cardEyebrow: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[700],
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: spacing.xs,
-  },
-  cardTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
-    lineHeight: 22,
-    maxWidth: 220,
-  },
-  statusChip: {
-    minHeight: 34,
-    paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.full,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  statusChipReady: {
-    backgroundColor: colors.success[50],
-  },
-  statusChipPending: {
-    backgroundColor: colors.warning[50],
-  },
-  statusChipText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  statusChipTextReady: {
-    color: colors.success[600],
-  },
-  statusChipTextPending: {
-    color: colors.warning[600],
-  },
   statsRow: {
     flexDirection: "row",
-    gap: spacing.sm,
-  },
-  statTile: {
-    flex: 1,
-    minHeight: 96,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.gray[50],
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
     justifyContent: "space-between",
+    alignItems: "center",
+  },
+  statItem: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: spacing.xs,
+  },
+  statDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: colors.gray[200],
   },
   statValue: {
-    fontSize: 30,
-    fontWeight: "800",
+    fontSize: typography.fontSize["3xl"],
+    fontWeight: "700",
     color: colors.gray[900],
+    marginBottom: 2,
     fontVariant: ["tabular-nums"],
   },
   statLabel: {
-    fontSize: typography.fontSize.xs,
+    fontSize: typography.fontSize.sm,
     color: colors.gray[600],
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
     fontWeight: "600",
   },
   skeleton: {

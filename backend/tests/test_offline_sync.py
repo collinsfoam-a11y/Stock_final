@@ -63,6 +63,23 @@ async def test_modern_batch_sync_success(async_client: AsyncClient, authenticate
     assert len(data["conflicts"]) == 0
     assert len(data["errors"]) == 0
 
+    line = await test_db.count_lines.find_one({"client_record_id": client_record_id})
+    assert line is not None
+    assert line["session_id"] == session_id
+    assert line["location_id"] == "LOC-1"
+    assert line["floor_id"] == "F1"
+    assert line["rack_id"] == "R1"
+    assert line["item_code"] == "ITEM-100"
+    assert line["counted_qty"] == 10.0
+    assert line["idempotency_key"] == client_record_id
+
+    replay = await async_client.post(
+        "/api/sync/batch", json=payload, headers=authenticated_headers
+    )
+    assert replay.status_code == 200
+    assert client_record_id in replay.json()["ok"]
+    assert await test_db.count_lines.count_documents({"client_record_id": client_record_id}) == 1
+
 
 @pytest.mark.asyncio
 async def test_modern_batch_sync_allows_same_serial_for_different_items(

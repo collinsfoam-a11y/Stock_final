@@ -6,12 +6,24 @@
  */
 
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+  useWindowDimensions,
+} from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { colors as unifiedColors, radius, spacing } from "@/theme/unified";
-import { useThemeContext } from "@/context/ThemeContext";
-import { operationalTheme } from "@/theme/operationalTheme";
-import { getDefaultInventoryTabs, NavTab, NavTabId } from "./bottomNavShared";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import {
+  BOTTOM_NAV_HIT_SLOP,
+  getDefaultInventoryTabs,
+  getResponsiveBottomNavTabMinWidth,
+  NavTab,
+  NavTabId,
+} from "./bottomNavShared";
 
 interface BottomNavBarProps {
   tabs: NavTab[];
@@ -19,61 +31,102 @@ interface BottomNavBarProps {
   onTabChange?: (tabId: NavTabId) => void;
 }
 
-export const BottomNavBar: React.FC<BottomNavBarProps> = ({ tabs, activeTabId, onTabChange }) => {
-  const { themeLegacy: appTheme, isDark } = useThemeContext();
-  const { colors } = appTheme;
+interface BottomNavItemProps {
+  tab: NavTab;
+  isActive: boolean;
+  activeColor: string;
+  inactiveColor: string;
+  iconBackground: string;
+  minWidth: number;
+  onPress: (tab: NavTab) => void;
+}
 
-  const handleTabPress = (tab: NavTab) => {
-    if (onTabChange) {
-      onTabChange(tab.id);
-    }
-    tab.onPress();
-  };
+const BottomNavItem = React.memo(
+  ({
+    tab,
+    isActive,
+    activeColor,
+    inactiveColor,
+    iconBackground,
+    minWidth,
+    onPress,
+  }: BottomNavItemProps) => (
+    <TouchableOpacity
+      key={tab.id}
+      activeOpacity={0.86}
+      hitSlop={BOTTOM_NAV_HIT_SLOP}
+      style={[styles.bottomNavItem, { minWidth }]}
+      onPress={() => onPress(tab)}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isActive }}
+      accessibilityLabel={tab.label}
+      accessibilityHint={`Open ${tab.label}`}
+    >
+      <View
+        style={[styles.bottomNavIconContainer, isActive && { backgroundColor: iconBackground }]}
+      >
+        <Ionicons
+          name={isActive ? tab.iconFilled : tab.icon}
+          size={22}
+          color={isActive ? activeColor : inactiveColor}
+        />
+      </View>
+      <Text
+        numberOfLines={1}
+        style={[styles.bottomNavLabel, { color: isActive ? activeColor : inactiveColor }]}
+      >
+        {tab.label}
+      </Text>
+    </TouchableOpacity>
+  )
+);
+BottomNavItem.displayName = "BottomNavItem";
+
+export const BottomNavBar: React.FC<BottomNavBarProps> = ({ tabs, activeTabId, onTabChange }) => {
+  const tokens = useUiTokens();
+  const { width } = useWindowDimensions();
+  const tabMinWidth = getResponsiveBottomNavTabMinWidth(width, tabs.length, Platform.OS);
+
+  const handleTabPress = React.useCallback(
+    (tab: NavTab) => {
+      if (onTabChange) {
+        onTabChange(tab.id);
+      }
+      tab.onPress();
+    },
+    [onTabChange]
+  );
 
   return (
     <View
       style={[
         styles.bottomNavigation,
         {
-          backgroundColor: isDark ? unifiedColors.neutral[900] : operationalTheme.surface,
-          borderTopColor: colors.border,
+          backgroundColor: tokens.colors.surface,
+          borderTopColor: tokens.colors.border,
+          paddingVertical: tokens.spacing.sm,
+          paddingBottom:
+            Platform.OS === "ios" ? Math.max(28, tokens.spacing.lg) : tokens.spacing.md,
         },
       ]}
     >
       {tabs.map((tab) => {
         const isActive = activeTabId === tab.id;
-        const activeColor = tab.activeColor || colors.primary;
-        const inactiveColor = colors.textSecondary;
+        const activeColor = tab.activeColor || tokens.colors.accent;
+        const inactiveColor = tokens.colors.textMuted;
+        const iconBackground = colorWithAlpha(activeColor, tokens.mode === "dark" ? 0.22 : 0.12);
 
         return (
-          <TouchableOpacity
+          <BottomNavItem
             key={tab.id}
-            style={styles.bottomNavItem}
-            onPress={() => handleTabPress(tab)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isActive }}
-            accessibilityLabel={tab.label}
-          >
-            <View
-              style={[
-                styles.bottomNavIconContainer,
-                isActive && {
-                  backgroundColor: isDark ? activeColor + "15" : operationalTheme.primarySoft,
-                },
-              ]}
-            >
-              <Ionicons
-                name={isActive ? tab.iconFilled : tab.icon}
-                size={22}
-                color={isActive ? activeColor : inactiveColor}
-              />
-            </View>
-            <Text
-              style={[styles.bottomNavLabel, { color: isActive ? activeColor : inactiveColor }]}
-            >
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
+            tab={tab}
+            isActive={isActive}
+            activeColor={activeColor}
+            inactiveColor={inactiveColor}
+            iconBackground={iconBackground}
+            minWidth={tabMinWidth}
+            onPress={handleTabPress}
+          />
         );
       })}
     </View>
@@ -88,8 +141,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    paddingVertical: spacing.sm,
-    paddingBottom: Platform.OS === "ios" ? 28 : spacing.md,
     borderTopWidth: 1,
     position: "absolute",
     bottom: 0,
@@ -99,13 +150,14 @@ const styles = StyleSheet.create({
   bottomNavItem: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: spacing.xs,
-    minWidth: 64,
+    minHeight: 44,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
   },
   bottomNavIconContainer: {
     width: 40,
     height: 40,
-    borderRadius: radius.full,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 2,
@@ -113,7 +165,8 @@ const styles = StyleSheet.create({
   bottomNavLabel: {
     fontSize: 11,
     fontWeight: "600",
-    letterSpacing: 0.1,
+    letterSpacing: 0,
+    maxWidth: 86,
   },
 });
 

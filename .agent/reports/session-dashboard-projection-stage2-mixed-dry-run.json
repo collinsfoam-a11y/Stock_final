@@ -1,0 +1,110 @@
+{
+  "mode": "dry-run",
+  "sessions_scanned": 80,
+  "missing_sessions": 8,
+  "repairable_sessions": 8,
+  "inserted_sessions": 0,
+  "skipped_existing": 0,
+  "skipped_missing_id": 0,
+  "errors": 0,
+  "missing_session_ids": [
+    "cfb98d4b-aebe-44ee-a9f9-47acdbd763cc",
+    "4793dbd9-1a60-481a-a15a-226f1878a19d",
+    "e80de4c6-54d6-43ed-8f02-d5c1ffe1a54a",
+    "0677cf11-0cab-46d7-8adf-692c7b9bafae",
+    "e349e871-ddad-440c-a4c2-a99363e65216",
+    "ce492a99-d87b-47db-a9d7-af3b33c755e7",
+    "857ddc1d-e3f2-4956-9761-f726eea7eb2a",
+    "fe3fbd86-2d17-43b3-b8aa-002c29b72d5e"
+  ],
+  "candidate_rows": [
+    {
+      "session_id": "cfb98d4b-aebe-44ee-a9f9-47acdbd763cc",
+      "total_items": 0,
+      "verified_items": 0,
+      "pending_items": 0,
+      "status": "ACTIVE",
+      "warehouse": "stale-auth-1777788668177",
+      "started_at": "2026-05-03T06:11:08.196000",
+      "source_updated_at": "2026-05-03T06:11:08.277000"
+    },
+    {
+      "session_id": "4793dbd9-1a60-481a-a15a-226f1878a19d",
+      "total_items": 1,
+      "verified_items": 0,
+      "pending_items": 1,
+      "status": "ACTIVE",
+      "warehouse": "Main",
+      "started_at": "2026-05-03T06:11:08.301000",
+      "source_updated_at": "2026-05-03T06:11:12.880000"
+    },
+    {
+      "session_id": "e80de4c6-54d6-43ed-8f02-d5c1ffe1a54a",
+      "total_items": 1,
+      "verified_items": 0,
+      "pending_items": 1,
+      "status": "ACTIVE",
+      "warehouse": "Showroom - Ground Floor - A-667621",
+      "started_at": "2026-05-03T06:11:13.298000",
+      "source_updated_at": "2026-05-03T06:11:16.573000"
+    },
+    {
+      "session_id": "0677cf11-0cab-46d7-8adf-692c7b9bafae",
+      "total_items": 0,
+      "verified_items": 0,
+      "pending_items": 0,
+      "status": "ACTIVE",
+      "warehouse": "stale-auth-1777788760789",
+      "started_at": "2026-05-03T06:12:40.885000",
+      "source_updated_at": "2026-05-03T06:12:40.981000"
+    },
+    {
+      "session_id": "e349e871-ddad-440c-a4c2-a99363e65216",
+      "total_items": 1,
+      "verified_items": 0,
+      "pending_items": 1,
+      "status": "ACTIVE",
+      "warehouse": "Main",
+      "started_at": "2026-05-03T06:12:41.258000",
+      "source_updated_at": "2026-05-03T06:12:50.759000"
+    },
+    {
+      "session_id": "ce492a99-d87b-47db-a9d7-af3b33c755e7",
+      "total_items": 1,
+      "verified_items": 0,
+      "pending_items": 1,
+      "status": "ACTIVE",
+      "warehouse": "Showroom - Ground Floor - A-760268",
+      "started_at": "2026-05-03T06:12:51.999000",
+      "source_updated_at": "2026-05-03T06:12:54.714000"
+    },
+    {
+      "session_id": "857ddc1d-e3f2-4956-9761-f726eea7eb2a",
+      "total_items": 0,
+      "verified_items": 0,
+      "pending_items": 0,
+      "status": "ACTIVE",
+      "warehouse": "stale-auth-1777789020454",
+      "started_at": "2026-05-03T06:17:00.524000",
+      "source_updated_at": "2026-05-03T06:17:00.591000"
+    },
+    {
+      "session_id": "fe3fbd86-2d17-43b3-b8aa-002c29b72d5e",
+      "total_items": 1,
+      "verified_items": 0,
+      "pending_items": 1,
+      "status": "ACTIVE",
+      "warehouse": "Main",
+      "started_at": "2026-05-03T06:17:00.635000",
+      "source_updated_at": "2026-05-03T06:17:00.705000"
+    }
+  ],
+  "coverage_before": {
+    "total_sessions": 80,
+    "covered_sessions": 72
+  },
+  "coverage_after": {
+    "total_sessions": 80,
+    "covered_sessions": 80
+  }
+}

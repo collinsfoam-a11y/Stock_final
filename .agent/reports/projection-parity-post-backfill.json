@@ -1,0 +1,166 @@
+{
+  "is_consistent": false,
+  "summary": {
+    "session_totals_match": true,
+    "verified_items_match": true,
+    "variance_match": false,
+    "financial_match": true,
+    "sample_validation_passed": false,
+    "event_lag_ok": true
+  },
+  "metrics": {
+    "projection_drift_count": 1,
+    "projection_gap_count": 2,
+    "event_lag_seconds": 0.0,
+    "event_lag_threshold_seconds": 5.0
+  },
+  "samples_checked": 4,
+  "timestamp": "2026-05-02T11:24:08.399524Z",
+  "collections": {
+    "session_projection": "session_dashboard_projection",
+    "verified_projection": "verified_items_projection",
+    "variance_projection": "variance_summary_projection",
+    "financial_projection": "financial_projection",
+    "batch_projection": "batch_records",
+    "event_log": "event_log"
+  },
+  "details": {
+    "sample_session_ids": [
+      "6a44750b-aeae-4f3a-8fd4-d4e841a8e2cc",
+      "1aa99c8a-5fbb-4cff-928c-5407411d043c",
+      "75060e76-75c8-4abd-8c0e-72afab696bf6",
+      "6adb4900-ff7e-49b6-bfe8-01aac70e9964"
+    ],
+    "session_totals": {
+      "legacy": {
+        "session_count": 29,
+        "total_items": 4,
+        "verified_items": 0,
+        "pending_items": 4,
+        "damage_items": 0,
+        "total_variance": 13.0
+      },
+      "projection": {
+        "session_count": 29,
+        "total_items": 4,
+        "verified_items": 0,
+        "pending_items": 4,
+        "damage_items": 0,
+        "total_variance": 13.0
+      }
+    },
+    "verified_items": {
+      "legacy": 0,
+      "projection": 0
+    },
+    "variance_totals": {
+      "legacy": 13.0,
+      "projection": 11.0
+    },
+    "financial_totals": {
+      "legacy": 0.0,
+      "projection": 0.0
+    },
+    "sample_results": [
+      {
+        "session_id": "6a44750b-aeae-4f3a-8fd4-d4e841a8e2cc",
+        "items_compared": 1,
+        "mismatches": [
+          {
+            "item_code": "7846",
+            "field": "row_presence",
+            "legacy": true,
+            "projection": false
+          }
+        ]
+      },
+      {
+        "session_id": "1aa99c8a-5fbb-4cff-928c-5407411d043c",
+        "items_compared": 1,
+        "mismatches": [
+          {
+            "item_code": "7846",
+            "field": "row_presence",
+            "legacy": true,
+            "projection": false
+          }
+        ]
+      },
+      {
+        "session_id": "75060e76-75c8-4abd-8c0e-72afab696bf6",
+        "items_compared": 1,
+        "mismatches": []
+      },
+      {
+        "session_id": "6adb4900-ff7e-49b6-bfe8-01aac70e9964",
+        "items_compared": 1,
+        "mismatches": []
+      }
+    ],
+    "event_lag": {
+      "latest_event_timestamp": "2026-04-29T07:40:33.524000Z",
+      "latest_projection_timestamp": "2026-05-02T11:23:06.136000Z"
+    }
+  },
+  "controls": {
+    "max_records": 10000,
+    "timeout_seconds": 60.0,
+    "sample_seed": null
+  },
+  "failures": [
+    {
+      "kind": "drift",
+      "check": "variance_totals",
+      "message": "Legacy variance total does not match projection variance total",
+      "legacy": 13.0,
+      "projection": 11.0,
+      "context": {}
+    },
+    {
+      "kind": "gap",
+      "check": "sample_item_row",
+      "message": "Missing projection item row for sampled legacy item",
+      "legacy": {
+        "item_code": "7846",
+        "counted_qty": 1.0,
+        "variance": 1.0,
+        "financial_impact": 0.0,
+        "approval_status": "REJECTED",
+        "batch_values": [
+          {
+            "batch": "NO_BATCH",
+            "qty": 1.0
+          }
+        ]
+      },
+      "projection": null,
+      "context": {
+        "session_id": "6a44750b-aeae-4f3a-8fd4-d4e841a8e2cc",
+        "item_code": "7846"
+      }
+    },
+    {
+      "kind": "gap",
+      "check": "sample_item_row",
+      "message": "Missing projection item row for sampled legacy item",
+      "legacy": {
+        "item_code": "7846",
+        "counted_qty": 1.0,
+        "variance": 1.0,
+        "financial_impact": 0.0,
+        "approval_status": "REJECTED",
+        "batch_values": [
+          {
+            "batch": "NO_BATCH",
+            "qty": 1.0
+          }
+        ]
+      },
+      "projection": null,
+      "context": {
+        "session_id": "1aa99c8a-5fbb-4cff-928c-5407411d043c",
+        "item_code": "7846"
+      }
+    }
+  ]
+}

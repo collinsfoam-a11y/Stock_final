@@ -12,13 +12,13 @@ from bson import ObjectId
 from fastapi import HTTPException
 
 from backend.services.concurrency import ConcurrencyError, coerce_version
-from backend.services.event_service import EventService
 from backend.services.governance_audit_service import GovernanceAuditService
 from backend.services.governance_guard import (
     GovernanceViolation,
     assert_valid_write,
     write_authority,
 )
+from backend.services.projection_write_service import ProjectionWriteService
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.snapshot_service import SnapshotService
 from backend.services.transaction_manager import mongo_transaction
@@ -155,53 +155,6 @@ def _apply_update_document_to_merged(
                 ]
 
 
-def _updated_field_names(update_doc: dict[str, Any]) -> set[str]:
-    if not isinstance(update_doc, dict):
-        return set()
-
-    if not any(str(key).startswith("$") for key in update_doc):
-        return set(update_doc.keys())
-
-    field_names: set[str] = set()
-    for operator_name in ("$set", "$inc", "$unset", "$push", "$addToSet", "$pull"):
-        operator_doc = update_doc.get(operator_name)
-        if isinstance(operator_doc, dict):
-            field_names.update(str(field_name) for field_name in operator_doc.keys())
-    return field_names
-
-
-def _update_touches_count_line_semantics(update_doc: dict[str, Any]) -> bool:
-    return bool(
-        _updated_field_names(update_doc)
-        & {
-            "allow_fraction",
-            "base_uom",
-            "batches",
-            "batch_id",
-            "conversion_factor",
-            "counted_qty",
-            "damaged_qty",
-            "floor_id",
-            "floor_no",
-            "input_qty",
-            "input_uom",
-            "is_serial_item",
-            "item_code",
-            "item_id",
-            "location_id",
-            "quantity_precision",
-            "rack_id",
-            "rack_no",
-            "serial_entries",
-            "serial_numbers",
-            "session_id",
-            "uom_code",
-            "uom_name",
-            "version",
-        }
-    )
-
-
 @dataclass(frozen=True)
 class CountLineGovernanceDecision:
     approval_status: str
@@ -255,7 +208,7 @@ class CountLineWriteService:
         validation_service: Optional[ValidationService] = None,
         lifecycle_service: Optional[SessionLifecycleService] = None,
         audit_service: Optional[GovernanceAuditService] = None,
-        event_service: Optional[EventService] = None,
+        projection_service: Optional[ProjectionWriteService] = None,
     ) -> None:
         self.db = db
         self.snapshot_service = snapshot_service or SnapshotService(db)
@@ -263,7 +216,7 @@ class CountLineWriteService:
         self.validation_service = validation_service or ValidationService(db)
         self.lifecycle_service = lifecycle_service or SessionLifecycleService(db)
         self.audit_service = audit_service or GovernanceAuditService(db)
-        self.event_service = event_service or EventService(db)
+        self.projection_service = projection_service or ProjectionWriteService(db)
         self._session_snapshot_cache: dict[str, Optional[dict[str, Any]]] = {}
         self._session_snapshot_item_index: dict[str, dict[str, float]] = {}
 
@@ -282,6 +235,70 @@ class CountLineWriteService:
         with write_authority("CountLineWriteService"):
             result = write_call()
             return await self._resolve_awaitable(result)
+
+    async def finalize_session_count_lines(
+        self,
+        *,
+        session_id: str,
+        actor: str,
+        finalized_at: datetime,
+        note: Optional[str] = None,
+        db_session: Optional[Any] = None,
+    ) -> int:
+        """Lock and approve mutable count lines for a finalized session."""
+        line_update: dict[str, Any] = {
+            "status": "locked",
+            "approval_status": "APPROVED",
+            "verified": True,
+            "verified_by": actor,
+            "verified_at": finalized_at,
+            "approved_by": actor,
+            "approved_at": finalized_at,
+            "finalized_by": actor,
+            "finalized_at": finalized_at,
+            "updated_at": finalized_at,
+            "updated_by": actor,
+        }
+        if note:
+            line_update["finalization_note"] = note
+
+        count_line_filter = {
+            "session_id": session_id,
+            "status": {"$nin": ["locked", "SUPERSEDED", "superseded"]},
+            "approval_status": {"$nin": ["REJECTED", "NEEDS_REVIEW"]},
+        }
+        kwargs = {"session": db_session} if db_session is not None else {}
+        result = await self._execute_authorized_write(
+            lambda: self.db.count_lines.update_many(
+                count_line_filter,
+                {"$set": line_update},
+                **kwargs,
+            )
+        )
+        return int(getattr(result, "modified_count", 0) or 0)
+
+    async def archive_orphan_session_lines(
+        self,
+        *,
+        session_ids: list[str],
+        archive_marker: dict[str, Any],
+    ) -> Any:
+        """
+        One-time reconciliation hook for historical count lines that have no
+        parent session. This deliberately does not create or edit business
+        counts; it only removes invalid orphan rows from active reporting scope.
+        """
+        normalized_session_ids = sorted(
+            {str(session_id).strip() for session_id in session_ids if str(session_id).strip()}
+        )
+        if not normalized_session_ids:
+            return None
+        return await self._execute_authorized_write(
+            lambda: self.db.count_lines.update_many(
+                {"session_id": {"$in": normalized_session_ids}, "archived": {"$ne": True}},
+                {"$set": archive_marker},
+            )
+        )
 
     @staticmethod
     def _resolve_governance_mode_profile(
@@ -433,6 +450,7 @@ class CountLineWriteService:
                 db_session=db_session,
                 expected_version=expected_versions.get(session_id),
                 actor=actor,
+                sync_projection=False,
             )
 
     async def _log_count_line_audit(
@@ -612,12 +630,6 @@ class CountLineWriteService:
             context=ctx,
             db_session=db_session,
         )
-        await self._mirror_event_store_write(
-            payload=payload,
-            context=ctx,
-            resolved_result=resolved,
-            db_session=db_session,
-        )
         await self._run_post_write_validation(
             operation=operation,
             payload=payload,
@@ -633,6 +645,15 @@ class CountLineWriteService:
                 expected_versions=expected_versions,
             )
 
+        if session_ids and not bool(ctx.get("skip_projection_sync", False)):
+            await self.projection_service.sync_for_sessions(
+                session_ids,
+                trigger=f"count_line.{operation}",
+                actor=str(ctx.get("username") or ctx.get("actor") or "system"),
+                db_session=db_session,
+                rebuild_item_projections=not bool(ctx.get("skip_projection_items_sync", False)),
+            )
+
         await self._log_count_line_audit(
             payload=payload,
             context=ctx,
@@ -640,129 +661,6 @@ class CountLineWriteService:
             db_session=db_session,
         )
         return resolved
-
-    @staticmethod
-    def _copy_normalized_fields_for_update(
-        *,
-        source: dict[str, Any],
-        update_doc: dict[str, Any],
-    ) -> None:
-        set_doc = update_doc.setdefault("$set", {})
-        if not isinstance(set_doc, dict):
-            raise GovernanceViolation("CRITICAL: update_one requires a '$set' document")
-        non_set_fields = CountLineWriteService._fields_touched_by_non_set_operators(update_doc)
-        for field_name in (
-            "counted_qty",
-            "input_qty",
-            "input_uom",
-            "base_uom",
-            "uom_code",
-            "uom_name",
-            "conversion_factor",
-            "quantity_precision",
-            "allow_fraction",
-            "serial_numbers",
-            "is_serial_item",
-        ):
-            if field_name in source and field_name not in non_set_fields:
-                set_doc[field_name] = source[field_name]
-
-    @staticmethod
-    def _fields_touched_by_non_set_operators(update_doc: dict[str, Any]) -> set[str]:
-        blocked: set[str] = set()
-        if not isinstance(update_doc, dict):
-            return blocked
-        for operator_name, operator_doc in update_doc.items():
-            if operator_name == "$set":
-                continue
-            if not isinstance(operator_name, str) or not operator_name.startswith("$"):
-                continue
-            if isinstance(operator_doc, dict):
-                blocked.update(str(field_name) for field_name in operator_doc.keys())
-        return blocked
-
-    async def _load_post_write_documents(
-        self,
-        *,
-        payload: dict[str, Any],
-        context: dict[str, Any],
-        resolved_result: Any,
-        db_session: Optional[Any],
-    ) -> list[dict[str, Any]]:
-        operation = str(payload.get("operation") or "").strip().lower()
-        kwargs = {"session": db_session} if db_session is not None else {}
-
-        if operation == "insert_one":
-            document = payload.get("document")
-            if isinstance(document, dict):
-                if hasattr(resolved_result, "inserted_id"):
-                    document.setdefault("_id", getattr(resolved_result, "inserted_id"))
-                return [document]
-            return []
-
-        if operation == "update_one":
-            existing = context.get("_existing_count_line")
-            if isinstance(existing, dict):
-                line_id = existing.get("_id")
-                if line_id is not None:
-                    updated = await self._resolve_awaitable(
-                        self.db.count_lines.find_one({"_id": line_id}, **kwargs)
-                    )
-                    return [updated] if isinstance(updated, dict) else []
-            filter_query = payload.get("filter")
-            if isinstance(filter_query, dict):
-                updated = await self._resolve_awaitable(
-                    self.db.count_lines.find_one(filter_query, **kwargs)
-                )
-                return [updated] if isinstance(updated, dict) else []
-            return []
-
-        if operation == "update_many":
-            pre_images = context.get("_candidate_lines_resolved") or []
-            ids = [
-                doc.get("_id")
-                for doc in pre_images
-                if isinstance(doc, dict) and doc.get("_id") is not None
-            ]
-            if not ids:
-                return []
-            cursor = self.db.count_lines.find({"_id": {"$in": ids}}, **kwargs)
-            return await self._resolve_awaitable(cursor.to_list(length=len(ids)))
-
-        return []
-
-    async def _mirror_event_store_write(
-        self,
-        *,
-        payload: dict[str, Any],
-        context: dict[str, Any],
-        resolved_result: Any,
-        db_session: Optional[Any],
-    ) -> None:
-        pre_images: list[dict[str, Any]] = []
-        existing = context.get("_existing_count_line")
-        if isinstance(existing, dict):
-            pre_images = [existing]
-        elif isinstance(context.get("_candidate_lines_resolved"), list):
-            pre_images = [
-                doc for doc in context.get("_candidate_lines_resolved") if isinstance(doc, dict)
-            ]
-
-        post_images = await self._load_post_write_documents(
-            payload=payload,
-            context=context,
-            resolved_result=resolved_result,
-            db_session=db_session,
-        )
-        context["_post_write_documents"] = post_images
-        await self.event_service.mirror_count_line_write(
-            payload=payload,
-            context=context,
-            resolved_result=resolved_result,
-            pre_images=pre_images,
-            post_images=post_images,
-            db_session=db_session,
-        )
 
     async def commit(
         self,
@@ -817,18 +715,12 @@ class CountLineWriteService:
         if operation == "update_one":
             filter_query = payload.get("filter")
             updated = None
-            post_write_documents = context.get("_post_write_documents")
-            if isinstance(post_write_documents, list):
-                for candidate in post_write_documents:
-                    if isinstance(candidate, dict):
-                        updated = candidate
-                        break
             upserted_id = getattr(resolved_result, "upserted_id", None)
-            if updated is None and upserted_id is not None:
+            if upserted_id is not None:
                 updated = await self._resolve_awaitable(
                     self.db.count_lines.find_one({"_id": upserted_id}, **kwargs)
                 )
-            elif updated is None and isinstance(filter_query, dict):
+            elif isinstance(filter_query, dict):
                 updated = await self._resolve_awaitable(
                     self.db.count_lines.find_one(filter_query, **kwargs)
                 )
@@ -860,11 +752,6 @@ class CountLineWriteService:
             document = payload.get("document")
             if not isinstance(document, dict):
                 raise GovernanceViolation("CRITICAL: insert_one requires document context")
-            await self.validation_service.enforce_count_line_business_rules(
-                document,
-                item=context.get("erp_item") if isinstance(context.get("erp_item"), dict) else None,
-                db_session=db_session,
-            )
             session_id = document.get("session_id") or context.get("session_id")
             idempotency_key = document.get("idempotency_key")
             if session_id and idempotency_key:
@@ -938,33 +825,13 @@ class CountLineWriteService:
             )
             if not isinstance(existing, dict):
                 raise GovernanceViolation("CRITICAL: Count line not found for guarded mutation")
-            context["_existing_count_line"] = dict(existing)
 
             merged_document = dict(existing)
             if operation == "update_one":
                 update_doc = payload.get("update")
-                touches_count_line_semantics = False
-                if isinstance(update_doc, dict):
-                    touches_count_line_semantics = _update_touches_count_line_semantics(update_doc)
-                context["_update_touches_count_line_semantics"] = touches_count_line_semantics
                 if isinstance(update_doc, dict):
                     _apply_update_document_to_merged(merged_document, update_doc)
                 if "counted_qty" in merged_document:
-                    await self.validation_service.enforce_count_line_business_rules(
-                        merged_document,
-                        item=(
-                            context.get("erp_item")
-                            if isinstance(context.get("erp_item"), dict)
-                            else None
-                        ),
-                        db_session=db_session,
-                    )
-                    if touches_count_line_semantics and isinstance(update_doc, dict):
-                        self._copy_normalized_fields_for_update(
-                            source=merged_document,
-                            update_doc=update_doc,
-                        )
-                if "counted_qty" in merged_document and touches_count_line_semantics:
                     semantic_hash = _build_semantic_hash(merged_document)
                     set_doc = (
                         update_doc.setdefault("$set", {}) if isinstance(update_doc, dict) else {}
@@ -1008,9 +875,6 @@ class CountLineWriteService:
                 )
             if not candidate_lines:
                 raise GovernanceViolation("CRITICAL: No candidate lines for guarded bulk mutation")
-            context["_candidate_lines_resolved"] = [
-                dict(line) for line in candidate_lines if isinstance(line, dict)
-            ]
             for line in candidate_lines:
                 if not isinstance(line, dict):
                     continue
@@ -1134,9 +998,6 @@ class CountLineWriteService:
             return isinstance(document, dict) and "counted_qty" in document
 
         if operation == "update_one":
-            explicit_semantic_touch = context.get("_update_touches_count_line_semantics")
-            if isinstance(explicit_semantic_touch, bool):
-                return explicit_semantic_touch
             update_doc = payload.get("update")
             if not isinstance(update_doc, dict):
                 return False

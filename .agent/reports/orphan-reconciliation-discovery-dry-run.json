@@ -1,0 +1,51 @@
+{
+  "strategy": "archive",
+  "execute": false,
+  "reconciliation_id": "orphan_reconciliation_20260503T172302Z",
+  "timestamp": "2026-05-03T17:23:02.451345Z",
+  "operator": "noufi1",
+  "session_ids": [
+    "00011e6f-d298-4448-b683-5a22da5c94fe",
+    "0cba0ad4-4ea0-4ebc-a590-33bcc04b6e1f",
+    "3aaa3ab1-4420-409b-bb6e-d226c2e8c68f",
+    "3e70a682-8015-4d33-93b6-80502b2a7486",
+    "a0498b9e-baeb-4431-9a5e-7f4003292e65",
+    "ab955f64-d478-4c6f-b08c-eb2bacf40a08",
+    "c9fc3d83-e6d0-4246-9218-d0c7db5570cb",
+    "dece1d49-771b-409c-a5c9-a3b5bb33a264",
+    "e0ac66b3-8fa9-4117-a0b1-e67aa4d32d85"
+  ],
+  "requested_session_ids": [],
+  "discovered": true,
+  "affected_count_lines": 15,
+  "all_count_lines_for_session_ids": 15,
+  "before_totals": {
+    "count_lines": 15,
+    "counted_qty": 32.0,
+    "erp_qty": 34.0,
+    "variance": -2.0,
+    "financial_value_delta": -107079.0,
+    "damage_value": 0.0
+  },
+  "before_counts": {
+    "active_sessions": 0,
+    "active_count_lines": 15,
+    "archived_count_lines": 0,
+    "archive_collection_docs": 0,
+    "active_projection_rows": {
+      "session_dashboard_projection": 0,
+      "verified_items_projection": 14,
+      "variance_summary_projection": 14,
+      "financial_projection": 9,
+      "batch_records": 14,
+      "event_log": 0
+    }
+  },
+  "held_session_locks": [],
+  "backup": null,
+  "archive_result": null,
+  "after_totals": null,
+  "after_counts": null,
+  "success": true,
+  "errors": []
+}

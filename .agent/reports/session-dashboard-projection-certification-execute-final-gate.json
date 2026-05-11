@@ -1,0 +1,33 @@
+{
+  "mode": "execute",
+  "sessions_scanned": 72,
+  "missing_sessions": 1,
+  "repairable_sessions": 1,
+  "inserted_sessions": 1,
+  "skipped_existing": 0,
+  "skipped_missing_id": 0,
+  "errors": 0,
+  "missing_session_ids": [
+    "411665c7-9913-4a2c-8055-7eb53ef271f7"
+  ],
+  "candidate_rows": [
+    {
+      "session_id": "411665c7-9913-4a2c-8055-7eb53ef271f7",
+      "total_items": 0,
+      "verified_items": 0,
+      "pending_items": 0,
+      "status": "ACTIVE",
+      "warehouse": "CERT-WH-5e5b0a75",
+      "started_at": "2026-05-02T16:47:49.732000",
+      "source_updated_at": "2026-05-02T16:47:49.764000"
+    }
+  ],
+  "coverage_before": {
+    "total_sessions": 72,
+    "covered_sessions": 71
+  },
+  "coverage_after": {
+    "total_sessions": 72,
+    "covered_sessions": 72
+  }
+}

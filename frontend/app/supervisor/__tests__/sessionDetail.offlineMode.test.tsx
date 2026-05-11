@@ -60,12 +60,12 @@ jest.mock("@shopify/flash-list", () => {
               React.createElement(
                 React.Fragment,
                 { key: item?.id || index },
-                renderItem({ item, index }),
-              ),
+                renderItem({ item, index })
+              )
             )
           : typeof ListEmptyComponent === "function"
             ? React.createElement(ListEmptyComponent)
-            : ListEmptyComponent || null,
+            : ListEmptyComponent || null
       ),
   };
 });
@@ -111,9 +111,7 @@ jest.mock("../../../src/components/feedback/ToastProvider", () => ({
 }));
 
 jest.mock("../../../src/store/settingsStore", () => ({
-  useSettingsStore: (
-    selector: (state: { settings: { offlineMode: boolean } }) => unknown,
-  ) =>
+  useSettingsStore: (selector: (state: { settings: { offlineMode: boolean } }) => unknown) =>
     selector({
       settings: {
         offlineMode: mockOfflineMode,
@@ -165,7 +163,7 @@ describe("SessionDetail offline mode", () => {
                 verified: false,
               },
             ],
-      }),
+      })
     );
   });
 
@@ -194,10 +192,7 @@ describe("SessionDetail offline mode", () => {
     expect(getByText("This session is no longer available.")).toBeTruthy();
 
     expect(getByText("It is not available in the local session cache.")).toBeTruthy();
-    expect(mockShow).toHaveBeenCalledWith(
-      "This session is no longer available",
-      "warning",
-    );
+    expect(mockShow).toHaveBeenCalledWith("This session is no longer available", "warning");
   });
 
   it("does not offer supervisor verification for zero-variance items", async () => {
@@ -226,7 +221,7 @@ describe("SessionDetail offline mode", () => {
                 verified: false,
               },
             ],
-      }),
+      })
     );
 
     const { getByText, queryByText } = render(<SessionDetail />);

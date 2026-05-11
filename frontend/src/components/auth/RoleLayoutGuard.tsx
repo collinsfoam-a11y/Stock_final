@@ -48,7 +48,7 @@ export function RoleLayoutGuard({
       console.warn(
         `⚠️ ${layoutName} rendered for non-allowed user role. ` +
           `allowed=[${allowedRoles.join(", ")}], actual=${user.role}. ` +
-          `Redirecting to ${resolvedRedirect}`,
+          `Redirecting to ${resolvedRedirect}`
       );
     }
 

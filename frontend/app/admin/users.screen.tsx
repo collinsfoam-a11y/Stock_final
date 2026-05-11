@@ -3,22 +3,15 @@
  * Admin panel for managing users - list, create, edit, delete
  */
 
-import React, { useState, useEffect, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  RefreshControl,
-} from "react-native";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { View, Text, StyleSheet, Alert, RefreshControl } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { usePermission } from "../../src/hooks/usePermission";
 import {
   LoadingSpinner,
   AnimatedPressable,
-  GlassCard,
+  ModernCard,
   ScreenContainer,
 } from "../../src/components/ui";
 import { UserFiltersBar } from "../../src/components/admin/users/UserFiltersBar";
@@ -34,11 +27,16 @@ import {
   userTextStyles,
 } from "../../src/components/admin/users/userManagementShared";
 import { useSettingsStore } from "../../src/store/settingsStore";
-import { auroraTheme } from "../../src/theme/auroraTheme";
 import apiClient from "../../src/services/httpClient";
+import { safeBackNavigation } from "@/utils/navigation";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
 
 export default function UsersScreen() {
   const router = useRouter();
+  const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const { hasRole } = usePermission();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
 
@@ -94,12 +92,9 @@ export default function UsersScreen() {
 
         if (search) params.append("search", search);
         if (roleFilter) params.append("role", roleFilter);
-        if (activeFilter !== null)
-          params.append("is_active", activeFilter.toString());
+        if (activeFilter !== null) params.append("is_active", activeFilter.toString());
 
-        const response = await apiClient.get<UserListResponse>(
-          `/api/users?${params.toString()}`,
-        );
+        const response = await apiClient.get<UserListResponse>(`/api/users?${params.toString()}`);
 
         if (response.data) {
           // Normalize snake_case to camelCase
@@ -128,17 +123,15 @@ export default function UsersScreen() {
         setRefreshing(false);
       }
     },
-    [activeFilter, offlineMode, page, pageSize, roleFilter, search, sortBy, sortOrder],
+    [activeFilter, offlineMode, page, pageSize, roleFilter, search, sortBy, sortOrder]
   );
 
   // Check permissions
   useEffect(() => {
     if (!hasRole("admin")) {
-      Alert.alert(
-        "Access Denied",
-        "You do not have permission to manage users.",
-        [{ text: "OK", onPress: () => router.back() }],
-      );
+      Alert.alert("Access Denied", "You do not have permission to manage users.", [
+        { text: "OK", onPress: () => safeBackNavigation(router, { userRole: "admin" }) },
+      ]);
       return;
     }
     loadUsers();
@@ -171,13 +164,15 @@ export default function UsersScreen() {
     if (selectedUsers.size === users.length) {
       setSelectedUsers(new Set());
     } else {
-      setSelectedUsers(new Set(users.map((u) => u.id)));
+      const nextSelected = new Set<string>();
+      for (const user of users) {
+        nextSelected.add(user.id);
+      }
+      setSelectedUsers(nextSelected);
     }
   };
 
-  const handleBulkAction = async (
-    action: "activate" | "deactivate" | "delete",
-  ) => {
+  const handleBulkAction = async (action: "activate" | "deactivate" | "delete") => {
     if (offlineMode) {
       Alert.alert("Offline Mode", "User management actions require a live connection.");
       return;
@@ -207,15 +202,9 @@ export default function UsersScreen() {
             });
             setSelectedUsers(new Set());
             loadUsers();
-            Alert.alert(
-              "Success",
-              `Successfully ${actionText}d ${selectedUsers.size} user(s)`,
-            );
+            Alert.alert("Success", `Successfully ${actionText}d ${selectedUsers.size} user(s)`);
           } catch (error: any) {
-            Alert.alert(
-              "Error",
-              error.message || `Failed to ${actionText} users`,
-            );
+            Alert.alert("Error", error.message || `Failed to ${actionText} users`);
           }
         },
       },
@@ -246,7 +235,7 @@ export default function UsersScreen() {
             }
           },
         },
-      ],
+      ]
     );
   };
 
@@ -307,10 +296,7 @@ export default function UsersScreen() {
     resetUserForm();
   };
 
-  const updateUserForm = <K extends keyof UserFormState>(
-    key: K,
-    value: UserFormState[K],
-  ) => {
+  const updateUserForm = <K extends keyof UserFormState>(key: K, value: UserFormState[K]) => {
     setUserForm((prev) => ({
       ...prev,
       [key]: value,
@@ -420,98 +406,105 @@ export default function UsersScreen() {
 
   return (
     <ScreenContainer>
-      <ScrollView
+      <View
         style={styles.container}
         testID={loading ? "users-screen-loading" : "users-screen-ready"}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerTitle}>
-            <Ionicons
-              name="people"
-              size={28}
-              color={auroraTheme.colors.primary[600]}
+        <UsersTable
+          ListHeaderComponent={
+            <>
+              <View style={styles.header}>
+                <View style={styles.headerTitle}>
+                  <Ionicons name="people" size={28} color={uiTokens.colors.accent} />
+                  <Text style={styles.title}>User Management</Text>
+                </View>
+                <AnimatedPressable
+                  style={[styles.createButton, offlineMode && styles.disabledButton]}
+                  onPress={openCreateModal}
+                  disabled={offlineMode}
+                  testID="users-add-button"
+                  {...getAccessibleButtonProps({
+                    label: "Add user",
+                    disabled: offlineMode,
+                  })}
+                >
+                  <Ionicons name="add" size={20} color={uiTokens.colors.surface} />
+                  <Text style={styles.createButtonText}>Add User</Text>
+                </AnimatedPressable>
+              </View>
+
+              {offlineMode && (
+                <ModernCard
+                  variant="outlined"
+                  elevation="none"
+                  padding={0}
+                  style={styles.offlineNotice}
+                >
+                  <Text style={styles.offlineNoticeTitle}>
+                    User management is unavailable offline
+                  </Text>
+                  <Text style={styles.offlineNoticeBody}>
+                    User lists, account edits, and bulk actions require a live backend connection
+                    and are not cached on this device.
+                  </Text>
+                </ModernCard>
+              )}
+
+              <View style={styles.statsRow}>
+                <View style={styles.statCard}>
+                  <Text style={styles.statValue}>{total}</Text>
+                  <Text style={styles.statLabel}>Total Users</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <Text style={styles.statValue}>{users.filter((u) => u.isActive).length}</Text>
+                  <Text style={styles.statLabel}>Active</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <Text style={styles.statValue}>
+                    {users.filter((u) => u.role === "admin").length}
+                  </Text>
+                  <Text style={styles.statLabel}>Admins</Text>
+                </View>
+              </View>
+
+              {!offlineMode && (
+                <UserFiltersBar
+                  activeFilter={activeFilter}
+                  onBulkAction={handleBulkAction}
+                  onChangeActiveFilter={setActiveFilter}
+                  onChangeRoleFilter={setRoleFilter}
+                  onChangeSearch={setSearch}
+                  roleFilter={roleFilter}
+                  search={search}
+                  selectedCount={selectedUsers.size}
+                />
+              )}
+            </>
+          }
+          onDeleteUser={handleDeleteUser}
+          onEditUser={openEditModal}
+          onPageChange={setPage}
+          onSort={handleSort}
+          onToggleSelectAll={handleSelectAll}
+          onToggleSelectUser={handleSelectUser}
+          onToggleStatus={handleToggleStatus}
+          page={page}
+          pageSize={pageSize}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={uiTokens.colors.accent}
             />
-            <Text style={styles.title}>User Management</Text>
-          </View>
-          <AnimatedPressable
-            style={[styles.createButton, offlineMode && styles.disabledButton]}
-            onPress={openCreateModal}
-            testID="users-add-button"
-          >
-            <Ionicons name="add" size={20} color="#fff" />
-            <Text style={styles.createButtonText}>Add User</Text>
-          </AnimatedPressable>
-        </View>
-
-        {offlineMode && (
-          <GlassCard variant="medium" style={styles.offlineNotice}>
-            <Text style={styles.offlineNoticeTitle}>
-              User management is unavailable offline
-            </Text>
-            <Text style={styles.offlineNoticeBody}>
-              User lists, account edits, and bulk actions require a live backend
-              connection and are not cached on this device.
-            </Text>
-          </GlassCard>
-        )}
-
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{total}</Text>
-            <Text style={styles.statLabel}>Total Users</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>
-              {users.filter((u) => u.isActive).length}
-            </Text>
-            <Text style={styles.statLabel}>Active</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>
-              {users.filter((u) => u.role === "admin").length}
-            </Text>
-            <Text style={styles.statLabel}>Admins</Text>
-          </View>
-        </View>
-
-        {!offlineMode && (
-          <>
-            <UserFiltersBar
-              activeFilter={activeFilter}
-              onBulkAction={handleBulkAction}
-              onChangeActiveFilter={setActiveFilter}
-              onChangeRoleFilter={setRoleFilter}
-              onChangeSearch={setSearch}
-              roleFilter={roleFilter}
-              search={search}
-              selectedCount={selectedUsers.size}
-            />
-
-            <UsersTable
-              onDeleteUser={handleDeleteUser}
-              onEditUser={openEditModal}
-              onPageChange={setPage}
-              onSort={handleSort}
-              onToggleSelectAll={handleSelectAll}
-              onToggleSelectUser={handleSelectUser}
-              onToggleStatus={handleToggleStatus}
-              page={page}
-              pageSize={pageSize}
-              selectedUsers={selectedUsers}
-              sortBy={sortBy}
-              sortOrder={sortOrder}
-              total={total}
-              totalPages={totalPages}
-              users={users}
-            />
-          </>
-        )}
-      </ScrollView>
+          }
+          selectedUsers={selectedUsers}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          total={total}
+          totalPages={totalPages}
+          users={offlineMode ? [] : users}
+        />
+      </View>
       <UserFormModal
         editingUser={editingUser}
         formError={formError}
@@ -526,82 +519,88 @@ export default function UsersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+type UsersScreenTokens = ReturnType<typeof useUiTokens>;
+
+const createStyles = (uiTokens: UsersScreenTokens) =>
+  StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: auroraTheme.colors.background.primary,
+    backgroundColor: uiTokens.colors.background,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: auroraTheme.spacing.lg,
-    paddingVertical: auroraTheme.spacing.md,
+    paddingHorizontal: uiTokens.spacing.lg,
+    paddingVertical: uiTokens.spacing.md,
   },
   headerTitle: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.sm,
+    gap: uiTokens.spacing.sm,
   },
   title: {
     ...userTextStyles.h2,
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
   },
   createButton: {
+    ...getMinimumTouchTargetStyle(),
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.xs,
-    backgroundColor: auroraTheme.colors.primary[600],
-    paddingHorizontal: auroraTheme.spacing.md,
-    paddingVertical: auroraTheme.spacing.sm,
-    borderRadius: auroraTheme.borderRadius.md,
+    justifyContent: "center",
+    gap: uiTokens.spacing.xs,
+    backgroundColor: uiTokens.colors.accent,
+    paddingHorizontal: uiTokens.spacing.md,
+    paddingVertical: uiTokens.spacing.sm,
+    borderRadius: uiTokens.radius.md,
   },
   createButtonText: {
     ...userTextStyles.label,
-    color: "#fff",
+    color: uiTokens.colors.surface,
     fontWeight: "600",
   },
   disabledButton: {
     opacity: 0.5,
   },
   offlineNotice: {
-    marginHorizontal: auroraTheme.spacing.lg,
-    marginBottom: auroraTheme.spacing.lg,
-    padding: auroraTheme.spacing.lg,
+    marginHorizontal: uiTokens.spacing.lg,
+    marginBottom: uiTokens.spacing.lg,
+    padding: uiTokens.spacing.lg,
+    borderColor: colorWithAlpha(uiTokens.colors.warning, 0.28),
   },
   offlineNoticeTitle: {
     ...userTextStyles.h3,
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
     fontSize: 16,
-    marginBottom: auroraTheme.spacing.xs,
+    marginBottom: uiTokens.spacing.xs,
   },
   offlineNoticeBody: {
     ...userTextStyles.body,
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
     lineHeight: 20,
   },
   statsRow: {
     flexDirection: "row",
-    paddingHorizontal: auroraTheme.spacing.lg,
-    gap: auroraTheme.spacing.md,
-    marginBottom: auroraTheme.spacing.lg,
+    paddingHorizontal: uiTokens.spacing.lg,
+    gap: uiTokens.spacing.md,
+    marginBottom: uiTokens.spacing.lg,
     flexWrap: "wrap",
   },
   statCard: {
     flex: 1,
     minWidth: 120,
-    backgroundColor: auroraTheme.colors.background.secondary,
-    padding: auroraTheme.spacing.md,
-    borderRadius: auroraTheme.borderRadius.lg,
+    backgroundColor: uiTokens.colors.surface,
+    padding: uiTokens.spacing.md,
+    borderRadius: uiTokens.radius.lg,
     alignItems: "center",
   },
   statValue: {
     ...userTextStyles.h3,
-    color: auroraTheme.colors.primary[600],
+    color: uiTokens.colors.accent,
   },
   statLabel: {
     ...userTextStyles.caption,
-    color: auroraTheme.colors.text.secondary,
-    marginTop: auroraTheme.spacing.xs,
+    color: uiTokens.colors.textSecondary,
+    marginTop: uiTokens.spacing.xs,
   },
 });

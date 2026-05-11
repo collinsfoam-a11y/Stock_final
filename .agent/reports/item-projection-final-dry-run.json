@@ -1,0 +1,34 @@
+{
+  "mode": "dry-run",
+  "count_lines_scanned": 5,
+  "active_count_lines": 5,
+  "missing_verified_items": 1,
+  "missing_variance_items": 1,
+  "missing_batch_rows": 1,
+  "missing_financial_rows": 1,
+  "inserted_verified_items": 0,
+  "inserted_variance_items": 0,
+  "inserted_batch_rows": 0,
+  "inserted_financial_rows": 0,
+  "skipped_superseded": 0,
+  "skipped_missing_id": 0,
+  "errors": 0,
+  "candidate_lines": [
+    {
+      "count_line_id": "e3d8a9e2-887b-4bbb-b0cc-361febb996c8",
+      "session_id": "93b4c9fe-63dd-4301-b430-4ec01e27a0dd",
+      "item_code": "7846",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    }
+  ],
+  "candidate_financial_sessions": [
+    {
+      "session_id": "93b4c9fe-63dd-4301-b430-4ec01e27a0dd",
+      "line_count": 1,
+      "financial_total": 0.0
+    }
+  ]
+}

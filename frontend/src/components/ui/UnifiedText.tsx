@@ -10,13 +10,7 @@
  */
 
 import React from "react";
-import {
-  Text,
-  TextStyle,
-  StyleProp,
-  StyleSheet,
-  TextProps,
-} from "react-native";
+import { Text, TextStyle, StyleProp, StyleSheet, TextProps } from "react-native";
 import {
   textStyles,
   fontFamily,
@@ -25,7 +19,7 @@ import {
   lineHeight,
   colors,
   semanticColors,
-} from "../../theme/unified";
+} from "@/theme/legacyCompat";
 
 // ==========================================
 // TYPES
@@ -145,11 +139,7 @@ export const UnifiedText: React.FC<UnifiedTextProps> = ({
   ];
 
   return (
-    <Text
-      style={combinedStyle}
-      accessibilityRole={accessibilityRole}
-      {...props}
-    >
+    <Text style={combinedStyle} accessibilityRole={accessibilityRole} {...props}>
       {children}
     </Text>
   );

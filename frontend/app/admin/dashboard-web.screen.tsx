@@ -18,13 +18,15 @@ import {
   getMetricsHealth,
   getMetricsStats,
   getServicesStatus,
+  getSessions,
+  getSessionsAnalytics,
   getSystemHealthScore,
   getSystemIssues,
+  getSystemStats,
   startService,
   stopService,
 } from "../../src/services/api";
-import { dashboardReadService } from "../../src/services/dashboardReadService";
-import { GlassCard } from "../../src/components/ui";
+import { ModernCard } from "../../src/components/ui";
 import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
 import {
   DashboardAnalyticsPanel,
@@ -39,7 +41,7 @@ import {
   DASHBOARD_IS_WEB,
   DASHBOARD_TABS,
   DashboardTab,
-  dashboardWebStyles as styles,
+  createDashboardWebStyles,
   isDashboardTab,
   normalizeDashboardMetrics,
   prepareSessionChartData,
@@ -48,11 +50,14 @@ import {
 } from "../../src/components/admin/dashboard/dashboardWebShared";
 import { ADMIN_NAV_GROUPS } from "../../src/components/navigation/adminNavShared";
 import { useSettingsStore } from "../../src/store/settingsStore";
+import { useUiTokens } from "@/hooks/useUiTokens";
 
 export default function DashboardWeb() {
   const router = useRouter();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
+  const uiTokens = useUiTokens();
+  const styles = useMemo(() => createDashboardWebStyles(uiTokens), [uiTokens]);
 
   const [activeTab, setActiveTab] = useState<DashboardTab>(isDashboardTab(tab) ? tab : "overview");
   const [loading, setLoading] = useState(true);
@@ -123,28 +128,33 @@ export default function DashboardWeb() {
 
         const [
           servicesRes,
+          statsRes,
           metricsRes,
           _healthRes,
           _reportsRes,
           issuesRes,
           healthScoreRes,
+          _sessionsRes,
+          analyticsRes,
           diagnosisHealthRes,
-          businessSnapshot,
         ] = await Promise.allSettled([
           getServicesStatus().catch(() => ({ data: null })),
+          getSystemStats().catch(() => ({ data: null })),
           getMetricsStats().catch(() => ({ data: null })),
           getMetricsHealth().catch(() => ({ data: null })),
           fetchAvailableReports(),
           getSystemIssues().catch(() => ({ data: { issues: [] } })),
           getSystemHealthScore().catch(() => ({ data: null })),
+          getSessions(1, 100).catch(() => ({ data: { sessions: [] } })),
+          getSessionsAnalytics().catch(() => ({ data: null })),
           getDiagnosisHealth().catch(() => null),
-          dashboardReadService
-            .getAdminBusinessSnapshot()
-            .catch(() => ({ systemStats: null, sessionsAnalytics: null, overlayCount: 0 })),
         ]);
 
         if (servicesRes.status === "fulfilled") {
           setServicesStatus(servicesRes.value?.data);
+        }
+        if (statsRes.status === "fulfilled") {
+          setSystemStats(statsRes.value?.data);
         }
         if (metricsRes.status === "fulfilled") {
           setMetrics(normalizeDashboardMetrics(metricsRes.value));
@@ -155,12 +165,11 @@ export default function DashboardWeb() {
         if (healthScoreRes.status === "fulfilled") {
           setHealthScore(healthScoreRes.value?.data?.score);
         }
+        if (analyticsRes.status === "fulfilled") {
+          setSessionsAnalytics(analyticsRes.value?.data);
+        }
         if (diagnosisHealthRes.status === "fulfilled") {
           setDiagnosisHealth(diagnosisHealthRes.value);
-        }
-        if (businessSnapshot.status === "fulfilled") {
-          setSystemStats(businessSnapshot.value?.systemStats);
-          setSessionsAnalytics(businessSnapshot.value?.sessionsAnalytics);
         }
 
         setLastUpdate(new Date());
@@ -183,12 +192,6 @@ export default function DashboardWeb() {
     const interval = setInterval(() => loadDashboardData(), 30000);
     return () => clearInterval(interval);
   }, [loadDashboardData, offlineMode]);
-
-  useEffect(() => {
-    return dashboardReadService.subscribeToDashboardInvalidation(() => {
-      void loadDashboardData();
-    });
-  }, [loadDashboardData]);
 
   useEffect(() => {
     if (isDashboardTab(tab)) {
@@ -336,7 +339,10 @@ export default function DashboardWeb() {
       setRefreshing(true);
       const result = await attemptAutoFixDiagnosis({
         error_type: issue.error_type || issue.title || "Exception",
-        error_message: issue.error_message || issue.description || "Unknown error",
+        error_message:
+          issue.error_message ||
+          issue.description ||
+          "No diagnostic message was provided by the issue record.",
         context: {
           issue_id: issue.id,
           source: "admin_dashboard",
@@ -354,7 +360,10 @@ export default function DashboardWeb() {
       }
     } catch (error) {
       console.error("Auto-fix error:", error);
-      Alert.alert("Error", "An error occurred while trying to fix the issue.");
+      Alert.alert(
+        "Auto-Fix Failed",
+        "The dashboard could not complete the auto-fix request. Check the connection and review service logs before retrying."
+      );
     } finally {
       setRefreshing(false);
     }
@@ -430,11 +439,11 @@ export default function DashboardWeb() {
   );
 
   const sessionChartData = prepareSessionChartData(sessionsAnalytics);
-  const statusChartData = prepareStatusChartData(systemStats);
+  const statusChartData = prepareStatusChartData(systemStats, uiTokens);
 
   return (
     <ScreenContainer
-      backgroundType="aurora"
+      backgroundType="solid"
       auroraVariant="primary"
       auroraIntensity="medium"
       header={{
@@ -467,13 +476,18 @@ export default function DashboardWeb() {
           }
         >
           {offlineMode && (
-            <GlassCard style={styles.offlineNotice}>
+            <ModernCard
+              variant="outlined"
+              elevation="none"
+              padding={0}
+              style={styles.offlineNotice}
+            >
               <Text style={styles.offlineNoticeTitle}>Admin dashboard is in offline mode</Text>
               <Text style={styles.offlineNoticeBody}>
                 Monitoring, reports, diagnosis, and service controls require a live backend
                 connection. Reconnect to refresh this dashboard.
               </Text>
-            </GlassCard>
+            </ModernCard>
           )}
 
           {activeTab === "overview" && (
@@ -486,6 +500,7 @@ export default function DashboardWeb() {
               statusChartData={statusChartData}
               styles={styles}
               systemStats={systemStats}
+              uiTokens={uiTokens}
             />
           )}
 
@@ -496,6 +511,7 @@ export default function DashboardWeb() {
               serviceActionLoading={serviceActionLoading}
               servicesStatus={servicesStatus}
               styles={styles}
+              uiTokens={uiTokens}
             />
           )}
 
@@ -508,6 +524,7 @@ export default function DashboardWeb() {
               reports={reports}
               reportsLoading={reportsLoading}
               styles={styles}
+              uiTokens={uiTokens}
             />
           )}
 
@@ -525,6 +542,7 @@ export default function DashboardWeb() {
               diagnosisHealth={diagnosisHealth}
               onAutoFix={handleAutoFix}
               styles={styles}
+              uiTokens={uiTokens}
             />
           )}
         </ScrollView>
@@ -543,6 +561,7 @@ export default function DashboardWeb() {
           reportFormat={reportFormat}
           selectedReport={selectedReport}
           styles={styles}
+          uiTokens={uiTokens}
           visible={showReportModal}
         />
       </View>

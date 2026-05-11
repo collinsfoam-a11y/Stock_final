@@ -4,16 +4,7 @@
  */
 
 import React, { useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Switch,
-  TouchableOpacity,
-  Alert,
-  Platform,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView, Alert, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -25,132 +16,27 @@ import { useAppVersion } from "../../src/hooks/useAppVersion";
 import ModernCard from "../../src/components/ui/ModernCard";
 import ModernHeader from "../../src/components/ui/ModernHeader";
 import {
+  SettingsActionRow,
+  SettingsActionSection,
+  SettingsSectionDivider,
+  SettingsSectionHeading,
   SettingsSyncStatus,
   UserSettingsSections,
 } from "../../src/components/settings";
 import { AppearanceSettings } from "../../src/components/ui/AppearanceSettings";
-import {
-  colors,
-  spacing,
-  typography,
-  borderRadius,
-} from "../../src/theme/unified";
+import { spacing, typography, borderRadius } from "@/theme/legacyCompat";
 
-// Reusable Setting Row Component
-interface SettingRowProps {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  description?: string;
-  value?: boolean;
-  onValueChange?: (value: boolean) => void;
-  onPress?: () => void;
-  type?: "switch" | "navigation" | "action";
-  destructive?: boolean;
-}
-
-const SettingRow: React.FC<SettingRowProps> = ({
-  icon,
-  label,
-  description,
-  value,
-  onValueChange,
-  onPress,
-  type = "switch",
-  destructive = false,
-}) => {
-  const handlePress = useCallback(() => {
-    if (Platform.OS !== "web") {
-      Haptics.selectionAsync();
-    }
-    onPress?.();
-  }, [onPress]);
-
-  const handleToggle = useCallback(
-    (val: boolean) => {
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-      onValueChange?.(val);
-    },
-    [onValueChange],
-  );
-
-  const renderRightContent = () => {
-    if (type === "switch") {
-      return (
-        <Switch
-          value={value}
-          onValueChange={handleToggle}
-          trackColor={{
-            false: colors.gray[200],
-            true: colors.primary[500],
-          }}
-          thumbColor={colors.white}
-          ios_backgroundColor={colors.gray[200]}
-        />
-      );
-    }
-    if (type === "navigation") {
-      return (
-        <Ionicons name="chevron-forward" size={20} color={colors.gray[400]} />
-      );
-    }
-    return null;
-  };
-
-  return (
-    <TouchableOpacity
-      style={styles.settingRow}
-      onPress={type !== "switch" ? handlePress : undefined}
-      activeOpacity={type !== "switch" ? 0.7 : 1}
-      disabled={type === "switch"}
-    >
-      <View style={styles.settingLeft}>
-        <View
-          style={[
-            styles.iconContainer,
-            destructive && styles.iconContainerDestructive,
-          ]}
-        >
-          <Ionicons
-            name={icon}
-            size={20}
-            color={destructive ? colors.error[500] : colors.primary[500]}
-          />
-        </View>
-        <View style={styles.labelContainer}>
-          <Text
-            style={[
-              styles.settingLabel,
-              destructive && styles.labelDestructive,
-            ]}
-          >
-            {label}
-          </Text>
-          {description && (
-            <Text style={styles.settingDescription}>{description}</Text>
-          )}
-        </View>
-      </View>
-      {renderRightContent()}
-    </TouchableOpacity>
-  );
-};
-
-// Section Header Component
-const SectionHeader: React.FC<{ title: string; delay?: number }> = ({
-  title,
-  delay = 0,
-}) => (
-  <Animated.View entering={FadeInDown.delay(delay).springify()}>
-    <Text style={styles.sectionTitle}>{title}</Text>
-  </Animated.View>
-);
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha, getTokenShadowStyle } from "@/theme/themeTokens";
+import { flags } from "@/constants/flags";
+import { toastService } from "@/services/toastService";
+import { safeBackNavigation } from "@/utils/navigation";
 
 export default function StaffSettingsScreen() {
   const router = useRouter();
   const { logout, user } = useAuthStore();
   const { version, buildVersion } = useAppVersion();
+  const uiTokens = useUiTokens();
 
   const handleLogout = useCallback(() => {
     if (Platform.OS !== "web") {
@@ -165,7 +51,7 @@ export default function StaffSettingsScreen() {
             router.replace("/welcome" as any);
           })
           .catch(() => {
-            Alert.alert("Error", "Failed to sign out. Please try again.");
+            toastService.showError("Failed to sign out. Please try again.");
           });
       }
       return;
@@ -181,7 +67,7 @@ export default function StaffSettingsScreen() {
             await logout();
             router.replace("/welcome" as any);
           } catch {
-            Alert.alert("Error", "Failed to sign out. Please try again.");
+            toastService.showError("Failed to sign out. Please try again.");
           }
         },
       },
@@ -197,13 +83,13 @@ export default function StaffSettingsScreen() {
   }, [router]);
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: uiTokens.colors.background }]}>
+      <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
 
       <ModernHeader
         title="Settings"
         showBackButton
-        onBackPress={() => router.back()}
+        onBackPress={() => safeBackNavigation(router, { userRole: "staff" })}
       />
 
       <ScrollView
@@ -213,13 +99,32 @@ export default function StaffSettingsScreen() {
       >
         {/* User Info Card */}
         <Animated.View entering={FadeInDown.delay(100).springify()}>
-          <ModernCard style={styles.userCard}>
-            <View style={styles.userAvatar}>
-              <Ionicons name="person" size={28} color={colors.primary[500]} />
+          <ModernCard
+            style={[
+              styles.userCard,
+              flags.uiVisualSystemV2 ? getTokenShadowStyle(uiTokens, "md") : null,
+            ]}
+          >
+            <View
+              style={[
+                styles.userAvatar,
+                {
+                  backgroundColor: colorWithAlpha(
+                    uiTokens.colors.accent,
+                    uiTokens.mode === "dark" ? 0.18 : 0.1
+                  ),
+                },
+              ]}
+            >
+              <Ionicons name="person" size={28} color={uiTokens.colors.accent} />
             </View>
             <View style={styles.userInfo}>
-              <Text style={styles.userName}>{user?.username || "Staff"}</Text>
-              <Text style={styles.userRole}>Staff Member</Text>
+              <Text style={[styles.userName, { color: uiTokens.colors.textPrimary }]}>
+                {user?.username || "Staff"}
+              </Text>
+              <Text style={[styles.userRole, { color: uiTokens.colors.textSecondary }]}>
+                Staff Member
+              </Text>
             </View>
           </ModernCard>
         </Animated.View>
@@ -228,65 +133,53 @@ export default function StaffSettingsScreen() {
           <SettingsSyncStatus />
         </Animated.View>
 
-        {/* Security Settings */}
-        <SectionHeader title="Security" delay={200} />
         <Animated.View entering={FadeInDown.delay(250).springify()}>
-          <ModernCard style={styles.settingsCard}>
-            <SettingRow
+          <SettingsActionSection title="Security">
+            <SettingsActionRow
               icon="shield-checkmark-outline"
               label="Security & PIN"
               description="Manage your PIN and biometric login"
               type="navigation"
               onPress={handleSecurity}
             />
-          </ModernCard>
+          </SettingsActionSection>
         </Animated.View>
 
-        {/* Appearance Settings */}
-        <SectionHeader title="Appearance" delay={300} />
         <Animated.View entering={FadeInDown.delay(350).springify()}>
+          <SettingsSectionHeading title="Appearance" />
           <View style={styles.settingsCard}>
-            <AppearanceSettings
-              showTitle={false}
-              scrollable={false}
-              compact={true}
-            />
+            <AppearanceSettings showTitle={false} scrollable={false} compact={true} />
           </View>
         </Animated.View>
 
-        {/* User Preferences */}
-        <SectionHeader title="Preferences" delay={400} />
         <Animated.View entering={FadeInDown.delay(450).springify()}>
+          <SettingsSectionHeading title="Preferences" />
           <UserSettingsSections />
         </Animated.View>
 
-        {/* Support */}
-        <SectionHeader title="Support" delay={500} />
         <Animated.View entering={FadeInDown.delay(550).springify()}>
-          <ModernCard style={styles.settingsCard}>
-            <SettingRow
+          <SettingsActionSection title="Support">
+            <SettingsActionRow
               icon="notifications-outline"
               label="Notifications"
               description="Open recount and approval alerts"
               onPress={() => router.push("/notifications" as any)}
               type="navigation"
             />
-            <View style={styles.divider} />
-            <SettingRow
+            <SettingsSectionDivider />
+            <SettingsActionRow
               icon="help-circle-outline"
               label="Help & Support"
               description="Get assistance"
               onPress={handleHelp}
               type="navigation"
             />
-          </ModernCard>
+          </SettingsActionSection>
         </Animated.View>
 
-        {/* Account Actions */}
-        <SectionHeader title="Account" delay={600} />
         <Animated.View entering={FadeInDown.delay(650).springify()}>
-          <ModernCard style={styles.settingsCard}>
-            <SettingRow
+          <SettingsActionSection title="Account">
+            <SettingsActionRow
               icon="log-out-outline"
               label="Sign Out"
               description="Sign out of your account"
@@ -294,17 +187,20 @@ export default function StaffSettingsScreen() {
               type="action"
               destructive
             />
-          </ModernCard>
+          </SettingsActionSection>
         </Animated.View>
 
         {/* Version Info */}
-        <Animated.View
-          entering={FadeInDown.delay(700).springify()}
-          style={styles.versionContainer}
-        >
-          <Text style={styles.versionText}>Stock Verify v{version}</Text>
-          <Text style={styles.versionSubtext}>Build {buildVersion}</Text>
-          <Text style={styles.versionSubtext}>© 2026 Lavanya Mart</Text>
+        <Animated.View entering={FadeInDown.delay(700).springify()} style={styles.versionContainer}>
+          <Text style={[styles.versionText, { color: uiTokens.colors.textSecondary }]}>
+            Stock Verify v{version}
+          </Text>
+          <Text style={[styles.versionSubtext, { color: uiTokens.colors.textMuted }]}>
+            Build {buildVersion}
+          </Text>
+          <Text style={[styles.versionSubtext, { color: uiTokens.colors.textMuted }]}>
+            © 2026 Lavanya Mart
+          </Text>
         </Animated.View>
       </ScrollView>
     </View>
@@ -314,7 +210,6 @@ export default function StaffSettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.gray[50],
   },
   scrollView: {
     flex: 1,
@@ -333,7 +228,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.primary[50],
     justifyContent: "center",
     alignItems: "center",
   },
@@ -344,71 +238,14 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[900],
   },
   userRole: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
     marginTop: spacing.xs,
-  },
-  sectionTitle: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[500],
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-    marginLeft: spacing.xs,
   },
   settingsCard: {
     padding: 0,
     overflow: "hidden",
-  },
-  settingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-  },
-  settingLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primary[50],
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: spacing.sm,
-  },
-  iconContainerDestructive: {
-    backgroundColor: colors.error[50],
-  },
-  labelContainer: {
-    flex: 1,
-  },
-  settingLabel: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.gray[900],
-  },
-  labelDestructive: {
-    color: colors.error[600],
-  },
-  settingDescription: {
-    fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
-    marginTop: 2,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.gray[100],
-    marginLeft: 52,
   },
   versionContainer: {
     alignItems: "center",
@@ -418,11 +255,9 @@ const styles = StyleSheet.create({
   versionText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.gray[500],
   },
   versionSubtext: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray[400],
     marginTop: spacing.xs,
   },
 });

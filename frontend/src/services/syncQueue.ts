@@ -1,74 +1,24 @@
 import {
-  getPendingVerifications,
-  deletePendingVerification,
-  updatePendingVerificationStatus,
   saveLocalItems,
   getLatestItemSyncTimestamp,
   LocalItem,
 } from "../db/localDb";
-import { syncBatch, isOnline } from "./api/api";
+import { isOnline } from "./api/api";
 import api from "./httpClient";
-import * as Crypto from "expo-crypto";
+import { syncOfflineQueue } from "./syncService";
 
 /**
  * SyncQueue service handles background synchronization of offline data.
  */
 export const syncQueue = {
   /**
-   * Push pending verifications to the server.
+   * Push pending count records to the server through the single offline queue.
    */
   pushPendingVerifications: async () => {
     if (!isOnline()) return { success: 0, failed: 0 };
 
-    const pending = await getPendingVerifications();
-    if (pending.length === 0) return { success: 0, failed: 0 };
-
-    console.log(`Pushing ${pending.length} pending verifications...`);
-
-    const operations = pending.map((p) => ({
-      id: p.id?.toString() || Crypto.randomUUID(),
-      type: "item_verification",
-      data: {
-        barcode: p.barcode,
-        verified: p.verified === 1,
-        username: p.username,
-        variance: p.variance,
-      },
-      timestamp: p.timestamp,
-    }));
-
-    try {
-      const result = await syncBatch(operations);
-
-      // Handle successful syncs
-      const successfulIds = result.ok || result.processed_ids || [];
-      for (const id of successfulIds) {
-        await deletePendingVerification(parseInt(id));
-      }
-
-      // Handle conflicts - T077: Use 'Temporary Lock' status
-      if (result.conflicts) {
-        for (const conflict of result.conflicts) {
-          if (conflict.client_record_id) {
-            await updatePendingVerificationStatus(
-              parseInt(conflict.client_record_id),
-              "locked",
-            );
-            console.log(
-              `Marked verification ${conflict.client_record_id} as locked due to conflict: ${conflict.message}`,
-            );
-          }
-        }
-      }
-
-      return {
-        success: successfulIds.length,
-        failed: pending.length - successfulIds.length,
-      };
-    } catch (error) {
-      console.error("Failed to push pending verifications:", error);
-      return { success: 0, failed: pending.length };
-    }
+    const result = await syncOfflineQueue({ background: true });
+    return { success: result.success, failed: result.failed };
   },
 
   /**

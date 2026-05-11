@@ -90,7 +90,7 @@ python-typecheck-strict:
 # =============================================================================
 # 📦 NODE.JS FRONTEND
 # =============================================================================
-.PHONY: node-ci node-test node-lint node-typecheck node-e2e-recount-smoke
+.PHONY: node-ci node-test node-lint node-typecheck node-ui-governance node-ui-governance-strict node-e2e-recount-smoke
 
 node-ci: node-lint node-typecheck node-test
 
@@ -117,6 +117,14 @@ node-lint-fix:
 node-typecheck:
 	@echo "Running TypeScript type checker..."
 	cd frontend && npm run typecheck
+
+node-ui-governance:
+	@echo "Running UI governance scan..."
+	cd frontend && npm run governance:ui:changed
+
+node-ui-governance-strict:
+	@echo "Running strict UI governance scan..."
+	cd frontend && npm run governance:ui:changed:strict
 
 node-typecheck-watch:
 	@echo "Running TypeScript type checker in watch mode..."

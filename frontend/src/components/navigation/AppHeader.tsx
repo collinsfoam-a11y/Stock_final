@@ -9,10 +9,12 @@ import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/useTheme";
-import { operationalTheme } from "@/theme/operationalTheme";
 import { layout, spacing, typography } from "../../styles/globalStyles";
 import { useAuthStore } from "../../store/authStore";
+import { safeBackNavigation } from "../../utils/navigation";
+import type { UserRole } from "../../utils/roleNavigation";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface HeaderAction {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
@@ -46,9 +48,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const { user } = useAuthStore();
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    }
+    safeBackNavigation(router, { userRole: user?.role as UserRole | null });
   };
 
   // Calculate header height including safe area
@@ -60,8 +60,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       style={[
         styles.container,
         {
-          backgroundColor: theme.isDark ? theme.colors.surface : operationalTheme.background,
-          borderBottomColor: theme.isDark ? theme.colors.border : operationalTheme.border,
+          backgroundColor: theme.colors.surface,
+          borderBottomColor: theme.colors.border,
           height: headerHeight,
           paddingTop: paddingTop,
         },
@@ -80,37 +80,19 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               accessibilityLabel="Go back"
               accessibilityHint="Navigates to the previous screen"
             >
-              <Ionicons
-                name="arrow-back"
-                size={24}
-                color={theme.isDark ? theme.colors.text : operationalTheme.text}
-              />
+              <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
             </TouchableOpacity>
           )}
           <View>
             <Text
-              style={[
-                styles.title,
-                {
-                  color: theme.isDark ? theme.colors.text : operationalTheme.text,
-                },
-              ]}
+              style={[styles.title, { color: theme.colors.text }]}
               numberOfLines={1}
               accessibilityRole="header"
             >
               {title}
             </Text>
             {showUser && user && (
-              <Text
-                style={[
-                  styles.subtitle,
-                  {
-                    color: theme.isDark
-                      ? theme.colors.textSecondary
-                      : operationalTheme.textSecondary,
-                  },
-                ]}
-              >
+              <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
                 Hello, {user.full_name || user.username}
               </Text>
             )}
@@ -127,11 +109,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               accessibilityLabel="Search"
               accessibilityHint="Opens search"
             >
-              <Ionicons
-                name="search"
-                size={22}
-                color={theme.isDark ? theme.colors.text : operationalTheme.text}
-              />
+              <Ionicons name="search" size={22} color={theme.colors.text} />
             </TouchableOpacity>
           )}
           {actions.map((action, index) => (
@@ -143,11 +121,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               accessibilityRole="button"
               accessibilityLabel={action.label}
             >
-              <Ionicons
-                name={action.icon}
-                size={22}
-                color={action.color || (theme.isDark ? theme.colors.text : operationalTheme.text)}
-              />
+              <Ionicons name={action.icon} size={22} color={action.color || theme.colors.text} />
               {action.badge !== undefined && action.badge > 0 && (
                 <View style={[styles.badge, { backgroundColor: theme.colors.error }]}>
                   <Text style={styles.badgeText}>{action.badge > 99 ? "99+" : action.badge}</Text>
@@ -190,21 +164,14 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginRight: spacing.sm,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: operationalTheme.surface,
-    borderWidth: 1,
-    borderColor: operationalTheme.border,
+    padding: spacing.xs,
   },
   title: {
     ...typography.h5,
   },
   subtitle: {
     ...typography.caption,
-    marginTop: 0,
+    marginTop: -2,
   },
   rightSection: {
     flexDirection: "row",
@@ -212,14 +179,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   actionButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: operationalTheme.surface,
-    borderWidth: 1,
-    borderColor: operationalTheme.border,
+    padding: spacing.xs,
     position: "relative",
   },
   badge: {
@@ -234,7 +194,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   badgeText: {
-    color: "#FFFFFF",
+    color: uiSemanticColors.text.inverse,
     fontSize: 10,
     fontWeight: "bold",
   },

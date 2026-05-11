@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { FlexibleDateField } from "@/components/scan/FlexibleDateField";
 import { DateFormatType } from "@/types/scan";
-import { colors, spacing } from "@/theme/unified";
+import { useUiTokens } from "@/hooks/useUiTokens";
 import type {
   DateParts,
   DatePickerPart,
@@ -47,6 +47,20 @@ export function ItemDateFieldsSection({
   toggleExpiryDateEnabled,
   toggleMfgDateEnabled,
 }: ItemDateFieldsSectionProps) {
+  const uiTokens = useUiTokens();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        dateFieldSpacing: {
+          marginTop: uiTokens.spacing.md,
+        },
+        section: {
+          marginBottom: uiTokens.spacing.lg,
+        },
+      }),
+    [uiTokens]
+  );
+
   if (!showMfgDate && !showExpiryDate) return null;
 
   return (
@@ -65,8 +79,8 @@ export function ItemDateFieldsSection({
           parts={mfgDateField.parts}
           onOpenPicker={mfgDateField.openPicker}
           iconName="calendar-outline"
-          iconColor={colors.primary[600]}
-          trackColor={colors.primary[600]}
+          iconColor={uiTokens.colors.accent}
+          trackColor={uiTokens.colors.accent}
         />
       )}
 
@@ -85,20 +99,11 @@ export function ItemDateFieldsSection({
             parts={expiryDateField.parts}
             onOpenPicker={expiryDateField.openPicker}
             iconName="time-outline"
-            iconColor={colors.warning[600]}
-            trackColor={colors.warning[600]}
+            iconColor={uiTokens.colors.warning}
+            trackColor={uiTokens.colors.warning}
           />
         </View>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  dateFieldSpacing: {
-    marginTop: spacing.md,
-  },
-  section: {
-    marginBottom: spacing.xl,
-  },
-});

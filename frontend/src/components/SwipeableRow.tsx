@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 type Props = {
   children: React.ReactNode;
   leftLabel?: string;
@@ -19,10 +20,7 @@ const Action = ({
   color: string;
   onPress?: () => void;
 }) => (
-  <TouchableOpacity
-    style={[styles.action, { backgroundColor: color }]}
-    onPress={onPress}
-  >
+  <TouchableOpacity style={[styles.action, { backgroundColor: color }]} onPress={onPress}>
     <Text style={styles.actionText}>{label}</Text>
   </TouchableOpacity>
 );
@@ -37,7 +35,7 @@ export const SwipeableRow: React.FC<Props> = ({
   const renderLeft = () => (
     <View style={[styles.actionsContainer, { justifyContent: "flex-start" }]}>
       {leftLabel ? (
-        <Action label={leftLabel} color="#4CAF50" onPress={onLeftAction} />
+        <Action label={leftLabel} color={uiColors.success[500]} onPress={onLeftAction} />
       ) : null}
     </View>
   );
@@ -45,7 +43,7 @@ export const SwipeableRow: React.FC<Props> = ({
   const renderRight = () => (
     <View style={[styles.actionsContainer, { justifyContent: "flex-end" }]}>
       {rightLabel ? (
-        <Action label={rightLabel} color="#FF5252" onPress={onRightAction} />
+        <Action label={rightLabel} color={uiColors.error[500]} onPress={onRightAction} />
       ) : null}
     </View>
   );
@@ -75,7 +73,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
   },
   actionText: {
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontWeight: "700",
   },
 });

@@ -21,10 +21,8 @@ import {
   TextStyle,
   Platform,
   View,
-  GestureResponderEvent,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { haptics } from "../../services/haptics";
 import { BlurView } from "expo-blur";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, {
@@ -33,23 +31,19 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import { modernColors, modernAnimations } from "../../styles/modernDesignSystem";
 import {
-  borderRadius,
   colors,
-  duration,
-  gradients,
-  opacity as opacityTokens,
-  shadows,
   semanticColors,
+  radius,
   spacing,
-  springConfigs,
   textStyles,
   touchTargets,
-} from "../../theme/unified";
+} from "@/theme/legacyCompat";
 import { useThemeContextSafe } from "../../context/ThemeContext";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 export type ButtonVariant =
   | "primary"
@@ -63,7 +57,7 @@ export type ButtonSize = "small" | "medium" | "large";
 
 interface ModernButtonProps {
   title: string;
-  onPress: (event: GestureResponderEvent) => void;
+  onPress: () => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
   disabled?: boolean;
@@ -97,7 +91,17 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   accessibilityHint,
 }) => {
   const themeContext = useThemeContextSafe();
-  const theme = themeContext?.theme;
+  const theme = themeContext?.themeLegacy;
+  const themedColors = theme?.colors;
+  const primaryBackground = theme?.isDark ? colors.primary[500] : semanticColors.button.primary;
+  const primaryBorder = theme?.isDark ? colors.primary[600] : semanticColors.button.primary;
+  const secondaryBackground = themedColors?.surfaceElevated ?? semanticColors.button.secondary;
+  const surfaceBorder = themedColors?.border ?? semanticColors.border.default;
+  const primaryText = colors.white;
+  const bodyText = themedColors?.textPrimary ?? semanticColors.text.primary;
+  const secondaryText = themedColors?.textSecondary ?? semanticColors.button.secondaryText;
+  const accentText = themedColors?.accent ?? semanticColors.text.link;
+  const dangerBackground = themedColors?.error ?? semanticColors.status.error;
 
   // Animation values
   const scale = useSharedValue(1);
@@ -114,33 +118,38 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   // Press handlers with animations
   const handlePressIn = () => {
     if (!disabled && !loading) {
-      scale.value = withSpring(0.95, springConfigs.stiff);
-      opacity.value = withTiming(opacityTokens.pressed, {
-        duration: duration.fast,
+      scale.value = withSpring(modernAnimations.scale.pressed, {
+        damping: modernAnimations.easing.spring.damping,
+        stiffness: modernAnimations.easing.spring.stiffness,
+      });
+      opacity.value = withTiming(modernAnimations.opacity.pressed, {
+        duration: modernAnimations.duration.fast,
       });
     }
   };
 
   const handlePressOut = () => {
     if (!disabled && !loading) {
-      scale.value = withSpring(1, springConfigs.stiff);
+      scale.value = withSpring(1, {
+        damping: modernAnimations.easing.spring.damping,
+        stiffness: modernAnimations.easing.spring.stiffness,
+      });
       opacity.value = withTiming(1, {
-        duration: duration.fast,
+        duration: modernAnimations.duration.fast,
       });
     }
   };
 
   // Get button styles based on variant and size
   const getButtonStyles = (): ViewStyle => {
-    const sizeConfig = getSizeConfig();
     const baseStyle: ViewStyle = {
-      borderRadius: borderRadius.button,
+      borderRadius: radius.sm,
       alignItems: "center",
       justifyContent: "center",
       flexDirection: "row",
       gap: spacing.sm,
-      minHeight: sizeConfig.height,
-      paddingHorizontal: sizeConfig.paddingHorizontal,
+      minHeight: getSizeConfig().height,
+      paddingHorizontal: getSizeConfig().paddingHorizontal,
       ...(fullWidth && { width: "100%" }),
       ...(disabled && { opacity: 0.5 }),
     };
@@ -148,24 +157,27 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
     // Variant-specific styles using semantic tokens from DESIGN.md
     const variantStyles: Record<ButtonVariant, ViewStyle> = {
       primary: {
-        backgroundColor: semanticColors.button.primary,
-        ...shadows.sm,
+        backgroundColor: primaryBackground,
+        borderWidth: 1,
+        borderColor: primaryBorder,
       },
       secondary: {
-        backgroundColor: semanticColors.button.secondary,
-        ...shadows.sm,
+        backgroundColor: secondaryBackground,
+        borderWidth: 1,
+        borderColor: surfaceBorder,
       },
       outline: {
         backgroundColor: "transparent",
         borderWidth: 1,
-        borderColor: semanticColors.button.outline,
+        borderColor: surfaceBorder,
       },
       ghost: {
         backgroundColor: "transparent",
       },
       danger: {
-        backgroundColor: semanticColors.status.error,
-        ...shadows.sm,
+        backgroundColor: dangerBackground,
+        borderWidth: 1,
+        borderColor: dangerBackground,
       },
       glass: {
         backgroundColor: "transparent",
@@ -189,12 +201,12 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
     };
 
     const variantTextColors: Record<ButtonVariant, string> = {
-      primary: semanticColors.button.primaryText,
-      secondary: semanticColors.button.secondaryText,
-      outline: semanticColors.text.primary,
-      ghost: semanticColors.text.link,
+      primary: primaryText,
+      secondary: secondaryText,
+      outline: bodyText,
+      ghost: accentText,
       danger: colors.white,
-      glass: semanticColors.text.primary,
+      glass: bodyText,
       gradient: colors.white,
     };
 
@@ -206,11 +218,11 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
 
   // Get icon color
   const getIconColor = (): string => {
-    if (variant === "outline") return semanticColors.text.primary;
-    if (variant === "ghost") return semanticColors.text.link;
-    if (variant === "secondary") return semanticColors.button.secondaryText;
-    if (variant === "glass") return semanticColors.text.primary;
-    return colors.white;
+    if (variant === "outline") return bodyText;
+    if (variant === "ghost") return accentText;
+    if (variant === "secondary") return secondaryText;
+    if (variant === "glass") return bodyText;
+    return primaryText;
   };
 
   // Size configuration aligned with DESIGN.md
@@ -239,20 +251,19 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   }
 
   const sizeConfig = getSizeConfig();
-
-  const handlePress = (event: GestureResponderEvent) => {
-    if (!disabled && !loading) {
-      void haptics.light();
-      onPress(event);
-    }
-  };
+  const decorativeIconProps = getDecorativeIconProps();
 
   // Render icon
   const renderIcon = () => {
     if (!icon || loading) return null;
 
     return (
-      <Ionicons name={icon} size={sizeConfig.iconSize} color={getIconColor()} />
+      <Ionicons
+        {...decorativeIconProps}
+        name={icon}
+        size={sizeConfig.iconSize}
+        color={getIconColor()}
+      />
     );
   };
 
@@ -264,12 +275,10 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
           size="small"
           color={
             variant === "outline" || variant === "ghost"
-              ? semanticColors.text.link
-              : variant === "secondary"
-                ? semanticColors.button.secondaryText
-                : variant === "glass"
-                  ? semanticColors.text.primary
-                  : colors.white
+              ? theme
+                ? theme.colors.accent
+                : modernColors.primary[500]
+              : primaryText
           }
         />
       );
@@ -292,16 +301,14 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
 
     const webProps = isWeb
       ? {
-          onPress: handlePress,
+          onPress,
           onPressIn: handlePressIn,
           onPressOut: handlePressOut,
           disabled: disabled || loading,
           activeOpacity: 0.8,
           style: buttonStyle,
           testID,
-          accessibilityLabel: loading
-            ? `Loading, ${accessibilityLabel || title}`
-            : (accessibilityLabel || title),
+          accessibilityLabel: accessibilityLabel || title,
           accessibilityHint,
           accessibilityRole: "button" as "button",
           accessibilityState: { disabled: disabled || loading },
@@ -310,16 +317,14 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
 
     const nativeProps = !isWeb
       ? {
-          onPress: handlePress,
+          onPress,
           onPressIn: handlePressIn,
           onPressOut: handlePressOut,
           disabled: disabled || loading,
           activeOpacity: 1,
           style: [animatedStyle, buttonStyle],
           testID,
-          accessibilityLabel: loading
-            ? `Loading, ${accessibilityLabel || title}`
-            : (accessibilityLabel || title),
+          accessibilityLabel: accessibilityLabel || title,
           accessibilityHint,
           accessibilityRole: "button" as "button",
           accessibilityState: { disabled: disabled || loading },
@@ -329,18 +334,12 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
     const props = isWeb ? webProps : nativeProps;
 
     if (variant === "gradient") {
-      const gradientPalette =
-        gradientColors || (theme ? theme.gradients.primary : gradients.primary);
+      const colors =
+        gradientColors || (theme ? theme.gradients.primary : modernColors.gradients.primary);
       return (
         <Component {...props}>
           <LinearGradient
-            colors={
-              gradientPalette as unknown as readonly [
-                string,
-                string,
-                ...string[],
-              ]
-            }
+            colors={colors as unknown as readonly [string, string, ...string[]]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.gradient}
@@ -358,7 +357,12 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
             <View
               style={[
                 styles.blur,
-                { backgroundColor: "rgba(255, 255, 255, 0.1)" },
+                {
+                  backgroundColor:
+                    themedColors?.glass ??
+                    (theme?.isDark ? "rgba(22, 27, 34, 0.85)" : "rgba(255, 255, 255, 0.85)"),
+                  borderColor: surfaceBorder,
+                },
               ]}
             >
               {renderContent()}
@@ -381,7 +385,7 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
 const styles = StyleSheet.create({
   gradient: {
     flex: 1,
-    borderRadius: borderRadius.button,
+    borderRadius: radius.sm,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
@@ -391,7 +395,7 @@ const styles = StyleSheet.create({
   },
   blur: {
     flex: 1,
-    borderRadius: borderRadius.button,
+    borderRadius: radius.sm,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",

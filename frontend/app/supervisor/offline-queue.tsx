@@ -4,14 +4,7 @@
  * Refactored to use Aurora Design System
  */
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  RefreshControl,
-  Platform,
-  Alert,
-} from "react-native";
+import { View, Text, StyleSheet, RefreshControl, Platform, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBar } from "expo-status-bar";
@@ -20,24 +13,24 @@ import * as Haptics from "expo-haptics";
 import { FlashList } from "@shopify/flash-list";
 
 import { flags } from "../../src/constants/flags";
-import {
-  getConflicts,
-  resolveConflict,
-} from "../../src/services/offline/offlineQueue";
+import { getConflicts, resolveConflict } from "../../src/services/offline/offlineQueue";
 import { getOfflineQueue } from "../../src/services/offline/offlineStorage";
 import { forceSync } from "../../src/services/syncService";
 import { summarizeForceSyncResult } from "../../src/components/supervisor/offlineQueueFeedback";
-import {
-  AuroraBackground,
-  GlassCard,
-  AnimatedPressable,
-  StatsCard,
-} from "../../src/components/ui";
+import { ModernCard, AnimatedPressable, StatsCard } from "../../src/components/ui";
 import { useSettingsStore } from "../../src/store/settingsStore";
-import { auroraTheme } from "../../src/theme/auroraTheme";
+import { safeBackNavigation } from "@/utils/navigation";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import {
+  createOperationalStyleBridge,
+  type OperationalStyleBridge,
+} from "@/theme/operationalStyleBridge";
 
 export default function OfflineQueueScreen() {
   const router = useRouter();
+  const uiTokens = useUiTokens();
+  const operationalTheme = React.useMemo(() => createOperationalStyleBridge(uiTokens), [uiTokens]);
+  const styles = React.useMemo(() => createStyles(operationalTheme), [operationalTheme]);
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [loading, setLoading] = React.useState(false);
   const [queue, setQueue] = React.useState<any[]>([]);
@@ -63,13 +56,12 @@ export default function OfflineQueueScreen() {
     if (offlineMode) {
       Alert.alert(
         "Offline Mode",
-        "Queue sync is disabled while offline mode is enabled. Turn it off before syncing.",
+        "Queue sync is disabled while offline mode is enabled. Turn it off before syncing."
       );
       return;
     }
 
-    if (Platform.OS !== "web")
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       const result = await forceSync();
       const feedback = summarizeForceSyncResult(result);
@@ -77,19 +69,18 @@ export default function OfflineQueueScreen() {
         Haptics.notificationAsync(
           result.failed > 0
             ? Haptics.NotificationFeedbackType.Warning
-            : Haptics.NotificationFeedbackType.Success,
+            : Haptics.NotificationFeedbackType.Success
         );
       Alert.alert(feedback.title, feedback.message);
       if (feedback.loadAfterAlert) {
         load();
       }
     } catch (error: any) {
-      if (Platform.OS !== "web")
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert(
         "Sync Failed",
         error?.message ||
-          "Failed to sync offline queue. Please check your connection and try again.",
+          "Failed to sync offline queue. Please check your connection and try again."
       );
     }
   };
@@ -101,12 +92,8 @@ export default function OfflineQueueScreen() {
   };
 
   const renderQueueItem = ({ item }: { item: any }) => (
-    <AnimatedPressable style={{ marginBottom: auroraTheme.spacing.md }}>
-      <GlassCard
-        variant="light"
-        padding={auroraTheme.spacing.md}
-        borderRadius={auroraTheme.borderRadius.lg}
-      >
+    <AnimatedPressable style={{ marginBottom: operationalTheme.spacing.md }}>
+      <ModernCard variant="outlined" elevation="none" padding={operationalTheme.spacing.md}>
         <View style={styles.cardHeader}>
           <View
             style={[
@@ -127,24 +114,20 @@ export default function OfflineQueueScreen() {
                 {
                   color:
                     item.status === "blocked_conflict"
-                      ? auroraTheme.colors.warning[500]
+                      ? operationalTheme.colors.warning[500]
                       : item.status === "failed_manual_review"
-                        ? auroraTheme.colors.error[500]
-                        : auroraTheme.colors.primary[400],
+                        ? operationalTheme.colors.error[500]
+                        : operationalTheme.colors.primary[400],
                 },
               ]}
             >
               {String(item.type).toUpperCase()}
             </Text>
           </View>
-          <Text style={styles.timestamp}>
-            {new Date(item.timestamp).toLocaleString()}
-          </Text>
+          <Text style={styles.timestamp}>{new Date(item.timestamp).toLocaleString()}</Text>
         </View>
 
-        <Text style={styles.cardUrl}>
-          {String(item.status).replace(/_/g, " ").toUpperCase()}
-        </Text>
+        <Text style={styles.cardUrl}>{String(item.status).replace(/_/g, " ").toUpperCase()}</Text>
 
         <Text style={styles.cardCode}>
           Retries: {item.retries}
@@ -152,7 +135,7 @@ export default function OfflineQueueScreen() {
         </Text>
 
         {item.last_error && (
-          <Text style={[styles.cardCode, { color: auroraTheme.colors.error[400] }]}>
+          <Text style={[styles.cardCode, { color: operationalTheme.colors.error[400] }]}>
             Last error: {item.last_error}
           </Text>
         )}
@@ -164,36 +147,32 @@ export default function OfflineQueueScreen() {
         )}
 
         {item.data && (
-          <GlassCard
-            variant="dark"
-            padding={auroraTheme.spacing.sm}
-            borderRadius={auroraTheme.borderRadius.sm}
-            style={{ marginTop: auroraTheme.spacing.sm }}
+          <ModernCard
+            variant="outlined"
+            elevation="none"
+            padding={operationalTheme.spacing.sm}
+            style={{ marginTop: operationalTheme.spacing.sm }}
           >
             <Text style={styles.cardCode} numberOfLines={2}>
               {JSON.stringify(item.data)}
             </Text>
-          </GlassCard>
+          </ModernCard>
         )}
-      </GlassCard>
+      </ModernCard>
     </AnimatedPressable>
   );
 
   const renderConflictItem = ({ item }: { item: any }) => (
-    <AnimatedPressable style={{ marginBottom: auroraTheme.spacing.md }}>
-      <GlassCard
-        variant="medium"
-        padding={auroraTheme.spacing.md}
-        borderRadius={auroraTheme.borderRadius.lg}
-        style={{ borderColor: auroraTheme.colors.error[500] }}
+    <AnimatedPressable style={{ marginBottom: operationalTheme.spacing.md }}>
+      <ModernCard
+        variant="outlined"
+        elevation="none"
+        padding={operationalTheme.spacing.md}
+        style={{ borderColor: operationalTheme.colors.error[500] }}
       >
         <View style={styles.cardHeader}>
           <View style={styles.errorBadge}>
-            <Ionicons
-              name="warning"
-              size={12}
-              color={auroraTheme.colors.warning[500]}
-            />
+            <Ionicons name="warning" size={12} color={operationalTheme.colors.warning[500]} />
             <Text style={styles.errorBadgeText}>Conflict</Text>
           </View>
           <Text style={styles.timestamp}>
@@ -205,109 +184,95 @@ export default function OfflineQueueScreen() {
           {String(item.method).toUpperCase()} {item.url}
         </Text>
 
-        <GlassCard
-          variant="dark"
-          padding={auroraTheme.spacing.sm}
-          borderRadius={auroraTheme.borderRadius.sm}
-          style={{ marginTop: auroraTheme.spacing.sm }}
+        <ModernCard
+          variant="outlined"
+          elevation="none"
+          padding={operationalTheme.spacing.sm}
+          style={{ marginTop: operationalTheme.spacing.sm }}
         >
           <Text style={styles.cardCode} numberOfLines={4}>
-            {typeof item.detail === "string"
-              ? item.detail
-              : JSON.stringify(item.detail)}
+            {typeof item.detail === "string" ? item.detail : JSON.stringify(item.detail)}
           </Text>
-        </GlassCard>
+        </ModernCard>
 
         <View style={styles.cardActions}>
-          <AnimatedPressable
-            onPress={() => handleDismiss(item.id)}
-            style={styles.dismissButton}
-          >
+          <AnimatedPressable onPress={() => handleDismiss(item.id)} style={styles.dismissButton}>
             <Text style={styles.dismissText}>Dismiss</Text>
           </AnimatedPressable>
         </View>
-      </GlassCard>
+      </ModernCard>
     </AnimatedPressable>
   );
 
   if (!flags.enableOfflineQueue) {
     return (
-      <AuroraBackground>
+      <View style={styles.screen}>
         <StatusBar style="light" />
         <View style={styles.center}>
-          <GlassCard padding={auroraTheme.spacing.xl}>
+          <ModernCard variant="outlined" elevation="none" padding={operationalTheme.spacing.xl}>
             <Ionicons
               name="cloud-offline-outline"
               size={48}
-              color={auroraTheme.colors.text.tertiary}
+              color={operationalTheme.colors.text.tertiary}
               style={{
                 alignSelf: "center",
-                marginBottom: auroraTheme.spacing.md,
+                marginBottom: operationalTheme.spacing.md,
               }}
             />
-            <Text style={styles.muted}>
-              Offline Queue is disabled in flags.
-            </Text>
-          </GlassCard>
+            <Text style={styles.muted}>Offline Queue is disabled in flags.</Text>
+          </ModernCard>
         </View>
-      </AuroraBackground>
+      </View>
     );
   }
 
   return (
-    <AuroraBackground>
+    <View style={styles.screen}>
       <StatusBar style="light" />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View
-          entering={FadeInDown.delay(100).springify()}
-          style={styles.header}
-        >
+        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
           <View style={styles.headerLeft}>
             <AnimatedPressable
-              onPress={() => router.back()}
+              onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
             >
-              <Ionicons
-                name="arrow-back"
-                size={24}
-                color={auroraTheme.colors.text.primary}
-              />
+              <Ionicons name="arrow-back" size={24} color={operationalTheme.colors.text.primary} />
             </AnimatedPressable>
             <View>
               <Text style={styles.pageTitle}>Offline Queue</Text>
-              <Text style={styles.pageSubtitle}>
-                Pending actions & conflicts
-              </Text>
+              <Text style={styles.pageSubtitle}>Pending actions & conflicts</Text>
             </View>
           </View>
           <AnimatedPressable
             onPress={handleFlush}
             style={[styles.flushButton, offlineMode && styles.flushButtonDisabled]}
           >
-            <Ionicons name="sync" size={20} color="white" />
+            <Ionicons name="sync" size={20} color={operationalTheme.colors.text.inverse} />
             <Text style={styles.flushText}>Flush Queue</Text>
           </AnimatedPressable>
         </Animated.View>
 
         {offlineMode && (
           <Animated.View entering={FadeInDown.delay(140).springify()}>
-            <GlassCard style={styles.offlineNotice} padding={auroraTheme.spacing.md}>
+            <ModernCard
+              variant="outlined"
+              elevation="none"
+              style={styles.offlineNotice}
+              padding={operationalTheme.spacing.md}
+            >
               <Text style={styles.offlineNoticeTitle}>
                 Queue review is available, sync is paused
               </Text>
               <Text style={styles.offlineNoticeBody}>
-                You can inspect queued actions and conflicts in offline mode, but
-                syncing them requires turning offline mode off and reconnecting.
+                You can inspect queued actions and conflicts in offline mode, but syncing them
+                requires turning offline mode off and reconnecting.
               </Text>
-            </GlassCard>
+            </ModernCard>
           </Animated.View>
         )}
 
-        <Animated.View
-          entering={FadeInDown.delay(200).springify()}
-          style={styles.statsRow}
-        >
+        <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.statsRow}>
           <StatsCard
             title="Pending Actions"
             value={queue.length.toString()}
@@ -340,7 +305,7 @@ export default function OfflineQueueScreen() {
                 <RefreshControl
                   refreshing={loading}
                   onRefresh={load}
-                  tintColor={auroraTheme.colors.primary[500]}
+                  tintColor={operationalTheme.colors.primary[500]}
                 />
               }
               ListEmptyComponent={
@@ -351,12 +316,7 @@ export default function OfflineQueueScreen() {
             />
           </View>
 
-          <View
-            style={[
-              styles.sectionHeader,
-              { marginTop: auroraTheme.spacing.lg },
-            ]}
-          >
+          <View style={[styles.sectionHeader, { marginTop: operationalTheme.spacing.lg }]}>
             <Text style={styles.sectionTitle}>Conflicts</Text>
           </View>
 
@@ -376,127 +336,131 @@ export default function OfflineQueueScreen() {
           </View>
         </View>
       </View>
-    </AuroraBackground>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: operationalTheme.colors.background.primary,
+  },
   container: {
     flex: 1,
     paddingTop: 60,
-    paddingHorizontal: auroraTheme.spacing.md,
+    paddingHorizontal: operationalTheme.spacing.md,
   },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: auroraTheme.spacing.md,
+    padding: operationalTheme.spacing.md,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: auroraTheme.spacing.md,
+    marginBottom: operationalTheme.spacing.md,
   },
   offlineNotice: {
-    marginBottom: auroraTheme.spacing.lg,
+    marginBottom: operationalTheme.spacing.lg,
   },
   offlineNoticeTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: auroraTheme.colors.text.primary,
+    color: operationalTheme.colors.text.primary,
     marginBottom: 4,
   },
   offlineNoticeBody: {
     fontSize: 12,
     lineHeight: 18,
-    color: auroraTheme.colors.text.secondary,
+    color: operationalTheme.colors.text.secondary,
   },
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.md,
+    gap: operationalTheme.spacing.md,
   },
   backButton: {
-    padding: auroraTheme.spacing.xs,
-    backgroundColor: auroraTheme.colors.background.glass,
-    borderRadius: auroraTheme.borderRadius.full,
+    padding: operationalTheme.spacing.xs,
+    backgroundColor: operationalTheme.colors.background.glass,
+    borderRadius: operationalTheme.borderRadius.full,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
+    borderColor: operationalTheme.colors.border.light,
   },
   pageTitle: {
-    fontFamily: auroraTheme.typography.fontFamily.heading,
-    fontSize: auroraTheme.typography.fontSize["2xl"],
-    color: auroraTheme.colors.text.primary,
+    fontFamily: operationalTheme.typography.fontFamily.heading,
+    fontSize: operationalTheme.typography.fontSize["2xl"],
+    color: operationalTheme.colors.text.primary,
     fontWeight: "700",
   },
   pageSubtitle: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
+    fontSize: operationalTheme.typography.fontSize.sm,
+    color: operationalTheme.colors.text.secondary,
   },
   flushButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: auroraTheme.colors.primary[500],
-    paddingHorizontal: auroraTheme.spacing.md,
+    backgroundColor: operationalTheme.colors.primary[500],
+    paddingHorizontal: operationalTheme.spacing.md,
     paddingVertical: 8,
-    borderRadius: auroraTheme.borderRadius.full,
+    borderRadius: operationalTheme.borderRadius.full,
   },
   flushButtonDisabled: {
     opacity: 0.55,
   },
   flushText: {
-    color: "white",
+    color: operationalTheme.colors.text.inverse,
     fontWeight: "600",
-    fontSize: auroraTheme.typography.fontSize.sm,
+    fontSize: operationalTheme.typography.fontSize.sm,
   },
   statsRow: {
     flexDirection: "row",
-    gap: auroraTheme.spacing.md,
-    marginBottom: auroraTheme.spacing.lg,
+    gap: operationalTheme.spacing.md,
+    marginBottom: operationalTheme.spacing.lg,
   },
   contentContainer: {
     flex: 1,
-    paddingBottom: auroraTheme.spacing.xl,
+    paddingBottom: operationalTheme.spacing.xl,
   },
   sectionHeader: {
-    marginBottom: auroraTheme.spacing.sm,
+    marginBottom: operationalTheme.spacing.sm,
   },
   sectionTitle: {
-    fontSize: auroraTheme.typography.fontSize.lg,
+    fontSize: operationalTheme.typography.fontSize.lg,
     fontWeight: "700",
-    color: auroraTheme.colors.text.primary,
+    color: operationalTheme.colors.text.primary,
   },
-  muted: { color: auroraTheme.colors.text.tertiary, textAlign: "center" },
+  muted: { color: operationalTheme.colors.text.tertiary, textAlign: "center" },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: auroraTheme.spacing.sm,
+    marginBottom: operationalTheme.spacing.sm,
   },
   methodBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: auroraTheme.borderRadius.sm,
+    borderRadius: operationalTheme.borderRadius.sm,
   },
   methodText: {
-    fontSize: auroraTheme.typography.fontSize.xs,
+    fontSize: operationalTheme.typography.fontSize.xs,
     fontWeight: "bold",
   },
   timestamp: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.tertiary,
+    fontSize: operationalTheme.typography.fontSize.xs,
+    color: operationalTheme.colors.text.tertiary,
   },
   cardUrl: {
-    fontSize: auroraTheme.typography.fontSize.sm,
+    fontSize: operationalTheme.typography.fontSize.sm,
     fontWeight: "600",
-    color: auroraTheme.colors.text.primary,
+    color: operationalTheme.colors.text.primary,
   },
   cardCode: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.secondary,
+    fontSize: operationalTheme.typography.fontSize.xs,
+    color: operationalTheme.colors.text.secondary,
   },
   errorBadge: {
     flexDirection: "row",
@@ -505,43 +469,43 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(234, 179, 8, 0.1)",
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: auroraTheme.borderRadius.full,
+    borderRadius: operationalTheme.borderRadius.full,
   },
   errorBadgeText: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.warning[500],
+    fontSize: operationalTheme.typography.fontSize.xs,
+    color: operationalTheme.colors.warning[500],
     fontWeight: "600",
   },
   cardTitle: {
-    fontSize: auroraTheme.typography.fontSize.sm,
+    fontSize: operationalTheme.typography.fontSize.sm,
     fontWeight: "700",
-    color: auroraTheme.colors.text.primary,
-    marginBottom: auroraTheme.spacing.xs,
+    color: operationalTheme.colors.text.primary,
+    marginBottom: operationalTheme.spacing.xs,
   },
   cardActions: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    marginTop: auroraTheme.spacing.md,
+    marginTop: operationalTheme.spacing.md,
   },
   dismissButton: {
-    backgroundColor: auroraTheme.colors.background.glass,
+    backgroundColor: operationalTheme.colors.background.glass,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
-    paddingHorizontal: auroraTheme.spacing.md,
+    borderColor: operationalTheme.colors.border.light,
+    paddingHorizontal: operationalTheme.spacing.md,
     paddingVertical: 6,
-    borderRadius: auroraTheme.borderRadius.full,
+    borderRadius: operationalTheme.borderRadius.full,
   },
   dismissText: {
-    fontSize: auroraTheme.typography.fontSize.xs,
-    color: auroraTheme.colors.text.primary,
+    fontSize: operationalTheme.typography.fontSize.xs,
+    color: operationalTheme.colors.text.primary,
     fontWeight: "600",
   },
   emptyState: {
-    padding: auroraTheme.spacing.lg,
+    padding: operationalTheme.spacing.lg,
     alignItems: "center",
   },
   emptyText: {
-    color: auroraTheme.colors.text.tertiary,
-    fontSize: auroraTheme.typography.fontSize.sm,
+    color: operationalTheme.colors.text.tertiary,
+    fontSize: operationalTheme.typography.fontSize.sm,
   },
 });

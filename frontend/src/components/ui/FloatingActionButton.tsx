@@ -10,13 +10,7 @@
  */
 
 import React, { useEffect } from "react";
-import {
-  StyleSheet,
-  TouchableOpacity,
-  Text,
-  View,
-  ViewStyle,
-} from "react-native";
+import { StyleSheet, TouchableOpacity, Text, View, ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, {
@@ -35,8 +29,8 @@ import {
   modernShadows,
 } from "../../styles/unifiedSystem";
 
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 type FABSize = "mini" | "default" | "extended";
 
@@ -54,10 +48,7 @@ interface FloatingActionButtonProps {
   accessibilityLabel?: string;
 }
 
-const sizeConfig: Record<
-  FABSize,
-  { width: number; height: number; iconSize: number }
-> = {
+const sizeConfig: Record<FABSize, { width: number; height: number; iconSize: number }> = {
   mini: { width: 48, height: 48, iconSize: 20 },
   default: { width: 60, height: 60, iconSize: 26 },
   extended: { width: "auto" as any, height: 56, iconSize: 22 },
@@ -85,20 +76,14 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
   useEffect(() => {
     if (pulse && !disabled) {
       pulseScale.value = withRepeat(
-        withSequence(
-          withTiming(1.08, { duration: 1000 }),
-          withTiming(1, { duration: 1000 }),
-        ),
+        withSequence(withTiming(1.08, { duration: 1000 }), withTiming(1, { duration: 1000 })),
         -1,
-        true,
+        true
       );
       shadowOpacity.value = withRepeat(
-        withSequence(
-          withTiming(0.5, { duration: 1000 }),
-          withTiming(0.3, { duration: 1000 }),
-        ),
+        withSequence(withTiming(0.5, { duration: 1000 }), withTiming(0.3, { duration: 1000 })),
         -1,
-        true,
+        true
       );
     }
   }, [pulse, disabled, pulseScale, shadowOpacity]);
@@ -129,15 +114,11 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
   const buttonStyle: ViewStyle = {
     width: size === "extended" && label ? "auto" : config.width,
     height: config.height,
-    borderRadius:
-      size === "extended" && label ? modernBorderRadius.xl : config.width / 2,
+    borderRadius: size === "extended" && label ? modernBorderRadius.xl : config.width / 2,
     paddingHorizontal: size === "extended" && label ? modernSpacing.lg : 0,
   };
 
-  const defaultGradient: [string, string] = [
-    modernColors.primary[500],
-    modernColors.primary[600],
-  ];
+  const defaultGradient: [string, string] = [modernColors.primary[500], modernColors.primary[600]];
   const colors = gradientColors || defaultGradient;
 
   return (
@@ -159,10 +140,8 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
             end={{ x: 1, y: 1 }}
             style={[styles.button, buttonStyle]}
           >
-            <Ionicons name={icon} size={config.iconSize} color="#FFFFFF" />
-            {size === "extended" && label && (
-              <Text style={styles.label}>{label}</Text>
-            )}
+            <Ionicons name={icon} size={config.iconSize} color={uiSemanticColors.text.inverse} />
+            {size === "extended" && label && <Text style={styles.label}>{label}</Text>}
           </LinearGradient>
 
           {/* Badge */}
@@ -210,7 +189,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...modernTypography.button.medium,
-    color: "#FFFFFF",
+    color: uiSemanticColors.text.inverse,
     fontWeight: "600",
   },
   badge: {
@@ -229,7 +208,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     ...modernTypography.label.small,
-    color: "#FFFFFF",
+    color: uiSemanticColors.text.inverse,
     fontWeight: "700",
     fontSize: 10,
   },

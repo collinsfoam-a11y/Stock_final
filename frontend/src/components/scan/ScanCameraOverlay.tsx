@@ -1,22 +1,12 @@
 import React, { useEffect } from "react";
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CameraView } from "@/services/device/expoCamera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import ModernButton from "@/components/ui/ModernButton";
-import {
-  borderRadius,
-  colors,
-  spacing,
-  typography,
-} from "@/theme/unified";
+import { borderRadius, colors, spacing, typography } from "@/theme/legacyCompat";
 
 interface ScanCameraOverlayProps {
   animatedCorners: any;
@@ -58,9 +48,7 @@ export function ScanCameraOverlay({
   if (!permission.granted) {
     return (
       <View style={styles.permissionContainer}>
-        <Text style={styles.permissionText}>
-          We need your permission to show the camera
-        </Text>
+        <Text style={styles.permissionText}>We need your permission to show the camera</Text>
         <ModernButton onPress={requestPermission} title="Grant Permission" />
         <ModernButton
           onPress={onClose}
@@ -78,15 +66,7 @@ export function ScanCameraOverlay({
         style={StyleSheet.absoluteFill}
         onBarcodeScanned={scanned ? undefined : onBarcodeScanned}
         barcodeScannerSettings={{
-          barcodeTypes: [
-            "ean13",
-            "ean8",
-            "upc_a",
-            "upc_e",
-            "code128",
-            "code39",
-            "qr",
-          ],
+          barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e", "code128", "code39", "qr"],
         }}
       >
         <SafeAreaView style={styles.cameraOverlay}>
@@ -100,39 +80,21 @@ export function ScanCameraOverlay({
           <View style={styles.scanFrameContainer}>
             <View style={styles.scanFrameWrapper}>
               <Animated.View
-                style={[
-                  styles.cornerBracket,
-                  styles.cornerTopLeft,
-                  animatedCorners,
-                ]}
+                style={[styles.cornerBracket, styles.cornerTopLeft, animatedCorners]}
               />
               <Animated.View
-                style={[
-                  styles.cornerBracket,
-                  styles.cornerTopRight,
-                  animatedCorners,
-                ]}
+                style={[styles.cornerBracket, styles.cornerTopRight, animatedCorners]}
               />
               <Animated.View
-                style={[
-                  styles.cornerBracket,
-                  styles.cornerBottomLeft,
-                  animatedCorners,
-                ]}
+                style={[styles.cornerBracket, styles.cornerBottomLeft, animatedCorners]}
               />
               <Animated.View
-                style={[
-                  styles.cornerBracket,
-                  styles.cornerBottomRight,
-                  animatedCorners,
-                ]}
+                style={[styles.cornerBracket, styles.cornerBottomRight, animatedCorners]}
               />
 
               <Animated.View style={[styles.scanLine, animatedScanLine]} />
             </View>
-            <Text style={styles.scanInstruction}>
-              Align barcode within frame
-            </Text>
+            <Text style={styles.scanInstruction}>Align barcode within frame</Text>
             <Text style={styles.scanTimeoutText}>
               Scanner closes after {timeoutSeconds}s of inactivity
             </Text>
@@ -184,10 +146,6 @@ const styles = StyleSheet.create({
     height: 40,
     borderColor: colors.white,
     borderWidth: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
   },
   cornerTopLeft: {
     top: 0,
@@ -224,10 +182,6 @@ const styles = StyleSheet.create({
     top: 0,
     height: 2,
     backgroundColor: colors.primary[400],
-    shadowColor: colors.primary[400],
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 10,
   },
   scanInstruction: {
     color: colors.white,

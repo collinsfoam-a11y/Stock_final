@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -11,14 +11,16 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { AnimatedPressable, GlassCard } from "@/components/ui";
-import { auroraTheme } from "@/theme/auroraTheme";
+import { AnimatedPressable, ModernCard } from "@/components/ui";
 import {
   USER_ROLE_OPTIONS,
   User,
   UserFormState,
   userTextStyles,
 } from "@/components/admin/users/userManagementShared";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
 
 const isE2E = process.env.EXPO_PUBLIC_E2E === "true";
 const isTablet = Platform.OS === "web";
@@ -26,10 +28,7 @@ const isTablet = Platform.OS === "web";
 interface UserFormModalProps {
   editingUser: User | null;
   formError: string | null;
-  onChangeField: (
-    key: keyof UserFormState,
-    value: UserFormState[keyof UserFormState],
-  ) => void;
+  onChangeField: (key: keyof UserFormState, value: UserFormState[keyof UserFormState]) => void;
   onClose: () => void;
   onSubmit: () => void;
   submitting: boolean;
@@ -47,6 +46,8 @@ export function UserFormModal({
   userForm,
   visible,
 }: UserFormModalProps) {
+  const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const title = editingUser ? "Edit User" : "Create User";
   const description = editingUser
     ? "Update role, access, and credentials for this account."
@@ -59,8 +60,12 @@ export function UserFormModal({
       animationType={isE2E ? "none" : "fade"}
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <GlassCard variant="strong" style={styles.modalCard}>
+      <View
+        style={styles.modalOverlay}
+        accessibilityViewIsModal={visible}
+        accessibilityLabel={title}
+      >
+        <ModernCard variant="outlined" elevation="none" style={styles.modalCard}>
           <View style={styles.modalHeader}>
             <View style={styles.modalHeaderText}>
               <Text style={styles.modalTitle}>{title}</Text>
@@ -70,12 +75,9 @@ export function UserFormModal({
               style={styles.modalCloseButton}
               onPress={onClose}
               testID="user-form-close"
+              {...getAccessibleButtonProps({ label: "Close user form" })}
             >
-              <Ionicons
-                name="close"
-                size={20}
-                color={auroraTheme.colors.text.secondary}
-              />
+              <Ionicons name="close" size={20} color={uiTokens.colors.textSecondary} />
             </AnimatedPressable>
           </View>
 
@@ -86,11 +88,7 @@ export function UserFormModal({
           >
             {formError && (
               <View style={styles.formErrorBanner}>
-                <Ionicons
-                  name="alert-circle"
-                  size={18}
-                  color={auroraTheme.colors.error[600]}
-                />
+                <Ionicons name="alert-circle" size={18} color={uiTokens.colors.error} />
                 <Text style={styles.formErrorText}>{formError}</Text>
               </View>
             )}
@@ -105,12 +103,11 @@ export function UserFormModal({
                 editable={!editingUser}
                 autoCapitalize="none"
                 placeholder="Enter username"
-                placeholderTextColor={auroraTheme.colors.neutral[400]}
+                placeholderTextColor={uiTokens.colors.textMuted}
+                accessibilityLabel="Username"
               />
               {editingUser && (
-                <Text style={styles.formHint}>
-                  Username is immutable after account creation.
-                </Text>
+                <Text style={styles.formHint}>Username is immutable after account creation.</Text>
               )}
             </View>
 
@@ -123,7 +120,8 @@ export function UserFormModal({
                   value={userForm.fullName}
                   onChangeText={(value) => onChangeField("fullName", value)}
                   placeholder="Optional"
-                  placeholderTextColor={auroraTheme.colors.neutral[400]}
+                  placeholderTextColor={uiTokens.colors.textMuted}
+                  accessibilityLabel="Full name"
                 />
               </View>
               <View style={styles.formFieldHalf}>
@@ -134,28 +132,26 @@ export function UserFormModal({
                   value={userForm.email}
                   onChangeText={(value) => onChangeField("email", value)}
                   placeholder="Optional"
-                  placeholderTextColor={auroraTheme.colors.neutral[400]}
+                  placeholderTextColor={uiTokens.colors.textMuted}
                   autoCapitalize="none"
                   keyboardType="email-address"
+                  accessibilityLabel="Email address"
                 />
               </View>
             </View>
 
             <View style={styles.formGrid}>
               <View style={styles.formFieldHalf}>
-                <Text style={styles.formLabel}>
-                  {editingUser ? "New Password" : "Password"}
-                </Text>
+                <Text style={styles.formLabel}>{editingUser ? "New Password" : "Password"}</Text>
                 <TextInput
                   style={styles.formInput}
                   testID="user-form-password"
                   value={userForm.password}
                   onChangeText={(value) => onChangeField("password", value)}
-                  placeholder={
-                    editingUser ? "Leave blank to keep current password" : "Required"
-                  }
-                  placeholderTextColor={auroraTheme.colors.neutral[400]}
+                  placeholder={editingUser ? "Leave blank to keep current password" : "Required"}
+                  placeholderTextColor={uiTokens.colors.textMuted}
                   secureTextEntry
+                  accessibilityLabel={editingUser ? "New password" : "Password"}
                 />
               </View>
               <View style={styles.formFieldHalf}>
@@ -166,10 +162,11 @@ export function UserFormModal({
                   value={userForm.pin}
                   onChangeText={(value) => onChangeField("pin", value)}
                   placeholder="Optional"
-                  placeholderTextColor={auroraTheme.colors.neutral[400]}
+                  placeholderTextColor={uiTokens.colors.textMuted}
                   secureTextEntry
                   keyboardType="number-pad"
                   maxLength={4}
+                  accessibilityLabel="4 digit PIN"
                 />
               </View>
             </View>
@@ -180,12 +177,13 @@ export function UserFormModal({
                 {USER_ROLE_OPTIONS.map((role) => (
                   <AnimatedPressable
                     key={role}
-                    style={[
-                      styles.roleOption,
-                      userForm.role === role && styles.roleOptionActive,
-                    ]}
+                    style={[styles.roleOption, userForm.role === role && styles.roleOptionActive]}
                     onPress={() => onChangeField("role", role)}
                     testID={`user-form-role-${role}`}
+                    {...getAccessibleButtonProps({
+                      label: `Set role to ${role}`,
+                      selected: userForm.role === role,
+                    })}
                   >
                     <Text
                       style={[
@@ -205,12 +203,13 @@ export function UserFormModal({
                 <Text style={styles.formLabel}>Account Status</Text>
                 <View style={styles.roleOptionRow}>
                   <AnimatedPressable
-                    style={[
-                      styles.roleOption,
-                      userForm.isActive && styles.roleOptionActive,
-                    ]}
+                    style={[styles.roleOption, userForm.isActive && styles.roleOptionActive]}
                     onPress={() => onChangeField("isActive", true)}
                     testID="user-form-status-active"
+                    {...getAccessibleButtonProps({
+                      label: "Set account status active",
+                      selected: userForm.isActive,
+                    })}
                   >
                     <Text
                       style={[
@@ -222,12 +221,13 @@ export function UserFormModal({
                     </Text>
                   </AnimatedPressable>
                   <AnimatedPressable
-                    style={[
-                      styles.roleOption,
-                      !userForm.isActive && styles.roleOptionDanger,
-                    ]}
+                    style={[styles.roleOption, !userForm.isActive && styles.roleOptionDanger]}
                     onPress={() => onChangeField("isActive", false)}
                     testID="user-form-status-inactive"
+                    {...getAccessibleButtonProps({
+                      label: "Set account status inactive",
+                      selected: !userForm.isActive,
+                    })}
                   >
                     <Text
                       style={[
@@ -249,23 +249,26 @@ export function UserFormModal({
               onPress={onClose}
               disabled={submitting}
               testID="user-form-cancel"
+              {...getAccessibleButtonProps({ label: "Cancel user form", disabled: submitting })}
             >
               <Text style={styles.modalSecondaryButtonText}>Cancel</Text>
             </AnimatedPressable>
             <AnimatedPressable
-              style={[
-                styles.modalPrimaryButton,
-                submitting && styles.modalPrimaryButtonDisabled,
-              ]}
+              style={[styles.modalPrimaryButton, submitting && styles.modalPrimaryButtonDisabled]}
               onPress={onSubmit}
               disabled={submitting}
               testID="user-form-submit"
+              {...getAccessibleButtonProps({
+                label: editingUser ? "Save user changes" : "Create user",
+                disabled: submitting,
+                busy: submitting,
+              })}
             >
               {submitting ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={uiTokens.colors.surface} />
               ) : (
                 <>
-                  <Ionicons name="save-outline" size={18} color="#fff" />
+                  <Ionicons name="save-outline" size={18} color={uiTokens.colors.surface} />
                   <Text style={styles.modalPrimaryButtonText}>
                     {editingUser ? "Save Changes" : "Create User"}
                   </Text>
@@ -273,17 +276,20 @@ export function UserFormModal({
               )}
             </AnimatedPressable>
           </View>
-        </GlassCard>
+        </ModernCard>
       </View>
     </Modal>
   );
 }
 
-const styles = StyleSheet.create({
+type UserFormTokens = ReturnType<typeof useUiTokens>;
+
+const createStyles = (uiTokens: UserFormTokens) =>
+  StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    padding: auroraTheme.spacing.lg,
-    backgroundColor: "rgba(8, 13, 28, 0.72)",
+    padding: uiTokens.spacing.lg,
+    backgroundColor: uiTokens.colors.overlay,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -297,155 +303,163 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    padding: auroraTheme.spacing.lg,
+    padding: uiTokens.spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: auroraTheme.colors.border.light,
+    borderBottomColor: uiTokens.colors.border,
   },
   modalHeaderText: {
     flex: 1,
-    gap: auroraTheme.spacing.xs,
+    gap: uiTokens.spacing.xs,
   },
   modalTitle: {
     ...userTextStyles.h3,
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
   },
   modalDescription: {
     ...userTextStyles.body,
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
   },
   modalCloseButton: {
-    padding: auroraTheme.spacing.xs,
-    borderRadius: auroraTheme.borderRadius.sm,
+    ...getMinimumTouchTargetStyle(),
+    alignItems: "center",
+    justifyContent: "center",
+    padding: uiTokens.spacing.xs,
+    borderRadius: uiTokens.radius.sm,
   },
   modalScroll: {
     maxHeight: 480,
   },
   modalBody: {
-    padding: auroraTheme.spacing.lg,
-    gap: auroraTheme.spacing.md,
+    padding: uiTokens.spacing.lg,
+    gap: uiTokens.spacing.md,
   },
   formErrorBanner: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.sm,
-    padding: auroraTheme.spacing.sm,
-    borderRadius: auroraTheme.borderRadius.md,
-    backgroundColor: auroraTheme.colors.error[50],
+    gap: uiTokens.spacing.sm,
+    padding: uiTokens.spacing.sm,
+    borderRadius: uiTokens.radius.md,
+    backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.1),
     borderWidth: 1,
-    borderColor: auroraTheme.colors.error[200],
+    borderColor: colorWithAlpha(uiTokens.colors.error, 0.28),
   },
   formErrorText: {
     ...userTextStyles.body,
     flex: 1,
-    color: auroraTheme.colors.error[700],
+    color: uiTokens.colors.error,
   },
   formGrid: {
     flexDirection: isTablet ? "row" : "column",
-    gap: auroraTheme.spacing.md,
+    gap: uiTokens.spacing.md,
   },
   formField: {
-    gap: auroraTheme.spacing.xs,
+    gap: uiTokens.spacing.xs,
   },
   formFieldHalf: {
     flex: 1,
-    gap: auroraTheme.spacing.xs,
+    gap: uiTokens.spacing.xs,
   },
   formLabel: {
     ...userTextStyles.label,
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
   },
   formInput: {
     ...userTextStyles.body,
-    color: auroraTheme.colors.text.primary,
+    color: uiTokens.colors.textPrimary,
     minHeight: 48,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.neutral[200],
-    backgroundColor: auroraTheme.colors.background.primary,
-    borderRadius: auroraTheme.borderRadius.md,
-    paddingHorizontal: auroraTheme.spacing.md,
-    paddingVertical: auroraTheme.spacing.sm,
+    borderColor: uiTokens.colors.border,
+    backgroundColor: uiTokens.colors.background,
+    borderRadius: uiTokens.radius.md,
+    paddingHorizontal: uiTokens.spacing.md,
+    paddingVertical: uiTokens.spacing.sm,
   },
   formInputDisabled: {
-    backgroundColor: auroraTheme.colors.neutral[100],
-    color: auroraTheme.colors.text.tertiary,
+    backgroundColor: colorWithAlpha(uiTokens.colors.textMuted, 0.1),
+    color: uiTokens.colors.textMuted,
   },
   formHint: {
     ...userTextStyles.caption,
-    color: auroraTheme.colors.text.tertiary,
+    color: uiTokens.colors.textMuted,
   },
   roleOptionRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: auroraTheme.spacing.sm,
+    gap: uiTokens.spacing.sm,
   },
   roleOption: {
-    paddingHorizontal: auroraTheme.spacing.md,
-    paddingVertical: auroraTheme.spacing.sm,
-    borderRadius: auroraTheme.borderRadius.md,
+    ...getMinimumTouchTargetStyle(),
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: uiTokens.spacing.md,
+    paddingVertical: uiTokens.spacing.sm,
+    borderRadius: uiTokens.radius.md,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.neutral[200],
-    backgroundColor: auroraTheme.colors.background.primary,
+    borderColor: uiTokens.colors.border,
+    backgroundColor: uiTokens.colors.background,
   },
   roleOptionActive: {
-    borderColor: auroraTheme.colors.primary[300],
-    backgroundColor: auroraTheme.colors.primary[100],
+    borderColor: colorWithAlpha(uiTokens.colors.accent, 0.42),
+    backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.12),
   },
   roleOptionDanger: {
-    borderColor: auroraTheme.colors.error[300],
-    backgroundColor: auroraTheme.colors.error[50],
+    borderColor: colorWithAlpha(uiTokens.colors.error, 0.42),
+    backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.1),
   },
   roleOptionText: {
     ...userTextStyles.label,
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
   },
   roleOptionTextActive: {
-    color: auroraTheme.colors.primary[700],
+    color: uiTokens.colors.accentStrong,
     fontWeight: "700",
   },
   roleOptionDangerText: {
-    color: auroraTheme.colors.error[700],
+    color: uiTokens.colors.error,
     fontWeight: "700",
   },
   modalFooter: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    gap: auroraTheme.spacing.sm,
-    padding: auroraTheme.spacing.lg,
+    gap: uiTokens.spacing.sm,
+    padding: uiTokens.spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: auroraTheme.colors.border.light,
+    borderTopColor: uiTokens.colors.border,
   },
   modalSecondaryButton: {
+    ...getMinimumTouchTargetStyle(),
     minWidth: 120,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: auroraTheme.spacing.lg,
-    paddingVertical: auroraTheme.spacing.sm,
-    borderRadius: auroraTheme.borderRadius.md,
+    paddingHorizontal: uiTokens.spacing.lg,
+    paddingVertical: uiTokens.spacing.sm,
+    borderRadius: uiTokens.radius.md,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.neutral[200],
-    backgroundColor: auroraTheme.colors.background.primary,
+    borderColor: uiTokens.colors.border,
+    backgroundColor: uiTokens.colors.background,
   },
   modalSecondaryButtonText: {
     ...userTextStyles.label,
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
   },
   modalPrimaryButton: {
+    ...getMinimumTouchTargetStyle(),
     minWidth: 160,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: auroraTheme.spacing.xs,
-    paddingHorizontal: auroraTheme.spacing.lg,
-    paddingVertical: auroraTheme.spacing.sm,
-    borderRadius: auroraTheme.borderRadius.md,
-    backgroundColor: auroraTheme.colors.primary[600],
+    gap: uiTokens.spacing.xs,
+    paddingHorizontal: uiTokens.spacing.lg,
+    paddingVertical: uiTokens.spacing.sm,
+    borderRadius: uiTokens.radius.md,
+    backgroundColor: uiTokens.colors.accent,
   },
   modalPrimaryButtonDisabled: {
     opacity: 0.7,
   },
   modalPrimaryButtonText: {
     ...userTextStyles.label,
-    color: "#fff",
+    color: uiTokens.colors.surface,
     fontWeight: "700",
   },
 });

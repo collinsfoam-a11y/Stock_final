@@ -16,6 +16,12 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { radius } from "@/theme/legacyCompat";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
+import { getOperationalMotionDuration } from "@/utils/motion";
+import { useUiTokens } from "@/hooks/useUiTokens";
+
 interface AnimatedPressableProps extends Omit<PressableProps, "style"> {
   style?: StyleProp<ViewStyle>;
   scaleValue?: number;
@@ -32,13 +38,37 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
   onPressOut,
   onPress,
   disabled,
+  accessibilityLabel,
+  accessibilityRole,
+  accessibilityState,
+  hitSlop,
   ...props
 }) => {
+  const uiTokens = useUiTokens();
+  const prefersReducedMotion = useReducedMotion();
   const animatedScale = React.useRef(new Animated.Value(1)).current;
   const animatedOpacity = React.useRef(new Animated.Value(1)).current;
+  const pressInDuration = getOperationalMotionDuration(uiTokens, "instant", prefersReducedMotion);
+  const pressOutDuration = getOperationalMotionDuration(uiTokens, "fast", prefersReducedMotion);
+  const helperHitSlop = typeof hitSlop === "object" && hitSlop !== null ? hitSlop : undefined;
+  const defaultButtonProps =
+    onPress && accessibilityLabel
+      ? getAccessibleButtonProps({
+          label: accessibilityLabel,
+          disabled: disabled ?? undefined,
+          hitSlop: helperHitSlop,
+        })
+      : null;
 
   const handlePressIn = useCallback(
     (event: any) => {
+      if (prefersReducedMotion) {
+        animatedScale.setValue(scaleValue);
+        animatedOpacity.setValue(0.9);
+        onPressIn?.(event);
+        return;
+      }
+
       // Spring animation for natural feel
       Animated.parallel([
         Animated.spring(animatedScale, {
@@ -49,7 +79,7 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
         }),
         Animated.timing(animatedOpacity, {
           toValue: 0.9,
-          duration: 100,
+          duration: pressInDuration,
           useNativeDriver: true,
         }),
       ]).start();
@@ -67,11 +97,26 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
 
       onPressIn?.(event);
     },
-    [animatedScale, animatedOpacity, scaleValue, hapticFeedback, onPressIn],
+    [
+      animatedScale,
+      animatedOpacity,
+      scaleValue,
+      pressInDuration,
+      hapticFeedback,
+      onPressIn,
+      prefersReducedMotion,
+    ]
   );
 
   const handlePressOut = useCallback(
     (event: any) => {
+      if (prefersReducedMotion) {
+        animatedScale.setValue(1);
+        animatedOpacity.setValue(1);
+        onPressOut?.(event);
+        return;
+      }
+
       Animated.parallel([
         Animated.spring(animatedScale, {
           toValue: 1,
@@ -81,14 +126,14 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
         }),
         Animated.timing(animatedOpacity, {
           toValue: 1,
-          duration: 150,
+          duration: pressOutDuration,
           useNativeDriver: true,
         }),
       ]).start();
 
       onPressOut?.(event);
     },
-    [animatedScale, animatedOpacity, onPressOut],
+    [animatedScale, animatedOpacity, onPressOut, pressOutDuration, prefersReducedMotion]
   );
 
   return (
@@ -97,6 +142,10 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
       onPressOut={handlePressOut}
       onPress={onPress}
       disabled={disabled}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole={accessibilityRole ?? defaultButtonProps?.accessibilityRole}
+      accessibilityState={accessibilityState ?? defaultButtonProps?.accessibilityState}
+      hitSlop={hitSlop ?? defaultButtonProps?.hitSlop}
       {...props}
     >
       <Animated.View
@@ -128,14 +177,12 @@ export const AnimatedCard: React.FC<AnimatedPressableProps> = (props) => {
 
 // Convenience wrapper for button-like pressables
 export const AnimatedButton: React.FC<AnimatedPressableProps> = (props) => {
-  return (
-    <AnimatedPressable scaleValue={0.95} hapticFeedback="medium" {...props} />
-  );
+  return <AnimatedPressable scaleValue={0.95} hapticFeedback="medium" {...props} />;
 };
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 12,
+    borderRadius: radius.lg,
     overflow: "hidden",
   },
 });

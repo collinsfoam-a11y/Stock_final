@@ -7,17 +7,14 @@ import { View, Text, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface SettingGroupProps {
   title: string;
   icon?: keyof typeof Ionicons.glyphMap;
   children: React.ReactNode;
 }
 
-export const SettingGroup: React.FC<SettingGroupProps> = ({
-  title,
-  icon,
-  children,
-}) => {
+export const SettingGroup: React.FC<SettingGroupProps> = ({ title, icon, children }) => {
   const theme = useTheme();
 
   return (
@@ -32,22 +29,11 @@ export const SettingGroup: React.FC<SettingGroupProps> = ({
     >
       <View style={styles.header}>
         {icon && (
-          <Ionicons
-            name={icon}
-            size={20}
-            color={theme.colors.primary}
-            style={styles.icon}
-          />
+          <Ionicons name={icon} size={20} color={theme.colors.primary} style={styles.icon} />
         )}
-        <Text style={[styles.title, { color: theme.colors.text }]}>
-          {title}
-        </Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
       </View>
-      <View
-        style={[styles.content, { backgroundColor: theme.colors.background }]}
-      >
-        {children}
-      </View>
+      <View style={[styles.content, { backgroundColor: theme.colors.background }]}>{children}</View>
     </View>
   );
 };
@@ -74,6 +60,6 @@ const styles = StyleSheet.create({
   },
   content: {
     borderTopWidth: 1,
-    borderTopColor: "#E0E0E0",
+    borderTopColor: uiSemanticColors.border.default,
   },
 });

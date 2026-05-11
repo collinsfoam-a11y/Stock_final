@@ -2,53 +2,97 @@ import React from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { useAuthStore } from "@/store/authStore";
 import { registerUser } from "@/services/api/api";
-import { AppLogo } from "@/components/AppLogo";
+import { createLogger } from "@/services/logging";
+import { toastService } from "@/services/toastService";
+import ModernButton from "@/components/ui/ModernButton";
+import ModernCard from "@/components/ui/ModernCard";
+import ModernHeader from "@/components/ui/ModernHeader";
+import ModernInput from "@/components/ui/ModernInput";
+import { useUiTokens } from "@/hooks/useUiTokens";
 import { getRouteForRole, type UserRole } from "@/utils/roleNavigation";
+import { safeBackNavigation } from "@/utils/navigation";
+import { getFlag } from "@/constants/flags";
+
+type RegisterFormData = {
+  username: string;
+  password: string;
+  confirmPassword: string;
+  full_name: string;
+  employee_id: string;
+  phone: string;
+};
+
+const log = createLogger("register");
+
+const initialFormData: RegisterFormData = {
+  username: "",
+  password: "",
+  confirmPassword: "",
+  full_name: "",
+  employee_id: "",
+  phone: "",
+};
 
 export default function Register() {
-  const [formData, setFormData] = React.useState({
-    username: "",
-    password: "",
-    confirmPassword: "",
-    full_name: "",
-    employee_id: "",
-    phone: "",
-  });
+  const [formData, setFormData] = React.useState<RegisterFormData>(initialFormData);
+  const [errors, setErrors] = React.useState<Partial<Record<keyof RegisterFormData, string>>>({});
   const [loading, setLoading] = React.useState(false);
-  const [showPassword, setShowPassword] = React.useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
 
   const router = useRouter();
   const establishSession = useAuthStore((state) => state.establishSession);
+  const uiTokens = useUiTokens();
+  const publicRegistrationEnabled = getFlag("enablePublicRegistration");
+
+  const updateField = React.useCallback((field: keyof RegisterFormData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => {
+      if (!prev[field]) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }, []);
+
+  const handleBackToLogin = () => {
+    safeBackNavigation(router, { fallbackHref: "/login" });
+  };
+
+  const validateForm = () => {
+    const nextErrors: Partial<Record<keyof RegisterFormData, string>> = {};
+
+    if (!formData.username.trim()) {
+      nextErrors.username = "Username is required";
+    }
+    if (!formData.full_name.trim()) {
+      nextErrors.full_name = "Full name is required";
+    }
+    if (formData.password.length < 6) {
+      nextErrors.password = "Password must be at least 6 characters";
+    }
+    if (formData.password !== formData.confirmPassword) {
+      nextErrors.confirmPassword = "Passwords do not match";
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
 
   const handleRegister = async () => {
-    // Validation
-    if (!formData.username || !formData.password || !formData.full_name) {
-      Alert.alert("Error", "Please fill in all required fields");
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
+    if (!validateForm()) {
+      toastService.showError("Please fix the highlighted fields.");
       return;
     }
 
@@ -74,21 +118,18 @@ export default function Register() {
         },
       });
 
+      toastService.showSuccess("Account created.");
       const targetRoute = getRouteForRole(response.user.role as UserRole);
       router.replace(targetRoute as any);
     } catch (error: any) {
       let errorMessage = "Unable to register. Please try again.";
 
-      // Use structured error message if available
       if (error.response?.data) {
         const errorData = error.response.data;
         if (typeof errorData === "object" && errorData.message) {
           errorMessage = errorData.message;
         } else if (typeof errorData === "object" && errorData.detail) {
-          if (
-            typeof errorData.detail === "object" &&
-            errorData.detail.message
-          ) {
+          if (typeof errorData.detail === "object" && errorData.detail.message) {
             errorMessage = errorData.detail.message;
           } else if (typeof errorData.detail === "string") {
             errorMessage = errorData.detail;
@@ -100,413 +141,238 @@ export default function Register() {
         errorMessage = error.message;
       }
 
-      // Provide helpful context
-      if (
-        errorMessage.includes("already exists") ||
-        errorMessage.includes("Username")
-      ) {
-        errorMessage =
-          "Username already exists. Please choose a different username.";
-      } else if (
-        errorMessage.includes("timeout") ||
-        errorMessage.includes("ECONNABORTED")
-      ) {
-        errorMessage =
-          "Connection timeout. Please check your connection and try again.";
-      } else if (
-        errorMessage.includes("ECONNREFUSED") ||
-        errorMessage.includes("Cannot connect")
-      ) {
-        errorMessage =
-          "Cannot connect to server. Please check if the backend server is running.";
+      if (errorMessage.includes("already exists") || errorMessage.includes("Username")) {
+        errorMessage = "Username already exists. Please choose a different username.";
+        setErrors((prev) => ({ ...prev, username: errorMessage }));
+      } else if (errorMessage.includes("timeout") || errorMessage.includes("ECONNABORTED")) {
+        errorMessage = "Connection timeout. Please check your connection and try again.";
+      } else if (errorMessage.includes("ECONNREFUSED") || errorMessage.includes("Cannot connect")) {
+        errorMessage = "Cannot connect to server. Please check if the backend server is running.";
       }
 
-      // Add fix button based on error type
-      let fixButton: { text: string; onPress: () => void } | undefined;
-
-      if (
-        errorMessage.includes("already exists") ||
-        errorMessage.includes("Username")
-      ) {
-        fixButton = {
-          text: "Choose Different Username",
-          onPress: () => {
-            setFormData({ ...formData, username: "" });
-            // Focus will be handled by component state
-          },
-        };
-      } else if (
-        errorMessage.includes("timeout") ||
-        errorMessage.includes("ECONNABORTED")
-      ) {
-        fixButton = {
-          text: "Retry Registration",
-          onPress: () => {
-            setTimeout(() => handleRegister(), 500);
-          },
-        };
-      } else if (
-        errorMessage.includes("ECONNREFUSED") ||
-        errorMessage.includes("Cannot connect")
-      ) {
-        fixButton = {
-          text: "Check Connection & Retry",
-          onPress: () => {
-            setTimeout(() => handleRegister(), 1000);
-          },
-        };
-      } else if (
-        errorMessage.includes("validation") ||
-        errorMessage.includes("required")
-      ) {
-        fixButton = {
-          text: "Fix Form",
-          onPress: () => {
-            // Scroll to top or highlight required fields
-            // Form validation will handle highlighting
-          },
-        };
-      }
-
-      Alert.alert(
-        "Registration Failed",
-        errorMessage,
-        fixButton
-          ? [{ text: "Cancel", style: "cancel" }, fixButton]
-          : [{ text: "OK" }],
-      );
-      __DEV__ && console.error("Registration error details:", error);
+      toastService.showError(errorMessage);
+      log.warn("Registration failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  if (!publicRegistrationEnabled) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: uiTokens.colors.background }]}
+        edges={["top", "left", "right"]}
+      >
+        <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
+        <ModernHeader
+          title="Account Setup"
+          subtitle="Administrator approval required"
+          showBackButton
+          onBackPress={handleBackToLogin}
+        />
+
+        <View style={styles.restrictedContent}>
+          <ModernCard
+            padding={uiTokens.spacing.lg}
+            style={[styles.formCard, { backgroundColor: uiTokens.colors.surfaceElevated }]}
+          >
+            <Text style={[styles.title, { color: uiTokens.colors.textPrimary }]}>
+              Registration is restricted
+            </Text>
+            <Text style={[styles.subtitle, { color: uiTokens.colors.textSecondary }]}>
+              New users must be created by an administrator before they can sign in.
+            </Text>
+            <ModernButton
+              title="Sign In"
+              onPress={handleBackToLogin}
+              fullWidth
+              icon="log-in-outline"
+            />
+          </ModernCard>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: uiTokens.colors.background }]}
+      edges={["top", "left", "right"]}
     >
-      <StatusBar style="light" />
-      <LinearGradient
-        colors={["#1a1a1a", "#0d0d0d", "#000000"]}
-        style={StyleSheet.absoluteFill}
+      <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
+      <ModernHeader
+        title="Create Account"
+        subtitle="Staff profile setup"
+        showBackButton
+        onBackPress={handleBackToLogin}
       />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
+
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <ModernCard
+            padding={uiTokens.spacing.lg}
+            style={[styles.formCard, { backgroundColor: uiTokens.colors.surfaceElevated }]}
           >
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <AppLogo size="medium" showText={true} variant="default" />
-          <Text style={styles.subtitle}>Join the Stock Verification Team</Text>
-        </View>
-
-        <View style={styles.form}>
-          {/* Username */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Username <Text style={styles.required}>*</Text>
+            <Text style={[styles.title, { color: uiTokens.colors.textPrimary }]}>
+              Account Details
             </Text>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="person-outline"
-                size={20}
-                color="#888"
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                value={formData.username}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, username: text })
-                }
-                placeholder="Enter username"
-                placeholderTextColor="#666"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-          </View>
-
-          {/* Full Name */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Full Name <Text style={styles.required}>*</Text>
+            <Text style={[styles.subtitle, { color: uiTokens.colors.textSecondary }]}>
+              Ask an administrator if registration is restricted for your store.
             </Text>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="person"
-                size={20}
-                color="#888"
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                value={formData.full_name}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, full_name: text })
-                }
-                placeholder="Enter your full name"
-                placeholderTextColor="#666"
-                autoCapitalize="words"
-                autoCorrect={false}
-              />
-            </View>
-          </View>
 
-          {/* Employee ID */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Employee ID</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="card-outline"
-                size={20}
-                color="#888"
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                value={formData.employee_id}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, employee_id: text })
-                }
-                placeholder="Enter employee ID (optional)"
-                placeholderTextColor="#666"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-          </View>
+            <ModernInput
+              label="Username"
+              required
+              placeholder="Enter username"
+              value={formData.username}
+              onChangeText={(text) => updateField("username", text)}
+              error={errors.username}
+              icon="person-outline"
+              autoCapitalize="none"
+            />
 
-          {/* Phone */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phone Number</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="call-outline"
-                size={20}
-                color="#888"
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                value={formData.phone}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, phone: text })
-                }
-                placeholder="Enter phone number (optional)"
-                placeholderTextColor="#666"
-                autoCorrect={false}
-                keyboardType="phone-pad"
-              />
-            </View>
-          </View>
+            <ModernInput
+              label="Full Name"
+              required
+              placeholder="Enter your full name"
+              value={formData.full_name}
+              onChangeText={(text) => updateField("full_name", text)}
+              error={errors.full_name}
+              icon="person"
+              autoCapitalize="words"
+            />
 
-          {/* Password */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Password <Text style={styles.required}>*</Text>
-            </Text>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={20}
-                color="#888"
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                value={formData.password}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, password: text })
-                }
-                placeholder="Enter password (min 6 characters)"
-                placeholderTextColor="#666"
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeIcon}
-              >
-                <Ionicons
-                  name={showPassword ? "eye-outline" : "eye-off-outline"}
-                  size={20}
-                  color="#888"
-                />
+            <ModernInput
+              label="Employee ID"
+              placeholder="Optional employee ID"
+              value={formData.employee_id}
+              onChangeText={(text) => updateField("employee_id", text)}
+              icon="card-outline"
+              autoCapitalize="none"
+            />
+
+            <ModernInput
+              label="Phone Number"
+              placeholder="Optional phone number"
+              value={formData.phone}
+              onChangeText={(text) => updateField("phone", text)}
+              icon="call-outline"
+              keyboardType="phone-pad"
+            />
+
+            <ModernInput
+              label="Password"
+              required
+              placeholder="Minimum 6 characters"
+              value={formData.password}
+              onChangeText={(text) => updateField("password", text)}
+              error={errors.password}
+              icon="lock-closed-outline"
+              secureTextEntry
+            />
+
+            <ModernInput
+              label="Confirm Password"
+              required
+              placeholder="Re-enter password"
+              value={formData.confirmPassword}
+              onChangeText={(text) => updateField("confirmPassword", text)}
+              error={errors.confirmPassword}
+              icon="lock-closed-outline"
+              secureTextEntry
+            />
+
+            <ModernButton
+              title={loading ? "Creating Account..." : "Create Account"}
+              onPress={handleRegister}
+              loading={loading}
+              disabled={loading}
+              fullWidth
+              icon="person-add"
+              style={styles.registerButton}
+            />
+
+            <View style={styles.loginLink}>
+              <Text style={[styles.loginLinkText, { color: uiTokens.colors.textSecondary }]}>
+                Already have an account?
+              </Text>
+              <TouchableOpacity onPress={handleBackToLogin}>
+                <Text style={[styles.loginLinkButton, { color: uiTokens.colors.accent }]}>
+                  Sign in
+                </Text>
               </TouchableOpacity>
             </View>
-          </View>
-
-          {/* Confirm Password */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Confirm Password <Text style={styles.required}>*</Text>
-            </Text>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={20}
-                color="#888"
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                value={formData.confirmPassword}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, confirmPassword: text })
-                }
-                placeholder="Re-enter password"
-                placeholderTextColor="#666"
-                secureTextEntry={!showConfirmPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={styles.eyeIcon}
-              >
-                <Ionicons
-                  name={showConfirmPassword ? "eye-outline" : "eye-off-outline"}
-                  size={20}
-                  color="#888"
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Register Button */}
-          <TouchableOpacity
-            style={[styles.registerButton, loading && styles.buttonDisabled]}
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            <Text style={styles.registerButtonText}>
-              {loading ? "Creating Account..." : "Register"}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Login Link */}
-          <View style={styles.loginLink}>
-            <Text style={styles.loginLinkText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => router.back()}>
-              <Text style={styles.loginLinkButton}>Login</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          </ModernCard>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a1a",
+  },
+  keyboardView: {
+    flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    ...(Platform.OS === "web"
-      ? {
-          maxWidth: 500,
-          width: "100%",
-          alignSelf: "center",
-          paddingTop: 40,
-          paddingBottom: 40,
-        }
-      : {}),
-  },
-  header: {
-    paddingTop: 60,
+    justifyContent: "center",
     paddingHorizontal: 24,
-    paddingBottom: 32,
-    backgroundColor: "#2a2a2a",
-    ...(Platform.OS === "web"
-      ? {
-          borderRadius: 12,
-          marginTop: 20,
-        }
-      : {}),
+    paddingVertical: 24,
   },
-  backButton: {
-    marginBottom: 16,
+  restrictedContent: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+  },
+  formCard: {
+    width: "100%",
+    maxWidth: 500,
+    alignSelf: "center",
   },
   title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 8,
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#888",
-  },
-  form: {
-    padding: 24,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#ccc",
-    marginBottom: 8,
-  },
-  required: {
-    color: "#FF5252",
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#2a2a2a",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#333",
-    paddingHorizontal: 12,
-  },
-  inputIcon: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    height: 48,
-    color: "#fff",
-    fontSize: 16,
-  },
-  eyeIcon: {
-    padding: 8,
+    lineHeight: 20,
+    textAlign: "center",
+    marginBottom: 24,
   },
   registerButton: {
-    backgroundColor: "#4CAF50",
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: "center",
     marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  registerButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
   },
   loginLink: {
     flexDirection: "row",
     justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
     marginTop: 24,
+    flexWrap: "wrap",
   },
   loginLinkText: {
-    color: "#888",
     fontSize: 14,
+    lineHeight: 20,
   },
   loginLinkButton: {
-    color: "#4CAF50",
     fontSize: 14,
-    fontWeight: "bold",
+    lineHeight: 20,
+    fontWeight: "700",
   },
 });

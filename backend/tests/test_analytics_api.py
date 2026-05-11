@@ -19,9 +19,9 @@ async def test_variance_trend_endpoint(async_client, authenticated_headers):
 
 
 @pytest.mark.asyncio
-async def test_staff_performance_endpoint(async_client, authenticated_headers):
+async def test_staff_performance_endpoint(async_client, make_auth_headers):
     response = await async_client.get(
-        "/api/metrics/staff-performance", headers=authenticated_headers
+        "/api/metrics/staff-performance", headers=make_auth_headers("admin", "admin")
     )
 
     assert response.status_code == 200

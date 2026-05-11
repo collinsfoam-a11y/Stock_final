@@ -48,6 +48,7 @@ import { playScanSound } from "../../src/services/scanSoundService";
 import { toastService } from "../../src/services/toastService";
 import { localDb } from "../../src/db/localDb";
 import { validateBarcode } from "../../src/utils/validation";
+import { safeBackNavigation } from "@/utils/navigation";
 import { dedupeItemsKeepingHighestStock } from "../../src/utils/itemBatchUtils";
 
 import ModernHeader from "../../src/components/ui/ModernHeader";
@@ -55,41 +56,34 @@ import ModernButton from "../../src/components/ui/ModernButton";
 import { SyncStatusPill } from "../../src/components/ui/SyncStatusPill";
 import { FinishRackModal } from "../../src/components/scan/FinishRackModal";
 import { ScanCameraOverlay } from "../../src/components/scan/ScanCameraOverlay";
-import { ScanLookupPanel } from "../../src/components/scan/ScanLookupPanel";
+import { ScanLookupPanel, type ScanLookupNotice } from "../../src/components/scan/ScanLookupPanel";
 import { ScanStatsCard } from "../../src/components/scan/ScanStatsCard";
-import {
-  colors,
-  spacing,
-  typography,
-  borderRadius,
-  shadows,
-} from "../../src/theme/unified";
+import { colors, spacing, typography, borderRadius } from "@/theme/legacyCompat";
 
 import { useAuthStore } from "../../src/store/authStore";
 
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { getTokenShadowStyle } from "@/theme/themeTokens";
+import { zIndex } from "@/theme/designTokens";
+import { flags } from "@/constants/flags";
 const SCAN_BUFFER_TIMEOUT = 2000; // 2 seconds
 const SCAN_BUFFER_MAX_SIZE = 10;
 const SCAN_CONFIDENCE_THRESHOLD = 2;
 
 const ScanScreen = React.memo(function ScanScreen() {
   const router = useRouter();
-  const { sessionId: rawSessionId } = useLocalSearchParams();
-  const sessionId = Array.isArray(rawSessionId)
-    ? rawSessionId[0]
-    : rawSessionId;
+  const { sessionId: rawSessionId, debugPerf: rawDebugPerf } = useLocalSearchParams();
+  const sessionId = Array.isArray(rawSessionId) ? rawSessionId[0] : rawSessionId;
+  const debugPerf = Array.isArray(rawDebugPerf) ? rawDebugPerf[0] : rawDebugPerf;
+  const showPerformanceOverlay = __DEV__ && flags.enableDebugMode && debugPerf === "1";
 
   const { user, logout, isAuthenticated } = useAuthStore();
-  const scannerVibration = useSettingsStore(
-    (state) => state.settings.scannerVibration,
-  );
+  const uiTokens = useUiTokens();
+  const scannerVibration = useSettingsStore((state) => state.settings.scannerVibration);
   const scannerSound = useSettingsStore((state) => state.settings.scannerSound);
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
-  const scannerAutoSubmit = useSettingsStore(
-    (state) => state.settings.scannerAutoSubmit,
-  );
-  const scannerTimeout = useSettingsStore(
-    (state) => state.settings.scannerTimeout,
-  );
+  const scannerAutoSubmit = useSettingsStore((state) => state.settings.scannerAutoSubmit);
+  const scannerTimeout = useSettingsStore((state) => state.settings.scannerTimeout);
   const lazyLoading = useSettingsStore((state) => state.settings.lazyLoading);
   const debounceDelay = useSettingsStore((state) => state.settings.debounceDelay);
   const [isScreenFocused, setIsScreenFocused] = useState<boolean>(false);
@@ -108,10 +102,7 @@ const ScanScreen = React.memo(function ScanScreen() {
   });
 
   // WebSocket Integration
-  const { lastMessage } = useWebSocket(
-    sessionId ? String(sessionId) : undefined,
-    isScreenFocused,
-  );
+  const { lastMessage } = useWebSocket(sessionId ? String(sessionId) : undefined, isScreenFocused);
 
   // State
   const [isScanning, setIsScanning] = useState<boolean>(false);
@@ -123,6 +114,8 @@ const ScanScreen = React.memo(function ScanScreen() {
   const [debouncedSearchQuery] = useDebounce(searchQuery, debounceDelay);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [recentItems, setRecentItems] = useState<any[]>([]);
+  const [lookupNotice, setLookupNotice] = useState<ScanLookupNotice | null>(null);
+  const [lastLookupBarcode, setLastLookupBarcode] = useState<string>("");
   const [sessionStats, setSessionStats] = useState<SessionStatsResponse>({
     id: String(sessionId ?? ""),
     scannedItems: 0,
@@ -130,17 +123,17 @@ const ScanScreen = React.memo(function ScanScreen() {
     pendingItems: 0,
     totalItems: 0,
   });
-  const [showCloseSessionModal, setShowCloseSessionModal] =
-    useState<boolean>(false);
+  const [showCloseSessionModal, setShowCloseSessionModal] = useState<boolean>(false);
   const [isFinishing, setIsFinishing] = useState<boolean>(false);
+  const hasValidSessionId = typeof sessionId === "string" && sessionId.trim().length > 0;
+  const scanVisualV2Enabled = flags.uiVisualSystemV2 && flags.uiScanV2;
+  const scanLocationLabel = [currentFloor, currentRack].filter(Boolean).join(" • ");
 
   // Animation values for scan frame
   const scanLinePosition = useSharedValue(0);
   const cornerOpacity = useSharedValue(1);
 
-  const scanBufferRef = useRef<
-    { code: string; count: number; timestamp: number }[]
-  >([]);
+  const scanBufferRef = useRef<{ code: string; count: number; timestamp: number }[]>([]);
 
   const loadRecentItems = useCallback(async () => {
     try {
@@ -176,10 +169,7 @@ const ScanScreen = React.memo(function ScanScreen() {
         if (offlineMode) {
           const localResults = await safeAsync(() => localDb.searchItems(query));
           if (localResults) {
-            safeSetState(
-              setSearchResults,
-              dedupeItemsKeepingHighestStock(localResults),
-            );
+            safeSetState(setSearchResults, dedupeItemsKeepingHighestStock(localResults));
           }
           return;
         }
@@ -187,16 +177,13 @@ const ScanScreen = React.memo(function ScanScreen() {
         const results = await safeAsync(() => searchItems(query));
         if (results) {
           const items = Array.isArray(results.items) ? results.items : [];
-          safeSetState(
-            setSearchResults,
-            dedupeItemsKeepingHighestStock(items),
-          );
+          safeSetState(setSearchResults, dedupeItemsKeepingHighestStock(items));
         }
       } catch (error) {
         console.error("Search failed", error);
       }
     },
-    [offlineMode, safeAsync, safeSetState],
+    [offlineMode, safeAsync, safeSetState]
   );
 
   const loadInitialData = useCallback(async () => {
@@ -220,15 +207,12 @@ const ScanScreen = React.memo(function ScanScreen() {
       scanLinePosition.value = withRepeat(
         withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
         -1,
-        true,
+        true
       );
       cornerOpacity.value = withRepeat(
-        withSequence(
-          withTiming(0.5, { duration: 1000 }),
-          withTiming(1, { duration: 1000 }),
-        ),
+        withSequence(withTiming(0.5, { duration: 1000 }), withTiming(1, { duration: 1000 })),
         -1,
-        false,
+        false
       );
     }
   }, [cornerOpacity, isScanning, scanLinePosition]);
@@ -249,26 +233,20 @@ const ScanScreen = React.memo(function ScanScreen() {
 
       if (status === "PAUSED") {
         safeSetState(setIsScanning, false);
-        Alert.alert(
-          "Session Paused",
-          reason || "A supervisor has paused this session.",
-          [{ text: "OK" }],
-        );
+        Alert.alert("Session Paused", reason || "A supervisor has paused this session.", [
+          { text: "OK" },
+        ]);
       } else if (["REVIEW", "RECONCILE", "FINALIZED", "CLOSED"].includes(status) && !isFinishing) {
         const message =
           status === "FINALIZED"
             ? reason || "This session has been finalized."
             : reason || "This session has been submitted for supervisor review.";
-        Alert.alert(
-          status === "FINALIZED" ? "Session Finalized" : "Session Submitted",
-          message,
-          [
-            {
-              text: "OK",
-              onPress: () => router.replace("/staff/home"),
-            },
-          ],
-        );
+        Alert.alert(status === "FINALIZED" ? "Session Finalized" : "Session Submitted", message, [
+          {
+            text: "OK",
+            onPress: () => router.replace("/staff/home"),
+          },
+        ]);
       }
 
       // Refresh stats on any update
@@ -288,7 +266,7 @@ const ScanScreen = React.memo(function ScanScreen() {
       return () => {
         setIsScreenFocused(false);
       };
-    }, []),
+    }, [])
   );
 
   // Canonical startup path: initial load + periodic stat refresh
@@ -304,7 +282,7 @@ const ScanScreen = React.memo(function ScanScreen() {
       }, 30000);
 
       return () => clearInterval(interval);
-    }, [isAuthenticated, loadInitialData, loadSessionStats]),
+    }, [isAuthenticated, loadInitialData, loadSessionStats])
   );
 
   // Search effect with proper cleanup
@@ -324,12 +302,10 @@ const ScanScreen = React.memo(function ScanScreen() {
 
     // Buffer logic
     scanBufferRef.current = scanBufferRef.current.filter(
-      (entry) => now - entry.timestamp < SCAN_BUFFER_TIMEOUT,
+      (entry) => now - entry.timestamp < SCAN_BUFFER_TIMEOUT
     );
 
-    const existingIndex = scanBufferRef.current.findIndex(
-      (entry) => entry.code === trimmedData,
-    );
+    const existingIndex = scanBufferRef.current.findIndex((entry) => entry.code === trimmedData);
 
     if (existingIndex >= 0) {
       scanBufferRef.current[existingIndex]!.count += 1;
@@ -343,12 +319,11 @@ const ScanScreen = React.memo(function ScanScreen() {
     }
 
     if (scanBufferRef.current.length > SCAN_BUFFER_MAX_SIZE) {
-      scanBufferRef.current =
-        scanBufferRef.current.slice(-SCAN_BUFFER_MAX_SIZE);
+      scanBufferRef.current = scanBufferRef.current.slice(-SCAN_BUFFER_MAX_SIZE);
     }
 
     const confident = scanBufferRef.current.find(
-      (entry) => entry.count >= SCAN_CONFIDENCE_THRESHOLD,
+      (entry) => entry.count >= SCAN_CONFIDENCE_THRESHOLD
     );
 
     if (!confident) {
@@ -380,10 +355,17 @@ const ScanScreen = React.memo(function ScanScreen() {
 
   const handleLookup = async (barcode: string) => {
     if (loading) return;
-    const validation = validateBarcode(barcode);
+    const lookupValue = barcode.trim();
+    safeSetState(setLastLookupBarcode, lookupValue);
+    safeSetState(setLookupNotice, null);
+    const validation = validateBarcode(lookupValue);
     if (!validation.valid) {
       void playScanSound("error", scannerSound);
-      Alert.alert("Invalid Barcode", validation.error || "Please try again");
+      safeSetState(setLookupNotice, {
+        message: `${validation.error || "The barcode format is not valid."} Check the label, edit the code, or scan again before continuing.`,
+        title: "Barcode not accepted",
+        type: "warning",
+      });
       safeSetState(setScanned, false);
       return;
     }
@@ -394,9 +376,7 @@ const ScanScreen = React.memo(function ScanScreen() {
 
       // OPTIMISTIC STRATEGY: Try Local DB first for instant response
       try {
-        item = await safeAsync(() =>
-          localDb.getItemByBarcode(validation.value!),
-        );
+        item = await safeAsync(() => localDb.getItemByBarcode(validation.value!));
       } catch {
         // Ignore local db error, fall through to API
       }
@@ -411,28 +391,23 @@ const ScanScreen = React.memo(function ScanScreen() {
       }
 
       if (item) {
-        await safeAsync(() =>
-          RecentItemsService.addRecent(item.item_code, item),
-        );
+        await safeAsync(() => RecentItemsService.addRecent(item.item_code, item));
         await loadRecentItems();
 
         if (!offlineMode) {
           // Check for duplicates only when live validation is enabled.
           try {
             const scanStatus = await safeAsync(() =>
-              checkItemScanStatus(sessionId!, item.item_code),
+              checkItemScanStatus(sessionId!, item.item_code)
             );
             if (scanStatus?.scanned) {
               const locations = scanStatus.locations || [];
               const duplicateInLocation = locations.find(
-                (loc: any) =>
-                  loc.floor_no === currentFloor && loc.rack_no === currentRack,
+                (loc: any) => loc.floor_no === currentFloor && loc.rack_no === currentRack
               );
 
               if (duplicateInLocation) {
-                Haptics.notificationAsync(
-                  Haptics.NotificationFeedbackType.Warning,
-                );
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                 void playScanSound("warning", scannerSound);
                 safeSetState(setLoading, false);
                 safeSetState(setScanned, false);
@@ -446,19 +421,15 @@ const ScanScreen = React.memo(function ScanScreen() {
                     },
                     {
                       text: "Verify / Update",
-                      onPress: () =>
-                        navigateToDetail(item.barcode || validation.value!),
+                      onPress: () => navigateToDetail(item.barcode || validation.value!),
                     },
-                  ],
+                  ]
                 );
                 return;
               } else {
-                toastService.show(
-                  `Item found in ${locations.length} other location(s)`,
-                  {
-                    type: "info",
-                  },
-                );
+                toastService.show(`Item found in ${locations.length} other location(s)`, {
+                  type: "info",
+                });
               }
             }
           } catch (_error) {
@@ -466,19 +437,28 @@ const ScanScreen = React.memo(function ScanScreen() {
           }
         }
 
+        safeSetState(setLookupNotice, null);
         navigateToDetail(item.barcode || validation.value!);
       } else {
         void playScanSound("warning", scannerSound);
-        Alert.alert(
-          "Not Found",
-          offlineMode
-            ? "Offline mode is enabled, and this item is not available in local cache."
-            : "Item not found in database",
-        );
+        safeSetState(setLookupNotice, {
+          actionLabel: offlineMode ? undefined : "Retry lookup",
+          message: offlineMode
+            ? `Code ${validation.value} is not stored on this device. Reconnect or sync before continuing, or verify the label with a supervisor.`
+            : `No item matched ${validation.value}. Check the label, rescan, or retry the lookup before entering a count.`,
+          title: offlineMode ? "Item not in offline cache" : "Item not found",
+          type: "warning",
+        });
       }
     } catch (error: any) {
       void playScanSound("error", scannerSound);
-      Alert.alert("Error", error.message || "Failed to lookup item");
+      const reason = error?.message || "The lookup request did not finish.";
+      safeSetState(setLookupNotice, {
+        actionLabel: "Retry lookup",
+        message: `${reason} Your scan was not submitted. Retry lookup or rescan the item.`,
+        title: "Lookup failed",
+        type: "error",
+      });
     } finally {
       safeSetState(setLoading, false);
       safeSetState(setScanned, false);
@@ -501,7 +481,10 @@ const ScanScreen = React.memo(function ScanScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/staff/home");
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to submit session for review");
+      Alert.alert(
+        "Finish Rack Failed",
+        `${error.message || "This session could not be submitted for supervisor review."}\n\nYour counts remain in this rack session. Check connectivity and retry.`
+      );
     } finally {
       safeSetState(setIsFinishing, false);
       safeSetState(setShowCloseSessionModal, false);
@@ -509,29 +492,79 @@ const ScanScreen = React.memo(function ScanScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      "Confirm Logout",
-      "Are you sure you want to log out ending your session?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              if (sessionId) {
-                // Optional: updateSessionStatus(sessionId, "paused");
-              }
-              await logout();
-              router.replace("/welcome");
-            } catch (e) {
-              console.error(e);
+    Alert.alert("Confirm Logout", "Are you sure you want to log out ending your session?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            if (sessionId) {
+              // Optional: updateSessionStatus(sessionId, "paused");
             }
+            await logout();
+            router.replace("/welcome");
+          } catch (e) {
+            console.error(e);
           }
-        }
-      ]
-    );
+        },
+      },
+    ]);
   };
+
+  if (!hasValidSessionId) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: uiTokens.colors.background }]}
+        edges={["top"]}
+      >
+        <ModernHeader
+          title="Scan Session Required"
+          subtitle="Open scan from an active count session"
+          showBackButton
+          showSettingsButton={false}
+          onBackPress={() => router.replace("/staff/home")}
+        />
+        <View style={styles.missingSessionContainer}>
+          <View
+            style={[
+              styles.missingSessionCard,
+              {
+                backgroundColor: uiTokens.colors.surface,
+                borderColor: uiTokens.colors.border,
+              },
+              scanVisualV2Enabled ? getTokenShadowStyle(uiTokens, "sm") : null,
+            ]}
+          >
+            <Ionicons name="alert-circle-outline" size={32} color={uiTokens.colors.warning} />
+            <Text style={[styles.missingSessionTitle, { color: uiTokens.colors.textPrimary }]}>
+              Session link is incomplete
+            </Text>
+            <Text style={[styles.missingSessionBody, { color: uiTokens.colors.textSecondary }]}>
+              This scan screen needs a valid session link. Start a new session or resume one from
+              Staff Home.
+            </Text>
+            <View style={styles.missingSessionActions}>
+              <ModernButton
+                title="Open Staff Home"
+                onPress={() => router.replace("/staff/home")}
+                variant="primary"
+                fullWidth
+              />
+              {flags.uiAuthRedirectV2 && (
+                <ModernButton
+                  title="Go to Login"
+                  onPress={() => router.replace("/login")}
+                  variant="outline"
+                  fullWidth
+                />
+              )}
+            </View>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (isScanning) {
     return (
@@ -549,22 +582,29 @@ const ScanScreen = React.memo(function ScanScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: uiTokens.colors.background }]}
+      edges={["top"]}
+    >
       <ModernHeader
-        title={`Welcome, ${user?.full_name?.split(" ")[0] || "Staff"}`}
-        subtitle={`${currentFloor || ""} ${currentRack ? `• ${currentRack}` : ""}`}
+        title="Scan Rack"
+        subtitle={scanLocationLabel || user?.full_name || "Staff session"}
         showBackButton={false}
-        onBackPress={() => router.back()}
+        showSettingsButton={false}
+        onBackPress={() => safeBackNavigation(router, { userRole: "staff" })}
         rightComponent={
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <SyncStatusPill />
-            <TouchableOpacity onPress={handleLogout} style={{ padding: 4 }}>
-              <Ionicons name="log-out-outline" size={24} color={colors.primary[500]} />
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={styles.logoutButton}
+              accessibilityLabel="Log out"
+              accessibilityRole="button"
+            >
+              <Ionicons name="log-out-outline" size={24} color={uiTokens.colors.accent} />
             </TouchableOpacity>
           </View>
         }
       />
-
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -577,15 +617,16 @@ const ScanScreen = React.memo(function ScanScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.primary[600]}
-            colors={[colors.primary[600]]}
+            tintColor={uiTokens.colors.accent}
+            colors={[uiTokens.colors.accent]}
           />
         }
       >
-        <ScanStatsCard
-          initialLoading={initialLoading}
-          sessionStats={sessionStats}
-        />
+        <View style={styles.statusRow}>
+          <SyncStatusPill />
+        </View>
+
+        <ScanStatsCard initialLoading={initialLoading} sessionStats={sessionStats} />
 
         <ScanLookupPanel
           initialLoading={initialLoading}
@@ -593,9 +634,22 @@ const ScanScreen = React.memo(function ScanScreen() {
           recentItems={recentItems}
           searchQuery={searchQuery}
           searchResults={searchResults}
-          onChangeSearchQuery={setSearchQuery}
-          onClearSearchQuery={() => safeSetState(setSearchQuery, "")}
-          onOpenScanner={() => safeSetState(setIsScanning, true)}
+          notice={lookupNotice}
+          onChangeSearchQuery={(value) => {
+            if (lookupNotice) {
+              safeSetState(setLookupNotice, null);
+            }
+            safeSetState(setSearchQuery, value);
+          }}
+          onClearSearchQuery={() => {
+            safeSetState(setLookupNotice, null);
+            safeSetState(setSearchQuery, "");
+          }}
+          onDismissNotice={() => safeSetState(setLookupNotice, null)}
+          onOpenScanner={() => {
+            safeSetState(setLookupNotice, null);
+            safeSetState(setIsScanning, true);
+          }}
           onPressItem={(item) => {
             const code = item.barcode || item.item_code;
             if (code) {
@@ -609,13 +663,28 @@ const ScanScreen = React.memo(function ScanScreen() {
             }
             handleLookup(searchQuery.trim());
           }}
+          onRetryNotice={() => {
+            const code = lastLookupBarcode || searchQuery.trim();
+            if (code) {
+              handleLookup(code);
+            }
+          }}
         />
 
         <View style={styles.footerSpacer} />
       </ScrollView>
 
       {/* Bottom Action */}
-      <View style={styles.bottomContainer}>
+      <View
+        style={[
+          styles.bottomContainer,
+          {
+            backgroundColor: uiTokens.colors.surface,
+            borderTopColor: uiTokens.colors.border,
+          },
+          scanVisualV2Enabled ? getTokenShadowStyle(uiTokens, "sm") : null,
+        ]}
+      >
         <ModernButton
           title="Finish Rack"
           onPress={() => safeSetState(setShowCloseSessionModal, true)}
@@ -636,24 +705,29 @@ const ScanScreen = React.memo(function ScanScreen() {
       />
 
       {loading && (
-        <View style={[styles.loadingOverlay, styles.pointerEventsNone]}>
-          <ActivityIndicator size="large" color={colors.primary[600]} />
+        <View
+          style={[
+            styles.loadingOverlay,
+            styles.pointerEventsNone,
+            {
+              backgroundColor:
+                uiTokens.mode === "dark" ? "rgba(17,24,39,0.75)" : "rgba(255,255,255,0.88)",
+            },
+          ]}
+        >
+          <ActivityIndicator size="large" color={uiTokens.colors.accent} />
         </View>
       )}
 
       {/* Performance Monitor Overlay */}
-      {__DEV__ && (
+      {showPerformanceOverlay && (
         <View
           style={[
             styles.performanceOverlay,
-            performanceWarning
-              ? styles.performancePoor
-              : styles.performanceGood,
+            performanceWarning ? styles.performancePoor : styles.performanceGood,
           ]}
         >
-          <Text style={styles.performanceText}>
-            FPS: {performanceMetrics.fps ?? "--"}
-          </Text>
+          <Text style={styles.performanceText}>FPS: {performanceMetrics.fps ?? "--"}</Text>
         </View>
       )}
     </SafeAreaView>
@@ -668,7 +742,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gray[50],
   },
   scrollContent: {
-    padding: spacing.lg,
+    padding: spacing.md,
+    paddingTop: spacing.lg,
     paddingBottom: 100,
   },
   footerSpacer: {
@@ -684,14 +759,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.gray[200],
-    ...shadows.lg,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  statusRow: {
+    alignItems: "flex-end",
+    marginBottom: spacing.sm,
+  },
+  logoutButton: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
+    alignItems: "center",
+    justifyContent: "center",
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(255,255,255,0.9)",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 1000,
+    zIndex: zIndex.overlay,
   },
   pointerEventsNone: {
     pointerEvents: "none",
@@ -704,7 +793,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: borderRadius.md,
-    zIndex: 1001,
+    zIndex: zIndex.tooltip,
   },
   performanceText: {
     color: colors.white,
@@ -717,5 +806,36 @@ const styles = StyleSheet.create({
   },
   performancePoor: {
     backgroundColor: "rgba(239,68,68,0.8)",
+  },
+  missingSessionContainer: {
+    flex: 1,
+    padding: spacing.lg,
+    justifyContent: "center",
+  },
+  missingSessionCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    padding: spacing.xl,
+    alignItems: "center",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+  },
+  missingSessionTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.gray[900],
+    textAlign: "center",
+  },
+  missingSessionBody: {
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[600],
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  missingSessionActions: {
+    width: "100%",
+    marginTop: spacing.sm,
+    gap: spacing.sm,
   },
 });

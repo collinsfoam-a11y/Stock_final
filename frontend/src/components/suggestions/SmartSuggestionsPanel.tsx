@@ -11,22 +11,17 @@ import {
   Platform,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import {
-  modernColors,
-  modernSpacing,
-  modernBorderRadius,
-} from "@/styles/unifiedSystem";
+import { modernColors, modernSpacing, modernBorderRadius } from "@/styles/modernDesignSystem";
 import {
   SuggestionItem,
   smartSuggestionsService,
 } from "@/domains/inventory/services/smartSuggestionsService";
 import * as Haptics from "expo-haptics";
 
+import { shadows as uiShadows } from "@/theme/legacyCompat";
+import { zIndex as uiZIndex } from "@/theme/designTokens";
 // Enable LayoutAnimation on Android
-if (
-  Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
@@ -49,9 +44,7 @@ export const SmartSuggestionsPanel: React.FC<SmartSuggestionsPanelProps> = ({
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [showAll, setShowAll] = useState(false);
-  const [displayedSuggestions, setDisplayedSuggestions] = useState<
-    SuggestionItem[]
-  >([]);
+  const [displayedSuggestions, setDisplayedSuggestions] = useState<SuggestionItem[]>([]);
 
   const slideAnimation = useRef(new Animated.Value(0)).current;
   const fadeAnimation = useRef(new Animated.Value(0)).current;
@@ -211,17 +204,9 @@ export const SmartSuggestionsPanel: React.FC<SmartSuggestionsPanelProps> = ({
         ]}
       >
         {/* Header */}
-        <TouchableOpacity
-          style={styles.header}
-          onPress={toggleExpanded}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.header} onPress={toggleExpanded} activeOpacity={0.7}>
           <View style={styles.headerLeft}>
-            <Ionicons
-              name="bulb-outline"
-              size={20}
-              color={modernColors.primary[500]}
-            />
+            <Ionicons name="bulb-outline" size={20} color={modernColors.primary[500]} />
             <Text style={styles.headerTitle}>Smart Suggestions</Text>
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{suggestions.length}</Text>
@@ -229,11 +214,7 @@ export const SmartSuggestionsPanel: React.FC<SmartSuggestionsPanelProps> = ({
           </View>
 
           <Animated.View style={{ transform: [{ rotate: rotateStyle }] }}>
-            <Ionicons
-              name="chevron-down"
-              size={20}
-              color={modernColors.text.secondary}
-            />
+            <Ionicons name="chevron-down" size={20} color={modernColors.text.secondary} />
           </Animated.View>
         </TouchableOpacity>
 
@@ -244,130 +225,106 @@ export const SmartSuggestionsPanel: React.FC<SmartSuggestionsPanelProps> = ({
             showsVerticalScrollIndicator={false}
             nestedScrollEnabled
           >
-            {displayedSuggestions.map(
-              (suggestion: SuggestionItem, index: number) => (
-                <Animated.View
-                  key={suggestion.id}
-                  style={[
-                    styles.suggestionItem,
-                    {
-                      opacity:
-                        displayedSuggestions.length > index ? fadeAnimation : 0,
-                      transform: [
-                        {
-                          translateY:
-                            displayedSuggestions.length > index
-                              ? fadeAnimation.interpolate({
-                                  inputRange: [0, 1],
-                                  outputRange: [20, 0],
-                                })
-                              : 0,
-                        },
-                      ],
-                    },
-                  ]}
+            {displayedSuggestions.map((suggestion: SuggestionItem, index: number) => (
+              <Animated.View
+                key={suggestion.id}
+                style={[
+                  styles.suggestionItem,
+                  {
+                    opacity: displayedSuggestions.length > index ? fadeAnimation : 0,
+                    transform: [
+                      {
+                        translateY:
+                          displayedSuggestions.length > index
+                            ? fadeAnimation.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [20, 0],
+                              })
+                            : 0,
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.suggestionButton}
+                  onPress={() => {
+                    // Add haptic feedback
+                    try {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    } catch {
+                      // Haptics not available
+                    }
+
+                    // Track interaction
+                    smartSuggestionsService.trackSuggestionInteraction(suggestion.id, "clicked");
+
+                    onSuggestionPress(suggestion);
+                  }}
+                  activeOpacity={0.7}
                 >
-                  <TouchableOpacity
-                    style={styles.suggestionButton}
-                    onPress={() => {
-                      // Add haptic feedback
-                      try {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      } catch {
-                        // Haptics not available
-                      }
-
-                      // Track interaction
-                      smartSuggestionsService.trackSuggestionInteraction(
-                        suggestion.id,
-                        "clicked",
-                      );
-
-                      onSuggestionPress(suggestion);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.suggestionContent}>
-                      <View style={styles.suggestionIcon}>
-                        <Ionicons
-                          name={suggestion.icon as any}
-                          size={18}
-                          color={getIconColor(suggestion.type)}
-                        />
-                        <View
-                          style={[
-                            styles.confidenceDot,
-                            {
-                              backgroundColor: getConfidenceColor(
-                                suggestion.confidence,
-                              ),
-                            },
-                          ]}
-                        />
-                      </View>
-
-                      <View style={styles.suggestionText}>
-                        <Text style={styles.suggestionTitle}>
-                          {suggestion.title}
-                        </Text>
-                        {suggestion.subtitle && (
-                          <Text style={styles.suggestionSubtitle}>
-                            {suggestion.subtitle}
-                          </Text>
-                        )}
-                      </View>
-
-                      <View style={styles.suggestionAction}>
-                        <View
-                          style={[
-                            styles.confidenceBar,
-                            {
-                              width: `${suggestion.confidence * 100}%`,
-                              backgroundColor: getConfidenceColor(
-                                suggestion.confidence,
-                              ),
-                            },
-                          ]}
-                        />
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-
-                  {/* Quick Actions */}
-                  {renderQuickActions(suggestion) as any}
-
-                  {suggestion.type === "location" && suggestion.data.rack && (
-                    <View style={styles.locationChip}>
+                  <View style={styles.suggestionContent}>
+                    <View style={styles.suggestionIcon}>
                       <Ionicons
-                        name="location"
-                        size={12}
-                        color={modernColors.success.main}
+                        name={suggestion.icon as any}
+                        size={18}
+                        color={getIconColor(suggestion.type)}
                       />
-                      <Text style={styles.locationText}>
-                        {String(suggestion.data.floor || "")} -{" "}
-                        {String(suggestion.data.rack || "")}
-                      </Text>
+                      <View
+                        style={[
+                          styles.confidenceDot,
+                          {
+                            backgroundColor: getConfidenceColor(suggestion.confidence),
+                          },
+                        ]}
+                      />
                     </View>
-                  )}
-                </Animated.View>
-              ),
-            )}
+
+                    <View style={styles.suggestionText}>
+                      <Text style={styles.suggestionTitle}>{suggestion.title}</Text>
+                      {suggestion.subtitle && (
+                        <Text style={styles.suggestionSubtitle}>{suggestion.subtitle}</Text>
+                      )}
+                    </View>
+
+                    <View style={styles.suggestionAction}>
+                      <View
+                        style={[
+                          styles.confidenceBar,
+                          {
+                            width: `${suggestion.confidence * 100}%`,
+                            backgroundColor: getConfidenceColor(suggestion.confidence),
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Quick Actions */}
+                {renderQuickActions(suggestion) as any}
+
+                {suggestion.type === "location" && suggestion.data.rack && (
+                  <View style={styles.locationChip}>
+                    <Ionicons name="location" size={12} color={modernColors.success.main} />
+                    <Text style={styles.locationText}>
+                      {String(suggestion.data.floor || "")} - {String(suggestion.data.rack || "")}
+                    </Text>
+                  </View>
+                )}
+              </Animated.View>
+            ))}
 
             {/* Show More Button */}
             {suggestions.length > 3 && (
-              <TouchableOpacity
-                style={styles.showMoreButton}
-                onPress={() => setShowAll(!showAll)}
-              >
+              <TouchableOpacity style={styles.showMoreButton} onPress={() => setShowAll(!showAll)}>
                 <Ionicons
                   name={showAll ? "chevron-up" : "chevron-down"}
                   size={16}
                   color={modernColors.primary[500]}
                 />
                 <Text style={styles.showMoreText}>
-                  {showAll
-                    ? "Show Less"
-                    : `Show ${suggestions.length - 3} More`}
+                  {showAll ? "Show Less" : `Show ${suggestions.length - 3} More`}
                 </Text>
               </TouchableOpacity>
             )}
@@ -379,7 +336,7 @@ export const SmartSuggestionsPanel: React.FC<SmartSuggestionsPanelProps> = ({
                 onPress={() => {
                   smartSuggestionsService.trackSuggestionInteraction(
                     "panel_dismissed",
-                    "dismissed",
+                    "dismissed"
                   );
                   onDismiss();
                 }}
@@ -404,7 +361,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    zIndex: 1000,
+    zIndex: uiZIndex.toast,
   },
   panel: {
     backgroundColor: modernColors.background.paper,
@@ -413,10 +370,7 @@ const styles = StyleSheet.create({
     borderRadius: modernBorderRadius.lg,
     borderWidth: 1,
     borderColor: modernColors.border.light,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    ...uiShadows.md,
     elevation: 4,
     overflow: "hidden",
   },

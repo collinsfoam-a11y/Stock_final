@@ -9,10 +9,12 @@ import React from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useTheme } from "../../hooks/useTheme";
+import { useUiTokens } from "../../hooks/useUiTokens";
 import { useSettingsStore } from "../../store/settingsStore";
 import { ThemePicker } from "./ThemePicker";
-import { GlassCard } from "./GlassCard";
+import { AppCard } from "./AppCard";
 import { FontSizeSlider, FontStylePicker } from "../settings";
+import { flags } from "../../constants/flags";
 
 interface AppearanceSettingsProps {
   showTitle?: boolean;
@@ -26,6 +28,7 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
   compact = false,
 }) => {
   const { colors, typography } = useTheme();
+  const uiTokens = useUiTokens();
   const { settings, setSetting } = useSettingsStore();
 
   const handleFontSizeChange = (value: number) => {
@@ -37,9 +40,7 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
       {showTitle && (
         <Animated.View entering={FadeInDown.delay(0).springify()}>
           <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Appearance
-            </Text>
+            <Text style={[styles.title, { color: colors.text }]}>Appearance</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               Customize the look and feel of your app
             </Text>
@@ -49,67 +50,42 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
 
       {/* Theme Mode */}
       <Animated.View entering={FadeInDown.delay(100).springify()}>
-        <GlassCard variant="medium" padding={16} style={styles.section}>
+        <AppCard variant="outlined" elevation="none" padding={16} style={styles.section}>
           <ThemePicker compact={compact} />
-        </GlassCard>
+        </AppCard>
       </Animated.View>
 
       {/* Font Size */}
       <Animated.View entering={FadeInDown.delay(200).springify()}>
-        <GlassCard variant="medium" padding={0} style={styles.section}>
+        <AppCard variant="outlined" elevation="none" padding={0} style={styles.section}>
           <FontSizeSlider
-            value={
-              typeof settings.fontSizeValue === "number"
-                ? settings.fontSizeValue
-                : 16
-            }
+            value={typeof settings.fontSizeValue === "number" ? settings.fontSizeValue : 16}
             onValueChange={handleFontSizeChange}
           />
-        </GlassCard>
+        </AppCard>
       </Animated.View>
 
       {/* Font Style */}
       <Animated.View entering={FadeInDown.delay(300).springify()}>
-        <GlassCard variant="medium" padding={0} style={styles.section}>
+        <AppCard variant="outlined" elevation="none" padding={0} style={styles.section}>
           <FontStylePicker
             value={settings.fontStyle}
             onValueChange={(value) => setSetting("fontStyle", value)}
           />
-        </GlassCard>
+        </AppCard>
       </Animated.View>
 
       {/* Preview Card */}
       <Animated.View entering={FadeInDown.delay(400).springify()}>
-        <GlassCard variant="strong" padding={20} style={styles.section}>
-          <Text style={[styles.previewTitle, { color: colors.text }]}>
-            Preview
-          </Text>
-          <View
-            style={[styles.previewBox, { backgroundColor: colors.background }]}
-          >
-            <View
-              style={[
-                styles.previewHeader,
-                { backgroundColor: colors.surface },
-              ]}
-            >
-              <View
-                style={[styles.previewDot, { backgroundColor: colors.accent }]}
-              />
-              <View
-                style={[
-                  styles.previewLine,
-                  { backgroundColor: colors.text, width: "40%" },
-                ]}
-              />
+        <AppCard variant="outlined" elevation="none" padding={20} style={styles.section}>
+          <Text style={[styles.previewTitle, { color: colors.text }]}>Preview</Text>
+          <View style={[styles.previewBox, { backgroundColor: colors.background }]}>
+            <View style={[styles.previewHeader, { backgroundColor: colors.surface }]}>
+              <View style={[styles.previewDot, { backgroundColor: colors.accent }]} />
+              <View style={[styles.previewLine, { backgroundColor: colors.text, width: "40%" }]} />
             </View>
             <View style={styles.previewContent}>
-              <View
-                style={[
-                  styles.previewCard,
-                  { backgroundColor: colors.surface },
-                ]}
-              >
+              <View style={[styles.previewCard, { backgroundColor: colors.surface }]}>
                 <View
                   style={[
                     styles.previewLine,
@@ -131,12 +107,7 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
                   ]}
                 />
               </View>
-              <View
-                style={[
-                  styles.previewCard,
-                  { backgroundColor: colors.surface },
-                ]}
-              >
+              <View style={[styles.previewCard, { backgroundColor: colors.surface }]}>
                 <View
                   style={[
                     styles.previewLine,
@@ -171,19 +142,54 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
             >
               Sample text uses your selected font style.
             </Text>
-            <View
-              style={[styles.previewButton, { backgroundColor: colors.accent }]}
-            >
+            <View style={[styles.previewButton, { backgroundColor: colors.accent }]}>
               <View
                 style={[
                   styles.previewLine,
-                  { backgroundColor: "#FFFFFF", width: "30%" },
+                  { backgroundColor: colors.surfaceElevated, width: "30%" },
                 ]}
               />
             </View>
           </View>
-        </GlassCard>
+        </AppCard>
       </Animated.View>
+
+      {flags.uiSettingsV2 && (
+        <Animated.View entering={FadeInDown.delay(500).springify()}>
+          <AppCard variant="outlined" elevation="none" padding={16} style={styles.section}>
+            <Text style={[styles.previewTitle, { color: colors.text }]}>Experience Settings</Text>
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+              UI Upgrade Mode: {flags.uiVisualSystemV2 ? "Premium Visual" : "Classic"}
+            </Text>
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+              Motion: {uiTokens.motion.enabled ? "Enabled" : "Disabled"}
+            </Text>
+            <View
+              style={[
+                styles.motionPreview,
+                {
+                  backgroundColor: uiTokens.colors.surface,
+                  borderColor: uiTokens.colors.border,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.motionPreviewAccent,
+                  {
+                    backgroundColor: uiTokens.colors.accent,
+                    opacity: uiTokens.motion.enabled ? 1 : 0.4,
+                  },
+                ]}
+              />
+              <Text style={[styles.motionLabel, { color: uiTokens.colors.textSecondary }]}>
+                Motion timings: {uiTokens.motion.fast}/{uiTokens.motion.normal}/
+                {uiTokens.motion.slow}ms
+              </Text>
+            </View>
+          </AppCard>
+        </Animated.View>
+      )}
     </View>
   );
 
@@ -273,6 +279,26 @@ const styles = StyleSheet.create({
   },
   previewSampleText: {
     marginTop: 4,
+  },
+  infoText: {
+    fontSize: 13,
+    marginBottom: 6,
+  },
+  motionPreview: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+  },
+  motionPreviewAccent: {
+    height: 8,
+    borderRadius: 999,
+    marginBottom: 10,
+    width: "70%",
+  },
+  motionLabel: {
+    fontSize: 12,
+    fontWeight: "500",
   },
 });
 

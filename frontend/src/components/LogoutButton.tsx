@@ -1,14 +1,9 @@
 import React from "react";
-import {
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
+import { TouchableOpacity, Text, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useAuthStore } from "../store/authStore";
 
+import { colors as uiColors } from "@/theme/legacyCompat";
 interface LogoutButtonProps {
   showText?: boolean;
   size?: "small" | "medium" | "large";
@@ -26,7 +21,7 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
   const handleLogout = () => {
     if (typeof window !== "undefined" && window.confirm) {
       const confirmed = window.confirm(
-        `${user?.full_name || "User"}, are you sure you want to logout?`,
+        `${user?.full_name || "User"}, are you sure you want to logout?`
       );
       if (!confirmed) return;
       setIsLoggingOut(true);
@@ -65,7 +60,7 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
             }
           },
         },
-      ],
+      ]
     );
   };
 
@@ -75,7 +70,7 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
   if (isLoggingOut) {
     return (
       <TouchableOpacity style={styles.button} disabled>
-        <ActivityIndicator size="small" color="#FF5252" />
+        <ActivityIndicator size="small" color={uiColors.error[500]} />
       </TouchableOpacity>
     );
   }
@@ -88,7 +83,7 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
       {(variant === "icon" || variant === "both") && (
-        <Ionicons name="log-out-outline" size={iconSize} color="#FF5252" />
+        <Ionicons name="log-out-outline" size={iconSize} color={uiColors.error[500]} />
       )}
       {(variant === "text" || variant === "both") && showText && (
         <Text style={[styles.buttonText, { fontSize }]}>Logout</Text>
@@ -116,16 +111,16 @@ const styles = StyleSheet.create({
   buttontext: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "#FFEBEE",
+    backgroundColor: uiColors.error[50],
   },
   buttonboth: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: "#FFEBEE",
+    backgroundColor: uiColors.error[50],
     gap: 8,
   },
   buttonText: {
-    color: "#FF5252",
+    color: uiColors.error[500],
     fontWeight: "600",
   },
 });

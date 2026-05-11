@@ -1,0 +1,24 @@
+{
+  "mode": "dry-run",
+  "collection": "projection_readiness",
+  "document_id": "current",
+  "existing_ready": true,
+  "existing_updated_at": "2026-05-02T18:10:18.570000",
+  "published": false,
+  "document": {
+    "_id": "current",
+    "is_consistent": true,
+    "is_ready": true,
+    "ready": true,
+    "parity_passed": true,
+    "projection_drift_count": 0,
+    "projection_gap_count": 0,
+    "projection_lag_seconds": 0.0,
+    "message": "Projection parity validation passed.",
+    "source_report": ".agent/reports/projection-parity-post-failed-burn.json",
+    "updated_at": "2026-05-02T18:11:08.419571",
+    "validated_at": "2026-05-02T18:11:08.419571",
+    "healthy_since": "2026-05-02T18:11:08.419571",
+    "stability_since": "2026-05-02T18:11:08.419571"
+  }
+}

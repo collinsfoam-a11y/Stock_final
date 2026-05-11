@@ -22,6 +22,7 @@ import { ItemVerificationAPI } from "@/domains/inventory/services/itemVerificati
 import { getRackProgress } from "@/services/api/api";
 import { RackProgressCard } from "@/components/scan/RackProgressCard";
 
+import { semanticColors as uiSemanticColors, shadows as uiShadows } from "@/theme/legacyCompat";
 export interface FilterValues {
   category?: string;
   subcategory?: string;
@@ -142,11 +143,7 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
 
   const renderSelectionModal = () => {
     const isRack = modalType === "rack";
-    const data = isRack
-      ? rackProgress.length > 0
-        ? rackProgress
-        : racks
-      : floors;
+    const data = isRack ? (rackProgress.length > 0 ? rackProgress : racks) : floors;
     const title = isRack ? "Select Rack" : "Select Floor";
     const isLoading = isRack ? loadingRacks : loadingLocations;
 
@@ -158,33 +155,20 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View
-            style={[
-              styles.modalContent,
-              { backgroundColor: theme.colors.card },
-            ]}
-          >
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
-                {title}
-              </Text>
+              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>{title}</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.text} />
               </TouchableOpacity>
             </View>
 
             {isLoading ? (
-              <ActivityIndicator
-                size="large"
-                color={theme.colors.primary}
-                style={{ margin: 20 }}
-              />
+              <ActivityIndicator size="large" color={theme.colors.primary} style={{ margin: 20 }} />
             ) : (
               <FlatList
                 data={data}
-                keyExtractor={(item) =>
-                  typeof item === "string" ? item : item.rack
-                }
+                keyExtractor={(item) => (typeof item === "string" ? item : item.rack)}
                 renderItem={({ item }) => {
                   if (isRack && typeof item !== "string") {
                     // Render Rack Progress Card
@@ -204,26 +188,14 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
                   const value = typeof item === "string" ? item : item.rack;
                   return (
                     <TouchableOpacity
-                      style={[
-                        styles.modalItem,
-                        { borderBottomColor: theme.colors.border },
-                      ]}
+                      style={[styles.modalItem, { borderBottomColor: theme.colors.border }]}
                       onPress={() => handleSelection(value)}
                     >
-                      <Text
-                        style={[
-                          styles.modalItemText,
-                          { color: theme.colors.text },
-                        ]}
-                      >
+                      <Text style={[styles.modalItemText, { color: theme.colors.text }]}>
                         {value}
                       </Text>
                       {filters[modalType!] === value && (
-                        <Ionicons
-                          name="checkmark"
-                          size={20}
-                          color={theme.colors.primary}
-                        />
+                        <Ionicons name="checkmark" size={20} color={theme.colors.primary} />
                       )}
                     </TouchableOpacity>
                   );
@@ -261,16 +233,10 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
             color={theme.colors.primary}
             style={styles.filterIcon}
           />
-          <Text style={[styles.headerText, { color: theme.colors.text }]}>
-            Filters
-          </Text>
+          <Text style={[styles.headerText, { color: theme.colors.text }]}>Filters</Text>
           {hasActiveFilters && (
-            <View
-              style={[styles.badge, { backgroundColor: theme.colors.primary }]}
-            >
-              <Text style={styles.badgeText}>
-                {Object.keys(filters).length}
-              </Text>
+            <View style={[styles.badge, { backgroundColor: theme.colors.primary }]}>
+              <Text style={styles.badgeText}>{Object.keys(filters).length}</Text>
             </View>
           )}
         </View>
@@ -285,9 +251,7 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
         <ScrollView style={styles.filtersContainer}>
           {showSearch && (
             <View style={styles.filterGroup}>
-              <Text style={[styles.filterLabel, { color: theme.colors.text }]}>
-                Search
-              </Text>
+              <Text style={[styles.filterLabel, { color: theme.colors.text }]}>Search</Text>
               <TextInput
                 style={[
                   styles.input,
@@ -307,9 +271,7 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
 
           <View style={styles.filterRow}>
             <View style={styles.filterGroupHalf}>
-              <Text style={[styles.filterLabel, { color: theme.colors.text }]}>
-                Floor
-              </Text>
+              <Text style={[styles.filterLabel, { color: theme.colors.text }]}>Floor</Text>
               <TouchableOpacity
                 style={[
                   styles.input,
@@ -327,25 +289,17 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
               >
                 <Text
                   style={{
-                    color: filters.floor
-                      ? theme.colors.text
-                      : theme.colors.textSecondary,
+                    color: filters.floor ? theme.colors.text : theme.colors.textSecondary,
                   }}
                 >
                   {filters.floor || "Select Floor"}
                 </Text>
-                <Ionicons
-                  name="chevron-down"
-                  size={16}
-                  color={theme.colors.textSecondary}
-                />
+                <Ionicons name="chevron-down" size={16} color={theme.colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.filterGroupHalf}>
-              <Text style={[styles.filterLabel, { color: theme.colors.text }]}>
-                Rack
-              </Text>
+              <Text style={[styles.filterLabel, { color: theme.colors.text }]}>Rack</Text>
               <TouchableOpacity
                 style={[
                   styles.input,
@@ -363,31 +317,20 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
               >
                 <Text
                   style={{
-                    color: filters.rack
-                      ? theme.colors.text
-                      : theme.colors.textSecondary,
+                    color: filters.rack ? theme.colors.text : theme.colors.textSecondary,
                   }}
                 >
                   {filters.rack || "Select Rack"}
                 </Text>
-                <Ionicons
-                  name="chevron-down"
-                  size={16}
-                  color={theme.colors.textSecondary}
-                />
+                <Ionicons name="chevron-down" size={16} color={theme.colors.textSecondary} />
               </TouchableOpacity>
             </View>
           </View>
 
           {offlineMode && (
-            <Text
-              style={[
-                styles.helperText,
-                { color: theme.colors.textSecondary },
-              ]}
-            >
-              Location filters require a live connection. Search and verification
-              status filters still work with cached data.
+            <Text style={[styles.helperText, { color: theme.colors.textSecondary }]}>
+              Location filters require a live connection. Search and verification status filters
+              still work with cached data.
             </Text>
           )}
 
@@ -405,17 +348,9 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
                   ]}
                   onPress={() => updateFilter("verified", undefined)}
                 >
-                  <Text
-                    style={[styles.radioText, { color: theme.colors.text }]}
-                  >
-                    All
-                  </Text>
+                  <Text style={[styles.radioText, { color: theme.colors.text }]}>All</Text>
                   {filters.verified === undefined && (
-                    <Ionicons
-                      name="checkmark"
-                      size={16}
-                      color={theme.colors.primary}
-                    />
+                    <Ionicons name="checkmark" size={16} color={theme.colors.primary} />
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -426,17 +361,9 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
                   ]}
                   onPress={() => updateFilter("verified", true)}
                 >
-                  <Text
-                    style={[styles.radioText, { color: theme.colors.text }]}
-                  >
-                    Verified
-                  </Text>
+                  <Text style={[styles.radioText, { color: theme.colors.text }]}>Verified</Text>
                   {filters.verified === true && (
-                    <Ionicons
-                      name="checkmark"
-                      size={16}
-                      color={theme.colors.primary}
-                    />
+                    <Ionicons name="checkmark" size={16} color={theme.colors.primary} />
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -447,17 +374,9 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
                   ]}
                   onPress={() => updateFilter("verified", false)}
                 >
-                  <Text
-                    style={[styles.radioText, { color: theme.colors.text }]}
-                  >
-                    Unverified
-                  </Text>
+                  <Text style={[styles.radioText, { color: theme.colors.text }]}>Unverified</Text>
                   {filters.verified === false && (
-                    <Ionicons
-                      name="checkmark"
-                      size={16}
-                      color={theme.colors.primary}
-                    />
+                    <Ionicons name="checkmark" size={16} color={theme.colors.primary} />
                   )}
                 </TouchableOpacity>
               </View>
@@ -466,13 +385,10 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
 
           {hasActiveFilters && (
             <TouchableOpacity
-              style={[
-                styles.clearButton,
-                { backgroundColor: theme.colors.error },
-              ]}
+              style={[styles.clearButton, { backgroundColor: theme.colors.error }]}
               onPress={clearFilters}
             >
-              <Ionicons name="close-circle" size={18} color="#fff" />
+              <Ionicons name="close-circle" size={18} color={uiSemanticColors.text.inverse} />
               <Text style={styles.clearButtonText}>Clear All Filters</Text>
             </TouchableOpacity>
           )}
@@ -490,10 +406,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        ...uiShadows.md,
       },
       android: {
         elevation: 2,
@@ -532,7 +445,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   badgeText: {
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -592,7 +505,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   clearButtonText: {
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 14,
     fontWeight: "600",
   },

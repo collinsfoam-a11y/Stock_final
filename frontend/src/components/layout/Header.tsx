@@ -3,11 +3,11 @@
  */
 
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Platform } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
-import { operationalTheme } from "../../theme/operationalTheme";
 
+import { semanticColors as uiSemanticColors, shadows as uiShadows } from "@/theme/legacyCompat";
 interface HeaderProps {
   title: string;
   leftIcon?: keyof typeof Ionicons.glyphMap;
@@ -33,24 +33,16 @@ export const Header: React.FC<HeaderProps> = ({
     <>
       <StatusBar
         barStyle={theme.isDark ? "light-content" : "dark-content"}
-        backgroundColor={theme.isDark ? theme.colors.background : operationalTheme.background}
+        backgroundColor={theme.colors.background}
       />
-      <View
-        style={[
-          styles.container,
-          {
-            backgroundColor: theme.isDark ? theme.colors.surface : operationalTheme.background,
-            borderBottomColor: theme.isDark ? theme.colors.border : operationalTheme.border,
-          },
-        ]}
-      >
+      <View style={[styles.container, { backgroundColor: theme.colors.primary }]}>
         <View style={styles.leftContainer}>
           {(leftIcon || showBack) && (
             <TouchableOpacity style={styles.iconButton} onPress={onLeftPress} activeOpacity={0.7}>
               <Ionicons
                 name={leftIcon || "arrow-back"}
                 size={24}
-                color={theme.isDark ? "#FFFFFF" : operationalTheme.text}
+                color={uiSemanticColors.text.inverse}
               />
             </TouchableOpacity>
           )}
@@ -58,28 +50,13 @@ export const Header: React.FC<HeaderProps> = ({
 
         <View style={styles.centerContainer}>
           <Text style={styles.title}>{title}</Text>
-          {subtitle && (
-            <Text
-              style={[
-                styles.subtitle,
-                {
-                  color: theme.isDark ? "rgba(255,255,255,0.9)" : operationalTheme.textSecondary,
-                },
-              ]}
-            >
-              {subtitle}
-            </Text>
-          )}
+          {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
         </View>
 
         <View style={styles.rightContainer}>
           {rightIcon && (
             <TouchableOpacity style={styles.iconButton} onPress={onRightPress} activeOpacity={0.7}>
-              <Ionicons
-                name={rightIcon}
-                size={24}
-                color={theme.isDark ? "#FFFFFF" : operationalTheme.text}
-              />
+              <Ionicons name={rightIcon} size={24} color={uiSemanticColors.text.inverse} />
             </TouchableOpacity>
           )}
         </View>
@@ -95,9 +72,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingTop: Platform.OS === "ios" ? 48 : 20,
-    minHeight: 84,
-    borderBottomWidth: 1,
+    paddingTop: 48,
+    minHeight: 80,
+    elevation: 4,
+    ...uiShadows.md,
   },
   leftContainer: {
     width: 40,
@@ -112,23 +90,18 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: operationalTheme.surface,
-    borderWidth: 1,
-    borderColor: operationalTheme.border,
+    padding: 8,
   },
   title: {
     fontSize: 18,
     fontWeight: "600",
-    color: operationalTheme.text,
+    color: uiSemanticColors.text.inverse,
     textAlign: "center",
   },
   subtitle: {
     fontSize: 12,
+    color: uiSemanticColors.text.inverse,
+    opacity: 0.9,
     textAlign: "center",
     marginTop: 2,
   },

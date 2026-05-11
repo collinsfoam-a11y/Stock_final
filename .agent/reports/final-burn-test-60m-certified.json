@@ -1,0 +1,4855 @@
+{
+  "timestamp": "2026-05-02T18:10:01.324257+00:00",
+  "duration_seconds": 3600,
+  "session_id": "0d7b1afd-9096-4e16-ac55-0e75b1abff37",
+  "username": "ui_owner_desktopchrom_moo7r4hn_2",
+  "inventory_items_available": 969,
+  "inventory_items_used": 0,
+  "sync": {
+    "create_ok": 0,
+    "create_fail": 0,
+    "create_attempted": 0,
+    "replay_ok": 12,
+    "replay_fail": 36,
+    "total_requests": 48,
+    "success_rate": 0.25
+  },
+  "reads": {
+    "ok": 1706,
+    "fail": 5494,
+    "gate_503": 94,
+    "total_requests": 7200,
+    "success_rate": 0.23694444444444446
+  },
+  "metrics": {
+    "samples": 360,
+    "max_projection_freshness_lag": 0.0,
+    "max_sync_queue_size": 0.0,
+    "max_sync_failure_rate": 0.0,
+    "max_projection_drift_count": 0,
+    "max_projection_gap_count": 0
+  },
+  "anomalies": [
+    {
+      "type": "projection_inconsistent_503",
+      "count": 94
+    },
+    {
+      "type": "sync_non_200",
+      "count": 36
+    },
+    {
+      "type": "read_non_200",
+      "count": 5494
+    }
+  ],
+  "passed": false,
+  "time_series_metrics": [
+    {
+      "ts": "2026-05-02T17:10:01.297023+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:10:11.351619+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:10:21.307553+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:10:31.324571+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:10:41.323547+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:10:51.343102+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:11:01.345733+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:11:11.326790+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:11:21.322822+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:11:31.358485+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:11:41.340814+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:11:51.337083+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:12:01.343608+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:12:11.348072+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:12:21.307706+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:12:31.338298+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:12:41.324849+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:12:51.311960+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:13:01.305609+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:13:11.327864+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:13:21.352617+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:13:31.322398+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:13:41.324668+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:13:51.326047+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:14:01.334255+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:14:11.334921+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:14:21.317397+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:14:31.334206+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:14:41.340025+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:14:51.325747+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:15:01.347731+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:15:11.335552+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:15:21.309744+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:15:31.344503+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:15:41.313064+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:15:51.340235+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:16:01.310190+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:16:11.351328+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:16:21.315892+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:16:31.313640+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:16:41.306694+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:16:51.341534+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:17:01.314701+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:17:11.328936+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:17:21.325063+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:17:31.324436+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:17:41.338620+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:17:51.345038+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:18:01.309640+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:18:11.299909+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:18:21.351594+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:18:31.312352+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:18:41.327319+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:18:51.346086+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:19:01.327827+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:19:11.332824+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:19:21.307081+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:19:31.299876+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:19:41.313252+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:19:51.339334+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:20:01.314949+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:20:11.335948+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:20:21.331228+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:20:31.304429+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:20:41.350134+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:20:51.317798+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:21:01.336583+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:21:11.303637+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:21:21.356133+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:21:31.363026+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:21:41.344975+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:21:51.341804+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:22:01.314627+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:22:11.338820+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:22:21.352212+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:22:31.352043+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:22:41.306869+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:22:51.310271+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:23:01.340459+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:23:11.303248+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:23:21.328083+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:23:31.325520+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:23:41.349522+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:23:51.346680+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:24:01.353896+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:24:11.315703+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:24:21.310292+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:24:31.305729+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:24:41.329588+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:24:51.322105+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:25:01.350305+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:25:11.333872+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:25:21.311042+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:25:31.319598+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:25:41.304077+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:25:51.327847+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:26:01.322254+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:26:11.307267+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:26:21.348289+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:26:31.313950+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:26:41.312596+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:26:51.314865+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:27:01.335007+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:27:11.309983+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:27:21.327009+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:27:31.299895+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:27:41.332741+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:27:51.297701+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:28:01.309502+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:28:11.294554+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:28:21.305284+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:28:31.330089+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:28:41.302893+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:28:51.350565+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:29:01.332372+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:29:11.350672+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:29:21.332595+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:29:31.351964+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:29:41.335668+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:29:51.306877+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:30:01.355141+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:30:11.325480+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:30:21.311759+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:30:31.308820+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:30:41.305136+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:30:51.317421+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:31:01.335110+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:31:11.334564+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:31:21.320524+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:31:31.302707+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:31:41.331457+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:31:51.333363+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:32:01.321097+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:32:11.329087+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:32:21.327979+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:32:31.326364+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:32:41.323289+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:32:51.332063+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:33:01.348663+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:33:11.310161+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:33:21.324787+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:33:31.306947+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:33:41.346219+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:33:51.331815+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:34:01.328369+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:34:11.348211+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:34:21.306406+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:34:31.315802+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:34:41.342985+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:34:51.331027+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:35:01.355625+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:35:11.300181+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:35:21.309789+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:35:31.304083+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:35:41.316216+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:35:51.300556+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:36:01.329432+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:36:11.342870+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:36:21.309447+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:36:31.306761+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:36:41.346954+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:36:51.341501+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:37:01.327119+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:37:11.347934+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:37:21.335253+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:37:31.345122+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:37:41.308169+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:37:51.342020+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:38:01.316314+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:38:11.317605+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:38:21.327032+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:38:31.318222+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:38:41.338953+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:38:51.330854+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:39:01.321844+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:39:11.320349+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:39:21.330637+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:39:31.306259+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:39:41.327981+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:39:51.335030+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:40:01.320750+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:40:11.346370+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:40:21.305060+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:40:31.323698+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:40:41.342942+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:40:51.319013+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:41:01.300387+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:41:11.305146+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:41:21.334053+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:41:31.351459+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:41:41.348430+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:41:51.323068+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:42:01.353507+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:42:11.301102+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:42:21.340022+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:42:31.309761+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:42:41.349077+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:42:51.307653+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:43:01.332727+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:43:11.325744+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:43:21.307593+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:43:31.333676+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:43:41.343281+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:43:51.320582+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:44:01.316597+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:44:11.311314+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:44:21.334285+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:44:31.342849+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:44:41.336998+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:44:51.302663+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:45:01.318312+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:45:11.344153+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:45:21.313701+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:45:31.351896+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:45:41.333257+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:45:51.346549+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:46:01.352058+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:46:11.323609+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:46:21.334413+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:46:31.335500+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:46:41.354325+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:46:51.357560+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:47:01.316434+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:47:11.347863+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:47:21.332272+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:47:31.316510+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:47:41.332356+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:47:51.301915+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:48:01.310403+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:48:11.315185+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:48:21.329730+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:48:31.314135+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:48:41.303268+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:48:51.319656+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:49:01.302875+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:49:11.314817+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:49:21.328080+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:49:31.336370+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:49:41.316422+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:49:51.321711+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:50:01.322229+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:50:11.339224+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:50:21.310525+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:50:31.346710+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:50:41.349634+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:50:51.326209+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:51:01.346948+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:51:11.348252+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:51:21.304042+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:51:31.344635+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:51:41.313541+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:51:51.354610+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:52:01.315719+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:52:11.343026+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:52:21.316101+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:52:31.326161+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:52:41.326302+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:52:51.314181+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:53:01.354506+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:53:11.318630+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:53:21.335202+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:53:31.322744+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:53:41.320303+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:53:51.337459+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:54:01.359789+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:54:11.332758+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:54:21.356936+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:54:31.342619+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:54:41.366475+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:54:51.321566+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:55:01.360627+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:55:11.320573+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:55:21.327374+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:55:31.351482+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:55:41.350135+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:55:51.356398+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:56:01.350503+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:56:11.305450+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:56:21.345241+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:56:31.347080+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:56:41.355798+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:56:51.314785+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:57:01.335207+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:57:11.346793+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:57:21.339124+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:57:31.307144+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:57:41.307010+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:57:51.335286+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:58:01.314182+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:58:11.352990+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:58:21.355756+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:58:31.321307+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:58:41.326819+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:58:51.303951+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:59:01.306101+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:59:11.320800+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:59:21.322880+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:59:31.339706+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:59:41.346090+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T17:59:51.353481+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:00:01.350357+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:00:11.330951+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:00:21.336306+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:00:31.340792+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:00:41.323987+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:00:51.295723+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:01:01.304664+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:01:11.308541+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:01:21.314580+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:01:31.311854+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:01:41.306581+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:01:51.329765+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:02:01.301357+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:02:11.302912+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:02:21.292670+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:02:31.317848+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:02:41.298065+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:02:51.332553+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:03:01.318015+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:03:11.300193+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:03:21.323163+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:03:31.285944+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:03:41.315008+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:03:51.315157+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:04:01.323543+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:04:11.315012+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:04:21.316435+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:04:31.306972+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:04:41.292070+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:04:51.290696+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:05:01.316852+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:05:11.327491+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:05:21.307079+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:05:31.305661+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:05:41.324407+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:05:51.322298+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:06:01.314458+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:06:11.289639+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:06:21.297137+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:06:31.298590+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:06:41.330711+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:06:51.332676+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:07:01.296848+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:07:11.322281+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:07:21.332248+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:07:31.298777+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:07:41.330248+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:07:51.315224+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:08:01.342816+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:08:11.285833+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:08:21.314330+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:08:31.329993+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:08:41.316954+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:08:51.299750+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:09:01.305412+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:09:11.298841+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:09:21.316167+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:09:31.296283+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:09:41.325311+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    },
+    {
+      "ts": "2026-05-02T18:09:51.299332+00:00",
+      "http_status": 200,
+      "projection_drift_count": 0,
+      "projection_gap_count": 0,
+      "projection_freshness_lag": 0.0,
+      "sync_queue_size": 0.0,
+      "sync_failure_rate": 0.0,
+      "projection_readiness_status": 0.0
+    }
+  ],
+  "samples": {
+    "sync": [
+      {
+        "ts": "2026-05-02T17:10:01.294705+00:00",
+        "phase": "replay",
+        "status": 200,
+        "latency_ms": 4.6537920061382465,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": null,
+        "body_snippet": "{\"ok\":[\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"burn-replay-a58c0dad55be\",\"processing_time_ms\":0.27871131896972656,\"total_records\":1,\"results\":[{\"id\":\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\",\""
+      },
+      {
+        "ts": "2026-05-02T17:11:16.325520+00:00",
+        "phase": "replay",
+        "status": 200,
+        "latency_ms": 2.4753339966991916,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": null,
+        "body_snippet": "{\"ok\":[\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"burn-replay-71ce0fc029de\",\"processing_time_ms\":0.3199577331542969,\"total_records\":1,\"results\":[{\"id\":\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\",\"s"
+      },
+      {
+        "ts": "2026-05-02T17:12:31.322891+00:00",
+        "phase": "replay",
+        "status": 200,
+        "latency_ms": 7.023208003374748,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": null,
+        "body_snippet": "{\"ok\":[\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"burn-replay-222f21fe5047\",\"processing_time_ms\":0.8349418640136719,\"total_records\":1,\"results\":[{\"id\":\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\",\"s"
+      },
+      {
+        "ts": "2026-05-02T17:13:46.341175+00:00",
+        "phase": "replay",
+        "status": 200,
+        "latency_ms": 6.2803750042803586,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": null,
+        "body_snippet": "{\"ok\":[\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"burn-replay-7428878b25bf\",\"processing_time_ms\":1.2590885162353516,\"total_records\":1,\"results\":[{\"id\":\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\",\"s"
+      },
+      {
+        "ts": "2026-05-02T17:15:01.333391+00:00",
+        "phase": "replay",
+        "status": 200,
+        "latency_ms": 7.893375004641712,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": null,
+        "body_snippet": "{\"ok\":[\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"burn-replay-9bc73c287da6\",\"processing_time_ms\":0.9641647338867188,\"total_records\":1,\"results\":[{\"id\":\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\",\"s"
+      },
+      {
+        "ts": "2026-05-02T17:16:16.302049+00:00",
+        "phase": "replay",
+        "status": 200,
+        "latency_ms": 6.495541994809173,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": null,
+        "body_snippet": "{\"ok\":[\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"burn-replay-503547fb9e58\",\"processing_time_ms\":1.2431144714355469,\"total_records\":1,\"results\":[{\"id\":\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\",\"s"
+      },
+      {
+        "ts": "2026-05-02T17:17:31.312930+00:00",
+        "phase": "replay",
+        "status": 200,
+        "latency_ms": 4.804832999070641,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": null,
+        "body_snippet": "{\"ok\":[\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"burn-replay-e0aa1e9954b0\",\"processing_time_ms\":0.8349418640136719,\"total_records\":1,\"results\":[{\"id\":\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\",\"s"
+      },
+      {
+        "ts": "2026-05-02T17:18:46.293232+00:00",
+        "phase": "replay",
+        "status": 200,
+        "latency_ms": 5.873957998119295,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": null,
+        "body_snippet": "{\"ok\":[\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"burn-replay-3ccab938ff87\",\"processing_time_ms\":0.9500980377197266,\"total_records\":1,\"results\":[{\"id\":\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\",\"s"
+      },
+      {
+        "ts": "2026-05-02T17:20:01.301265+00:00",
+        "phase": "replay",
+        "status": 200,
+        "latency_ms": 4.663791994971689,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": null,
+        "body_snippet": "{\"ok\":[\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"burn-replay-5bb5be92e66e\",\"processing_time_ms\":0.6799697875976562,\"total_records\":1,\"results\":[{\"id\":\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\",\"s"
+      },
+      {
+        "ts": "2026-05-02T17:21:16.333434+00:00",
+        "phase": "replay",
+        "status": 200,
+        "latency_ms": 6.947082998522092,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": null,
+        "body_snippet": "{\"ok\":[\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"burn-replay-4ba119dca7a0\",\"processing_time_ms\":0.9179115295410156,\"total_records\":1,\"results\":[{\"id\":\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\",\"s"
+      },
+      {
+        "ts": "2026-05-02T17:22:31.343131+00:00",
+        "phase": "replay",
+        "status": 200,
+        "latency_ms": 5.627083002764266,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": null,
+        "body_snippet": "{\"ok\":[\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"burn-replay-c3401574b886\",\"processing_time_ms\":1.4219284057617188,\"total_records\":1,\"results\":[{\"id\":\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\",\"s"
+      },
+      {
+        "ts": "2026-05-02T17:23:46.315544+00:00",
+        "phase": "replay",
+        "status": 200,
+        "latency_ms": 5.057916998339351,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": null,
+        "body_snippet": "{\"ok\":[\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"burn-replay-ec9ca676738f\",\"processing_time_ms\":0.6291866302490234,\"total_records\":1,\"results\":[{\"id\":\"probe-793615b9-04d4-48bd-8b2c-3ad7bf81d5c3\",\"s"
+      },
+      {
+        "ts": "2026-05-02T17:25:01.341815+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 4.083083003934007,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:26:16.322184+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.2407499966211617,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:27:31.296424+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 2.7245000019320287,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:28:46.328266+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.949833000660874,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:30:01.348193+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.807916000369005,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:31:16.323638+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.5255830007372424,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:32:31.321959+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 2.6769160031108186,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:33:46.321920+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.1240000025718473,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:35:01.347365+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 4.381833001389168,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:36:16.308339+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.34024999756366,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:37:31.341319+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 2.3397080003633164,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:38:46.320583+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.127292002318427,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:40:01.317817+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 2.494874999683816,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:41:16.343384+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.2619579942547716,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:42:31.306103+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 2.7645419977488928,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:43:46.306663+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 2.7826250006910414,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:45:01.311349+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.3891249986481853,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:46:16.331877+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.0125420016702265,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:47:31.312118+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.167750001011882,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:48:46.341801+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 2.8230000025359914,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:50:01.318099+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.155582999170292,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:51:16.306871+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.219915997760836,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:52:31.319936+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.2235830003628507,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:53:46.330954+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.0775420018471777,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:55:01.355964+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 4.039416002342477,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:56:16.321926+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.5486669949023053,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:57:31.303667+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 2.669624998816289,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T17:58:46.352069+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 2.96820900257444,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T18:00:01.344135+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.325040997879114,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T18:01:16.290952+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.4056660006172024,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T18:02:31.310645+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.388874996744562,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T18:03:46.322384+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 2.525250005419366,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T18:05:01.312349+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.864500002237037,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T18:06:16.305941+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.552415997546632,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T18:07:31.291761+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 2.202541996666696,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      },
+      {
+        "ts": "2026-05-02T18:08:46.284338+00:00",
+        "phase": "replay",
+        "status": 401,
+        "latency_ms": 3.0907920008758083,
+        "record_id": "probe-7856194d-cd53-4bfb-9d95-ee2b6a29b8cc",
+        "item_code": "10105",
+        "error": "HTTP Error 401: Unauthorized",
+        "body_snippet": "{\"detail\":{\"message\":\"Your session has expired. Please login again.\",\"detail\":\"The authentication token has expired. Please login to get a new token.\",\"code\":\"AUTH_003\",\"category\":\"authentication\",\"status_code\":401}}"
+      }
+    ],
+    "reads": [
+      {
+        "ts": "2026-05-02T18:09:01.301888+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.93416600470664
+      },
+      {
+        "ts": "2026-05-02T18:09:01.303606+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.6210000030696392
+      },
+      {
+        "ts": "2026-05-02T18:09:02.333840+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.192500000295695
+      },
+      {
+        "ts": "2026-05-02T18:09:02.335485+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.5302090032491833
+      },
+      {
+        "ts": "2026-05-02T18:09:03.282454+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.5480410006130114
+      },
+      {
+        "ts": "2026-05-02T18:09:03.285073+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.465167002810631
+      },
+      {
+        "ts": "2026-05-02T18:09:04.302861+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.1125830064411275
+      },
+      {
+        "ts": "2026-05-02T18:09:04.304945+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.9667079977807589
+      },
+      {
+        "ts": "2026-05-02T18:09:05.327364+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.236040996853262
+      },
+      {
+        "ts": "2026-05-02T18:09:05.329423+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.9341669976711273
+      },
+      {
+        "ts": "2026-05-02T18:09:06.334754+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.297749997524079
+      },
+      {
+        "ts": "2026-05-02T18:09:06.335932+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.1218750005355105
+      },
+      {
+        "ts": "2026-05-02T18:09:07.313869+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.555125000071712
+      },
+      {
+        "ts": "2026-05-02T18:09:07.315454+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.5040829966892488
+      },
+      {
+        "ts": "2026-05-02T18:09:08.323303+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.966125000966713
+      },
+      {
+        "ts": "2026-05-02T18:09:08.326870+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 3.4230829987791367
+      },
+      {
+        "ts": "2026-05-02T18:09:09.297901+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.3305840042885393
+      },
+      {
+        "ts": "2026-05-02T18:09:09.299782+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.7335000011371449
+      },
+      {
+        "ts": "2026-05-02T18:09:10.327245+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.0447919998550788
+      },
+      {
+        "ts": "2026-05-02T18:09:10.330318+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.8885840001748875
+      },
+      {
+        "ts": "2026-05-02T18:09:11.296541+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.385333995334804
+      },
+      {
+        "ts": "2026-05-02T18:09:11.297966+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.367415999993682
+      },
+      {
+        "ts": "2026-05-02T18:09:12.322754+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.0261249994509853
+      },
+      {
+        "ts": "2026-05-02T18:09:12.325913+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 3.0184580027707852
+      },
+      {
+        "ts": "2026-05-02T18:09:13.280535+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 4.433791997143999
+      },
+      {
+        "ts": "2026-05-02T18:09:13.283248+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.567166004155297
+      },
+      {
+        "ts": "2026-05-02T18:09:14.301594+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.3939580025617033
+      },
+      {
+        "ts": "2026-05-02T18:09:14.304412+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.6929159939754754
+      },
+      {
+        "ts": "2026-05-02T18:09:15.306152+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.3562920032418333
+      },
+      {
+        "ts": "2026-05-02T18:09:15.308661+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.402874997642357
+      },
+      {
+        "ts": "2026-05-02T18:09:16.283672+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.089249999902677
+      },
+      {
+        "ts": "2026-05-02T18:09:16.285559+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.762791995133739
+      },
+      {
+        "ts": "2026-05-02T18:09:17.310508+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.9317919979803264
+      },
+      {
+        "ts": "2026-05-02T18:09:17.312746+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.119832999596838
+      },
+      {
+        "ts": "2026-05-02T18:09:18.322864+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.768374997889623
+      },
+      {
+        "ts": "2026-05-02T18:09:18.326170+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 3.1823329991311766
+      },
+      {
+        "ts": "2026-05-02T18:09:19.310789+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.3451659944839776
+      },
+      {
+        "ts": "2026-05-02T18:09:19.313129+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.2434999991673976
+      },
+      {
+        "ts": "2026-05-02T18:09:20.284131+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.2034169998951256
+      },
+      {
+        "ts": "2026-05-02T18:09:20.286465+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.114416995027568
+      },
+      {
+        "ts": "2026-05-02T18:09:21.312304+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.9456669944920577
+      },
+      {
+        "ts": "2026-05-02T18:09:21.314467+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.024624998739455
+      },
+      {
+        "ts": "2026-05-02T18:09:22.285616+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.192957999999635
+      },
+      {
+        "ts": "2026-05-02T18:09:22.288281+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.544457995099947
+      },
+      {
+        "ts": "2026-05-02T18:09:23.296195+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.693499998713378
+      },
+      {
+        "ts": "2026-05-02T18:09:23.297836+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.5701250013080426
+      },
+      {
+        "ts": "2026-05-02T18:09:24.310399+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.1180410005617887
+      },
+      {
+        "ts": "2026-05-02T18:09:24.312375+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.8490829970687628
+      },
+      {
+        "ts": "2026-05-02T18:09:25.310205+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.8575420001288876
+      },
+      {
+        "ts": "2026-05-02T18:09:25.312178+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.8630839986144565
+      },
+      {
+        "ts": "2026-05-02T18:09:26.294250+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.659917005279567
+      },
+      {
+        "ts": "2026-05-02T18:09:26.296336+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.9695000009960495
+      },
+      {
+        "ts": "2026-05-02T18:09:27.279266+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.492042003723327
+      },
+      {
+        "ts": "2026-05-02T18:09:27.280489+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.1712920022546314
+      },
+      {
+        "ts": "2026-05-02T18:09:28.292752+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.8668330016662367
+      },
+      {
+        "ts": "2026-05-02T18:09:28.295646+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.7790829990408383
+      },
+      {
+        "ts": "2026-05-02T18:09:29.312623+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.195625002263114
+      },
+      {
+        "ts": "2026-05-02T18:09:29.314466+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.7391250003129244
+      },
+      {
+        "ts": "2026-05-02T18:09:30.335104+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.5823749965638854
+      },
+      {
+        "ts": "2026-05-02T18:09:30.336962+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.716792001388967
+      },
+      {
+        "ts": "2026-05-02T18:09:31.293292+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.009791995282285
+      },
+      {
+        "ts": "2026-05-02T18:09:31.295129+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.7381249999743886
+      },
+      {
+        "ts": "2026-05-02T18:09:32.332488+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.1710839975858107
+      },
+      {
+        "ts": "2026-05-02T18:09:32.334226+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.641333001316525
+      },
+      {
+        "ts": "2026-05-02T18:09:33.288244+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.278292002505623
+      },
+      {
+        "ts": "2026-05-02T18:09:33.291099+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.7052919976995327
+      },
+      {
+        "ts": "2026-05-02T18:09:34.303409+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.7542500029085204
+      },
+      {
+        "ts": "2026-05-02T18:09:34.305493+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.9802079987130128
+      },
+      {
+        "ts": "2026-05-02T18:09:35.327594+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.21491700358456
+      },
+      {
+        "ts": "2026-05-02T18:09:35.328920+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.2574170032166876
+      },
+      {
+        "ts": "2026-05-02T18:09:36.287870+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.590041000279598
+      },
+      {
+        "ts": "2026-05-02T18:09:36.290919+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.906333000282757
+      },
+      {
+        "ts": "2026-05-02T18:09:37.316000+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.832250000210479
+      },
+      {
+        "ts": "2026-05-02T18:09:37.317947+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.8343749979976565
+      },
+      {
+        "ts": "2026-05-02T18:09:38.293909+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.137291998427827
+      },
+      {
+        "ts": "2026-05-02T18:09:38.295555+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.5625829983036965
+      },
+      {
+        "ts": "2026-05-02T18:09:39.319852+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.217165998648852
+      },
+      {
+        "ts": "2026-05-02T18:09:39.321839+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.9041670020669699
+      },
+      {
+        "ts": "2026-05-02T18:09:40.293056+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.51191599474987
+      },
+      {
+        "ts": "2026-05-02T18:09:40.295846+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.5048330062418245
+      },
+      {
+        "ts": "2026-05-02T18:09:41.320406+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.423791997192893
+      },
+      {
+        "ts": "2026-05-02T18:09:41.322942+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.4172920020646416
+      },
+      {
+        "ts": "2026-05-02T18:09:42.308798+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.3373340047546662
+      },
+      {
+        "ts": "2026-05-02T18:09:42.311570+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.6505839996389113
+      },
+      {
+        "ts": "2026-05-02T18:09:43.282437+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.664790998096578
+      },
+      {
+        "ts": "2026-05-02T18:09:43.284049+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.5519579974352382
+      },
+      {
+        "ts": "2026-05-02T18:09:44.296388+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.954791001684498
+      },
+      {
+        "ts": "2026-05-02T18:09:44.298138+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.646750002691988
+      },
+      {
+        "ts": "2026-05-02T18:09:45.332037+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.9825410019839182
+      },
+      {
+        "ts": "2026-05-02T18:09:45.334114+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.9738340051844716
+      },
+      {
+        "ts": "2026-05-02T18:09:46.304696+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.8381670053931884
+      },
+      {
+        "ts": "2026-05-02T18:09:46.307048+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.247667005576659
+      },
+      {
+        "ts": "2026-05-02T18:09:47.318262+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 4.16541699814843
+      },
+      {
+        "ts": "2026-05-02T18:09:47.320619+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.1667499968316406
+      },
+      {
+        "ts": "2026-05-02T18:09:48.286711+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.0341250021592714
+      },
+      {
+        "ts": "2026-05-02T18:09:48.289687+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.8067500024917535
+      },
+      {
+        "ts": "2026-05-02T18:09:49.314399+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.3170410024467856
+      },
+      {
+        "ts": "2026-05-02T18:09:49.316510+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.9986660045105964
+      },
+      {
+        "ts": "2026-05-02T18:09:50.294130+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.374457999598235
+      },
+      {
+        "ts": "2026-05-02T18:09:50.296423+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.180458999646362
+      },
+      {
+        "ts": "2026-05-02T18:09:51.295087+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 4.486707999603823
+      },
+      {
+        "ts": "2026-05-02T18:09:51.297884+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.692041998670902
+      },
+      {
+        "ts": "2026-05-02T18:09:52.308151+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.4030419992632233
+      },
+      {
+        "ts": "2026-05-02T18:09:52.311172+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.8912080015288666
+      },
+      {
+        "ts": "2026-05-02T18:09:53.284108+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.379667003173381
+      },
+      {
+        "ts": "2026-05-02T18:09:53.286111+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.8952910031657666
+      },
+      {
+        "ts": "2026-05-02T18:09:54.302257+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.125375005765818
+      },
+      {
+        "ts": "2026-05-02T18:09:54.305221+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.7259999988018535
+      },
+      {
+        "ts": "2026-05-02T18:09:55.311678+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.8565829998115078
+      },
+      {
+        "ts": "2026-05-02T18:09:55.313519+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.7551249984535389
+      },
+      {
+        "ts": "2026-05-02T18:09:56.282712+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.1759170014993288
+      },
+      {
+        "ts": "2026-05-02T18:09:56.284897+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.0832090012845583
+      },
+      {
+        "ts": "2026-05-02T18:09:57.308757+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.37483300245367
+      },
+      {
+        "ts": "2026-05-02T18:09:57.311515+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.570374999777414
+      },
+      {
+        "ts": "2026-05-02T18:09:58.308082+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.2815410013427027
+      },
+      {
+        "ts": "2026-05-02T18:09:58.311009+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 2.795625005092006
+      },
+      {
+        "ts": "2026-05-02T18:09:59.284902+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 2.6820829953067005
+      },
+      {
+        "ts": "2026-05-02T18:09:59.286490+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.5182499992079102
+      },
+      {
+        "ts": "2026-05-02T18:10:00.296536+00:00",
+        "endpoint": "/api/dashboard/stats",
+        "status": 401,
+        "latency_ms": 3.4955000010086223
+      },
+      {
+        "ts": "2026-05-02T18:10:00.298416+00:00",
+        "endpoint": "/api/dashboard/filters/options",
+        "status": 401,
+        "latency_ms": 1.7859579966170713
+      }
+    ]
+  }
+}

@@ -1,5 +1,6 @@
 import { useColorScheme } from "react-native";
 import { useThemeContextSafe } from "../context/ThemeContext";
+import { colors, darkColors, semanticColors } from "@/theme/legacyCompat";
 
 type LegacyThemeColors = {
   primary: string;
@@ -64,47 +65,35 @@ export type LegacyTheme = {
 };
 
 const buildLegacyTheme = (isDark: boolean): LegacyTheme => {
-  const lightOperational = {
-    primary: "#007B83",
-    secondary: "#545F72",
-    background: "#FAF9F6",
-    surface: "#FFFFFF",
-    surfaceElevated: "#FFFFFF",
-    textPrimary: "#1A1C1A",
-    textSecondary: "#586377",
-    border: "#E2E2E2",
-    borderLight: "#EFEEEB",
-    surfaceDark: "#FFFFFF",
-    card: "#FFFFFF",
-    placeholder: "#6E797A",
-    disabled: "#CDCFCB",
-    overlayPrimary: "rgba(0, 123, 131, 0.12)",
-  };
+  const neutral = colors.neutral ?? colors.gray;
+  const textColors = isDark ? darkColors.text : semanticColors.text;
+  const backgroundColors = isDark ? darkColors.background : semanticColors.background;
+  const borderColors = isDark ? darkColors.border : semanticColors.border;
 
   const theme = {
     theme: isDark ? "dark" : "light",
     isDark,
     colors: {
-      primary: isDark ? "#007bff" : lightOperational.primary,
-      secondary: isDark ? "#6c757d" : lightOperational.secondary,
-      background: isDark ? "#121212" : lightOperational.background,
-      surface: isDark ? "#1e1e1e" : lightOperational.surface,
-      surfaceElevated: isDark ? "#2a2a2a" : lightOperational.surfaceElevated,
+      primary: colors.primary[500],
+      secondary: colors.secondary?.[500] ?? neutral[500],
+      background: backgroundColors.default,
+      surface: backgroundColors.secondary,
+      surfaceElevated: backgroundColors.elevated,
       text: {
-        primary: isDark ? "#ffffff" : lightOperational.textPrimary,
-        secondary: isDark ? "#cccccc" : lightOperational.textSecondary,
+        primary: textColors.primary,
+        secondary: textColors.secondary,
       },
-      border: isDark ? "#333333" : lightOperational.border,
-      borderLight: isDark ? "#444444" : lightOperational.borderLight,
-      error: "#dc3545",
-      success: "#28a745",
-      warning: "#ffc107",
-      info: "#17a2b8",
-      surfaceDark: isDark ? "#1e1e1e" : lightOperational.surfaceDark,
-      card: isDark ? "#1e1e1e" : lightOperational.card,
-      placeholder: isDark ? "#666666" : lightOperational.placeholder,
-      disabled: isDark ? "#555555" : lightOperational.disabled,
-      overlayPrimary: isDark ? "rgba(13, 110, 253, 0.1)" : lightOperational.overlayPrimary,
+      border: borderColors.default,
+      borderLight: borderColors.subtle,
+      error: semanticColors.status.error,
+      success: semanticColors.status.success,
+      warning: semanticColors.status.warning,
+      info: semanticColors.status.info,
+      surfaceDark: darkColors.background.elevated,
+      card: backgroundColors.card,
+      placeholder: textColors.tertiary,
+      disabled: textColors.disabled,
+      overlayPrimary: backgroundColors.overlay,
     },
     spacing: {
       xs: 4,
@@ -211,17 +200,45 @@ const buildLegacyTheme = (isDark: boolean): LegacyTheme => {
       overlayPrimary: theme.colors.overlayPrimary,
     },
     gradients: {
-      primary: [theme.colors.primary, theme.colors.primary, theme.colors.primary],
+      primary: [
+        theme.colors.primary,
+        theme.colors.primary,
+        theme.colors.primary,
+      ],
       accent: [theme.colors.primary, theme.colors.primary],
       surface: [theme.colors.surface, theme.colors.background],
       success: [theme.colors.success, theme.colors.success],
       danger: [theme.colors.error, theme.colors.error],
-      aurora: [theme.colors.primary, theme.colors.secondary, theme.colors.primary],
-      auroraPrimary: [theme.colors.primary, theme.colors.secondary, theme.colors.primary],
-      auroraSecondary: [theme.colors.secondary, theme.colors.primary, theme.colors.secondary],
-      auroraSuccess: [theme.colors.success, theme.colors.success, theme.colors.success],
-      auroraWarm: [theme.colors.warning, theme.colors.error, theme.colors.primary],
-      auroraDark: [theme.colors.surfaceDark, theme.colors.surface, theme.colors.background],
+      aurora: [
+        theme.colors.primary,
+        theme.colors.secondary,
+        theme.colors.primary,
+      ],
+      auroraPrimary: [
+        theme.colors.primary,
+        theme.colors.secondary,
+        theme.colors.primary,
+      ],
+      auroraSecondary: [
+        theme.colors.secondary,
+        theme.colors.primary,
+        theme.colors.secondary,
+      ],
+      auroraSuccess: [
+        theme.colors.success,
+        theme.colors.success,
+        theme.colors.success,
+      ],
+      auroraWarm: [
+        theme.colors.warning,
+        theme.colors.error,
+        theme.colors.primary,
+      ],
+      auroraDark: [
+        theme.colors.surfaceDark,
+        theme.colors.surface,
+        theme.colors.background,
+      ],
     },
     spacing: theme.spacing,
     typography: theme.typography,

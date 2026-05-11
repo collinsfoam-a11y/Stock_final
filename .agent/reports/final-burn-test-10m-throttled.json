@@ -1,0 +1,30 @@
+{
+  "duration_seconds": 600,
+  "sync_interval_seconds": 7.0,
+  "read_interval_seconds": 1.0,
+  "sync": {
+    "ok": 86,
+    "fail": 0,
+    "success_rate": 1.0,
+    "latency_ms": {
+      "min": 2.9083750014251564,
+      "avg": 8.18257758142271,
+      "p95": 10.467833999427967,
+      "max": 12.68658400294953
+    }
+  },
+  "reads": {
+    "ok": 1800,
+    "fail": 0,
+    "success_rate": 1.0,
+    "gate_503": 0,
+    "latency_ms": {
+      "min": 2.421166998828994,
+      "avg": 8.554782641662719,
+      "p95": 12.900624999019783,
+      "max": 33.04054200270912
+    }
+  },
+  "failure_samples": [],
+  "timestamp": "2026-05-02T16:15:41.602192+00:00"
+}

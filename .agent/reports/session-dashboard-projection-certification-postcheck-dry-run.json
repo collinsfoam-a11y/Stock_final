@@ -1,0 +1,20 @@
+{
+  "mode": "dry-run",
+  "sessions_scanned": 71,
+  "missing_sessions": 0,
+  "repairable_sessions": 0,
+  "inserted_sessions": 0,
+  "skipped_existing": 0,
+  "skipped_missing_id": 0,
+  "errors": 0,
+  "missing_session_ids": [],
+  "candidate_rows": [],
+  "coverage_before": {
+    "total_sessions": 71,
+    "covered_sessions": 71
+  },
+  "coverage_after": {
+    "total_sessions": 71,
+    "covered_sessions": 71
+  }
+}

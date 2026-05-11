@@ -1,12 +1,21 @@
 /**
- * Supervisor Dashboard v2.0 - Aurora Design
+ * Supervisor Dashboard v2.0 - Operational UI
  *
  * Orchestrates dashboard data, navigation, haptics, and session creation.
  * Presentational sections live in focused supervisor dashboard components.
  */
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -29,20 +38,25 @@ import {
   ZoneOption,
 } from "../../src/components/supervisor/dashboard/supervisorDashboardShared";
 import {
+  ActivityType,
   AnimatedPressable,
-  GlassCard,
+  ModernCard,
   ScreenContainer,
   SpeedDialAction,
   SpeedDialMenu,
 } from "../../src/components/ui";
-import { createSession, getWarehouses, getZones } from "../../src/services/api/api";
-import { dashboardReadService } from "../../src/services/dashboardReadService";
-import { theme } from "../../src/styles/unifiedSystem";
+import { useUiTokens } from "../../src/hooks/useUiTokens";
+import { createSession, getSessions, getWarehouses, getZones } from "../../src/services/api/api";
+import { theme } from "../../src/styles/modernDesignSystem";
+import { colorWithAlpha } from "../../src/theme/themeTokens";
 import { Session } from "../../src/types";
 
 export default function SupervisorDashboard() {
   const router = useRouter();
   const { show } = useToast();
+  const uiTokens = useUiTokens();
+  const { width } = useWindowDimensions();
+  const showCompactQuickActions = width < 768;
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,10 +128,62 @@ export default function SupervisorDashboard() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const dashboardData = await dashboardReadService.getSupervisorDashboardData();
-      setSessions(dashboardData.sessions);
-      setStats(dashboardData.stats);
-      setActivities(dashboardData.activities);
+      const sessionsRes = await getSessions(1, 100);
+      const sessionData = sessionsRes.items || [];
+      setSessions(sessionData);
+
+      const nextStats = sessionData.reduce(
+        (acc: DashboardStats, session: Session) => {
+          acc.totalSessions++;
+          if (session.status === "OPEN") acc.openSessions++;
+          if (session.status === "CLOSED") acc.closedSessions++;
+          if (session.status === "RECONCILE") acc.reconciledSessions++;
+
+          acc.totalItems += session.total_items || 0;
+          acc.totalVariance += session.total_variance || 0;
+
+          if ((session.total_variance || 0) > 0) {
+            acc.positiveVariance += session.total_variance;
+          }
+          if ((session.total_variance || 0) < 0) {
+            acc.negativeVariance += session.total_variance;
+          }
+          if (Math.abs(session.total_variance ?? 0) > 1000) {
+            acc.highRiskSessions++;
+          }
+
+          return acc;
+        },
+        {
+          totalSessions: 0,
+          openSessions: 0,
+          closedSessions: 0,
+          reconciledSessions: 0,
+          totalItems: 0,
+          totalVariance: 0,
+          positiveVariance: 0,
+          negativeVariance: 0,
+          avgVariancePerSession: 0,
+          highRiskSessions: 0,
+        }
+      );
+
+      nextStats.avgVariancePerSession =
+        nextStats.totalSessions > 0 ? nextStats.totalVariance / nextStats.totalSessions : 0;
+
+      setStats(nextStats);
+
+      const recentActivities: ActivityItem[] = sessionData.slice(0, 10).map((session: Session) => ({
+        id: session.id,
+        type: "session" as ActivityType,
+        title: `Session ${session.status.toLowerCase()}`,
+        description: `${session.warehouse} - ${session.staff_name || "Unknown"} - ${session.total_items} items`,
+        timestamp: new Date(session.started_at),
+        status:
+          session.status === "OPEN" ? "info" : session.status === "CLOSED" ? "success" : "warning",
+      }));
+
+      setActivities(recentActivities);
     } catch (error) {
       console.error("Error loading dashboard data:", error);
       Alert.alert("Error", "Failed to load dashboard data");
@@ -129,12 +195,6 @@ export default function SupervisorDashboard() {
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
-
-  useEffect(() => {
-    return dashboardReadService.subscribeToDashboardInvalidation(() => {
-      loadData();
-    });
   }, [loadData]);
 
   const handleCreateSession = async () => {
@@ -296,8 +356,8 @@ export default function SupervisorDashboard() {
           onPress: () => router.push("/supervisor/settings" as any),
         },
       }}
-      backgroundType="aurora"
-      statusBarStyle="light"
+      backgroundType="solid"
+      statusBarStyle="dark"
       contentMode="static"
       noPadding
     >
@@ -306,10 +366,12 @@ export default function SupervisorDashboard() {
           <Ionicons
             name="cube-outline"
             size={48}
-            color={theme.colors.primary[500]}
+            color={uiTokens.colors.accent}
             style={styles.loadingIcon}
           />
-          <Text style={styles.loadingText}>Loading Dashboard...</Text>
+          <Text style={[styles.loadingText, { color: uiTokens.colors.textSecondary }]}>
+            Loading Dashboard...
+          </Text>
         </View>
       ) : (
         <ScrollView
@@ -322,8 +384,8 @@ export default function SupervisorDashboard() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={theme.colors.primary[500]}
-              colors={[theme.colors.primary[500]]}
+              tintColor={uiTokens.colors.accent}
+              colors={[uiTokens.colors.accent]}
             />
           }
           showsVerticalScrollIndicator={false}
@@ -341,30 +403,54 @@ export default function SupervisorDashboard() {
             stats={stats}
           />
 
-          <GlassCard style={styles.recommendationsCard} variant="strong">
+          <ModernCard style={styles.recommendationsCard} variant="outlined" elevation="none">
             <View style={styles.recommendationsHeader}>
-              <Ionicons name="bulb-outline" size={18} color={theme.colors.primary[400]} />
-              <Text style={styles.recommendationsTitle}>Suggested next steps</Text>
+              <Ionicons name="bulb-outline" size={18} color={uiTokens.colors.accent} />
+              <Text style={[styles.recommendationsTitle, { color: uiTokens.colors.textPrimary }]}>
+                Suggested next steps
+              </Text>
             </View>
             <View style={styles.recommendationsList}>
               {recommendedActions.map((action) => (
                 <AnimatedPressable
                   key={action.key}
-                  style={styles.recommendationAction}
+                  style={[
+                    styles.recommendationAction,
+                    {
+                      backgroundColor: uiTokens.colors.surface,
+                      borderColor: uiTokens.colors.border,
+                    },
+                  ]}
                   onPress={action.onPress}
                 >
-                  <View style={styles.recommendationIcon}>
-                    <Ionicons name={action.icon} size={16} color={theme.colors.primary[400]} />
+                  <View
+                    style={[
+                      styles.recommendationIcon,
+                      { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.12) },
+                    ]}
+                  >
+                    <Ionicons name={action.icon} size={16} color={uiTokens.colors.accent} />
                   </View>
                   <View style={styles.recommendationCopy}>
-                    <Text style={styles.recommendationTitle}>{action.title}</Text>
-                    <Text style={styles.recommendationDescription}>{action.description}</Text>
+                    <Text
+                      style={[styles.recommendationTitle, { color: uiTokens.colors.textPrimary }]}
+                    >
+                      {action.title}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.recommendationDescription,
+                        { color: uiTokens.colors.textSecondary },
+                      ]}
+                    >
+                      {action.description}
+                    </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color={theme.colors.text.tertiary} />
+                  <Ionicons name="chevron-forward" size={16} color={uiTokens.colors.textMuted} />
                 </AnimatedPressable>
               ))}
             </View>
-          </GlassCard>
+          </ModernCard>
 
           <SupervisorActivitySection
             activities={activities}
@@ -378,7 +464,9 @@ export default function SupervisorDashboard() {
             sessions={sessions}
           />
 
-          <View style={styles.bottomSpacer} />
+          <View
+            style={[styles.bottomSpacer, !showCompactQuickActions && styles.bottomSpacerCompact]}
+          />
         </ScrollView>
       )}
 
@@ -401,7 +489,9 @@ export default function SupervisorDashboard() {
         zones={zones}
       />
 
-      <SpeedDialMenu actions={speedDialActions} position="bottom-right" />
+      {showCompactQuickActions ? (
+        <SpeedDialMenu actions={speedDialActions} position="bottom-right" />
+      ) : null}
     </ScreenContainer>
   );
 }
@@ -515,9 +605,7 @@ const styles = StyleSheet.create({
   loadingIcon: {
     marginBottom: 16,
   },
-  loadingText: {
-    color: theme.colors.text.secondary,
-  },
+  loadingText: {},
   recommendationsCard: {
     marginBottom: theme.spacing.xl,
     padding: theme.spacing.lg,
@@ -529,7 +617,6 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   recommendationsTitle: {
-    color: theme.colors.text.primary,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -544,8 +631,6 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border.light,
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
   },
   recommendationIcon: {
     width: 28,
@@ -553,23 +638,23 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.full,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(59, 130, 246, 0.14)",
   },
   recommendationCopy: {
     flex: 1,
     gap: 2,
   },
   recommendationTitle: {
-    color: theme.colors.text.primary,
     fontSize: 13,
     fontWeight: "600",
   },
   recommendationDescription: {
-    color: theme.colors.text.secondary,
     fontSize: 12,
     lineHeight: 18,
   },
   bottomSpacer: {
     height: 100,
+  },
+  bottomSpacerCompact: {
+    height: 24,
   },
 });

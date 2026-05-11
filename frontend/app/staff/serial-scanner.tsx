@@ -8,18 +8,13 @@ import {
 } from "@/services/device/expoCamera";
 import { useRouter } from "expo-router";
 
-// Fix 1: Use correct alias imports
+import { semanticColors, colors } from "@/theme/legacyCompat";
+import { colorWithAlpha } from "@/theme/themeTokens";
 import { useScanGate } from "@/scanner/useScanGate";
-import {
-  ScanMode,
-  decide,
-  normalizeScanValue,
-  scoreCandidate,
-} from "@/scanner/serialScanRules";
-import { colors } from "@/theme/unified";
-import ModernButton from "@/components/ui/ModernButton";
+import { ScanMode, normalizeScanValue, scoreCandidate, decide } from "@/scanner/serialScanRules";
 import ModernHeader from "@/components/ui/ModernHeader";
-
+import ModernButton from "@/components/ui/ModernButton";
+import { safeBackNavigation } from "@/utils/navigation";
 function toast(msg: string) {
   Alert.alert("Scan", msg);
 }
@@ -60,7 +55,7 @@ export default function SerialScannerScreen() {
           toast(
             mode === "SERIAL"
               ? "Wrong code detected. Scan the SERIAL barcode (alphanumeric)."
-              : "Wrong code detected. Scan the ITEM EAN barcode (digits).",
+              : "Wrong code detected. Scan the ITEM EAN barcode (digits)."
           );
           return;
         }
@@ -88,25 +83,14 @@ export default function SerialScannerScreen() {
         release();
       }
     },
-    [mode, canProcess, release, addValue],
+    [mode, canProcess, release, addValue]
   );
 
   // Fix 5: Dynamic barcode types
   const barcodeTypes = useMemo(() => {
-    if (mode === "SERIAL")
-      return ["code128", "code39", "code93", "qr", "datamatrix"];
+    if (mode === "SERIAL") return ["code128", "code39", "code93", "qr", "datamatrix"];
     if (mode === "ITEM") return ["ean13", "ean8", "upc_a", "upc_e"];
-    return [
-      "ean13",
-      "ean8",
-      "upc_a",
-      "upc_e",
-      "code128",
-      "code39",
-      "code93",
-      "qr",
-      "datamatrix",
-    ];
+    return ["ean13", "ean8", "upc_a", "upc_e", "code128", "code39", "code93", "qr", "datamatrix"];
   }, [mode]);
 
   const handleOpenSettings = useCallback(async () => {
@@ -115,7 +99,7 @@ export default function SerialScannerScreen() {
     } catch {
       Alert.alert(
         "Settings Unavailable",
-        "Please enable camera permission manually from app settings.",
+        "Please enable camera permission manually from app settings."
       );
     }
   }, []);
@@ -125,26 +109,14 @@ export default function SerialScannerScreen() {
       <ModernHeader
         title="Scan Serials"
         showBackButton
-        onBackPress={() => router.back()}
+        onBackPress={() => safeBackNavigation(router, { userRole: "staff" })}
       />
 
       <View style={styles.topBar}>
         <View style={styles.modeRow}>
-          <ModeChip
-            label="SERIAL"
-            active={mode === "SERIAL"}
-            onPress={() => setMode("SERIAL")}
-          />
-          <ModeChip
-            label="ITEM"
-            active={mode === "ITEM"}
-            onPress={() => setMode("ITEM")}
-          />
-          <ModeChip
-            label="AUTO"
-            active={mode === "AUTO"}
-            onPress={() => setMode("AUTO")}
-          />
+          <ModeChip label="SERIAL" active={mode === "SERIAL"} onPress={() => setMode("SERIAL")} />
+          <ModeChip label="ITEM" active={mode === "ITEM"} onPress={() => setMode("ITEM")} />
+          <ModeChip label="AUTO" active={mode === "AUTO"} onPress={() => setMode("AUTO")} />
         </View>
 
         <Text style={styles.hint}>
@@ -199,9 +171,7 @@ export default function SerialScannerScreen() {
             variant="primary"
             style={{ height: 40, minWidth: 100 }}
             onPress={() => {
-              // Return logic: Pass back to previous screen
-              // For now, we just go back. Ideally update a store or pass params.
-              router.back();
+              safeBackNavigation(router, { userRole: "staff" });
               // In a real app, you might do: router.push({ pathname: '..', params: { newSerials: serials }})
               // or use a global store action.
             }}
@@ -216,28 +186,27 @@ export default function SerialScannerScreen() {
   );
 }
 
-function ModeChip(props: {
-  label: ScanMode;
-  active: boolean;
-  onPress: () => void;
-}) {
+function ModeChip(props: { label: ScanMode; active: boolean; onPress: () => void }) {
   return (
-    <Pressable
-      onPress={props.onPress}
-      style={[styles.chip, props.active && styles.chipActive]}
-    >
-      <Text style={[styles.chipText, props.active && styles.chipTextActive]}>
-        {props.label}
-      </Text>
+    <Pressable onPress={props.onPress} style={[styles.chip, props.active && styles.chipActive]}>
+      <Text style={[styles.chipText, props.active && styles.chipTextActive]}>{props.label}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#000" },
-  topBar: { paddingHorizontal: 16, paddingBottom: 12, backgroundColor: "#000" },
+  container: { flex: 1, backgroundColor: colors.neutral[950] },
+  topBar: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    backgroundColor: colors.neutral[950],
+  },
   modeRow: { flexDirection: "row", gap: 8, marginTop: 10 },
-  hint: { color: "rgba(255,255,255,0.7)", marginTop: 8, fontSize: 12 },
+  hint: {
+    color: colorWithAlpha(semanticColors.text.inverse, 0.7),
+    marginTop: 8,
+    fontSize: 12,
+  },
   permissionContainer: {
     flex: 1,
     justifyContent: "center",
@@ -246,7 +215,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   permissionText: {
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontSize: 14,
     textAlign: "center",
   },
@@ -259,13 +228,13 @@ const styles = StyleSheet.create({
     top: "30%",
     height: 200,
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.6)",
+    borderColor: colorWithAlpha(semanticColors.text.inverse, 0.6),
     borderRadius: 12,
   },
 
   bottomPanel: {
     padding: 16,
-    backgroundColor: "rgba(0,0,0,0.9)",
+    backgroundColor: colorWithAlpha(colors.neutral[950], 0.9),
     paddingBottom: 32,
   },
   statsRow: {
@@ -274,20 +243,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
-  count: { color: "#fff", fontSize: 18, fontWeight: "700" },
-  list: { color: "rgba(255,255,255,0.6)", fontSize: 12 },
+  count: { color: semanticColors.text.inverse, fontSize: 18, fontWeight: "700" },
+  list: { color: colorWithAlpha(semanticColors.text.inverse, 0.6), fontSize: 12 },
 
   chip: {
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: colorWithAlpha(semanticColors.text.inverse, 0.2),
   },
   chipActive: {
     backgroundColor: colors.primary[500],
     borderColor: colors.primary[500],
   },
-  chipText: { color: "#fff", fontSize: 12, fontWeight: "600" },
-  chipTextActive: { color: "#fff" },
+  chipText: { color: semanticColors.text.inverse, fontSize: 12, fontWeight: "600" },
+  chipTextActive: { color: semanticColors.text.inverse },
 });

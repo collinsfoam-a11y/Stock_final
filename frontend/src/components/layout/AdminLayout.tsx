@@ -4,18 +4,13 @@
  */
 
 import React, { useState } from "react";
-import {
-  View,
-  StyleSheet,
-  useWindowDimensions,
-  ViewStyle,
-  TouchableOpacity,
-} from "react-native";
+import { View, StyleSheet, useWindowDimensions, ViewStyle, TouchableOpacity } from "react-native";
 import { useSegments } from "expo-router";
 import { Screen } from "./Screen";
 import { AppHeader } from "../navigation/AppHeader";
 import { AdminSidebar } from "../navigation/AdminSidebar";
 import { layout, breakpoints } from "../../styles/globalStyles";
+import { zIndex as uiZIndex } from "@/theme/designTokens";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -101,9 +96,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         style={[
           styles.content,
           {
-            marginLeft: sidebarCollapsed
-              ? layout.sidebarCollapsedWidth
-              : layout.sidebarWidth,
+            marginLeft: sidebarCollapsed ? layout.sidebarCollapsedWidth : layout.sidebarWidth,
           },
         ]}
       >
@@ -144,7 +137,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 1000,
+    zIndex: uiZIndex.toast,
   },
   drawerBackdrop: {
     flex: 1,
@@ -156,6 +149,6 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: layout.sidebarWidth,
-    zIndex: 1001,
+    zIndex: uiZIndex.toast,
   },
 });

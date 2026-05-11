@@ -1,4 +1,5 @@
 import api from "../httpClient";
+import type { BatchSyncResponse, SyncBatchResult, SyncRecord } from "../../types/sync";
 
 const unwrapApiPayload = <T>(payload: T | { data?: T } | null | undefined): T | null => {
   if (
@@ -13,11 +14,40 @@ const unwrapApiPayload = <T>(payload: T | { data?: T } | null | undefined): T | 
   return (payload as T | null | undefined) ?? null;
 };
 
-// Batch sync offline queue
-export const syncBatch = async (operations: Record<string, unknown>[]) => {
+const normalizeSyncBatchResponse = (payload: BatchSyncResponse): SyncBatchResult => {
+  if (Array.isArray(payload.results)) {
+    return { ...payload, results: payload.results };
+  }
+
+  return {
+    ...payload,
+    results: [
+      ...(payload.ok || []).map((id) => ({ id, success: true })),
+      ...(payload.conflicts || []).map((conflict) => ({
+        id: conflict.client_record_id,
+        success: false,
+        message: conflict.message,
+      })),
+      ...(payload.errors || []).map((error) => ({
+        id: error.client_record_id,
+        success: false,
+        message: error.message,
+      })),
+    ],
+  };
+};
+
+// Batch sync offline queue using the backend canonical records contract.
+export const syncBatch = async (
+  records: SyncRecord[],
+  batchId?: string
+): Promise<SyncBatchResult> => {
   try {
-    const response = await api.post("/api/sync/batch", { operations });
-    return response.data;
+    const response = await api.post("/api/sync/batch", {
+      records,
+      ...(batchId ? { batch_id: batchId } : {}),
+    });
+    return normalizeSyncBatchResponse(response.data);
   } catch (error: unknown) {
     __DEV__ && console.warn("Sync batch error:", error);
     throw error;

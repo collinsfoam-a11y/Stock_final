@@ -17,11 +17,7 @@ import {
   AppState,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  CameraView,
-  type CameraViewRef,
-  useCameraPermissions,
-} from "@/services/device/expoCamera";
+import { CameraView, type CameraViewRef, useCameraPermissions } from "@/services/device/expoCamera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   modernColors,
@@ -30,6 +26,7 @@ import {
   modernBorderRadius,
 } from "../../styles/unifiedSystem";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface PhotoCaptureModalProps {
   visible: boolean;
   onClose: () => void;
@@ -118,7 +115,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     } catch {
       Alert.alert(
         "Settings Unavailable",
-        "Unable to open app settings. Please enable camera permission manually in system settings.",
+        "Unable to open app settings. Please enable camera permission manually in system settings."
       );
     }
   };
@@ -173,19 +170,11 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
             <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-              <Ionicons
-                name="close"
-                size={24}
-                color={modernColors.text.primary}
-              />
+              <Ionicons name="close" size={24} color={modernColors.text.primary} />
             </TouchableOpacity>
           </View>
           <View style={styles.permissionContainer}>
-            <Ionicons
-              name="camera-outline"
-              size={64}
-              color={modernColors.text.tertiary}
-            />
+            <Ionicons name="camera-outline" size={64} color={modernColors.text.tertiary} />
             <Text style={styles.permissionText}>
               Camera permission is required to capture photos
             </Text>
@@ -201,13 +190,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             ) : (
               <>
                 <Text style={styles.permissionHelpText}>
-                  Camera permission was denied. Open app settings and enable
-                  camera access to continue.
+                  Camera permission was denied. Open app settings and enable camera access to
+                  continue.
                 </Text>
-                <TouchableOpacity
-                  style={styles.permissionButton}
-                  onPress={handleOpenSettings}
-                >
+                <TouchableOpacity style={styles.permissionButton} onPress={handleOpenSettings}>
                   <Text style={styles.permissionButtonText}>Open Settings</Text>
                 </TouchableOpacity>
               </>
@@ -231,27 +217,19 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-            <Ionicons
-              name="close"
-              size={24}
-              color={modernColors.text.primary}
-            />
+            <Ionicons name="close" size={24} color={modernColors.text.primary} />
           </TouchableOpacity>
         </View>
 
         {/* Camera or Preview */}
         <View style={styles.cameraContainer}>
           {capturedPhoto ? (
-            <Image
-              source={{ uri: capturedPhoto }}
-              style={styles.preview}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: capturedPhoto }} style={styles.preview} resizeMode="cover" />
           ) : (
             <CameraView ref={cameraRef} style={styles.camera} facing="back">
               {isCapturing && (
                 <View style={styles.capturingOverlay}>
-                  <ActivityIndicator size="large" color="#fff" />
+                  <ActivityIndicator size="large" color={uiSemanticColors.text.inverse} />
                 </View>
               )}
             </CameraView>
@@ -266,14 +244,14 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                 style={[styles.controlButton, styles.retakeButton]}
                 onPress={handleRetake}
               >
-                <Ionicons name="refresh" size={24} color="#fff" />
+                <Ionicons name="refresh" size={24} color={uiSemanticColors.text.inverse} />
                 <Text style={styles.controlButtonText}>Retake</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.controlButton, styles.confirmButton]}
                 onPress={handleConfirm}
               >
-                <Ionicons name="checkmark" size={24} color="#fff" />
+                <Ionicons name="checkmark" size={24} color={uiSemanticColors.text.inverse} />
                 <Text style={styles.controlButtonText}>Use Photo</Text>
               </TouchableOpacity>
             </>
@@ -333,7 +311,7 @@ const styles = StyleSheet.create({
   },
   permissionButtonText: {
     ...modernTypography.button.medium,
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
   },
   permissionHelpText: {
     ...modernTypography.body.small,
@@ -398,7 +376,7 @@ const styles = StyleSheet.create({
   },
   controlButtonText: {
     ...modernTypography.button.medium,
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
   },
 });
 

@@ -24,8 +24,9 @@ import Animated, {
   Extrapolation,
 } from "react-native-reanimated";
 import { useThemeContext } from "../../context/ThemeContext";
-import { GlassCard } from "./GlassCard";
+import { AppCard } from "./AppCard";
 
+import { shadows as uiShadows } from "@/theme/legacyCompat";
 const SWIPE_THRESHOLD = 80;
 
 interface SwipeAction {
@@ -69,10 +70,8 @@ const SwipeCard: React.FC<SwipeCardProps> = ({
       const newValue = contextX.value + event.translationX;
 
       // Limit swipe distance
-      const maxSwipe =
-        rightActions.length > 0 ? SWIPE_THRESHOLD * rightActions.length : 0;
-      const minSwipe =
-        leftActions.length > 0 ? -SWIPE_THRESHOLD * leftActions.length : 0;
+      const maxSwipe = rightActions.length > 0 ? SWIPE_THRESHOLD * rightActions.length : 0;
+      const minSwipe = leftActions.length > 0 ? -SWIPE_THRESHOLD * leftActions.length : 0;
 
       translateX.value = Math.max(minSwipe, Math.min(maxSwipe, newValue));
     })
@@ -81,10 +80,7 @@ const SwipeCard: React.FC<SwipeCardProps> = ({
       if (translateX.value > SWIPE_THRESHOLD / 2 && leftActions.length > 0) {
         translateX.value = withSpring(SWIPE_THRESHOLD);
         runOnJS(triggerHaptic)();
-      } else if (
-        translateX.value < -SWIPE_THRESHOLD / 2 &&
-        rightActions.length > 0
-      ) {
+      } else if (translateX.value < -SWIPE_THRESHOLD / 2 && rightActions.length > 0) {
         translateX.value = withSpring(-SWIPE_THRESHOLD);
         runOnJS(triggerHaptic)();
       } else {
@@ -101,16 +97,11 @@ const SwipeCard: React.FC<SwipeCardProps> = ({
       translateX.value,
       [0, SWIPE_THRESHOLD / 2, SWIPE_THRESHOLD],
       [0, 0.5, 1],
-      Extrapolation.CLAMP,
+      Extrapolation.CLAMP
     ),
     transform: [
       {
-        scale: interpolate(
-          translateX.value,
-          [0, SWIPE_THRESHOLD],
-          [0.8, 1],
-          Extrapolation.CLAMP,
-        ),
+        scale: interpolate(translateX.value, [0, SWIPE_THRESHOLD], [0.8, 1], Extrapolation.CLAMP),
       },
     ],
   }));
@@ -120,16 +111,11 @@ const SwipeCard: React.FC<SwipeCardProps> = ({
       translateX.value,
       [-SWIPE_THRESHOLD, -SWIPE_THRESHOLD / 2, 0],
       [1, 0.5, 0],
-      Extrapolation.CLAMP,
+      Extrapolation.CLAMP
     ),
     transform: [
       {
-        scale: interpolate(
-          translateX.value,
-          [-SWIPE_THRESHOLD, 0],
-          [1, 0.8],
-          Extrapolation.CLAMP,
-        ),
+        scale: interpolate(translateX.value, [-SWIPE_THRESHOLD, 0], [1, 0.8], Extrapolation.CLAMP),
       },
     ],
   }));
@@ -152,10 +138,7 @@ const SwipeCard: React.FC<SwipeCardProps> = ({
     // theme.shadows.md is a string e.g. "0 4px 6px...", we might need to parse or use elevation if RN
     // For now, let's just use elevation 4 roughly equivalent to MD
     elevation: 4,
-    shadowColor: theme.colors.text,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...uiShadows.md,
   };
 
   const actionLabelStyle = {
@@ -177,10 +160,7 @@ const SwipeCard: React.FC<SwipeCardProps> = ({
           {leftActions.map((action, index) => (
             <Animated.View
               key={index}
-              style={[
-                actionButtonStyle,
-                { backgroundColor: action.backgroundColor },
-              ]}
+              style={[actionButtonStyle, { backgroundColor: action.backgroundColor }]}
             >
               <Ionicons
                 name={action.icon}
@@ -189,9 +169,7 @@ const SwipeCard: React.FC<SwipeCardProps> = ({
                 onPress={() => handleActionPress(action)}
               />
               {action.label && (
-                <Text style={[actionLabelStyle, { color: action.color }]}>
-                  {action.label}
-                </Text>
+                <Text style={[actionLabelStyle, { color: action.color }]}>{action.label}</Text>
               )}
             </Animated.View>
           ))}
@@ -210,10 +188,7 @@ const SwipeCard: React.FC<SwipeCardProps> = ({
           {rightActions.map((action, index) => (
             <Animated.View
               key={index}
-              style={[
-                actionButtonStyle,
-                { backgroundColor: action.backgroundColor },
-              ]}
+              style={[actionButtonStyle, { backgroundColor: action.backgroundColor }]}
             >
               <Ionicons
                 name={action.icon}
@@ -222,9 +197,7 @@ const SwipeCard: React.FC<SwipeCardProps> = ({
                 onPress={() => handleActionPress(action)}
               />
               {action.label && (
-                <Text style={[actionLabelStyle, { color: action.color }]}>
-                  {action.label}
-                </Text>
+                <Text style={[actionLabelStyle, { color: action.color }]}>{action.label}</Text>
               )}
             </Animated.View>
           ))}
@@ -234,9 +207,9 @@ const SwipeCard: React.FC<SwipeCardProps> = ({
       {/* Main Card */}
       <GestureDetector gesture={panGesture}>
         <Animated.View style={cardStyle}>
-          <GlassCard variant="medium" elevation="md">
+          <AppCard variant="default" elevation="md">
             {children}
-          </GlassCard>
+          </AppCard>
         </Animated.View>
       </GestureDetector>
     </View>

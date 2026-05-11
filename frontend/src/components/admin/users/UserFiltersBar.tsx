@@ -1,10 +1,12 @@
-import React from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import React, { useMemo } from "react";
+import { StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { AnimatedPressable } from "@/components/ui";
-import { auroraTheme } from "@/theme/auroraTheme";
 import { userTextStyles } from "@/components/admin/users/userManagementShared";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
 
 interface UserFiltersBarProps {
   activeFilter: boolean | null;
@@ -27,30 +29,30 @@ export function UserFiltersBar({
   search,
   selectedCount,
 }: UserFiltersBarProps) {
+  const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
+
   return (
     <>
       <View style={styles.filterBar}>
         <View style={styles.searchContainer}>
-          <Ionicons
-            name="search"
-            size={20}
-            color={auroraTheme.colors.neutral[400]}
-          />
+          <Ionicons name="search" size={20} color={uiTokens.colors.textMuted} />
           <TextInput
             style={styles.searchInput}
             testID="users-search-input"
             placeholder="Search users..."
-            placeholderTextColor={auroraTheme.colors.neutral[400]}
+            placeholderTextColor={uiTokens.colors.textMuted}
             value={search}
             onChangeText={onChangeSearch}
+            accessibilityLabel="Search users"
           />
           {search.length > 0 && (
-            <AnimatedPressable onPress={() => onChangeSearch("")}>
-              <Ionicons
-                name="close-circle"
-                size={20}
-                color={auroraTheme.colors.neutral[400]}
-              />
+            <AnimatedPressable
+              style={styles.clearSearchButton}
+              onPress={() => onChangeSearch("")}
+              {...getAccessibleButtonProps({ label: "Clear user search" })}
+            >
+              <Ionicons name="close-circle" size={20} color={uiTokens.colors.textMuted} />
             </AnimatedPressable>
           )}
         </View>
@@ -62,6 +64,7 @@ export function UserFiltersBar({
               active={!roleFilter}
               label="All"
               onPress={() => onChangeRoleFilter(null)}
+              styles={styles}
             />
             {["staff", "supervisor", "admin"].map((role) => (
               <FilterButton
@@ -69,6 +72,7 @@ export function UserFiltersBar({
                 active={roleFilter === role}
                 label={role.charAt(0).toUpperCase() + role.slice(1)}
                 onPress={() => onChangeRoleFilter(roleFilter === role ? null : role)}
+                styles={styles}
               />
             ))}
           </View>
@@ -81,18 +85,19 @@ export function UserFiltersBar({
               active={activeFilter === null}
               label="All"
               onPress={() => onChangeActiveFilter(null)}
+              styles={styles}
             />
             <FilterButton
               active={activeFilter === true}
               label="Active"
               onPress={() => onChangeActiveFilter(activeFilter === true ? null : true)}
+              styles={styles}
             />
             <FilterButton
               active={activeFilter === false}
               label="Inactive"
-              onPress={() =>
-                onChangeActiveFilter(activeFilter === false ? null : false)
-              }
+              onPress={() => onChangeActiveFilter(activeFilter === false ? null : false)}
+              styles={styles}
             />
           </View>
         </View>
@@ -107,18 +112,24 @@ export function UserFiltersBar({
               label="Activate"
               style={styles.bulkButtonSuccess}
               onPress={() => onBulkAction("activate")}
+              styles={styles}
+              textColor={uiTokens.colors.surface}
             />
             <BulkButton
               icon="pause-circle"
               label="Deactivate"
               style={styles.bulkButtonWarning}
               onPress={() => onBulkAction("deactivate")}
+              styles={styles}
+              textColor={uiTokens.colors.surface}
             />
             <BulkButton
               icon="trash"
               label="Delete"
               style={styles.bulkButtonDanger}
               onPress={() => onBulkAction("delete")}
+              styles={styles}
+              textColor={uiTokens.colors.surface}
             />
           </View>
         </View>
@@ -131,15 +142,21 @@ function FilterButton({
   active,
   label,
   onPress,
+  styles,
 }: {
   active: boolean;
   label: string;
   onPress: () => void;
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
     <AnimatedPressable
       style={[styles.filterButton, active && styles.filterButtonActive]}
       onPress={onPress}
+      {...getAccessibleButtonProps({
+        label: `${label} user filter`,
+        selected: active,
+      })}
     >
       <Text style={[styles.filterButtonText, active && styles.filterButtonTextActive]}>
         {label}
@@ -153,118 +170,139 @@ function BulkButton({
   label,
   onPress,
   style,
+  styles,
+  textColor,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
-  style: object;
+  style: StyleProp<ViewStyle>;
+  styles: ReturnType<typeof createStyles>;
+  textColor: string;
 }) {
   return (
-    <AnimatedPressable style={[styles.bulkButton, style]} onPress={onPress}>
-      <Ionicons name={icon} size={16} color="#fff" />
+    <AnimatedPressable
+      style={[styles.bulkButton, style]}
+      onPress={onPress}
+      {...getAccessibleButtonProps({ label: `${label} selected users` })}
+    >
+      <Ionicons name={icon} size={16} color={textColor} />
       <Text style={styles.bulkButtonText}>{label}</Text>
     </AnimatedPressable>
   );
 }
 
-const styles = StyleSheet.create({
+type UserFilterTokens = ReturnType<typeof useUiTokens>;
+
+const createStyles = (uiTokens: UserFilterTokens) =>
+  StyleSheet.create({
   filterBar: {
-    paddingHorizontal: auroraTheme.spacing.lg,
-    paddingVertical: auroraTheme.spacing.md,
-    backgroundColor: auroraTheme.colors.background.secondary,
-    marginBottom: auroraTheme.spacing.md,
-    gap: auroraTheme.spacing.md,
+    paddingHorizontal: uiTokens.spacing.lg,
+    paddingVertical: uiTokens.spacing.md,
+    backgroundColor: uiTokens.colors.surface,
+    marginBottom: uiTokens.spacing.md,
+    gap: uiTokens.spacing.md,
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: auroraTheme.colors.background.primary,
-    borderRadius: auroraTheme.borderRadius.md,
-    paddingHorizontal: auroraTheme.spacing.sm,
-    paddingVertical: auroraTheme.spacing.xs,
-    gap: auroraTheme.spacing.xs,
+    backgroundColor: uiTokens.colors.background,
+    borderRadius: uiTokens.radius.md,
+    paddingHorizontal: uiTokens.spacing.sm,
+    paddingVertical: uiTokens.spacing.xs,
+    gap: uiTokens.spacing.xs,
   },
   searchInput: {
     flex: 1,
     ...userTextStyles.body,
-    color: auroraTheme.colors.text.primary,
-    padding: auroraTheme.spacing.xs,
+    color: uiTokens.colors.textPrimary,
+    padding: uiTokens.spacing.xs,
+  },
+  clearSearchButton: {
+    ...getMinimumTouchTargetStyle(),
+    alignItems: "center",
+    justifyContent: "center",
   },
   filterGroup: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.sm,
+    gap: uiTokens.spacing.sm,
     flexWrap: "wrap",
   },
   filterLabel: {
     ...userTextStyles.label,
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
   },
   filterButtons: {
     flexDirection: "row",
-    gap: auroraTheme.spacing.xs,
+    gap: uiTokens.spacing.xs,
     flexWrap: "wrap",
   },
   filterButton: {
-    paddingHorizontal: auroraTheme.spacing.sm,
-    paddingVertical: auroraTheme.spacing.xs,
-    borderRadius: auroraTheme.borderRadius.md,
-    backgroundColor: auroraTheme.colors.background.primary,
+    ...getMinimumTouchTargetStyle(),
+    paddingHorizontal: uiTokens.spacing.sm,
+    paddingVertical: uiTokens.spacing.xs,
+    borderRadius: uiTokens.radius.md,
+    backgroundColor: uiTokens.colors.background,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.neutral[200],
+    borderColor: uiTokens.colors.border,
+    alignItems: "center",
+    justifyContent: "center",
   },
   filterButtonActive: {
-    backgroundColor: auroraTheme.colors.primary[100],
-    borderColor: auroraTheme.colors.primary[300],
+    backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.12),
+    borderColor: colorWithAlpha(uiTokens.colors.accent, 0.42),
   },
   filterButtonText: {
     ...userTextStyles.caption,
-    color: auroraTheme.colors.text.secondary,
+    color: uiTokens.colors.textSecondary,
   },
   filterButtonTextActive: {
-    color: auroraTheme.colors.primary[700],
+    color: uiTokens.colors.accentStrong,
     fontWeight: "600",
   },
   bulkActions: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: auroraTheme.spacing.lg,
-    paddingVertical: auroraTheme.spacing.sm,
-    backgroundColor: auroraTheme.colors.primary[50],
-    marginHorizontal: auroraTheme.spacing.lg,
-    marginBottom: auroraTheme.spacing.md,
-    borderRadius: auroraTheme.borderRadius.md,
+    paddingHorizontal: uiTokens.spacing.lg,
+    paddingVertical: uiTokens.spacing.sm,
+    backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.1),
+    marginHorizontal: uiTokens.spacing.lg,
+    marginBottom: uiTokens.spacing.md,
+    borderRadius: uiTokens.radius.md,
   },
   bulkText: {
     ...userTextStyles.label,
-    color: auroraTheme.colors.primary[700],
+    color: uiTokens.colors.accentStrong,
     fontWeight: "600",
   },
   bulkButtons: {
     flexDirection: "row",
-    gap: auroraTheme.spacing.sm,
+    gap: uiTokens.spacing.sm,
   },
   bulkButton: {
+    ...getMinimumTouchTargetStyle(),
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.xs,
-    paddingHorizontal: auroraTheme.spacing.sm,
-    paddingVertical: auroraTheme.spacing.xs,
-    borderRadius: auroraTheme.borderRadius.sm,
+    justifyContent: "center",
+    gap: uiTokens.spacing.xs,
+    paddingHorizontal: uiTokens.spacing.sm,
+    paddingVertical: uiTokens.spacing.xs,
+    borderRadius: uiTokens.radius.sm,
   },
   bulkButtonSuccess: {
-    backgroundColor: auroraTheme.colors.success[600],
+    backgroundColor: uiTokens.colors.success,
   },
   bulkButtonWarning: {
-    backgroundColor: auroraTheme.colors.warning[600],
+    backgroundColor: uiTokens.colors.warning,
   },
   bulkButtonDanger: {
-    backgroundColor: auroraTheme.colors.error[600],
+    backgroundColor: uiTokens.colors.error,
   },
   bulkButtonText: {
     ...userTextStyles.caption,
-    color: "#fff",
+    color: uiTokens.colors.surface,
     fontWeight: "600",
   },
 });

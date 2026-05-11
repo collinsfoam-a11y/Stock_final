@@ -1,10 +1,11 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { PremiumInput } from "@/components/premium/PremiumInput";
-import { modernColors } from "@/styles/unifiedSystem";
+import { AppInput } from "@/components/ui/AppInput";
+import { modernColors } from "@/styles/modernDesignSystem";
 import { DEFAULT_FLOOR_OPTIONS } from "@/config/location";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 export type LocationVerificationSectionProps = {
   floorNo?: string | null;
   rackNo?: string | null;
@@ -17,9 +18,7 @@ export type LocationVerificationSectionProps = {
   recentRacks?: string[];
 };
 
-export const LocationVerificationSection: React.FC<
-  LocationVerificationSectionProps
-> = ({
+export const LocationVerificationSection: React.FC<LocationVerificationSectionProps> = ({
   floorNo,
   rackNo,
   onSelectFloor,
@@ -31,15 +30,14 @@ export const LocationVerificationSection: React.FC<
   recentRacks,
 }) => {
   const nowText = dateTimeText || new Date().toLocaleString();
-  const OPTIONS =
-    floorOptions && floorOptions.length ? floorOptions : DEFAULT_FLOOR_OPTIONS;
+  const OPTIONS = floorOptions && floorOptions.length ? floorOptions : DEFAULT_FLOOR_OPTIONS;
   const typedRack = (rackNo || "").trim();
   const rackSuggestions = (recentRacks || [])
     .filter(
       (r) =>
         typedRack &&
         r.toLowerCase().includes(typedRack.toLowerCase()) &&
-        r.toLowerCase() !== typedRack.toLowerCase(),
+        r.toLowerCase() !== typedRack.toLowerCase()
     )
     .slice(0, 5);
 
@@ -63,7 +61,7 @@ export const LocationVerificationSection: React.FC<
             backgroundColor: modernColors.primary[500],
           }}
         >
-          <Ionicons name="location" size={14} color="#fff" />
+          <Ionicons name="location" size={14} color={uiSemanticColors.text.inverse} />
         </View>
         <Text
           style={{
@@ -88,9 +86,7 @@ export const LocationVerificationSection: React.FC<
       <View style={{ flexDirection: "row", gap: 12 }}>
         {/* Floor chips */}
         <View style={{ flex: 1 }}>
-          <Text style={{ color: modernColors.text.secondary, marginBottom: 6 }}>
-            Floor
-          </Text>
+          <Text style={{ color: modernColors.text.secondary, marginBottom: 6 }}>Floor</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
             {OPTIONS.map((opt) => {
               const active = floorNo === opt;
@@ -111,7 +107,7 @@ export const LocationVerificationSection: React.FC<
                 >
                   <Text
                     style={{
-                      color: active ? "#fff" : modernColors.text.primary,
+                      color: active ? uiSemanticColors.text.inverse : modernColors.text.primary,
                       fontWeight: "600",
                     }}
                   >
@@ -125,7 +121,7 @@ export const LocationVerificationSection: React.FC<
 
         {/* Rack input */}
         <View style={{ flex: 1 }}>
-          <PremiumInput
+          <AppInput
             label="Rack"
             value={rackNo || ""}
             onChangeText={(text) => onChangeRack(text)}
@@ -152,9 +148,7 @@ export const LocationVerificationSection: React.FC<
                   accessibilityLabel={`Use suggestion ${sugg}`}
                   testID={`suggest-rack-${sugg.replace(/\s+/g, "-").toLowerCase()}`}
                 >
-                  <Text style={{ color: modernColors.text.primary }}>
-                    {sugg}
-                  </Text>
+                  <Text style={{ color: modernColors.text.primary }}>{sugg}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -170,9 +164,7 @@ export const LocationVerificationSection: React.FC<
                   marginBottom: 6,
                 }}
               >
-                <Text style={{ color: modernColors.text.secondary }}>
-                  Recent Racks
-                </Text>
+                <Text style={{ color: modernColors.text.secondary }}>Recent Racks</Text>
                 {onClearRecentRacks && (
                   <TouchableOpacity
                     onPress={onClearRecentRacks}
@@ -225,9 +217,7 @@ export const LocationVerificationSection: React.FC<
       {/* Verified by & Date/Time */}
       <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: modernColors.text.secondary, marginBottom: 6 }}>
-            Verified By
-          </Text>
+          <Text style={{ color: modernColors.text.secondary, marginBottom: 6 }}>Verified By</Text>
           <View
             style={{
               height: 44,
@@ -241,23 +231,14 @@ export const LocationVerificationSection: React.FC<
               gap: 8,
             }}
           >
-            <Ionicons
-              name="person"
-              size={16}
-              color={modernColors.text.tertiary}
-            />
-            <Text
-              numberOfLines={1}
-              style={{ color: modernColors.text.primary }}
-            >
+            <Ionicons name="person" size={16} color={modernColors.text.tertiary} />
+            <Text numberOfLines={1} style={{ color: modernColors.text.primary }}>
               {username}
             </Text>
           </View>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: modernColors.text.secondary, marginBottom: 6 }}>
-            Date & Time
-          </Text>
+          <Text style={{ color: modernColors.text.secondary, marginBottom: 6 }}>Date & Time</Text>
           <View
             style={{
               height: 44,
@@ -271,15 +252,8 @@ export const LocationVerificationSection: React.FC<
               gap: 8,
             }}
           >
-            <Ionicons
-              name="time"
-              size={16}
-              color={modernColors.text.tertiary}
-            />
-            <Text
-              numberOfLines={1}
-              style={{ color: modernColors.text.primary }}
-            >
+            <Ionicons name="time" size={16} color={modernColors.text.tertiary} />
+            <Text numberOfLines={1} style={{ color: modernColors.text.primary }}>
               {nowText}
             </Text>
           </View>

@@ -4,7 +4,7 @@ import os
 import shutil
 import sys
 import tempfile
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator, Callable, Generator
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -157,6 +157,24 @@ async def authenticated_headers(test_db: InMemoryDatabase) -> dict:
     )
 
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def make_auth_headers() -> Callable[[str, str], dict[str, str]]:
+    """Create authentication headers for one of the seeded test users."""
+    from backend.auth.jwt_provider import encode
+
+    jwt_secret = os.getenv("JWT_SECRET")
+    jwt_algorithm = os.getenv("JWT_ALGORITHM")
+
+    if not jwt_secret or not jwt_algorithm:
+        raise ValueError("JWT_SECRET or JWT_ALGORITHM environment variable is not set")
+
+    def _make(username: str, role: str) -> dict[str, str]:
+        token = encode({"sub": username, "role": role}, jwt_secret, algorithm=jwt_algorithm)
+        return {"Authorization": f"Bearer {token}"}
+
+    return _make
 
 
 @pytest.fixture

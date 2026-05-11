@@ -2,8 +2,9 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { useTheme } from "../../hooks/useTheme";
+import { useUiTokens } from "../../hooks/useUiTokens";
 import { useSettingsStore } from "../../store/settingsStore";
+import { colorWithAlpha } from "../../theme/themeTokens";
 
 function formatRelativeTime(value: string | null): string {
   if (!value) {
@@ -30,7 +31,7 @@ function formatRelativeTime(value: string | null): string {
 }
 
 export function SettingsSyncStatus() {
-  const { colors, typography, borderRadius } = useTheme();
+  const uiTokens = useUiTokens();
   const isSyncing = useSettingsStore((state) => state.isSyncing);
   const hasPendingSync = useSettingsStore((state) => state.hasPendingSync);
   const lastSyncError = useSettingsStore((state) => state.lastSyncError);
@@ -41,26 +42,26 @@ export function SettingsSyncStatus() {
         icon: "warning-outline" as const,
         label: "Sync issue",
         detail: "Changes are stored locally and will retry.",
-        color: colors.warning,
-        background: `${colors.warning}18`,
-        border: `${colors.warning}30`,
+        color: uiTokens.colors.warning,
+        background: colorWithAlpha(uiTokens.colors.warning, 0.14),
+        border: colorWithAlpha(uiTokens.colors.warning, 0.3),
       }
     : isSyncing || hasPendingSync
       ? {
           icon: "cloud-upload-outline" as const,
           label: "Saving settings",
           detail: "Syncing your changes to your account.",
-          color: colors.accent || colors.primary,
-          background: `${colors.accent || colors.primary}18`,
-          border: `${colors.accent || colors.primary}30`,
+          color: uiTokens.colors.accent,
+          background: colorWithAlpha(uiTokens.colors.accent, 0.14),
+          border: colorWithAlpha(uiTokens.colors.accent, 0.3),
         }
       : {
           icon: "checkmark-circle-outline" as const,
           label: "Settings saved",
           detail: formatRelativeTime(lastSyncedAt),
-          color: colors.success,
-          background: `${colors.success}18`,
-          border: `${colors.success}30`,
+          color: uiTokens.colors.success,
+          background: colorWithAlpha(uiTokens.colors.success, 0.14),
+          border: colorWithAlpha(uiTokens.colors.success, 0.3),
         };
 
   return (
@@ -70,7 +71,7 @@ export function SettingsSyncStatus() {
         {
           backgroundColor: state.background,
           borderColor: state.border,
-          borderRadius: borderRadius.md,
+          borderRadius: uiTokens.radius.md,
         },
       ]}
     >
@@ -80,8 +81,8 @@ export function SettingsSyncStatus() {
           style={[
             styles.label,
             {
-              color: colors.text,
-              fontSize: typography.fontSize.sm,
+              color: uiTokens.colors.textPrimary,
+              fontSize: 14,
             },
           ]}
         >
@@ -91,8 +92,8 @@ export function SettingsSyncStatus() {
           style={[
             styles.detail,
             {
-              color: colors.textSecondary,
-              fontSize: typography.fontSize.xs,
+              color: uiTokens.colors.textSecondary,
+              fontSize: 12,
             },
           ]}
         >

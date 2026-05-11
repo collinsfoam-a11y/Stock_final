@@ -30,9 +30,7 @@ jest.mock("../../../src/services/api", () => ({
 }));
 
 jest.mock("../../../src/store/settingsStore", () => ({
-  useSettingsStore: (
-    selector: (state: { settings: { offlineMode: boolean } }) => unknown,
-  ) =>
+  useSettingsStore: (selector: (state: { settings: { offlineMode: boolean } }) => unknown) =>
     selector({
       settings: {
         offlineMode: mockOfflineMode,
@@ -54,8 +52,7 @@ jest.mock("@/components/ui", () => {
     }: {
       children: React.ReactNode;
       onPress?: () => void;
-    }) =>
-      React.createElement(TouchableOpacity, { onPress, ...props }, children),
+    }) => React.createElement(TouchableOpacity, { onPress, ...props }, children),
     ScreenContainer: ({
       children,
       header,
@@ -71,11 +68,9 @@ jest.mock("@/components/ui", () => {
         View,
         null,
         header?.title ? React.createElement(Text, null, header.title) : null,
-        header?.subtitle
-          ? React.createElement(Text, null, header.subtitle)
-          : null,
+        header?.subtitle ? React.createElement(Text, null, header.subtitle) : null,
         header?.customRightContent || null,
-        children,
+        children
       ),
   };
 });
@@ -95,8 +90,8 @@ describe("LogsScreen offline mode", () => {
     await waitFor(() => {
       expect(
         getByText(
-          "Service logs are fetched from the backend and are not cached on this device. Reconnect to inspect live log output.",
-        ),
+          "Service logs are fetched from the backend and are not cached on this device. Reconnect to inspect live log output."
+        )
       ).toBeTruthy();
     });
 

@@ -1,11 +1,15 @@
+import { useAuthStore } from "../../store/authStore";
 import { AppError, type AppErrorCode } from "../../utils/errors";
 import { retryWithBackoff } from "../../utils/retry";
 import { CreateCountLinePayload, Item } from "../../types/scan";
+import { generateUUID } from "../../utils/uuid";
 import { validateBarcode } from "../../utils/validation";
 import api from "../httpClient";
 import { createLogger } from "../logging";
+import { createOfflineCountLine } from "../offline/offlineCountLine";
 import {
   addToOfflineQueue,
+  cacheCountLine,
   cacheItem,
   getCountLinesBySessionFromCache,
   getItemFromCache,
@@ -13,18 +17,7 @@ import {
   searchItemsInCache,
   type DataSource,
 } from "../offline/offlineStorage";
-import {
-  finalizeSession as finalizeSessionControlPlane,
-  isOnline,
-  shouldAttemptReadApi,
-  updateSessionStatus as updateSessionStatusControlPlane,
-} from "./sessionManagementApi";
-import {
-  ProjectionReadError,
-  getProjectedCountLinesForSession,
-  getProjectedScanStatusRead,
-  submitCountLineCommand,
-} from "../control-plane/countLineControlPlane";
+import { submitCountLineCommand } from "../control-plane/countLineControlPlane";
 import {
   approveCountLineCommand,
   overlayCountLineReviewState,
@@ -32,6 +25,7 @@ import {
   unverifyStockCommand,
   verifyStockCommand,
 } from "../control-plane/countLineReviewControlPlane";
+import { isOnline, shouldAttemptReadApi } from "./sessionManagementApi";
 
 const log = createLogger("InventoryWorkflowApi");
 
@@ -375,8 +369,7 @@ export const getItemByBarcode = async (
  */
 export const checkSerialUniqueness = async (
   sessionId: string,
-  serialNumber: string,
-  itemCode?: string
+  serialNumber: string
 ): Promise<{
   exists: boolean;
   item_code?: string;
@@ -387,14 +380,11 @@ export const checkSerialUniqueness = async (
   status?: string;
 }> => {
   try {
-    const params = itemCode ? `?item_code=${encodeURIComponent(itemCode)}` : "";
-    const response = await api.get(
-      `/api/count-lines/check-serial/${sessionId}/${serialNumber}${params}`
-    );
+    const response = await api.get(`/api/count-lines/check-serial/${sessionId}/${serialNumber}`);
     return response.data;
   } catch (error) {
     console.error("Error checking serial uniqueness:", error);
-    return { exists: false, status: "UNAVAILABLE" };
+    return { exists: false };
   }
 };
 
@@ -679,11 +669,6 @@ export const checkItemScanStatus = async (
 ): Promise<ItemScanStatus> => {
   try {
     if (!shouldAttemptReadApi()) {
-      const projectedStatus = await getProjectedScanStatusRead(sessionId, itemCode);
-      if (projectedStatus) {
-        return projectedStatus;
-      }
-
       const cachedLines = await getCountLinesBySessionFromCache(sessionId);
       const itemLines = cachedLines.filter((line) => line.item_code === itemCode);
 
@@ -706,18 +691,53 @@ export const checkItemScanStatus = async (
     const response = await api.get(`/api/sessions/${sessionId}/items/${itemCode}/scan-status`);
     return response.data;
   } catch (error) {
-    if (error instanceof ProjectionReadError) {
-      throw error;
-    }
-
-    const projectedStatus = await getProjectedScanStatusRead(sessionId, itemCode);
-    if (projectedStatus) {
-      return projectedStatus;
-    }
     console.error("Error checking item scan status:", error);
     return { scanned: false, total_qty: 0, locations: [] };
   }
 };
+
+const resolveCountLineItemName = async (countData: CreateCountLinePayload): Promise<string> => {
+  if (hasMeaningfulCountLineName(countData)) {
+    return countData.item_name!.trim();
+  }
+
+  try {
+    const cachedItem = await getItemFromCache(countData.item_code);
+    if (cachedItem) {
+      return cachedItem.item_name;
+    }
+  } catch {
+    // Ignore cache lookup error
+  }
+
+  return "Unknown Item";
+};
+
+const createOfflineCountLineResult = async (
+  countData: CreateCountLinePayload,
+  username?: string,
+  degraded: boolean = false
+): Promise<any & { _source: DataSource; _offline: boolean; _degraded?: boolean }> => {
+  const itemName = await resolveCountLineItemName(countData);
+  const offlineCountLine = (await createOfflineCountLine(countData, {
+    username,
+    itemName,
+  })) as any;
+
+  return {
+    ...offlineCountLine,
+    _source: "local" as DataSource,
+    _offline: true,
+    ...(degraded ? { _degraded: true } : {}),
+  };
+};
+
+const ensureCountLineIdempotencyKey = (
+  countData: CreateCountLinePayload
+): CreateCountLinePayload => ({
+  ...countData,
+  idempotency_key: countData.idempotency_key?.trim() || generateUUID(),
+});
 
 const filterCountLinesByVerified = <T extends { verified?: boolean }>(
   lines: T[],
@@ -759,8 +779,7 @@ const buildOfflinePaginatedCountLines = async (
   verified?: boolean
 ) => {
   const cachedLines = await getCountLinesBySessionFromCache(sessionId);
-  const reviewedLines = await overlayCountLineReviewState(cachedLines);
-  const filteredLines = filterCountLinesByVerified(reviewedLines, verified);
+  const filteredLines = filterCountLinesByVerified(cachedLines, verified);
   const paginated = paginateCountLineItems(filteredLines, page, pageSize, source, stale);
 
   return {
@@ -846,19 +865,62 @@ const hydrateCountLineNames = async <
 export const createCountLine = async (
   countData: CreateCountLinePayload
 ): Promise<any & { _source?: DataSource; _offline?: boolean }> => {
+  const user = useAuthStore.getState().user;
+  const countDataWithIdempotency = ensureCountLineIdempotencyKey(countData);
+
   try {
-    return await submitCountLineCommand(countData);
+    const isOfflineSession = String(countDataWithIdempotency.session_id || "").startsWith(
+      "offline_"
+    );
+
+    if (!isOnline() || isOfflineSession) {
+      log.debug("Offline mode or offline session - creating offline count line", {
+        isOnline: isOnline(),
+        isOfflineSession,
+      });
+      return await submitCountLineCommand(countData);
+    }
+
+    log.debug("Online mode - creating count line via API");
+    const response = await api.post("/api/count-lines", countDataWithIdempotency, {
+      skipOfflineQueue: true,
+    } as any);
+    await cacheCountLine(response.data);
+
+    log.debug("Created count line via API", {
+      id: response.data._id || response.data.id,
+    });
+    return {
+      ...response.data,
+      _source: "api" as DataSource,
+    };
   } catch (error: any) {
-    if (error instanceof ProjectionReadError) {
+    if (error.response) {
+      log.error("Server returned error, NOT falling back to offline", {
+        status: error.response.status,
+        data: error.response.data,
+      });
       throw error;
     }
 
-    log.error("Count line submission failed", {
+    log.error("Network error creating count line, falling back to offline", {
       error: error instanceof Error ? error.message : String(error),
-      sessionId: countData.session_id,
-      itemCode: countData.item_code,
     });
-    throw error;
+
+    try {
+      const offlineCountLine = await createOfflineCountLineResult(
+        countDataWithIdempotency,
+        user?.username,
+        true
+      );
+      log.debug("Created offline count line as fallback", { id: offlineCountLine._id });
+      return offlineCountLine;
+    } catch (fallbackError) {
+      log.error("Offline fallback also failed", {
+        error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+      });
+      throw new Error("Failed to save count line. Both online and offline storage failed.");
+    }
   }
 };
 
@@ -872,14 +934,7 @@ export const getCountLines = async (
   verified?: boolean
 ): Promise<CountLineListResponse> => {
   try {
-    const projectedLines = await getProjectedCountLinesForSession(sessionId);
-
     if (!shouldAttemptReadApi()) {
-      if (projectedLines && projectedLines.length > 0) {
-        const filteredProjected = filterCountLinesByVerified(projectedLines, verified);
-        return paginateCountLineItems(filteredProjected, page, pageSize, "offline", false);
-      }
-
       log.debug("Offline mode - returning cached count lines with pagination");
       return buildOfflinePaginatedCountLines(sessionId, page, pageSize, "cache", true, verified);
     }
@@ -899,27 +954,15 @@ export const getCountLines = async (
           ? response.data
           : [];
     const hydratedLines = await hydrateCountLineNames(countLinesToCache);
-
-    const unsyncedProjectedLines = Array.isArray(projectedLines)
-      ? projectedLines.filter((line) => line._sync_status !== "synced")
-      : [];
-    const mergedItems =
-      unsyncedProjectedLines.length > 0
-        ? [...unsyncedProjectedLines, ...hydratedLines]
-        : hydratedLines;
-    const reviewedItems = await overlayCountLineReviewState(mergedItems);
-    const filteredItems = filterCountLinesByVerified(reviewedItems, verified);
+    const reviewedLines = await overlayCountLineReviewState(hydratedLines);
 
     return {
       ...response.data,
-      items: filteredItems,
+      items: reviewedLines,
       _source: "api" as DataSource,
     };
   } catch (error: any) {
-    if (error instanceof ProjectionReadError) {
-      throw error;
-    }
-    log.error("Error getting count lines, falling back to cache", {
+    log.warn("Count lines API unavailable; falling back to cache", {
       error: error instanceof Error ? error.message : String(error),
     });
 
@@ -966,40 +1009,19 @@ export const getAssignableStaffUsers = async (): Promise<AssignableStaffUser[]> 
  */
 export const checkItemCounted = async (sessionId: string, itemCode: string) => {
   try {
-    const projectedLines = await getProjectedCountLinesForSession(sessionId);
-    if (projectedLines && projectedLines.length > 0) {
-      const itemLines = projectedLines.filter((line) => line.item_code === itemCode);
-      if (itemLines.length > 0) {
-        return { already_counted: true, count_lines: itemLines };
-      }
-    }
-
     if (!shouldAttemptReadApi()) {
       const cachedLines = await getCountLinesBySessionFromCache(sessionId);
-      const reviewedLines = await overlayCountLineReviewState(cachedLines);
-      const itemLines = reviewedLines.filter((line) => line.item_code === itemCode);
+      const itemLines = cachedLines.filter((line) => line.item_code === itemCode);
       return { already_counted: itemLines.length > 0, count_lines: itemLines };
     }
 
     const response = await api.get(`/api/count-lines/check/${sessionId}/${itemCode}`);
-    const reviewedLines = await overlayCountLineReviewState(response.data?.count_lines || []);
-    return {
-      ...response.data,
-      count_lines: reviewedLines,
-      already_counted:
-        typeof response.data?.already_counted === "boolean"
-          ? response.data.already_counted
-          : reviewedLines.length > 0,
-    };
+    return response.data;
   } catch (error) {
-    if (error instanceof ProjectionReadError) {
-      throw error;
-    }
     __DEV__ && console.error("Error checking item counted:", error);
 
     const cachedLines = await getCountLinesBySessionFromCache(sessionId);
-    const reviewedLines = await overlayCountLineReviewState(cachedLines);
-    const itemLines = reviewedLines.filter((line) => line.item_code === itemCode);
+    const itemLines = cachedLines.filter((line) => line.item_code === itemCode);
     return { already_counted: itemLines.length > 0, count_lines: itemLines };
   }
 };
@@ -1044,11 +1066,8 @@ export const getVarianceReasons = async () => {
 /**
  * Approves a count line through the supervisor review endpoint.
  */
-export const approveCountLine = async (
-  lineId: string,
-  payload?: { notes?: string; session_id?: string }
-) => {
-  return approveCountLineCommand(lineId, payload);
+export const approveCountLine = async (lineId: string) => {
+  return approveCountLineCommand(lineId, undefined);
 };
 
 /**
@@ -1056,7 +1075,7 @@ export const approveCountLine = async (
  */
 export const rejectCountLine = async (
   lineId: string,
-  payload?: { notes?: string; assign_to?: string; session_id?: string }
+  payload?: { notes?: string; assign_to?: string }
 ) => {
   return rejectCountLineCommand(lineId, payload);
 };
@@ -1065,14 +1084,37 @@ export const rejectCountLine = async (
  * Applies a session status transition using the appropriate backend endpoint.
  */
 export const updateSessionStatus = async (sessionId: string, status: string) => {
-  return updateSessionStatusControlPlane(sessionId, status);
+  const normalizedStatus = (status || "").toUpperCase();
+  if (normalizedStatus === "COMPLETED" || normalizedStatus === "FINALIZED") {
+    const response = await api.post(`/api/sessions/${sessionId}/finalize`);
+    return response.data;
+  }
+
+  if (normalizedStatus === "CLOSED") {
+    // Legacy "close" now maps to the canonical review handoff.
+    const response = await api.put(`/api/sessions/${sessionId}/status?status=RECONCILE`);
+    return response.data;
+  }
+
+  // All other status transitions go through the generic PUT /status endpoint
+  // which validates against the SessionStateMachine
+  const response = await api.put(
+    `/api/sessions/${sessionId}/status?status=${encodeURIComponent(normalizedStatus)}`
+  );
+  return response.data;
 };
 
 /**
  * Finalizes a session through the supervisor-only finalize workflow.
  */
 export const finalizeSession = async (sessionId: string, payload?: { note?: string }) => {
-  return finalizeSessionControlPlane(sessionId, payload);
+  try {
+    const response = await api.post(`/api/sessions/${sessionId}/finalize`, payload || {});
+    return response.data;
+  } catch (error: unknown) {
+    __DEV__ && console.error("Finalize session error:", error);
+    throw error;
+  }
 };
 
 /**
@@ -1130,22 +1172,12 @@ export const deleteCountLine = async (lineId: string) => {
  * Marks a count line as verified.
  */
 export const verifyStock = async (countLineId: string) => {
-  try {
-    return await verifyStockCommand(countLineId);
-  } catch (error: unknown) {
-    __DEV__ && console.error("Verify stock error:", error);
-    throw error;
-  }
+  return verifyStockCommand(countLineId);
 };
 
 /**
  * Removes the verified flag from a count line.
  */
 export const unverifyStock = async (countLineId: string) => {
-  try {
-    return await unverifyStockCommand(countLineId);
-  } catch (error: unknown) {
-    __DEV__ && console.error("Unverify stock error:", error);
-    throw error;
-  }
+  return unverifyStockCommand(countLineId);
 };

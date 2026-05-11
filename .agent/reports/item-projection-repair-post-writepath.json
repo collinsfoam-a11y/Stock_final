@@ -1,0 +1,73 @@
+{
+  "mode": "execute",
+  "count_lines_scanned": 544,
+  "active_count_lines": 544,
+  "missing_verified_items": 0,
+  "missing_variance_items": 0,
+  "missing_batch_rows": 6,
+  "missing_financial_rows": 0,
+  "inserted_verified_items": 0,
+  "inserted_variance_items": 0,
+  "inserted_batch_rows": 6,
+  "inserted_financial_rows": 0,
+  "skipped_superseded": 0,
+  "skipped_missing_id": 0,
+  "errors": 0,
+  "candidate_lines": [
+    {
+      "count_line_id": "mix-b4958c30-6a33-4de5-9e8b-a0a1962df036-line-1",
+      "session_id": "mix-b4958c30-6a33-4de5-9e8b-a0a1962df036",
+      "item_code": "MIX-ITEM-2",
+      "variance": -1.0,
+      "missing_verified": false,
+      "missing_variance": false,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "mix-b4958c30-6a33-4de5-9e8b-a0a1962df036-line-2",
+      "session_id": "mix-b4958c30-6a33-4de5-9e8b-a0a1962df036",
+      "item_code": "MIX-ITEM-3",
+      "variance": 0.0,
+      "missing_verified": false,
+      "missing_variance": false,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "mix-b4958c30-6a33-4de5-9e8b-a0a1962df036-line-3",
+      "session_id": "mix-b4958c30-6a33-4de5-9e8b-a0a1962df036",
+      "item_code": "MIX-ITEM-1",
+      "variance": 1.0,
+      "missing_verified": false,
+      "missing_variance": false,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "mix-9b5b2dae-53d3-4b97-a06e-f92046b9967d-line-1",
+      "session_id": "mix-9b5b2dae-53d3-4b97-a06e-f92046b9967d",
+      "item_code": "MIX-ITEM-2",
+      "variance": -1.0,
+      "missing_verified": false,
+      "missing_variance": false,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "mix-9b5b2dae-53d3-4b97-a06e-f92046b9967d-line-2",
+      "session_id": "mix-9b5b2dae-53d3-4b97-a06e-f92046b9967d",
+      "item_code": "MIX-ITEM-3",
+      "variance": 0.0,
+      "missing_verified": false,
+      "missing_variance": false,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "mix-9b5b2dae-53d3-4b97-a06e-f92046b9967d-line-3",
+      "session_id": "mix-9b5b2dae-53d3-4b97-a06e-f92046b9967d",
+      "item_code": "MIX-ITEM-1",
+      "variance": 1.0,
+      "missing_verified": false,
+      "missing_variance": false,
+      "missing_batch_rows": 1
+    }
+  ],
+  "candidate_financial_sessions": []
+}

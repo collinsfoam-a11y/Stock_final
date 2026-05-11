@@ -9,53 +9,38 @@
 // ==========================================
 // COLOR PALETTE - Semantic Colors with Shades
 // ==========================================
-const neutral = {
-  0: "#FFFFFF",
-  50: "#FAF9F6",
-  100: "#F4F3F1",
-  200: "#E2E2E2",
-  300: "#CDCFCB",
-  400: "#9AA3A4",
-  500: "#6E797A",
-  600: "#586377",
-  700: "#3E494A",
-  800: "#2F312F",
-  900: "#1A1C1A",
-  950: "#101111",
-} as const;
-
 export const colors = {
   // Base colors
   white: "#FFFFFF",
   black: "#000000",
   transparent: "transparent",
 
-  // Primary Brand - Operational Teal
+  // Primary Brand - Lavanya Corporate Blue
   primary: {
-    50: "#E4F5F6",
-    100: "#C8ECEE",
-    200: "#9ADDE0",
-    300: "#67CBD0",
-    400: "#2CAFB6",
-    500: "#007B83",
-    600: "#006067",
-    700: "#004F54",
-    800: "#00393D",
-    900: "#002628",
+    50: "#EBF4FF",
+    100: "#D6E8FF",
+    200: "#AFD1FF",
+    300: "#82B5FF",
+    400: "#5C94FF", // Light accent
+    500: "#0655A5", // Main brand color (Lavanya eMart Blue)
+    600: "#054992", // Hover state
+    700: "#043C7A", // Active state
+    800: "#032B59",
+    900: "#011732",
   },
 
-  // Secondary - Slate Blue (supporting actions)
+  // Secondary - Teal/Cyan (supporting actions)
   secondary: {
-    50: "#EEF2F8",
-    100: "#D5E0F7",
-    200: "#BCC7DD",
-    300: "#A6B2C7",
-    400: "#7B879A",
-    500: "#545F72",
-    600: "#485365",
-    700: "#3C475A",
-    800: "#2E394B",
-    900: "#1F2A3B",
+    50: "#ECFEFF",
+    100: "#CFFAFE",
+    200: "#A5F3FC",
+    300: "#67E8F9",
+    400: "#22D3EE", // Accent
+    500: "#06B6D4", // Main
+    600: "#0891B2",
+    700: "#0E7490",
+    800: "#155E75",
+    900: "#164E63",
   },
 
   // Success - Green (positive states, completion, verified)
@@ -115,9 +100,20 @@ export const colors = {
   },
 
   // Neutral - Slate (text, backgrounds, borders)
-  neutral,
-  // Legacy alias used across pre-unified screens and the imported Jules patch.
-  gray: neutral,
+  neutral: {
+    0: "#FFFFFF",
+    50: "#F8FAFC",
+    100: "#F1F5F9",
+    200: "#E2E8F0",
+    300: "#CBD5E1",
+    400: "#94A3B8",
+    500: "#64748B",
+    600: "#475569",
+    700: "#334155",
+    800: "#1E293B",
+    900: "#0F172A",
+    950: "#020617",
+  },
 } as const;
 
 // ==========================================
@@ -137,21 +133,21 @@ export const semanticColors = {
 
   // Background colors
   background: {
-    default: colors.neutral[50],
-    primary: colors.neutral[50],
-    secondary: colors.neutral[100],
-    tertiary: "#EFEEEB",
-    elevated: colors.neutral[0],
-    paper: colors.neutral[0],
-    card: colors.neutral[0],
+    default: colors.neutral[0], // Alias for primary
+    primary: colors.neutral[0], // Main background
+    secondary: colors.neutral[50], // Cards, sections
+    tertiary: colors.neutral[100], // Nested sections
+    elevated: colors.neutral[0], // Elevated surfaces
+    paper: colors.neutral[0], // Paper/sheet background
+    card: colors.neutral[0], // Card background
     overlay: "rgba(15, 23, 42, 0.5)", // Modal overlays
   },
 
   // Border colors
   border: {
-    default: colors.neutral[200],
-    subtle: colors.neutral[100],
-    strong: colors.neutral[300],
+    default: colors.neutral[200], // Default borders
+    subtle: colors.neutral[100], // Subtle dividers
+    strong: colors.neutral[300], // Emphasized borders
     focus: colors.primary[500], // Focus rings
   },
 
@@ -185,7 +181,7 @@ export const semanticColors = {
   card: {
     background: colors.white,
     border: colors.neutral[200],
-    shadow: "rgba(26, 28, 26, 0.06)",
+    shadow: "rgba(15, 23, 42, 0.08)",
   },
 
   input: {
@@ -234,12 +230,12 @@ export const darkColors = {
 // GRADIENT PRESETS
 // ==========================================
 export const gradients = {
-  primary: [colors.primary[500], colors.primary[600]],
+  primary: [colors.primary[600], colors.primary[700]],
   secondary: [colors.secondary[500], colors.secondary[600]],
   success: [colors.success[500], colors.success[600]],
   sunset: [colors.warning[500], colors.error[500]],
-  aurora: ["#007B83", "#545F72", "#006067"] as const,
-  auroraLight: [colors.primary[300], colors.secondary[300], colors.success[400]],
+  aurora: ["#0F766E", "#0891B2", "#2563EB"] as const, // Darker teal-cyan-blue gradient
+  auroraLight: [colors.primary[400], colors.secondary[400], colors.success[400]],
   glass: ["rgba(255, 255, 255, 0.15)", "rgba(255, 255, 255, 0.08)"],
 } as const;
 

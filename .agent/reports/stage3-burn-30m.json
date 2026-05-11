@@ -1,0 +1,6 @@
+{
+  "generated_at": "2026-05-03T04:00:56Z",
+  "status": "NOT_EXECUTED",
+  "blocked_by": "stage2_gate_failure",
+  "reason": "stage2 had 1x PROJECTION_INCONSISTENT 503 and deployment decision stream stayed NO-GO/no_shadow_data"
+}

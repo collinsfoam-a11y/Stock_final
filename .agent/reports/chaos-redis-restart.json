@@ -1,0 +1,11 @@
+{
+  "pre_sync_http_code": "200",
+  "post_sync_http_code": "200",
+  "pre_sync_body": "{\"ok\":[\"val-rec-validation-sync-e53496c6-45a4-49ab-8cb9-0cc16d966e80-0\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"chaos-backend-restart\",\"processing_time_ms\":0.32210350036621094,\"total_records\":1,\"results\":[{\"id\":\"val-rec-validation-sync-e53496c6-45a4-49ab-8cb9-0cc16d966e80-0\",\"success\":true,\"message\":null}],\"processed_count\":1,\"success_count\":1,\"failed_count\":0}",
+  "post_sync_body": "{\"ok\":[\"val-rec-validation-sync-e53496c6-45a4-49ab-8cb9-0cc16d966e80-0\"],\"conflicts\":[],\"errors\":[],\"batch_id\":\"chaos-backend-restart\",\"processing_time_ms\":0.6411075592041016,\"total_records\":1,\"results\":[{\"id\":\"val-rec-validation-sync-e53496c6-45a4-49ab-8cb9-0cc16d966e80-0\",\"success\":true,\"message\":null}],\"processed_count\":1,\"success_count\":1,\"failed_count\":0}",
+  "pre_redis_ping": "PONG",
+  "post_redis_ping": "PONG",
+  "health_http_code": "200",
+  "health_body": "{\"status\":\"healthy\",\"timestamp\":\"2026-05-02T16:17:12.143291\",\"service\":\"stock-verify-api\",\"mongodb\":{\"port\":27017,\"status\":\"healthy\",\"is_running\":true,\"error\":null}}",
+  "restart_log_tail": "Stopping `redis`... (might take a while)\n==> Successfully stopped `redis` (label: homebrew.mxcl.redis)\n==> Successfully started `redis` (label: homebrew.mxcl.redis)"
+}

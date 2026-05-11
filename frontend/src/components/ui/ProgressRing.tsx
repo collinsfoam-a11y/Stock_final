@@ -1,29 +1,21 @@
 /**
- * ProgressRing Component - Aurora Design
+ * ProgressRing Component - Operational Progress Feedback
  *
- * Circular progress indicator with gradient
- * Features:
- * - Smooth animation
- * - Gradient stroke
- * - Center label
- * - Customizable size and colors
+ * Circular progress indicator with tokenized motion and semantic colors.
  */
 
 import React, { useEffect } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import Svg, {
-  Circle,
-  Defs,
-  LinearGradient as SvgLinearGradient,
-  Stop,
-} from "react-native-svg";
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from "react-native-svg";
 import Animated, {
   useSharedValue,
   useAnimatedProps,
   withTiming,
   Easing,
 } from "react-native-reanimated";
-import { auroraTheme } from "@/theme/auroraTheme";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { getOperationalMotionDuration } from "@/utils/motion";
 
 interface ProgressRingProps {
   progress: number; // 0-100
@@ -40,11 +32,15 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
   progress,
   size = 120,
   strokeWidth = 12,
-  colors = [auroraTheme.colors.primary[500], auroraTheme.colors.accent[500]],
+  colors,
   label,
   showPercentage = true,
 }) => {
+  const uiTokens = useUiTokens();
+  const prefersReducedMotion = useReducedMotion();
   const animatedProgress = useSharedValue(0);
+  const resolvedColors = colors ?? [uiTokens.colors.accent, uiTokens.colors.accentStrong];
+  const animationDuration = getOperationalMotionDuration(uiTokens, "slow", prefersReducedMotion);
 
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
@@ -52,14 +48,13 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
 
   useEffect(() => {
     animatedProgress.value = withTiming(progress, {
-      duration: 1000,
+      duration: animationDuration,
       easing: Easing.bezier(0.25, 0.1, 0.25, 1),
     });
-  }, [animatedProgress, progress]);
+  }, [animatedProgress, animationDuration, progress]);
 
   const animatedProps = useAnimatedProps(() => {
-    const strokeDashoffset =
-      circumference - (circumference * animatedProgress.value) / 100;
+    const strokeDashoffset = circumference - (circumference * animatedProgress.value) / 100;
     return {
       strokeDashoffset,
     };
@@ -69,15 +64,9 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
     <View style={[styles.container, { width: size, height: size }]}>
       <Svg width={size} height={size}>
         <Defs>
-          <SvgLinearGradient
-            id="progressGradient"
-            x1="0%"
-            y1="0%"
-            x2="100%"
-            y2="100%"
-          >
-            <Stop offset="0%" stopColor={colors[0]} stopOpacity="1" />
-            <Stop offset="100%" stopColor={colors[1]} stopOpacity="1" />
+          <SvgLinearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <Stop offset="0%" stopColor={resolvedColors[0]} stopOpacity="1" />
+            <Stop offset="100%" stopColor={resolvedColors[1]} stopOpacity="1" />
           </SvgLinearGradient>
         </Defs>
 
@@ -86,7 +75,7 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
           cx={center}
           cy={center}
           r={radius}
-          stroke={auroraTheme.colors.border.light}
+          stroke={uiTokens.colors.border}
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -103,8 +92,7 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
           strokeDashoffset={circumference}
           strokeLinecap="round"
           animatedProps={animatedProps}
-          rotation="-90"
-          origin={`${center}, ${center}`}
+          transform={`rotate(-90 ${center} ${center})`}
         />
       </Svg>
 
@@ -115,9 +103,8 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
             style={[
               styles.percentage,
               {
-                fontFamily: auroraTheme.typography.fontFamily.heading,
                 fontSize: size * 0.2,
-                color: auroraTheme.colors.text.primary,
+                color: uiTokens.colors.textPrimary,
               },
             ]}
           >
@@ -129,9 +116,9 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
             style={[
               styles.label,
               {
-                fontFamily: auroraTheme.typography.fontFamily.body,
                 fontSize: size * 0.1,
-                color: auroraTheme.colors.text.secondary,
+                color: uiTokens.colors.textSecondary,
+                marginTop: uiTokens.spacing.xs,
               },
             ]}
           >
@@ -156,10 +143,9 @@ const styles = StyleSheet.create({
   },
   percentage: {
     fontWeight: "700",
-    letterSpacing: -1,
+    letterSpacing: 0,
   },
   label: {
-    marginTop: 4,
     textAlign: "center",
     fontWeight: "500",
   },

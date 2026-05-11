@@ -3,13 +3,10 @@ import { StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import {
-  ActivityFeedItem,
-  AnimatedPressable,
-  GlassCard,
-} from "@/components/ui";
+import { ActivityFeedItem, AnimatedPressable, ModernCard } from "@/components/ui";
 import { ActivityItem } from "@/components/supervisor/dashboard/supervisorDashboardShared";
-import { theme } from "@/styles/unifiedSystem";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { theme } from "@/styles/modernDesignSystem";
 
 interface SupervisorActivitySectionProps {
   activities: ActivityItem[];
@@ -22,49 +19,46 @@ export function SupervisorActivitySection({
   onOpenActivity,
   onViewAll,
 }: SupervisorActivitySectionProps) {
+  const uiTokens = useUiTokens();
+
   return (
-    <Animated.View
-      entering={FadeInDown.delay(350).springify()}
-      style={styles.section}
-    >
+    <Animated.View entering={FadeInDown.delay(350).springify()} style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Recent Activity</Text>
+        <Text style={[styles.sectionTitle, { color: uiTokens.colors.textPrimary }]}>
+          Recent Activity
+        </Text>
         <AnimatedPressable onPress={onViewAll} hapticFeedback="light">
-          <Text style={styles.sectionLink}>View All</Text>
+          <Text style={[styles.sectionLink, { color: uiTokens.colors.accentStrong }]}>
+            View All
+          </Text>
         </AnimatedPressable>
       </View>
 
-      <GlassCard
-        variant="medium"
-        intensity={25}
-        borderRadius={theme.borderRadius.xl}
-        padding={theme.spacing.lg}
-        elevation="md"
-      >
+      <ModernCard variant="outlined" elevation="none" intensity={25} padding={theme.spacing.lg}>
         {activities.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons
-              name="time-outline"
-              size={48}
-              color={theme.colors.text.secondary}
-            />
-            <Text style={styles.emptyText}>No recent activity</Text>
+            <Ionicons name="time-outline" size={48} color={uiTokens.colors.textSecondary} />
+            <Text style={[styles.emptyText, { color: uiTokens.colors.textSecondary }]}>
+              No recent activity
+            </Text>
           </View>
         ) : (
-          activities.slice(0, 5).map((activity, index) => (
-            <ActivityFeedItem
-              key={activity.id}
-              type={activity.type}
-              title={activity.title}
-              description={activity.description}
-              timestamp={activity.timestamp}
-              status={activity.status}
-              onPress={() => onOpenActivity(activity.id)}
-              delay={index * 50}
-            />
-          ))
+          activities
+            .slice(0, 5)
+            .map((activity, index) => (
+              <ActivityFeedItem
+                key={activity.id}
+                type={activity.type}
+                title={activity.title}
+                description={activity.description}
+                timestamp={activity.timestamp}
+                status={activity.status}
+                onPress={() => onOpenActivity(activity.id)}
+                delay={index * 50}
+              />
+            ))
         )}
-      </GlassCard>
+      </ModernCard>
     </Animated.View>
   );
 }
@@ -82,12 +76,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 24,
     fontWeight: "600",
-    color: theme.colors.text.primary,
   },
   sectionLink: {
     fontSize: 14,
     fontWeight: "600",
-    color: theme.colors.primary[500],
   },
   emptyState: {
     alignItems: "center",
@@ -98,6 +90,5 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: "center",
     fontSize: 16,
-    color: theme.colors.text.secondary,
   },
 });

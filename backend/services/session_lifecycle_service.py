@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Awaitable, Callable, Optional
 
 from bson import ObjectId
 
 from backend.services.concurrency import ConcurrencyError, build_version_filter, coerce_version
-from backend.services.event_service import EventService
 from backend.services.governance_audit_service import GovernanceAuditService
 from backend.services.governance_guard import (
     GovernanceViolation,
@@ -17,19 +16,13 @@ from backend.services.governance_guard import (
     normalize_session_status,
     write_authority,
 )
+from backend.services.projection_write_service import ProjectionWriteService
 from backend.services.transaction_manager import mongo_transaction
 from backend.services.validation_service import ValidationService
 
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
-
-
-def _normalize_string(value: Any) -> Optional[str]:
-    if value is None:
-        return None
-    normalized = str(value).strip()
-    return normalized or None
 
 
 RECOUNT_ALLOWED_TRANSITIONS: dict[str, set[str]] = {
@@ -51,12 +44,16 @@ class SessionLifecycleService:
         *,
         validation_service: Optional[ValidationService] = None,
         audit_service: Optional[GovernanceAuditService] = None,
-        event_service: Optional[EventService] = None,
+        projection_service: Optional[ProjectionWriteService] = None,
+        count_line_finalizer: Optional[
+            Callable[..., Awaitable[int]]
+        ] = None,
     ) -> None:
         self.db = db
         self.validation_service = validation_service or ValidationService(db)
         self.audit_service = audit_service or GovernanceAuditService(db)
-        self.event_service = event_service or EventService(db)
+        self.projection_service = projection_service or ProjectionWriteService(db)
+        self.count_line_finalizer = count_line_finalizer
 
     @staticmethod
     def _lookup(session_id: str) -> dict[str, Any]:
@@ -72,52 +69,6 @@ class SessionLifecycleService:
             if hasattr(result, "__await__"):
                 return await result
             return result
-
-    async def _record_lifecycle_event(
-        self,
-        *,
-        event_type: str,
-        session_id: str,
-        actor: str,
-        payload: dict[str, Any],
-        metadata: Optional[dict[str, Any]] = None,
-        db_session: Optional[Any],
-    ) -> None:
-        safe_payload = dict(payload)
-        safe_payload.setdefault("timestamp", safe_payload.get("updated_at") or _utc_now())
-
-        safe_metadata = dict(metadata or {})
-        safe_metadata.setdefault("user_id", actor)
-        safe_metadata.setdefault("legacy_source", "sessions")
-        event_token = (
-            _normalize_string(
-                safe_metadata.get("event_idempotency_key")
-                or safe_payload.get("version")
-                or safe_payload.get("snapshot_hash")
-                or safe_payload.get("recount_id")
-                or safe_payload.get("updated_at")
-                or safe_payload.get("timestamp")
-            )
-            or _utc_now().isoformat()
-        )
-        safe_metadata.setdefault(
-            "event_idempotency_key",
-            f"{event_type}:{session_id}:{event_token}",
-        )
-        safe_metadata.setdefault(
-            "request_idempotency_key",
-            _normalize_string(safe_metadata.get("request_idempotency_key"))
-            or safe_metadata["event_idempotency_key"],
-        )
-
-        await self.event_service.record_session_event(
-            event_type=event_type,
-            session_id=session_id,
-            payload=safe_payload,
-            metadata=safe_metadata,
-            db_session=db_session,
-            required=True,
-        )
 
     async def get_session(
         self,
@@ -242,6 +193,22 @@ class SessionLifecycleService:
             session_update["last_activity"] = last_activity
         return session_update
 
+    async def _sync_session_projection(
+        self,
+        *,
+        session_id: str,
+        trigger: str,
+        actor: str,
+        db_session: Optional[Any],
+    ) -> None:
+        await self.projection_service.sync_for_sessions(
+            [session_id],
+            trigger=trigger,
+            actor=actor,
+            db_session=db_session,
+            rebuild_item_projections=False,
+        )
+
     async def record_session_snapshot(
         self,
         *,
@@ -250,16 +217,6 @@ class SessionLifecycleService:
         actor: str,
         db_session: Optional[Any] = None,
     ) -> dict[str, Any]:
-        if db_session is None:
-            async with mongo_transaction(self.db.client) as tx:
-                if tx is not None:
-                    return await self.record_session_snapshot(
-                        session_id=session_id,
-                        snapshot_doc=snapshot_doc,
-                        actor=actor,
-                        db_session=tx,
-                    )
-
         if not isinstance(snapshot_doc, dict) or not snapshot_doc:
             raise GovernanceViolation("CRITICAL: snapshot_doc is required")
 
@@ -291,24 +248,6 @@ class SessionLifecycleService:
             },
             db_session=db_session,
         )
-        await self._record_lifecycle_event(
-            event_type="SESSION_SNAPSHOT_CREATED",
-            session_id=session_id,
-            actor=actor,
-            payload={
-                "snapshot_hash": snapshot_to_insert.get("snapshot_hash"),
-                "item_count": snapshot_to_insert.get("item_count"),
-                "config_version_id": snapshot_to_insert.get("config_version_id"),
-                "updated_at": snapshot_to_insert.get("created_at") or _utc_now(),
-            },
-            metadata={
-                "legacy_source": "session_snapshots",
-                "event_idempotency_key": (
-                    f"SESSION_SNAPSHOT_CREATED:{session_id}:{snapshot_to_insert.get('snapshot_hash') or snapshot_to_insert.get('item_count') or 'snapshot'}"
-                ),
-            },
-            db_session=db_session,
-        )
         return snapshot_to_insert
 
     async def create_session(
@@ -320,12 +259,11 @@ class SessionLifecycleService:
     ) -> dict[str, Any]:
         if db_session is None:
             async with mongo_transaction(self.db.client) as tx:
-                if tx is not None:
-                    return await self.create_session(
-                        session_doc=session_doc,
-                        username=username,
-                        db_session=tx,
-                    )
+                return await self.create_session(
+                    session_doc=session_doc,
+                    username=username,
+                    db_session=tx,
+                )
 
         now_dt = _utc_now()
         created_doc = dict(session_doc)
@@ -366,22 +304,10 @@ class SessionLifecycleService:
             version=int(created_doc.get("version", 0) or 0),
             db_session=db_session,
         )
-        await self._record_lifecycle_event(
-            event_type="SESSION_CREATED",
+        await self._sync_session_projection(
             session_id=str(created_doc["id"]),
+            trigger="session.create",
             actor=username,
-            payload={
-                "warehouse": created_doc.get("warehouse"),
-                "location_id": created_doc.get("location_id"),
-                "location_key": created_doc.get("location_key"),
-                "location_type": created_doc.get("location_type"),
-                "location_name": created_doc.get("location_name"),
-                "rack_no": created_doc.get("rack_no"),
-                "staff_user": created_doc.get("staff_user"),
-                "status": created_doc.get("status"),
-                "version": int(created_doc.get("version", 0) or 0),
-                "updated_at": now_dt,
-            },
             db_session=db_session,
         )
         return created_doc
@@ -398,15 +324,14 @@ class SessionLifecycleService:
     ) -> dict[str, Any]:
         if db_session is None:
             async with mongo_transaction(self.db.client) as tx:
-                if tx is not None:
-                    return await self.transition_session(
-                        session_id=session_id,
-                        target_status=target_status,
-                        actor=actor,
-                        note=note,
-                        db_session=tx,
-                        expected_version=expected_version,
-                    )
+                return await self.transition_session(
+                    session_id=session_id,
+                    target_status=target_status,
+                    actor=actor,
+                    note=note,
+                    db_session=tx,
+                    expected_version=expected_version,
+                )
 
         session = await self.ensure_session_exists(session_id, db_session=db_session)
         current = normalize_session_status(session.get("status"))
@@ -471,17 +396,10 @@ class SessionLifecycleService:
             metadata={"from": current, "to": target, "note": note},
             db_session=db_session,
         )
-        await self._record_lifecycle_event(
-            event_type="SESSION_TRANSITIONED",
+        await self._sync_session_projection(
             session_id=session_id,
+            trigger="session.transition",
             actor=actor,
-            payload={
-                "from_status": current,
-                "to_status": target,
-                "note": note,
-                "updated_at": now_dt,
-                "version": effective_expected + 1,
-            },
             db_session=db_session,
         )
         refreshed = await self.ensure_session_exists(session_id, db_session=db_session)
@@ -495,18 +413,8 @@ class SessionLifecycleService:
         db_session: Optional[Any] = None,
         expected_version: Optional[int] = None,
         actor: str = "system",
+        sync_projection: bool = True,
     ) -> None:
-        if db_session is None:
-            async with mongo_transaction(self.db.client) as tx:
-                if tx is not None:
-                    return await self.update_session_totals(
-                        session_id,
-                        totals,
-                        db_session=tx,
-                        expected_version=expected_version,
-                        actor=actor,
-                    )
-
         session = await self.ensure_session_not_finalized(session_id, db_session=db_session)
         await assert_valid_write(
             {
@@ -534,17 +442,13 @@ class SessionLifecycleService:
             version=effective_expected + 1,
             db_session=db_session,
         )
-        await self._record_lifecycle_event(
-            event_type="SESSION_TOTALS_UPDATED",
-            session_id=session_id,
-            actor=actor,
-            payload={
-                **dict(totals),
-                "updated_at": totals.get("updated_at") or _utc_now(),
-                "version": effective_expected + 1,
-            },
-            db_session=db_session,
-        )
+        if sync_projection:
+            await self._sync_session_projection(
+                session_id=session_id,
+                trigger="session.update_totals",
+                actor=actor,
+                db_session=db_session,
+            )
 
     async def update_session_fields(
         self,
@@ -554,26 +458,9 @@ class SessionLifecycleService:
         db_session: Optional[Any] = None,
         expected_version: Optional[int] = None,
         actor: str = "system",
-        event_type: str = "SESSION_UPDATED",
-        event_payload: Optional[dict[str, Any]] = None,
-        event_metadata: Optional[dict[str, Any]] = None,
     ) -> None:
         if not isinstance(fields, dict) or not fields:
             return
-        if db_session is None:
-            async with mongo_transaction(self.db.client) as tx:
-                if tx is not None:
-                    return await self.update_session_fields(
-                        session_id,
-                        fields,
-                        db_session=tx,
-                        expected_version=expected_version,
-                        actor=actor,
-                        event_type=event_type,
-                        event_payload=event_payload,
-                        event_metadata=event_metadata,
-                    )
-
         session = await self.ensure_session_not_finalized(session_id, db_session=db_session)
         await assert_valid_write(
             {
@@ -601,19 +488,10 @@ class SessionLifecycleService:
             version=effective_expected + 1,
             db_session=db_session,
         )
-        payload = {
-            **dict(fields),
-            "updated_at": fields.get("updated_at") or _utc_now(),
-            "version": effective_expected + 1,
-        }
-        if isinstance(event_payload, dict):
-            payload.update(event_payload)
-        await self._record_lifecycle_event(
-            event_type=event_type,
+        await self._sync_session_projection(
             session_id=session_id,
+            trigger="session.update_fields",
             actor=actor,
-            payload=payload,
-            metadata=event_metadata,
             db_session=db_session,
         )
 
@@ -668,12 +546,11 @@ class SessionLifecycleService:
     ) -> dict[str, Any]:
         if db_session is None:
             async with mongo_transaction(self.db.client) as tx:
-                if tx is not None:
-                    return await self.create_recount_request(
-                        recount_doc=recount_doc,
-                        actor=actor,
-                        db_session=tx,
-                    )
+                return await self.create_recount_request(
+                    recount_doc=recount_doc,
+                    actor=actor,
+                    db_session=tx,
+                )
 
         if not isinstance(recount_doc, dict) or not recount_doc:
             raise GovernanceViolation("CRITICAL: recount_doc is required")
@@ -709,23 +586,6 @@ class SessionLifecycleService:
             },
             db_session=db_session,
         )
-        await self._record_lifecycle_event(
-            event_type="RECOUNT_REQUEST_CREATED",
-            session_id=session_id or "UNKNOWN",
-            actor=actor,
-            payload={
-                "recount_id": created_doc.get("id"),
-                "count_line_id": created_doc.get("count_line_id"),
-                "status": created_doc.get("status"),
-                "priority": created_doc.get("priority"),
-                "updated_at": created_doc.get("updated_at") or now_dt,
-            },
-            metadata={
-                "legacy_source": "recount_requests",
-                "event_idempotency_key": f"RECOUNT_REQUEST_CREATED:{created_doc.get('id') or recount_doc.get('count_line_id')}",
-            },
-            db_session=db_session,
-        )
         return created_doc
 
     def _assert_recount_transition(self, current_status: str, target_status: str) -> None:
@@ -748,14 +608,13 @@ class SessionLifecycleService:
     ) -> dict[str, Any]:
         if db_session is None:
             async with mongo_transaction(self.db.client) as tx:
-                if tx is not None:
-                    return await self.transition_recount_request(
-                        recount_id=recount_id,
-                        target_status=target_status,
-                        actor=actor,
-                        fields=fields,
-                        db_session=tx,
-                    )
+                return await self.transition_recount_request(
+                    recount_id=recount_id,
+                    target_status=target_status,
+                    actor=actor,
+                    fields=fields,
+                    db_session=tx,
+                )
 
         recount = await self.get_recount_request(recount_id, db_session=db_session)
         if not recount:
@@ -806,24 +665,6 @@ class SessionLifecycleService:
             },
             db_session=db_session,
         )
-        await self._record_lifecycle_event(
-            event_type="RECOUNT_REQUEST_TRANSITIONED",
-            session_id=session_id or "UNKNOWN",
-            actor=actor,
-            payload={
-                "recount_id": str(recount.get("_id") or recount.get("id") or recount_id),
-                "from_status": current_status,
-                "to_status": normalized_target,
-                "updated_at": update_fields.get("updated_at") or now_dt,
-            },
-            metadata={
-                "legacy_source": "recount_requests",
-                "event_idempotency_key": (
-                    f"RECOUNT_REQUEST_TRANSITIONED:{recount.get('_id') or recount.get('id') or recount_id}:{normalized_target}:{update_fields.get('updated_at') or now_dt}"
-                ),
-            },
-            db_session=db_session,
-        )
         return refreshed
 
     async def _finalize_session_canonical_core(
@@ -835,7 +676,6 @@ class SessionLifecycleService:
         db_session: Optional[Any],
     ) -> dict[str, Any]:
         from backend.services.canonical_inventory import is_blocking_finalization
-        from backend.services.count_line_write_service import CountLineWriteService
 
         kwargs = self._kwargs(db_session)
         session = await self.ensure_session_exists(session_id, db_session=db_session)
@@ -873,27 +713,6 @@ class SessionLifecycleService:
             )
 
         finalized_at = _utc_now()
-        line_update: dict[str, Any] = {
-            "status": "locked",
-            "approval_status": "APPROVED",
-            "verified": True,
-            "verified_by": actor,
-            "verified_at": finalized_at,
-            "approved_by": actor,
-            "approved_at": finalized_at,
-            "finalized_by": actor,
-            "finalized_at": finalized_at,
-            "updated_at": finalized_at,
-            "updated_by": actor,
-        }
-        if note:
-            line_update["finalization_note"] = note
-
-        count_line_filter = {
-            "session_id": session_id,
-            "status": {"$nin": ["locked", "SUPERSEDED", "superseded"]},
-            "approval_status": {"$nin": ["REJECTED", "NEEDS_REVIEW"]},
-        }
         count_lines_to_finalize = [
             line
             for line in lines
@@ -901,27 +720,16 @@ class SessionLifecycleService:
             and str(line.get("approval_status") or "") not in {"REJECTED", "NEEDS_REVIEW"}
         ]
         if count_lines_to_finalize:
-            write_service = CountLineWriteService(
-                self.db,
-                validation_service=self.validation_service,
-                lifecycle_service=self,
-                audit_service=self.audit_service,
-            )
-            await write_service.process_write(
-                {
-                    "operation": "update_many",
-                    "filter": count_line_filter,
-                    "update": {"$set": line_update},
-                },
-                context={
-                    "session": session,
-                    "session_id": session_id,
-                    "candidate_lines": count_lines_to_finalize,
-                    "username": actor,
-                    "db_session": db_session,
-                    "governance_mode": "finalization",
-                    "skip_session_totals_update": True,
-                },
+            if self.count_line_finalizer is None:
+                raise GovernanceViolation(
+                    "CRITICAL: Session finalization requires configured count-line finalizer"
+                )
+            await self.count_line_finalizer(
+                session_id=session_id,
+                actor=actor,
+                finalized_at=finalized_at,
+                note=note,
+                db_session=db_session,
             )
 
         totals = await self._compute_session_totals(session_id, db_session=db_session)
@@ -972,16 +780,10 @@ class SessionLifecycleService:
             metadata={"note": note},
             db_session=db_session,
         )
-        await self._record_lifecycle_event(
-            event_type="SESSION_FINALIZED",
+        await self._sync_session_projection(
             session_id=session_id,
+            trigger="session.finalize",
             actor=actor,
-            payload={
-                "note": note,
-                "updated_at": finalized_at,
-                "version": expected_version + 1,
-                **totals,
-            },
             db_session=db_session,
         )
 

@@ -17,9 +17,14 @@ from backend.auth.permissions import (
     remove_permissions_from_user,
     require_permission,
 )
+from backend.auth.dependencies import require_admin
 from backend.db.runtime import get_db
 
-permissions_router = APIRouter(prefix="/permissions", tags=["permissions"])
+permissions_router = APIRouter(
+    prefix="/permissions",
+    tags=["permissions"],
+    dependencies=[Depends(require_admin)],
+)
 
 
 class PermissionUpdate(BaseModel):

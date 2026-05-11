@@ -1,0 +1,91 @@
+{
+  "is_consistent": true,
+  "summary": {
+    "session_totals_match": true,
+    "verified_items_match": true,
+    "variance_match": true,
+    "financial_match": true,
+    "sample_validation_passed": true,
+    "event_lag_ok": true
+  },
+  "metrics": {
+    "projection_drift_count": 0,
+    "projection_gap_count": 0,
+    "event_lag_seconds": 0.0,
+    "event_lag_threshold_seconds": 5.0
+  },
+  "samples_checked": 3,
+  "timestamp": "2026-05-02T16:15:44.960098Z",
+  "collections": {
+    "session_projection": "session_dashboard_projection",
+    "verified_projection": "verified_items_projection",
+    "variance_projection": "variance_summary_projection",
+    "financial_projection": "financial_projection",
+    "batch_projection": "batch_records",
+    "event_log": "event_log"
+  },
+  "details": {
+    "sample_session_ids": [
+      "validation-sync-be86168c-0631-4278-9c41-a9826d8a2574",
+      "validation-sync-e53496c6-45a4-49ab-8cb9-0cc16d966e80",
+      "f1573ed8-1e6c-4096-8d7e-28b94d95db6a"
+    ],
+    "session_totals": {
+      "legacy": {
+        "session_count": 71,
+        "total_items": 27,
+        "verified_items": 0,
+        "pending_items": 27,
+        "damage_items": 0,
+        "total_variance": 117.0
+      },
+      "projection": {
+        "session_count": 71,
+        "total_items": 27,
+        "verified_items": 0,
+        "pending_items": 27,
+        "damage_items": 0,
+        "total_variance": 117.0
+      }
+    },
+    "verified_items": {
+      "legacy": 0,
+      "projection": 0
+    },
+    "variance_totals": {
+      "legacy": 117.0,
+      "projection": 117.0
+    },
+    "financial_totals": {
+      "legacy": 0.0,
+      "projection": 0.0
+    },
+    "sample_results": [
+      {
+        "session_id": "validation-sync-be86168c-0631-4278-9c41-a9826d8a2574",
+        "items_compared": 1,
+        "mismatches": []
+      },
+      {
+        "session_id": "validation-sync-e53496c6-45a4-49ab-8cb9-0cc16d966e80",
+        "items_compared": 1,
+        "mismatches": []
+      },
+      {
+        "session_id": "f1573ed8-1e6c-4096-8d7e-28b94d95db6a",
+        "items_compared": 1,
+        "mismatches": []
+      }
+    ],
+    "event_lag": {
+      "latest_event_timestamp": "2026-04-29T07:40:33.524000Z",
+      "latest_projection_timestamp": "2026-05-02T15:23:34.789000Z"
+    }
+  },
+  "controls": {
+    "max_records": null,
+    "timeout_seconds": null,
+    "sample_seed": null
+  },
+  "failures": []
+}

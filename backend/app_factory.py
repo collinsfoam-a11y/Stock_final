@@ -83,6 +83,7 @@ from backend.api.websocket_api import router as websocket_router  # noqa: E402
 from backend.api.sql_verification_api import router as sql_verification_router  # noqa: E402
 from backend.auth.cookies import clear_auth_cookies, get_refresh_token_cookie, set_auth_cookies  # noqa: E402
 from backend.auth.dependencies import get_current_user  # noqa: E402
+from backend.auth.dependencies import require_admin as auth_require_admin  # noqa: E402
 from backend.config import settings  # noqa: E402
 from backend.core.lifespan import (  # noqa: E402
     activity_log_service,
@@ -257,7 +258,7 @@ async def root():
 
 
 @app.get("/api/mapping/test_direct")
-def test_direct():
+def test_direct(_current_user: dict = Depends(auth_require_admin)):
     """Return a minimal payload for mapping smoke tests."""
     return {"status": "ok"}
 

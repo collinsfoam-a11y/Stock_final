@@ -1,19 +1,13 @@
-import React from "react";
-import {
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import React, { useMemo } from "react";
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { auroraTheme } from "@/theme/auroraTheme";
 import {
   DashboardItem,
   formatValue,
 } from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
 
 interface ItemDetailsModalProps {
   item: DashboardItem | null;
@@ -21,11 +15,12 @@ interface ItemDetailsModalProps {
   visible: boolean;
 }
 
-export function ItemDetailsModal({
-  item,
-  onClose,
-  visible,
-}: ItemDetailsModalProps) {
+type ItemDetailsTokens = ReturnType<typeof useUiTokens>;
+
+export function ItemDetailsModal({ item, onClose, visible }: ItemDetailsModalProps) {
+  const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
+
   if (!item) return null;
 
   const detailRows = [
@@ -60,17 +55,18 @@ export function ItemDetailsModal({
       animationType="slide"
       transparent
       onRequestClose={onClose}
+      accessibilityViewIsModal
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Item Details</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons
-                name="close"
-                size={24}
-                color={auroraTheme.colors.text.primary}
-              />
+            <TouchableOpacity
+              {...getAccessibleButtonProps({ label: "Close item details" })}
+              onPress={onClose}
+              style={styles.closeButton}
+            >
+              <Ionicons name="close" size={22} color={uiTokens.colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -86,15 +82,17 @@ export function ItemDetailsModal({
                 row.value !== null && (
                   <View key={index} style={styles.detailRow}>
                     <Text style={styles.detailLabel}>{row.label}</Text>
-                    <Text style={styles.detailValue}>
-                      {formatValue(row.value, row.format)}
-                    </Text>
+                    <Text style={styles.detailValue}>{formatValue(row.value, row.format)}</Text>
                   </View>
-                ),
+                )
             )}
           </ScrollView>
 
-          <TouchableOpacity style={styles.doneButton} onPress={onClose}>
+          <TouchableOpacity
+            {...getAccessibleButtonProps({ label: "Close item details" })}
+            style={styles.doneButton}
+            onPress={onClose}
+          >
             <Text style={styles.doneButtonText}>Close</Text>
           </TouchableOpacity>
         </View>
@@ -103,63 +101,73 @@ export function ItemDetailsModal({
   );
 }
 
-const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    width: "90%",
-    maxWidth: 500,
-    maxHeight: "85%",
-    backgroundColor: auroraTheme.colors.surface.base,
-    borderRadius: auroraTheme.borderRadius.xl,
-    padding: auroraTheme.spacing.lg,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: auroraTheme.spacing.md,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: auroraTheme.colors.text.primary,
-  },
-  detailsList: {
-    flex: 1,
-  },
-  detailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: auroraTheme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: auroraTheme.colors.border.subtle,
-  },
-  detailLabel: {
-    fontSize: 14,
-    color: auroraTheme.colors.text.secondary,
-    flex: 1,
-  },
-  detailValue: {
-    fontSize: 14,
-    color: auroraTheme.colors.text.primary,
-    flex: 1,
-    textAlign: "right",
-  },
-  doneButton: {
-    marginTop: auroraTheme.spacing.lg,
-    paddingVertical: auroraTheme.spacing.md,
-    borderRadius: auroraTheme.borderRadius.md,
-    backgroundColor: auroraTheme.colors.primary[500],
-    alignItems: "center",
-  },
-  doneButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#fff",
-  },
-});
+const createStyles = (uiTokens: ItemDetailsTokens) =>
+  StyleSheet.create({
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: uiTokens.colors.overlay,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    modalContent: {
+      width: "90%",
+      maxWidth: 500,
+      maxHeight: "85%",
+      backgroundColor: uiTokens.colors.surface,
+      borderRadius: uiTokens.radius.xl,
+      padding: uiTokens.spacing.lg,
+      borderWidth: 1,
+      borderColor: uiTokens.colors.border,
+    },
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: uiTokens.spacing.md,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: uiTokens.colors.textPrimary,
+    },
+    closeButton: {
+      ...getMinimumTouchTargetStyle(),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    detailsList: {
+      flex: 1,
+    },
+    detailRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingVertical: uiTokens.spacing.sm,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: uiTokens.colors.border,
+    },
+    detailLabel: {
+      fontSize: 14,
+      color: uiTokens.colors.textSecondary,
+      flex: 1,
+    },
+    detailValue: {
+      fontSize: 14,
+      color: uiTokens.colors.textPrimary,
+      flex: 1,
+      textAlign: "right",
+    },
+    doneButton: {
+      ...getMinimumTouchTargetStyle(),
+      marginTop: uiTokens.spacing.lg,
+      borderRadius: uiTokens.radius.md,
+      backgroundColor: uiTokens.colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: uiTokens.spacing.md,
+    },
+    doneButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: uiTokens.colors.surface,
+    },
+  });

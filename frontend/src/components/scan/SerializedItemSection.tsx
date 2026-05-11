@@ -1,16 +1,12 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Switch, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import type { SerialEntryData } from "@/types/scan";
 import { SerialEntriesSection } from "@/components/scan/SerialEntriesSection";
-import {
-  colors,
-  fontSize,
-  fontWeight,
-  semanticColors,
-  spacing,
-} from "@/theme/unified";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 interface SerializedItemSectionProps {
   enabled: boolean;
@@ -37,6 +33,39 @@ export function SerializedItemSection({
   onSerialChange,
   onSerializedChange,
 }: SerializedItemSectionProps) {
+  const uiTokens = useUiTokens();
+  const decorativeIconProps = getDecorativeIconProps();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        section: {
+          marginBottom: uiTokens.spacing.lg,
+        },
+        toggleRow: {
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          paddingVertical: uiTokens.spacing.sm,
+        },
+        toggleLabelContainer: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: uiTokens.spacing.sm,
+        },
+        toggleLabel: {
+          fontSize: 14,
+          fontWeight: "700",
+          color: uiTokens.colors.textPrimary,
+        },
+        toggleHint: {
+          fontSize: 12,
+          marginTop: uiTokens.spacing.xs,
+          color: uiTokens.colors.textSecondary,
+        },
+      }),
+    [uiTokens]
+  );
+
   if (!enabled) {
     return null;
   }
@@ -47,31 +76,31 @@ export function SerializedItemSection({
         <View style={styles.toggleRow}>
           <View style={styles.toggleLabelContainer}>
             <Ionicons
+              {...decorativeIconProps}
               name="barcode-outline"
               size={20}
-              color={colors.primary[600]}
+              color={uiTokens.colors.accent}
             />
-            <Text
-              style={[styles.toggleLabel, { color: semanticColors.text.primary }]}
-            >
-              Is Serialized Item
-            </Text>
+            <Text style={styles.toggleLabel}>Is Serialized Item</Text>
           </View>
           <Switch
             value={isSerializedItem}
             onValueChange={onSerializedChange}
             trackColor={{
-              false: colors.neutral[200],
-              true: colors.primary[600],
+              false: colorWithAlpha(
+                uiTokens.colors.textMuted,
+                uiTokens.mode === "dark" ? 0.45 : 0.28
+              ),
+              true: uiTokens.colors.accent,
             }}
-            thumbColor={isSerializedItem ? colors.white : colors.neutral[50]}
+            thumbColor={
+              isSerializedItem ? uiTokens.colors.surfaceElevated : uiTokens.colors.surface
+            }
           />
         </View>
-        <Text
-          style={[styles.toggleHint, { color: semanticColors.text.secondary }]}
-        >
+        <Text style={styles.toggleHint}>
           {isSerializedItem
-            ? "Enable to capture individual serial numbers for each unit"
+            ? "Capture each unit with a unique serial number before saving."
             : "Turn on if this item has unique serial numbers"}
         </Text>
       </View>
@@ -90,28 +119,3 @@ export function SerializedItemSection({
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  section: {
-    marginBottom: spacing.xl,
-  },
-  toggleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: spacing.sm,
-  },
-  toggleLabelContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  toggleLabel: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.medium,
-  },
-  toggleHint: {
-    fontSize: fontSize.xs,
-    marginTop: spacing.xs,
-  },
-});

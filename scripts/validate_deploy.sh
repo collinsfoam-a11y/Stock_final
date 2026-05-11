@@ -62,11 +62,17 @@ required_keys=(
   MONGO_ROOT_USER
   MONGO_ROOT_PASSWORD
   REDIS_PASSWORD
+  SQL_SERVER_HOST
+  SQL_SERVER_PORT
+  SQL_SERVER_DATABASE
+  SQL_SERVER_USER
+  SQL_SERVER_PASSWORD
+  FORCE_HTTPS
   ALLOWED_HOSTS
   CORS_ALLOW_ORIGINS
 )
 
-placeholder_pattern='CHANGE_ME|GENERATE|example\.com|ops@example\.com|yourdomain'
+placeholder_pattern='CHANGE_ME|GENERATE|example\.com|example\.internal|ops@example\.com|yourdomain|localhost|127\.0\.0\.1'
 
 for key in "${required_keys[@]}"; do
   value="$(read_env_value "$key")"
@@ -87,7 +93,16 @@ for key in "${required_keys[@]}"; do
   pass "$key is configured"
 done
 
-for secret_key in JWT_SECRET JWT_REFRESH_SECRET MONGO_ROOT_PASSWORD REDIS_PASSWORD; do
+for secret_key in JWT_SECRET JWT_REFRESH_SECRET; do
+  value="$(read_env_value "$secret_key")"
+  if [ -n "$value" ] && [ "${#value}" -lt 32 ]; then
+    fail "$secret_key should be at least 32 characters"
+  elif [ -n "$value" ]; then
+    pass "$secret_key length looks acceptable"
+  fi
+done
+
+for secret_key in MONGO_ROOT_PASSWORD REDIS_PASSWORD SQL_SERVER_PASSWORD; do
   value="$(read_env_value "$secret_key")"
   if [ -n "$value" ] && [ "${#value}" -lt 24 ]; then
     fail "$secret_key should be at least 24 characters"
@@ -108,6 +123,33 @@ done
 auth_cookie_samesite="$(read_env_value AUTH_COOKIE_SAMESITE)"
 force_https="$(read_env_value FORCE_HTTPS)"
 auth_cookie_domain="$(read_env_value AUTH_COOKIE_DOMAIN)"
+cors_allow_origins="$(read_env_value CORS_ALLOW_ORIGINS)"
+allowed_hosts="$(read_env_value ALLOWED_HOSTS)"
+whatsapp_provider="$(read_env_value WHATSAPP_PROVIDER)"
+
+if [ "${force_https:-}" != "true" ]; then
+  fail "FORCE_HTTPS must be true for production"
+else
+  pass "FORCE_HTTPS is enabled"
+fi
+
+if echo "$cors_allow_origins" | grep -Eq '(^|,)\s*\*\s*(,|$)'; then
+  fail "CORS_ALLOW_ORIGINS must not contain wildcard '*'"
+else
+  pass "CORS_ALLOW_ORIGINS does not contain wildcards"
+fi
+
+if echo "$allowed_hosts" | grep -Eq '(^|,)\s*\*\s*(,|$)'; then
+  fail "ALLOWED_HOSTS must not contain wildcard '*'"
+else
+  pass "ALLOWED_HOSTS does not contain wildcards"
+fi
+
+if [ "${whatsapp_provider:-}" = "mock" ]; then
+  fail "WHATSAPP_PROVIDER=mock is not allowed in production"
+else
+  pass "WHATSAPP_PROVIDER is not mock"
+fi
 
 if [ "${auth_cookie_samesite:-lax}" = "none" ] && [ "${force_https:-true}" != "true" ]; then
   fail "AUTH_COOKIE_SAMESITE=none requires FORCE_HTTPS=true"
@@ -150,7 +192,14 @@ done
 if [ -f "${ROOT_DIR}/nginx/ssl/fullchain.pem" ] && [ -f "${ROOT_DIR}/nginx/ssl/privkey.pem" ]; then
   pass "TLS certificate files are present"
 else
-  warn "TLS certificate files are missing; run ./scripts/init_letsencrypt.sh before first deploy"
+  fail "TLS certificate files are missing; run ./scripts/init_letsencrypt.sh before first deploy"
+fi
+
+if grep -Eq 'return 404;|auth_request|deny all' "${ROOT_DIR}/nginx/nginx.conf" \
+  && grep -Eq 'docs_url=.*None|openapi_url=.*None|ENABLE_API_DOCS' "${ROOT_DIR}/backend/app_factory.py"; then
+  pass "API docs are disabled or blocked for production"
+else
+  fail "API docs are not disabled or protected for production"
 fi
 
 echo ""

@@ -3,7 +3,6 @@
  * Tests for input validation functions
  */
 
-import { describe, it, expect } from "@jest/globals";
 import { validateBarcode } from "../validation";
 
 describe("Barcode Validation", () => {

@@ -3,7 +3,9 @@ import { View, Text, StyleSheet, Platform, Pressable } from "react-native";
 import * as Haptics from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { auroraTheme } from "../../theme/auroraTheme";
+import { useUiTokens } from "../../hooks/useUiTokens";
+import { typography } from "../../theme/legacyCompat";
+import { colorWithAlpha } from "../../theme/themeTokens";
 import {
   FONT_STYLE_OPTIONS,
   FontStylePreference,
@@ -21,36 +23,48 @@ export const FontStylePicker: React.FC<FontStylePickerProps> = ({
   onValueChange,
   disabled = false,
 }) => {
+  const uiTokens = useUiTokens();
+  const labelColor = disabled ? uiTokens.colors.textMuted : uiTokens.colors.textPrimary;
+  const selectedBackground = colorWithAlpha(
+    uiTokens.colors.accent,
+    uiTokens.mode === "dark" ? 0.18 : 0.08
+  );
+
   return (
-    <View style={[styles.container, disabled && styles.disabledContainer]}>
+    <View
+      style={[
+        styles.container,
+        { gap: uiTokens.spacing.sm, padding: uiTokens.spacing.md },
+        disabled && styles.disabledContainer,
+      ]}
+    >
       <View style={styles.header}>
-        <View style={styles.labelRow}>
-          <Ionicons
-            name="text"
-            size={18}
-            color={
-              disabled
-                ? auroraTheme.colors.text.tertiary
-                : auroraTheme.colors.text.primary
-            }
-          />
-          <Text style={[styles.label, disabled && styles.disabledLabel]}>
-            Font Style
-          </Text>
+        <View style={[styles.labelRow, { gap: uiTokens.spacing.xs }]}>
+          <Ionicons name="text" size={18} color={labelColor} />
+          <Text style={[styles.label, { color: labelColor }]}>Font Style</Text>
         </View>
       </View>
 
-      <View style={styles.options}>
+      <View style={[styles.options, { gap: uiTokens.spacing.sm }]}>
         {FONT_STYLE_OPTIONS.map((option) => {
           const isSelected = option.value === value;
           const families = resolveFontFamilies(option.value);
 
           return (
             <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled, selected: isSelected }}
               key={option.value}
               style={[
                 styles.option,
-                isSelected && styles.optionSelected,
+                {
+                  backgroundColor: isSelected ? selectedBackground : uiTokens.colors.surface,
+                  borderColor: isSelected ? uiTokens.colors.accent : uiTokens.colors.border,
+                  borderRadius: uiTokens.radius.md,
+                  gap: uiTokens.spacing.xs,
+                  paddingHorizontal: uiTokens.spacing.sm,
+                  paddingVertical: uiTokens.spacing.sm,
+                },
                 disabled && styles.optionDisabled,
               ]}
               onPress={() => {
@@ -66,8 +80,10 @@ export const FontStylePicker: React.FC<FontStylePickerProps> = ({
               <Text
                 style={[
                   styles.preview,
-                  { fontFamily: families.body },
-                  isSelected && styles.previewSelected,
+                  {
+                    color: isSelected ? uiTokens.colors.accentStrong : uiTokens.colors.textPrimary,
+                    fontFamily: families.body,
+                  },
                 ]}
               >
                 {option.preview}
@@ -75,8 +91,13 @@ export const FontStylePicker: React.FC<FontStylePickerProps> = ({
               <Text
                 style={[
                   styles.optionLabel,
-                  isSelected && styles.optionLabelSelected,
-                  disabled && styles.disabledLabel,
+                  {
+                    color: disabled
+                      ? uiTokens.colors.textMuted
+                      : isSelected
+                        ? uiTokens.colors.textPrimary
+                        : uiTokens.colors.textSecondary,
+                  },
                 ]}
               >
                 {option.label}
@@ -91,8 +112,7 @@ export const FontStylePicker: React.FC<FontStylePickerProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    padding: auroraTheme.spacing.md,
-    gap: auroraTheme.spacing.sm,
+    width: "100%",
   },
   disabledContainer: {
     opacity: 0.5,
@@ -105,53 +125,29 @@ const styles = StyleSheet.create({
   labelRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: auroraTheme.spacing.xs,
   },
   label: {
-    fontSize: auroraTheme.typography.fontSize.base,
+    fontSize: typography.fontSize.base,
     fontWeight: "500",
-    color: auroraTheme.colors.text.primary,
-  },
-  disabledLabel: {
-    color: auroraTheme.colors.text.tertiary,
   },
   options: {
     flexDirection: "row",
-    gap: auroraTheme.spacing.sm,
   },
   option: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: auroraTheme.spacing.sm,
-    paddingHorizontal: auroraTheme.spacing.sm,
-    borderRadius: auroraTheme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: auroraTheme.colors.border.light,
-    backgroundColor: auroraTheme.colors.background.glass,
-    gap: auroraTheme.spacing.xs,
-  },
-  optionSelected: {
-    borderColor: auroraTheme.colors.primary[500],
-    backgroundColor: "rgba(14, 165, 233, 0.12)",
   },
   optionDisabled: {
     opacity: 0.5,
   },
   preview: {
     fontSize: 22,
-    color: auroraTheme.colors.text.primary,
-  },
-  previewSelected: {
-    color: auroraTheme.colors.primary[500],
   },
   optionLabel: {
-    fontSize: auroraTheme.typography.fontSize.sm,
-    color: auroraTheme.colors.text.secondary,
+    fontSize: typography.fontSize.sm,
     fontWeight: "500",
-  },
-  optionLabelSelected: {
-    color: auroraTheme.colors.text.primary,
   },
 });
 

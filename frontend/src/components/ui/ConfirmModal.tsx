@@ -21,27 +21,11 @@
  * ```
  */
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
-import Animated, {
-  FadeIn,
-  SlideInDown,
-  SlideOutDown,
-} from "react-native-reanimated";
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
+import Animated, { FadeIn, SlideInDown, SlideOutDown } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Modal } from "./Modal";
-import {
-  colors,
-  semanticColors,
-  spacing,
-  radius,
-  textStyles,
-} from "../../theme/unified";
+import { colors, semanticColors, spacing, radius, textStyles } from "@/theme/legacyCompat";
 
 export type ConfirmModalVariant = "default" | "danger" | "warning" | "success";
 
@@ -174,10 +158,7 @@ function ConfirmModal({
         {/* Icon */}
         <Animated.View
           entering={FadeIn.delay(100)}
-          style={[
-            styles.iconContainer,
-            { backgroundColor: config.backgroundColor },
-          ]}
+          style={[styles.iconContainer, { backgroundColor: config.backgroundColor }]}
         >
           <Ionicons name={iconName} size={32} color={config.color} />
         </Animated.View>
@@ -192,14 +173,10 @@ function ConfirmModal({
         {affectedCount !== undefined && affectedCount > 0 && (
           <Animated.View
             entering={FadeIn.delay(150)}
-            style={[
-              styles.countBadge,
-              { backgroundColor: config.backgroundColor },
-            ]}
+            style={[styles.countBadge, { backgroundColor: config.backgroundColor }]}
           >
             <Text style={[styles.countText, { color: config.color }]}>
-              {affectedCount} item{affectedCount !== 1 ? "s" : ""} will be
-              affected
+              {affectedCount} item{affectedCount !== 1 ? "s" : ""} will be affected
             </Text>
           </Animated.View>
         )}
@@ -233,7 +210,7 @@ function ConfirmModal({
             accessibilityLabel={confirmLabel}
           >
             {loading && showLoadingSpinner ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={semanticColors.text.inverse} size="small" />
             ) : (
               <Text style={styles.confirmText}>{confirmLabel}</Text>
             )}
@@ -321,7 +298,7 @@ const styles = StyleSheet.create({
   },
   confirmText: {
     ...textStyles.label,
-    color: "#fff",
+    color: semanticColors.text.inverse,
     fontWeight: "600",
   },
 });

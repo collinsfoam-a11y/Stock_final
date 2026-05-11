@@ -3,14 +3,6 @@
  * Tests for AsyncStorage wrapper and caching
  */
 
-import {
-  describe,
-  it,
-  expect,
-  jest,
-  beforeEach,
-  afterEach,
-} from "@jest/globals";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { asyncStorageService as AsyncStorageService } from "../storage/asyncStorageService";
 

@@ -4,15 +4,10 @@
  */
 
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface QuickAction {
   id: string;
   label: string;
@@ -57,13 +52,11 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
               <Ionicons
                 name={action.icon}
                 size={compact ? 20 : 24}
-                color={action.color || "#2196F3"}
+                color={action.color || uiColors.info[500]}
               />
               {action.badge !== undefined && action.badge > 0 && (
                 <View style={styles.badge}>
-                  <Text style={styles.badgeText}>
-                    {action.badge > 99 ? "99+" : action.badge}
-                  </Text>
+                  <Text style={styles.badgeText}>{action.badge > 99 ? "99+" : action.badge}</Text>
                 </View>
               )}
             </View>
@@ -93,7 +86,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 12,
     borderRadius: 12,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: uiColors.neutral[100],
     minWidth: 70,
     position: "relative",
   },
@@ -109,7 +102,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -8,
     right: -8,
-    backgroundColor: "#f44336",
+    backgroundColor: uiColors.error[500],
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -118,13 +111,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   badgeText: {
-    color: "#fff",
+    color: uiSemanticColors.text.inverse,
     fontSize: 10,
     fontWeight: "bold",
   },
   actionLabel: {
     fontSize: 12,
-    color: "#333",
+    color: uiSemanticColors.text.primary,
     textAlign: "center",
     fontWeight: "500",
   },

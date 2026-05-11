@@ -22,7 +22,6 @@ import {
   View,
   Text,
   StyleSheet,
-
   TouchableOpacity,
   Platform as _Platform,
   FlatListProps,
@@ -43,7 +42,7 @@ import {
   radius,
   shadows as _shadows,
   textStyles,
-} from "../../theme/unified";
+} from "@/theme/legacyCompat";
 
 /** Generic item type constraint */
 export interface SelectableItem {
@@ -58,11 +57,7 @@ export interface MultiSelectListProps<T extends SelectableItem> extends Omit<
   /** List of items */
   items: T[];
   /** Render function for each item */
-  renderItem: (
-    item: T,
-    isSelected: boolean,
-    index: number,
-  ) => React.ReactElement;
+  renderItem: (item: T, isSelected: boolean, index: number) => React.ReactElement;
   /** Key extractor */
   keyExtractor?: (item: T, index: number) => string;
   /** Called when selection changes */
@@ -99,31 +94,24 @@ export function MultiSelectList<T extends SelectableItem>({
   onSelectionModeChange: _onSelectionModeChange,
   ...flatListProps
 }: MultiSelectListProps<T>) {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    new Set(initialSelection),
-  );
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(initialSelection));
 
   // Animation values for header
   const headerScale = useSharedValue(1);
 
   // Selectable items (excluding disabled)
-  const selectableItems = useMemo(
-    () => items.filter((item) => !item.disabled),
-    [items],
-  );
+  const selectableItems = useMemo(() => items.filter((item) => !item.disabled), [items]);
 
   // Check if all items are selected
   const allSelected = useMemo(
-    () =>
-      selectableItems.length > 0 &&
-      selectableItems.every((item) => selectedIds.has(item.id)),
-    [selectableItems, selectedIds],
+    () => selectableItems.length > 0 && selectableItems.every((item) => selectedIds.has(item.id)),
+    [selectableItems, selectedIds]
   );
 
   // Check if some items are selected
   const someSelected = useMemo(
     () => selectedIds.size > 0 && !allSelected,
-    [selectedIds.size, allSelected],
+    [selectedIds.size, allSelected]
   );
 
   // Toggle item selection
@@ -145,7 +133,7 @@ export function MultiSelectList<T extends SelectableItem>({
         return newSet;
       });
     },
-    [maxSelection, onSelectionChange],
+    [maxSelection, onSelectionChange]
   );
 
   // Toggle all items
@@ -162,21 +150,13 @@ export function MultiSelectList<T extends SelectableItem>({
       } else {
         // Select all (respecting max limit)
         const itemsToSelect =
-          maxSelection > 0
-            ? selectableItems.slice(0, maxSelection)
-            : selectableItems;
+          maxSelection > 0 ? selectableItems.slice(0, maxSelection) : selectableItems;
         const newIds = itemsToSelect.map((item) => item.id);
         onSelectionChange(newIds);
         return new Set(newIds);
       }
     });
-  }, [
-    allSelected,
-    selectableItems,
-    maxSelection,
-    onSelectionChange,
-    headerScale,
-  ]);
+  }, [allSelected, selectableItems, maxSelection, onSelectionChange, headerScale]);
 
   // Clear selection
   const clearSelection = useCallback(() => {
@@ -206,7 +186,7 @@ export function MultiSelectList<T extends SelectableItem>({
         </SelectableItemWrapper>
       );
     },
-    [selectedIds, toggleItem, renderItem, selectionMode],
+    [selectedIds, toggleItem, renderItem, selectionMode]
   );
 
   // Empty component
@@ -214,11 +194,7 @@ export function MultiSelectList<T extends SelectableItem>({
     if (EmptyComponent) return EmptyComponent;
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons
-          name="document-outline"
-          size={48}
-          color={semanticColors.text.tertiary}
-        />
+        <Ionicons name="document-outline" size={48} color={semanticColors.text.tertiary} />
         <Text style={styles.emptyText}>No items to display</Text>
       </View>
     );
@@ -229,11 +205,7 @@ export function MultiSelectList<T extends SelectableItem>({
       {/* Selection Header */}
       {showSelectAll && selectionMode && items.length > 0 && (
         <Animated.View style={[styles.header, headerAnimatedStyle]}>
-          <TouchableOpacity
-            style={styles.selectAllRow}
-            onPress={toggleAll}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity style={styles.selectAllRow} onPress={toggleAll} activeOpacity={0.7}>
             <View
               style={[
                 styles.checkbox,
@@ -242,7 +214,7 @@ export function MultiSelectList<T extends SelectableItem>({
               ]}
             >
               {allSelected && (
-                <Ionicons name="checkmark" size={16} color="#fff" />
+                <Ionicons name="checkmark" size={16} color={semanticColors.text.inverse} />
               )}
               {someSelected && <View style={styles.partialIndicator} />}
             </View>
@@ -250,14 +222,9 @@ export function MultiSelectList<T extends SelectableItem>({
           </TouchableOpacity>
 
           <View style={styles.selectionInfo}>
-            <Text style={styles.selectionCount}>
-              {selectedIds.size} selected
-            </Text>
+            <Text style={styles.selectionCount}>{selectedIds.size} selected</Text>
             {selectedIds.size > 0 && (
-              <TouchableOpacity
-                onPress={clearSelection}
-                style={styles.clearButton}
-              >
+              <TouchableOpacity onPress={clearSelection} style={styles.clearButton}>
                 <Text style={styles.clearText}>Clear</Text>
               </TouchableOpacity>
             )}
@@ -266,8 +233,9 @@ export function MultiSelectList<T extends SelectableItem>({
       )}
 
       {/* List */}
-              {/* ⚡ Bolt: Replaced FlatList with VirtualList to ensure smooth scrolling and quick rendering even with large datasets in multi-select modals. */}
-        <VirtualList estimatedItemSize={60}
+      {/* ⚡ Bolt: Replaced FlatList with VirtualList to ensure smooth scrolling and quick rendering even with large datasets in multi-select modals. */}
+      <VirtualList
+        estimatedItemSize={60}
         data={items}
         renderItem={renderItemWrapper}
         keyExtractor={keyExtractor}
@@ -306,12 +274,12 @@ function SelectableItemWrapper({
     backgroundColor: interpolateColor(
       animatedProgress.value,
       [0, 1],
-      ["transparent", colors.primary[50]],
+      ["transparent", colors.primary[50]]
     ),
     borderColor: interpolateColor(
       animatedProgress.value,
       [0, 1],
-      [semanticColors.border.default, colors.primary[300]],
+      [semanticColors.border.default, colors.primary[300]]
     ),
   }));
 
@@ -339,7 +307,7 @@ function SelectableItemWrapper({
           isDisabled && styles.itemCheckboxDisabled,
         ]}
       >
-        {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
+        {isSelected && <Ionicons name="checkmark" size={14} color={semanticColors.text.inverse} />}
       </View>
       <View style={styles.itemContent}>{children}</View>
     </AnimatedTouchable>

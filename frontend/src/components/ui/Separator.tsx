@@ -10,17 +10,11 @@
  */
 
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-  StyleProp,
-} from "react-native";
+import { View, Text, StyleSheet, ViewStyle, TextStyle, StyleProp } from "react-native";
 import { useThemeContext } from "@/context/ThemeContext";
 import { Spacing, FontSizes, FontWeights } from "@/theme/uiConstants";
 
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 export type SeparatorOrientation = "horizontal" | "vertical";
 
 export interface SeparatorProps {
@@ -61,7 +55,7 @@ export interface SeparatorProps {
  * // Custom styling
  * <Separator
  *   thickness={2}
- *   color="#e0e0e0"
+ *   color={uiSemanticColors.border.default}
  *   spacing={24}
  *   length="80%"
  * />
@@ -123,7 +117,7 @@ export const Separator: React.FC<SeparatorProps> = ({
       <Text
         style={[
           styles.label,
-          { color: themeLegacy.colors.textSecondary || "#666" },
+          { color: themeLegacy.colors.textSecondary || uiSemanticColors.text.secondary },
           labelStyle,
         ]}
       >

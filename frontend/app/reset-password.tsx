@@ -3,16 +3,8 @@
  * Final step: Set new password using the validated reset token
  */
 
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Alert,
-} from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -24,16 +16,104 @@ import ModernCard from "../src/components/ui/ModernCard";
 import ModernInput from "../src/components/ui/ModernInput";
 import ModernButton from "../src/components/ui/ModernButton";
 import apiClient from "../src/services/httpClient";
-import { colors, spacing, typography } from "../src/theme/unified";
+import { toastService } from "../src/services/toastService";
+import { useAuthStore } from "../src/store/authStore";
+import { useUiTokens } from "../src/hooks/useUiTokens";
+import { colorWithAlpha } from "../src/theme/themeTokens";
+
+const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
+  if (Platform.OS === "web") {
+    return (
+      <View style={style} {...props}>
+        {children}
+      </View>
+    );
+  }
+
+  return (
+    <Animated.View style={style} entering={entering} {...props}>
+      {children}
+    </Animated.View>
+  );
+};
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
   const { reset_token } = useLocalSearchParams<{ reset_token: string }>();
+  const clearPendingRedirect = useAuthStore((state) => state.clearPendingRedirect);
+  const uiTokens = useUiTokens();
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        button: {
+          marginTop: uiTokens.spacing.lg,
+        },
+        card: {
+          backgroundColor: uiTokens.colors.surfaceElevated,
+          borderWidth: 1,
+          borderColor: uiTokens.colors.border,
+        },
+        container: {
+          flex: 1,
+          backgroundColor: uiTokens.colors.background,
+        },
+        contentContainer: {
+          flex: 1,
+          maxWidth: 400,
+          alignSelf: "center",
+          width: "100%",
+          justifyContent: "center",
+          paddingTop: uiTokens.spacing.xxl,
+        },
+        iconContainer: {
+          width: 80,
+          height: 80,
+          borderRadius: 40,
+          backgroundColor: colorWithAlpha(
+            uiTokens.colors.accent,
+            uiTokens.mode === "dark" ? 0.25 : 0.12
+          ),
+          justifyContent: "center",
+          alignItems: "center",
+          alignSelf: "center",
+          marginBottom: uiTokens.spacing.lg,
+        },
+        keyboardView: {
+          flex: 1,
+        },
+        scrollContent: {
+          flexGrow: 1,
+          paddingHorizontal: uiTokens.spacing.lg,
+          paddingBottom: uiTokens.spacing.xl,
+        },
+        subtitle: {
+          fontSize: 16,
+          color: uiTokens.colors.textSecondary,
+          textAlign: "center",
+          marginBottom: uiTokens.spacing.xl,
+          lineHeight: 24,
+        },
+        title: {
+          fontSize: 28,
+          fontWeight: "800",
+          color: uiTokens.colors.textPrimary,
+          textAlign: "center",
+          marginBottom: uiTokens.spacing.sm,
+        },
+      }),
+    [uiTokens]
+  );
+
+  useEffect(() => {
+    void clearPendingRedirect().catch((error) => {
+      console.warn("[ResetPassword] Failed to clear pending redirect", error);
+    });
+  }, [clearPendingRedirect]);
 
   const handleReset = async () => {
     if (newPassword.length < 8) {
@@ -50,26 +130,18 @@ export default function ResetPasswordScreen() {
     setError("");
 
     try {
-      const response = await apiClient.post(
-        "/api/auth/password-reset/confirm",
-        {
-          reset_token,
-          new_password: newPassword,
-          confirm_password: confirmPassword,
-        },
-      );
+      const response = await apiClient.post("/api/auth/password-reset/confirm", {
+        reset_token,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      });
 
       if (response.data.success) {
-        Alert.alert(
-          "Success",
-          "Your password has been reset successfully. Please login with your new password.",
-          [{ text: "Login", onPress: () => router.replace("/login") }],
-        );
+        toastService.showSuccess("Password reset. Please sign in again.");
+        router.replace("/login");
       } else {
         setError(
-          response.data.message ||
-            response.data.error?.message ||
-            "Failed to reset password",
+          response.data.message || response.data.error?.message || "Failed to reset password"
         );
       }
     } catch (err: any) {
@@ -80,8 +152,14 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <StatusBar style="dark" backgroundColor={colors.gray[50]} />
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: uiTokens.colors.background }]}
+      edges={["top", "left", "right"]}
+    >
+      <StatusBar
+        style={uiTokens.mode === "dark" ? "light" : "dark"}
+        backgroundColor={uiTokens.colors.background}
+      />
 
       <ModernHeader title="Set New Password" subtitle="Secure your account" />
 
@@ -93,21 +171,20 @@ export default function ResetPasswordScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View
+          <SafeAnimatedView
             entering={FadeInDown.duration(600).springify()}
             style={styles.contentContainer}
           >
             <View style={styles.iconContainer}>
-              <Ionicons name="key" size={48} color={colors.primary[500]} />
+              <Ionicons name="key" size={48} color={uiTokens.colors.accent} />
             </View>
 
-            <Text style={styles.title}>New Password</Text>
-            <Text style={styles.subtitle}>
-              Create a strong password for your account. It must be at least 8
-              characters long.
+            <Text style={[styles.title, { color: uiTokens.colors.textPrimary }]}>New Password</Text>
+            <Text style={[styles.subtitle, { color: uiTokens.colors.textSecondary }]}>
+              Create a strong password for your account. It must be at least 8 characters long
             </Text>
 
-            <ModernCard padding={spacing.lg} style={styles.card}>
+            <ModernCard padding={uiTokens.spacing.lg} style={styles.card}>
               <ModernInput
                 label="New Password"
                 placeholder="Enter new password"
@@ -142,62 +219,9 @@ export default function ResetPasswordScreen() {
                 style={styles.button}
               />
             </ModernCard>
-          </Animated.View>
+          </SafeAnimatedView>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.gray[50],
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
-  },
-  contentContainer: {
-    flex: 1,
-    maxWidth: 400,
-    alignSelf: "center",
-    width: "100%",
-    justifyContent: "center",
-    paddingTop: spacing["2xl"],
-  },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.primary[50],
-    justifyContent: "center",
-    alignItems: "center",
-    alignSelf: "center",
-    marginBottom: spacing.lg,
-  },
-  title: {
-    fontSize: typography.fontSize["2xl"],
-    fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
-    textAlign: "center",
-    marginBottom: spacing.sm,
-  },
-  subtitle: {
-    fontSize: typography.fontSize.base,
-    color: colors.gray[600],
-    textAlign: "center",
-    marginBottom: spacing.xl,
-    lineHeight: 24,
-  },
-  card: {
-    backgroundColor: colors.white,
-  },
-  button: {
-    marginTop: spacing.lg,
-  },
-});

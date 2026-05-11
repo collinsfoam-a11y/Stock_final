@@ -1,0 +1,7 @@
+{
+  "timestamp_utc": "2026-05-03T15:22:31.665336Z",
+  "ready_for_staged_rollout": false,
+  "gate": "FAILED",
+  "blocking_reason": "Stage-2 authenticated canary returned 503 PROJECTION_INCONSISTENT (STALE_DATA).",
+  "required_next_action": "Fix readiness stability-window behavior so canary endpoints remain HTTP 200 continuously, then rerun Step 2-6 gates."
+}

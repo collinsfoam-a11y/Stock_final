@@ -1,14 +1,16 @@
-type BackendSettingsOverrides = Partial<
-  import("../../services/api/authApi").UserSettings
->;
+type BackendSettingsOverrides = Partial<import("../../services/api/authApi").UserSettings>;
 
 const buildBackendSettings = (
-  overrides: BackendSettingsOverrides = {},
+  overrides: BackendSettingsOverrides = {}
 ): import("../../services/api/authApi").UserSettings => ({
   theme: "light",
   notifications_enabled: true,
   notification_sound: true,
   notification_badge: true,
+  notification_recount_alerts: true,
+  notification_approval_alerts: true,
+  notification_sync_failure_alerts: true,
+  notification_session_reminder_alerts: true,
   auto_sync_enabled: true,
   auto_sync_interval: 15,
   sync_on_reconnect: true,
@@ -166,9 +168,7 @@ describe("settingsStore user scope", () => {
 
     expect(storage.has("app_settings:user-a")).toBe(true);
     expect(storage.has("app_settings:user-b")).toBe(true);
-    expect(storage.get("app_settings:user-a")).not.toEqual(
-      storage.get("app_settings:user-b"),
-    );
+    expect(storage.get("app_settings:user-a")).not.toEqual(storage.get("app_settings:user-b"));
     expect(updateUserSettings).toHaveBeenCalledTimes(2);
     expect(setTheme).toHaveBeenCalledWith("dark");
   });
@@ -258,9 +258,10 @@ describe("settingsStore user scope", () => {
     expect(useSettingsStore.getState().settings.fontSizeValue).toBe(18);
     expect(useSettingsStore.getState().settings.fontStyle).toBe("serif");
 
-    const migratedSettings = JSON.parse(
-      storage.get("app_settings:legacy-user") ?? "{}",
-    ) as Record<string, unknown>;
+    const migratedSettings = JSON.parse(storage.get("app_settings:legacy-user") ?? "{}") as Record<
+      string,
+      unknown
+    >;
 
     expect(migratedSettings.theme).toBe("dark");
     expect(migratedSettings.fontSizeValue).toBe(18);
@@ -286,13 +287,13 @@ describe("settingsStore user scope", () => {
       __esModule: true,
       authApi: {
         getUserSettings: jest.fn(async () =>
-          buildBackendSettings({ operational_mode: "live_audit" }),
+          buildBackendSettings({ operational_mode: "live_audit" })
         ),
         updateUserSettings: jest.fn(async () => buildBackendSettings()),
       },
       default: {
         getUserSettings: jest.fn(async () =>
-          buildBackendSettings({ operational_mode: "live_audit" }),
+          buildBackendSettings({ operational_mode: "live_audit" })
         ),
         updateUserSettings: jest.fn(async () => buildBackendSettings()),
       },
@@ -337,5 +338,87 @@ describe("settingsStore user scope", () => {
     await useSettingsStore.getState().syncFromBackend();
 
     expect(useSettingsStore.getState().settings.operationalMode).toBe("routine");
+  });
+
+  it("persists granular notification preferences to the backend payload", async () => {
+    const updateUserSettings = jest.fn(async () => buildBackendSettings());
+
+    jest.doMock("../../services/mmkvStorage", () => ({
+      __esModule: true,
+      mmkvStorage: {
+        getItem: jest.fn(() => null),
+        getItemAsync: jest.fn(async () => null),
+        setItem: jest.fn(),
+        removeItem: jest.fn(),
+        clearAll: jest.fn(),
+        flush: jest.fn(async () => undefined),
+        initialize: jest.fn(async () => undefined),
+      },
+    }));
+
+    jest.doMock("../../services/api/authApi", () => ({
+      __esModule: true,
+      authApi: {
+        getUserSettings: jest.fn(async () => buildBackendSettings()),
+        updateUserSettings,
+      },
+      default: {
+        getUserSettings: jest.fn(async () => buildBackendSettings()),
+        updateUserSettings,
+      },
+    }));
+
+    jest.doMock("../../services/themeService", () => ({
+      __esModule: true,
+      ThemeService: {
+        initialize: jest.fn(async () => undefined),
+        getTheme: jest.fn(),
+        setTheme: jest.fn(),
+        subscribe: jest.fn(() => jest.fn()),
+      },
+    }));
+
+    jest.doMock("../../services/backupReminderService", () => ({
+      __esModule: true,
+      syncBackupReminderPreference: jest.fn(async () => undefined),
+    }));
+
+    jest.doMock("../../services/logging", () => ({
+      __esModule: true,
+      createLogger: () => ({
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+      }),
+    }));
+
+    let useSettingsStore!: typeof import("../settingsStore").useSettingsStore;
+
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ({ useSettingsStore } = require("../settingsStore"));
+    });
+
+    useSettingsStore.setState((state) => ({
+      settings: {
+        ...state.settings,
+        notificationRecountAlerts: false,
+        notificationApprovalAlerts: false,
+        notificationSyncFailureAlerts: false,
+        notificationSessionReminderAlerts: true,
+      },
+    }));
+
+    await useSettingsStore.getState().syncToBackend();
+
+    expect(updateUserSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        notification_recount_alerts: false,
+        notification_approval_alerts: false,
+        notification_sync_failure_alerts: false,
+        notification_session_reminder_alerts: true,
+      })
+    );
   });
 });

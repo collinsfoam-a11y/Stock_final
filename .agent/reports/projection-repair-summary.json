@@ -1,0 +1,55 @@
+{
+  "timestamp_utc": "2026-05-03T15:22:31.664952Z",
+  "step2_repair": {
+    "before_dryrun": {
+      "session_projection_missing": 9,
+      "session_projection_coverage_before": {
+        "total_sessions": 96,
+        "covered_sessions": 87
+      },
+      "item_projection_missing": {
+        "verified": 6,
+        "variance": 6,
+        "batch": 6,
+        "financial": 6
+      }
+    },
+    "after_execute_latest": {
+      "session_projection_missing": 0,
+      "session_projection_inserted": 0,
+      "session_projection_coverage_after": {
+        "total_sessions": 96,
+        "covered_sessions": 96
+      },
+      "item_projection_missing": {
+        "verified": 0,
+        "variance": 0,
+        "batch": 0,
+        "financial": 0
+      },
+      "item_projection_inserted": {
+        "verified": 0,
+        "variance": 0,
+        "batch": 0,
+        "financial": 0
+      }
+    }
+  },
+  "step3_parity": {
+    "is_consistent": true,
+    "projection_drift_count": 0,
+    "projection_gap_count": 0
+  },
+  "step4_readiness_publish": {
+    "published": true,
+    "ready": true,
+    "stability_since": "2026-05-03T15:17:48.319969"
+  },
+  "step5_canary": {
+    "result": "FAIL",
+    "total": 330,
+    "ok": 303,
+    "fail": 27,
+    "projection_503": 27
+  }
+}

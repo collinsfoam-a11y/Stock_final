@@ -20,23 +20,10 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { impactAsync, ImpactFeedbackStyle } from "expo-haptics";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from "react-native-reanimated";
-import {
-  colors,
-  semanticColors,
-  spacing,
-  textStyles,
-  radius,
-} from "../../theme/unified";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import { colors, semanticColors, spacing, textStyles, radius } from "@/theme/legacyCompat";
 
-export interface PasswordInputProps extends Omit<
-  TextInputProps,
-  "secureTextEntry"
-> {
+export interface PasswordInputProps extends Omit<TextInputProps, "secureTextEntry"> {
   /** Label text above the input */
   label?: string;
   /** Error message to display */
@@ -113,9 +100,7 @@ export function PasswordInput({
           <Ionicons
             name={leftIcon}
             size={20}
-            color={
-              isFocused ? colors.primary[500] : semanticColors.text.tertiary
-            }
+            color={isFocused ? colors.primary[500] : semanticColors.text.tertiary}
             style={styles.leftIcon}
           />
         )}
@@ -148,9 +133,7 @@ export function PasswordInput({
           accessibilityRole="button"
           accessibilityLabel={isVisible ? "Hide password" : "Show password"}
           accessibilityHint={
-            isVisible
-              ? "Double tap to hide password"
-              : "Double tap to show password"
+            isVisible ? "Double tap to hide password" : "Double tap to show password"
           }
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >

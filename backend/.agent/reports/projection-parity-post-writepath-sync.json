@@ -1,0 +1,4350 @@
+{
+  "is_consistent": false,
+  "summary": {
+    "session_totals_match": false,
+    "verified_items_match": true,
+    "variance_match": true,
+    "financial_match": false,
+    "sample_validation_passed": false,
+    "event_lag_ok": true
+  },
+  "metrics": {
+    "projection_drift_count": 8,
+    "projection_gap_count": 0,
+    "event_lag_seconds": 0.0,
+    "event_lag_threshold_seconds": 5.0
+  },
+  "samples_checked": 3,
+  "timestamp": "2026-05-03T16:46:56.626719Z",
+  "collections": {
+    "session_projection": "session_dashboard_projection",
+    "verified_projection": "verified_items_projection",
+    "variance_projection": "variance_summary_projection",
+    "financial_projection": "financial_projection",
+    "batch_projection": "batch_records",
+    "event_log": "event_log"
+  },
+  "details": {
+    "sample_session_ids": [
+      "mix-9b5b2dae-53d3-4b97-a06e-f92046b9967d",
+      "mix-b4958c30-6a33-4de5-9e8b-a0a1962df036",
+      "edae9046-b1bb-4f03-9177-b9d8828291c3"
+    ],
+    "session_totals": {
+      "legacy": {
+        "session_count": 48,
+        "total_items": 544,
+        "verified_items": 113,
+        "pending_items": 431,
+        "damage_items": 2,
+        "total_variance": 6.0
+      },
+      "projection": {
+        "session_count": 48,
+        "total_items": 529,
+        "verified_items": 107,
+        "pending_items": 422,
+        "damage_items": 1,
+        "total_variance": 8.0
+      }
+    },
+    "verified_items": {
+      "legacy": 113,
+      "projection": 113
+    },
+    "variance_totals": {
+      "legacy": 6.0,
+      "projection": 6.0
+    },
+    "financial_totals": {
+      "legacy": 23664.0,
+      "projection": -219997.0
+    },
+    "sample_results": [
+      {
+        "session_id": "mix-9b5b2dae-53d3-4b97-a06e-f92046b9967d",
+        "items_compared": 3,
+        "mismatches": [
+          {
+            "item_code": "MIX-ITEM-2",
+            "field": "batch_values",
+            "legacy": [
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              }
+            ],
+            "projection": []
+          },
+          {
+            "item_code": "MIX-ITEM-3",
+            "field": "batch_values",
+            "legacy": [
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              }
+            ],
+            "projection": []
+          },
+          {
+            "item_code": "MIX-ITEM-1",
+            "field": "batch_values",
+            "legacy": [
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              }
+            ],
+            "projection": []
+          }
+        ]
+      },
+      {
+        "session_id": "mix-b4958c30-6a33-4de5-9e8b-a0a1962df036",
+        "items_compared": 3,
+        "mismatches": [
+          {
+            "item_code": "MIX-ITEM-2",
+            "field": "batch_values",
+            "legacy": [
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              }
+            ],
+            "projection": []
+          },
+          {
+            "item_code": "MIX-ITEM-3",
+            "field": "batch_values",
+            "legacy": [
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              }
+            ],
+            "projection": []
+          },
+          {
+            "item_code": "MIX-ITEM-1",
+            "field": "batch_values",
+            "legacy": [
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 8.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 9.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 10.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 11.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              },
+              {
+                "batch": "NO_BATCH",
+                "qty": 12.0
+              }
+            ],
+            "projection": []
+          }
+        ]
+      },
+      {
+        "session_id": "edae9046-b1bb-4f03-9177-b9d8828291c3",
+        "items_compared": 1,
+        "mismatches": []
+      }
+    ],
+    "event_lag": {
+      "latest_event_timestamp": "2026-05-03T16:41:56.463000Z",
+      "latest_projection_event_timestamp": "2026-05-03T16:46:31.349000Z"
+    }
+  },
+  "controls": {
+    "max_records": null,
+    "timeout_seconds": null,
+    "sample_seed": null
+  },
+  "failures": [
+    {
+      "kind": "drift",
+      "check": "session_totals",
+      "message": "Legacy session totals do not match session dashboard projection",
+      "legacy": {
+        "session_count": 48,
+        "total_items": 544,
+        "verified_items": 113,
+        "pending_items": 431,
+        "damage_items": 2,
+        "total_variance": 6.0
+      },
+      "projection": {
+        "session_count": 48,
+        "total_items": 529,
+        "verified_items": 107,
+        "pending_items": 422,
+        "damage_items": 1,
+        "total_variance": 8.0
+      },
+      "context": {}
+    },
+    {
+      "kind": "drift",
+      "check": "financial_totals",
+      "message": "Legacy financial total does not match projection financial total",
+      "legacy": 23664.0,
+      "projection": -219997.0,
+      "context": {}
+    },
+    {
+      "kind": "drift",
+      "check": "sample_item_batches",
+      "message": "Sampled item batch values mismatch",
+      "legacy": [
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        }
+      ],
+      "projection": [],
+      "context": {
+        "session_id": "mix-9b5b2dae-53d3-4b97-a06e-f92046b9967d",
+        "item_code": "MIX-ITEM-2"
+      }
+    },
+    {
+      "kind": "drift",
+      "check": "sample_item_batches",
+      "message": "Sampled item batch values mismatch",
+      "legacy": [
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        }
+      ],
+      "projection": [],
+      "context": {
+        "session_id": "mix-9b5b2dae-53d3-4b97-a06e-f92046b9967d",
+        "item_code": "MIX-ITEM-3"
+      }
+    },
+    {
+      "kind": "drift",
+      "check": "sample_item_batches",
+      "message": "Sampled item batch values mismatch",
+      "legacy": [
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        }
+      ],
+      "projection": [],
+      "context": {
+        "session_id": "mix-9b5b2dae-53d3-4b97-a06e-f92046b9967d",
+        "item_code": "MIX-ITEM-1"
+      }
+    },
+    {
+      "kind": "drift",
+      "check": "sample_item_batches",
+      "message": "Sampled item batch values mismatch",
+      "legacy": [
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        }
+      ],
+      "projection": [],
+      "context": {
+        "session_id": "mix-b4958c30-6a33-4de5-9e8b-a0a1962df036",
+        "item_code": "MIX-ITEM-2"
+      }
+    },
+    {
+      "kind": "drift",
+      "check": "sample_item_batches",
+      "message": "Sampled item batch values mismatch",
+      "legacy": [
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        }
+      ],
+      "projection": [],
+      "context": {
+        "session_id": "mix-b4958c30-6a33-4de5-9e8b-a0a1962df036",
+        "item_code": "MIX-ITEM-3"
+      }
+    },
+    {
+      "kind": "drift",
+      "check": "sample_item_batches",
+      "message": "Sampled item batch values mismatch",
+      "legacy": [
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 8.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 9.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 10.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 11.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        },
+        {
+          "batch": "NO_BATCH",
+          "qty": 12.0
+        }
+      ],
+      "projection": [],
+      "context": {
+        "session_id": "mix-b4958c30-6a33-4de5-9e8b-a0a1962df036",
+        "item_code": "MIX-ITEM-1"
+      }
+    }
+  ]
+}

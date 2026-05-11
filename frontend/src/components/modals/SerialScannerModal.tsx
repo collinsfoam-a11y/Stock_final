@@ -22,10 +22,7 @@ import { CameraView, useCameraPermissions } from "@/services/device/expoCamera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
-import {
-  validateScannedSerial,
-  normalizeSerialValue,
-} from "../../utils/scanUtils";
+import { validateScannedSerial, normalizeSerialValue } from "../../utils/scanUtils";
 import {
   clearRecentScanTimes,
   DEFAULT_SERIAL_RESCAN_WINDOW_MS,
@@ -43,7 +40,7 @@ import {
   fontSize,
   fontWeight,
   radius as borderRadius,
-} from "../../theme/unified";
+} from "@/theme/legacyCompat";
 
 interface SerialScannerModalProps {
   visible: boolean;
@@ -110,9 +107,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
   const handleBulkProcess = useCallback(async () => {
     if (!manualText.trim()) return;
 
-    const tokens = manualText
-      .split(/[\n, \t]+/)
-      .filter((t) => t.trim().length > 0);
+    const tokens = manualText.split(/[\n, \t]+/).filter((t) => t.trim().length > 0);
     const localExisting = [...existingSerials];
     let addedCount = 0;
 
@@ -124,7 +119,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
           onSerialScanned({
             serial_number: normalized,
             mrp: defaultMrp,
-          }),
+          })
         );
         if (wasAdded) {
           localExisting.push(normalized);
@@ -181,7 +176,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
           serial_number: candidate.code,
           mrp: defaultMrp,
           manufacturing_date: undefined,
-        }),
+        })
       );
 
       if (!wasAdded) {
@@ -203,7 +198,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
       clearBurstPauseTimer();
       setScanPaused(nextAfterSerialAdded({ scanPaused }).scanPaused);
     },
-    [clearBurstPauseTimer, defaultMrp, onSerialScanned, scanPaused],
+    [clearBurstPauseTimer, defaultMrp, onSerialScanned, scanPaused]
   );
 
   const handleResumeScan = useCallback(() => {
@@ -232,7 +227,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
     } catch {
       Alert.alert(
         "Settings Unavailable",
-        "Unable to open app settings. Please enable camera permission manually.",
+        "Unable to open app settings. Please enable camera permission manually."
       );
     }
   }, []);
@@ -246,15 +241,13 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
       clearBurstPauseTimer();
       clearRecentScanTimes(recentScanTimesRef.current);
       acceptedSerialsRef.current = new Set(
-        existingSerials.map(normalizeSerialValue).filter(Boolean),
+        existingSerials.map(normalizeSerialValue).filter(Boolean)
       );
     }
   }, [clearBurstPauseTimer, existingSerials, visible]);
 
   useEffect(() => {
-    acceptedSerialsRef.current = new Set(
-      existingSerials.map(normalizeSerialValue).filter(Boolean),
-    );
+    acceptedSerialsRef.current = new Set(existingSerials.map(normalizeSerialValue).filter(Boolean));
   }, [existingSerials]);
 
   // Clear feedback after delay
@@ -309,10 +302,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
       recentScanTimesRef.current.set(scannedValue, now);
 
       // Validate as serial number (not barcode)
-      const knownSerials = [
-        ...existingSerials,
-        ...Array.from(acceptedSerialsRef.current),
-      ];
+      const knownSerials = [...existingSerials, ...Array.from(acceptedSerialsRef.current)];
       const validation = validateScannedSerial(scannedValue, knownSerials);
       const status: DetectedCodeStatus = validation.valid
         ? "ready"
@@ -332,7 +322,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
         Haptics.notificationAsync(
           validation.error?.includes("barcode")
             ? Haptics.NotificationFeedbackType.Warning
-            : Haptics.NotificationFeedbackType.Error,
+            : Haptics.NotificationFeedbackType.Error
         );
         setScanFeedback({
           type: validation.error?.includes("barcode") ? "warning" : "error",
@@ -355,7 +345,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
       scanPaused,
       scheduleBurstPause,
       upsertDetectedCode,
-    ],
+    ]
   );
 
   const getFeedbackStyle = () => {
@@ -393,17 +383,11 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
                 style={{ marginTop: spacing.md }}
               />
             ) : canAskPermission ? (
-              <TouchableOpacity
-                style={styles.permissionButton}
-                onPress={requestPermission}
-              >
+              <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
                 <Text style={styles.permissionButtonText}>Grant Permission</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity
-                style={styles.permissionButton}
-                onPress={handleOpenSettings}
-              >
+              <TouchableOpacity style={styles.permissionButton} onPress={handleOpenSettings}>
                 <Text style={styles.permissionButtonText}>Open Settings</Text>
               </TouchableOpacity>
             )}
@@ -412,12 +396,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
               style={[styles.permissionButton, styles.permissionSecondaryButton]}
               onPress={() => setShowManualInput(true)}
             >
-              <Text
-                style={[
-                  styles.permissionButtonText,
-                  styles.permissionSecondaryButtonText,
-                ]}
-              >
+              <Text style={[styles.permissionButtonText, styles.permissionSecondaryButtonText]}>
                 Use Manual Entry
               </Text>
             </TouchableOpacity>
@@ -426,12 +405,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
               style={[styles.permissionButton, styles.permissionSecondaryButton]}
               onPress={onClose}
             >
-              <Text
-                style={[
-                  styles.permissionButtonText,
-                  styles.permissionSecondaryButtonText,
-                ]}
-              >
+              <Text style={[styles.permissionButtonText, styles.permissionSecondaryButtonText]}>
                 Close
               </Text>
             </TouchableOpacity>
@@ -502,9 +476,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
               "upc_e",
             ],
           }}
-          onBarcodeScanned={
-            scanPaused || showManualInput ? undefined : handleBarcodeScanned
-          }
+          onBarcodeScanned={scanPaused || showManualInput ? undefined : handleBarcodeScanned}
         />
 
         {/* Overlay */}
@@ -574,11 +546,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
             ]}
           >
             <View style={styles.infoCard}>
-              <Ionicons
-                name="information-circle-outline"
-                size={20}
-                color={colors.primary[400]}
-              />
+              <Ionicons name="information-circle-outline" size={20} color={colors.primary[400]} />
               <Text style={styles.infoText}>
                 Review mode is ON. Detected codes are listed for manual selection.
                 {"\n"}
@@ -602,9 +570,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
             {detectedCodes.length > 0 && (
               <View style={styles.detectedList}>
                 <View style={styles.detectedHeader}>
-                  <Text style={styles.detectedLabel}>
-                    Detected Codes ({detectedCodes.length})
-                  </Text>
+                  <Text style={styles.detectedLabel}>Detected Codes ({detectedCodes.length})</Text>
                   <TouchableOpacity onPress={handleResetDetected}>
                     <Text style={styles.detectedResetText}>Reset</Text>
                   </TouchableOpacity>
@@ -655,9 +621,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
 
             {existingSerials.length > 0 && (
               <View style={styles.serialsList}>
-                <Text style={styles.serialsLabel}>
-                  Scanned ({existingSerials.length}):
-                </Text>
+                <Text style={styles.serialsLabel}>Scanned ({existingSerials.length}):</Text>
                 <Text style={styles.serialsText} numberOfLines={2}>
                   {existingSerials.slice(-3).join(", ")}
                   {existingSerials.length > 3 ? "..." : ""}
@@ -667,9 +631,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
 
             <TouchableOpacity style={styles.doneButton} onPress={onClose}>
               <Ionicons name="checkmark" size={24} color={colors.white} />
-              <Text style={styles.doneButtonText}>
-                Done ({existingSerials.length} serials)
-              </Text>
+              <Text style={styles.doneButtonText}>Done ({existingSerials.length} serials)</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

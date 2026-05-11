@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"key":{"$numberInt":"1"}},"name":"key_1","unique":true},{"v":{"$numberInt":"2"},"key":{"state":{"$numberInt":"1"}},"name":"state_1"}],"uuid":"cd2bb40158e1442a971c7ebdd87c6eea","collectionName":"feature_flags","type":"collection"}

@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Toast } from "./Toast";
 import { ToastData, toastService } from "../../services/toastService";
+import { useUiTokens } from "../../hooks/useUiTokens";
+import { zIndex } from "../../theme";
 
-export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastData[]>([]);
+  const tokens = useUiTokens();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const handleShow = (toast: ToastData) => {
@@ -37,17 +40,28 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <>
       {children}
-      <View style={[styles.container, styles.pointerEventsBoxNone]}>
-        {toasts.slice(-3).map((toast) => (
-          <View key={toast.id} style={styles.toastWrapper}>
-            <Toast
-              visible={true}
-              message={toast.message}
-              type={toast.type as "success" | "error" | "info" | "warning"}
-              onHide={() => toast.id && toastService.hide(toast.id)}
-            />
-          </View>
-        ))}
+      <View
+        pointerEvents="box-none"
+        style={[
+          styles.container,
+          {
+            paddingTop: Math.max(insets.top + tokens.spacing.sm, tokens.spacing.lg),
+            paddingHorizontal: tokens.spacing.md,
+          },
+        ]}
+      >
+        <View pointerEvents="box-none" style={[styles.toastStack, { gap: tokens.spacing.sm }]}>
+          {toasts.slice(-3).map((toast) => (
+            <View key={toast.id} style={styles.toastWrapper}>
+              <Toast
+                visible={true}
+                message={toast.message}
+                type={toast.type as "success" | "error" | "info" | "warning"}
+                onHide={() => toast.id && toastService.hide(toast.id)}
+              />
+            </View>
+          ))}
+        </View>
       </View>
     </>
   );
@@ -60,17 +74,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 9999,
+    zIndex: zIndex.toast,
     alignItems: "center",
-    paddingTop: 50,
   },
-  pointerEventsBoxNone: {
-    pointerEvents: "box-none",
+  toastStack: {
+    width: "100%",
+    maxWidth: 520,
   },
   toastWrapper: {
-    marginBottom: 8,
     width: "100%",
-    paddingHorizontal: 20,
   },
 });
 export const useToast = () => {
@@ -79,7 +91,7 @@ export const useToast = () => {
       show: (
         message: string,
         type: "success" | "error" | "info" | "warning" = "info",
-        duration?: number,
+        duration?: number
       ) => {
         const durationOption: "short" | "long" | undefined = duration
           ? duration > 3000
@@ -95,6 +107,6 @@ export const useToast = () => {
         toastService.clear();
       },
     }),
-    [],
+    []
   );
 };

@@ -2,6 +2,7 @@ import React from "react";
 import { TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+import { colors as uiColors } from "@/theme/legacyCompat";
 interface RefreshButtonProps {
   onRefresh: () => void;
   loading?: boolean;
@@ -13,7 +14,7 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({
   onRefresh,
   loading = false,
   size = 24,
-  color = "#4CAF50",
+  color = uiColors.success[500],
 }) => {
   return (
     <TouchableOpacity

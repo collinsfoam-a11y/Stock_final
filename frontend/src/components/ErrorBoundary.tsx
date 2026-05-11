@@ -9,12 +9,8 @@ import { View, Text, StyleSheet, ScrollView } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ErrorBoundary as ReactErrorBoundary } from "react-error-boundary";
 import { errorReporter } from "../services/errorRecovery";
-import {
-  modernColors,
-  modernTypography,
-  modernSpacing,
-} from "../styles/unifiedSystem";
-import { PremiumButton } from "./premium/PremiumButton";
+import { modernColors, modernTypography, modernSpacing } from "../styles/modernDesignSystem";
+import { AppButton } from "./ui/AppButton";
 
 interface Props {
   children: ReactNode;
@@ -41,22 +37,16 @@ const ErrorFallback = ({
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.iconContainer}>
-          <Ionicons
-            name="alert-circle-outline"
-            size={80}
-            color={modernColors.error.main}
-          />
+          <Ionicons name="alert-circle-outline" size={80} color={modernColors.error.main} />
         </View>
 
-        <Text style={styles.title}>Something went wrong</Text>
+        <Text style={styles.title}>Application Recovery Required</Text>
 
         <Text style={styles.message}>
-          {error?.message || "An unexpected error occurred"}
+          {error?.message ||
+            "This screen failed before it could finish rendering. Retry the action; if it fails again, return to the previous workflow and report the screen name."}
         </Text>
 
         {__DEV__ && error && (
@@ -67,13 +57,12 @@ const ErrorFallback = ({
         )}
 
         <View style={styles.buttonContainer}>
-          <PremiumButton
+          <AppButton
             title="Try Again"
             onPress={resetErrorBoundary}
             variant="primary"
             size="medium"
             icon="refresh-outline"
-            gradientColors={[...modernColors.gradients.primary]}
           />
         </View>
       </ScrollView>
@@ -86,8 +75,7 @@ export const ErrorBoundary = ({ children, fallback }: Props) => {
     <ReactErrorBoundary
       fallbackRender={
         fallback
-          ? ({ error, resetErrorBoundary }) =>
-              fallback(error as Error, resetErrorBoundary)
+          ? ({ error, resetErrorBoundary }) => fallback(error as Error, resetErrorBoundary)
           : (props) => <ErrorFallback {...props} />
       }
     >

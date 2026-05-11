@@ -1,14 +1,9 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { SerialEntryData } from "@/types/scan";
-import {
-  colors,
-  fontSize,
-  fontWeight,
-  semanticColors,
-  spacing,
-} from "@/theme/unified";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
 import { SerialEntryCard } from "./SerialEntryCard";
 
 interface SerialEntriesSectionProps {
@@ -30,6 +25,91 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
   onSerialChange,
   onRemoveSerial,
 }) => {
+  const uiTokens = useUiTokens();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        section: {
+          marginTop: uiTokens.spacing.md,
+        },
+        header: {
+          marginBottom: uiTokens.spacing.md,
+        },
+        titleRow: {
+          flexDirection: "row",
+          alignItems: "center",
+        },
+        title: {
+          marginLeft: uiTokens.spacing.xs,
+          fontSize: 14,
+          fontWeight: "700",
+          color: uiTokens.colors.textPrimary,
+        },
+        helperText: {
+          marginTop: uiTokens.spacing.xs,
+          fontSize: 12,
+          color: uiTokens.colors.textSecondary,
+        },
+        scanButton: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: uiTokens.spacing.sm,
+          paddingVertical: uiTokens.spacing.md,
+          borderRadius: uiTokens.radius.md,
+          backgroundColor: uiTokens.colors.accent,
+        },
+        scanButtonText: {
+          fontSize: 14,
+          fontWeight: "700",
+          color: uiTokens.colors.surfaceElevated,
+        },
+        validationContainer: {
+          marginTop: uiTokens.spacing.md,
+          borderRadius: uiTokens.radius.md,
+          padding: uiTokens.spacing.md,
+          backgroundColor: colorWithAlpha(
+            uiTokens.colors.error,
+            uiTokens.mode === "dark" ? 0.2 : 0.1
+          ),
+          borderWidth: 1,
+          borderColor: colorWithAlpha(uiTokens.colors.error, 0.4),
+        },
+        validationText: {
+          fontSize: 12,
+          color: uiTokens.colors.error,
+          fontWeight: "600",
+        },
+        list: {
+          marginTop: uiTokens.spacing.md,
+        },
+        listContent: {
+          gap: uiTokens.spacing.sm,
+        },
+        addButton: {
+          marginTop: uiTokens.spacing.md,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: uiTokens.spacing.sm,
+          borderWidth: 1,
+          borderColor: colorWithAlpha(uiTokens.colors.accent, 0.35),
+          backgroundColor: colorWithAlpha(
+            uiTokens.colors.accent,
+            uiTokens.mode === "dark" ? 0.2 : 0.08
+          ),
+          borderRadius: uiTokens.radius.md,
+          paddingVertical: uiTokens.spacing.sm,
+        },
+        addButtonText: {
+          fontSize: 13,
+          fontWeight: "700",
+          color: uiTokens.colors.accentStrong,
+        },
+      }),
+    [uiTokens]
+  );
+
   const renderSerialEntry = useCallback(
     ({ item, index }: { item: SerialEntryData; index: number }) => (
       <SerialEntryCard
@@ -47,7 +127,7 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
     <View style={styles.section}>
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Ionicons name="barcode-outline" size={20} color={colors.primary[600]} />
+          <Ionicons name="barcode-outline" size={20} color={uiTokens.colors.accent} />
           <Text style={styles.title}>Serial Numbers</Text>
         </View>
         <Text style={styles.helperText}>
@@ -56,7 +136,7 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
       </View>
 
       <TouchableOpacity style={styles.scanButton} onPress={onOpenScanner}>
-        <Ionicons name="scan" size={24} color={colors.white} />
+        <Ionicons name="scan" size={22} color={uiTokens.colors.surfaceElevated} />
         <Text style={styles.scanButtonText}>Scan Serial Numbers</Text>
       </TouchableOpacity>
 
@@ -86,77 +166,9 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
       />
 
       <TouchableOpacity style={styles.addButton} onPress={onAddSerial}>
-        <Ionicons name="add-circle-outline" size={20} color={colors.primary[600]} />
+        <Ionicons name="add-circle-outline" size={20} color={uiTokens.colors.accentStrong} />
         <Text style={styles.addButtonText}>Add Serial Manually</Text>
       </TouchableOpacity>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  section: {
-    marginTop: spacing.md,
-  },
-  header: {
-    marginBottom: spacing.md,
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  title: {
-    marginLeft: spacing.xs,
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semiBold,
-    color: semanticColors.text.primary,
-  },
-  helperText: {
-    marginTop: spacing.xs,
-    fontSize: fontSize.sm,
-    color: semanticColors.text.secondary,
-  },
-  scanButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    borderRadius: 14,
-    backgroundColor: colors.primary[600],
-  },
-  scanButtonText: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semiBold,
-    color: colors.white,
-  },
-  validationContainer: {
-    marginTop: spacing.md,
-    borderRadius: 14,
-    padding: spacing.md,
-    backgroundColor: colors.error[50],
-    borderWidth: 1,
-    borderColor: colors.error[200],
-  },
-  validationText: {
-    fontSize: fontSize.sm,
-    color: colors.error[700],
-  },
-  list: {
-    marginTop: spacing.md,
-  },
-  listContent: {
-    gap: spacing.sm,
-  },
-  addButton: {
-    marginTop: spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm,
-  },
-  addButtonText: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semiBold,
-    color: colors.primary[600],
-  },
-});

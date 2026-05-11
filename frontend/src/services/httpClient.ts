@@ -7,10 +7,7 @@ import { handleUnauthorized } from "./authUnauthorizedHandler";
 import { getDeviceId } from "./deviceId";
 import { useNetworkStore } from "../store/networkStore";
 import ConnectionManager, { ConnectionInfo } from "./connectionManager";
-import {
-  isPublicHealthRequestUrl,
-  stripHealthRequestHeaders,
-} from "./healthRequest";
+import { isPublicHealthRequestUrl, stripHealthRequestHeaders } from "./healthRequest";
 
 const log = createLogger("httpClient");
 
@@ -145,15 +142,11 @@ const refreshAccessToken = async (): Promise<string | null> => {
   const refreshPayload = refreshToken ? { refresh_token: refreshToken } : {};
 
   try {
-    const response = await axios.post(
-      refreshUrl,
-      refreshPayload,
-      {
-        timeout: 20000,
-        headers: { "Content-Type": "application/json" },
-        withCredentials: true,
-      }
-    );
+    const response = await axios.post(refreshUrl, refreshPayload, {
+      timeout: 20000,
+      headers: { "Content-Type": "application/json" },
+      withCredentials: true,
+    });
 
     const payload =
       response.data && typeof response.data === "object" && "data" in response.data
@@ -230,11 +223,7 @@ const injectAuthTokenIfMissing = async (config: any, isHealthRequest: boolean): 
   }
 };
 
-const logRequestDebug = (
-  fullUrl: string,
-  config: any,
-  authHeader: unknown,
-): void => {
+const logRequestDebug = (fullUrl: string, config: any, authHeader: unknown): void => {
   if (!shouldLogNetworkDebug) return;
   const hasAuth = Boolean(authHeader);
   if (!hasAuth && !fullUrl.includes("/auth/login") && !fullUrl.includes("/health")) {
@@ -327,7 +316,7 @@ const performLogout = (fullUrl: string): void => {
 const handleNetworkRestrictedError = (
   status: number | undefined,
   errorCode: string | undefined,
-  fullUrl: string,
+  fullUrl: string
 ): boolean => {
   if (status !== 403 || errorCode !== "NETWORK_NOT_ALLOWED") {
     return false;
@@ -343,7 +332,7 @@ const handleNetworkRestrictedError = (
 const handleSessionRevokedError = (
   status: number | undefined,
   errorCode: string | undefined,
-  fullUrl: string,
+  fullUrl: string
 ): boolean => {
   if ((status !== 401 && status !== 403) || errorCode !== "SESSION_REVOKED") {
     return false;
@@ -358,8 +347,7 @@ const isLogoutRequest = (fullUrl: string): boolean => fullUrl.includes("/api/aut
 
 const isRefreshRequest = (fullUrl: string): boolean => fullUrl.includes("/api/auth/refresh");
 
-const isAuthSessionProbeRequest = (fullUrl: string): boolean =>
-  fullUrl.includes("/api/auth/me");
+const isAuthSessionProbeRequest = (fullUrl: string): boolean => fullUrl.includes("/api/auth/me");
 
 const retryUnauthorizedRequest = async (error: any, fullUrl: string): Promise<any> => {
   const originalRequest = error.config;
@@ -423,25 +411,25 @@ const handleUnauthorizedError = async (error: any, fullUrl: string): Promise<any
   return retryUnauthorizedRequest(error, fullUrl);
 };
 
-const logResponseError = (
-  error: any,
-  fullUrl: string,
-  status: number | undefined,
-): void => {
+const logResponseError = (error: any, fullUrl: string, status: number | undefined): void => {
+  const responseSummary = {
+    status,
+    url: fullUrl,
+    data: summarizeResponseData(error.response?.data),
+  };
+
   if (status === 404) {
-    log.warn("API resource not found (404)", {
-      url: fullUrl,
-      data: summarizeResponseData(error.response?.data),
-    });
+    log.warn("API resource not found (404)", responseSummary);
+    return;
+  }
+
+  if (status && fullUrl.includes("/api/count-lines/session/")) {
+    log.warn("Cache-backed count-line read failed; caller may use local cache", responseSummary);
     return;
   }
 
   if (status) {
-    log.error("API error response", {
-      status,
-      url: fullUrl,
-      data: summarizeResponseData(error.response?.data),
-    });
+    log.error("API error response", responseSummary);
     return;
   }
 
@@ -487,12 +475,9 @@ const handleResponseError = async (error: any) => {
 };
 
 // Add response interceptor for debugging and session handling
-apiClient.interceptors.response.use(
-  handleResponseSuccess,
-  async (error) => {
-    return handleResponseError(error);
-  },
-);
+apiClient.interceptors.response.use(handleResponseSuccess, async (error) => {
+  return handleResponseError(error);
+});
 
 export default apiClient;
 export { connectionManager };

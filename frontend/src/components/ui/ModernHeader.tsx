@@ -7,15 +7,19 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, StatusBar, ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useAuthStore } from "../../store/authStore";
 import { useRouter } from "expo-router";
-import { haptics } from "../../services/haptics";
 
-import { colors, spacing, typography, shadows } from "../../theme/unified";
-import { operationalGradients, operationalTheme } from "../../theme/operationalTheme";
+import { spacing, typography } from "@/theme/legacyCompat";
 import { BrandLogo } from "../branding/BrandLogo";
 
+import { semanticColors } from "@/theme/legacyCompat";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { getTokenShadowStyle } from "@/theme/themeTokens";
+import { flags } from "@/constants/flags";
+import { safeBackNavigation } from "@/utils/navigation";
+import type { UserRole } from "@/utils/roleNavigation";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 interface ModernHeaderProps {
   title?: string;
   showLogo?: boolean;
@@ -25,40 +29,28 @@ interface ModernHeaderProps {
   rightAction?: {
     icon: keyof typeof Ionicons.glyphMap;
     onPress: () => void;
+    label?: string;
   };
-  rightActionAccessibilityLabel?: string;
   showSettingsButton?: boolean;
   subtitle?: string;
   style?: ViewStyle;
 }
 
-const LogoWithBorder = ({ size = 40 }: { size?: number }) => (
-  <LinearGradient
-    colors={operationalGradients.primary}
+const LogoWithBorder = ({ size = 40, surfaceColor }: { size?: number; surfaceColor: string }) => (
+  <View
     style={{
       width: size,
       height: size,
-      borderRadius: size / 2,
-      padding: 2,
+      borderRadius: 8,
       justifyContent: "center",
       alignItems: "center",
+      backgroundColor: surfaceColor,
+      borderWidth: 1,
+      borderColor: "rgba(101, 119, 137, 0.22)",
     }}
-    start={{ x: 0, y: 0 }}
-    end={{ x: 1, y: 1 }}
   >
-    <View
-      style={{
-        flex: 1,
-        width: "100%",
-        backgroundColor: colors.white,
-        borderRadius: size / 2,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <BrandLogo variant="symbol" width={size * 0.6} height={size * 0.6} />
-    </View>
-  </LinearGradient>
+    <BrandLogo variant="symbol" width={size * 0.62} height={size * 0.62} />
+  </View>
 );
 
 export const ModernHeader: React.FC<ModernHeaderProps> = ({
@@ -68,26 +60,29 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
   onBackPress,
   rightComponent,
   rightAction,
-  rightActionAccessibilityLabel,
   showSettingsButton = true,
   subtitle,
   style,
 }) => {
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
+  const uiTokens = useUiTokens();
+  const iconColor = uiTokens.colors.textSecondary;
+  const decorativeIconProps = getDecorativeIconProps();
 
   const shouldShowSettings =
     !!user && showSettingsButton && rightAction?.icon !== "settings-outline";
 
-  const handleHapticFeedback = () => {
-    if (!haptics.isAvailable()) {
+  const handleBackPress = () => {
+    if (onBackPress) {
+      onBackPress();
       return;
     }
-    void haptics.light();
+
+    safeBackNavigation(router, { userRole: user?.role as UserRole | null });
   };
 
   const onPressSettings = () => {
-    handleHapticFeedback();
     const role = user?.role;
     const target =
       role === "admin" || role === "supervisor" || role === "staff"
@@ -97,32 +92,52 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, style]}>
+    <SafeAreaView
+      style={[
+        styles.safeArea,
+        {
+          backgroundColor: uiTokens.colors.surface,
+        },
+        flags.uiVisualSystemV2 ? getTokenShadowStyle(uiTokens, "sm") : null,
+        style,
+      ]}
+    >
       <StatusBar
-        barStyle="dark-content"
-        backgroundColor={operationalTheme.background}
+        barStyle={uiTokens.mode === "dark" ? "light-content" : "dark-content"}
+        backgroundColor={uiTokens.colors.surface}
         translucent={false}
       />
 
-      <View style={styles.header}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: uiTokens.colors.surface,
+            borderBottomColor: uiTokens.colors.border,
+          },
+        ]}
+      >
         {/* Left Section */}
         <View style={styles.leftSection}>
           {showBackButton ? (
             <TouchableOpacity
-              onPress={() => {
-                handleHapticFeedback();
-                onBackPress?.();
-              }}
+              onPress={handleBackPress}
               style={styles.backButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
+              {...getAccessibleButtonProps({
+                label: "Go back",
+                hint: "Returns to the previous operational screen.",
+              })}
             >
-              <Ionicons name="arrow-back" size={24} color={colors.gray[700]} />
+              <Ionicons
+                {...decorativeIconProps}
+                name="arrow-back"
+                size={24}
+                color={iconColor}
+              />
             </TouchableOpacity>
           ) : !showLogo ? (
             <View style={styles.logoContainer}>
-              <LogoWithBorder size={36} />
+              <LogoWithBorder size={36} surfaceColor={uiTokens.colors.surface} />
             </View>
           ) : null}
         </View>
@@ -131,21 +146,37 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
         <View style={styles.centerSection}>
           {showLogo ? (
             <View style={styles.logoContainer}>
-              <LogoWithBorder size={48} />
-              {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+              <LogoWithBorder size={48} surfaceColor={uiTokens.colors.surface} />
+              {subtitle && (
+                <Text style={[styles.subtitle, { color: uiTokens.colors.textSecondary }]}>
+                  {subtitle}
+                </Text>
+              )}
             </View>
           ) : title ? (
             <View style={styles.titleContainer}>
-              <Text style={styles.title} numberOfLines={1}>
+              <Text
+                style={[styles.title, { color: uiTokens.colors.textPrimary }]}
+                numberOfLines={1}
+              >
                 {title}
               </Text>
-              {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+              {subtitle && (
+                <Text style={[styles.subtitle, { color: uiTokens.colors.textSecondary }]}>
+                  {subtitle}
+                </Text>
+              )}
             </View>
           ) : (
             <View style={styles.titleContainer}>
-              <Text style={styles.brandName}>Lavanya Mart</Text>
+              <Text style={[styles.brandName, { color: uiTokens.colors.accent }]}>
+                Lavanya Mart
+              </Text>
               {user?.full_name && (
-                <Text style={styles.userName} numberOfLines={1}>
+                <Text
+                  style={[styles.userName, { color: uiTokens.colors.textMuted }]}
+                  numberOfLines={1}
+                >
                   {user.full_name}
                 </Text>
               )}
@@ -160,28 +191,33 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
             <TouchableOpacity
               onPress={onPressSettings}
               style={styles.backButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityRole="button"
-              accessibilityLabel="Open settings"
+              {...getAccessibleButtonProps({
+                label: "Open settings",
+                hint: "Opens settings for the current role.",
+              })}
             >
-              <Ionicons name="settings-outline" size={24} color={colors.gray[700]} />
+              <Ionicons
+                {...decorativeIconProps}
+                name="settings-outline"
+                size={24}
+                color={iconColor}
+              />
             </TouchableOpacity>
           )}
           {rightAction && (
             <TouchableOpacity
-              onPress={() => {
-                handleHapticFeedback();
-                rightAction.onPress();
-              }}
+              onPress={rightAction.onPress}
               style={styles.backButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityRole="button"
-              accessibilityLabel={
-                rightActionAccessibilityLabel ||
-                `${rightAction.icon.replace("-outline", "").replace(/-/g, " ")} action`
-              }
+              {...getAccessibleButtonProps({
+                label: rightAction.label ?? "Header action",
+              })}
             >
-              <Ionicons name={rightAction.icon} size={24} color={colors.gray[700]} />
+              <Ionicons
+                {...decorativeIconProps}
+                name={rightAction.icon}
+                size={24}
+                color={iconColor}
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -192,7 +228,7 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: operationalTheme.background,
+    backgroundColor: semanticColors.background.primary,
   },
   header: {
     flexDirection: "row",
@@ -200,10 +236,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     minHeight: 64,
     paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: operationalTheme.background,
+    backgroundColor: semanticColors.background.primary,
     borderBottomWidth: 1,
-    borderBottomColor: operationalTheme.border,
+    borderBottomColor: semanticColors.border.default,
   },
   leftSection: {
     flex: 1,
@@ -220,18 +255,14 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     justifyContent: "center",
     flexDirection: "row",
-    gap: spacing.xs,
+    gap: 4,
   },
   backButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: operationalTheme.surface,
-    borderWidth: 1,
-    borderColor: operationalTheme.border,
-    ...shadows.sm,
   },
   logoContainer: {
     alignItems: "center",
@@ -247,19 +278,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: operationalTheme.text,
+    color: semanticColors.text.primary,
     textAlign: "center",
   },
   brandName: {
     fontSize: typography.fontSize.base,
     fontWeight: "800",
-    color: operationalTheme.primaryStrong,
+    color: semanticColors.interactive.default,
     textAlign: "center",
-    letterSpacing: 0.5,
+    letterSpacing: 0,
   },
   userName: {
     fontSize: typography.fontSize.xs,
-    color: operationalTheme.textSecondary,
+    color: semanticColors.text.secondary,
     marginTop: 2,
     textAlign: "center",
     fontWeight: "500",
@@ -267,7 +298,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.normal,
-    color: operationalTheme.textSecondary,
+    color: semanticColors.text.secondary,
     marginTop: 2,
     textAlign: "center",
   },

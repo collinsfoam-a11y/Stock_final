@@ -8,8 +8,8 @@ import React, { useEffect, useRef } from "react";
 import { Text, StyleSheet, Animated } from "react-native";
 import * as Haptics from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { modernColors } from "../../styles/unifiedSystem";
 
+import { colors as uiColors, semanticColors, shadows } from "@/theme/legacyCompat";
 interface SuccessFeedbackProps {
   visible: boolean;
   message?: string;
@@ -35,30 +35,30 @@ export const SuccessFeedback: React.FC<SuccessFeedbackProps> = ({
     switch (variant) {
       case "warning":
         return {
-          color: modernColors.warning.main,
-          bgColor: modernColors.warning.light,
+          color: uiColors.warning[600],
+          bgColor: uiColors.warning[50],
           icon: "warning" as const,
           hapticType: Haptics.NotificationFeedbackType.Warning,
         };
       case "error":
         return {
-          color: modernColors.error.main,
-          bgColor: modernColors.error.light,
+          color: uiColors.error[600],
+          bgColor: uiColors.error[50],
           icon: "close-circle" as const,
           hapticType: Haptics.NotificationFeedbackType.Error,
         };
       case "info":
         return {
-          color: modernColors.primary[500],
-          bgColor: modernColors.primary[50],
+          color: uiColors.primary[500],
+          bgColor: uiColors.primary[50],
           icon: "information-circle" as const,
           hapticType: Haptics.NotificationFeedbackType.Success,
         };
       case "success":
       default:
         return {
-          color: modernColors.success.main,
-          bgColor: modernColors.success.light,
+          color: uiColors.success[600],
+          bgColor: uiColors.success[50],
           icon: "checkmark-circle" as const,
           hapticType: Haptics.NotificationFeedbackType.Success,
         };
@@ -120,16 +120,7 @@ export const SuccessFeedback: React.FC<SuccessFeedbackProps> = ({
       return () => clearTimeout(timer);
     }
     return undefined;
-  }, [
-    visible,
-    opacity,
-    scale,
-    iconScale,
-    duration,
-    haptic,
-    config.hapticType,
-    onComplete,
-  ]);
+  }, [visible, opacity, scale, iconScale, duration, haptic, config.hapticType, onComplete]);
 
   if (!visible) return null;
 
@@ -177,13 +168,13 @@ export const ToastFeedback: React.FC<ToastFeedbackProps> = ({
   const getVariantColors = () => {
     switch (variant) {
       case "success":
-        return { bg: modernColors.success.main, text: "#fff" };
+        return { bg: uiColors.success[500], text: semanticColors.text.inverse };
       case "warning":
-        return { bg: modernColors.warning.main, text: "#000" };
+        return { bg: uiColors.warning[500], text: uiColors.black };
       case "error":
-        return { bg: modernColors.error.main, text: "#fff" };
+        return { bg: uiColors.error[500], text: semanticColors.text.inverse };
       default:
-        return { bg: modernColors.primary[600], text: "#fff" };
+        return { bg: uiColors.primary[600], text: semanticColors.text.inverse };
     }
   };
 
@@ -255,10 +246,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
+    ...shadows.md,
     elevation: 6,
   },
   message: {
@@ -272,10 +260,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    ...shadows.lg,
     elevation: 8,
   },
   toastText: {

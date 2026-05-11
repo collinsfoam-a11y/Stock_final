@@ -12,14 +12,9 @@ import Animated, {
   withSpring,
   interpolateColor,
 } from "react-native-reanimated";
-import {
-  colors,
-  semanticColors,
-  shadows,
-  hitSlop,
-} from "@/theme/unified";
-import { haptics } from "@/services/haptics";
+import { colorPalette } from "@/theme/designTokens";
 
+import { shadows as uiShadows } from "@/theme/legacyCompat";
 export type SwitchSize = "sm" | "md" | "lg";
 
 interface SwitchProps {
@@ -32,10 +27,7 @@ interface SwitchProps {
   style?: ViewStyle;
 }
 
-const sizeStyles: Record<
-  SwitchSize,
-  { width: number; height: number; thumbSize: number }
-> = {
+const sizeStyles: Record<SwitchSize, { width: number; height: number; thumbSize: number }> = {
   sm: { width: 36, height: 20, thumbSize: 16 },
   md: { width: 44, height: 24, thumbSize: 20 },
   lg: { width: 52, height: 28, thumbSize: 24 },
@@ -46,8 +38,8 @@ export const Switch: React.FC<SwitchProps> = ({
   onValueChange,
   size = "md",
   disabled = false,
-  activeColor = semanticColors.interactive.default,
-  inactiveColor = semanticColors.border.strong,
+  activeColor = colorPalette.primary[500],
+  inactiveColor = colorPalette.neutral[400],
   style,
 }) => {
   const sizes = sizeStyles[size];
@@ -61,16 +53,7 @@ export const Switch: React.FC<SwitchProps> = ({
   }, [value, progress]);
 
   const trackStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(
-      progress.value,
-      [0, 1],
-      [inactiveColor, activeColor],
-    ),
-    borderColor: interpolateColor(
-      progress.value,
-      [0, 1],
-      [semanticColors.border.strong, activeColor],
-    ),
+    backgroundColor: interpolateColor(progress.value, [0, 1], [inactiveColor, activeColor]),
   }));
 
   const thumbStyle = useAnimatedStyle(() => ({
@@ -83,7 +66,6 @@ export const Switch: React.FC<SwitchProps> = ({
 
   const handlePress = () => {
     if (!disabled) {
-      void haptics.light();
       onValueChange(!value);
     }
   };
@@ -94,9 +76,6 @@ export const Switch: React.FC<SwitchProps> = ({
       disabled={disabled}
       activeOpacity={0.8}
       style={[styles.container, style]}
-      hitSlop={hitSlop.small}
-      accessibilityRole="switch"
-      accessibilityState={{ checked: value, disabled }}
     >
       <Animated.View
         style={[
@@ -133,10 +112,10 @@ const styles = StyleSheet.create({
   track: {
     justifyContent: "center",
     padding: 2,
-    borderWidth: 1,
   },
   thumb: {
-    backgroundColor: colors.white,
-    ...shadows.xs,
+    backgroundColor: colorPalette.neutral[0],
+    ...uiShadows.md,
+    elevation: 2,
   },
 });

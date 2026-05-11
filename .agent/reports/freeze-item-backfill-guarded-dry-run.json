@@ -1,0 +1,62 @@
+{
+  "mode": "dry-run",
+  "count_lines_scanned": 11,
+  "active_count_lines": 11,
+  "missing_verified_items": 3,
+  "missing_variance_items": 3,
+  "missing_batch_rows": 3,
+  "missing_financial_rows": 3,
+  "inserted_verified_items": 0,
+  "inserted_variance_items": 0,
+  "inserted_batch_rows": 0,
+  "inserted_financial_rows": 0,
+  "skipped_superseded": 0,
+  "skipped_missing_id": 0,
+  "errors": 0,
+  "candidate_lines": [
+    {
+      "count_line_id": "468cb15e-816d-4bc8-9bcb-67225376ebbe",
+      "session_id": "5fbb1727-a3f6-49b4-ad44-0a0a9c6ffa86",
+      "item_code": "7846",
+      "variance": 10.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "ffa342cd-207d-4207-8d84-96bb920e45aa",
+      "session_id": "5aa5f2a9-5cd1-4709-88ea-aeefb8247409",
+      "item_code": "7846",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "ddc1cf0c-8124-4f1b-81bc-6b9873dec9a7",
+      "session_id": "f7710e2e-7647-4c93-adfc-dd6c269a1cf4",
+      "item_code": "7846",
+      "variance": 10.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    }
+  ],
+  "candidate_financial_sessions": [
+    {
+      "session_id": "5fbb1727-a3f6-49b4-ad44-0a0a9c6ffa86",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "5aa5f2a9-5cd1-4709-88ea-aeefb8247409",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "f7710e2e-7647-4c93-adfc-dd6c269a1cf4",
+      "line_count": 1,
+      "financial_total": 0.0
+    }
+  ]
+}
