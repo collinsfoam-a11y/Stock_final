@@ -3,7 +3,6 @@
  * Tests for the shared bottom navigation bar component
  */
 
-import { describe, it, expect, jest, beforeEach } from "@jest/globals";
 import {
   BOTTOM_NAV_HIT_SLOP,
   getDefaultInventoryTabs,

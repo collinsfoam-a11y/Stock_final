@@ -3,7 +3,6 @@
  * Tests for core API functionality
  */
 
-import { describe, it, expect, jest, beforeEach } from "@jest/globals";
 import { isOnline } from "../api/api";
 import apiClient from "../httpClient";
 import { useNetworkStore } from "../../store/networkStore";
