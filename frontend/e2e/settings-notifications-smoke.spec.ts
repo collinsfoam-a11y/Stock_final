@@ -251,7 +251,8 @@ function shouldIgnoreConsoleMessage(message: string): boolean {
     message.includes("[ConnectionManager] No healthy connections found") ||
     message.includes("[ConnectionManager] Using fallback connection") ||
     message.includes("[httpClient] Ignoring unhealthy connection update") ||
-    message.includes("[initApp] Background sync failed {error: Background sync timeout}")
+    message.includes("[initApp] Background sync failed {error: Background sync timeout}") ||
+    message.includes("props.pointerEvents is deprecated. Use style.pointerEvents")
   );
 }
 
