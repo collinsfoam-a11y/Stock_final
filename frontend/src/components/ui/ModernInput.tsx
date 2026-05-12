@@ -16,6 +16,7 @@ import {
   type KeyboardTypeOptions,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { haptics } from "@/services/haptics";
 
 import {
   colors as unifiedColors,
@@ -56,6 +57,7 @@ interface ModernInputProps {
   style?: ViewStyle;
   inputStyle?: TextStyle;
   containerStyle?: ViewStyle;
+  showClearButton?: boolean;
 }
 
 export const ModernInput: React.FC<ModernInputProps> = ({
@@ -87,6 +89,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   style,
   inputStyle,
   containerStyle,
+  showClearButton = false,
 }) => {
   const uiTokens = useUiTokens();
   const [isFocused, setIsFocused] = useState(false);
@@ -98,6 +101,12 @@ export const ModernInput: React.FC<ModernInputProps> = ({
 
   const togglePasswordVisibility = () => {
     setIsPasswordVisible(!isPasswordVisible);
+  };
+
+  const handleClear = () => {
+    void haptics.light();
+    onChangeText("");
+    inputRef.current?.focus();
   };
 
   const getInputContainerStyles = (): ViewStyle => {
@@ -211,6 +220,17 @@ export const ModernInput: React.FC<ModernInputProps> = ({
               size={20}
               color={uiTokens.colors.textSecondary}
             />
+          </TouchableOpacity>
+        )}
+
+        {showClearButton && value.length > 0 && !disabled && editable && (
+          <TouchableOpacity
+            onPress={handleClear}
+            style={styles.iconContainer}
+            accessibilityLabel="Clear input"
+            accessibilityRole="button"
+          >
+            <Ionicons name="close-circle" size={20} color={uiTokens.colors.textSecondary} />
           </TouchableOpacity>
         )}
 
