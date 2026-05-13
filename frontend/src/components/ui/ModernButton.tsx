@@ -305,39 +305,22 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
       ? `Loading, ${accessibilityLabel || title}`
       : accessibilityLabel || title;
 
-    const webProps = isWeb
-      ? {
-          onPress,
-          onPressIn: handlePressIn,
-          onPressOut: handlePressOut,
-          disabled: disabled || loading,
-          activeOpacity: 0.8,
-          style: buttonStyle,
-          testID,
-          accessibilityLabel: finalAccessibilityLabel,
-          accessibilityHint,
-          accessibilityRole: "button" as "button",
-          accessibilityState: { disabled: disabled || loading },
-        }
-      : {};
-
-    const nativeProps = !isWeb
-      ? {
-          onPress,
-          onPressIn: handlePressIn,
-          onPressOut: handlePressOut,
-          disabled: disabled || loading,
-          activeOpacity: 1,
-          style: [animatedStyle, buttonStyle],
-          testID,
-          accessibilityLabel: finalAccessibilityLabel,
-          accessibilityHint,
-          accessibilityRole: "button" as "button",
-          accessibilityState: { disabled: disabled || loading },
-        }
-      : {};
-
-    const props = isWeb ? webProps : nativeProps;
+    const props = {
+      onPress,
+      onPressIn: handlePressIn,
+      onPressOut: handlePressOut,
+      disabled: disabled || loading,
+      activeOpacity: isWeb ? 0.8 : 1,
+      style: isWeb ? buttonStyle : [animatedStyle, buttonStyle],
+      testID,
+      accessibilityLabel: finalAccessibilityLabel,
+      accessibilityHint,
+      accessibilityRole: "button" as const,
+      accessibilityState: {
+        disabled: disabled || loading,
+        busy: loading,
+      },
+    };
 
     if (variant === "gradient") {
       const colors =
