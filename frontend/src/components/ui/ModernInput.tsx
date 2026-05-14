@@ -27,6 +27,8 @@ import {
 } from "@/theme/legacyCompat";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { haptics } from "@/services/haptics";
+
 interface ModernInputProps {
   label?: string;
   placeholder?: string;
@@ -205,7 +207,13 @@ export const ModernInput: React.FC<ModernInputProps> = ({
         />
 
         {showPasswordToggle && (
-          <TouchableOpacity onPress={togglePasswordVisibility} style={styles.iconContainer}>
+          <TouchableOpacity
+            onPress={togglePasswordVisibility}
+            onPressIn={() => void haptics.light()}
+            style={styles.iconContainer}
+            accessibilityLabel={isPasswordVisible ? "Hide password" : "Show password"}
+            accessibilityRole="button"
+          >
             <Ionicons
               name={isPasswordVisible ? "eye-off" : "eye"}
               size={20}

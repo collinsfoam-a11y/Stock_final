@@ -10,6 +10,10 @@
 **Learning:** Incorporating haptic feedback and dynamic accessibility labels (e.g., prefixing "Loading, " to the label) directly into the foundational button component ensures consistent UX across the entire application without requiring manual implementation in every screen. When wrapping `onPress` events, it is critical to preserve the `GestureResponderEvent` argument to avoid breaking event-dependent logic in calling components.
 **Action:** Always use the centralized `haptics` service for tactile feedback and ensure core components handle accessibility state changes (like loading) transparently.
 
+## 2026-05-14 - Standardizing Micro-Interactions in Foundational UI Components
+**Learning:** Foundational components like `ModernCard` and `ModernInput` (password toggle) often serve as primary interaction points but can be overlooked for tactile feedback and accessibility. Adding `haptics.light()` to `ModernCard` and appropriate ARIA attributes to icon-only toggles significantly elevates the "pro" feel of the application.
+**Action:** Audit and ensure all interactive container components (like Cards) and secondary icon-buttons (like Toggles) implement both tactile feedback and clear accessibility roles/labels.
+
 ## 2025-05-18 - Standardizing Tactile Feedback across Design System Components
 **Learning:** For a consistent mobile "feel," all interactive primitive components (Switch, Checkbox, Radio, etc.) should provide subtle haptic feedback on state change. Centralizing this logic in a `haptics` service that respects feature flags and platform constraints (e.g., disabling on web) ensures a robust and unified user experience.
 **Action:** Use `haptics.light()` from the centralized haptics service for all primary toggle/selection interactions in new UI components.
