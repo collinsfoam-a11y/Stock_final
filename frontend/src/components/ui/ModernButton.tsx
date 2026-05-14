@@ -42,6 +42,7 @@ import {
 } from "@/theme/legacyCompat";
 import { useThemeContextSafe } from "../../context/ThemeContext";
 import { getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -118,6 +119,7 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   // Press handlers with animations
   const handlePressIn = () => {
     if (!disabled && !loading) {
+      void haptics.light();
       scale.value = withSpring(modernAnimations.scale.pressed, {
         damping: modernAnimations.easing.spring.damping,
         stiffness: modernAnimations.easing.spring.stiffness,
@@ -299,39 +301,26 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
     const isWeb = Platform.OS === "web";
     const Component = isWeb ? TouchableOpacity : AnimatedTouchableOpacity;
 
-    const webProps = isWeb
-      ? {
-          onPress,
-          onPressIn: handlePressIn,
-          onPressOut: handlePressOut,
-          disabled: disabled || loading,
-          activeOpacity: 0.8,
-          style: buttonStyle,
-          testID,
-          accessibilityLabel: accessibilityLabel || title,
-          accessibilityHint,
-          accessibilityRole: "button" as "button",
-          accessibilityState: { disabled: disabled || loading },
-        }
-      : {};
+    const finalAccessibilityLabel = loading
+      ? `Loading, ${accessibilityLabel || title}`
+      : accessibilityLabel || title;
 
-    const nativeProps = !isWeb
-      ? {
-          onPress,
-          onPressIn: handlePressIn,
-          onPressOut: handlePressOut,
-          disabled: disabled || loading,
-          activeOpacity: 1,
-          style: [animatedStyle, buttonStyle],
-          testID,
-          accessibilityLabel: accessibilityLabel || title,
-          accessibilityHint,
-          accessibilityRole: "button" as "button",
-          accessibilityState: { disabled: disabled || loading },
-        }
-      : {};
-
-    const props = isWeb ? webProps : nativeProps;
+    const props = {
+      onPress,
+      onPressIn: handlePressIn,
+      onPressOut: handlePressOut,
+      disabled: disabled || loading,
+      activeOpacity: isWeb ? 0.8 : 1,
+      style: isWeb ? buttonStyle : [animatedStyle, buttonStyle],
+      testID,
+      accessibilityLabel: finalAccessibilityLabel,
+      accessibilityHint,
+      accessibilityRole: "button" as const,
+      accessibilityState: {
+        disabled: disabled || loading,
+        busy: loading,
+      },
+    };
 
     if (variant === "gradient") {
       const colors =
