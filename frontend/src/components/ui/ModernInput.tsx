@@ -42,8 +42,10 @@ interface ModernInputProps {
   numberOfLines?: number;
   icon?: keyof typeof Ionicons.glyphMap;
   onIconPress?: () => void;
+  leftIconAccessibilityLabel?: string;
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightIconPress?: () => void;
+  rightIconAccessibilityLabel?: string;
   onSubmitEditing?: () => void;
   onBlur?: React.ComponentProps<typeof TextInput>["onBlur"];
   onFocus?: React.ComponentProps<typeof TextInput>["onFocus"];
@@ -73,8 +75,10 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   numberOfLines = 1,
   icon,
   onIconPress,
+  leftIconAccessibilityLabel,
   rightIcon,
   onRightIconPress,
+  rightIconAccessibilityLabel,
   onSubmitEditing,
   onBlur,
   onFocus,
@@ -167,6 +171,8 @@ export const ModernInput: React.FC<ModernInputProps> = ({
             onPress={onIconPress}
             style={styles.iconContainer}
             disabled={!onIconPress}
+            accessibilityRole={onIconPress ? "button" : "none"}
+            accessibilityLabel={leftIconAccessibilityLabel || `${icon} icon`}
           >
             <Ionicons
               name={icon}
@@ -205,7 +211,12 @@ export const ModernInput: React.FC<ModernInputProps> = ({
         />
 
         {showPasswordToggle && (
-          <TouchableOpacity onPress={togglePasswordVisibility} style={styles.iconContainer}>
+          <TouchableOpacity
+            onPress={togglePasswordVisibility}
+            style={styles.iconContainer}
+            accessibilityRole="button"
+            accessibilityLabel={isPasswordVisible ? "Hide password" : "Show password"}
+          >
             <Ionicons
               name={isPasswordVisible ? "eye-off" : "eye"}
               size={20}
@@ -219,6 +230,8 @@ export const ModernInput: React.FC<ModernInputProps> = ({
             onPress={onRightIconPress}
             style={styles.iconContainer}
             disabled={!onRightIconPress}
+            accessibilityRole={onRightIconPress ? "button" : "none"}
+            accessibilityLabel={rightIconAccessibilityLabel || `${rightIcon} icon`}
           >
             <Ionicons name={rightIcon} size={20} color={uiTokens.colors.textSecondary} />
           </TouchableOpacity>

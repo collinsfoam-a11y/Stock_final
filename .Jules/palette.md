@@ -1,0 +1,3 @@
+## 2024-05-18 - Added ARIA labels to Icon-Only Buttons
+**Learning:** Found multiple instances of icon-only buttons (like those inside input fields for showing/hiding password, and in the header for menu or logout) without sufficient accessibility labels. A critical pattern across this app is using `TouchableOpacity` with just an `Ionicons` element. Screen readers cannot deduce functionality purely from the visual icon.
+**Action:** When adding interactive icons wrapped in `TouchableOpacity`, always add `accessibilityRole="button"` and a descriptive `accessibilityLabel` that clearly describes the action that happens when pressed. Ensure these labels dynamically update if the button toggles state (e.g. "Show password" vs "Hide password").
