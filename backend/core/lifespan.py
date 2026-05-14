@@ -35,7 +35,7 @@ from backend.api.sync_status_api import set_auto_sync_manager
 from backend.auth.dependencies import init_auth_dependencies
 from backend.config import settings
 from backend.core import globals as g
-from backend.db.initialization import init_default_users, init_mock_erp_data
+from backend.db.initialization import init_default_users
 from backend.db.migrations import MigrationManager
 from backend.db.runtime import set_client, set_db
 from backend.exceptions import StockVerifyException as DatabaseError
@@ -522,11 +522,6 @@ async def lifespan(app: FastAPI):  # noqa: C901
         else:
             logger.info("Default user seeding disabled")
 
-        if getattr(settings, "AUTO_SEED_MOCK_ERP_DATA", False):
-            await init_mock_erp_data(db)
-            logger.info("OK: Mock ERP data check complete")
-        else:
-            logger.info("Mock ERP data seeding disabled")
     except Exception as e:
         logger.warning(
             f"Could not initialize optional seed data (may be due to MongoDB unavailability): {str(e)}"

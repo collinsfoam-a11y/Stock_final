@@ -404,10 +404,6 @@ class Settings(PydanticBaseSettings):
         default=False,
         description="Seed default users for development or automated smoke environments.",
     )
-    AUTO_SEED_MOCK_ERP_DATA: bool = Field(
-        default=False,
-        description="Seed mock ERP inventory for development or automated smoke environments.",
-    )
     AUTH_ACCESS_COOKIE_NAME: str = Field(
         default="sv_access_token",
         description="Cookie name used for the short-lived access token.",
@@ -606,9 +602,6 @@ except Exception as e:
             self.AUTO_SEED_DEFAULT_USERS = (
                 os.getenv("AUTO_SEED_DEFAULT_USERS", "false").lower() == "true"
             )
-            self.AUTO_SEED_MOCK_ERP_DATA = (
-                os.getenv("AUTO_SEED_MOCK_ERP_DATA", "false").lower() == "true"
-            )
             self.AUTH_ACCESS_COOKIE_NAME = os.getenv("AUTH_ACCESS_COOKIE_NAME", "sv_access_token")
             self.AUTH_REFRESH_COOKIE_NAME = os.getenv(
                 "AUTH_REFRESH_COOKIE_NAME", "sv_refresh_token"
@@ -719,10 +712,6 @@ def _enforce_production_guards(settings_obj):
         if getattr(settings_obj, "AUTO_SEED_DEFAULT_USERS", False):
             raise RuntimeError(
                 "CRITICAL: AUTO_SEED_DEFAULT_USERS=true is not allowed in production/staging."
-            )
-        if getattr(settings_obj, "AUTO_SEED_MOCK_ERP_DATA", False):
-            raise RuntimeError(
-                "CRITICAL: AUTO_SEED_MOCK_ERP_DATA=true is not allowed in production/staging."
             )
 
     if is_prod:
