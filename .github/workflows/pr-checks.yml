@@ -6,12 +6,12 @@ name: PR Checks
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 on:
   pull_request:
     branches: [main, develop, my-fix-branch]
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   quick-checks:
@@ -76,8 +76,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
         with:
           version: 10
 
