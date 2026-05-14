@@ -232,11 +232,8 @@ class PortDetector:
         # Try to detect current frontend port
         if frontend_port is None:
             frontend_port = 8081  # Default
-            if not PortDetector.is_port_available(8081):
-                # Frontend is running on 8081
-                pass
-            else:
-                # Try to find alternative
+            if PortDetector.is_port_available(8081):
+                # Try to find alternative if 8081 is free
                 for port in range(8080, 8090):
                     if not PortDetector.is_port_available(port):
                         frontend_port = port
