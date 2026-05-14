@@ -3,12 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   Alert,
   Modal,
   TextInput as _TextInput,
   ScrollView as _ScrollView,
 } from "react-native";
+import { VirtualList } from "../../src/components/common/VirtualList";
 import {
   LoadingSpinner,
   AnimatedPressable as _AnimatedPressable,
@@ -197,9 +197,11 @@ export default function UnknownItemsScreen() {
           <LoadingSpinner size={40} color={uiTokens.colors.accent} />
         </View>
       ) : (
-        <FlatList
+        // ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to improve scrolling performance and reduce frame drops for the unknown items list.
+        <VirtualList
           data={items}
           renderItem={renderItem}
+          estimatedItemSize={160}
           keyExtractor={(item) => item.id || item._id}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
