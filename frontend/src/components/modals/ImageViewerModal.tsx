@@ -54,7 +54,12 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
             )}
           />
           <SafeAreaView style={styles.header}>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeButton}
+              accessibilityRole="button"
+              accessibilityLabel="Close image viewer"
+            >
               <Ionicons name="close" size={28} color="white" />
             </TouchableOpacity>
           </SafeAreaView>

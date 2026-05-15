@@ -1,0 +1,3 @@
+## 2024-05-15 - [Missing ARIA Labels on Icon-Only Buttons]
+**Learning:** React Native `TouchableOpacity` wrappers around icon components (e.g. `Ionicons`) don't have default accessibility labels. Screen readers will not announce the button's purpose, making features like closing modals inaccessible.
+**Action:** Always add `accessibilityRole="button"` and a descriptive `accessibilityLabel` to any icon-only touchable component to ensure screen reader compatibility.
