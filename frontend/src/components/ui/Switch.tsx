@@ -13,6 +13,7 @@ import Animated, {
   interpolateColor,
 } from "react-native-reanimated";
 import { colorPalette } from "@/theme/designTokens";
+import { haptics } from "@/services/haptics";
 
 import { shadows as uiShadows } from "@/theme/legacyCompat";
 export type SwitchSize = "sm" | "md" | "lg";
@@ -25,6 +26,7 @@ interface SwitchProps {
   activeColor?: string;
   inactiveColor?: string;
   style?: ViewStyle;
+  accessibilityLabel?: string;
 }
 
 const sizeStyles: Record<SwitchSize, { width: number; height: number; thumbSize: number }> = {
@@ -41,6 +43,7 @@ export const Switch: React.FC<SwitchProps> = ({
   activeColor = colorPalette.primary[500],
   inactiveColor = colorPalette.neutral[400],
   style,
+  accessibilityLabel,
 }) => {
   const sizes = sizeStyles[size];
   const progress = useSharedValue(value ? 1 : 0);
@@ -66,6 +69,7 @@ export const Switch: React.FC<SwitchProps> = ({
 
   const handlePress = () => {
     if (!disabled) {
+      void haptics.light();
       onValueChange(!value);
     }
   };
@@ -76,6 +80,9 @@ export const Switch: React.FC<SwitchProps> = ({
       disabled={disabled}
       activeOpacity={0.8}
       style={[styles.container, style]}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value, disabled }}
+      accessibilityLabel={accessibilityLabel}
     >
       <Animated.View
         style={[
