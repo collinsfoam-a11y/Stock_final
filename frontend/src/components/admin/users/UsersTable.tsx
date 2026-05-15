@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import {
   Dimensions,
-  FlatList,
   Platform,
   StyleSheet,
   Text,
@@ -10,6 +9,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { VirtualList } from "@/components/common/VirtualList";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { AnimatedPressable } from "@/components/ui";
@@ -207,7 +207,8 @@ export function UsersTable({
     ) : null;
 
   return (
-    <FlatList
+    // ⚡ Bolt: Replaced FlatList with VirtualList (FlashList under the hood) to significantly improve rendering performance and reduce memory usage for potentially long lists of users.
+    <VirtualList
       contentContainerStyle={styles.listContent}
       data={users}
       keyExtractor={(user) => user.id}
@@ -216,6 +217,7 @@ export function UsersTable({
       ListHeaderComponent={renderHeader}
       refreshControl={refreshControl}
       renderItem={renderUser}
+      estimatedItemSize={80}
     />
   );
 }
