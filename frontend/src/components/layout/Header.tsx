@@ -5,6 +5,7 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import * as Haptics from "expo-haptics";
 import { useTheme } from "../../hooks/useTheme";
 
 import { semanticColors as uiSemanticColors, shadows as uiShadows } from "@/theme/legacyCompat";
@@ -29,6 +30,18 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const theme = useTheme();
 
+  const handleLeftPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (onLeftPress) onLeftPress();
+  };
+
+  const handleRightPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (onRightPress) onRightPress();
+  };
+
+  const leftLabel = (showBack || leftIcon === "arrow-back") ? "Go back" : "Header action";
+
   return (
     <>
       <StatusBar
@@ -38,7 +51,13 @@ export const Header: React.FC<HeaderProps> = ({
       <View style={[styles.container, { backgroundColor: theme.colors.primary }]}>
         <View style={styles.leftContainer}>
           {(leftIcon || showBack) && (
-            <TouchableOpacity style={styles.iconButton} onPress={onLeftPress} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={handleLeftPress}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={leftLabel}
+            >
               <Ionicons
                 name={leftIcon || "arrow-back"}
                 size={24}
@@ -55,7 +74,13 @@ export const Header: React.FC<HeaderProps> = ({
 
         <View style={styles.rightContainer}>
           {rightIcon && (
-            <TouchableOpacity style={styles.iconButton} onPress={onRightPress} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={handleRightPress}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Header action"
+            >
               <Ionicons name={rightIcon} size={24} color={uiSemanticColors.text.inverse} />
             </TouchableOpacity>
           )}
