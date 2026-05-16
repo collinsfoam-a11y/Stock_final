@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import {
   Dimensions,
-  FlatList,
   Platform,
   StyleSheet,
   Text,
@@ -12,6 +11,7 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+import { VirtualList } from "../../common/VirtualList";
 import { AnimatedPressable } from "@/components/ui";
 import {
   getOperationalActionColor,
@@ -207,7 +207,8 @@ export function UsersTable({
     ) : null;
 
   return (
-    <FlatList
+    // ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to drastically improve rendering performance and reduce memory usage for long lists of users.
+    <VirtualList
       contentContainerStyle={styles.listContent}
       data={users}
       keyExtractor={(user) => user.id}
@@ -216,6 +217,7 @@ export function UsersTable({
       ListHeaderComponent={renderHeader}
       refreshControl={refreshControl}
       renderItem={renderUser}
+      estimatedItemSize={60}
     />
   );
 }
