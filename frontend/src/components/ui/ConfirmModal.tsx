@@ -26,6 +26,7 @@ import Animated, { FadeIn, SlideInDown, SlideOutDown } from "react-native-reanim
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Modal } from "./Modal";
 import { colors, semanticColors, spacing, radius, textStyles } from "@/theme/legacyCompat";
+import { haptics } from "@/services/haptics";
 
 export type ConfirmModalVariant = "default" | "danger" | "warning" | "success";
 
@@ -123,6 +124,7 @@ function ConfirmModal({
   const handleConfirm = async () => {
     if (loading || confirmDisabled) return;
 
+    void haptics.light();
     try {
       await onConfirm();
       if (closeOnConfirm) {
@@ -135,6 +137,7 @@ function ConfirmModal({
   };
 
   const handleCancel = () => {
+    void haptics.light();
     if (onCancel) {
       onCancel();
     } else {
