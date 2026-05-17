@@ -1,0 +1,5 @@
+# Safety 2 policy for the legacy `safety check` command used in CI.
+security:
+  ignore-cvss-severity-below: 0
+  ignore-cvss-unknown-severity: false
+  ignore-vulnerabilities: {}

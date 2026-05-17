@@ -6,9 +6,7 @@ settings:
 
 overrides:
   '@tootallnate/once': ^3.0.1
-  '@tootallnate/once@<3.0.1': ^3.0.1
-  postcss: ^8.5.10
-  postcss@<8.5.10: ^8.5.10
+  postcss: 8.5.10
 
 importers:
 
@@ -256,7 +254,7 @@ importers:
         specifier: ^1.57.0
         version: 1.59.1
       postcss:
-        specifier: ^8.5.10
+        specifier: 8.5.10
         version: 8.5.10
       postinstall-postinstall:
         specifier: ^2.1.0
