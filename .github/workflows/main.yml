@@ -139,7 +139,7 @@ jobs:
 
       - name: Install linters
         run: |
-          pip install ruff bandit safety
+          pip install ruff bandit "safety<3"
 
       - name: Ruff lint
         run: ruff check backend/ --output-format=github
