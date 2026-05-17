@@ -52,4 +52,22 @@ describe("ModernInput", () => {
 
     expect(getByTestId("modern-input").props.editable).toBe(false);
   });
+
+  it("disables password visibility toggle when input is disabled", () => {
+    const { getByLabelText, getByPlaceholderText } = render(
+      <ModernInput
+        disabled
+        placeholder="Password"
+        value="secret"
+        secureTextEntry
+        onChangeText={() => {}}
+      />
+    );
+
+    const toggle = getByLabelText("Show password");
+    fireEvent.press(toggle);
+
+    expect(toggle.props.accessibilityState).toEqual({ disabled: true });
+    expect(getByPlaceholderText("Password").props.secureTextEntry).toBe(true);
+  });
 });

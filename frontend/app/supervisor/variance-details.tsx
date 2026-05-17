@@ -24,11 +24,14 @@ import RecountAssignmentModal, {
 import { theme } from "../../src/styles/unifiedSystem";
 import { useToast } from "../../src/components/feedback/ToastProvider";
 import { safeBackNavigation } from "@/utils/navigation";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { colorWithAlpha } from "@/theme/themeTokens";
 
 export default function VarianceDetailsScreen() {
   const { itemCode } = useLocalSearchParams();
   const router = useRouter();
   const { show } = useToast();
+  const prefersReducedMotion = useReducedMotion();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [loading, setLoading] = useState(true);
   const [itemDetails, setItemDetails] = useState<any>(null);
@@ -36,6 +39,11 @@ export default function VarianceDetailsScreen() {
   const [recountModalVisible, setRecountModalVisible] = useState(false);
   const [assignableStaff, setAssignableStaff] = useState<AssignableStaffUser[]>([]);
   const [staffLoading, setStaffLoading] = useState(false);
+  const headerEntry = prefersReducedMotion ? undefined : FadeInDown.delay(100).springify();
+  const profileEntry = prefersReducedMotion ? undefined : FadeInDown.delay(200).springify();
+  const statsEntry = prefersReducedMotion ? undefined : FadeInDown.delay(300).springify();
+  const detailsEntry = prefersReducedMotion ? undefined : FadeInDown.delay(400).springify();
+  const footerEntry = prefersReducedMotion ? undefined : FadeInDown.delay(500).springify();
 
   const loadDetails = useCallback(async () => {
     try {
@@ -195,17 +203,21 @@ export default function VarianceDetailsScreen() {
       <ScreenContainer>
         <View style={styles.centered}>
           <ModernCard variant="outlined" elevation="none" intensity={15} padding={theme.spacing.xl}>
-            <View style={{ alignItems: "center", gap: theme.spacing.md }}>
+            <View style={styles.notFoundContent}>
               <Ionicons name="alert-circle-outline" size={48} color={theme.colors.text.tertiary} />
-              <Text style={{ color: theme.colors.text.secondary }}>
+              <Text style={styles.notFoundText}>
                 {offlineMode
                   ? "Variance details are unavailable in offline mode"
                   : "Item not found"}
               </Text>
               <AnimatedPressable
-                onPress={() => safeBackNavigation(router, { fallbackHref: "/supervisor/variances" })}
+                onPress={() =>
+                  safeBackNavigation(router, { fallbackHref: "/supervisor/variances" })
+                }
+                accessibilityLabel="Go back to variances"
+                accessibilityHint="Returns to the variance list"
               >
-                <Text style={{ color: theme.colors.primary[500] }}>Go Back</Text>
+                <Text style={styles.notFoundAction}>Go Back</Text>
               </AnimatedPressable>
             </View>
           </ModernCard>
@@ -219,11 +231,13 @@ export default function VarianceDetailsScreen() {
       <StatusBar style="light" />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
+        <Animated.View entering={headerEntry} style={styles.header}>
           <View style={styles.headerLeft}>
             <AnimatedPressable
               onPress={() => safeBackNavigation(router, { fallbackHref: "/supervisor/variances" })}
               style={styles.backButton}
+              accessibilityLabel="Back to variances"
+              accessibilityHint="Returns to the variance list"
             >
               <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
             </AnimatedPressable>
@@ -233,7 +247,7 @@ export default function VarianceDetailsScreen() {
 
         <ScrollView contentContainerStyle={styles.content}>
           {/* Item Profile */}
-          <Animated.View entering={FadeInDown.delay(200).springify()}>
+          <Animated.View entering={profileEntry}>
             <ModernCard
               variant="outlined"
               elevation="none"
@@ -244,7 +258,7 @@ export default function VarianceDetailsScreen() {
                 <View style={styles.itemIcon}>
                   <Ionicons name="cube-outline" size={32} color={theme.colors.primary[500]} />
                 </View>
-                <View style={{ flex: 1 }}>
+                <View style={styles.itemCopy}>
                   <Text style={styles.itemName}>{itemDetails.item_name}</Text>
                   <Text style={styles.itemCode}>{itemDetails.item_code}</Text>
                 </View>
@@ -253,7 +267,7 @@ export default function VarianceDetailsScreen() {
           </Animated.View>
 
           {/* Stats Row */}
-          <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.statsRow}>
+          <Animated.View entering={statsEntry} style={styles.statsRow}>
             <StatsCard
               title="System Qty"
               value={itemDetails.system_qty?.toString() || "0"}
@@ -278,7 +292,7 @@ export default function VarianceDetailsScreen() {
           </Animated.View>
 
           {/* Details */}
-          <Animated.View entering={FadeInDown.delay(400).springify()}>
+          <Animated.View entering={detailsEntry}>
             <ModernCard
               variant="outlined"
               elevation="none"
@@ -334,7 +348,7 @@ export default function VarianceDetailsScreen() {
         </ScrollView>
 
         {/* Footer Actions */}
-        <Animated.View entering={FadeInDown.delay(500).springify()} style={styles.footer}>
+        <Animated.View entering={footerEntry} style={styles.footer}>
           <ModernCard
             variant="outlined"
             elevation="none"
@@ -346,6 +360,9 @@ export default function VarianceDetailsScreen() {
                 onPress={() => void handleOpenRecount()}
                 disabled={processing}
                 style={[styles.actionButton, styles.secondaryButton]}
+                accessibilityLabel="Request recount"
+                accessibilityHint="Opens recount assignment for this variance"
+                accessibilityState={{ disabled: processing }}
               >
                 <Text style={styles.secondaryButtonText}>Request Recount</Text>
               </AnimatedPressable>
@@ -354,6 +371,9 @@ export default function VarianceDetailsScreen() {
                 onPress={handleApprove}
                 disabled={processing}
                 style={[styles.actionButton, styles.primaryButton]}
+                accessibilityLabel="Approve variance"
+                accessibilityHint="Approves this variance after confirmation"
+                accessibilityState={{ disabled: processing }}
               >
                 {processing ? (
                   <ActivityIndicator color={theme.colors.text.inverse} />
@@ -389,6 +409,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  notFoundContent: {
+    alignItems: "center",
+    gap: theme.spacing.md,
+  },
+  notFoundText: {
+    color: theme.colors.text.secondary,
+  },
+  notFoundAction: {
+    color: theme.colors.primary[500],
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -403,10 +433,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: theme.spacing.xs,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: colorWithAlpha(theme.colors.text.primary, 0.05),
     borderRadius: theme.borderRadius.full,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: colorWithAlpha(theme.colors.text.primary, 0.1),
   },
   headerTitle: {
     fontSize: 24,
@@ -425,21 +455,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: theme.spacing.md,
   },
+  itemCopy: {
+    flex: 1,
+  },
   itemIcon: {
     width: 56,
     height: 56,
     borderRadius: theme.borderRadius.md,
-    backgroundColor: "rgba(14, 165, 233, 0.2)",
+    backgroundColor: colorWithAlpha(theme.colors.primary[500], 0.2),
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(14, 165, 233, 0.4)",
+    borderColor: colorWithAlpha(theme.colors.primary[500], 0.4),
   },
   itemName: {
     fontSize: 20,
     fontWeight: "600",
     color: theme.colors.text.primary,
-    marginBottom: 4,
+    marginBottom: theme.spacing.xs,
   },
   itemCode: {
     fontSize: 14,
@@ -463,12 +496,12 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
     textTransform: "uppercase",
     letterSpacing: 1,
-    marginBottom: 6,
+    marginBottom: theme.spacing.xs,
   },
   detailValueRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: theme.spacing.xs,
   },
   detailValue: {
     fontSize: 16,
@@ -500,9 +533,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   secondaryButton: {
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: colorWithAlpha(theme.colors.text.primary, 0.05),
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: colorWithAlpha(theme.colors.text.primary, 0.1),
   },
   secondaryButtonText: {
     color: theme.colors.text.primary,

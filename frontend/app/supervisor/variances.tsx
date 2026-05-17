@@ -31,9 +31,13 @@ import { theme } from "../../src/styles/modernDesignSystem";
 import { toastService } from "../../src/services/toastService";
 import { saveArrayBufferExport } from "../../src/utils/fileExport";
 import { safeBackNavigation } from "@/utils/navigation";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { operationalMotion } from "@/utils/motion";
 
 export default function VariancesScreen() {
   const router = useRouter();
+  const prefersReducedMotion = useReducedMotion();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [variances, setVariances] = useState<VarianceItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +52,9 @@ export default function VariancesScreen() {
   // Bulk Selection State
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const isSelectionMode = selectedIds.size > 0;
+  const headerEntry = prefersReducedMotion ? undefined : FadeInDown.delay(100).springify();
+  const filtersEntry = prefersReducedMotion ? undefined : FadeInDown.delay(200).springify();
+  const bulkEntry = prefersReducedMotion ? undefined : FadeInDown.duration(operationalMotion.slow);
 
   const toggleSelection = (id: string) => {
     const newSet = new Set(selectedIds);
@@ -249,6 +256,13 @@ export default function VariancesScreen() {
           }
         }}
         style={{ marginBottom: theme.spacing.md }}
+        accessibilityLabel={`${isSelected ? "Selected" : "Unselected"} variance for ${item.item_name || item.item_code}, system quantity ${(item.system_qty ?? 0).toFixed(2)}, verified quantity ${(item.verified_qty ?? 0).toFixed(2)}`}
+        accessibilityHint={
+          isSelectionMode
+            ? "Toggles this variance selection"
+            : "Opens variance details. Long press to select this item."
+        }
+        accessibilityState={{ selected: isSelected }}
       >
         <ModernCard
           variant="outlined"
@@ -257,19 +271,21 @@ export default function VariancesScreen() {
           style={{
             borderColor: isSelected ? theme.colors.primary[500] : `${statusColor}40`,
             borderWidth: isSelected ? 2 : 1,
-            backgroundColor: isSelected ? "rgba(79, 70, 229, 0.1)" : undefined,
+            backgroundColor: isSelected
+              ? colorWithAlpha(theme.colors.primary[500], 0.1)
+              : undefined,
           }}
         >
           <View style={styles.varianceHeader}>
-            <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+            <View style={styles.varianceTitleRow}>
               {/* Selection Circle */}
               {isSelectionMode && (
                 <View
                   style={{
-                    marginRight: 12,
+                    marginRight: theme.spacing.md,
                     width: 24,
                     height: 24,
-                    borderRadius: 12,
+                    borderRadius: theme.borderRadius.full,
                     borderWidth: 2,
                     borderColor: isSelected
                       ? theme.colors.primary[500]
@@ -288,10 +304,7 @@ export default function VariancesScreen() {
               </View>
             </View>
             <View
-              style={[
-                styles.varianceBadge,
-                { backgroundColor: `${statusColor}20` }, // Low opacity background
-              ]}
+              style={[styles.varianceBadge, { backgroundColor: colorWithAlpha(statusColor, 0.12) }]}
             >
               <Text style={[styles.varianceBadgeText, { color: statusColor }]}>
                 {varianceSign}
@@ -349,12 +362,14 @@ export default function VariancesScreen() {
       <StatusBar style="light" />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
+        <Animated.View entering={headerEntry} style={styles.header}>
           <View style={styles.headerLeft}>
             {isSelectionMode ? (
               <AnimatedPressable
                 onPress={() => setSelectedIds(new Set())}
                 style={styles.backButton}
+                accessibilityLabel="Clear variance selection"
+                accessibilityHint="Exits bulk selection mode"
               >
                 <Ionicons name="close" size={24} color={theme.colors.text.primary} />
               </AnimatedPressable>
@@ -362,6 +377,8 @@ export default function VariancesScreen() {
               <AnimatedPressable
                 onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
                 style={styles.backButton}
+                accessibilityLabel="Back to supervisor"
+                accessibilityHint="Returns to the supervisor area"
               >
                 <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
               </AnimatedPressable>
@@ -378,10 +395,19 @@ export default function VariancesScreen() {
             </View>
           </View>
 
-          <View style={{ flexDirection: "row", gap: 8 }}>
+          <View style={styles.headerActions}>
             {isSelectionMode && (
-              <AnimatedPressable style={styles.exportButton} onPress={handleSelectAll}>
-                <ModernCard variant="outlined" elevation="none" padding={8}>
+              <AnimatedPressable
+                style={styles.exportButton}
+                onPress={handleSelectAll}
+                accessibilityLabel={
+                  selectedIds.size === variances.length
+                    ? "Clear all selected variances"
+                    : "Select all variances"
+                }
+                accessibilityHint="Toggles all variance selections"
+              >
+                <ModernCard variant="outlined" elevation="none" padding={theme.spacing.sm}>
                   <Ionicons
                     name={
                       selectedIds.size === variances.length
@@ -400,8 +426,10 @@ export default function VariancesScreen() {
                 style={[styles.exportFormatButton, variances.length === 0 && { opacity: 0.5 }]}
                 onPress={() => void handleExport("csv")}
                 disabled={variances.length === 0}
+                accessibilityLabel="Export variances as CSV"
+                accessibilityHint="Downloads variance data in CSV format"
               >
-                <ModernCard variant="outlined" elevation="none" padding={8}>
+                <ModernCard variant="outlined" elevation="none" padding={theme.spacing.sm}>
                   <Text style={styles.exportFormatLabel}>CSV</Text>
                 </ModernCard>
               </AnimatedPressable>
@@ -409,8 +437,10 @@ export default function VariancesScreen() {
                 style={[styles.exportFormatButton, variances.length === 0 && { opacity: 0.5 }]}
                 onPress={() => void handleExport("xlsx")}
                 disabled={variances.length === 0}
+                accessibilityLabel="Export variances as XLSX"
+                accessibilityHint="Downloads variance data in spreadsheet format"
               >
-                <ModernCard variant="outlined" elevation="none" padding={8}>
+                <ModernCard variant="outlined" elevation="none" padding={theme.spacing.sm}>
                   <Text style={styles.exportFormatLabel}>XLSX</Text>
                 </ModernCard>
               </AnimatedPressable>
@@ -419,7 +449,7 @@ export default function VariancesScreen() {
         </Animated.View>
 
         {/* Filters */}
-        <Animated.View entering={FadeInDown.delay(200).springify()}>
+        <Animated.View entering={filtersEntry}>
           <ModernCard
             variant="outlined"
             elevation="none"
@@ -500,11 +530,11 @@ export default function VariancesScreen() {
               onEndReachedThreshold={0.5}
               ListFooterComponent={
                 loading && variances.length > 0 ? (
-                  <View style={{ paddingVertical: 20 }}>
+                  <View style={styles.footerLoader}>
                     <ActivityIndicator size="small" color={theme.colors.primary[500]} />
                   </View>
                 ) : (
-                  <View style={{ height: 20 }} />
+                  <View style={styles.footerSpacer} />
                 )
               }
             />
@@ -514,16 +544,18 @@ export default function VariancesScreen() {
 
       {/* Bulk Action Bar */}
       {isSelectionMode && (
-        <Animated.View entering={FadeInDown.duration(300)} style={styles.bulkActionBar}>
+        <Animated.View entering={bulkEntry} style={styles.bulkActionBar}>
           <ModernCard
             variant="outlined"
             elevation="none"
-            padding={16}
-            style={{ flexDirection: "row", gap: 12, width: "100%" }}
+            padding={theme.spacing.md}
+            style={styles.bulkActionCard}
           >
             <AnimatedPressable
               style={[styles.bulkButton, { backgroundColor: theme.colors.error[500] }]}
               onPress={() => handleBulkAction("reject")}
+              accessibilityLabel={`Reject ${selectedIds.size} selected variances`}
+              accessibilityHint="Rejects the selected variance records after confirmation"
             >
               <Ionicons name="close-circle" size={20} color="white" />
               <Text style={styles.bulkButtonText}>Reject ({selectedIds.size})</Text>
@@ -532,6 +564,8 @@ export default function VariancesScreen() {
             <AnimatedPressable
               style={[styles.bulkButton, { backgroundColor: theme.colors.success[500] }]}
               onPress={() => handleBulkAction("approve")}
+              accessibilityLabel={`Approve ${selectedIds.size} selected variances`}
+              accessibilityHint="Approves the selected variance records after confirmation"
             >
               <Ionicons name="checkmark-circle" size={20} color="white" />
               <Text style={styles.bulkButtonText}>Approve ({selectedIds.size})</Text>
@@ -566,12 +600,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: theme.spacing.md,
   },
+  headerActions: {
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+  },
   backButton: {
     padding: theme.spacing.xs,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: colorWithAlpha(theme.colors.text.primary, 0.05),
     borderRadius: theme.borderRadius.full,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: colorWithAlpha(theme.colors.text.primary, 0.1),
   },
   pageTitle: {
     fontSize: 32,
@@ -615,11 +653,16 @@ const styles = StyleSheet.create({
   varianceHeaderLeft: {
     flex: 1,
   },
+  varianceTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
   itemName: {
     fontSize: 16,
     fontWeight: "600",
     color: theme.colors.text.primary,
-    marginBottom: 4,
+    marginBottom: theme.spacing.xs,
   },
   itemCode: {
     fontSize: 14,
@@ -628,7 +671,7 @@ const styles = StyleSheet.create({
   varianceBadge: {
     borderRadius: theme.borderRadius.full,
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: theme.spacing.xs,
     minWidth: 60,
     alignItems: "center",
     justifyContent: "center",
@@ -645,7 +688,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: theme.spacing.md,
     marginBottom: theme.spacing.sm,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: colorWithAlpha(theme.colors.text.primary, 0.03),
     padding: theme.spacing.sm,
     borderRadius: theme.borderRadius.sm,
   },
@@ -655,12 +698,12 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: "80%",
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: colorWithAlpha(theme.colors.text.primary, 0.1),
   },
   qtyLabel: {
     fontSize: 12,
     color: theme.colors.text.tertiary,
-    marginBottom: 2,
+    marginBottom: theme.spacing.xs,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -673,7 +716,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing.xs,
-    marginBottom: 4,
+    marginBottom: theme.spacing.xs,
   },
   locationText: {
     fontSize: 12,
@@ -684,7 +727,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
     fontStyle: "italic",
     marginBottom: theme.spacing.xs,
-    marginTop: 2,
+    marginTop: theme.spacing.xs,
   },
   verificationInfo: {
     flexDirection: "row",
@@ -693,7 +736,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
     paddingTop: theme.spacing.xs,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.05)",
+    borderTopColor: colorWithAlpha(theme.colors.text.primary, 0.05),
   },
   verificationInfoText: {
     fontSize: 12,
@@ -722,6 +765,11 @@ const styles = StyleSheet.create({
     right: 20,
     alignItems: "center",
   },
+  bulkActionCard: {
+    flexDirection: "row",
+    gap: theme.spacing.md,
+    width: "100%",
+  },
   bulkButton: {
     flex: 1,
     height: 50,
@@ -729,7 +777,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: theme.spacing.sm,
     elevation: 8,
   },
   bulkButtonText: {
@@ -741,7 +789,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     fontSize: 14,
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: theme.spacing.xs,
   },
   offlineNoticeBody: {
     color: theme.colors.text.secondary,
@@ -752,11 +800,17 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     fontSize: 13,
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: theme.spacing.xs,
   },
   exportHintBody: {
     color: theme.colors.text.secondary,
     fontSize: 12,
     lineHeight: 18,
+  },
+  footerLoader: {
+    paddingVertical: theme.spacing.xl,
+  },
+  footerSpacer: {
+    height: theme.spacing.xl,
   },
 });

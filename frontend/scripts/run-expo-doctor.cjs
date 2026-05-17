@@ -2,11 +2,17 @@
 
 const { spawnSync } = require("node:child_process");
 
-const result = spawnSync("npx", ["expo-doctor"], {
+const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
+const spawnOptions = {
   cwd: process.cwd(),
   encoding: "utf8",
   stdio: ["ignore", "pipe", "pipe"],
-});
+};
+
+const result =
+  process.platform === "win32"
+    ? spawnSync(`${npxCommand} expo-doctor`, { ...spawnOptions, shell: true })
+    : spawnSync(npxCommand, ["expo-doctor"], spawnOptions);
 
 const stdout = result.stdout || "";
 const stderr = result.stderr || "";
@@ -14,6 +20,11 @@ const output = `${stdout}${stderr}`;
 
 process.stdout.write(stdout);
 process.stderr.write(stderr);
+
+if (result.error) {
+  console.error(`Failed to run expo-doctor via ${npxCommand}: ${result.error.message}`);
+  process.exit(1);
+}
 
 if (result.status === 0) {
   process.exit(0);

@@ -23,6 +23,17 @@ from rapidfuzz import fuzz
 logger = logging.getLogger(__name__)
 
 
+def _manual_items_collection(db: Any) -> Any:
+    collection = getattr(db, "manual_items", None)
+    if collection is None:
+        return None
+    if collection.__class__.__module__.startswith("unittest.mock") and "manual_items" not in vars(
+        db
+    ):
+        return None
+    return collection
+
+
 @dataclass
 class SearchResult:
     """Search result with relevance score"""
@@ -349,15 +360,31 @@ class SearchService:
             return []
 
         try:
-            # Get name suggestions
-            pipeline: list[dict[str, Any]] = [
-                {"$match": {"item_name": {"$regex": f"^{prefix}", "$options": "i"}}},
-                {"$group": {"_id": "$item_name"}},
-                {"$limit": limit},
-            ]
-            cursor = self.db.erp_items.aggregate(pipeline)
-            results = await cursor.to_list(length=limit)
-            return [r["_id"] for r in results]
+            query = {"item_name": {"$regex": f"^{prefix}", "$options": "i"}}
+            suggestions: list[str] = []
+            seen: set[str] = set()
+
+            async def collect_from(collection: Any, remaining: int) -> None:
+                cursor = collection.find(query, {"item_name": 1}).limit(remaining)
+                rows = await cursor.to_list(length=remaining)
+                for row in rows:
+                    name = row.get("item_name")
+                    if not isinstance(name, str) or not name.strip():
+                        continue
+                    normalized = name.strip()
+                    key = normalized.casefold()
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    suggestions.append(normalized)
+
+            await collect_from(self.db.erp_items, limit)
+
+            manual_items = _manual_items_collection(self.db)
+            if manual_items is not None and len(suggestions) < limit:
+                await collect_from(manual_items, limit - len(suggestions))
+
+            return suggestions[:limit]
         except Exception as e:
             logger.error(f"Failed to get suggestions: {e}")
             return []

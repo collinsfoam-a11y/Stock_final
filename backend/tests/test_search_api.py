@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from backend.auth.dependencies import get_current_user_async
 from backend.server import app
 from backend.services.search_service import SearchResponse, SearchResult
+from backend.tests.utils.in_memory_db import InMemoryDatabase
 
 
 @pytest.fixture
@@ -68,4 +69,27 @@ def test_search_api_missing_query(client, mock_user):
     app.dependency_overrides[get_current_user_async] = lambda: mock_user
     response = client.get("/api/items/search/optimized")
     assert response.status_code == 422  # Validation error
+    app.dependency_overrides = {}
+
+
+def test_search_filters_include_manual_items(client, mock_user):
+    app.dependency_overrides[get_current_user_async] = lambda: mock_user
+    db = InMemoryDatabase()
+
+    async def seed():
+        await db.erp_items.insert_one({"category": "ERP Cat", "warehouse": "Main"})
+        await db.manual_items.insert_one({"category": "Manual Cat", "warehouse": "Manual"})
+
+    import asyncio
+
+    asyncio.run(seed())
+
+    with patch("backend.api.search_api.get_db", return_value=db):
+        response = client.get("/api/items/search/filters")
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["categories"] == ["ERP Cat", "Manual Cat"]
+    assert data["warehouses"] == ["Main", "Manual"]
+
     app.dependency_overrides = {}

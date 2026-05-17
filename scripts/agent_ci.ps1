@@ -69,25 +69,25 @@ switch ($Mode) {
     Set-Location $ProjectRoot
     Invoke-Step "python-lint" { & $pythonExecutable -m ruff check backend }
     Invoke-PythonTypecheckNonBlocking -PythonExe $pythonExecutable
-    Invoke-Step "python-test" { & $pythonExecutable -m pytest backend/tests/ -v --tb=short }
+    Invoke-Step "python-test" { & $pythonExecutable -m pytest backend/tests/ -q --tb=short }
     break
   }
   "node" {
     Set-Location (Join-Path $ProjectRoot "frontend")
     Invoke-Step "node-lint" { npm run lint }
     Invoke-Step "node-typecheck" { npm run typecheck }
-    Invoke-Step "node-test" { npm test -- --runInBand --watchAll=false }
+    Invoke-Step "node-test" { npm test -- --runInBand }
     break
   }
   "ci" {
     Set-Location $ProjectRoot
     Invoke-Step "python-lint" { & $pythonExecutable -m ruff check backend }
     Invoke-PythonTypecheckNonBlocking -PythonExe $pythonExecutable
-    Invoke-Step "python-test" { & $pythonExecutable -m pytest backend/tests/ -v --tb=short }
+    Invoke-Step "python-test" { & $pythonExecutable -m pytest backend/tests/ -q --tb=short }
     Set-Location (Join-Path $ProjectRoot "frontend")
     Invoke-Step "node-lint" { npm run lint }
     Invoke-Step "node-typecheck" { npm run typecheck }
-    Invoke-Step "node-test" { npm test -- --runInBand --watchAll=false }
+    Invoke-Step "node-test" { npm test -- --runInBand }
     Write-Host "[ok] agent-ci complete"
     break
   }

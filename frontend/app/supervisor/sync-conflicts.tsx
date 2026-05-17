@@ -31,7 +31,9 @@ import {
 } from "../../src/services/api/api";
 import { ModernCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
 import { safeBackNavigation } from "@/utils/navigation";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
 import {
   createOperationalStyleBridge,
   type OperationalStyleBridge,
@@ -54,6 +56,7 @@ interface SyncConflict {
 export default function SyncConflictsScreen() {
   const router = useRouter();
   const uiTokens = useUiTokens();
+  const prefersReducedMotion = useReducedMotion();
   const operationalTheme = useMemo(() => createOperationalStyleBridge(uiTokens), [uiTokens]);
   const styles = useMemo(() => createStyles(operationalTheme), [operationalTheme]);
   const { hasPermission } = usePermission();
@@ -66,6 +69,10 @@ export default function SyncConflictsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedConflict, setSelectedConflict] = useState<SyncConflict | null>(null);
   const [resolutionNote, setResolutionNote] = useState("");
+  const headerEntry = prefersReducedMotion ? undefined : FadeInDown.delay(100).springify();
+  const statsEntry = prefersReducedMotion ? undefined : FadeInDown.delay(200).springify();
+  const filterEntry = prefersReducedMotion ? undefined : FadeInDown.delay(300).springify();
+  const batchEntry = prefersReducedMotion ? undefined : FadeInDown.delay(100);
 
   const loadStats = useCallback(async () => {
     try {
@@ -189,6 +196,9 @@ export default function SyncConflictsScreen() {
         onPress={() => toggleConflictSelection(item._id)}
         onLongPress={() => openConflictDetail(item)}
         style={{ marginBottom: operationalTheme.spacing.md }}
+        accessibilityLabel={`${isSelected ? "Selected" : "Unselected"} conflict for ${item.item_code}, ${item.conflict_type}`}
+        accessibilityHint="Selects this conflict. Long press to open conflict details."
+        accessibilityState={{ selected: isSelected }}
       >
         <ModernCard
           variant="outlined"
@@ -257,11 +267,13 @@ export default function SyncConflictsScreen() {
       <StatusBar style="light" />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
+        <Animated.View entering={headerEntry} style={styles.header}>
           <View style={styles.headerLeft}>
             <AnimatedPressable
               onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
+              accessibilityLabel="Back to supervisor"
+              accessibilityHint="Returns to the supervisor area"
             >
               <Ionicons name="arrow-back" size={24} color={operationalTheme.colors.text.primary} />
             </AnimatedPressable>
@@ -273,7 +285,7 @@ export default function SyncConflictsScreen() {
         </Animated.View>
 
         {stats && (
-          <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.statsContainer}>
+          <Animated.View entering={statsEntry} style={styles.statsContainer}>
             <StatsCard
               title="Total"
               value={stats.total?.toString() || "0"}
@@ -299,7 +311,7 @@ export default function SyncConflictsScreen() {
         )}
 
         {/* Filters */}
-        <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.filterBar}>
+        <Animated.View entering={filterEntry} style={styles.filterBar}>
           {["pending", "resolved", "all"].map((status) => (
             <AnimatedPressable
               key={status}
@@ -308,6 +320,9 @@ export default function SyncConflictsScreen() {
                 setFilterStatus(status);
               }}
               style={{ flex: 1 }}
+              accessibilityLabel={`${status.charAt(0).toUpperCase() + status.slice(1)} conflicts`}
+              accessibilityHint="Filters sync conflicts by status"
+              accessibilityState={{ selected: filterStatus === status }}
             >
               <ModernCard
                 variant="outlined"
@@ -337,7 +352,7 @@ export default function SyncConflictsScreen() {
         </Animated.View>
 
         {selectedConflicts.size > 0 && (
-          <Animated.View entering={FadeInDown.delay(100)} style={styles.batchActions}>
+          <Animated.View entering={batchEntry} style={styles.batchActions}>
             <ModernCard
               variant="outlined"
               elevation="none"
@@ -347,8 +362,13 @@ export default function SyncConflictsScreen() {
               <Text style={styles.batchText}>{selectedConflicts.size} selected</Text>
               <View style={styles.batchButtons}>
                 <AnimatedPressable
-                  style={[styles.batchButton, { backgroundColor: operationalTheme.colors.success[500] }]}
+                  style={[
+                    styles.batchButton,
+                    { backgroundColor: operationalTheme.colors.success[500] },
+                  ]}
                   onPress={() => handleBatchResolve("accept_server")}
+                  accessibilityLabel="Accept server values for selected conflicts"
+                  accessibilityHint="Resolves selected conflicts using server data"
                 >
                   <Text style={styles.batchButtonText}>Accept Server</Text>
                 </AnimatedPressable>
@@ -358,6 +378,8 @@ export default function SyncConflictsScreen() {
                     { backgroundColor: operationalTheme.colors.secondary[500] },
                   ]}
                   onPress={() => handleBatchResolve("accept_local")}
+                  accessibilityLabel="Accept local values for selected conflicts"
+                  accessibilityHint="Resolves selected conflicts using local offline data"
                 >
                   <Text style={styles.batchButtonText}>Accept Local</Text>
                 </AnimatedPressable>
@@ -459,6 +481,8 @@ export default function SyncConflictsScreen() {
                     value={resolutionNote}
                     onChangeText={setResolutionNote}
                     multiline
+                    accessibilityLabel="Resolution note"
+                    accessibilityHint="Optional note recorded with this conflict resolution"
                   />
 
                   <View style={styles.modalActions}>
@@ -468,6 +492,8 @@ export default function SyncConflictsScreen() {
                         { backgroundColor: operationalTheme.colors.success[500] },
                       ]}
                       onPress={() => handleResolve(selectedConflict._id, "accept_server")}
+                      accessibilityLabel="Accept server value"
+                      accessibilityHint="Resolves this conflict using server data"
                     >
                       <Text style={styles.modalButtonText}>Accept Server</Text>
                     </AnimatedPressable>
@@ -478,6 +504,8 @@ export default function SyncConflictsScreen() {
                         { backgroundColor: operationalTheme.colors.secondary[500] },
                       ]}
                       onPress={() => handleResolve(selectedConflict._id, "accept_local")}
+                      accessibilityLabel="Accept local value"
+                      accessibilityHint="Resolves this conflict using local offline data"
                     >
                       <Text style={styles.modalButtonText}>Accept Local</Text>
                     </AnimatedPressable>
@@ -486,6 +514,8 @@ export default function SyncConflictsScreen() {
                   <AnimatedPressable
                     style={[styles.modalButton, styles.modalButtonCancel]}
                     onPress={() => setModalVisible(false)}
+                    accessibilityLabel="Cancel conflict resolution"
+                    accessibilityHint="Closes the resolve conflict dialog"
                   >
                     <Text style={styles.modalButtonText}>Cancel</Text>
                   </AnimatedPressable>
@@ -499,275 +529,276 @@ export default function SyncConflictsScreen() {
   );
 }
 
-const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: operationalTheme.colors.background.primary,
-  },
-  container: {
-    flex: 1,
-    paddingTop: 60,
-    paddingHorizontal: operationalTheme.spacing.md,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingBottom: 100,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: operationalTheme.spacing.md,
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: operationalTheme.spacing.md,
-  },
-  backButton: {
-    padding: operationalTheme.spacing.xs,
-    backgroundColor: operationalTheme.colors.background.glass,
-    borderRadius: operationalTheme.borderRadius.full,
-    borderWidth: 1,
-    borderColor: operationalTheme.colors.border.light,
-  },
-  pageTitle: {
-    fontFamily: operationalTheme.typography.fontFamily.heading,
-    fontSize: operationalTheme.typography.fontSize["2xl"],
-    color: operationalTheme.colors.text.primary,
-    fontWeight: "700",
-  },
-  pageSubtitle: {
-    fontSize: operationalTheme.typography.fontSize.sm,
-    color: operationalTheme.colors.text.secondary,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    gap: operationalTheme.spacing.sm,
-    marginBottom: operationalTheme.spacing.md,
-  },
-  filterBar: {
-    flexDirection: "row",
-    gap: operationalTheme.spacing.sm,
-    marginBottom: operationalTheme.spacing.md,
-  },
-  filterButton: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  filterButtonText: {
-    fontSize: operationalTheme.typography.fontSize.sm,
-    fontWeight: "600",
-    color: operationalTheme.colors.text.secondary,
-  },
-  batchActions: {
-    marginBottom: operationalTheme.spacing.md,
-  },
-  batchCard: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  batchText: {
-    fontSize: operationalTheme.typography.fontSize.md,
-    fontWeight: "600",
-    color: operationalTheme.colors.text.primary,
-  },
-  batchButtons: {
-    flexDirection: "row",
-    gap: operationalTheme.spacing.sm,
-  },
-  batchButton: {
-    paddingHorizontal: operationalTheme.spacing.md,
-    paddingVertical: 8,
-    borderRadius: operationalTheme.borderRadius.full,
-  },
-  batchButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: operationalTheme.typography.fontSize.xs,
-  },
-  listContent: {
-    paddingBottom: operationalTheme.spacing.xl,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: operationalTheme.spacing.md,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: operationalTheme.borderRadius.sm,
-    borderWidth: 2,
-    borderColor: operationalTheme.colors.text.tertiary,
-    marginRight: operationalTheme.spacing.md,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  checkboxChecked: {
-    backgroundColor: operationalTheme.colors.primary[500],
-    borderColor: operationalTheme.colors.primary[500],
-  },
-  itemCode: {
-    fontSize: operationalTheme.typography.fontSize.lg,
-    fontWeight: "700",
-    color: operationalTheme.colors.text.primary,
-  },
-  conflictTypeContainer: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(234, 179, 8, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: operationalTheme.borderRadius.full,
-    marginTop: 4,
-  },
-  conflictType: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    color: operationalTheme.colors.warning[500],
-    fontWeight: "600",
-  },
-  conflictData: {
-    flexDirection: "row",
-    gap: operationalTheme.spacing.md,
-    marginBottom: operationalTheme.spacing.md,
-  },
-  dataColumn: {
-    flex: 1,
-  },
-  dataLabel: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    color: operationalTheme.colors.text.tertiary,
-    marginBottom: 4,
-    textTransform: "uppercase",
-  },
-  dataValue: {
-    fontSize: operationalTheme.typography.fontSize.sm,
-    color: operationalTheme.colors.text.secondary,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-  },
-  timestamp: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    color: operationalTheme.colors.text.tertiary,
-  },
-  resolvedInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: operationalTheme.spacing.xs,
-    marginTop: operationalTheme.spacing.sm,
-    paddingTop: operationalTheme.spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: operationalTheme.colors.border.light,
-  },
-  resolvedText: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    color: operationalTheme.colors.success[500],
-  },
-  loadingText: {
-    marginTop: operationalTheme.spacing.md,
-    fontSize: operationalTheme.typography.fontSize.md,
-    color: operationalTheme.colors.text.secondary,
-  },
-  emptyText: {
-    fontSize: operationalTheme.typography.fontSize.lg,
-    fontWeight: "500",
-    color: operationalTheme.colors.text.secondary,
-    marginTop: operationalTheme.spacing.md,
-  },
-  emptySubtext: {
-    fontSize: operationalTheme.typography.fontSize.md,
-    color: operationalTheme.colors.text.tertiary,
-    marginTop: operationalTheme.spacing.xs,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-    backgroundColor: "rgba(0,0,0,0.8)",
-  },
-  modalContent: {
-    width: "100%",
-    maxWidth: 500,
-  },
-  modalTitle: {
-    fontSize: operationalTheme.typography.fontSize["2xl"],
-    fontWeight: "bold",
-    color: operationalTheme.colors.text.primary,
-    marginBottom: operationalTheme.spacing.lg,
-    textAlign: "center",
-  },
-  modalLabel: {
-    fontSize: operationalTheme.typography.fontSize.md,
-    color: operationalTheme.colors.text.secondary,
-    marginBottom: 4,
-  },
-  modalItemCode: {
-    color: operationalTheme.colors.text.primary,
-  },
-  modalTypeBadge: {
-    backgroundColor: "rgba(234, 179, 8, 0.1)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: operationalTheme.borderRadius.full,
-    alignSelf: "flex-start",
-    marginBottom: operationalTheme.spacing.lg,
-  },
-  modalTypeText: {
-    color: operationalTheme.colors.warning[500],
-    fontSize: operationalTheme.typography.fontSize.sm,
-    fontWeight: "600",
-  },
-  modalSection: {
-    marginBottom: operationalTheme.spacing.lg,
-  },
-  modalSectionTitle: {
-    fontSize: operationalTheme.typography.fontSize.sm,
-    fontWeight: "600",
-    color: operationalTheme.colors.text.tertiary,
-    marginBottom: 8,
-    textTransform: "uppercase",
-  },
-  modalValue: {
-    fontSize: operationalTheme.typography.fontSize.sm,
-    color: operationalTheme.colors.text.primary,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-  },
-  modalInput: {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    color: operationalTheme.colors.text.primary,
-    padding: 12,
-    borderRadius: operationalTheme.borderRadius.md,
-    fontSize: operationalTheme.typography.fontSize.md,
-    marginBottom: operationalTheme.spacing.lg,
-    borderWidth: 1,
-    borderColor: operationalTheme.colors.border.light,
-  },
-  modalTextArea: {
-    minHeight: 100,
-    textAlignVertical: "top",
-  },
-  modalActions: {
-    flexDirection: "row",
-    gap: operationalTheme.spacing.md,
-    marginBottom: operationalTheme.spacing.md,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: operationalTheme.borderRadius.full,
-    alignItems: "center",
-  },
-  modalButtonCancel: {
-    backgroundColor: operationalTheme.colors.background.glass,
-    borderWidth: 1,
-    borderColor: operationalTheme.colors.border.light,
-  },
-  modalButtonText: {
-    color: operationalTheme.colors.text.primary,
-    fontSize: operationalTheme.typography.fontSize.md,
-    fontWeight: "600",
-  },
-});
+const createStyles = (operationalTheme: OperationalStyleBridge) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: operationalTheme.colors.background.primary,
+    },
+    container: {
+      flex: 1,
+      paddingTop: 60,
+      paddingHorizontal: operationalTheme.spacing.md,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingBottom: 100,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: operationalTheme.spacing.md,
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: operationalTheme.spacing.md,
+    },
+    backButton: {
+      padding: operationalTheme.spacing.xs,
+      backgroundColor: operationalTheme.colors.background.glass,
+      borderRadius: operationalTheme.borderRadius.full,
+      borderWidth: 1,
+      borderColor: operationalTheme.colors.border.light,
+    },
+    pageTitle: {
+      fontFamily: operationalTheme.typography.fontFamily.heading,
+      fontSize: operationalTheme.typography.fontSize["2xl"],
+      color: operationalTheme.colors.text.primary,
+      fontWeight: "700",
+    },
+    pageSubtitle: {
+      fontSize: operationalTheme.typography.fontSize.sm,
+      color: operationalTheme.colors.text.secondary,
+    },
+    statsContainer: {
+      flexDirection: "row",
+      gap: operationalTheme.spacing.sm,
+      marginBottom: operationalTheme.spacing.md,
+    },
+    filterBar: {
+      flexDirection: "row",
+      gap: operationalTheme.spacing.sm,
+      marginBottom: operationalTheme.spacing.md,
+    },
+    filterButton: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    filterButtonText: {
+      fontSize: operationalTheme.typography.fontSize.sm,
+      fontWeight: "600",
+      color: operationalTheme.colors.text.secondary,
+    },
+    batchActions: {
+      marginBottom: operationalTheme.spacing.md,
+    },
+    batchCard: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    batchText: {
+      fontSize: operationalTheme.typography.fontSize.md,
+      fontWeight: "600",
+      color: operationalTheme.colors.text.primary,
+    },
+    batchButtons: {
+      flexDirection: "row",
+      gap: operationalTheme.spacing.sm,
+    },
+    batchButton: {
+      paddingHorizontal: operationalTheme.spacing.md,
+      paddingVertical: operationalTheme.spacing.sm,
+      borderRadius: operationalTheme.borderRadius.full,
+    },
+    batchButtonText: {
+      color: "white",
+      fontWeight: "bold",
+      fontSize: operationalTheme.typography.fontSize.xs,
+    },
+    listContent: {
+      paddingBottom: operationalTheme.spacing.xl,
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      marginBottom: operationalTheme.spacing.md,
+    },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: operationalTheme.borderRadius.sm,
+      borderWidth: 2,
+      borderColor: operationalTheme.colors.text.tertiary,
+      marginRight: operationalTheme.spacing.md,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    checkboxChecked: {
+      backgroundColor: operationalTheme.colors.primary[500],
+      borderColor: operationalTheme.colors.primary[500],
+    },
+    itemCode: {
+      fontSize: operationalTheme.typography.fontSize.lg,
+      fontWeight: "700",
+      color: operationalTheme.colors.text.primary,
+    },
+    conflictTypeContainer: {
+      alignSelf: "flex-start",
+      backgroundColor: colorWithAlpha(operationalTheme.colors.warning[500], 0.1),
+      paddingHorizontal: operationalTheme.spacing.sm,
+      paddingVertical: operationalTheme.spacing.xs,
+      borderRadius: operationalTheme.borderRadius.full,
+      marginTop: operationalTheme.spacing.xs,
+    },
+    conflictType: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      color: operationalTheme.colors.warning[500],
+      fontWeight: "600",
+    },
+    conflictData: {
+      flexDirection: "row",
+      gap: operationalTheme.spacing.md,
+      marginBottom: operationalTheme.spacing.md,
+    },
+    dataColumn: {
+      flex: 1,
+    },
+    dataLabel: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      color: operationalTheme.colors.text.tertiary,
+      marginBottom: operationalTheme.spacing.xs,
+      textTransform: "uppercase",
+    },
+    dataValue: {
+      fontSize: operationalTheme.typography.fontSize.sm,
+      color: operationalTheme.colors.text.secondary,
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    },
+    timestamp: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      color: operationalTheme.colors.text.tertiary,
+    },
+    resolvedInfo: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: operationalTheme.spacing.xs,
+      marginTop: operationalTheme.spacing.sm,
+      paddingTop: operationalTheme.spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: operationalTheme.colors.border.light,
+    },
+    resolvedText: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      color: operationalTheme.colors.success[500],
+    },
+    loadingText: {
+      marginTop: operationalTheme.spacing.md,
+      fontSize: operationalTheme.typography.fontSize.md,
+      color: operationalTheme.colors.text.secondary,
+    },
+    emptyText: {
+      fontSize: operationalTheme.typography.fontSize.lg,
+      fontWeight: "500",
+      color: operationalTheme.colors.text.secondary,
+      marginTop: operationalTheme.spacing.md,
+    },
+    emptySubtext: {
+      fontSize: operationalTheme.typography.fontSize.md,
+      color: operationalTheme.colors.text.tertiary,
+      marginTop: operationalTheme.spacing.xs,
+    },
+    modalOverlay: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: operationalTheme.spacing.xl,
+      backgroundColor: operationalTheme.colors.background.blur,
+    },
+    modalContent: {
+      width: "100%",
+      maxWidth: 500,
+    },
+    modalTitle: {
+      fontSize: operationalTheme.typography.fontSize["2xl"],
+      fontWeight: "bold",
+      color: operationalTheme.colors.text.primary,
+      marginBottom: operationalTheme.spacing.lg,
+      textAlign: "center",
+    },
+    modalLabel: {
+      fontSize: operationalTheme.typography.fontSize.md,
+      color: operationalTheme.colors.text.secondary,
+      marginBottom: operationalTheme.spacing.xs,
+    },
+    modalItemCode: {
+      color: operationalTheme.colors.text.primary,
+    },
+    modalTypeBadge: {
+      backgroundColor: colorWithAlpha(operationalTheme.colors.warning[500], 0.1),
+      paddingHorizontal: operationalTheme.spacing.md,
+      paddingVertical: operationalTheme.spacing.xs,
+      borderRadius: operationalTheme.borderRadius.full,
+      alignSelf: "flex-start",
+      marginBottom: operationalTheme.spacing.lg,
+    },
+    modalTypeText: {
+      color: operationalTheme.colors.warning[500],
+      fontSize: operationalTheme.typography.fontSize.sm,
+      fontWeight: "600",
+    },
+    modalSection: {
+      marginBottom: operationalTheme.spacing.lg,
+    },
+    modalSectionTitle: {
+      fontSize: operationalTheme.typography.fontSize.sm,
+      fontWeight: "600",
+      color: operationalTheme.colors.text.tertiary,
+      marginBottom: operationalTheme.spacing.sm,
+      textTransform: "uppercase",
+    },
+    modalValue: {
+      fontSize: operationalTheme.typography.fontSize.sm,
+      color: operationalTheme.colors.text.primary,
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    },
+    modalInput: {
+      backgroundColor: colorWithAlpha(operationalTheme.colors.text.inverse, 0.05),
+      color: operationalTheme.colors.text.primary,
+      padding: operationalTheme.spacing.md,
+      borderRadius: operationalTheme.borderRadius.md,
+      fontSize: operationalTheme.typography.fontSize.md,
+      marginBottom: operationalTheme.spacing.lg,
+      borderWidth: 1,
+      borderColor: operationalTheme.colors.border.light,
+    },
+    modalTextArea: {
+      minHeight: 100,
+      textAlignVertical: "top",
+    },
+    modalActions: {
+      flexDirection: "row",
+      gap: operationalTheme.spacing.md,
+      marginBottom: operationalTheme.spacing.md,
+    },
+    modalButton: {
+      flex: 1,
+      paddingVertical: operationalTheme.spacing.md,
+      borderRadius: operationalTheme.borderRadius.full,
+      alignItems: "center",
+    },
+    modalButtonCancel: {
+      backgroundColor: operationalTheme.colors.background.glass,
+      borderWidth: 1,
+      borderColor: operationalTheme.colors.border.light,
+    },
+    modalButtonText: {
+      color: operationalTheme.colors.text.primary,
+      fontSize: operationalTheme.typography.fontSize.md,
+      fontWeight: "600",
+    },
+  });

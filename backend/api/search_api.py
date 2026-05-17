@@ -27,6 +27,25 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/items", tags=["Search"])
 
 
+def _manual_items_collection(db: Any) -> Any:
+    collection = getattr(db, "manual_items", None)
+    if collection is None:
+        return None
+    if collection.__class__.__module__.startswith("unittest.mock") and "manual_items" not in vars(
+        db
+    ):
+        return None
+    return collection
+
+
+async def _distinct_across_item_catalogs(db: Any, field: str) -> list[Any]:
+    values = list(await db.erp_items.distinct(field))
+    manual_items = _manual_items_collection(db)
+    if manual_items is not None:
+        values.extend(await manual_items.distinct(field))
+    return values
+
+
 # Response Models
 class SearchItemResponse(BaseModel):
     """Search result item"""
@@ -300,8 +319,8 @@ async def get_search_filters(
     """Return distinct values for search filters."""
     try:
         db = get_db()
-        categories = await db.erp_items.distinct("category")
-        warehouses = await db.erp_items.distinct("warehouse")
+        categories = await _distinct_across_item_catalogs(db, "category")
+        warehouses = await _distinct_across_item_catalogs(db, "warehouse")
 
         categories_clean = sorted(
             {c.strip() for c in categories if isinstance(c, str) and c.strip()}

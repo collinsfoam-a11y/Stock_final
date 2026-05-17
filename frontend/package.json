@@ -4,7 +4,14 @@
   "private": true,
   "main": "index.js",
   "overrides": {
-    "@tootallnate/once": "^3.0.1"
+    "@tootallnate/once": "^3.0.1",
+    "postcss": "8.5.10"
+  },
+  "pnpm": {
+    "overrides": {
+      "@tootallnate/once": "^3.0.1",
+      "postcss": "8.5.10"
+    }
   },
   "engines": {
     "node": ">=20.19.4 <26.0.0"
@@ -35,7 +42,7 @@
     "e2e:settings-notifications-smoke": "E2E_MOCK_AUTH=true playwright test e2e/settings-notifications-smoke.spec.ts --project='Desktop Chrome'",
     "typecheck": "tsc --noEmit",
     "typecheck:watch": "tsc --noEmit --watch",
-    "build:web": "expo export --clear -p web",
+    "build:web": "node ./scripts/clean-web-export.cjs && expo export --clear -p web",
     "bundle:web:report": "node ./scripts/report-web-bundle.cjs",
     "bundle:web:report:strict": "node ./scripts/report-web-bundle.cjs --strict",
     "bundle:web:baseline": "node ./scripts/check-web-bundle-regression.cjs --write-baseline",
@@ -157,6 +164,7 @@
     "npm-run-all2": "^7.0.2",
     "patch-package": "^8.0.1",
     "playwright": "^1.57.0",
+    "postcss": "8.5.10",
     "postinstall-postinstall": "^2.1.0",
     "prettier": "^3.7.4",
     "storybook": "^8.6.15",

@@ -12,7 +12,10 @@ from fastapi.staticfiles import StaticFiles
 
 def register_static_serving(app: FastAPI, frontend_dist: Path, logger: Any) -> None:
     """Register static serving routes for single-executable/frontend mode."""
-    if not frontend_dist.exists():
+    index_file = frontend_dist / "index.html"
+    assets_dir = frontend_dist / "assets"
+
+    if not frontend_dist.exists() or not index_file.is_file():
         logger.warning(
             f"Frontend dist not found at {frontend_dist}. Run 'npm run build:web' in frontend/."
         )
@@ -20,7 +23,8 @@ def register_static_serving(app: FastAPI, frontend_dist: Path, logger: Any) -> N
 
     logger.info(f"Serving frontend from {frontend_dist}")
 
-    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+    if assets_dir.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
     for folder in ["static", "fonts", "images"]:
         if (frontend_dist / folder).exists():

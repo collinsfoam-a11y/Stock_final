@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from backend.services.search_service import SearchService
+from backend.tests.utils.in_memory_db import InMemoryDatabase
 
 
 @pytest.fixture
@@ -109,3 +110,16 @@ async def test_search_scoring_logic(search_service, mock_db):
     assert "1" in scored_ids
     assert "3" in scored_ids
     # "Banana" might have a very low fuzzy score or 0
+
+
+@pytest.mark.asyncio
+async def test_suggestions_include_manual_items():
+    db = InMemoryDatabase()
+    await db.erp_items.insert_one({"item_name": "Manual Gauge ERP"})
+    await db.manual_items.insert_one({"item_name": "Manual Gauge Local"})
+
+    service = SearchService(db=db)
+
+    suggestions = await service.get_suggestions("Man", limit=5)
+
+    assert suggestions == ["Manual Gauge ERP", "Manual Gauge Local"]

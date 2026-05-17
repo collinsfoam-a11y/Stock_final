@@ -376,6 +376,31 @@ class InMemoryCollection:
     ) -> int:
         return sum(1 for doc in self._documents if _match_filter(doc, filter_query))
 
+    async def distinct(
+        self,
+        key: str,
+        filter_query: dict[str, Optional[Any]] = None,
+        *args,
+        **kwargs,
+    ) -> list[Any]:
+        values = []
+        seen = set()
+        for doc in self._documents:
+            if not _match_filter(doc, filter_query):
+                continue
+            value = doc.get(key)
+            if isinstance(value, list):
+                candidates = value
+            else:
+                candidates = [value]
+            for candidate in candidates:
+                marker = repr(candidate)
+                if marker in seen:
+                    continue
+                seen.add(marker)
+                values.append(candidate)
+        return values
+
     def find(
         self,
         filter_query: dict[str, Optional[Any]] = None,
@@ -420,6 +445,7 @@ class InMemoryDatabase:
         self.count_lines = InMemoryCollection()
         self.count_line_drafts = InMemoryCollection()
         self.unknown_items = InMemoryCollection()
+        self.manual_items = InMemoryCollection()
         self.recount_requests = InMemoryCollection()
         self.erp_items = InMemoryCollection()
         self.erp_sync_metadata = InMemoryCollection()
@@ -437,6 +463,21 @@ class InMemoryDatabase:
         self.audit_logs = InMemoryCollection()
         self.system_events = InMemoryCollection()
         self.item_serials = InMemoryCollection()
+        self.serial = InMemoryCollection()
+        self.serial_registry = InMemoryCollection()
+        self.serial_records = InMemoryCollection()
+        self.event_log = InMemoryCollection()
+        self.event_applied = InMemoryCollection()
+        self.items_snapshot = InMemoryCollection()
+        self.batch_records = InMemoryCollection()
+        self.damage_logs = InMemoryCollection()
+        self.variance_logs = InMemoryCollection()
+        self.approvals = InMemoryCollection()
+        self.sync_queue = InMemoryCollection()
+        self.erp_snapshot = InMemoryCollection()
+        self.session_dashboard_projection = InMemoryCollection()
+        self.verified_items_projection = InMemoryCollection()
+        self.variance_summary_projection = InMemoryCollection()
         self.variance_threshold_configs = InMemoryCollection()
 
         # Governance Collections

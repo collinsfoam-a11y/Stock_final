@@ -19,10 +19,13 @@ import { useSettingsStore } from "../../src/store/settingsStore";
 import { theme } from "../../src/styles/unifiedSystem";
 import { useToast } from "../../src/components/feedback/ToastProvider";
 import { safeBackNavigation } from "@/utils/navigation";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { colorWithAlpha } from "@/theme/themeTokens";
 
 export default function SessionsList() {
   const router = useRouter();
   const { show } = useToast();
+  const prefersReducedMotion = useReducedMotion();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,10 +101,14 @@ export default function SessionsList() {
     const hasVariance = Math.abs(item.total_variance || 0) > 0;
 
     return (
-      <Animated.View entering={FadeInDown.delay(index * 50).springify()}>
+      <Animated.View
+        entering={prefersReducedMotion ? undefined : FadeInDown.delay(index * 50).springify()}
+      >
         <AnimatedPressable
           onPress={() => router.push(`/supervisor/session/${item.id}` as any)}
           style={{ marginBottom: theme.spacing.md }}
+          accessibilityLabel={`Open session for ${item.warehouse}, status ${item.status}, ${item.total_items} items`}
+          accessibilityHint="Opens the session detail screen"
         >
           <ModernCard variant="outlined" elevation="none" padding={theme.spacing.md} intensity={20}>
             <View style={styles.cardHeader}>
@@ -129,7 +136,7 @@ export default function SessionsList() {
                 style={[
                   styles.statusBadge,
                   {
-                    backgroundColor: statusColor + "20",
+                    backgroundColor: colorWithAlpha(statusColor, 0.12),
                     borderColor: statusColor,
                   },
                 ]}
@@ -210,11 +217,16 @@ export default function SessionsList() {
       <StatusBar style="light" />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
+        <Animated.View
+          entering={prefersReducedMotion ? undefined : FadeInDown.delay(100).springify()}
+          style={styles.header}
+        >
           <View style={styles.headerLeft}>
             <AnimatedPressable
               onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
+              accessibilityLabel="Back to supervisor"
+              accessibilityHint="Returns to the supervisor area"
             >
               <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
             </AnimatedPressable>
@@ -225,13 +237,21 @@ export default function SessionsList() {
               </Text>
             </View>
           </View>
-          <AnimatedPressable onPress={handleRefresh} style={styles.refreshButton}>
+          <AnimatedPressable
+            onPress={handleRefresh}
+            style={styles.refreshButton}
+            accessibilityLabel="Refresh sessions"
+            accessibilityHint="Reloads the sessions list"
+          >
             <Ionicons name="refresh" size={24} color={theme.colors.primary[500]} />
           </AnimatedPressable>
         </Animated.View>
 
         {offlineMode && (
-          <Animated.View entering={FadeInDown.delay(140).springify()} style={styles.noticeWrap}>
+          <Animated.View
+            entering={prefersReducedMotion ? undefined : FadeInDown.delay(140).springify()}
+            style={styles.noticeWrap}
+          >
             <ModernCard
               variant="outlined"
               elevation="none"
@@ -310,7 +330,7 @@ const styles = StyleSheet.create({
   },
   noticeCopy: {
     flex: 1,
-    gap: 4,
+    gap: theme.spacing.xs,
   },
   noticeTitle: {
     fontSize: 14,
@@ -329,10 +349,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: theme.spacing.xs,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: colorWithAlpha(theme.colors.text.primary, 0.1),
     borderRadius: theme.borderRadius.full,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderColor: colorWithAlpha(theme.colors.text.primary, 0.1),
   },
   pageTitle: {
     fontSize: 32,
@@ -344,7 +364,7 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     padding: theme.spacing.sm,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: colorWithAlpha(theme.colors.text.primary, 0.1),
     borderRadius: theme.borderRadius.full,
   },
   centerContainer: {
@@ -367,12 +387,12 @@ const styles = StyleSheet.create({
   },
   cardHeaderLeft: {
     flex: 1,
-    gap: 4,
+    gap: theme.spacing.xs,
   },
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: theme.spacing.sm,
   },
   warehouseName: {
     fontSize: 20,
@@ -381,7 +401,7 @@ const styles = StyleSheet.create({
   staffContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: theme.spacing.xs,
   },
   staffName: {
     fontSize: 14,
@@ -390,8 +410,8 @@ const styles = StyleSheet.create({
   barcodeContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginTop: 2,
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.xs,
   },
   barcodeText: {
     fontSize: 12,
@@ -399,8 +419,8 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
     borderRadius: theme.borderRadius.full,
     borderWidth: 1,
   },
@@ -413,12 +433,12 @@ const styles = StyleSheet.create({
     gap: theme.spacing.lg,
     paddingTop: theme.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.1)",
+    borderTopColor: colorWithAlpha(theme.colors.text.primary, 0.1),
   },
   statItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: theme.spacing.xs,
   },
   statText: {
     fontSize: 14,

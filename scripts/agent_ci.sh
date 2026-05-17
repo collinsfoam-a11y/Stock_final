@@ -50,13 +50,13 @@ run_step() {
 run_python_steps() {
     run_step python-lint ./scripts/python.sh -m ruff check backend
     run_step python-typecheck make --no-print-directory python-typecheck
-    run_step python-test make --no-print-directory python-test
+    run_step python-test ./scripts/python.sh -m pytest backend/tests/ -q --tb=short
 }
 
 run_node_steps() {
-    run_step node-lint make --no-print-directory node-lint
-    run_step node-typecheck make --no-print-directory node-typecheck
-    run_step node-test make --no-print-directory node-test
+    run_step node-lint npm --prefix frontend run lint
+    run_step node-typecheck npm --prefix frontend run typecheck
+    run_step node-test npm --prefix frontend test -- --runInBand
 }
 
 case "$MODE" in

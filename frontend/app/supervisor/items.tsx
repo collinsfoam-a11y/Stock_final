@@ -28,6 +28,8 @@ import { ScreenContainer, ModernCard, StatsCard, AnimatedPressable } from "../..
 import { theme } from "../../src/styles/modernDesignSystem";
 import { saveArrayBufferExport } from "../../src/utils/fileExport";
 import { safeBackNavigation } from "@/utils/navigation";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { colorWithAlpha } from "@/theme/themeTokens";
 
 const filterCachedItems = (items: any[], filters: FilterValues) => {
   const search = filters.search?.trim().toLowerCase();
@@ -54,6 +56,7 @@ const filterCachedItems = (items: any[], filters: FilterValues) => {
 
 export default function ItemsScreen() {
   const router = useRouter();
+  const prefersReducedMotion = useReducedMotion();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,6 +73,9 @@ export default function ItemsScreen() {
     unverified_items: 0,
     total_qty: 0,
   });
+  const headerEntry = prefersReducedMotion ? undefined : FadeInDown.delay(100).springify();
+  const statsEntry = prefersReducedMotion ? undefined : FadeInDown.delay(200).springify();
+  const filtersEntry = prefersReducedMotion ? undefined : FadeInDown.delay(300).springify();
 
   const loadItems = React.useCallback(
     async (reset = false) => {
@@ -196,7 +202,9 @@ export default function ItemsScreen() {
           // Could navigate to item detail
           if (Platform.OS !== "web") Haptics.selectionAsync();
         }}
-        style={{ marginBottom: theme.spacing.sm }}
+        style={styles.itemPressable}
+        accessibilityLabel={`${item.item_name || item.item_code}, stock ${item.stock_qty?.toFixed(2) || "0.00"} ${item.uom_name || ""}${item.verified ? ", verified" : ""}`}
+        accessibilityHint="Shows item information"
       >
         <ModernCard intensity={15} padding={theme.spacing.md}>
           <View style={styles.itemHeader}>
@@ -234,7 +242,7 @@ export default function ItemsScreen() {
           )}
 
           {item.category && (
-            <View style={{ marginTop: 4 }}>
+            <View style={styles.categoryWrap}>
               <Text style={styles.categoryText}>
                 {item.category}
                 {item.subcategory && ` • ${item.subcategory}`}
@@ -261,11 +269,13 @@ export default function ItemsScreen() {
       <StatusBar style="light" />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
+        <Animated.View entering={headerEntry} style={styles.header}>
           <View style={styles.headerLeft}>
             <AnimatedPressable
               onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
+              accessibilityLabel="Back to supervisor"
+              accessibilityHint="Returns to the supervisor area"
             >
               <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
             </AnimatedPressable>
@@ -280,8 +290,10 @@ export default function ItemsScreen() {
               style={[styles.exportFormatButton, items.length === 0 && { opacity: 0.5 }]}
               onPress={() => void handleExport("csv")}
               disabled={items.length === 0}
+              accessibilityLabel="Export items as CSV"
+              accessibilityHint="Downloads item data in CSV format"
             >
-              <ModernCard intensity={20} padding={8}>
+              <ModernCard intensity={20} padding={theme.spacing.sm}>
                 <Text style={styles.exportFormatLabel}>CSV</Text>
               </ModernCard>
             </AnimatedPressable>
@@ -289,8 +301,10 @@ export default function ItemsScreen() {
               style={[styles.exportFormatButton, items.length === 0 && { opacity: 0.5 }]}
               onPress={() => void handleExport("xlsx")}
               disabled={items.length === 0}
+              accessibilityLabel="Export items as XLSX"
+              accessibilityHint="Downloads item data in spreadsheet format"
             >
-              <ModernCard intensity={20} padding={8}>
+              <ModernCard intensity={20} padding={theme.spacing.sm}>
                 <Text style={styles.exportFormatLabel}>XLSX</Text>
               </ModernCard>
             </AnimatedPressable>
@@ -298,7 +312,7 @@ export default function ItemsScreen() {
         </Animated.View>
 
         {/* Statistics Cards */}
-        <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.statsContainer}>
+        <Animated.View entering={statsEntry} style={styles.statsContainer}>
           <StatsCard
             title="Total Items"
             value={statistics.total_items.toString()}
@@ -350,7 +364,7 @@ export default function ItemsScreen() {
         )}
 
         {/* Filters */}
-        <Animated.View entering={FadeInDown.delay(300).springify()}>
+        <Animated.View entering={filtersEntry}>
           <ModernCard
             intensity={10}
             padding={theme.spacing.sm}
@@ -367,7 +381,7 @@ export default function ItemsScreen() {
             <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
           </View>
         ) : (
-          <View style={{ flex: 1 }}>
+          <View style={styles.listWrap}>
             <FlashList
               data={items}
               renderItem={renderItem}
@@ -387,11 +401,11 @@ export default function ItemsScreen() {
               onEndReachedThreshold={0.5}
               ListFooterComponent={
                 loading && items.length > 0 ? (
-                  <View style={{ paddingVertical: 20 }}>
+                  <View style={styles.footerLoader}>
                     <ActivityIndicator size="small" color={theme.colors.primary[500]} />
                   </View>
                 ) : (
-                  <View style={{ height: 20 }} />
+                  <View style={styles.footerSpacer} />
                 )
               }
             />
@@ -427,10 +441,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: theme.spacing.xs,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: colorWithAlpha(theme.colors.text.primary, 0.05),
     borderRadius: theme.borderRadius.full,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: colorWithAlpha(theme.colors.text.primary, 0.1),
   },
   pageTitle: {
     fontSize: 32,
@@ -464,6 +478,12 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: theme.spacing.xl,
   },
+  listWrap: {
+    flex: 1,
+  },
+  itemPressable: {
+    marginBottom: theme.spacing.sm,
+  },
   itemHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -477,22 +497,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: theme.colors.text.primary,
-    marginBottom: 4,
+    marginBottom: theme.spacing.xs,
   },
   itemCode: {
     fontSize: 14,
     color: theme.colors.text.tertiary,
   },
   verifiedBadge: {
-    backgroundColor: "rgba(16, 185, 129, 0.15)", // Emerald color with opacity
+    backgroundColor: colorWithAlpha(theme.colors.success.main, 0.15),
     borderRadius: theme.borderRadius.full,
-    padding: 4,
+    padding: theme.spacing.xs,
   },
   itemDetails: {
     flexDirection: "row",
     gap: theme.spacing.lg,
     marginBottom: theme.spacing.sm,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: colorWithAlpha(theme.colors.text.primary, 0.03),
     padding: theme.spacing.xs,
     borderRadius: theme.borderRadius.sm,
   },
@@ -502,7 +522,7 @@ const styles = StyleSheet.create({
   detailLabel: {
     fontSize: 12,
     color: theme.colors.text.tertiary,
-    marginBottom: 2,
+    marginBottom: theme.spacing.xs,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -515,7 +535,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing.xs,
-    marginBottom: 4, // Added margin bottom for spacing
+    marginBottom: theme.spacing.xs,
   },
   locationText: {
     fontSize: 12,
@@ -526,13 +546,16 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
     fontStyle: "italic",
   },
+  categoryWrap: {
+    marginTop: theme.spacing.xs,
+  },
   verificationInfo: {
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing.xs,
     marginTop: theme.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.05)",
+    borderTopColor: colorWithAlpha(theme.colors.text.primary, 0.05),
     paddingTop: theme.spacing.xs,
   },
   verificationInfoText: {
@@ -554,7 +577,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     fontSize: 14,
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: theme.spacing.xs,
   },
   offlineNoticeBody: {
     color: theme.colors.text.secondary,
@@ -565,11 +588,17 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     fontSize: 13,
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: theme.spacing.xs,
   },
   exportHintBody: {
     color: theme.colors.text.secondary,
     fontSize: 12,
     lineHeight: 18,
+  },
+  footerLoader: {
+    paddingVertical: theme.spacing.xl,
+  },
+  footerSpacer: {
+    height: theme.spacing.xl,
   },
 });

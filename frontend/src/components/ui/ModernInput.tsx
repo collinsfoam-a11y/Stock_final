@@ -27,6 +27,8 @@ import {
 } from "@/theme/legacyCompat";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
+const ICON_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
+
 interface ModernInputProps {
   label?: string;
   placeholder?: string;
@@ -44,6 +46,7 @@ interface ModernInputProps {
   onIconPress?: () => void;
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightIconPress?: () => void;
+  rightIconAccessibilityLabel?: string;
   onSubmitEditing?: () => void;
   onBlur?: React.ComponentProps<typeof TextInput>["onBlur"];
   onFocus?: React.ComponentProps<typeof TextInput>["onFocus"];
@@ -75,6 +78,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   onIconPress,
   rightIcon,
   onRightIconPress,
+  rightIconAccessibilityLabel,
   onSubmitEditing,
   onBlur,
   onFocus,
@@ -95,8 +99,12 @@ export const ModernInput: React.FC<ModernInputProps> = ({
 
   const isPassword = secureTextEntry;
   const showPasswordToggle = isPassword && value.length > 0;
+  const isInputInteractive = editable && !disabled;
+  const resolvedRightIconLabel =
+    rightIconAccessibilityLabel ?? (rightIcon === "close-circle" ? "Clear input" : "Input action");
 
   const togglePasswordVisibility = () => {
+    if (!isInputInteractive) return;
     setIsPasswordVisible(!isPasswordVisible);
   };
 
@@ -167,6 +175,10 @@ export const ModernInput: React.FC<ModernInputProps> = ({
             onPress={onIconPress}
             style={styles.iconContainer}
             disabled={!onIconPress}
+            accessibilityRole={onIconPress ? "button" : "image"}
+            accessibilityLabel={onIconPress ? "Input icon action" : undefined}
+            accessibilityState={onIconPress ? { disabled: false } : undefined}
+            hitSlop={ICON_HIT_SLOP}
           >
             <Ionicons
               name={icon}
@@ -205,7 +217,15 @@ export const ModernInput: React.FC<ModernInputProps> = ({
         />
 
         {showPasswordToggle && (
-          <TouchableOpacity onPress={togglePasswordVisibility} style={styles.iconContainer}>
+          <TouchableOpacity
+            onPress={isInputInteractive ? togglePasswordVisibility : undefined}
+            style={styles.iconContainer}
+            disabled={!isInputInteractive}
+            accessibilityRole="button"
+            accessibilityLabel={isPasswordVisible ? "Hide password" : "Show password"}
+            accessibilityState={{ disabled: !isInputInteractive }}
+            hitSlop={ICON_HIT_SLOP}
+          >
             <Ionicons
               name={isPasswordVisible ? "eye-off" : "eye"}
               size={20}
@@ -219,6 +239,10 @@ export const ModernInput: React.FC<ModernInputProps> = ({
             onPress={onRightIconPress}
             style={styles.iconContainer}
             disabled={!onRightIconPress}
+            accessibilityRole={onRightIconPress ? "button" : "image"}
+            accessibilityLabel={onRightIconPress ? resolvedRightIconLabel : undefined}
+            accessibilityState={onRightIconPress ? { disabled: false } : undefined}
+            hitSlop={ICON_HIT_SLOP}
           >
             <Ionicons name={rightIcon} size={20} color={uiTokens.colors.textSecondary} />
           </TouchableOpacity>
@@ -237,6 +261,10 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     padding: unifiedSpacing.xs,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   required: {
     color: unifiedColors.error[500],
