@@ -8,7 +8,7 @@ import { useSettingsStore } from "../src/store/settingsStore";
 import { fontAssets } from "../src/constants/fontAssets";
 import { initializeApp } from "../src/bootstrap/initApp";
 import { BootLoadingView } from "../src/bootstrap/BootStateViews";
-import { zIndex } from "../src/theme/designTokens";
+import { zIndex } from "../src/theme";
 
 const WebAppShell = Platform.OS === "web" ? AppShell : null;
 const LazyAppShell = React.lazy(() => import("../src/bootstrap/AppShell"));
