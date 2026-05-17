@@ -6,7 +6,7 @@ import hashlib
 import inspect
 import json
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from bson import ObjectId
 from fastapi import HTTPException
@@ -462,7 +462,8 @@ class CountLineWriteService:
         db_session: Optional[Any],
     ) -> None:
         operation = str(payload.get("operation") or "").strip().lower()
-        document = payload.get("document") if isinstance(payload.get("document"), dict) else {}
+        raw_document = payload.get("document")
+        document = cast(dict[str, Any], raw_document if isinstance(raw_document, dict) else {})
         actor = str(context.get("username") or context.get("actor") or "system")
         audit_operation = "COUNT"
         if operation == "insert_one" and document.get("previous_version_id"):

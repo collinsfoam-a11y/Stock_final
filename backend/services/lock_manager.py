@@ -6,7 +6,7 @@ Implements rack locking, session management, and concurrency control
 import logging
 import time
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Any, Optional, cast
 
 from backend.services.redis_service import RedisService
 
@@ -21,6 +21,9 @@ class LockManager:
 
     def __init__(self, redis_service: RedisService):
         self.redis = redis_service
+
+    async def _eval(self, script: str, numkeys: int, *args: Any) -> Any:
+        return await cast(Any, self.redis).eval(script, numkeys, *args)
 
     # Rack Locking
 
@@ -88,7 +91,7 @@ class LockManager:
 
         try:
             # C4 fix: Atomic compare-and-delete via Lua script
-            result = await self.redis.eval(self._RELEASE_SCRIPT, 1, lock_key, user_id)
+            result = await self._eval(self._RELEASE_SCRIPT, 1, lock_key, user_id)
 
             if result:
                 logger.info(f"Rack lock released: {rack_id} by {user_id}")
@@ -121,7 +124,7 @@ class LockManager:
 
         try:
             # C5 fix: Atomic compare-and-expire via Lua script
-            result = await self.redis.eval(self._RENEW_SCRIPT, 1, lock_key, user_id, str(ttl))
+            result = await self._eval(self._RENEW_SCRIPT, 1, lock_key, user_id, str(ttl))
 
             if result:
                 logger.debug(f"Rack lock renewed: {rack_id} by {user_id} (TTL: {ttl}s)")
@@ -234,7 +237,7 @@ class LockManager:
             args = []
             for field, value in session_data.items():
                 args.extend([field, str(value)])
-            result = await self.redis.eval(lua_script, 2, session_key, str(ttl), *args)
+            result = await self._eval(lua_script, 2, session_key, str(ttl), *args)
 
             if result:
                 logger.info(f"Session lock created: {session_id} for {user_id} on {rack_id}")

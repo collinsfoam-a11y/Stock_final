@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from pymongo.errors import DuplicateKeyError
 
@@ -248,7 +248,8 @@ class ProjectionService:
         if not event_id:
             raise ValueError("Projection event is missing an event identifier")
 
-        payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+        raw_payload = event.get("payload")
+        payload = cast(dict[str, Any], raw_payload if isinstance(raw_payload, dict) else {})
         if not await self._begin_event_apply(
             event_id=event_id, event=event, payload=payload, db_session=db_session
         ):

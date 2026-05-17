@@ -8,7 +8,7 @@ import logging
 import os
 from decimal import Decimal, InvalidOperation
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from backend.services.governance_guard import GovernanceViolation
 
@@ -91,7 +91,7 @@ def _normalize_serials(doc: dict[str, Any]) -> list[str]:
 
 def _decimal_places(value: Decimal) -> int:
     normalized = value.normalize() if value != 0 else Decimal("0")
-    exponent = normalized.as_tuple().exponent
+    exponent = cast(int, normalized.as_tuple().exponent)
     return abs(exponent) if exponent < 0 else 0
 
 

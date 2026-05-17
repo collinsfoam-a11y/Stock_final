@@ -584,14 +584,15 @@ async def update_user(
     existing = await db.users.find_one({"_id": oid})
     if not existing:
         _raise_http_error(status.HTTP_404_NOT_FOUND, "User not found", "NOT_FOUND")
+    existing_doc = cast(dict[str, Any], existing)
 
-    update = await _build_update_payload(db, oid, request, existing, current_user)
+    update = await _build_update_payload(db, oid, request, existing_doc, current_user)
     await db.users.update_one({"_id": oid}, {"$set": update})
     updated = await db.users.find_one({"_id": oid})
 
     logger.info(
         "User updated: %s by %s",
-        sanitize_for_logging(existing["username"]),
+        sanitize_for_logging(existing_doc["username"]),
         current_user.get("username"),
     )
 

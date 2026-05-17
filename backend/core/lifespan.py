@@ -658,7 +658,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
 
     # Initialize count_lines_api with dependencies
     try:
-        from backend.api.count_lines_api import init_count_lines_api
+        from backend.api.count_lines_routes import init_count_lines_api
 
         # Use global activity_log_service
 

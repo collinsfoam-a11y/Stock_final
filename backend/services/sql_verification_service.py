@@ -349,6 +349,14 @@ class SQLVerificationService:
             if mongo_qty_error:
                 error_info = mongo_qty_error
                 return mongo_qty_error
+            if mongo_qty is None:
+                error_info = self._error_response(
+                    error_code="INVALID_MONGO_QTY",
+                    message="MongoDB stock quantity is invalid",
+                    status_code=500,
+                    item_code=item_code,
+                )
+                return error_info
 
             current_seq = int(mongo_item.get("sql_verification_seq", 0) or 0)
             variance = sql_qty - mongo_qty

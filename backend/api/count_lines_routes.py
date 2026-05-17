@@ -98,6 +98,7 @@ def init_count_lines_api(
     lock_service: Optional[LockService] = None,
     snapshot_service: Optional[SnapshotService] = None,
     variant_service: Optional[VariantService] = None,
+    _sql_connector: Optional[Any] = None,
 ):
     global _activity_log_service, _lock_service, _snapshot_service, _variant_service
     if snapshot_service is None:

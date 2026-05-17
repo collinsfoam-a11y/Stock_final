@@ -301,7 +301,7 @@ def _build_collection_queries(
     count_line_ids: list[str],
     warehouse_fragments: list[str],
 ) -> dict[str, dict[str, Any]]:
-    session_filters = []
+    session_filters: list[dict[str, Any]] = []
     if session_ids:
         session_filters.append({"id": {"$in": session_ids}})
         session_filters.append({"session_id": {"$in": session_ids}})
@@ -311,7 +311,7 @@ def _build_collection_queries(
         for field_name in ("warehouse", "rack_no", "location_name")
     )
 
-    count_line_filters = []
+    count_line_filters: list[dict[str, Any]] = []
     if count_line_ids:
         count_line_filters.append({"id": {"$in": count_line_ids}})
     if item_codes:
@@ -321,13 +321,13 @@ def _build_collection_queries(
     if session_ids:
         count_line_filters.append({"session_id": {"$in": session_ids}})
 
-    item_filters = []
+    item_filters: list[dict[str, Any]] = []
     if item_codes:
         item_filters.append({"item_code": {"$in": item_codes}})
     if barcodes:
         item_filters.append({"barcode": {"$in": barcodes}})
 
-    variance_filters = []
+    variance_filters: list[dict[str, Any]] = []
     if item_codes:
         variance_filters.append({"item_code": {"$in": item_codes}})
     if count_line_ids:
@@ -335,7 +335,7 @@ def _build_collection_queries(
     if session_ids:
         variance_filters.append({"session_id": {"$in": session_ids}})
 
-    snapshot_filters = []
+    snapshot_filters: list[dict[str, Any]] = []
     if item_codes:
         snapshot_filters.append({"item_code": {"$in": item_codes}})
     if barcodes:
@@ -343,7 +343,7 @@ def _build_collection_queries(
     if session_ids:
         snapshot_filters.append({"session_id": {"$in": session_ids}})
 
-    recount_filters = []
+    recount_filters: list[dict[str, Any]] = []
     if count_line_ids:
         recount_filters.append({"count_line_id": {"$in": count_line_ids}})
     if item_codes:
@@ -353,7 +353,7 @@ def _build_collection_queries(
     if session_ids:
         recount_filters.append({"session_id": {"$in": session_ids}})
 
-    notification_filters = []
+    notification_filters: list[dict[str, Any]] = []
     if count_line_ids:
         notification_filters.append({"count_line_id": {"$in": count_line_ids}})
     if item_codes:

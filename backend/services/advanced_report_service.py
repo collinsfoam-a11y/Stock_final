@@ -324,7 +324,7 @@ class AdvancedReportService:
         if await projection_reads.dashboard_reads_enabled():
             projection_config = config
             sort_order = getattr(config, "sort_order", None)
-            if hasattr(sort_order, "value") and hasattr(config, "model_copy"):
+            if sort_order is not None and hasattr(sort_order, "value") and hasattr(config, "model_copy"):
                 projection_config = config.model_copy(update={"sort_order": sort_order.value})
             return await projection_reads.generate_verified_items_report(
                 projection_config,

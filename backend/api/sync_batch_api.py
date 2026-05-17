@@ -615,6 +615,7 @@ async def _apply_bulk_session_operation(
     now: datetime,
 ) -> str:
     raise_forbidden_direct_write("sync_batch_api.bulk_session_operation")
+    raise RuntimeError("unreachable")
 
 
 def _extract_single_session_operation_id(
@@ -647,6 +648,7 @@ async def _apply_single_session_operation(
     now: datetime,
 ) -> str:
     raise_forbidden_direct_write("sync_batch_api.single_session_operation")
+    raise RuntimeError("unreachable")
 
 
 async def _process_session_mutation_operation(
@@ -719,6 +721,7 @@ async def _process_session_creation(
     db: Any,
 ) -> str:
     raise_forbidden_direct_write("sync_batch_api.session_creation_operation")
+    raise RuntimeError("unreachable")
 
 
 async def _process_session_op(
@@ -1070,6 +1073,7 @@ async def _process_unknown_item_op(
     db: Any,
 ) -> str:
     raise_forbidden_direct_write("sync_batch_api.unknown_item_operation")
+    raise RuntimeError("unreachable")
 
 
 # Operation type → handler mapping

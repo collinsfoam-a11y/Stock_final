@@ -308,6 +308,7 @@ async def get_item_by_barcode_enhanced(
 
         if not item_data or source == "not_found":
             _raise_item_not_found(normalized_barcode, response_time)
+        item_doc = cast(dict[str, Any], item_data)
 
         logger.info(
             "Enhanced barcode lookup: %s from %s in %.2fms",
@@ -315,7 +316,7 @@ async def get_item_by_barcode_enhanced(
             source,
             response_time,
         )
-        response_item = deepcopy(item_data)
+        response_item = deepcopy(item_doc)
         await _decorate_item_with_misplacement_context(response_item, session_id, rack_no)
 
         response_data = {
@@ -328,7 +329,7 @@ async def get_item_by_barcode_enhanced(
                 current_user=current_user,
             ),
         }
-        await _cache_lookup_response(normalized_barcode, item_data)
+        await _cache_lookup_response(normalized_barcode, item_doc)
         return response_data
 
     except HTTPException as exc:

@@ -239,6 +239,10 @@ async def get_recount_request(
         raise HTTPException(status_code=404, detail="Recount request not found")
 
     recount["id"] = str(recount.get("_id") or recount.get("id") or recount_id)
+    created_at = recount.get("created_at")
+    updated_at = recount.get("updated_at")
+    due_date = recount.get("due_date")
+    completed_at = recount.get("completed_at")
 
     return RecountResponse(
         id=recount["id"],
@@ -251,12 +255,10 @@ async def get_recount_request(
         status=recount["status"],
         created_by=recount["created_by"],
         assigned_to=recount.get("assigned_to"),
-        created_at=recount["created_at"].isoformat() if recount.get("created_at") else "",
-        updated_at=recount["updated_at"].isoformat() if recount.get("updated_at") else "",
-        due_date=recount.get("due_date"),
-        completed_at=(
-            recount.get("completed_at").isoformat() if recount.get("completed_at") else None
-        ),
+        created_at=created_at.isoformat() if isinstance(created_at, datetime) else "",
+        updated_at=updated_at.isoformat() if isinstance(updated_at, datetime) else "",
+        due_date=due_date.isoformat() if isinstance(due_date, datetime) else due_date,
+        completed_at=completed_at.isoformat() if isinstance(completed_at, datetime) else None,
         result_qty=recount.get("result_qty"),
     )
 

@@ -1,6 +1,7 @@
 import json
 import logging
-from typing import Any, Optional
+import inspect
+from typing import Any, Awaitable, Optional, cast
 
 import redis.asyncio as redis
 
@@ -43,6 +44,18 @@ class RedisCacheService:
             await self.redis.delete(key)
         except Exception as e:
             logger.error(f"Redis delete error: {e}")
+
+    async def eval(self, script: str, numkeys: int, *keys_and_args: Any) -> Any:
+        if not self.redis:
+            return None
+        try:
+            result = self.redis.eval(script, numkeys, *keys_and_args)
+            if inspect.isawaitable(result):
+                return await cast(Awaitable[Any], result)
+            return result
+        except Exception as e:
+            logger.error(f"Redis eval error: {e}")
+            return None
 
     async def clear_prefix(self, prefix: str):
         if not self.redis:

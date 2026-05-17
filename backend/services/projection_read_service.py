@@ -594,11 +594,19 @@ class ProjectionReadService:
         rows = await self._filtered_verified_items(None)
         await self._record_hit("dashboard/filter-options")
         options = {
-            "warehouses": sorted({row.get("warehouse") for row in rows if row.get("warehouse")}),
-            "floors": sorted({row.get("floor") for row in rows if row.get("floor")}),
-            "categories": sorted({row.get("category") for row in rows if row.get("category")}),
-            "statuses": sorted({row.get("status") for row in rows if row.get("status")}),
-            "users": sorted({row.get("counted_by") for row in rows if row.get("counted_by")}),
+            "warehouses": sorted(
+                {str(row.get("warehouse")).strip() for row in rows if row.get("warehouse")}
+            ),
+            "floors": sorted({str(row.get("floor")).strip() for row in rows if row.get("floor")}),
+            "categories": sorted(
+                {str(row.get("category")).strip() for row in rows if row.get("category")}
+            ),
+            "statuses": sorted(
+                {str(row.get("status")).strip() for row in rows if row.get("status")}
+            ),
+            "users": sorted(
+                {str(row.get("counted_by")).strip() for row in rows if row.get("counted_by")}
+            ),
             "verified": [True, False],
         }
         return {"success": True, "options": options}
@@ -608,9 +616,9 @@ class ProjectionReadService:
         session_rows = await self._get_session_projection_docs(current_user={"role": "admin"})
         users = sorted(
             {
-                _normalize_string(row.get("staff_user"))
+                normalized
                 for row in session_rows
-                if _normalize_string(row.get("staff_user"))
+                if (normalized := _normalize_string(row.get("staff_user")))
             }
         )
         statuses = sorted(
