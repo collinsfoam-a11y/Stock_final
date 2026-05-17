@@ -12,6 +12,7 @@ from collections import deque
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import time
@@ -168,7 +169,9 @@ class ProjectionConsistencyGuardMiddleware(BaseHTTPMiddleware):
             30,
             int(os.getenv("PROJECTION_GUARD_REPAIR_LOCK_TTL_SECONDS", "90")),
         )
-        self.circuit_enabled = os.getenv("PROJECTION_GUARD_CIRCUIT_ENABLED", "true").lower() == "true"
+        self.circuit_enabled = (
+            os.getenv("PROJECTION_GUARD_CIRCUIT_ENABLED", "true").lower() == "true"
+        )
         self.circuit_window_seconds = max(
             5.0,
             float(os.getenv("PROJECTION_GUARD_CIRCUIT_WINDOW_SECONDS", "60")),
@@ -351,7 +354,9 @@ class ProjectionConsistencyGuardMiddleware(BaseHTTPMiddleware):
             [sanitize_for_logging(sid) for sid in state.missing_session_ids[:10]],
         )
         if write_to_visibility_ms is not None:
-            ProjectionConsistencyGuardMiddleware._visibility_samples_ms.append(write_to_visibility_ms)
+            ProjectionConsistencyGuardMiddleware._visibility_samples_ms.append(
+                write_to_visibility_ms
+            )
             self._emit_visibility_sla_summary()
 
     async def _repair_once(self, missing_session_ids: list[str]) -> bool:
@@ -566,11 +571,20 @@ class ProjectionConsistencyGuardMiddleware(BaseHTTPMiddleware):
         for label, cmd in command_sets:
             started = time.time()
             try:
+                # Security validation before execution
+                if not cmd or cmd[0] != sys.executable:
+                    raise ValueError("Command must start with sys.executable")
+                script_path = Path(cmd[1]).resolve()
+                scripts_dir = (self.root / "backend" / "scripts").resolve()
+                if not str(script_path).startswith(str(scripts_dir)):
+                    raise ValueError("Script path must be within backend/scripts directory")
+
                 result = subprocess.run(
                     cmd,
                     cwd=str(self.root),
                     env=env,
-                    check=False,
+                    check=True,
+                    shell=False,
                     capture_output=True,
                     text=True,
                     timeout=90,
@@ -593,6 +607,8 @@ class ProjectionConsistencyGuardMiddleware(BaseHTTPMiddleware):
             )
 
     def _resolve_script_command(self, base_name: str) -> list[str]:
+        if not re.match(r"^[a-zA-Z0-9_]+$", base_name):
+            raise ValueError(f"Invalid script name: {base_name}")
         py_path = self.root / "backend" / "scripts" / f"{base_name}.py"
         if py_path.exists():
             return [str(py_path)]
