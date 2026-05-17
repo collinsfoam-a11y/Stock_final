@@ -164,7 +164,6 @@
     "npm-run-all2": "^7.0.2",
     "patch-package": "^8.0.1",
     "playwright": "^1.57.0",
-    "postcss": "8.5.10",
     "postinstall-postinstall": "^2.1.0",
     "prettier": "^3.7.4",
     "storybook": "^8.6.15",

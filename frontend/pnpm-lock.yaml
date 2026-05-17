@@ -253,9 +253,6 @@ importers:
       playwright:
         specifier: ^1.57.0
         version: 1.59.1
-      postcss:
-        specifier: 8.5.10
-        version: 8.5.10
       postinstall-postinstall:
         specifier: ^2.1.0
         version: 2.1.0
