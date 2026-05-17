@@ -1,0 +1,17 @@
+frontend	frontend/src/store/__tests__/settingsStore.userScope.test.ts	186	210	frontend/src/store/__tests__/settingsStore.userScope.test.ts	62	86	25
+frontend	frontend/src/store/__tests__/settingsStore.userScope.test.ts	224	254	frontend/src/store/__tests__/settingsStore.userScope.test.ts	100	130	31
+frontend	frontend/src/store/__tests__/settingsStore.userScope.test.ts	296	336	frontend/src/store/__tests__/settingsStore.userScope.test.ts	214	130	41
+frontend	frontend/src/store/__tests__/authStore.loadStoredAuthRace.test.ts	44	68	frontend/src/store/__tests__/authStore.logout.test.ts	52	76	25
+frontend	frontend/src/store/__tests__/authStore.establishSession.test.ts	24	64	frontend/src/store/__tests__/authStore.logout.test.ts	36	76	41
+frontend	frontend/src/services/__tests__/httpClient.unauthorized.test.ts	138	166	frontend/src/services/__tests__/httpClient.unauthorized.test.ts	20	48	29
+frontend	frontend/src/services/__tests__/httpClient.unauthorized.test.ts	166	224	frontend/src/services/__tests__/httpClient.unauthorized.test.ts	48	106	59
+frontend	frontend/src/domains/reports/types.ts	5	45	frontend/src/services/api/reportApi.ts	8	48	41
+frontend	frontend/src/domains/auth/types.ts	16	52	frontend/src/services/api/authApi.ts	31	69	37
+frontend	frontend/src/components/settings/FontSizeSlider.tsx	109	140	frontend/src/components/settings/FontStylePicker.tsx	87	118	32
+frontend	frontend/src/components/settings/ChangePasswordModal.tsx	265	309	frontend/src/components/settings/ChangePinModal.tsx	205	249	45
+frontend	frontend/src/components/navigation/AdminSidebar.tsx	68	91	frontend/src/components/navigation/SupervisorSidebar.tsx	154	177	24
+frontend	frontend/src/components/navigation/AdminSidebar.tsx	368	402	frontend/src/components/navigation/SupervisorSidebar.tsx	451	485	35
+frontend	frontend/src/components/feedback/ToastProvider.tsx	18	42	frontend/src/components/feedback/ToastProvider.web.tsx	18	42	25
+frontend	frontend/src/components/feedback/AdminCrashScreen.tsx	42	82	frontend/src/components/feedback/StaffCrashScreen.tsx	43	83	41
+frontend	frontend/src/components/feedback/AdminCrashScreen.tsx	54	85	frontend/src/components/feedback/StaffCrashScreen.tsx	55	86	32
+frontend	frontend/src/components/feedback/AdminCrashScreen.tsx	191	228	frontend/src/components/feedback/StaffCrashScreen.tsx	188	225	38

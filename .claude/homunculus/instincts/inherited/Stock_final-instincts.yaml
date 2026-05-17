@@ -1,0 +1,277 @@
+# Instincts generated from https://github.com/collinsfoam-a11y/Stock_final
+# Generated: 2026-05-04T06:57:32.628Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: Stock_final-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/collinsfoam-a11y/Stock_final
+---
+
+# Stock_final Commit Length
+
+## Action
+
+Write moderate-length commit messages (~76 characters)
+
+## Evidence
+
+- Average commit message length: 76 chars
+- Based on 1 commits
+
+---
+id: Stock_final-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/collinsfoam-a11y/Stock_final
+---
+
+# Stock_final Naming Files
+
+## Action
+
+Use PascalCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: PascalCase
+
+---
+id: Stock_final-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/collinsfoam-a11y/Stock_final
+---
+
+# Stock_final Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: Stock_final-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/collinsfoam-a11y/Stock_final
+---
+
+# Stock_final Export Style
+
+## Action
+
+Prefer mixed exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: mixed
+
+---
+id: Stock_final-arch-type-based
+trigger: "when adding new code"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: https://github.com/collinsfoam-a11y/Stock_final
+---
+
+# Stock_final Arch Type Based
+
+## Action
+
+Place code in the appropriate type folder (components/, services/, utils/, etc.)
+
+## Evidence
+
+- Type-based module organization detected
+- Folders: 
+
+---
+id: stock_final-instinct-file-naming
+trigger: "When creating a new file"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: collinsfoam-a11y/Stock_final
+---
+
+# Stock_final Instinct File Naming
+
+## Action
+
+Name the file using PascalCase (e.g., ModernButton.tsx)
+
+## Evidence
+
+- Pattern in namingConventions.files
+
+---
+id: stock_final-instinct-function-naming
+trigger: "When defining a new function"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: collinsfoam-a11y/Stock_final
+---
+
+# Stock_final Instinct Function Naming
+
+## Action
+
+Name the function using camelCase (e.g., enhanceAccessibility)
+
+## Evidence
+
+- Pattern in namingConventions.functions
+
+---
+id: stock_final-instinct-class-naming
+trigger: "When defining a new class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: collinsfoam-a11y/Stock_final
+---
+
+# Stock_final Instinct Class Naming
+
+## Action
+
+Name the class using PascalCase (e.g., ModernButton)
+
+## Evidence
+
+- Pattern in namingConventions.classes
+
+---
+id: stock_final-instinct-constant-naming
+trigger: "When declaring a constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: collinsfoam-a11y/Stock_final
+---
+
+# Stock_final Instinct Constant Naming
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE (e.g., MAX_RETRIES)
+
+## Evidence
+
+- Pattern in namingConventions.constants
+
+---
+id: stock_final-instinct-import-style
+trigger: "When importing modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: collinsfoam-a11y/Stock_final
+---
+
+# Stock_final Instinct Import Style
+
+## Action
+
+Use relative import paths (e.g., import X from '../module')
+
+## Evidence
+
+- Pattern in importStyle
+
+---
+id: stock_final-instinct-export-style
+trigger: "When exporting modules or components"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: collinsfoam-a11y/Stock_final
+---
+
+# Stock_final Instinct Export Style
+
+## Action
+
+Use either named or default exports as appropriate (mixed export style)
+
+## Evidence
+
+- Pattern in exportStyle
+
+---
+id: stock_final-instinct-commit-format
+trigger: "When writing a commit message"
+confidence: 0.8
+domain: git
+source: repo-analysis
+source_repo: collinsfoam-a11y/Stock_final
+---
+
+# Stock_final Instinct Commit Format
+
+## Action
+
+Start the commit message with an emoji and a short descriptor, then a colon, then a concise summary (e.g., 🎨 Palette: Enhance ModernButton with haptics and accessibility improvements)
+
+## Evidence
+
+- Seen in commit: 🎨 Palette: Enhance ModernButton with haptics and accessibility improvements
+
+---
+id: stock_final-instinct-test-location
+trigger: "When adding tests"
+confidence: 0.7
+domain: testing
+source: repo-analysis
+source_repo: collinsfoam-a11y/Stock_final
+---
+
+# Stock_final Instinct Test Location
+
+## Action
+
+Place test files in mixed locations (not strictly separated from source files)
+
+## Evidence
+
+- Pattern in architecture.folderStructure.testLocation
+
+---
+id: stock_final-instinct-type-based-organization
+trigger: "When organizing modules or files"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: collinsfoam-a11y/Stock_final
+---
+
+# Stock_final Instinct Type Based Organization
+
+## Action
+
+Group files by type (e.g., components, utils, services)
+
+## Evidence
+
+- Pattern in architecture.moduleOrganization
+

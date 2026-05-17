@@ -1,0 +1,202 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from fastapi import Response
+
+from backend.api.auth import (
+    UserRegister,
+    check_rate_limit,
+    find_user_by_username,
+    generate_auth_tokens,
+    register,
+)
+from backend.api.auth_routes import _session_belongs_to_current_client
+from backend.exceptions import NotFoundError, RateLimitError
+
+
+@pytest.fixture
+def mock_cache_service():
+    with patch("backend.api.auth_routes.get_cache_service") as mock:
+        service = AsyncMock()
+        mock.return_value = service
+        yield service
+
+
+@pytest.fixture
+def mock_db():
+    with patch("backend.api.auth_routes.get_db") as mock:
+        db = AsyncMock()
+        mock.return_value = db
+        yield db
+
+
+@pytest.fixture
+def mock_refresh_token_service():
+    with patch("backend.api.auth_routes.get_refresh_token_service") as mock:
+        service = MagicMock()
+        service.create_refresh_token.return_value = "refresh_token"
+        service.store_refresh_token = AsyncMock()
+        mock.return_value = service
+        yield service
+
+
+@pytest.fixture
+def mock_settings():
+    with patch("backend.api.auth_routes.settings") as mock:
+        mock.RATE_LIMIT_MAX_ATTEMPTS = 5
+        mock.RATE_LIMIT_TTL_SECONDS = 300
+        mock.ACCESS_TOKEN_EXPIRE_MINUTES = 15
+        mock.REFRESH_TOKEN_EXPIRE_DAYS = 30
+        yield mock
+
+
+@pytest.fixture
+def mock_auth_deps():
+    with patch("backend.api.auth_routes.auth_deps") as mock:
+        mock.secret_key = "secret"
+        mock.algorithm = "HS256"
+        mock.db = AsyncMock()
+        yield mock
+
+
+@pytest.mark.asyncio
+async def test_check_rate_limit_success(mock_cache_service, mock_settings):
+    mock_cache_service.get.return_value = 0
+
+    result = await check_rate_limit("127.0.0.1")
+
+    assert result.is_ok
+    assert result.unwrap() is True
+    mock_cache_service.set.assert_called_with("login_attempts", "127.0.0.1", 1, ttl=300)
+
+
+@pytest.mark.asyncio
+async def test_check_rate_limit_exceeded(mock_cache_service, mock_settings):
+    mock_cache_service.get.return_value = 5
+
+    result = await check_rate_limit("127.0.0.1")
+
+    assert result.is_err
+    assert isinstance(result._error, RateLimitError)
+    mock_cache_service.set.assert_called_with("login_attempts", "127.0.0.1", 5, ttl=300)
+
+
+@pytest.mark.asyncio
+async def test_find_user_by_username_found(mock_db):
+    user = {"username": "testuser", "role": "staff"}
+    mock_db.users.find_one.return_value = user
+
+    result = await find_user_by_username("testuser")
+
+    assert result.is_ok
+    assert result.unwrap() == user
+
+
+@pytest.mark.asyncio
+async def test_find_user_by_username_not_found(mock_db):
+    mock_db.users.find_one.return_value = None
+
+    result = await find_user_by_username("testuser")
+
+    assert result.is_err
+    assert isinstance(result._error, NotFoundError)
+
+
+@pytest.mark.asyncio
+async def test_generate_auth_tokens_success(
+    mock_refresh_token_service, mock_settings, mock_auth_deps
+):
+    user = {"username": "testuser", "role": "staff"}
+    request = MagicMock()
+    request.headers.get.side_effect = lambda key, default=None: {
+        "user-agent": "pytest-agent",
+        "x-device-id": "device-1",
+    }.get(key, default)
+
+    with patch("backend.api.auth_routes.create_access_token") as mock_create_token:
+        mock_create_token.return_value = "access_token"
+
+        result = await generate_auth_tokens(user, "127.0.0.1", request)
+
+        assert result.is_ok
+        value = result.unwrap()
+        assert value["access_token"] == "access_token"
+        assert value["refresh_token"] == "refresh_token"
+        mock_refresh_token_service.store_refresh_token.assert_awaited_once_with(
+            "refresh_token",
+            "testuser",
+            mock_refresh_token_service.store_refresh_token.await_args.args[2],
+            ip_address="127.0.0.1",
+            user_agent="pytest-agent",
+            device_id="device-1",
+        )
+
+
+def test_session_belongs_to_current_client_prefers_device_id_match():
+    request = MagicMock()
+    request.headers.get.side_effect = lambda key, default=None: {
+        "x-device-id": "device-1",
+        "user-agent": "new-agent",
+    }.get(key, default)
+    session = {
+        "device_id": "device-1",
+        "ip_address": "10.0.0.1",
+        "user_agent": "old-agent",
+    }
+
+    assert _session_belongs_to_current_client(session, request, "10.0.0.99") is True
+
+
+def test_session_belongs_to_current_client_falls_back_to_ip_and_user_agent():
+    request = MagicMock()
+    request.headers.get.side_effect = lambda key, default=None: {
+        "user-agent": "pytest-agent",
+    }.get(key, default)
+    session = {
+        "ip_address": "127.0.0.1",
+        "user_agent": "pytest-agent",
+    }
+
+    assert _session_belongs_to_current_client(session, request, "127.0.0.1") is True
+
+
+def test_session_belongs_to_current_client_uses_same_ip_when_metadata_is_missing():
+    request = MagicMock()
+    request.headers.get.side_effect = lambda key, default=None: default
+    session = {
+        "ip_address": "127.0.0.1",
+    }
+
+    assert _session_belongs_to_current_client(session, request, "127.0.0.1") is True
+
+
+@pytest.mark.asyncio
+async def test_register_success(mock_db, mock_refresh_token_service, mock_settings, mock_auth_deps):
+    mock_db.users.find_one.return_value = None
+    mock_db.users.count_documents.return_value = 0
+    # mock_db.users.insert_one is not used, auth_deps.db.users.insert_one is used
+    mock_auth_deps.db.users.insert_one.return_value.inserted_id = "new_id"
+
+    user_input = UserRegister(
+        username="newuser", password="password123", role="staff", full_name="New User"
+    )
+
+    with (
+        patch("backend.api.auth_routes.get_password_hash") as mock_hash,
+        patch("backend.api.auth_routes.create_access_token") as mock_create_token,
+    ):
+        mock_hash.return_value = "hashed_password"
+        mock_create_token.return_value = "access_token"
+
+        response = await register(user_input, Response())
+
+        assert response["access_token"] == "access_token"
+        assert response["refresh_token"] == "refresh_token"
+
+        # Verify user insertion
+        mock_auth_deps.db.users.insert_one.assert_called_once()
+        call_args = mock_auth_deps.db.users.insert_one.call_args
+        inserted_user = call_args[0][0]
+        assert inserted_user["username"] == "newuser"
+        assert inserted_user["hashed_password"] == "hashed_password"
+        assert inserted_user["role"] == "staff"

@@ -1,0 +1,196 @@
+"""
+Tests for Sync endpoints
+"""
+
+import pytest
+from fastapi.testclient import TestClient
+from server import app
+
+from backend.tests.utils.in_memory_db import setup_server_with_in_memory_db
+
+
+@pytest.fixture
+def fake_environment(monkeypatch):
+    return setup_server_with_in_memory_db(monkeypatch)
+
+
+@pytest.fixture
+def client(fake_environment):
+    """Test client fixture"""
+    return TestClient(app)
+
+
+@pytest.fixture
+def supervisor_token(client):
+    """Get supervisor auth token"""
+    response = client.post(
+        "/api/auth/login", json={"username": "supervisor", "password": "super123"}
+    )
+
+    if response.status_code == 200:
+        payload = response.json()
+        if isinstance(payload, dict):
+            if "access_token" in payload:
+                return payload["access_token"]
+            data = payload.get("data") or {}
+            return data.get("access_token")
+    return None
+
+
+class TestSyncEndpoints:
+    """Test sync endpoints"""
+
+    def test_trigger_erp_sync(self, client, supervisor_token):
+        """Test triggering ERP sync"""
+        if not supervisor_token:
+            pytest.skip("Supervisor token not available")
+
+        response = client.post(
+            "/api/sync/erp", headers={"Authorization": f"Bearer {supervisor_token}"}
+        )
+
+        # May fail if SQL Server not connected, which is acceptable
+        assert response.status_code in [200, 400, 500]
+
+    def test_trigger_change_sync(self, client, supervisor_token):
+        """Test triggering change detection sync"""
+        if not supervisor_token:
+            pytest.skip("Supervisor token not available")
+
+        response = client.post(
+            "/api/sync/changes", headers={"Authorization": f"Bearer {supervisor_token}"}
+        )
+
+        # May fail if SQL Server not connected, which is acceptable
+        assert response.status_code in [200, 400, 500]
+
+    def test_get_change_sync_stats(self, client, supervisor_token):
+        """Test getting change sync statistics"""
+        if not supervisor_token:
+            pytest.skip("Supervisor token not available")
+
+        response = client.get(
+            "/api/sync/changes/stats",
+            headers={"Authorization": f"Bearer {supervisor_token}"},
+        )
+
+        assert response.status_code in [200, 400]
+        if response.status_code == 200:
+            data = response.json()
+            assert "running" in data or "enabled" in data
+
+    def test_legacy_batch_sync_operations(
+        self,
+        client,
+        supervisor_token,
+        fake_environment,
+    ) -> None:
+        """Legacy operations payloads are disabled in canonical sync."""
+
+        if not supervisor_token:
+            pytest.skip("Supervisor token not available")
+
+        offline_session_id = "offline_test_session"
+        payload = {
+            "operations": [
+                {
+                    "id": "op_session",
+                    "type": "session",
+                    "timestamp": "2024-01-01T00:00:00Z",
+                    "data": {
+                        "session_id": offline_session_id,
+                        "warehouse": "Main Warehouse",
+                        "status": "OPEN",
+                        "type": "general",
+                    },
+                },
+                {
+                    "id": "op_count_line",
+                    "type": "count_line",
+                    "timestamp": "2024-01-01T00:00:01Z",
+                    "data": {
+                        "session_id": offline_session_id,
+                        "item_code": "ITEM-001",
+                        "counted_qty": 5,
+                    },
+                },
+            ]
+        }
+
+        response = client.post(
+            "/api/sync/batch",
+            json=payload,
+            headers={"Authorization": f"Bearer {supervisor_token}"},
+        )
+
+        assert response.status_code == 410
+        data = response.json()
+        assert "operations-based sync is disabled" in str(data.get("detail", "")).lower()
+
+    def test_legacy_batch_sync_session_bulk_operations(
+        self,
+        client,
+        supervisor_token,
+        fake_environment,
+    ) -> None:
+        """Legacy offline queue session operations are disabled in canonical sync."""
+
+        if not supervisor_token:
+            pytest.skip("Supervisor token not available")
+
+        offline_close_session_id = "offline_bulk_close_session"
+        offline_reconcile_session_id = "offline_bulk_reconcile_session"
+        payload = {
+            "operations": [
+                {
+                    "id": "op_session_close",
+                    "type": "session",
+                    "timestamp": "2024-01-01T00:00:00Z",
+                    "data": {
+                        "session_id": offline_close_session_id,
+                        "warehouse": "Main Warehouse",
+                        "status": "OPEN",
+                        "type": "general",
+                    },
+                },
+                {
+                    "id": "op_bulk_close",
+                    "type": "session",
+                    "timestamp": "2024-01-01T00:00:01Z",
+                    "data": {
+                        "operation": "bulk_close",
+                        "sessionIds": [offline_close_session_id],
+                    },
+                },
+                {
+                    "id": "op_session_reconcile",
+                    "type": "session",
+                    "timestamp": "2024-01-01T00:00:02Z",
+                    "data": {
+                        "session_id": offline_reconcile_session_id,
+                        "warehouse": "Main Warehouse - R2",
+                        "status": "OPEN",
+                        "type": "general",
+                    },
+                },
+                {
+                    "id": "op_bulk_reconcile",
+                    "type": "session",
+                    "timestamp": "2024-01-01T00:00:03Z",
+                    "data": {
+                        "operation": "bulk_reconcile",
+                        "sessionIds": [offline_reconcile_session_id],
+                    },
+                },
+            ]
+        }
+
+        response = client.post(
+            "/api/sync/batch",
+            json=payload,
+            headers={"Authorization": f"Bearer {supervisor_token}"},
+        )
+
+        assert response.status_code == 410
+        data = response.json()
+        assert "operations-based sync is disabled" in str(data.get("detail", "")).lower()

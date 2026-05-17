@@ -1,0 +1,192 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stock-verify-backend
+  namespace: stock-verify
+  labels:
+    app: stock-verify-backend
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: stock-verify-backend
+  template:
+    metadata:
+      labels:
+        app: stock-verify-backend
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: backend
+          image: ghcr.io/mknoufi/stock_verify_ui-backend@sha256:2c2bc60e512c6ab57bf3a12efafa70d8c544a7dce435ea7a570f29ce4661f6e3
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8001
+          envFrom:
+            - configMapRef:
+                name: stock-verify-config
+          env:
+            - name: MONGO_URL_FILE
+              value: /var/run/secrets/stock-verify/mongodb-url
+            - name: MONGO_REQUIRE_TRANSACTIONS
+              value: "true"
+            - name: MONGO_MAX_POOL_SIZE
+              value: "60"
+            - name: MONGO_MIN_POOL_SIZE
+              value: "5"
+            - name: MONGO_MAX_IDLE_TIME_MS
+              value: "300000"
+            - name: MONGO_SERVER_SELECTION_TIMEOUT_MS
+              value: "5000"
+            - name: MONGO_CONNECT_TIMEOUT_MS
+              value: "10000"
+            - name: MONGO_SOCKET_TIMEOUT_MS
+              value: "30000"
+            - name: JWT_SECRET_FILE
+              value: /var/run/secrets/stock-verify/jwt-secret
+            - name: JWT_REFRESH_SECRET_FILE
+              value: /var/run/secrets/stock-verify/jwt-refresh-secret
+            - name: REDIS_URL_FILE
+              value: /var/run/secrets/stock-verify/redis-url
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8001
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8001
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 5
+          startupProbe:
+            httpGet:
+              path: /health/startup
+              port: 8001
+            failureThreshold: 30
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: backend-secrets
+              mountPath: /var/run/secrets/stock-verify
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: backend-secrets
+          secret:
+            secretName: backend-secrets
+            items:
+              - key: mongodb-url
+                path: mongodb-url
+              - key: jwt-secret
+                path: jwt-secret
+              - key: jwt-refresh-secret
+                path: jwt-refresh-secret
+              - key: redis-url
+                path: redis-url
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stock-verify-frontend
+  namespace: stock-verify
+  labels:
+    app: stock-verify-frontend
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: stock-verify-frontend
+  template:
+    metadata:
+      labels:
+        app: stock-verify-frontend
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: frontend
+          image: ghcr.io/mknoufi/stock_verify_ui-frontend@sha256:f972e676c54abcc91052f4cb1ac1f81e119893e2b70e3eb874d7a557e762ccf6
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+            - name: nginx-tmp
+              mountPath: /tmp
+      volumes:
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
+        - name: nginx-tmp
+          emptyDir: {}

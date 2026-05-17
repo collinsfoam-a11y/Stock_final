@@ -1,0 +1,451 @@
+file,language,zero_inbound_static,runtime_unreached_static,in_duplicate_clone_block,decision,reason
+backend/api/security_txt.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/api/test_support_api.py,python,1,1,1,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/app/__init__.py,python,1,1,0,keep,Python package marker file; may be required for module/package behavior.
+backend/config/governance.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/core/schemas/__init__.py,python,1,1,0,keep,Python package marker file; may be required for module/package behavior.
+backend/core/validators/__init__.py,python,1,1,0,keep,Python package marker file; may be required for module/package behavior.
+backend/db/__init__.py,python,1,1,0,keep,Python package marker file; may be required for module/package behavior.
+backend/locustfile.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/middleware/__init__.py,python,1,1,0,keep,Python package marker file; may be required for module/package behavior.
+backend/middleware/compression_middleware.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/middleware/input_sanitization.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/middleware/logging_middleware.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/middleware/rate_limit_middleware.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/middleware/request_id.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/middleware/request_size_limit.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/middleware/setup.py,python,1,1,0,review,Compatibility/deprecation bridge; remove only after confirming no legacy importers remain.
+backend/models/__init__.py,python,1,1,0,keep,Python package marker file; may be required for module/package behavior.
+backend/models/analytics.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/models/snapshot.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/models/sync.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/scripts/add_performance_indexes.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/add_test_items.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/barcode_analyzer.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/batch_condition_manager.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/check_barcode_lengths.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/check_other_barcode_columns.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/check_other_barcodes.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/check_sql_barcodes.py,python,1,1,1,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/check_sql_barcodes_v2.py,python,1,1,1,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/check_sql_duplicates.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/check_sync_optimization.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/check_warehouses.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/codebase_upgrade_checker.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/create_feature_indexes.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/create_item_indexes.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/create_staff_users.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/discover_tables.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/explore_barcodes.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/generate_api_docs.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/generate_secrets.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/load_test_search.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/optimize_session_indexes.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/report_generator.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/reset_staff_session.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/restore_mongodb_backup.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/set_supervisor_pin.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/setup_server_localhost.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/stress_test_concurrent_users.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/sync_bridge_agent.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/sync_sql_to_mongo.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/update_config_from_ssms.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/validate_env.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/scripts/verify_reconciliation.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+backend/services/advanced_erp_sync_DISABLED_DO_NOT_USE.py,python,1,1,0,remove,Explicitly marked as disabled/dead in filename; safe cleanup candidate after final check.
+backend/services/auto_error_finder.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/services/auto_recovery.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/tests/__init__.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_admin_dashboard_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_admin_router_auth.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_auth.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_auth_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_auth_handler.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_count_lines_persistence.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_dynamic_reports_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_enhanced_item_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_erp_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_erp_batches.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_item_verification_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_items_identify_helpers.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_mapping_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_password_reset_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_pin_auth_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_preferences_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_rbac.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_reconciliation_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_report_generation_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_security_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_session_finalization_and_canonical_reads.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_session_management_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_sync_batch_canonical.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_sync_batch_logic.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_unknown_items_public_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_user_management_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_user_settings_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_watchtower_helpers.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/api/test_websocket_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/conftest.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/core/test_validators_init.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/evaluation/__init__.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/evaluation/conftest.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/evaluation/run_evaluation.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/evaluation/test_api_performance.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/evaluation/test_business_logic.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/evaluation/test_data_quality.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/evaluation/test_security_evaluation.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/evaluation/test_workflow.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/governance/test_count_line_write_service_authority.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/governance/test_optimistic_locking.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/governance/test_session_transitions.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/governance/test_sql_batch_verification.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/governance/test_sql_read_only.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/governance/test_sql_verified_qty_authority.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/governance/test_verification_authority.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/governance/test_write_path_restrictions.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/middleware/test_lan_enforcement.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/middleware/test_performance_middleware.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/services/test_audit_service.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/services/test_cache_service.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/services/test_refresh_token_service.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/services/test_sql_sync_service.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_admin_control_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_agent_approval_pipeline.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_ai_variance.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_analytics_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_analytics_service.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_api_warehouses_manual.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_app_factory_legacy_stats.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_async_utils.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_auth.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_auth_cookie_support.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_auth_path.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_auth_pin.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_auth_routes_session_handling.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_auth_utils.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_auto_diagnosis.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_backfill_session_snapshots.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_barcode_validation.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_basic.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_batch_operations.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_canonical_inventory.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_cleanup_synthetic_session_data.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_comprehensive.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_config_aliases.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_count_lines_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_count_state_machine.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_coverage_final.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_coverage_improvements.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_coverage_part2.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_db_connection.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_db_migrations.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_dynamic_report_service.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_enhanced_connection_pool.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_enhanced_item_search.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_enterprise_stabilization.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_erp_mapping.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_erp_sync_service.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_erp_utils.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_error_handler_with_diagnosis.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_error_logging.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_exceptions.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_export_mapping_cleanup.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_exports_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_floor_selection.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_governance.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_governance_contracts.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_integration.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_integration_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_items.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_jenkins_pipeline_contract.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_locations_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_logging_config.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_mdns_service.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_migrate_user_settings.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_notification_service.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_notifications_api_routes.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_offline_sync.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_performance.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_pi_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_pin_auth.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_pin_login_manual.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_repair_legacy_zero_variance_approvals.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_repair_scripts.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_result.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_routes_check.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_runtime_route_cleanup.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_schemas.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_search_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_search_service.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_security_headers.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_sentry.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_server_entrypoint.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_sessions_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_settings_runtime.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_simple.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_sql_readonly.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_sync.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_sync_conflicts_service.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_sync_management_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_sync_service.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_system_report_service.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_user_management_routes.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_validation.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_validation_scripts.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_variance_service.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_verification.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_version_check.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_websocket_manager.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_websocket_service.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/test_whatsapp_service.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/verify_integration_flow.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/verify_operational.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/verify_security_api.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/tests/verify_token_claims.py,python,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+backend/utils/__init__.py,python,1,1,0,keep,Python package marker file; may be required for module/package behavior.
+backend/utils/pagination.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/utils/pdf_generator.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/utils/secret_generator.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+backend/utils/structured_logging.py,python,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/.eslintrc.js,typescript/javascript,1,1,0,keep,Build/test/tooling configuration entrypoint; consumed by external toolchain.
+frontend/__tests__/home.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/__tests__/login.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/__tests__/login_accessibility.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/__tests__/staff/home.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/app/+not-found.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/_layout.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/__tests__/logs.offlineMode.test.tsx,typescript/javascript,1,0,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/app/admin/_layout.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/control-panel-v2.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/control-panel.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/dashboard-web.screen.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/dashboard-web.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/index.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/live-view.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/metrics.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/permissions.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/realtime-dashboard.screen.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/realtime-dashboard.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/reports.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/security.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/settings.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/sql-config.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/unknown-items.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/users.screen.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/admin/users.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/debug.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/forgot-password.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/help.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/index.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/login.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/notifications.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/otp-verification.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/register.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/reset-password.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/security.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/staff/_layout.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/staff/appearance.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/staff/components/SectionLists.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/staff/history.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/staff/index.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/staff/item-detail.screen.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/staff/item-detail.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/staff/scan.screen.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/staff/scan.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/staff/serial-scanner.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/staff/settings.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/supervisor/__tests__/layout.offlineGate.test.tsx,typescript/javascript,1,0,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/app/supervisor/__tests__/offlineQueue.test.tsx,typescript/javascript,1,0,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/app/supervisor/__tests__/sessionDetail.offlineMode.test.tsx,typescript/javascript,1,0,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/app/supervisor/activity-logs.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/supervisor/appearance.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/supervisor/bulk-ops.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/supervisor/dashboard.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/supervisor/index.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/supervisor/items.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/supervisor/offline-queue.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/supervisor/sessions.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/supervisor/settings.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/supervisor/sync-conflicts.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/supervisor/user-workflows.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/supervisor/variance-details.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/supervisor/variances.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/app/welcome.tsx,typescript/javascript,1,0,0,keep,Expo file-based route entrypoint; not expected to have explicit import references.
+frontend/babel.config.js,typescript/javascript,1,1,0,keep,Build/test/tooling configuration entrypoint; consumed by external toolchain.
+frontend/e2e/admin-dashboard.spec.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/e2e/auth.spec.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/e2e/core-flow.spec.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/e2e/misplaced-item.spec.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/e2e/recount-assignment-ui.spec.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/e2e/supervisor-smoke.spec.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/e2e/visual.spec.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/e2e/watchtower-regression.spec.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/expo-sqlite.d.ts,typescript/javascript,1,1,0,keep,Build/test/tooling configuration entrypoint; consumed by external toolchain.
+frontend/index.js,typescript/javascript,1,0,0,keep,Build/test/tooling configuration entrypoint; consumed by external toolchain.
+frontend/jest.config.js,typescript/javascript,1,1,0,keep,Build/test/tooling configuration entrypoint; consumed by external toolchain.
+frontend/jest.polyfills.js,typescript/javascript,1,1,0,keep,Build/test/tooling configuration entrypoint; consumed by external toolchain.
+frontend/jest.setup.js,typescript/javascript,1,1,0,keep,Build/test/tooling configuration entrypoint; consumed by external toolchain.
+frontend/metro.config.js,typescript/javascript,1,1,0,keep,Build/test/tooling configuration entrypoint; consumed by external toolchain.
+frontend/playwright.config.ts,typescript/javascript,1,1,0,keep,Build/test/tooling configuration entrypoint; consumed by external toolchain.
+frontend/plugins/withQuotedReactNativeBundlePhase.js,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/react-native-text-override.d.ts,typescript/javascript,1,1,0,keep,Build/test/tooling configuration entrypoint; consumed by external toolchain.
+frontend/scripts/generate_brand_assets.py,python,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+frontend/scripts/update-ip.js,typescript/javascript,1,1,0,review,"Operational script/utility; likely invoked manually, not by imports."
+frontend/src/bootstrap/BootStateViews.web.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/bootstrap/RootStack.web.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/bootstrap/initApp.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/bootstrap/initAuthAndSettings.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/bootstrap/withTimeout.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/components/DataTable.stories.tsx,typescript/javascript,1,1,0,review,Storybook/story asset; optional in production but may be used in design/dev workflow.
+frontend/src/components/ErrorBoundary.web.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/Input.stories.tsx,typescript/javascript,1,1,0,review,Storybook/story asset; optional in production but may be used in design/dev workflow.
+frontend/src/components/ItemVerification.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/LogoutButton.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/LottieLoading.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/Pagination.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/RefreshButton.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/SearchAutocomplete.stories.tsx,typescript/javascript,1,1,0,review,Storybook/story asset; optional in production but may be used in design/dev workflow.
+frontend/src/components/SessionTimeoutWarning.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/SyncStatusBar.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/admin/RoleSelector.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/admin/realtime-dashboard/__tests__/RealtimeDashboardToolbar.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/components/admin/realtime-dashboard/__tests__/realtimeDashboardLive.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/components/analytics/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/components/auth/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/components/camera/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/components/common/AccessibilityEnhancer.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/common/ThemeToggle.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/feedback/ToastProvider.web.tsx,typescript/javascript,1,1,1,review,Unreached + in clone blocks; candidate for consolidation or removal after owner validation.
+frontend/src/components/filters/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/components/forms/EnhancedButton.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/forms/__tests__/SearchAutocomplete.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/components/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/components/layout/SettingGroup.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/layout/SettingItem.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/modals/BulkEntryModal.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/modals/ImageViewerModal.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/modals/__tests__/PhotoCaptureModal.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/components/modals/__tests__/SerialScannerModal.logic.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/components/modals/__tests__/SerialScannerModal.permission.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/components/modals/__tests__/serialScannerState.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/components/modals/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/components/navigation/__tests__/BottomNavBar.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/components/premium/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/components/scan/ActiveSectionHeader.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/scan/SectionFocusConfig.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/scan/__tests__/LocationVerificationSection.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/components/scan/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/components/session/BulkActionBar.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/settings/__tests__/UserSettingsSections.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/components/staff/RecentScans.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/suggestions/SmartSuggestionsPanel.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/sync/ConflictResolutionModal.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/components/ui/Modal.stories.tsx,typescript/javascript,1,1,0,review,Storybook/story asset; optional in production but may be used in design/dev workflow.
+frontend/src/components/ui/__tests__/AnimatedPressable.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/config/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/constants/__tests__/roleFeatureFlags.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/constants/fontAssets.native.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/constants/fontAssets.web.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/constants/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/domains/auth/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/domains/inventory/hooks/__tests__/offlineInventoryHooks.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/domains/inventory/hooks/scan/__tests__/errorMessages.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/domains/inventory/hooks/scan/__tests__/useDeferredItemSubmission.itemName.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/domains/inventory/hooks/scan/__tests__/useDeferredItemSubmission.photoProofs.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/domains/inventory/hooks/scan/__tests__/useItemDraftAutosave.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/domains/inventory/hooks/scan/__tests__/useItemEvidenceState.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/domains/inventory/hooks/scan/__tests__/useItemSubmission.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/domains/inventory/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/domains/inventory/services/__tests__/itemVerificationApi.export.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/domains/reports/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/hooks/__tests__/usePermission.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/hooks/__tests__/useSessionIntegrity.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/hooks/__tests__/useWebSocket.test.tsx,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/hooks/useKeepAwake.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/hooks/useKeyboardShortcuts.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/screens/routes/IndexScreen.native.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/screens/routes/IndexScreen.web.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/screens/routes/WelcomeScreen.native.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/screens/routes/WelcomeScreen.web.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/__tests__/api.misc.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/__tests__/api.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/__tests__/backendUrl.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/__tests__/backupReminderService.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/__tests__/checkNodeVersion.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/__tests__/connectionManager.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/__tests__/healthRequest.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/__tests__/httpClient.unauthorized.test.ts,typescript/javascript,1,1,1,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/__tests__/sentry.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/__tests__/sessionManagementApi.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/__tests__/storage.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/__tests__/syncBatch.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/__tests__/updateService.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/__tests__/versionService.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/animationService.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/api/__tests__/inventoryWorkflowApi.barcode.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/api/__tests__/inventoryWorkflowApi.countLineNames.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/api/__tests__/inventoryWorkflowApi.offlineCount.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/api/adminOperationsApi.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/api/api.advancedAnalytics.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/api/api.diagnosis.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/api/api.diagnosis.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/api/api.dynamicFields.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/api/api.impl.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/api/api.misc.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/api/api.notifications.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/api/api.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/audit/auditLogger.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/backupService.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/batchOperationsService.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/device/expoCamera.native.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/device/expoCamera.web.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/exportService.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/services/microInteractions.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/monitoring/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/services/offline/__tests__/offlineStorage.queue.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/offline/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/services/pinAuth.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/selfTestService.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/storage/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/services/storage/tokenStore.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/sync/conflictResolution.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/services/utils/errorRecovery.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/utils/haptics.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/utils/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/services/utils/toastService.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/services/wifiConnectionService.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/store/__tests__/authStore.establishSession.test.ts,typescript/javascript,1,1,1,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/store/__tests__/authStore.loadStoredAuthRace.test.ts,typescript/javascript,1,1,1,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/store/__tests__/authStore.logout.test.ts,typescript/javascript,1,1,1,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/store/__tests__/filterStore.scope.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/store/__tests__/notificationStore.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/store/__tests__/settingsStore.userScope.test.ts,typescript/javascript,1,1,1,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/store/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/styles/scanStyles.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/styles/screens/StaffHome.styles.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/styles/sharedStyles.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/theme/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/theme/uiStandard.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/theme/unified/MIGRATION_EXAMPLES.tsx,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/types/expo-modules.d.ts,typescript/javascript,1,1,0,review,Type declaration file; consumed by TypeScript compiler/tooling.
+frontend/src/types/export.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/types/react-native-unistyles.d.ts,typescript/javascript,1,1,0,review,Type declaration file; consumed by TypeScript compiler/tooling.
+frontend/src/types/reactotron-react-native.d.ts,typescript/javascript,1,1,0,review,Type declaration file; consumed by TypeScript compiler/tooling.
+frontend/src/types/storage.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/types/sync.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/types/unistyles.d.ts,typescript/javascript,1,1,0,review,Type declaration file; consumed by TypeScript compiler/tooling.
+frontend/src/utils/__tests__/itemBatchUtils.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/utils/__tests__/roleNavigation.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/utils/__tests__/scanUtils.serialFormat.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/utils/__tests__/validation.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/src/utils/csvExport.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/utils/deviceInfo.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/utils/eventEmitter.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/utils/feedback.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/src/utils/index.ts,typescript/javascript,1,1,0,review,Barrel export file; may be imported indirectly by path aliases.
+frontend/src/utils/testSpritePort.ts,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/test_config.js,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.
+frontend/tests/services/scanDeduplicationService.test.ts,typescript/javascript,1,1,0,keep,Test asset discovered by test runner; static inbound graph does not reflect test discovery.
+frontend/typescript-plugin-filter-text-errors.js,typescript/javascript,1,1,0,review,Runtime-unreached static signal; needs manual validation before removal.

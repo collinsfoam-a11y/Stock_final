@@ -1,0 +1,126 @@
+# =============================================================================
+# Stock Verification System — .gitignore
+# =============================================================================
+
+# Environment files (secrets)
+.env
+.env.prod
+.env.bak
+.env.local
+.env.production
+backend_port.json
+frontend/public/backend_port.json
+frontend/src/backend_port.json
+
+# Keep example templates
+!.env.example
+!.env.production.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+.venv311/
+backend/.venv/
+backend/venv/
+dist/
+build/
+*.spec
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+*.log.*
+app.log
+backend_startup.log*
+frontend/pr_*_diff.txt
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+
+# Generated export artifacts
+exports/
+
+# Temporary files
+*.tmp
+*.bak
+*.orig
+
+# Agent / AI assistant config leftovers
+.aider*
+.autogpt.yml
+.autopilot.json
+.agent/approval-log*.jsonl
+.agent/backups/
+.agent/reports/
+**/.agent/reports/
+.clinerules
+.cursorrules
+.devon.yml
+.interpreter.yml
+.kilocodemodes
+.swe-agent.yml
+.secrets.baseline
+cooking_agent/
+
+# Test output
+*_output.txt
+*_results.txt
+*_results_*.txt
+test_failures.txt
+pre_commit_output.txt
+frontend/playwright-report/
+frontend/playwright/.auth/
+frontend/test-results/
+frontend/testsprite_tests/tmp/*
+
+# Docker
+
+# Expo
+.expo/
+
+# Local/repair database snapshots (never commit)
+backend/data/db/
+backend/data/db_backup_*/
+backend/data/db_failed_repair_*/
+backend/data/db_seeded_archive_*/
+backups/mongo/*.archive.gz
+*.bson
+
+# Generated evaluation artifacts (never commit)
+backend/tests/evaluation/reports/*.json
+reports/ui-governance-report.json
+
+# Generated frontend debug exports (never commit)
+frontend/dist/
+frontend/dist-debug/
+frontend/dist-debug2/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key

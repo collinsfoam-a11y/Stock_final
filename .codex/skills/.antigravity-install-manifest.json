@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-05-17T00:00:00.000Z",
+  "entries": [
+    "approval-gated-maintenance",
+    "backend-governance-write-paths",
+    "barcode-and-erp-lookup",
+    "frontend-offline-sync-contract",
+    "stock-contract-guardian",
+    "stock-ui-governance",
+    "stock-verification-test-runner"
+  ]
+}

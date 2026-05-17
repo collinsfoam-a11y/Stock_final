@@ -1,0 +1,42 @@
+.git
+.github
+.gitlab-ci.yml
+.DS_Store
+
+# Local secrets/config
+.env
+.env.*
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+backend_port.json
+frontend/public/backend_port.json
+frontend/src/backend_port.json
+
+# Python
+**/__pycache__/
+**/*.py[cod]
+.venv/
+backend/.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / Expo
+node_modules/
+frontend/node_modules/
+frontend/.expo/
+frontend/.next/
+frontend/dist/
+frontend/web-build/
+frontend/playwright-report/
+frontend/test-results/
+
+# Logs / artifacts
+*.log
+*.log.*
+app.log
+
+# Large local outputs
+archive/

@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stock-verify-backend"
+version = "2.1.0"
+description = "Backend API for Stock Verify Application"
+authors = [{ name = "Stock Verify Team", email = "admin@stockverify.internal" }]
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "fastapi>=0.135.1",
+    "uvicorn[standard]>=0.41.0",
+    "gunicorn>=25.1.0",
+    "pydantic>=2.12.5",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+# Ignore E402 (module level import not at top of file) globally due to conditional import needs
+ignore = ["E402"]
+
+[tool.mypy]
+explicit_package_bases = true
+mypy_path = "."
+implicit_optional = true
+plugins = ["pydantic.mypy"]
+exclude = [
+    "^backend/scripts/",
+    "^backend/tests/",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "copilotkit.*",
+    "psutil.*",
+    "pandas.*"
+]
+ignore_missing_imports = true

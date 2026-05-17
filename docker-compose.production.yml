@@ -1,0 +1,124 @@
+services:
+  mongo:
+    container_name: stock-verify-mongo
+    image: mongo:6.0.19
+    restart: unless-stopped
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --username \"$${MONGO_INITDB_ROOT_USERNAME}\" --password \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin --eval \"try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }\" | grep 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    container_name: stock-verify-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["sh", "-c", "redis-server --appendonly yes --requirepass \"$${REDIS_PASSWORD}\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backend:
+    container_name: stock-verify-backend
+    image: ${BACKEND_IMAGE}
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "false"
+      HOT_RELOAD: "false"
+      DEBUG_ENDPOINTS: "false"
+      HOST: 0.0.0.0
+      PORT: "8001"
+      WORKERS: ${BACKEND_WORKERS:-4}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DB_NAME: ${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      MONGO_URL: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongo:27017/${DB_NAME}?authSource=admin&replicaSet=rs0
+      MONGO_REQUIRE_TRANSACTIONS: "true"
+      MONGO_MAX_POOL_SIZE: ${MONGO_MAX_POOL_SIZE:-60}
+      MONGO_MIN_POOL_SIZE: ${MONGO_MIN_POOL_SIZE:-5}
+      MONGO_MAX_IDLE_TIME_MS: ${MONGO_MAX_IDLE_TIME_MS:-300000}
+      MONGO_SERVER_SELECTION_TIMEOUT_MS: ${MONGO_SERVER_SELECTION_TIMEOUT_MS:-5000}
+      MONGO_CONNECT_TIMEOUT_MS: ${MONGO_CONNECT_TIMEOUT_MS:-10000}
+      MONGO_SOCKET_TIMEOUT_MS: ${MONGO_SOCKET_TIMEOUT_MS:-30000}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      SQL_SERVER_HOST: ${SQL_SERVER_HOST:?SQL_SERVER_HOST is required}
+      SQL_SERVER_PORT: ${SQL_SERVER_PORT:-1433}
+      SQL_SERVER_DATABASE: ${SQL_SERVER_DATABASE:?SQL_SERVER_DATABASE is required}
+      SQL_SERVER_USER: ${SQL_SERVER_USER:?SQL_SERVER_USER is required}
+      SQL_SERVER_PASSWORD: ${SQL_SERVER_PASSWORD:?SQL_SERVER_PASSWORD is required}
+      FORCE_HTTPS: ${FORCE_HTTPS:-true}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS}
+      AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-}
+      AUTH_COOKIE_SAMESITE: ${AUTH_COOKIE_SAMESITE:-lax}
+      AUTO_SEED_DEFAULT_USERS: ${AUTO_SEED_DEFAULT_USERS:-false}
+      AUTO_SEED_MOCK_ERP_DATA: ${AUTO_SEED_MOCK_ERP_DATA:-false}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+      METRICS_ENABLED: ${METRICS_ENABLED:-true}
+    expose:
+      - "8001"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  nginx:
+    container_name: stock-verify-nginx
+    image: ${NGINX_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./certbot/www:/var/www/certbot
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost/healthz | grep -q ok"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  certbot:
+    container_name: stock-verify-certbot
+    image: certbot/certbot:latest
+    volumes:
+      - ./nginx/ssl:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+
+volumes:
+  mongo_data:
+    driver: local
+  redis_data:
+    driver: local

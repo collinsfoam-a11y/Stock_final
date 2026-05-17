@@ -1,0 +1,289 @@
+/**
+ * Error Recovery Service
+ * Handles error recovery, retry strategies, and error reporting
+ *
+ * NOTE: Retry logic has been consolidated to utils/retry.ts
+ * This file now re-exports the standardized retry function for backward compatibility
+ */
+
+import { Alert } from "react-native";
+import { ErrorHandler } from "./utils/errorHandler";
+import { retryWithBackoff as standardRetryWithBackoff } from "../utils/retry";
+
+export interface ErrorRecoveryOptions {
+  maxRetries?: number;
+  retryDelay?: number;
+  onRetry?: (attempt: number) => void;
+  onSuccess?: () => void;
+  onFailure?: (error: unknown) => void;
+}
+
+export interface RetryStrategy {
+  strategy: "exponential" | "linear" | "fixed";
+  initialDelay?: number;
+  maxDelay?: number;
+  multiplier?: number;
+}
+
+export const retryWithBackoff = async <T>(
+  operation: () => Promise<T>,
+  options: ErrorRecoveryOptions = {},
+): Promise<T> => {
+  const { maxRetries = 3, retryDelay = 1000, onSuccess, onFailure } = options;
+
+  try {
+    const result = await standardRetryWithBackoff(operation, {
+      retries: maxRetries,
+      backoffMs: retryDelay,
+      shouldRetry: (error: unknown) => {
+        const axiosError = error as { response?: { status?: number } };
+        if (
+          axiosError?.response &&
+          axiosError.response.status !== undefined &&
+          axiosError.response.status >= 400 &&
+          axiosError.response.status < 500
+        ) {
+          if (onFailure) {
+            onFailure(error);
+          }
+          return false;
+        }
+        return true;
+      },
+    });
+
+    if (onSuccess) {
+      onSuccess();
+    }
+
+    return result;
+  } catch (error: unknown) {
+    if (onFailure) {
+      onFailure(error);
+    }
+    throw error;
+  }
+};
+
+export const recoverFromError = async <T>(
+  primaryOperation: () => Promise<T>,
+  fallbackOperations: (() => Promise<T>)[] = [],
+  _options: ErrorRecoveryOptions = {},
+): Promise<T> => {
+  try {
+    return await primaryOperation();
+  } catch (error: unknown) {
+    __DEV__ &&
+      console.error("Primary operation failed, trying fallbacks...", error);
+
+    for (const fallbackOperation of fallbackOperations) {
+      try {
+        const result = await fallbackOperation();
+        return result;
+      } catch (fallbackError: unknown) {
+        __DEV__ && console.error("Fallback operation failed:", fallbackError);
+        continue;
+      }
+    }
+
+    throw error;
+  }
+};
+
+export const safeExecute = async <T>(
+  operation: () => Promise<T>,
+  onError?: (error: unknown) => void,
+  defaultValue?: T,
+): Promise<T | undefined> => {
+  try {
+    return await operation();
+  } catch (error: unknown) {
+    __DEV__ && console.error("Safe execute error:", error);
+
+    if (onError) {
+      onError(error);
+    }
+
+    if (defaultValue !== undefined) {
+      return defaultValue;
+    }
+
+    return undefined;
+  }
+};
+
+export interface ErrorReport {
+  error: unknown;
+  context?: string;
+  timestamp: string;
+  userInfo?: Record<string, unknown>;
+  stack?: string;
+}
+
+class ErrorReporter {
+  private errorLog: ErrorReport[] = [];
+  private maxLogSize = 100;
+
+  report(error: unknown, context?: string, userInfo?: Record<string, unknown>) {
+    const errorObj = error as {
+      message?: string;
+      code?: string;
+      response?: { status?: number; data?: unknown };
+      stack?: string;
+    };
+    const errorReport: ErrorReport = {
+      error: {
+        message: errorObj.message || String(error),
+        code: errorObj.code,
+        status: errorObj.response?.status,
+        data: errorObj.response?.data,
+      },
+      context,
+      timestamp: new Date().toISOString(),
+      userInfo,
+      stack: errorObj.stack,
+    };
+
+    this.errorLog.push(errorReport);
+
+    if (this.errorLog.length > this.maxLogSize) {
+      this.errorLog.shift();
+    }
+
+    __DEV__ && console.error(`[${context || "Error"}]:`, errorReport);
+
+    return errorReport;
+  }
+
+  getErrorLog(): ErrorReport[] {
+    return [...this.errorLog];
+  }
+
+  clearErrorLog() {
+    this.errorLog = [];
+  }
+
+  getErrorSummary() {
+    const errors = this.errorLog;
+    const byType = errors.reduce(
+      (acc, err) => {
+        const errorObj = err.error as { code?: string; status?: number } | null;
+        const type = errorObj?.code || String(errorObj?.status) || "unknown";
+        acc[type] = (acc[type] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    return {
+      total: errors.length,
+      byType,
+      recent: errors.slice(-10),
+    };
+  }
+}
+
+export const errorReporter = new ErrorReporter();
+
+export const handleErrorWithRecovery = async <T>(
+  operation: () => Promise<T>,
+  options: {
+    context?: string;
+    recovery?: ErrorRecoveryOptions;
+    fallback?: () => Promise<T>;
+    showAlert?: boolean;
+    onError?: (error: any) => void;
+  } = {},
+): Promise<T> => {
+  const {
+    context = "Operation",
+    recovery,
+    fallback,
+    showAlert = true,
+    onError,
+  } = options;
+
+  try {
+    if (recovery) {
+      return await retryWithBackoff(operation, recovery);
+    }
+    return await operation();
+  } catch (error: any) {
+    errorReporter.report(error, context);
+
+    if (fallback) {
+      try {
+        return await fallback();
+      } catch (fallbackError: any) {
+        errorReporter.report(fallbackError, `${context} (fallback)`);
+      }
+    }
+
+    if (onError) {
+      onError(error);
+    } else if (showAlert) {
+      const apiError = ErrorHandler.handleApiError(error, context);
+      ErrorHandler.showError(apiError, context);
+    }
+
+    throw error;
+  }
+};
+
+export const handleNetworkError = async <T>(
+  operation: () => Promise<T>,
+  options: {
+    maxRetries?: number;
+    showAlert?: boolean;
+  } = {},
+): Promise<T> => {
+  const { maxRetries = 3, showAlert = true } = options;
+
+  return await handleErrorWithRecovery(operation, {
+    context: "Network Operation",
+    recovery: {
+      maxRetries,
+      retryDelay: 1000,
+      onRetry: () => {},
+    },
+    showAlert,
+    onError: (_error: any) => {
+      if (showAlert) {
+        Alert.alert(
+          "Network Error",
+          "Unable to connect to server. Please check your internet connection and try again.",
+          [{ text: "OK" }],
+        );
+      }
+    },
+  });
+};
+
+export const handleDatabaseError = async <T>(
+  operation: () => Promise<T>,
+  options: {
+    fallback?: () => Promise<T>;
+    showAlert?: boolean;
+  } = {},
+): Promise<T> => {
+  const { fallback, showAlert = true } = options;
+
+  return await handleErrorWithRecovery(operation, {
+    context: "Database Operation",
+    recovery: {
+      maxRetries: 2,
+      retryDelay: 500,
+    },
+    fallback,
+    showAlert,
+    onError: (_error: any) => {
+      if (showAlert) {
+        Alert.alert(
+          "Database Error",
+          "Unable to save data. Your changes have been queued and will be synced when connection is restored.",
+          [{ text: "OK" }],
+        );
+      }
+    },
+  });
+};

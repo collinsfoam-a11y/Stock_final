@@ -1,0 +1,100 @@
+
+/Users/noufi1/stk_final/Stock_final/frontend/__tests__/home.test.tsx
+    5:18  warning  'fireEvent' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+    5:29  warning  'waitFor' is defined but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+  106:37  warning  A `require()` style import is forbidden                                      @typescript-eslint/no-require-imports
+  127:37  warning  A `require()` style import is forbidden                                      @typescript-eslint/no-require-imports
+  137:37  warning  A `require()` style import is forbidden                                      @typescript-eslint/no-require-imports
+  152:37  warning  A `require()` style import is forbidden                                      @typescript-eslint/no-require-imports
+  162:37  warning  A `require()` style import is forbidden                                      @typescript-eslint/no-require-imports
+  173:7   warning  A `require()` style import is forbidden                                      @typescript-eslint/no-require-imports
+  174:7   warning  A `require()` style import is forbidden                                      @typescript-eslint/no-require-imports
+
+/Users/noufi1/stk_final/Stock_final/frontend/__tests__/login.test.tsx
+    5:10  warning  'render' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+    5:18  warning  'fireEvent' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+    5:29  warning  'waitFor' is defined but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+   83:30  warning  A `require()` style import is forbidden                                      @typescript-eslint/no-require-imports
+  163:7   warning  A `require()` style import is forbidden                                      @typescript-eslint/no-require-imports
+
+/Users/noufi1/stk_final/Stock_final/frontend/__tests__/login_accessibility.test.tsx
+  2:18  warning  'fireEvent' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/noufi1/stk_final/Stock_final/frontend/__tests__/staff/home.test.tsx
+   2:18  warning  'fireEvent' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  12:17  warning  A `require()` style import is forbidden                                      @typescript-eslint/no-require-imports
+  13:20  warning  A `require()` style import is forbidden                                      @typescript-eslint/no-require-imports
+  14:10  warning  Component definition is missing display name                                 react/display-name
+
+/Users/noufi1/stk_final/Stock_final/frontend/e2e/admin-dashboard.spec.ts
+  24:14  warning  'e' is defined but never used. Allowed unused caught errors must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/noufi1/stk_final/Stock_final/frontend/jest.polyfills.js
+  10:10  warning  'e' is defined but never used. Allowed unused caught errors must match /^_/u  @typescript-eslint/no-unused-vars
+  10:10  warning  'e' is defined but never used. Allowed unused args must match /^_/u           no-unused-vars
+
+/Users/noufi1/stk_final/Stock_final/frontend/jest.setup.js
+   19:1   error  'jest' is not defined       no-undef
+   20:21  error  'jest' is not defined       no-undef
+   21:20  error  'jest' is not defined       no-undef
+   22:22  error  'jest' is not defined       no-undef
+   27:1   error  'jest' is not defined       no-undef
+   33:1   error  'jest' is not defined       no-undef
+   34:16  error  'jest' is not defined       no-undef
+   40:1   error  'jest' is not defined       no-undef
+   45:1   error  'jest' is not defined       no-undef
+   47:18  error  'jest' is not defined       no-undef
+   53:20  error  'jest' is not defined       no-undef
+   54:23  error  'jest' is not defined       no-undef
+   55:19  error  'jest' is not defined       no-undef
+   59:18  error  'jest' is not defined       no-undef
+   65:20  error  'jest' is not defined       no-undef
+   66:23  error  'jest' is not defined       no-undef
+   67:19  error  'jest' is not defined       no-undef
+   73:1   error  'jest' is not defined       no-undef
+   90:1   error  'jest' is not defined       no-undef
+   91:15  error  'jest' is not defined       no-undef
+   92:10  error  'jest' is not defined       no-undef
+   93:10  error  'jest' is not defined       no-undef
+   94:13  error  'jest' is not defined       no-undef
+   95:12  error  'jest' is not defined       no-undef
+   96:17  error  'jest' is not defined       no-undef
+   97:15  error  'jest' is not defined       no-undef
+  102:1   error  'jest' is not defined       no-undef
+  103:17  error  'jest' is not defined       no-undef
+  104:17  error  'jest' is not defined       no-undef
+  105:20  error  'jest' is not defined       no-undef
+  109:1   error  'jest' is not defined       no-undef
+  110:14  error  'jest' is not defined       no-undef
+  111:11  error  'jest' is not defined       no-undef
+  112:14  error  'jest' is not defined       no-undef
+  113:11  error  'jest' is not defined       no-undef
+  114:16  error  'jest' is not defined       no-undef
+  116:25  error  'jest' is not defined       no-undef
+  118:13  error  'jest' is not defined       no-undef
+  120:9   error  'jest' is not defined       no-undef
+  124:1   error  'jest' is not defined       no-undef
+  129:1   error  'jest' is not defined       no-undef
+  134:1   error  'jest' is not defined       no-undef
+  135:16  error  'jest' is not defined       no-undef
+  136:22  error  'jest' is not defined       no-undef
+  137:19  error  'jest' is not defined       no-undef
+  141:1   error  'jest' is not defined       no-undef
+  148:1   error  'jest' is not defined       no-undef
+  155:1   error  'jest' is not defined       no-undef
+  174:1   error  'beforeAll' is not defined  no-undef
+  175:3   error  'jest' is not defined       no-undef
+  187:1   error  'jest' is not defined       no-undef
+
+/Users/noufi1/stk_final/Stock_final/frontend/scripts/update-ip.js
+   71:30  error    '__dirname' is not defined                                                    no-undef
+   81:40  error    '__dirname' is not defined                                                    no-undef
+  109:10  warning  'e' is defined but never used. Allowed unused caught errors must match /^_/u  @typescript-eslint/no-unused-vars
+  109:10  warning  'e' is defined but never used. Allowed unused args must match /^_/u           no-unused-vars
+
+/Users/noufi1/stk_final/Stock_final/frontend/typescript-plugin-filter-text-errors.js
+  7:9  warning  'ts' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  7:9  warning  'ts' is assigned a value but never used                                        no-unused-vars
+
+✖ 79 problems (53 errors, 26 warnings)
+

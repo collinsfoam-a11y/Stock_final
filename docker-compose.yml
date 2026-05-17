@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8001:8001"
+    env_file:
+      - backend/.env.example
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      DB_NAME: stock_verification
+    depends_on:
+      - mongo
+    volumes:
+      - ./backend:/app/backend
+    command: uvicorn backend.server:app --host 0.0.0.0 --port 8001 --reload
+
+  mongo:
+    image: mongo:6.0
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

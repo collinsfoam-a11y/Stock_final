@@ -1,0 +1,160 @@
+# Quick Security & Quality Checks
+# Runs on all PRs for fast feedback
+
+name: PR Checks
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches: [main, develop, my-fix-branch]
+
+jobs:
+  quick-checks:
+    name: Quick Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies for route guard
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.production.txt
+          pip install pytest pytest-asyncio httpx
+
+      - name: Repository hygiene gate
+        run: |
+          bash scripts/check_repo_hygiene.sh
+
+      - name: Duplicate route registration guard
+        run: |
+          python scripts/check_duplicate_routes.py
+
+      - name: Governance contract tests
+        run: |
+          cd backend
+          python -m pytest tests/governance -q
+
+      - name: Check for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified
+
+      - name: Lint Python
+        run: |
+          pip install ruff
+          ruff check backend/ --output-format=github
+        continue-on-error: true
+
+      - name: Check commit messages
+        run: |
+          echo "Checking commit message format..."
+          # Add conventional commit check if desired
+
+  frontend-health:
+    name: Frontend Health
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20.19.4"
+          cache: "pnpm"
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Expo doctor
+        working-directory: frontend
+        run: pnpm run doctor:expo
+
+      - name: Typecheck frontend
+        working-directory: frontend
+        run: pnpm run typecheck
+
+      - name: UI governance scanner tests
+        working-directory: frontend
+        run: npm run governance:ui:test
+
+      - name: Runtime convergence scanner tests
+        working-directory: frontend
+        run: npm run governance:runtime:test
+
+      - name: UI governance changed-file guard
+        working-directory: frontend
+        run: npm run governance:ui:changed:strict
+
+      - name: Runtime convergence health guard
+        working-directory: frontend
+        run: npm run governance:runtime:health:strict-advisory
+
+      - name: Dependency regression guard
+        working-directory: frontend
+        run: npm run deps:guard
+
+      - name: Build web
+        working-directory: frontend
+        run: npm run build:web
+        env:
+          EXPO_PUBLIC_BACKEND_URL: https://api.example.com
+
+      - name: Bundle regression guard
+        working-directory: frontend
+        run: npm run bundle:web:guard
+
+      - name: Bundle chunk report
+        working-directory: frontend
+        run: npm run bundle:web:report:json
+
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Settings and notifications layout smoke
+        working-directory: frontend
+        run: npm run e2e:settings-notifications-smoke
+
+  pr-size-check:
+    name: PR Size Check
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Check PR size
+        uses: codelytv/pr-size-labeler@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          xs_label: "size/xs"
+          xs_max_size: 10
+          s_label: "size/s"
+          s_max_size: 100
+          m_label: "size/m"
+          m_max_size: 500
+          l_label: "size/l"
+          l_max_size: 1000
+          xl_label: "size/xl"
+          fail_if_xl: false

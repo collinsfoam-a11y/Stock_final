@@ -1,0 +1,10 @@
+lines: 56563
+tokens: 430593
+sources: 237
+clones: 6
+duplicatedLines: 190
+duplicatedTokens: 1436
+percentage: 0.34
+percentageTokens: 0.33
+newDuplicatedLines: 0
+newClones: 0
