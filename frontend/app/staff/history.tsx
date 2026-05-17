@@ -15,10 +15,12 @@ import { SkeletonList } from "../../src/components/LoadingSkeleton";
 import { SwipeableRow } from "../../src/components/SwipeableRow";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ModernCard } from "../../src/components/ui/ModernCard";
-import { theme } from "../../src/styles/modernDesignSystem";
-import { colors as unifiedColors } from "@/theme/legacyCompat";
+import { modernBorderRadius as radius, modernSpacing as spacing, theme } from "../../src/styles/modernDesignSystem";
+import { hitSlop, touchTargets } from "@/theme/unified/spacing";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { operationalMotion } from "@/utils/motion";
 import { ScreenContainer } from "../../src/components/ui";
 
 const getHistoryFailureReason = (error: unknown): string => {
@@ -44,6 +46,7 @@ export default function HistoryScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const uiTokens = useUiTokens();
+  const prefersReducedMotion = useReducedMotion();
 
   interface CountLine {
     id: string;
@@ -186,7 +189,7 @@ export default function HistoryScreen() {
           ? uiTokens.colors.error
           : uiTokens.colors.warning;
     const statusTextColor =
-      normalizedStatus === "pending" ? uiTokens.colors.textPrimary : unifiedColors.white;
+      normalizedStatus === "pending" ? uiTokens.colors.textPrimary : theme.colors.text.inverse;
 
     const CardContent = (
       <ModernCard
@@ -295,11 +298,9 @@ export default function HistoryScreen() {
       </ModernCard>
     );
 
-    const AnimatedCard = flags.enableAnimations ? (
+    const AnimatedCard = flags.enableAnimations && !prefersReducedMotion ? (
       <Animated.View
-        entering={FadeInUp.delay(index * 50)
-          .springify()
-          .damping(12)}
+        entering={FadeInUp.delay(index * operationalMotion.fast).springify().damping(12)}
       >
         {CardContent}
       </Animated.View>
@@ -344,7 +345,7 @@ export default function HistoryScreen() {
       statusBarStyle="dark"
     >
       {loading && !refreshing ? (
-        <View style={{ padding: 16 }}>
+        <View style={styles.skeletonContainer}>
           <SkeletonList itemHeight={120} count={6} />
         </View>
       ) : (
@@ -371,10 +372,12 @@ export default function HistoryScreen() {
                     {loadWarning}
                   </Text>
                   <TouchableOpacity
-                    style={styles.warningRetry}
-                    onPress={onRefresh}
                     accessibilityRole="button"
                     accessibilityLabel="Retry live history refresh"
+                    accessibilityHint="Attempts to refresh count history from the server"
+                    hitSlop={hitSlop.small}
+                    style={styles.warningRetry}
+                    onPress={onRefresh}
                   >
                     <Ionicons name="refresh" size={18} color={uiTokens.colors.warning} />
                   </TouchableOpacity>
@@ -402,6 +405,10 @@ export default function HistoryScreen() {
                     refresh or retry now.
                   </Text>
                   <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Retry loading count history"
+                    accessibilityHint="Attempts to load this session's count lines again"
+                    hitSlop={hitSlop.small}
                     style={[
                       styles.retryButton,
                       {
@@ -410,8 +417,6 @@ export default function HistoryScreen() {
                       },
                     ]}
                     onPress={onRefresh}
-                    accessibilityRole="button"
-                    accessibilityLabel="Retry loading count history"
                   >
                     <Ionicons name="refresh" size={18} color={uiTokens.colors.error} />
                     <Text style={[styles.retryButtonText, { color: uiTokens.colors.error }]}>
@@ -439,6 +444,11 @@ export default function HistoryScreen() {
       <BottomSheet visible={filtersOpen} onClose={() => setFiltersOpen(false)} height={260}>
         <Text style={[styles.filterTitle, { color: uiTokens.colors.textPrimary }]}>Filters</Text>
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Approved only filter"
+          accessibilityHint="Shows only approved count lines in this history view"
+          accessibilityState={{ checked: showApprovedOnly }}
+          hitSlop={hitSlop.small}
           style={[
             styles.filterChip,
             {
@@ -463,13 +473,13 @@ export default function HistoryScreen() {
           <Ionicons
             name="checkmark-done-outline"
             size={18}
-            color={showApprovedOnly ? unifiedColors.white : uiTokens.colors.textMuted}
+            color={showApprovedOnly ? theme.colors.text.inverse : uiTokens.colors.textMuted}
           />
           <Text
             style={[
               styles.filterChipText,
               {
-                color: showApprovedOnly ? unifiedColors.white : uiTokens.colors.textSecondary,
+                color: showApprovedOnly ? theme.colors.text.inverse : uiTokens.colors.textSecondary,
               },
             ]}
           >
@@ -501,20 +511,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.xl,
     paddingTop: Platform.OS === "ios" ? 60 : 40,
-    paddingBottom: 16,
+    paddingBottom: spacing.lg,
     backgroundColor: "transparent",
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderRadius: radius.md,
+    backgroundColor: colorWithAlpha(theme.colors.text.inverse, 0.05),
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderColor: colorWithAlpha(theme.colors.text.inverse, 0.08),
   },
   headerTitle: {
     fontSize: 20,
@@ -523,31 +533,31 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   list: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
   },
   filterTitle: {
     color: theme.colors.text.primary,
     fontWeight: "700",
     fontSize: 16,
-    marginBottom: 14,
+    marginBottom: spacing.lg,
     letterSpacing: -0.2,
   },
   filterChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    borderColor: colorWithAlpha(theme.colors.text.inverse, 0.08),
+    backgroundColor: colorWithAlpha(theme.colors.text.inverse, 0.05),
     alignSelf: "flex-start",
   },
   filterChipActive: {
-    backgroundColor: unifiedColors.success[500],
-    borderColor: unifiedColors.success[500],
+    backgroundColor: theme.colors.success[500],
+    borderColor: theme.colors.success[500],
   },
   filterChipText: {
     color: theme.colors.text.secondary,
@@ -555,19 +565,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   filterChipTextActive: {
-    color: unifiedColors.white,
+    color: theme.colors.text.inverse,
   },
   countCard: {
-    marginBottom: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 14,
+    marginBottom: spacing.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: spacing.md,
   },
   itemName: {
     fontSize: 15,
@@ -577,12 +587,12 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.sm,
   },
   statusText: {
-    color: unifiedColors.white,
+    color: theme.colors.text.inverse,
     fontSize: 10,
     fontWeight: "700",
     textTransform: "uppercase",
@@ -596,41 +606,41 @@ const styles = StyleSheet.create({
   codeRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 14,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
   },
   batchBadge: {
-    backgroundColor: "rgba(14, 165, 233, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    backgroundColor: colorWithAlpha(theme.colors.info.main, 0.1),
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: "rgba(14, 165, 233, 0.2)",
+    borderColor: colorWithAlpha(theme.colors.info.main, 0.2),
   },
   batchBadgeText: {
     fontSize: 10,
     fontWeight: "700",
-    color: unifiedColors.primary[400],
+    color: theme.colors.primary[400],
     textTransform: "uppercase",
     letterSpacing: 0.3,
   },
   qtyRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 14,
-    gap: 10,
+    marginBottom: spacing.lg,
+    gap: spacing.md,
   },
   qtyItem: {
     flex: 1,
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
-    paddingVertical: 10,
-    borderRadius: 10,
+    backgroundColor: colorWithAlpha(theme.colors.text.inverse, 0.03),
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
   },
   qtyLabel: {
     fontSize: 11,
     color: theme.colors.text.tertiary,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -642,18 +652,18 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   reasonBox: {
-    backgroundColor: "rgba(245, 158, 11, 0.08)",
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 10,
+    backgroundColor: colorWithAlpha(theme.colors.warning.main, 0.08),
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: "rgba(245, 158, 11, 0.2)",
+    borderColor: colorWithAlpha(theme.colors.warning.main, 0.2),
   },
   reasonLabel: {
     fontSize: 11,
     color: theme.colors.text.secondary,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -667,7 +677,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: theme.colors.text.secondary,
     fontStyle: "italic",
-    marginBottom: 8,
+    marginBottom: spacing.sm,
     lineHeight: 18,
   },
   timestamp: {
@@ -684,40 +694,40 @@ const styles = StyleSheet.create({
   emptyText: {
     color: theme.colors.text.secondary,
     fontSize: 15,
-    marginTop: 16,
+    marginTop: spacing.lg,
     fontWeight: "500",
   },
   errorContainer: {
     alignItems: "center",
     justifyContent: "center",
     marginTop: 48,
-    marginHorizontal: 16,
-    padding: 20,
-    borderRadius: 12,
+    marginHorizontal: spacing.lg,
+    padding: spacing.xl,
+    borderRadius: radius.md,
     borderWidth: 1,
   },
   errorTitle: {
-    marginTop: 12,
+    marginTop: spacing.md,
     fontSize: 16,
     fontWeight: "700",
     textAlign: "center",
   },
   errorBody: {
-    marginTop: 8,
+    marginTop: spacing.sm,
     fontSize: 13,
     lineHeight: 20,
     textAlign: "center",
   },
   retryButton: {
-    minHeight: 44,
-    marginTop: 16,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    minHeight: touchTargets.minimum,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: spacing.sm,
   },
   retryButtonText: {
     fontSize: 14,
@@ -726,10 +736,10 @@ const styles = StyleSheet.create({
   warningContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 12,
+    gap: spacing.md,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
     borderWidth: 1,
   },
   warningText: {
@@ -741,7 +751,10 @@ const styles = StyleSheet.create({
   warningRetry: {
     alignItems: "center",
     justifyContent: "center",
-    minWidth: 44,
-    minHeight: 44,
+    minWidth: touchTargets.minimum,
+    minHeight: touchTargets.minimum,
+  },
+  skeletonContainer: {
+    padding: spacing.lg,
   },
 });
