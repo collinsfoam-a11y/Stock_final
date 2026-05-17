@@ -15,12 +15,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
-import { colors, spacing, radius, gradients } from "@/theme/legacyCompat";
+import { colors, spacing, radius, gradients, semanticColors } from "@/theme/legacyCompat";
 import { useAuthStore } from "@/store/authStore";
 import { getRouteForRole, type UserRole } from "@/utils/roleNavigation";
 import { BrandLogo } from "@/components/branding/BrandLogo";
 
-import { semanticColors } from "@/theme/legacyCompat";
 import { getFlag } from "@/constants/flags";
 const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
   if (Platform.OS === "web") {

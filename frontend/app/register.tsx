@@ -20,6 +20,7 @@ import ModernCard from "@/components/ui/ModernCard";
 import ModernHeader from "@/components/ui/ModernHeader";
 import ModernInput from "@/components/ui/ModernInput";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { hitSlop, spacing } from "@/theme/legacyCompat";
 import { getRouteForRole, type UserRole } from "@/utils/roleNavigation";
 import { safeBackNavigation } from "@/utils/navigation";
 import { getFlag } from "@/constants/flags";
@@ -305,7 +306,13 @@ export default function Register() {
               <Text style={[styles.loginLinkText, { color: uiTokens.colors.textSecondary }]}>
                 Already have an account?
               </Text>
-              <TouchableOpacity onPress={handleBackToLogin}>
+              <TouchableOpacity
+                onPress={handleBackToLogin}
+                hitSlop={hitSlop.small}
+                accessibilityRole="button"
+                accessibilityLabel="Sign in"
+                accessibilityHint="Returns to the login screen"
+              >
                 <Text style={[styles.loginLinkButton, { color: uiTokens.colors.accent }]}>
                   Sign in
                 </Text>
@@ -328,14 +335,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 24,
+    paddingHorizontal: spacing["2xl"],
+    paddingVertical: spacing["2xl"],
   },
   restrictedContent: {
     flex: 1,
     justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 24,
+    paddingHorizontal: spacing["2xl"],
+    paddingVertical: spacing["2xl"],
   },
   formCard: {
     width: "100%",
@@ -347,23 +354,23 @@ const styles = StyleSheet.create({
     lineHeight: 30,
     fontWeight: "700",
     textAlign: "center",
-    marginBottom: 6,
+    marginBottom: spacing.xs,
   },
   subtitle: {
     fontSize: 14,
     lineHeight: 20,
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: spacing["2xl"],
   },
   registerButton: {
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
   loginLink: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    gap: 6,
-    marginTop: 24,
+    gap: spacing.xs,
+    marginTop: spacing["2xl"],
     flexWrap: "wrap",
   },
   loginLinkText: {

@@ -62,7 +62,7 @@ jest.mock("../../../src/store/settingsStore", () => ({
 }));
 
 jest.mock("../../../src/components/ui/AppearanceSettings", () => ({
-  AppearanceSettings: () => {
+  AppearanceSettings: function MockAppearanceSettings() {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { Text } = require("react-native");
     return <Text>Appearance settings</Text>;
@@ -74,7 +74,9 @@ jest.mock("../../../src/components/ui/ModernCard", () => {
   const React = require("react");
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require("react-native");
-  return ({ children }: { children: React.ReactNode }) => <View>{children}</View>;
+  const MockModernCard = ({ children }: { children: React.ReactNode }) => <View>{children}</View>;
+  MockModernCard.displayName = "MockModernCard";
+  return MockModernCard;
 });
 
 jest.mock("../../../src/components/settings", () => {
@@ -83,12 +85,17 @@ jest.mock("../../../src/components/settings", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Text, TextInput, View } = require("react-native");
 
-  return {
-    SettingsActionSection: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
-    SettingsActionRow: ({ label }: { label: string }) => <Text>{label}</Text>,
-    SettingsSectionDivider: () => <View />,
-    SettingsSectionHeading: ({ title }: { title: string }) => <Text>{title}</Text>,
-    SettingsTextInputRow: ({
+  const SettingsActionSection = ({ children }: { children: React.ReactNode }) => (
+    <View>{children}</View>
+  );
+  SettingsActionSection.displayName = "SettingsActionSection";
+  const SettingsActionRow = ({ label }: { label: string }) => <Text>{label}</Text>;
+  SettingsActionRow.displayName = "SettingsActionRow";
+  const SettingsSectionDivider = () => <View />;
+  SettingsSectionDivider.displayName = "SettingsSectionDivider";
+  const SettingsSectionHeading = ({ title }: { title: string }) => <Text>{title}</Text>;
+  SettingsSectionHeading.displayName = "SettingsSectionHeading";
+  const SettingsTextInputRow = ({
       value,
       onChangeText,
       testID,
@@ -96,9 +103,21 @@ jest.mock("../../../src/components/settings", () => {
       value: string;
       onChangeText: (text: string) => void;
       testID?: string;
-    }) => <TextInput value={value} onChangeText={onChangeText} testID={testID} />,
-    SettingsSyncStatus: () => <Text>Settings sync status</Text>,
-    UserSettingsSections: () => <Text>User settings sections</Text>,
+    }) => <TextInput value={value} onChangeText={onChangeText} testID={testID} />;
+  SettingsTextInputRow.displayName = "SettingsTextInputRow";
+  const SettingsSyncStatus = () => <Text>Settings sync status</Text>;
+  SettingsSyncStatus.displayName = "SettingsSyncStatus";
+  const UserSettingsSections = () => <Text>User settings sections</Text>;
+  UserSettingsSections.displayName = "UserSettingsSections";
+
+  return {
+    SettingsActionSection,
+    SettingsActionRow,
+    SettingsSectionDivider,
+    SettingsSectionHeading,
+    SettingsTextInputRow,
+    SettingsSyncStatus,
+    UserSettingsSections,
   };
 });
 
@@ -109,7 +128,7 @@ jest.mock("../../../src/components/ui", () => {
   const { ScrollView, Text, View } = require("react-native");
 
   return {
-    ScreenContainer: ({
+    ScreenContainer: function MockScreenContainer({
       children,
       header,
       scrollable,
@@ -121,7 +140,7 @@ jest.mock("../../../src/components/ui", () => {
         customRightContent?: React.ReactNode;
       };
       scrollable?: boolean;
-    }) => {
+    }) {
       const Container = scrollable ? ScrollView : View;
       return (
         <Container>

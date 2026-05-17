@@ -19,7 +19,9 @@ import apiClient from "../src/services/httpClient";
 import { toastService } from "../src/services/toastService";
 import { useAuthStore } from "../src/store/authStore";
 import { useUiTokens } from "../src/hooks/useUiTokens";
+import { useReducedMotion } from "../src/hooks/useReducedMotion";
 import { colorWithAlpha } from "../src/theme/themeTokens";
+import { operationalMotion } from "@/utils/motion";
 
 const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
   if (Platform.OS === "web") {
@@ -42,6 +44,7 @@ export default function ResetPasswordScreen() {
   const { reset_token } = useLocalSearchParams<{ reset_token: string }>();
   const clearPendingRedirect = useAuthStore((state) => state.clearPendingRedirect);
   const uiTokens = useUiTokens();
+  const prefersReducedMotion = useReducedMotion();
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -73,7 +76,7 @@ export default function ResetPasswordScreen() {
         iconContainer: {
           width: 80,
           height: 80,
-          borderRadius: 40,
+          borderRadius: uiTokens.radius.full,
           backgroundColor: colorWithAlpha(
             uiTokens.colors.accent,
             uiTokens.mode === "dark" ? 0.25 : 0.12
@@ -172,7 +175,11 @@ export default function ResetPasswordScreen() {
           showsVerticalScrollIndicator={false}
         >
           <SafeAnimatedView
-            entering={FadeInDown.duration(600).springify()}
+            entering={
+              prefersReducedMotion
+                ? undefined
+                : FadeInDown.duration(operationalMotion.slow).springify()
+            }
             style={styles.contentContainer}
           >
             <View style={styles.iconContainer}>

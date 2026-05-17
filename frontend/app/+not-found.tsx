@@ -1,7 +1,7 @@
 import { Link, Stack } from "expo-router";
 import { StyleSheet, View, Text } from "react-native";
 
-import { semanticColors, colors } from "@/theme/legacyCompat";
+import { semanticColors, colors, spacing } from "@/theme/legacyCompat";
 export default function NotFoundScreen() {
   return (
     <>
@@ -21,7 +21,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 20,
+    padding: spacing.xl,
     backgroundColor: colors.neutral[950],
   },
   title: {
@@ -30,8 +30,8 @@ const styles = StyleSheet.create({
     color: semanticColors.text.inverse,
   },
   link: {
-    marginTop: 15,
-    paddingVertical: 15,
+    marginTop: spacing.lg,
+    paddingVertical: spacing.lg,
   },
   linkText: {
     fontSize: 14,

@@ -10,6 +10,7 @@ import { StatusBar } from "expo-status-bar";
 import ModernCard from "@/components/ui/ModernCard";
 import ModernHeader from "@/components/ui/ModernHeader";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { hitSlop, radius, spacing } from "@/theme/legacyCompat";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { safeBackNavigation } from "@/utils/navigation";
 
@@ -201,6 +202,11 @@ export default function HelpScreen() {
               return (
                 <View key={itemIndex} style={styles.itemContainer}>
                   <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`${isExpanded ? "Collapse" : "Expand"} ${item.question}`}
+                    accessibilityHint="Shows or hides this help answer"
+                    accessibilityState={{ expanded: isExpanded }}
+                    hitSlop={hitSlop.small}
                     style={[
                       styles.questionContainer,
                       isExpanded && {
@@ -212,8 +218,6 @@ export default function HelpScreen() {
                     ]}
                     onPress={() => toggleItem(sectionIndex, itemIndex)}
                     activeOpacity={0.7}
-                    accessibilityRole="button"
-                    accessibilityState={{ expanded: isExpanded }}
                   >
                     <View style={styles.questionContent}>
                       {item.icon && (
@@ -260,7 +264,7 @@ export default function HelpScreen() {
 
         {/* Contact Support */}
         <ModernCard
-          padding={24}
+          padding={uiTokens.spacing.xxl}
           style={[styles.contactSection, { backgroundColor: uiTokens.colors.surfaceElevated }]}
         >
           <View
@@ -296,26 +300,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32,
-    gap: 16,
+    padding: spacing.lg,
+    paddingBottom: spacing["3xl"],
+    gap: spacing.lg,
   },
   section: {
-    borderRadius: 12,
+    borderRadius: radius.md,
     overflow: "hidden",
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 10,
-    gap: 12,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
+    gap: spacing.md,
   },
   sectionIcon: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -326,26 +330,26 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   itemContainer: {
-    paddingHorizontal: 10,
-    paddingBottom: 8,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
   },
   questionContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     minHeight: 48,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
   },
   questionContent: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: spacing.sm,
   },
   itemIcon: {
-    marginRight: 4,
+    marginRight: spacing.xs,
   },
   question: {
     flex: 1,
@@ -354,9 +358,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   answerContainer: {
-    padding: 14,
-    borderRadius: 8,
-    marginTop: 6,
+    padding: spacing.lg,
+    borderRadius: radius.sm,
+    marginTop: spacing.xs,
   },
   answer: {
     fontSize: 14,
@@ -368,7 +372,7 @@ const styles = StyleSheet.create({
   contactIcon: {
     width: 48,
     height: 48,
-    borderRadius: 12,
+    borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -376,8 +380,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 24,
     fontWeight: "700",
-    marginTop: 12,
-    marginBottom: 8,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
   },
   contactText: {
     fontSize: 15,

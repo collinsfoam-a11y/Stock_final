@@ -30,6 +30,7 @@ import ModernCard from "../src/components/ui/ModernCard";
 import ModernInput from "../src/components/ui/ModernInput";
 import ModernHeader from "../src/components/ui/ModernHeader";
 import { BrandLogo } from "../src/components/branding/BrandLogo";
+import { useReducedMotion } from "../src/hooks/useReducedMotion";
 import {
   colors as unifiedColors,
   semanticColors,
@@ -37,7 +38,9 @@ import {
   radius as unifiedRadius,
   textStyles,
   shadows,
+  hitSlop,
 } from "@/theme/legacyCompat";
+import { operationalMotion } from "@/utils/motion";
 
 // Safe Animated View for Web
 const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
@@ -132,6 +135,7 @@ export default function LoginScreen() {
     username?: string;
     password?: string;
   }>({});
+  const prefersReducedMotion = useReducedMotion();
   const logoMaxWidth = Math.min(width - unifiedSpacing.xl * 2, 280);
 
   const pinInputRef = React.useRef<TextInput>(null);
@@ -279,6 +283,10 @@ export default function LoginScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [loginMode, lastLoggedUser]);
 
+  const switchToCredentialsLogin = useCallback(() => {
+    setLoginMode("credentials");
+  }, []);
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <StatusBar style="dark" backgroundColor={unifiedColors.white} />
@@ -298,7 +306,11 @@ export default function LoginScreen() {
           <View style={styles.contentContainer}>
             {/* Welcome Section */}
             <SafeAnimatedView
-              entering={FadeInDown.duration(800).springify()}
+              entering={
+                prefersReducedMotion
+                  ? undefined
+                  : FadeInDown.duration(operationalMotion.slow).springify()
+              }
               style={styles.welcomeSection}
             >
               {lastLoggedUser && loginMode === "pin" ? (
@@ -327,7 +339,11 @@ export default function LoginScreen() {
 
             {/* Login Form Card */}
             <SafeAnimatedView
-              entering={FadeInDown.duration(800).springify()}
+              entering={
+                prefersReducedMotion
+                  ? undefined
+                  : FadeInDown.duration(operationalMotion.slow).springify()
+              }
               style={styles.formContainer}
             >
               <ModernCard style={styles.loginCard} padding={unifiedSpacing.lg}>
@@ -335,6 +351,11 @@ export default function LoginScreen() {
                 <View style={styles.modeToggle}>
                   <TouchableOpacity
                     onPress={toggleLoginMode}
+                    hitSlop={hitSlop.small}
+                    accessibilityRole="button"
+                    accessibilityLabel="Use PIN login"
+                    accessibilityHint="Switches the sign in form to PIN entry when a PIN is available"
+                    accessibilityState={{ selected: loginMode === "pin" }}
                     style={[
                       styles.modeButton,
                       loginMode === "pin" ? styles.modeButtonActive : styles.modeButtonInactive,
@@ -359,6 +380,11 @@ export default function LoginScreen() {
 
                   <TouchableOpacity
                     onPress={toggleLoginMode}
+                    hitSlop={hitSlop.small}
+                    accessibilityRole="button"
+                    accessibilityLabel="Use username and password login"
+                    accessibilityHint="Switches the sign in form to username and password"
+                    accessibilityState={{ selected: loginMode === "credentials" }}
                     style={[
                       styles.modeButton,
                       loginMode === "credentials"
@@ -409,13 +435,23 @@ export default function LoginScreen() {
                     {/* PIN Display - Clickable to focus */}
                     <TouchableOpacity
                       activeOpacity={1}
+                      hitSlop={hitSlop.small}
+                      accessibilityRole="button"
+                      accessibilityLabel={`PIN entry, ${pin.length} of 4 digits entered`}
+                      accessibilityHint="Focuses the hidden PIN input"
                       onPress={() => pinInputRef.current?.focus()}
                       style={styles.pinDisplay}
                     >
                       {[0, 1, 2, 3].map((index) => (
                         <SafeAnimatedView
                           key={index}
-                          entering={FadeInDown.delay(index * 50).duration(300)}
+                          entering={
+                            prefersReducedMotion
+                              ? undefined
+                              : FadeInDown.delay(index * operationalMotion.instant).duration(
+                                  operationalMotion.slow
+                                )
+                          }
                           style={[
                             styles.pinDot,
                             pin.length > index ? styles.pinDotFilled : styles.pinDotEmpty,
@@ -434,6 +470,10 @@ export default function LoginScreen() {
                       {biometricAuthEnabled && lastLoggedUser?.has_pin ? (
                         <TouchableOpacity
                           onPress={handleBiometricAuth}
+                          hitSlop={hitSlop.small}
+                          accessibilityRole="button"
+                          accessibilityLabel="Unlock with biometrics"
+                          accessibilityHint="Attempts to sign in with device biometrics"
                           style={styles.biometricButton}
                         >
                           <Ionicons
@@ -446,13 +486,29 @@ export default function LoginScreen() {
                       ) : null}
 
                       <View style={styles.pinBottomActions}>
-                        <TouchableOpacity onPress={handleForgotPin}>
+                        <TouchableOpacity
+                          onPress={handleForgotPin}
+                          hitSlop={hitSlop.small}
+                          style={styles.pinTextAction}
+                          accessibilityState={{ disabled: isLoading }}
+                          accessibilityRole="button"
+                          accessibilityLabel="Forgot PIN"
+                          accessibilityHint="Shows PIN reset instructions"
+                        >
                           <Text style={styles.forgotLink}>Forgot PIN?</Text>
                         </TouchableOpacity>
 
                         <View style={styles.actionDivider} />
 
-                        <TouchableOpacity onPress={() => setLoginMode("credentials")}>
+                        <TouchableOpacity
+                          onPress={switchToCredentialsLogin}
+                          hitSlop={hitSlop.small}
+                          style={styles.pinTextAction}
+                          accessibilityState={{ disabled: isLoading }}
+                          accessibilityRole="button"
+                          accessibilityLabel="Switch account"
+                          accessibilityHint="Switches to username and password sign in"
+                        >
                           <Text style={styles.switchAccountLink}>Switch Account</Text>
                         </TouchableOpacity>
                       </View>
@@ -489,6 +545,10 @@ export default function LoginScreen() {
 
                     <TouchableOpacity
                       onPress={handleForgotPassword}
+                      hitSlop={hitSlop.small}
+                      accessibilityRole="button"
+                      accessibilityLabel="Forgot password"
+                      accessibilityHint="Starts password reset verification"
                       style={styles.forgotPasswordContainer}
                     >
                       <Text style={styles.forgotLink}>Forgot Password?</Text>
@@ -512,13 +572,19 @@ export default function LoginScreen() {
             </SafeAnimatedView>
 
             {/* Footer */}
-            <Animated.View
-              entering={FadeInDown.delay(200).duration(800).springify()}
+            <SafeAnimatedView
+              entering={
+                prefersReducedMotion
+                  ? undefined
+                  : FadeInDown.delay(operationalMotion.normal)
+                      .duration(operationalMotion.slow)
+                      .springify()
+              }
               style={styles.footer}
             >
               <Text style={styles.versionText}>Version 3.0.0</Text>
               <Text style={styles.footerText}>Secure • Reliable • Fast</Text>
-            </Animated.View>
+            </SafeAnimatedView>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -618,7 +684,7 @@ const styles = StyleSheet.create({
   pinDot: {
     width: 16,
     height: 16,
-    borderRadius: 8,
+    borderRadius: unifiedRadius.full,
     borderWidth: 2,
   },
   pinDotEmpty: {
@@ -637,7 +703,7 @@ const styles = StyleSheet.create({
   pinDotInner: {
     width: 10,
     height: 10,
-    borderRadius: 5,
+    borderRadius: unifiedRadius.full,
     backgroundColor: unifiedColors.primary[500],
   },
   formSubtitle: {
@@ -679,6 +745,12 @@ const styles = StyleSheet.create({
     height: 14,
     backgroundColor: unifiedColors.neutral[300],
   },
+  pinTextAction: {
+    minHeight: 44,
+    minWidth: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   switchAccountLink: {
     ...textStyles.caption,
     color: unifiedColors.primary[500],
@@ -699,7 +771,7 @@ const styles = StyleSheet.create({
   userBadgeAvatar: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: unifiedRadius.full,
     backgroundColor: unifiedColors.primary[50],
     justifyContent: "center",
     alignItems: "center",

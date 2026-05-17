@@ -3,7 +3,8 @@ import { TouchableOpacity, Text, StyleSheet, Alert, ActivityIndicator } from "re
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useAuthStore } from "../store/authStore";
 
-import { colors as uiColors } from "@/theme/legacyCompat";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
 interface LogoutButtonProps {
   showText?: boolean;
   size?: "small" | "medium" | "large";
@@ -17,6 +18,7 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
 }) => {
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
   const { logout, user } = useAuthStore();
+  const uiTokens = useUiTokens();
 
   const handleLogout = () => {
     if (typeof window !== "undefined" && window.confirm) {
@@ -66,27 +68,56 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
 
   const iconSize = size === "small" ? 20 : size === "large" ? 28 : 24;
   const fontSize = size === "small" ? 14 : size === "large" ? 18 : 16;
+  const buttonToneStyle = {
+    backgroundColor: colorWithAlpha(uiTokens.colors.error, uiTokens.mode === "dark" ? 0.18 : 0.1),
+  };
+  const buttonBaseStyle = {
+    borderRadius: uiTokens.radius.sm,
+    minHeight: 44,
+    minWidth: 44,
+    padding: uiTokens.spacing.md,
+  };
+  const iconToneStyle = {
+    backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.1),
+    borderColor: colorWithAlpha(uiTokens.colors.error, 0.3),
+  };
+  const tapHitSlop = {
+    top: uiTokens.spacing.sm,
+    right: uiTokens.spacing.sm,
+    bottom: uiTokens.spacing.sm,
+    left: uiTokens.spacing.sm,
+  };
 
   if (isLoggingOut) {
     return (
       <TouchableOpacity style={styles.button} disabled>
-        <ActivityIndicator size="small" color={uiColors.error[500]} />
+        <ActivityIndicator size="small" color={uiTokens.colors.error} />
       </TouchableOpacity>
     );
   }
 
   return (
     <TouchableOpacity
-      style={[styles.button, styles[`button${variant}`]]}
+      style={[
+        styles.button,
+        buttonBaseStyle,
+        styles[`button${variant}`],
+        variant === "icon" && iconToneStyle,
+        variant !== "icon" && buttonToneStyle,
+      ]}
       onPress={handleLogout}
       activeOpacity={0.7}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      hitSlop={tapHitSlop}
+      accessibilityRole="button"
+      accessibilityLabel="Log out"
+      accessibilityHint="Signs out of the current account"
+      accessibilityState={{ disabled: isLoggingOut }}
     >
       {(variant === "icon" || variant === "both") && (
-        <Ionicons name="log-out-outline" size={iconSize} color={uiColors.error[500]} />
+        <Ionicons name="log-out-outline" size={iconSize} color={uiTokens.colors.error} />
       )}
       {(variant === "text" || variant === "both") && showText && (
-        <Text style={[styles.buttonText, { fontSize }]}>Logout</Text>
+        <Text style={[styles.buttonText, { color: uiTokens.colors.error, fontSize }]}>Logout</Text>
       )}
     </TouchableOpacity>
   );
@@ -97,30 +128,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    padding: 12,
-    borderRadius: 8,
-    minWidth: 44,
-    minHeight: 44,
   },
   buttonicon: {
-    padding: 10,
-    backgroundColor: "rgba(255, 82, 82, 0.1)",
     borderWidth: 1,
-    borderColor: "rgba(255, 82, 82, 0.3)",
   },
   buttontext: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: uiColors.error[50],
+    paddingHorizontal: 24,
+    paddingVertical: 16,
   },
   buttonboth: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: uiColors.error[50],
     gap: 8,
   },
   buttonText: {
-    color: uiColors.error[500],
     fontWeight: "600",
   },
 });

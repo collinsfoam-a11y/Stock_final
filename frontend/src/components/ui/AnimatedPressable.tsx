@@ -17,7 +17,6 @@ import {
 import * as Haptics from "expo-haptics";
 
 import { useReducedMotion } from "@/hooks/useReducedMotion";
-import { radius } from "@/theme/legacyCompat";
 import { getAccessibleButtonProps } from "@/utils/accessibility";
 import { getOperationalMotionDuration } from "@/utils/motion";
 import { useUiTokens } from "@/hooks/useUiTokens";
@@ -165,12 +164,14 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
 
 // Convenience wrapper for card-like pressables
 export const AnimatedCard: React.FC<AnimatedPressableProps> = (props) => {
+  const uiTokens = useUiTokens();
+
   return (
     <AnimatedPressable
       scaleValue={0.98}
       hapticFeedback="light"
       {...props}
-      style={[styles.card, props.style]}
+      style={[styles.card, { borderRadius: uiTokens.radius.lg }, props.style]}
     />
   );
 };
@@ -182,7 +183,6 @@ export const AnimatedButton: React.FC<AnimatedPressableProps> = (props) => {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: radius.lg,
     overflow: "hidden",
   },
 });

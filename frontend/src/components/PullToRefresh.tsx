@@ -1,7 +1,7 @@
 import React from "react";
 import { ScrollView, RefreshControl } from "react-native";
 
-import { colors as uiColors } from "@/theme/legacyCompat";
+import { useUiTokens } from "@/hooks/useUiTokens";
 interface PullToRefreshProps {
   onRefresh: () => Promise<void> | void;
   refreshing: boolean;
@@ -15,6 +15,8 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
   children,
   style,
 }) => {
+  const uiTokens = useUiTokens();
+
   return (
     <ScrollView
       style={style}
@@ -22,8 +24,8 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          colors={[uiColors.success[500]]} // Android
-          tintColor={uiColors.success[500]} // iOS
+          colors={[uiTokens.colors.success]} // Android
+          tintColor={uiTokens.colors.success} // iOS
         />
       }
     >

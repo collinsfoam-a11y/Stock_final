@@ -10,10 +10,9 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useAuthStore } from "../../store/authStore";
 import { useRouter } from "expo-router";
 
-import { spacing, typography } from "@/theme/legacyCompat";
+import { spacing, typography, semanticColors } from "@/theme/legacyCompat";
 import { BrandLogo } from "../branding/BrandLogo";
 
-import { semanticColors } from "@/theme/legacyCompat";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { getTokenShadowStyle } from "@/theme/themeTokens";
 import { flags } from "@/constants/flags";

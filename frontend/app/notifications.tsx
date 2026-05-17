@@ -23,6 +23,7 @@ import { useNotificationStore } from "../src/store/notificationStore";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { createLogger } from "@/services/logging";
 import { toastService } from "@/services/toastService";
+import { hitSlop, radius, spacing } from "@/theme/legacyCompat";
 import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 import { safeBackNavigation } from "@/utils/navigation";
 
@@ -49,7 +50,10 @@ function NotificationFilterTab({
   return (
     <TouchableOpacity
       accessibilityRole="button"
+      accessibilityLabel={`${label}${count === undefined ? "" : `, ${count}`}`}
+      accessibilityHint="Filters the notification list"
       accessibilityState={{ selected: active }}
+      hitSlop={hitSlop.small}
       onPress={onPress}
       style={[
         styles.filterTab,
@@ -373,12 +377,12 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     borderWidth: 1,
-    marginHorizontal: 16,
-    marginTop: 12,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
   },
   summaryContent: {
     flexDirection: "row",
-    padding: 14,
+    padding: spacing.lg,
   },
   summaryMetric: {
     alignItems: "center",
@@ -391,7 +395,7 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 12,
     fontWeight: "700",
-    marginTop: 2,
+    marginTop: spacing.xxs,
     textTransform: "uppercase",
   },
   summaryDivider: {
@@ -400,28 +404,28 @@ const styles = StyleSheet.create({
   filterContainer: {
     borderBottomWidth: 1,
     flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
   filterTab: {
     borderWidth: 1,
     justifyContent: "center",
     minHeight: 44,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
   },
   filterText: {
     fontSize: 14,
     fontWeight: "700",
   },
   listContent: {
-    padding: 16,
-    paddingBottom: 32,
+    padding: spacing.lg,
+    paddingBottom: spacing["3xl"],
   },
   notificationCard: {
-    marginBottom: 12,
-    padding: 14,
+    marginBottom: spacing.md,
+    padding: spacing.lg,
   },
   unreadCard: {
     borderLeftWidth: 3,
@@ -432,10 +436,10 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     alignItems: "center",
-    borderRadius: 24,
+    borderRadius: radius.full,
     height: 48,
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: spacing.md,
     width: 48,
   },
   textContainer: {
@@ -444,28 +448,28 @@ const styles = StyleSheet.create({
   notificationTitle: {
     fontSize: 16,
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   notificationMessage: {
     fontSize: 14,
     lineHeight: 19,
-    marginBottom: 6,
+    marginBottom: spacing.xs,
   },
   metaRow: {
     alignItems: "center",
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: spacing.sm,
   },
   timeText: {
     fontSize: 12,
     fontWeight: "600",
   },
   statusBadge: {
-    borderRadius: 8,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   statusBadgeText: {
     fontSize: 11,
@@ -473,23 +477,23 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   unreadDot: {
-    borderRadius: 5,
+    borderRadius: radius.full,
     height: 10,
-    marginLeft: 8,
-    marginTop: 4,
+    marginLeft: spacing.sm,
+    marginTop: spacing.xs,
     width: 10,
   },
   emptyState: {
     alignItems: "center",
     flex: 1,
     justifyContent: "center",
-    paddingVertical: 48,
+    paddingVertical: spacing["5xl"],
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: "700",
-    marginBottom: 8,
-    marginTop: 16,
+    marginBottom: spacing.sm,
+    marginTop: spacing.lg,
   },
   emptySubtitle: {
     fontSize: 14,

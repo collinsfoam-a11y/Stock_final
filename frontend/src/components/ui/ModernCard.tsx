@@ -34,10 +34,10 @@ import {
   radius as unifiedRadius,
   spacing as unifiedSpacing,
   textStyles,
+  shadows as unifiedShadows,
 } from "@/theme/legacyCompat";
 import { useThemeContextSafe } from "../../context/ThemeContext";
 
-import { shadows as unifiedShadows } from "@/theme/legacyCompat";
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 const AnimatedView = Animated.createAnimatedComponent(View);
 
