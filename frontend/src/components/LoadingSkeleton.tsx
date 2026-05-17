@@ -1,5 +1,5 @@
 import React from "react";
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { useUiTokens } from "@/hooks/useUiTokens";
 
 import { View } from "react-native";
 interface SkeletonListProps {
@@ -8,6 +8,8 @@ interface SkeletonListProps {
 }
 
 export const SkeletonList: React.FC<SkeletonListProps> = ({ itemHeight, count }) => {
+  const uiTokens = useUiTokens();
+
   return (
     <View>
       {Array.from({ length: count }).map((_, index) => (
@@ -15,9 +17,9 @@ export const SkeletonList: React.FC<SkeletonListProps> = ({ itemHeight, count })
           key={index}
           style={{
             height: itemHeight,
-            backgroundColor: uiSemanticColors.border.default,
-            marginBottom: 8,
-            borderRadius: 8,
+            backgroundColor: uiTokens.colors.border,
+            marginBottom: uiTokens.spacing.sm,
+            borderRadius: uiTokens.radius.md,
           }}
         />
       ))}

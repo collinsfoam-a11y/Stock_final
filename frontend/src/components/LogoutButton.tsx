@@ -77,6 +77,15 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
     minWidth: 44,
     padding: uiTokens.spacing.md,
   };
+  const textVariantStyle = {
+    paddingHorizontal: uiTokens.spacing.lg,
+    paddingVertical: uiTokens.spacing.md,
+  };
+  const bothVariantStyle = {
+    gap: uiTokens.spacing.sm,
+    paddingHorizontal: uiTokens.spacing.md,
+    paddingVertical: uiTokens.spacing.sm,
+  };
   const iconToneStyle = {
     backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.1),
     borderColor: colorWithAlpha(uiTokens.colors.error, 0.3),
@@ -90,7 +99,14 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
 
   if (isLoggingOut) {
     return (
-      <TouchableOpacity style={styles.button} disabled>
+      <TouchableOpacity
+        style={[styles.button, buttonBaseStyle]}
+        disabled
+        accessibilityRole="button"
+        accessibilityLabel="Logging out"
+        accessibilityState={{ busy: true, disabled: true }}
+        hitSlop={tapHitSlop}
+      >
         <ActivityIndicator size="small" color={uiTokens.colors.error} />
       </TouchableOpacity>
     );
@@ -102,6 +118,8 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
         styles.button,
         buttonBaseStyle,
         styles[`button${variant}`],
+        variant === "text" && textVariantStyle,
+        variant === "both" && bothVariantStyle,
         variant === "icon" && iconToneStyle,
         variant !== "icon" && buttonToneStyle,
       ]}
@@ -133,13 +151,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   buttontext: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
   },
   buttonboth: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 8,
   },
   buttonText: {
     fontWeight: "600",
