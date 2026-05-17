@@ -20,7 +20,9 @@ import { summarizeForceSyncResult } from "../../src/components/supervisor/offlin
 import { ModernCard, AnimatedPressable, StatsCard } from "../../src/components/ui";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { safeBackNavigation } from "@/utils/navigation";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
 import {
   createOperationalStyleBridge,
   type OperationalStyleBridge,
@@ -29,12 +31,16 @@ import {
 export default function OfflineQueueScreen() {
   const router = useRouter();
   const uiTokens = useUiTokens();
+  const prefersReducedMotion = useReducedMotion();
   const operationalTheme = React.useMemo(() => createOperationalStyleBridge(uiTokens), [uiTokens]);
   const styles = React.useMemo(() => createStyles(operationalTheme), [operationalTheme]);
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [loading, setLoading] = React.useState(false);
   const [queue, setQueue] = React.useState<any[]>([]);
   const [conflicts, setConflicts] = React.useState<any[]>([]);
+  const headerEntry = prefersReducedMotion ? undefined : FadeInDown.delay(100).springify();
+  const noticeEntry = prefersReducedMotion ? undefined : FadeInDown.delay(140).springify();
+  const statsEntry = prefersReducedMotion ? undefined : FadeInDown.delay(200).springify();
 
   const load = React.useCallback(async () => {
     if (!flags.enableOfflineQueue) return;
@@ -92,7 +98,11 @@ export default function OfflineQueueScreen() {
   };
 
   const renderQueueItem = ({ item }: { item: any }) => (
-    <AnimatedPressable style={{ marginBottom: operationalTheme.spacing.md }}>
+    <AnimatedPressable
+      style={{ marginBottom: operationalTheme.spacing.md }}
+      accessibilityLabel={`Queued ${String(item.method).toUpperCase()} request to ${item.url}`}
+      accessibilityHint="Shows offline queue request details"
+    >
       <ModernCard variant="outlined" elevation="none" padding={operationalTheme.spacing.md}>
         <View style={styles.cardHeader}>
           <View
@@ -101,10 +111,10 @@ export default function OfflineQueueScreen() {
               {
                 backgroundColor:
                   item.status === "blocked_conflict"
-                    ? "rgba(245, 158, 11, 0.2)"
+                    ? colorWithAlpha(operationalTheme.colors.warning[500], 0.2)
                     : item.status === "failed_manual_review"
-                      ? "rgba(239, 68, 68, 0.2)"
-                      : "rgba(59, 130, 246, 0.2)",
+                      ? colorWithAlpha(operationalTheme.colors.error[500], 0.2)
+                      : colorWithAlpha(operationalTheme.colors.primary[400], 0.2),
               },
             ]}
           >
@@ -163,7 +173,11 @@ export default function OfflineQueueScreen() {
   );
 
   const renderConflictItem = ({ item }: { item: any }) => (
-    <AnimatedPressable style={{ marginBottom: operationalTheme.spacing.md }}>
+    <AnimatedPressable
+      style={{ marginBottom: operationalTheme.spacing.md }}
+      accessibilityLabel={`Offline conflict for ${String(item.method).toUpperCase()} ${item.url}`}
+      accessibilityHint="Shows offline conflict details"
+    >
       <ModernCard
         variant="outlined"
         elevation="none"
@@ -196,7 +210,12 @@ export default function OfflineQueueScreen() {
         </ModernCard>
 
         <View style={styles.cardActions}>
-          <AnimatedPressable onPress={() => handleDismiss(item.id)} style={styles.dismissButton}>
+          <AnimatedPressable
+            onPress={() => handleDismiss(item.id)}
+            style={styles.dismissButton}
+            accessibilityLabel="Dismiss offline conflict"
+            accessibilityHint="Marks this conflict as resolved locally"
+          >
             <Text style={styles.dismissText}>Dismiss</Text>
           </AnimatedPressable>
         </View>
@@ -231,11 +250,13 @@ export default function OfflineQueueScreen() {
       <StatusBar style="light" />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
+        <Animated.View entering={headerEntry} style={styles.header}>
           <View style={styles.headerLeft}>
             <AnimatedPressable
               onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
+              accessibilityLabel="Back to supervisor"
+              accessibilityHint="Returns to the supervisor area"
             >
               <Ionicons name="arrow-back" size={24} color={operationalTheme.colors.text.primary} />
             </AnimatedPressable>
@@ -247,6 +268,9 @@ export default function OfflineQueueScreen() {
           <AnimatedPressable
             onPress={handleFlush}
             style={[styles.flushButton, offlineMode && styles.flushButtonDisabled]}
+            accessibilityLabel="Flush offline queue"
+            accessibilityHint="Attempts to sync queued offline actions"
+            accessibilityState={{ disabled: offlineMode }}
           >
             <Ionicons name="sync" size={20} color={operationalTheme.colors.text.inverse} />
             <Text style={styles.flushText}>Flush Queue</Text>
@@ -254,7 +278,7 @@ export default function OfflineQueueScreen() {
         </Animated.View>
 
         {offlineMode && (
-          <Animated.View entering={FadeInDown.delay(140).springify()}>
+          <Animated.View entering={noticeEntry}>
             <ModernCard
               variant="outlined"
               elevation="none"
@@ -272,7 +296,7 @@ export default function OfflineQueueScreen() {
           </Animated.View>
         )}
 
-        <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.statsRow}>
+        <Animated.View entering={statsEntry} style={styles.statsRow}>
           <StatsCard
             title="Pending Actions"
             value={queue.length.toString()}
@@ -340,172 +364,173 @@ export default function OfflineQueueScreen() {
   );
 }
 
-const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: operationalTheme.colors.background.primary,
-  },
-  container: {
-    flex: 1,
-    paddingTop: 60,
-    paddingHorizontal: operationalTheme.spacing.md,
-  },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: operationalTheme.spacing.md,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: operationalTheme.spacing.md,
-  },
-  offlineNotice: {
-    marginBottom: operationalTheme.spacing.lg,
-  },
-  offlineNoticeTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: operationalTheme.colors.text.primary,
-    marginBottom: 4,
-  },
-  offlineNoticeBody: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: operationalTheme.colors.text.secondary,
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: operationalTheme.spacing.md,
-  },
-  backButton: {
-    padding: operationalTheme.spacing.xs,
-    backgroundColor: operationalTheme.colors.background.glass,
-    borderRadius: operationalTheme.borderRadius.full,
-    borderWidth: 1,
-    borderColor: operationalTheme.colors.border.light,
-  },
-  pageTitle: {
-    fontFamily: operationalTheme.typography.fontFamily.heading,
-    fontSize: operationalTheme.typography.fontSize["2xl"],
-    color: operationalTheme.colors.text.primary,
-    fontWeight: "700",
-  },
-  pageSubtitle: {
-    fontSize: operationalTheme.typography.fontSize.sm,
-    color: operationalTheme.colors.text.secondary,
-  },
-  flushButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: operationalTheme.colors.primary[500],
-    paddingHorizontal: operationalTheme.spacing.md,
-    paddingVertical: 8,
-    borderRadius: operationalTheme.borderRadius.full,
-  },
-  flushButtonDisabled: {
-    opacity: 0.55,
-  },
-  flushText: {
-    color: operationalTheme.colors.text.inverse,
-    fontWeight: "600",
-    fontSize: operationalTheme.typography.fontSize.sm,
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: operationalTheme.spacing.md,
-    marginBottom: operationalTheme.spacing.lg,
-  },
-  contentContainer: {
-    flex: 1,
-    paddingBottom: operationalTheme.spacing.xl,
-  },
-  sectionHeader: {
-    marginBottom: operationalTheme.spacing.sm,
-  },
-  sectionTitle: {
-    fontSize: operationalTheme.typography.fontSize.lg,
-    fontWeight: "700",
-    color: operationalTheme.colors.text.primary,
-  },
-  muted: { color: operationalTheme.colors.text.tertiary, textAlign: "center" },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: operationalTheme.spacing.sm,
-  },
-  methodBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: operationalTheme.borderRadius.sm,
-  },
-  methodText: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    fontWeight: "bold",
-  },
-  timestamp: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    color: operationalTheme.colors.text.tertiary,
-  },
-  cardUrl: {
-    fontSize: operationalTheme.typography.fontSize.sm,
-    fontWeight: "600",
-    color: operationalTheme.colors.text.primary,
-  },
-  cardCode: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: operationalTheme.typography.fontSize.xs,
-    color: operationalTheme.colors.text.secondary,
-  },
-  errorBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(234, 179, 8, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: operationalTheme.borderRadius.full,
-  },
-  errorBadgeText: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    color: operationalTheme.colors.warning[500],
-    fontWeight: "600",
-  },
-  cardTitle: {
-    fontSize: operationalTheme.typography.fontSize.sm,
-    fontWeight: "700",
-    color: operationalTheme.colors.text.primary,
-    marginBottom: operationalTheme.spacing.xs,
-  },
-  cardActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: operationalTheme.spacing.md,
-  },
-  dismissButton: {
-    backgroundColor: operationalTheme.colors.background.glass,
-    borderWidth: 1,
-    borderColor: operationalTheme.colors.border.light,
-    paddingHorizontal: operationalTheme.spacing.md,
-    paddingVertical: 6,
-    borderRadius: operationalTheme.borderRadius.full,
-  },
-  dismissText: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    color: operationalTheme.colors.text.primary,
-    fontWeight: "600",
-  },
-  emptyState: {
-    padding: operationalTheme.spacing.lg,
-    alignItems: "center",
-  },
-  emptyText: {
-    color: operationalTheme.colors.text.tertiary,
-    fontSize: operationalTheme.typography.fontSize.sm,
-  },
-});
+const createStyles = (operationalTheme: OperationalStyleBridge) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: operationalTheme.colors.background.primary,
+    },
+    container: {
+      flex: 1,
+      paddingTop: 60,
+      paddingHorizontal: operationalTheme.spacing.md,
+    },
+    center: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: operationalTheme.spacing.md,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: operationalTheme.spacing.md,
+    },
+    offlineNotice: {
+      marginBottom: operationalTheme.spacing.lg,
+    },
+    offlineNoticeTitle: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: operationalTheme.colors.text.primary,
+      marginBottom: 4,
+    },
+    offlineNoticeBody: {
+      fontSize: 12,
+      lineHeight: 18,
+      color: operationalTheme.colors.text.secondary,
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: operationalTheme.spacing.md,
+    },
+    backButton: {
+      padding: operationalTheme.spacing.xs,
+      backgroundColor: operationalTheme.colors.background.glass,
+      borderRadius: operationalTheme.borderRadius.full,
+      borderWidth: 1,
+      borderColor: operationalTheme.colors.border.light,
+    },
+    pageTitle: {
+      fontFamily: operationalTheme.typography.fontFamily.heading,
+      fontSize: operationalTheme.typography.fontSize["2xl"],
+      color: operationalTheme.colors.text.primary,
+      fontWeight: "700",
+    },
+    pageSubtitle: {
+      fontSize: operationalTheme.typography.fontSize.sm,
+      color: operationalTheme.colors.text.secondary,
+    },
+    flushButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: operationalTheme.colors.primary[500],
+      paddingHorizontal: operationalTheme.spacing.md,
+      paddingVertical: 8,
+      borderRadius: operationalTheme.borderRadius.full,
+    },
+    flushButtonDisabled: {
+      opacity: 0.55,
+    },
+    flushText: {
+      color: operationalTheme.colors.text.inverse,
+      fontWeight: "600",
+      fontSize: operationalTheme.typography.fontSize.sm,
+    },
+    statsRow: {
+      flexDirection: "row",
+      gap: operationalTheme.spacing.md,
+      marginBottom: operationalTheme.spacing.lg,
+    },
+    contentContainer: {
+      flex: 1,
+      paddingBottom: operationalTheme.spacing.xl,
+    },
+    sectionHeader: {
+      marginBottom: operationalTheme.spacing.sm,
+    },
+    sectionTitle: {
+      fontSize: operationalTheme.typography.fontSize.lg,
+      fontWeight: "700",
+      color: operationalTheme.colors.text.primary,
+    },
+    muted: { color: operationalTheme.colors.text.tertiary, textAlign: "center" },
+    cardHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: operationalTheme.spacing.sm,
+    },
+    methodBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: operationalTheme.borderRadius.sm,
+    },
+    methodText: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      fontWeight: "bold",
+    },
+    timestamp: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      color: operationalTheme.colors.text.tertiary,
+    },
+    cardUrl: {
+      fontSize: operationalTheme.typography.fontSize.sm,
+      fontWeight: "600",
+      color: operationalTheme.colors.text.primary,
+    },
+    cardCode: {
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+      fontSize: operationalTheme.typography.fontSize.xs,
+      color: operationalTheme.colors.text.secondary,
+    },
+    errorBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: "rgba(234, 179, 8, 0.1)",
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: operationalTheme.borderRadius.full,
+    },
+    errorBadgeText: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      color: operationalTheme.colors.warning[500],
+      fontWeight: "600",
+    },
+    cardTitle: {
+      fontSize: operationalTheme.typography.fontSize.sm,
+      fontWeight: "700",
+      color: operationalTheme.colors.text.primary,
+      marginBottom: operationalTheme.spacing.xs,
+    },
+    cardActions: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      marginTop: operationalTheme.spacing.md,
+    },
+    dismissButton: {
+      backgroundColor: operationalTheme.colors.background.glass,
+      borderWidth: 1,
+      borderColor: operationalTheme.colors.border.light,
+      paddingHorizontal: operationalTheme.spacing.md,
+      paddingVertical: 6,
+      borderRadius: operationalTheme.borderRadius.full,
+    },
+    dismissText: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      color: operationalTheme.colors.text.primary,
+      fontWeight: "600",
+    },
+    emptyState: {
+      padding: operationalTheme.spacing.lg,
+      alignItems: "center",
+    },
+    emptyText: {
+      color: operationalTheme.colors.text.tertiary,
+      fontSize: operationalTheme.typography.fontSize.sm,
+    },
+  });

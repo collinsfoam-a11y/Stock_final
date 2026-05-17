@@ -361,7 +361,10 @@ export default function SyncConflictsScreen() {
               <Text style={styles.batchText}>{selectedConflicts.size} selected</Text>
               <View style={styles.batchButtons}>
                 <AnimatedPressable
-                  style={[styles.batchButton, { backgroundColor: operationalTheme.colors.success[500] }]}
+                  style={[
+                    styles.batchButton,
+                    { backgroundColor: operationalTheme.colors.success[500] },
+                  ]}
                   onPress={() => handleBatchResolve("accept_server")}
                   accessibilityLabel="Accept server values for selected conflicts"
                   accessibilityHint="Resolves selected conflicts using server data"
@@ -477,6 +480,8 @@ export default function SyncConflictsScreen() {
                     value={resolutionNote}
                     onChangeText={setResolutionNote}
                     multiline
+                    accessibilityLabel="Resolution note"
+                    accessibilityHint="Optional note recorded with this conflict resolution"
                   />
 
                   <View style={styles.modalActions}>
@@ -523,275 +528,276 @@ export default function SyncConflictsScreen() {
   );
 }
 
-const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: operationalTheme.colors.background.primary,
-  },
-  container: {
-    flex: 1,
-    paddingTop: 60,
-    paddingHorizontal: operationalTheme.spacing.md,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingBottom: 100,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: operationalTheme.spacing.md,
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: operationalTheme.spacing.md,
-  },
-  backButton: {
-    padding: operationalTheme.spacing.xs,
-    backgroundColor: operationalTheme.colors.background.glass,
-    borderRadius: operationalTheme.borderRadius.full,
-    borderWidth: 1,
-    borderColor: operationalTheme.colors.border.light,
-  },
-  pageTitle: {
-    fontFamily: operationalTheme.typography.fontFamily.heading,
-    fontSize: operationalTheme.typography.fontSize["2xl"],
-    color: operationalTheme.colors.text.primary,
-    fontWeight: "700",
-  },
-  pageSubtitle: {
-    fontSize: operationalTheme.typography.fontSize.sm,
-    color: operationalTheme.colors.text.secondary,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    gap: operationalTheme.spacing.sm,
-    marginBottom: operationalTheme.spacing.md,
-  },
-  filterBar: {
-    flexDirection: "row",
-    gap: operationalTheme.spacing.sm,
-    marginBottom: operationalTheme.spacing.md,
-  },
-  filterButton: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  filterButtonText: {
-    fontSize: operationalTheme.typography.fontSize.sm,
-    fontWeight: "600",
-    color: operationalTheme.colors.text.secondary,
-  },
-  batchActions: {
-    marginBottom: operationalTheme.spacing.md,
-  },
-  batchCard: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  batchText: {
-    fontSize: operationalTheme.typography.fontSize.md,
-    fontWeight: "600",
-    color: operationalTheme.colors.text.primary,
-  },
-  batchButtons: {
-    flexDirection: "row",
-    gap: operationalTheme.spacing.sm,
-  },
-  batchButton: {
-    paddingHorizontal: operationalTheme.spacing.md,
-    paddingVertical: 8,
-    borderRadius: operationalTheme.borderRadius.full,
-  },
-  batchButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: operationalTheme.typography.fontSize.xs,
-  },
-  listContent: {
-    paddingBottom: operationalTheme.spacing.xl,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: operationalTheme.spacing.md,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: operationalTheme.borderRadius.sm,
-    borderWidth: 2,
-    borderColor: operationalTheme.colors.text.tertiary,
-    marginRight: operationalTheme.spacing.md,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  checkboxChecked: {
-    backgroundColor: operationalTheme.colors.primary[500],
-    borderColor: operationalTheme.colors.primary[500],
-  },
-  itemCode: {
-    fontSize: operationalTheme.typography.fontSize.lg,
-    fontWeight: "700",
-    color: operationalTheme.colors.text.primary,
-  },
-  conflictTypeContainer: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(234, 179, 8, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: operationalTheme.borderRadius.full,
-    marginTop: 4,
-  },
-  conflictType: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    color: operationalTheme.colors.warning[500],
-    fontWeight: "600",
-  },
-  conflictData: {
-    flexDirection: "row",
-    gap: operationalTheme.spacing.md,
-    marginBottom: operationalTheme.spacing.md,
-  },
-  dataColumn: {
-    flex: 1,
-  },
-  dataLabel: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    color: operationalTheme.colors.text.tertiary,
-    marginBottom: 4,
-    textTransform: "uppercase",
-  },
-  dataValue: {
-    fontSize: operationalTheme.typography.fontSize.sm,
-    color: operationalTheme.colors.text.secondary,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-  },
-  timestamp: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    color: operationalTheme.colors.text.tertiary,
-  },
-  resolvedInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: operationalTheme.spacing.xs,
-    marginTop: operationalTheme.spacing.sm,
-    paddingTop: operationalTheme.spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: operationalTheme.colors.border.light,
-  },
-  resolvedText: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    color: operationalTheme.colors.success[500],
-  },
-  loadingText: {
-    marginTop: operationalTheme.spacing.md,
-    fontSize: operationalTheme.typography.fontSize.md,
-    color: operationalTheme.colors.text.secondary,
-  },
-  emptyText: {
-    fontSize: operationalTheme.typography.fontSize.lg,
-    fontWeight: "500",
-    color: operationalTheme.colors.text.secondary,
-    marginTop: operationalTheme.spacing.md,
-  },
-  emptySubtext: {
-    fontSize: operationalTheme.typography.fontSize.md,
-    color: operationalTheme.colors.text.tertiary,
-    marginTop: operationalTheme.spacing.xs,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-    backgroundColor: "rgba(0,0,0,0.8)",
-  },
-  modalContent: {
-    width: "100%",
-    maxWidth: 500,
-  },
-  modalTitle: {
-    fontSize: operationalTheme.typography.fontSize["2xl"],
-    fontWeight: "bold",
-    color: operationalTheme.colors.text.primary,
-    marginBottom: operationalTheme.spacing.lg,
-    textAlign: "center",
-  },
-  modalLabel: {
-    fontSize: operationalTheme.typography.fontSize.md,
-    color: operationalTheme.colors.text.secondary,
-    marginBottom: 4,
-  },
-  modalItemCode: {
-    color: operationalTheme.colors.text.primary,
-  },
-  modalTypeBadge: {
-    backgroundColor: "rgba(234, 179, 8, 0.1)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: operationalTheme.borderRadius.full,
-    alignSelf: "flex-start",
-    marginBottom: operationalTheme.spacing.lg,
-  },
-  modalTypeText: {
-    color: operationalTheme.colors.warning[500],
-    fontSize: operationalTheme.typography.fontSize.sm,
-    fontWeight: "600",
-  },
-  modalSection: {
-    marginBottom: operationalTheme.spacing.lg,
-  },
-  modalSectionTitle: {
-    fontSize: operationalTheme.typography.fontSize.sm,
-    fontWeight: "600",
-    color: operationalTheme.colors.text.tertiary,
-    marginBottom: 8,
-    textTransform: "uppercase",
-  },
-  modalValue: {
-    fontSize: operationalTheme.typography.fontSize.sm,
-    color: operationalTheme.colors.text.primary,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-  },
-  modalInput: {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    color: operationalTheme.colors.text.primary,
-    padding: 12,
-    borderRadius: operationalTheme.borderRadius.md,
-    fontSize: operationalTheme.typography.fontSize.md,
-    marginBottom: operationalTheme.spacing.lg,
-    borderWidth: 1,
-    borderColor: operationalTheme.colors.border.light,
-  },
-  modalTextArea: {
-    minHeight: 100,
-    textAlignVertical: "top",
-  },
-  modalActions: {
-    flexDirection: "row",
-    gap: operationalTheme.spacing.md,
-    marginBottom: operationalTheme.spacing.md,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: operationalTheme.borderRadius.full,
-    alignItems: "center",
-  },
-  modalButtonCancel: {
-    backgroundColor: operationalTheme.colors.background.glass,
-    borderWidth: 1,
-    borderColor: operationalTheme.colors.border.light,
-  },
-  modalButtonText: {
-    color: operationalTheme.colors.text.primary,
-    fontSize: operationalTheme.typography.fontSize.md,
-    fontWeight: "600",
-  },
-});
+const createStyles = (operationalTheme: OperationalStyleBridge) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: operationalTheme.colors.background.primary,
+    },
+    container: {
+      flex: 1,
+      paddingTop: 60,
+      paddingHorizontal: operationalTheme.spacing.md,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingBottom: 100,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: operationalTheme.spacing.md,
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: operationalTheme.spacing.md,
+    },
+    backButton: {
+      padding: operationalTheme.spacing.xs,
+      backgroundColor: operationalTheme.colors.background.glass,
+      borderRadius: operationalTheme.borderRadius.full,
+      borderWidth: 1,
+      borderColor: operationalTheme.colors.border.light,
+    },
+    pageTitle: {
+      fontFamily: operationalTheme.typography.fontFamily.heading,
+      fontSize: operationalTheme.typography.fontSize["2xl"],
+      color: operationalTheme.colors.text.primary,
+      fontWeight: "700",
+    },
+    pageSubtitle: {
+      fontSize: operationalTheme.typography.fontSize.sm,
+      color: operationalTheme.colors.text.secondary,
+    },
+    statsContainer: {
+      flexDirection: "row",
+      gap: operationalTheme.spacing.sm,
+      marginBottom: operationalTheme.spacing.md,
+    },
+    filterBar: {
+      flexDirection: "row",
+      gap: operationalTheme.spacing.sm,
+      marginBottom: operationalTheme.spacing.md,
+    },
+    filterButton: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    filterButtonText: {
+      fontSize: operationalTheme.typography.fontSize.sm,
+      fontWeight: "600",
+      color: operationalTheme.colors.text.secondary,
+    },
+    batchActions: {
+      marginBottom: operationalTheme.spacing.md,
+    },
+    batchCard: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    batchText: {
+      fontSize: operationalTheme.typography.fontSize.md,
+      fontWeight: "600",
+      color: operationalTheme.colors.text.primary,
+    },
+    batchButtons: {
+      flexDirection: "row",
+      gap: operationalTheme.spacing.sm,
+    },
+    batchButton: {
+      paddingHorizontal: operationalTheme.spacing.md,
+      paddingVertical: 8,
+      borderRadius: operationalTheme.borderRadius.full,
+    },
+    batchButtonText: {
+      color: "white",
+      fontWeight: "bold",
+      fontSize: operationalTheme.typography.fontSize.xs,
+    },
+    listContent: {
+      paddingBottom: operationalTheme.spacing.xl,
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      marginBottom: operationalTheme.spacing.md,
+    },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: operationalTheme.borderRadius.sm,
+      borderWidth: 2,
+      borderColor: operationalTheme.colors.text.tertiary,
+      marginRight: operationalTheme.spacing.md,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    checkboxChecked: {
+      backgroundColor: operationalTheme.colors.primary[500],
+      borderColor: operationalTheme.colors.primary[500],
+    },
+    itemCode: {
+      fontSize: operationalTheme.typography.fontSize.lg,
+      fontWeight: "700",
+      color: operationalTheme.colors.text.primary,
+    },
+    conflictTypeContainer: {
+      alignSelf: "flex-start",
+      backgroundColor: "rgba(234, 179, 8, 0.1)",
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: operationalTheme.borderRadius.full,
+      marginTop: 4,
+    },
+    conflictType: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      color: operationalTheme.colors.warning[500],
+      fontWeight: "600",
+    },
+    conflictData: {
+      flexDirection: "row",
+      gap: operationalTheme.spacing.md,
+      marginBottom: operationalTheme.spacing.md,
+    },
+    dataColumn: {
+      flex: 1,
+    },
+    dataLabel: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      color: operationalTheme.colors.text.tertiary,
+      marginBottom: 4,
+      textTransform: "uppercase",
+    },
+    dataValue: {
+      fontSize: operationalTheme.typography.fontSize.sm,
+      color: operationalTheme.colors.text.secondary,
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    },
+    timestamp: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      color: operationalTheme.colors.text.tertiary,
+    },
+    resolvedInfo: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: operationalTheme.spacing.xs,
+      marginTop: operationalTheme.spacing.sm,
+      paddingTop: operationalTheme.spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: operationalTheme.colors.border.light,
+    },
+    resolvedText: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      color: operationalTheme.colors.success[500],
+    },
+    loadingText: {
+      marginTop: operationalTheme.spacing.md,
+      fontSize: operationalTheme.typography.fontSize.md,
+      color: operationalTheme.colors.text.secondary,
+    },
+    emptyText: {
+      fontSize: operationalTheme.typography.fontSize.lg,
+      fontWeight: "500",
+      color: operationalTheme.colors.text.secondary,
+      marginTop: operationalTheme.spacing.md,
+    },
+    emptySubtext: {
+      fontSize: operationalTheme.typography.fontSize.md,
+      color: operationalTheme.colors.text.tertiary,
+      marginTop: operationalTheme.spacing.xs,
+    },
+    modalOverlay: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 20,
+      backgroundColor: "rgba(0,0,0,0.8)",
+    },
+    modalContent: {
+      width: "100%",
+      maxWidth: 500,
+    },
+    modalTitle: {
+      fontSize: operationalTheme.typography.fontSize["2xl"],
+      fontWeight: "bold",
+      color: operationalTheme.colors.text.primary,
+      marginBottom: operationalTheme.spacing.lg,
+      textAlign: "center",
+    },
+    modalLabel: {
+      fontSize: operationalTheme.typography.fontSize.md,
+      color: operationalTheme.colors.text.secondary,
+      marginBottom: 4,
+    },
+    modalItemCode: {
+      color: operationalTheme.colors.text.primary,
+    },
+    modalTypeBadge: {
+      backgroundColor: "rgba(234, 179, 8, 0.1)",
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: operationalTheme.borderRadius.full,
+      alignSelf: "flex-start",
+      marginBottom: operationalTheme.spacing.lg,
+    },
+    modalTypeText: {
+      color: operationalTheme.colors.warning[500],
+      fontSize: operationalTheme.typography.fontSize.sm,
+      fontWeight: "600",
+    },
+    modalSection: {
+      marginBottom: operationalTheme.spacing.lg,
+    },
+    modalSectionTitle: {
+      fontSize: operationalTheme.typography.fontSize.sm,
+      fontWeight: "600",
+      color: operationalTheme.colors.text.tertiary,
+      marginBottom: 8,
+      textTransform: "uppercase",
+    },
+    modalValue: {
+      fontSize: operationalTheme.typography.fontSize.sm,
+      color: operationalTheme.colors.text.primary,
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    },
+    modalInput: {
+      backgroundColor: "rgba(255,255,255,0.05)",
+      color: operationalTheme.colors.text.primary,
+      padding: 12,
+      borderRadius: operationalTheme.borderRadius.md,
+      fontSize: operationalTheme.typography.fontSize.md,
+      marginBottom: operationalTheme.spacing.lg,
+      borderWidth: 1,
+      borderColor: operationalTheme.colors.border.light,
+    },
+    modalTextArea: {
+      minHeight: 100,
+      textAlignVertical: "top",
+    },
+    modalActions: {
+      flexDirection: "row",
+      gap: operationalTheme.spacing.md,
+      marginBottom: operationalTheme.spacing.md,
+    },
+    modalButton: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: operationalTheme.borderRadius.full,
+      alignItems: "center",
+    },
+    modalButtonCancel: {
+      backgroundColor: operationalTheme.colors.background.glass,
+      borderWidth: 1,
+      borderColor: operationalTheme.colors.border.light,
+    },
+    modalButtonText: {
+      color: operationalTheme.colors.text.primary,
+      fontSize: operationalTheme.typography.fontSize.md,
+      fontWeight: "600",
+    },
+  });
