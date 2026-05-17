@@ -6,13 +6,13 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { haptics } from "@/services/haptics";
 
 import { AppInput } from "@/components/ui/AppInput";
+import { AnimatedPressable } from "@/components/ui";
 import {
   WarehouseOption,
   ZoneOption,
@@ -65,15 +65,17 @@ export function CreateSessionModal({
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create New Session</Text>
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={onClose}
                 onPressIn={() => haptics.light()}
                 style={styles.modalCloseButton}
                 accessibilityLabel="Close"
                 accessibilityRole="button"
+                accessibilityState={{ disabled: false }}
+                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
               >
                 <Ionicons name="close" size={24} color={theme.colors.text.primary} />
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
 
             <ScrollView
@@ -86,13 +88,18 @@ export function CreateSessionModal({
                 <Text style={styles.stepLabel}>1. Select Location Type</Text>
                 <View style={styles.optionsGrid}>
                   {zones.map((zone) => (
-                    <TouchableOpacity
+                    <AnimatedPressable
                       key={zone.id}
                       style={[
                         styles.optionButton,
                         locationType === zone.zone_name && styles.optionButtonSelected,
                       ]}
                       onPress={() => onChangeLocationType(zone.zone_name)}
+                      onPressIn={() => haptics.light()}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Select location type ${zone.zone_name}`}
+                      accessibilityState={{ selected: locationType === zone.zone_name }}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                       <Text
                         style={[
@@ -102,7 +109,7 @@ export function CreateSessionModal({
                       >
                         {zone.zone_name}
                       </Text>
-                    </TouchableOpacity>
+                    </AnimatedPressable>
                   ))}
                 </View>
               </View>
@@ -115,7 +122,7 @@ export function CreateSessionModal({
                   ) : (
                     <View style={styles.optionsGrid}>
                       {warehouses.map((warehouse) => (
-                        <TouchableOpacity
+                        <AnimatedPressable
                           key={warehouse.id}
                           style={[
                             styles.optionButton,
@@ -123,6 +130,11 @@ export function CreateSessionModal({
                               styles.optionButtonSelected,
                           ]}
                           onPress={() => onChangeSelectedFloor(warehouse.warehouse_name)}
+                          onPressIn={() => haptics.light()}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Select floor ${warehouse.warehouse_name}`}
+                          accessibilityState={{ selected: selectedFloor === warehouse.warehouse_name }}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         >
                           <Text
                             style={[
@@ -133,7 +145,7 @@ export function CreateSessionModal({
                           >
                             {warehouse.warehouse_name}
                           </Text>
-                        </TouchableOpacity>
+                        </AnimatedPressable>
                       ))}
                     </View>
                   )}
@@ -153,21 +165,29 @@ export function CreateSessionModal({
                 </View>
               )}
 
-              <TouchableOpacity
+              <AnimatedPressable
                 style={[
                   styles.createButton,
                   (!locationType || !selectedFloor || !rackName.trim() || isCreatingSession) &&
                     styles.createButtonDisabled,
                 ]}
                 onPress={onSubmit}
+                onPressIn={() => haptics.light()}
                 disabled={!locationType || !selectedFloor || !rackName.trim() || isCreatingSession}
+                accessibilityRole="button"
+                accessibilityLabel="Start Session"
+                accessibilityState={{
+                  disabled: !locationType || !selectedFloor || !rackName.trim() || isCreatingSession,
+                  busy: isCreatingSession,
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 {isCreatingSession ? (
                   <ActivityIndicator color={uiSemanticColors.text.inverse} />
                 ) : (
                   <Text style={styles.createButtonText}>Start Session</Text>
                 )}
-              </TouchableOpacity>
+              </AnimatedPressable>
 
               <View style={styles.bottomSpacer} />
             </ScrollView>
