@@ -27,6 +27,7 @@ import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 import { safeBackNavigation } from "@/utils/navigation";
 
 const log = createLogger("notifications");
+const TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
 
 interface NotificationFilterTabProps {
   active: boolean;
@@ -50,6 +51,9 @@ function NotificationFilterTab({
     <TouchableOpacity
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
+      accessibilityLabel={count === undefined ? label : `${label}, ${count}`}
+      accessibilityHint={`Shows ${label.toLowerCase()} notifications`}
+      hitSlop={TOUCH_HIT_SLOP}
       onPress={onPress}
       style={[
         styles.filterTab,
@@ -176,9 +180,11 @@ export default function NotificationsScreen() {
     return (
       <TouchableOpacity
         accessibilityLabel={item.read ? item.title : `${item.title}, unread`}
+        accessibilityHint="Opens this notification target when available"
         accessibilityRole="button"
         activeOpacity={0.75}
         onPress={() => handleNotificationPress(item)}
+        hitSlop={TOUCH_HIT_SLOP}
       >
         <ModernCard
           accessible={false}

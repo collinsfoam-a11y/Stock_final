@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { modernColors, modernTypography } from "../styles/modernDesignSystem";
 import { BrandLogo } from "../components/branding/BrandLogo";
 
 interface BootLoadingViewProps {
@@ -25,20 +26,6 @@ const liveRegionProps = {
 
 const normalizeProgress = (progress: number | undefined): number =>
   Math.max(0, Math.min(100, Math.round(progress ?? 8)));
-
-const bootColors = {
-  background: "#0F172A",
-  primary: "#3B82F6",
-  error: "#EF4444",
-  textPrimary: "#F8FAFC",
-  textTertiary: "#64748B",
-  textInverse: "#020617",
-} as const;
-
-const bootTypography = {
-  titleSize: 24,
-  bodySmallSize: 14,
-} as const;
 
 export const getBootFriendlyError = (initError: string): string => {
   const lower = initError.toLowerCase();
@@ -70,7 +57,7 @@ export function BootLoadingView({
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator color={bootColors.primary} style={styles.indicator} size="large" />
+      <ActivityIndicator color={modernColors.primary[500]} style={styles.indicator} size="large" />
       <BrandLogo variant="wordmark" maxWidth={220} maxHeight={90} />
       <Text style={styles.title}>
         {Platform.OS === "web" ? "Lavanya Mart Admin" : "Lavanya Mart"}
@@ -137,15 +124,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: bootColors.background,
+    backgroundColor: modernColors.background.primary,
     padding: 24,
   },
   indicator: {
     marginBottom: 24,
   },
   title: {
-    color: bootColors.textPrimary,
-    fontSize: bootTypography.titleSize,
+    color: modernColors.text.primary,
+    fontSize: modernTypography.h3.fontSize,
     fontWeight: "700",
     letterSpacing: 0,
     marginTop: 20,
@@ -157,8 +144,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   statusText: {
-    color: bootColors.textTertiary,
-    fontSize: bootTypography.bodySmallSize,
+    color: modernColors.text.tertiary,
+    fontSize: modernTypography.body.small.fontSize,
     letterSpacing: 0,
     marginBottom: 12,
     textAlign: "center",
@@ -174,7 +161,7 @@ const styles = StyleSheet.create({
     height: "100%",
     minWidth: 8,
     borderRadius: 3,
-    backgroundColor: bootColors.primary,
+    backgroundColor: modernColors.primary[500],
   },
   errorPanel: {
     marginTop: 28,
@@ -187,7 +174,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   errorTitle: {
-    color: bootColors.error,
+    color: modernColors.error.main,
     fontSize: 14,
     lineHeight: 20,
     fontWeight: "700",
@@ -195,7 +182,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   errorText: {
-    color: bootColors.error,
+    color: modernColors.error.main,
     fontSize: 12,
     lineHeight: 18,
     textAlign: "center",
@@ -208,13 +195,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: bootColors.primary,
+    backgroundColor: modernColors.primary[500],
   },
   retryButtonDisabled: {
     opacity: 0.68,
   },
   retryButtonText: {
-    color: bootColors.textInverse,
+    color: modernColors.text.inverse,
     fontSize: 14,
     lineHeight: 20,
     fontWeight: "700",
@@ -235,18 +222,18 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   errorIconText: {
-    color: bootColors.error,
+    color: modernColors.error.main,
     fontSize: 36,
     fontWeight: "800",
   },
   errorHeading: {
-    color: bootColors.error,
+    color: modernColors.error.main,
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 12,
   },
   errorBody: {
-    color: bootColors.textTertiary,
+    color: modernColors.text.tertiary,
     fontSize: 14,
     marginBottom: 32,
     textAlign: "center",
@@ -260,7 +247,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   continuePillText: {
-    color: bootColors.primary,
+    color: modernColors.primary[500],
     fontSize: 14,
     fontWeight: "600",
   },
