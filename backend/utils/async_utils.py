@@ -253,8 +253,9 @@ class AsyncCache:
         self.max_size = max_size
         self.default_ttl = default_ttl
         self._cache: dict[str, Any] = {}
-        self._access_times: dict[str, float] = {}
+        self._access_times: dict[str, int] = {}
         self._expiry_times: dict[str, float] = {}
+        self._access_counter = 0
         self._lock = asyncio.Lock()
 
     async def get(self, key: str) -> Optional[Any]:
@@ -272,7 +273,8 @@ class AsyncCache:
                     return None
 
             # Update access time (LRU)
-            self._access_times[key] = time.time()
+            self._access_counter += 1
+            self._access_times[key] = self._access_counter
             return self._cache[key]
 
     async def set(self, key: str, value: Any, ttl: Optional[int] = None):
@@ -283,7 +285,8 @@ class AsyncCache:
                 self._evict_lru()
 
             self._cache[key] = value
-            self._access_times[key] = time.time()
+            self._access_counter += 1
+            self._access_times[key] = self._access_counter
             self._expiry_times[key] = time.time() + (ttl or self.default_ttl)
 
     async def delete(self, key: str):
@@ -299,6 +302,7 @@ class AsyncCache:
             self._cache.clear()
             self._access_times.clear()
             self._expiry_times.clear()
+            self._access_counter = 0
 
     def _evict_lru(self):
         """Evict least recently used item"""

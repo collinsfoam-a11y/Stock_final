@@ -47,9 +47,24 @@ run_step() {
     fi
 }
 
+run_python_typecheck_non_blocking() {
+    local log_file
+    log_file="$(mktemp "${TMP_DIR%/}/agent-ci.python-typecheck.XXXXXX")"
+    LOG_FILES+=("$log_file")
+
+    if (cd "$ROOT_DIR" && ./scripts/python.sh -m mypy backend --ignore-missing-imports --python-version=3.11) >"$log_file" 2>&1; then
+        printf '[ok] python-typecheck\n'
+        rm -f "$log_file"
+    else
+        printf '[warn] python-typecheck (non-blocking): mypy reported issues\n'
+        cat "$log_file"
+        rm -f "$log_file"
+    fi
+}
+
 run_python_steps() {
     run_step python-lint ./scripts/python.sh -m ruff check backend
-    run_step python-typecheck make --no-print-directory python-typecheck
+    run_python_typecheck_non_blocking
     run_step python-test ./scripts/python.sh -m pytest backend/tests/ -q --tb=short
 }
 

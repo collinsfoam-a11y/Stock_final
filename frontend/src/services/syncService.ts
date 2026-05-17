@@ -17,7 +17,6 @@ const log = createLogger("syncService");
 
 const MANUAL_REVIEW_RETRIES_THRESHOLD = 5;
 const RECONNECT_SYNC_DELAY_MS = 2000;
-const DEFAULT_SYNC_INTERVAL_MS = 15 * 60 * 1000;
 const IS_TEST_ENV =
   process.env.NODE_ENV === "test" || typeof process.env.JEST_WORKER_ID !== "undefined";
 type SyncAuthState = {

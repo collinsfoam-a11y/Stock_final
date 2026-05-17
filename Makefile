@@ -145,13 +145,13 @@ ci: python-ci node-ci
 	@echo "✅ All CI checks passed!"
 
 agent-ci:
-	@./scripts/agent_ci.sh ci
+	@bash ./scripts/agent_ci.sh ci
 
 agent-python:
-	@./scripts/agent_ci.sh python
+	@bash ./scripts/agent_ci.sh python
 
 agent-node:
-	@./scripts/agent_ci.sh node
+	@bash ./scripts/agent_ci.sh node
 
 audit-count-line-names:
 	@echo "Running read-only count line item-name audit..."

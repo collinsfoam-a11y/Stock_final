@@ -122,6 +122,10 @@ def _match_filter(document: dict[str, Any], filter_query: dict[str, Optional[Any
                 return False
         else:
             value = _normalize_value(value)
+            if isinstance(doc_value, list):
+                if value not in doc_value:
+                    return False
+                continue
             if doc_value != value:
                 return False
     return True
@@ -461,6 +465,7 @@ class InMemoryDatabase:
         self.idempotency_operations = InMemoryCollection()
         self.user_settings = InMemoryCollection()
         self.audit_logs = InMemoryCollection()
+        self.audit_projection_fallbacks = InMemoryCollection()
         self.system_events = InMemoryCollection()
         self.item_serials = InMemoryCollection()
         self.serial = InMemoryCollection()
@@ -475,6 +480,7 @@ class InMemoryDatabase:
         self.approvals = InMemoryCollection()
         self.sync_queue = InMemoryCollection()
         self.erp_snapshot = InMemoryCollection()
+        self.financial_projection = InMemoryCollection()
         self.session_dashboard_projection = InMemoryCollection()
         self.verified_items_projection = InMemoryCollection()
         self.variance_summary_projection = InMemoryCollection()

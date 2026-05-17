@@ -19,11 +19,13 @@ import { ScreenContainer } from "../../src/components/ui";
 import ModernCard from "../../src/components/ui/ModernCard";
 import { getSystemSettings, updateSystemSettings } from "../../src/services/api";
 import { useSettingsStore } from "../../src/store/settingsStore";
+import { spacing, touchTargets } from "@/theme/legacyCompat";
 import { colorWithAlpha } from "../../src/theme/themeTokens";
 import { safeBackNavigation } from "@/utils/navigation";
 
 type SystemSettings = Record<string, unknown>;
 type SettingsIcon = React.ComponentProps<typeof SettingsTextInputRow>["icon"];
+const TOUCH_HIT_SLOP = { top: spacing.sm, right: spacing.sm, bottom: spacing.sm, left: spacing.sm };
 
 const getReadableError = (error: unknown): string => {
   if (error instanceof Error && error.message) {
@@ -157,6 +159,9 @@ export default function MasterSettingsScreen() {
     <TouchableOpacity
       accessibilityRole="button"
       accessibilityLabel="Save system settings"
+      accessibilityHint="Saves backend system parameter changes"
+      accessibilityState={{ disabled: saveDisabled, busy: saving }}
+      hitSlop={TOUCH_HIT_SLOP}
       disabled={saveDisabled}
       onPress={() => {
         void handleSave();
@@ -440,8 +445,8 @@ export default function MasterSettingsScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
   },
   loadingContainer: {
     alignItems: "center",
@@ -450,17 +455,17 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   saveButton: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 6,
-    minHeight: 40,
+    gap: spacing.xs,
+    minHeight: touchTargets.minimum,
     minWidth: 82,
     justifyContent: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   saveButtonText: {
     fontSize: 14,
@@ -469,14 +474,14 @@ const styles = StyleSheet.create({
   introCard: {
     alignItems: "center",
     flexDirection: "row",
-    marginBottom: 16,
-    padding: 16,
+    marginBottom: spacing.lg,
+    padding: spacing.lg,
   },
   introIcon: {
     alignItems: "center",
     height: 44,
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: spacing.md,
     width: 44,
   },
   introCopy: {
@@ -485,7 +490,7 @@ const styles = StyleSheet.create({
   introTitle: {
     fontSize: 16,
     fontWeight: "800",
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   introDescription: {
     fontSize: 13,
@@ -497,8 +502,8 @@ const styles = StyleSheet.create({
   noticeBlock: {
     alignItems: "flex-start",
     flexDirection: "row",
-    gap: 12,
-    padding: 16,
+    gap: spacing.md,
+    padding: spacing.lg,
   },
   noticeCopy: {
     flex: 1,
@@ -506,7 +511,7 @@ const styles = StyleSheet.create({
   noticeTitle: {
     fontSize: 15,
     fontWeight: "800",
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   noticeText: {
     fontSize: 13,
@@ -514,8 +519,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 24,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing["2xl"],
   },
   footerText: {
     fontSize: 13,

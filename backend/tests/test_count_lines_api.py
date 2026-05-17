@@ -71,10 +71,11 @@ class TestCheckSerialUniqueness:
             result = await check_serial_uniqueness(
                 session_id="sess_1",
                 serial_number="ABC123",
+                item_code="ITEM001",
                 current_user={"username": "staff1", "role": "staff"},
             )
 
-        assert result == {"exists": False, "scope": "global"}
+        assert result == {"exists": False, "scope": "item"}
 
     @pytest.mark.asyncio
     async def test_returns_details_when_serial_found(self, mock_db):
@@ -92,13 +93,28 @@ class TestCheckSerialUniqueness:
             result = await check_serial_uniqueness(
                 session_id="sess_1",
                 serial_number="abc123",
+                item_code="ITEM001",
                 current_user={"username": "staff1", "role": "staff"},
             )
 
         assert result["exists"] is True
-        assert result["scope"] == "global"
+        assert result["scope"] == "item"
         for key, value in record.items():
             assert result[key] == value
+
+    @pytest.mark.asyncio
+    async def test_rejects_missing_item_code(self, mock_db):
+        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+            with pytest.raises(HTTPException) as exc_info:
+                await check_serial_uniqueness(
+                    session_id="sess_1",
+                    serial_number="ABC123",
+                    item_code="",
+                    current_user={"username": "staff1", "role": "staff"},
+                )
+
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.detail == "item_code is required"
 
     @pytest.mark.asyncio
     async def test_allows_same_serial_for_different_item_when_item_scope_is_used(self, mock_db):

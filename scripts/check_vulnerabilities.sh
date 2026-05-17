@@ -5,8 +5,47 @@ status=0
 
 echo "🔎 Dependency vulnerability checks"
 
-# Frontend npm audit
-if [ -f frontend/package-lock.json ]; then
+# Frontend package audit
+if [ -f frontend/pnpm-lock.yaml ]; then
+  echo ""
+  echo "📦 Frontend: pnpm audit"
+  if ! command -v corepack >/dev/null 2>&1; then
+    echo "⚠️  corepack is not installed; skipping frontend vulnerability scan"
+    if [ "$status" -eq 0 ]; then
+      status=2
+    fi
+  else
+    pnpm_output_file="$(mktemp)"
+    audit_cmd=(corepack pnpm audit --audit-level moderate --prod)
+    if command -v timeout >/dev/null 2>&1; then
+      audit_cmd=(timeout 180s "${audit_cmd[@]}")
+    fi
+
+    if (cd frontend && "${audit_cmd[@]}" >"$pnpm_output_file" 2>&1); then
+      cat "$pnpm_output_file"
+      echo "✅ pnpm audit passed"
+    else
+      rc=$?
+      cat "$pnpm_output_file"
+      if [ "$rc" -eq 124 ]; then
+        echo "⚠️  pnpm audit timed out before completion."
+        if [ "$status" -eq 0 ]; then
+          status=2
+        fi
+      elif grep -Eq "audit endpoint returned an error|403 Forbidden|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT|ERR_PNPM_META_FETCH_FAIL|Response timeout" "$pnpm_output_file"; then
+        echo "⚠️  pnpm audit could not complete (registry/proxy/network/auth issue)."
+        if [ "$status" -eq 0 ]; then
+          status=2
+        fi
+      else
+        echo "❌ pnpm audit found vulnerabilities or returned an actionable failure"
+        status=1
+      fi
+      echo "   Exit code: $rc"
+    fi
+    rm -f "$pnpm_output_file"
+  fi
+elif [ -f frontend/package-lock.json ]; then
   echo ""
   echo "📦 Frontend: npm audit"
   if ! command -v npm >/dev/null 2>&1; then
@@ -36,7 +75,7 @@ if [ -f frontend/package-lock.json ]; then
     rm -f "$npm_output_file"
   fi
 else
-  echo "⚠️  frontend/package-lock.json not found; skipping npm audit"
+  echo "⚠️  frontend lockfile not found; skipping frontend vulnerability scan"
 fi
 
 # Backend pip-audit

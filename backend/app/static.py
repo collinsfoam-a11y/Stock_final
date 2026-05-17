@@ -46,4 +46,8 @@ def register_static_serving(app: FastAPI, frontend_dist: Path, logger: Any) -> N
         if file_path.exists() and file_path.is_file():
             return FileResponse(file_path)
 
-        return FileResponse(frontend_dist / "index.html")
+        if not index_file.exists():
+            logger.warning(f"Frontend index disappeared at {index_file}. Cannot serve SPA fallback.")
+            raise HTTPException(status_code=404, detail="Frontend build not available")
+
+        return FileResponse(index_file)

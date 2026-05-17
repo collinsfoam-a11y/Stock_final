@@ -56,14 +56,16 @@ class CommandPolicy:
 @contextmanager
 def locked_log(log_path: Path) -> Iterator[None]:
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    if fcntl is None:
+        yield
+        return
+
     with log_path.open("a+", encoding="utf-8") as handle:
-        if fcntl is not None:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         try:
             yield
         finally:
-            if fcntl is not None:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def utc_now() -> str:

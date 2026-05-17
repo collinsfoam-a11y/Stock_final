@@ -422,6 +422,8 @@ export default function SupervisorDashboard() {
                     },
                   ]}
                   onPress={action.onPress}
+                  accessibilityLabel={action.title}
+                  accessibilityHint={action.description}
                 >
                   <View
                     style={[
@@ -603,7 +605,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loadingIcon: {
-    marginBottom: 16,
+    marginBottom: theme.spacing.md,
   },
   loadingText: {},
   recommendationsCard: {
@@ -641,7 +643,7 @@ const styles = StyleSheet.create({
   },
   recommendationCopy: {
     flex: 1,
-    gap: 2,
+    gap: theme.spacing.xs,
   },
   recommendationTitle: {
     fontSize: 13,

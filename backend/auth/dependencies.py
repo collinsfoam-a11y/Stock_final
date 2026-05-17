@@ -56,7 +56,7 @@ class AuthDependencies:
         self._secret_key = secret_key
         self._algorithm = algorithm
         self._initialized = True
-        logger.info("✓ AuthDependencies initialized successfully")
+        logger.info("AuthDependencies initialized successfully")
 
     @property
     def db(self) -> AsyncIOMotorDatabase:

@@ -34,6 +34,7 @@ from backend.services.count_line_write_service import (
 from backend.services.lock_service import LockService, ResourceLockedError
 from backend.services.logic_guard import build_request_context, enforce_session_logic
 from backend.services.notification_service import NotificationService
+from backend.services.read_router import InventoryReadRouter, ProjectionReadError
 from backend.services.snapshot_service import SnapshotService
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.transaction_manager import mongo_transaction
@@ -1748,6 +1749,12 @@ async def check_item_counted(
     """Check if an item has already been counted in the session"""
     db = _get_db_client()
     try:
+        read_router = InventoryReadRouter(db)
+        totals = await read_router.get_session_item_totals(
+            session_id=session_id,
+            item_code=item_code,
+            endpoint="count-lines/check",
+        )
         # Find all count lines for this item in this session
         cursor = db.count_lines.find({"session_id": session_id, "item_code": item_code})
         count_lines = await cursor.to_list(length=None)
@@ -1758,7 +1765,21 @@ async def check_item_counted(
             # Frontend expects a stable `line_id` field for follow-up actions (add qty, etc).
             line.setdefault("line_id", line.get("id") or line["_id"])
 
-        return {"already_counted": len(count_lines) > 0, "count_lines": count_lines}
+        return {
+            "already_counted": len(count_lines) > 0 or bool(totals.get("scanned")),
+            "count_lines": count_lines,
+            "aggregate_source": totals.get("source", "legacy"),
+            "item_totals": {
+                "total_qty": totals.get("total_qty", 0.0),
+                "source": totals.get("source", "legacy"),
+            },
+            "batch_totals": totals.get("batch_totals", []),
+        }
+    except ProjectionReadError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=str(e),
+        ) from e
     except Exception as e:
         logger.error(
             "Error checking item count: %s",
@@ -1771,14 +1792,18 @@ async def check_item_counted(
 async def check_serial_uniqueness(
     session_id: str,
     serial_number: str,
+    item_code: str = Query(..., min_length=1),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
-    Check whether a serial number has already been counted within a session.
+    Check whether a serial number has already been counted.
 
     Returns a small payload that the UI can use to prevent duplicate serial entry.
     """
     db = _get_db_client()
+    normalized_item_code = item_code.strip() if isinstance(item_code, str) else ""
+    if not normalized_item_code:
+        raise HTTPException(status_code=400, detail="item_code is required")
 
     normalized = (serial_number or "").strip()
     if not normalized:
@@ -1796,20 +1821,43 @@ async def check_serial_uniqueness(
     }
 
     for candidate in candidates:
+        serial_query: dict[str, Any] = {
+            "serial_no": candidate,
+            "item_code": normalized_item_code,
+        }
+        legacy_item_query: dict[str, Any] = {
+            "serial_number": candidate,
+            "item_code": normalized_item_code,
+        }
+        count_line_query: dict[str, Any] = {
+            "session_id": session_id,
+            "item_code": normalized_item_code,
+            "$or": [
+                {"serial_numbers": candidate},
+                {"serial_entries.serial_number": candidate},
+            ],
+        }
+
+        existing = await db.serial_registry.find_one(serial_query, projection)
+        if existing:
+            return {"exists": True, "scope": "item", **existing}
+
+        legacy_serial = await db.item_serials.find_one(legacy_item_query, projection)
+        if legacy_serial:
+            return {
+                "exists": True,
+                "scope": "item",
+                **legacy_serial,
+            }
+
         existing = await db.count_lines.find_one(
-            {
-                "session_id": session_id,
-                "$or": [
-                    {"serial_numbers": candidate},
-                    {"serial_entries.serial_number": candidate},
-                ],
-            },
+            count_line_query,
             projection,
         )
         if existing:
-            return {"exists": True, **existing}
+            return {"exists": True, "scope": "item", **existing}
 
-    return {"exists": False}
+    return {"exists": False, "scope": "item"}
 
 
 @router.get("/count-lines/session/{session_id}")
@@ -2119,30 +2167,18 @@ async def check_item_scan_status(
 ):
     """Check if item has been scanned in this session and where"""
     db = _get_db_client()
-
-    # Find all count lines for this item in this session
-    cursor = db.count_lines.find({"session_id": session_id, "item_code": item_code})
-
-    count_lines = await cursor.to_list(None)
-
-    if not count_lines:
-        return {"scanned": False, "total_qty": 0, "locations": []}
-
-    total_qty = sum(line.get("counted_qty", 0) for line in count_lines)
-
-    locations = []
-    for line in count_lines:
-        locations.append(
-            {
-                "floor_no": line.get("floor_no"),
-                "rack_no": line.get("rack_no"),
-                "counted_qty": line.get("counted_qty"),
-                "counted_by": line.get("counted_by"),
-                "counted_at": line.get("counted_at"),
-            }
+    try:
+        read_router = InventoryReadRouter(db)
+        return await read_router.get_session_item_scan_status(
+            session_id=session_id,
+            item_code=item_code,
+            endpoint="scan-status",
         )
-
-    return {"scanned": True, "total_qty": total_qty, "locations": locations}
+    except ProjectionReadError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=str(e),
+        ) from e
 
 
 @router.post("/count-lines/bulk/approve")

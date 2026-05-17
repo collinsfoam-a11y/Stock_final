@@ -17,6 +17,8 @@ import { useToast } from "../../src/components/feedback/ToastProvider";
 import { ModernCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
 import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { colorWithAlpha } from "@/theme/themeTokens";
 import {
   createOperationalStyleBridge,
   type OperationalStyleBridge,
@@ -38,6 +40,7 @@ interface ActivityLog {
 export default function ActivityLogsScreen() {
   const router = useRouter();
   const uiTokens = useUiTokens();
+  const prefersReducedMotion = useReducedMotion();
   const operationalTheme = useMemo(() => createOperationalStyleBridge(uiTokens), [uiTokens]);
   const styles = useMemo(() => createStyles(operationalTheme), [operationalTheme]);
   const { show } = useToast();
@@ -48,6 +51,8 @@ export default function ActivityLogsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const headerEntry = prefersReducedMotion ? undefined : FadeInDown.delay(100).springify();
+  const statsEntry = prefersReducedMotion ? undefined : FadeInDown.delay(200).springify();
 
   const loadLogs = React.useCallback(
     async (pageNum: number = 1) => {
@@ -123,7 +128,11 @@ export default function ActivityLogsScreen() {
   };
 
   const renderLogItem = ({ item: log }: { item: ActivityLog }) => (
-    <AnimatedPressable style={{ marginBottom: operationalTheme.spacing.md }}>
+    <AnimatedPressable
+      style={styles.logPressable}
+      accessibilityLabel={`${log.action.replace(/_/g, " ")}, ${log.status}, ${log.user}, ${formatTimestamp(log.timestamp)}`}
+      accessibilityHint="Shows activity log details"
+    >
       <ModernCard variant="outlined" elevation="none" padding={operationalTheme.spacing.md}>
         <View style={styles.logHeader}>
           <View style={styles.logHeaderLeft}>
@@ -132,7 +141,9 @@ export default function ActivityLogsScreen() {
                 styles.iconContainer,
                 {
                   backgroundColor:
-                    log.status === "error" ? "rgba(239, 68, 68, 0.1)" : "rgba(59, 130, 246, 0.1)",
+                    log.status === "error"
+                      ? colorWithAlpha(operationalTheme.colors.error[500], 0.1)
+                      : colorWithAlpha(operationalTheme.colors.primary[500], 0.1),
                 },
               ]}
             >
@@ -177,10 +188,7 @@ export default function ActivityLogsScreen() {
             variant="outlined"
             elevation="none"
             padding={operationalTheme.spacing.xs}
-            style={{
-              alignSelf: "flex-start",
-              marginVertical: operationalTheme.spacing.xs,
-            }}
+            style={styles.entityBadge}
           >
             <Text style={styles.entityText}>
               {log.entity_type}: {log.entity_id || "N/A"}
@@ -193,14 +201,7 @@ export default function ActivityLogsScreen() {
             variant="outlined"
             elevation="none"
             padding={operationalTheme.spacing.sm}
-            style={{
-              marginTop: operationalTheme.spacing.sm,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-              borderColor: operationalTheme.colors.error[500],
-              backgroundColor: "rgba(239, 68, 68, 0.1)",
-            }}
+            style={styles.errorCard}
           >
             <Ionicons name="alert-circle" size={16} color={operationalTheme.colors.error[500]} />
             <Text style={[styles.errorText, { color: operationalTheme.colors.error[500] }]}>
@@ -214,7 +215,7 @@ export default function ActivityLogsScreen() {
             variant="outlined"
             elevation="none"
             padding={operationalTheme.spacing.sm}
-            style={{ marginTop: operationalTheme.spacing.sm }}
+            style={styles.detailsCard}
           >
             <Text style={styles.detailsText} numberOfLines={3}>
               {JSON.stringify(log.details, null, 2)}
@@ -230,11 +231,13 @@ export default function ActivityLogsScreen() {
       <StatusBar style="light" />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
+        <Animated.View entering={headerEntry} style={styles.header}>
           <View style={styles.headerLeft}>
             <AnimatedPressable
               onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
+              accessibilityLabel="Back to supervisor"
+              accessibilityHint="Returns to the supervisor area"
             >
               <Ionicons name="arrow-back" size={24} color={operationalTheme.colors.text.primary} />
             </AnimatedPressable>
@@ -246,7 +249,7 @@ export default function ActivityLogsScreen() {
         </Animated.View>
 
         {stats && (
-          <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.statsContainer}>
+          <Animated.View entering={statsEntry} style={styles.statsContainer}>
             <StatsCard
               title="Total Activities"
               value={stats.total?.toString() || "0"}
@@ -305,12 +308,12 @@ export default function ActivityLogsScreen() {
               }
               ListFooterComponent={
                 loading && logs.length > 0 ? (
-                  <View style={{ padding: 20 }}>
+                  <View style={styles.footerLoader}>
                     <ActivityIndicator color={operationalTheme.colors.primary[500]} />
                   </View>
                 ) : null
               }
-              contentContainerStyle={{ paddingBottom: operationalTheme.spacing.xl }}
+              contentContainerStyle={styles.listContent}
             />
           )}
         </View>
@@ -319,127 +322,152 @@ export default function ActivityLogsScreen() {
   );
 }
 
-const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: operationalTheme.colors.background.primary,
-  },
-  container: {
-    flex: 1,
-    paddingTop: 60,
-    paddingHorizontal: operationalTheme.spacing.md,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: operationalTheme.spacing.md,
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: operationalTheme.spacing.md,
-  },
-  backButton: {
-    padding: operationalTheme.spacing.xs,
-    backgroundColor: operationalTheme.colors.background.glass,
-    borderRadius: operationalTheme.borderRadius.full,
-    borderWidth: 1,
-    borderColor: operationalTheme.colors.border.light,
-  },
-  pageTitle: {
-    fontFamily: operationalTheme.typography.fontFamily.heading,
-    fontSize: operationalTheme.typography.fontSize["2xl"],
-    color: operationalTheme.colors.text.primary,
-    fontWeight: "700",
-  },
-  pageSubtitle: {
-    fontSize: operationalTheme.typography.fontSize.sm,
-    color: operationalTheme.colors.text.secondary,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    gap: operationalTheme.spacing.sm,
-    marginBottom: operationalTheme.spacing.md,
-  },
-  listContainer: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: operationalTheme.spacing.md,
-    color: operationalTheme.colors.text.secondary,
-    fontSize: operationalTheme.typography.fontSize.md,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: 100,
-  },
-  emptyText: {
-    marginTop: operationalTheme.spacing.md,
-    color: operationalTheme.colors.text.tertiary,
-    fontSize: operationalTheme.typography.fontSize.lg,
-  },
-  logHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: operationalTheme.spacing.sm,
-  },
-  logHeaderLeft: {
-    flexDirection: "row",
-    gap: operationalTheme.spacing.md,
-    flex: 1,
-  },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: operationalTheme.borderRadius.full,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  logInfo: {
-    flex: 1,
-  },
-  logAction: {
-    fontSize: operationalTheme.typography.fontSize.md,
-    fontWeight: "700",
-    color: operationalTheme.colors.text.primary,
-    marginBottom: 2,
-  },
-  logUser: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    color: operationalTheme.colors.text.tertiary,
-  },
-  statusText: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    fontWeight: "bold",
-    textTransform: "uppercase",
-  },
-  timestamp: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    color: operationalTheme.colors.text.tertiary,
-    marginBottom: operationalTheme.spacing.xs,
-    marginLeft: 52, // Align with text, skipping icon
-  },
-  entityText: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    color: operationalTheme.colors.text.secondary,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-  },
-  errorText: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    flex: 1,
-  },
-  detailsText: {
-    fontSize: operationalTheme.typography.fontSize.xs,
-    color: operationalTheme.colors.text.secondary,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-  },
-});
+const createStyles = (operationalTheme: OperationalStyleBridge) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: operationalTheme.colors.background.primary,
+    },
+    container: {
+      flex: 1,
+      paddingTop: 60,
+      paddingHorizontal: operationalTheme.spacing.md,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: operationalTheme.spacing.md,
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: operationalTheme.spacing.md,
+    },
+    backButton: {
+      padding: operationalTheme.spacing.xs,
+      backgroundColor: operationalTheme.colors.background.glass,
+      borderRadius: operationalTheme.borderRadius.full,
+      borderWidth: 1,
+      borderColor: operationalTheme.colors.border.light,
+    },
+    pageTitle: {
+      fontFamily: operationalTheme.typography.fontFamily.heading,
+      fontSize: operationalTheme.typography.fontSize["2xl"],
+      color: operationalTheme.colors.text.primary,
+      fontWeight: "700",
+    },
+    pageSubtitle: {
+      fontSize: operationalTheme.typography.fontSize.sm,
+      color: operationalTheme.colors.text.secondary,
+    },
+    statsContainer: {
+      flexDirection: "row",
+      gap: operationalTheme.spacing.sm,
+      marginBottom: operationalTheme.spacing.md,
+    },
+    listContainer: {
+      flex: 1,
+    },
+    listContent: {
+      paddingBottom: operationalTheme.spacing.xl,
+    },
+    logPressable: {
+      marginBottom: operationalTheme.spacing.md,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    loadingText: {
+      marginTop: operationalTheme.spacing.md,
+      color: operationalTheme.colors.text.secondary,
+      fontSize: operationalTheme.typography.fontSize.md,
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingTop: 100,
+    },
+    emptyText: {
+      marginTop: operationalTheme.spacing.md,
+      color: operationalTheme.colors.text.tertiary,
+      fontSize: operationalTheme.typography.fontSize.lg,
+    },
+    logHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: operationalTheme.spacing.sm,
+    },
+    logHeaderLeft: {
+      flexDirection: "row",
+      gap: operationalTheme.spacing.md,
+      flex: 1,
+    },
+    iconContainer: {
+      width: 36,
+      height: 36,
+      borderRadius: operationalTheme.borderRadius.full,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    logInfo: {
+      flex: 1,
+    },
+    logAction: {
+      fontSize: operationalTheme.typography.fontSize.md,
+      fontWeight: "700",
+      color: operationalTheme.colors.text.primary,
+      marginBottom: operationalTheme.spacing.xxs,
+    },
+    logUser: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      color: operationalTheme.colors.text.tertiary,
+    },
+    statusText: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      fontWeight: "bold",
+      textTransform: "uppercase",
+    },
+    timestamp: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      color: operationalTheme.colors.text.tertiary,
+      marginBottom: operationalTheme.spacing.xs,
+      marginLeft: 52, // Align with text, skipping icon
+    },
+    entityBadge: {
+      alignSelf: "flex-start",
+      marginVertical: operationalTheme.spacing.xs,
+    },
+    errorCard: {
+      marginTop: operationalTheme.spacing.sm,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: operationalTheme.spacing.sm,
+      borderColor: operationalTheme.colors.error[500],
+      backgroundColor: colorWithAlpha(operationalTheme.colors.error[500], 0.1),
+    },
+    detailsCard: {
+      marginTop: operationalTheme.spacing.sm,
+    },
+    footerLoader: {
+      padding: operationalTheme.spacing.xl,
+    },
+    entityText: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      color: operationalTheme.colors.text.secondary,
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    },
+    errorText: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      flex: 1,
+    },
+    detailsText: {
+      fontSize: operationalTheme.typography.fontSize.xs,
+      color: operationalTheme.colors.text.secondary,
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    },
+  });

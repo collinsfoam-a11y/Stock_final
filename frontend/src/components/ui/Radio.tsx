@@ -6,11 +6,7 @@
 
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import {
   colors,
   semanticColors,
@@ -18,7 +14,7 @@ import {
   textStyles,
   touchTargets,
   hitSlop,
-} from "@/theme/unified";
+} from "@/theme/legacyCompat";
 import { haptics } from "@/services/haptics";
 
 export interface RadioOption {
@@ -35,12 +31,7 @@ interface RadioProps {
   disabled?: boolean;
 }
 
-export const Radio: React.FC<RadioProps> = ({
-  options,
-  value,
-  onChange,
-  disabled = false,
-}) => {
+export const Radio: React.FC<RadioProps> = ({ options, value, onChange, disabled = false }) => {
   return (
     <View style={styles.container}>
       {options.map((option) => (
@@ -63,12 +54,7 @@ interface RadioItemProps {
   disabled?: boolean;
 }
 
-const RadioItem: React.FC<RadioItemProps> = ({
-  option,
-  selected,
-  onSelect,
-  disabled = false,
-}) => {
+const RadioItem: React.FC<RadioItemProps> = ({ option, selected, onSelect, disabled = false }) => {
   const scale = useSharedValue(selected ? 1 : 0);
 
   React.useEffect(() => {
@@ -114,14 +100,10 @@ const RadioItem: React.FC<RadioItemProps> = ({
       </View>
 
       <View style={styles.labelContainer}>
-        <Text style={[styles.label, disabled && styles.labelDisabled]}>
-          {option.label}
-        </Text>
+        <Text style={[styles.label, disabled && styles.labelDisabled]}>{option.label}</Text>
 
         {option.description && (
-          <Text
-            style={[styles.description, disabled && styles.descriptionDisabled]}
-          >
+          <Text style={[styles.description, disabled && styles.descriptionDisabled]}>
             {option.description}
           </Text>
         )}

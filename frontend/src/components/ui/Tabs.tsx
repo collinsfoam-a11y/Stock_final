@@ -13,11 +13,7 @@ import {
   ScrollView,
   LayoutChangeEvent,
 } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import {
   colors,
   semanticColors,
@@ -26,7 +22,7 @@ import {
   textStyles,
   touchTargets,
   hitSlop,
-} from "@/theme/unified";
+} from "@/theme/legacyCompat";
 
 export interface Tab {
   key: string;
@@ -50,9 +46,7 @@ export const Tabs: React.FC<TabsProps> = ({
   variant = "default",
   scrollable = false,
 }) => {
-  const [tabLayouts, setTabLayouts] = useState<Record<string, { x: number; width: number }>>(
-    {},
-  );
+  const [tabLayouts, setTabLayouts] = useState<Record<string, { x: number; width: number }>>({});
   const indicatorPosition = useSharedValue(0);
   const indicatorWidth = useSharedValue(0);
 
@@ -75,10 +69,7 @@ export const Tabs: React.FC<TabsProps> = ({
     width: indicatorWidth.value,
   }));
 
-  const handleTabLayout = (
-    key: string,
-    event: LayoutChangeEvent,
-  ) => {
+  const handleTabLayout = (key: string, event: LayoutChangeEvent) => {
     const { x, width } = event.nativeEvent.layout;
     setTabLayouts((prev) => ({
       ...prev,
@@ -119,9 +110,7 @@ export const Tabs: React.FC<TabsProps> = ({
 
         {tab.badge !== undefined && tab.badge > 0 ? (
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>
-              {tab.badge > 99 ? "99+" : tab.badge}
-            </Text>
+            <Text style={styles.badgeText}>{tab.badge > 99 ? "99+" : tab.badge}</Text>
           </View>
         ) : null}
       </TouchableOpacity>
