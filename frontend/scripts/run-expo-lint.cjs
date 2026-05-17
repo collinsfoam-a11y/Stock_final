@@ -9,7 +9,7 @@ const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "expo-lint-pnpm-"));
 
 try {
-const shimScript = `
+  const shimScript = `
 const { spawnSync } = require("node:child_process");
 const path = require("node:path");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
