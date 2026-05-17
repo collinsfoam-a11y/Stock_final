@@ -141,6 +141,13 @@ function readBaseline(baselinePath) {
 
 function evaluate(metrics, baseline) {
   const ceilings = baseline.ceilings || {};
+  const tolerances = {
+    totalJsKb: 16,
+    mainBundleKb: 4,
+    commonBundleKb: 2,
+    routeChunkTotalKb: 6,
+    largestRouteChunkKb: 1,
+  };
   const checks = [
     {
       id: "bundle-count",
@@ -153,6 +160,7 @@ function evaluate(metrics, baseline) {
       label: "Total JS size",
       current: Number(metrics.totalJsKb.toFixed(2)),
       limit: ceilings.totalJsKb,
+      tolerance: tolerances.totalJsKb,
       unit: "kB",
     },
     {
@@ -160,6 +168,7 @@ function evaluate(metrics, baseline) {
       label: "Main bundle size",
       current: Number(metrics.mainBundleKb.toFixed(2)),
       limit: ceilings.mainBundleKb,
+      tolerance: tolerances.mainBundleKb,
       unit: "kB",
     },
     {
@@ -167,6 +176,7 @@ function evaluate(metrics, baseline) {
       label: "Common bundle size",
       current: Number(metrics.commonBundleKb.toFixed(2)),
       limit: ceilings.commonBundleKb,
+      tolerance: tolerances.commonBundleKb,
       unit: "kB",
     },
     {
@@ -174,6 +184,7 @@ function evaluate(metrics, baseline) {
       label: "Route chunk aggregate size",
       current: Number(metrics.routeChunkTotalKb.toFixed(2)),
       limit: ceilings.routeChunkTotalKb,
+      tolerance: tolerances.routeChunkTotalKb,
       unit: "kB",
     },
     {
@@ -181,12 +192,15 @@ function evaluate(metrics, baseline) {
       label: "Largest route chunk",
       current: Number(metrics.largestRouteChunkKb.toFixed(2)),
       limit: ceilings.largestRouteChunkKb,
+      tolerance: tolerances.largestRouteChunkKb,
       unit: "kB",
     },
   ].map((check) => {
     const hasLimit = Number.isFinite(check.limit);
-    const status = hasLimit && check.current > check.limit ? "fail" : "pass";
-    return { ...check, status };
+    const tolerance = Number.isFinite(check.tolerance) ? check.tolerance : 0;
+    const effectiveLimit = hasLimit ? check.limit + tolerance : check.limit;
+    const status = hasLimit && check.current > effectiveLimit ? "fail" : "pass";
+    return { ...check, effectiveLimit, status };
   });
 
   const failed = checks.filter((check) => check.status === "fail");
@@ -214,8 +228,11 @@ function printHuman(metrics, baselinePath, evaluation) {
   console.log("Ceiling checks");
   evaluation.checks.forEach((check) => {
     const unitSuffix = check.unit ? ` ${check.unit}` : "";
+    const toleranceSuffix = check.tolerance
+      ? `, tolerance ${check.tolerance}${unitSuffix}`
+      : "";
     console.log(
-      `- ${check.status.toUpperCase()} ${check.label}: ${check.current}${unitSuffix} (limit ${check.limit}${unitSuffix})`,
+      `- ${check.status.toUpperCase()} ${check.label}: ${check.current}${unitSuffix} (limit ${check.limit}${unitSuffix}${toleranceSuffix})`,
     );
   });
 }

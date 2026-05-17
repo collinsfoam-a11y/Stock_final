@@ -426,10 +426,10 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
     flushButton: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
+      gap: operationalTheme.spacing.xs,
       backgroundColor: operationalTheme.colors.primary[500],
       paddingHorizontal: operationalTheme.spacing.md,
-      paddingVertical: 8,
+      paddingVertical: operationalTheme.spacing.sm,
       borderRadius: operationalTheme.borderRadius.full,
     },
     flushButtonDisabled: {
@@ -465,8 +465,8 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
       marginBottom: operationalTheme.spacing.sm,
     },
     methodBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 2,
+      paddingHorizontal: operationalTheme.spacing.sm,
+      paddingVertical: operationalTheme.spacing.xxs,
       borderRadius: operationalTheme.borderRadius.sm,
     },
     methodText: {
@@ -490,10 +490,10 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
     errorBadge: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 4,
-      backgroundColor: "rgba(234, 179, 8, 0.1)",
-      paddingHorizontal: 8,
-      paddingVertical: 2,
+      gap: operationalTheme.spacing.xs,
+      backgroundColor: colorWithAlpha(operationalTheme.colors.warning[500], 0.1),
+      paddingHorizontal: operationalTheme.spacing.sm,
+      paddingVertical: operationalTheme.spacing.xxs,
       borderRadius: operationalTheme.borderRadius.full,
     },
     errorBadgeText: {
@@ -517,7 +517,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
       borderWidth: 1,
       borderColor: operationalTheme.colors.border.light,
       paddingHorizontal: operationalTheme.spacing.md,
-      paddingVertical: 6,
+      paddingVertical: operationalTheme.spacing.xs,
       borderRadius: operationalTheme.borderRadius.full,
     },
     dismissText: {

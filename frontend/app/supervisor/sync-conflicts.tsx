@@ -33,6 +33,7 @@ import { ModernCard, StatsCard, AnimatedPressable } from "../../src/components/u
 import { safeBackNavigation } from "@/utils/navigation";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
 import {
   createOperationalStyleBridge,
   type OperationalStyleBridge,
@@ -611,7 +612,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
     },
     batchButton: {
       paddingHorizontal: operationalTheme.spacing.md,
-      paddingVertical: 8,
+      paddingVertical: operationalTheme.spacing.sm,
       borderRadius: operationalTheme.borderRadius.full,
     },
     batchButtonText: {
@@ -648,11 +649,11 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
     },
     conflictTypeContainer: {
       alignSelf: "flex-start",
-      backgroundColor: "rgba(234, 179, 8, 0.1)",
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      backgroundColor: colorWithAlpha(operationalTheme.colors.warning[500], 0.1),
+      paddingHorizontal: operationalTheme.spacing.sm,
+      paddingVertical: operationalTheme.spacing.xs,
       borderRadius: operationalTheme.borderRadius.full,
-      marginTop: 4,
+      marginTop: operationalTheme.spacing.xs,
     },
     conflictType: {
       fontSize: operationalTheme.typography.fontSize.xs,
@@ -670,7 +671,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
     dataLabel: {
       fontSize: operationalTheme.typography.fontSize.xs,
       color: operationalTheme.colors.text.tertiary,
-      marginBottom: 4,
+      marginBottom: operationalTheme.spacing.xs,
       textTransform: "uppercase",
     },
     dataValue: {
@@ -715,8 +716,8 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      padding: 20,
-      backgroundColor: "rgba(0,0,0,0.8)",
+      padding: operationalTheme.spacing.xl,
+      backgroundColor: colorWithAlpha("#000000", 0.8),
     },
     modalContent: {
       width: "100%",
@@ -732,15 +733,15 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
     modalLabel: {
       fontSize: operationalTheme.typography.fontSize.md,
       color: operationalTheme.colors.text.secondary,
-      marginBottom: 4,
+      marginBottom: operationalTheme.spacing.xs,
     },
     modalItemCode: {
       color: operationalTheme.colors.text.primary,
     },
     modalTypeBadge: {
-      backgroundColor: "rgba(234, 179, 8, 0.1)",
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+      backgroundColor: colorWithAlpha(operationalTheme.colors.warning[500], 0.1),
+      paddingHorizontal: operationalTheme.spacing.md,
+      paddingVertical: operationalTheme.spacing.xs,
       borderRadius: operationalTheme.borderRadius.full,
       alignSelf: "flex-start",
       marginBottom: operationalTheme.spacing.lg,
@@ -757,7 +758,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
       fontSize: operationalTheme.typography.fontSize.sm,
       fontWeight: "600",
       color: operationalTheme.colors.text.tertiary,
-      marginBottom: 8,
+      marginBottom: operationalTheme.spacing.sm,
       textTransform: "uppercase",
     },
     modalValue: {
@@ -766,9 +767,9 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
       fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     },
     modalInput: {
-      backgroundColor: "rgba(255,255,255,0.05)",
+      backgroundColor: colorWithAlpha(operationalTheme.colors.text.inverse, 0.05),
       color: operationalTheme.colors.text.primary,
-      padding: 12,
+      padding: operationalTheme.spacing.md,
       borderRadius: operationalTheme.borderRadius.md,
       fontSize: operationalTheme.typography.fontSize.md,
       marginBottom: operationalTheme.spacing.lg,
@@ -786,7 +787,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
     },
     modalButton: {
       flex: 1,
-      paddingVertical: 14,
+      paddingVertical: operationalTheme.spacing.md,
       borderRadius: operationalTheme.borderRadius.full,
       alignItems: "center",
     },
