@@ -9,6 +9,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useAuthStore } from "../../store/authStore";
 import { useRouter } from "expo-router";
+import { haptics } from "../../services/haptics";
 
 import { spacing, typography } from "@/theme/legacyCompat";
 import { BrandLogo } from "../branding/BrandLogo";
@@ -28,7 +29,7 @@ interface ModernHeaderProps {
   rightComponent?: React.ReactNode;
   rightAction?: {
     icon: keyof typeof Ionicons.glyphMap;
-    onPress: () => void;
+    onPress: (e?: any) => void;
     label?: string;
   };
   showSettingsButton?: boolean;
@@ -74,6 +75,7 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
     !!user && showSettingsButton && rightAction?.icon !== "settings-outline";
 
   const handleBackPress = () => {
+    haptics.light();
     if (onBackPress) {
       onBackPress();
       return;
@@ -83,12 +85,20 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
   };
 
   const onPressSettings = () => {
+    haptics.light();
     const role = user?.role;
     const target =
       role === "admin" || role === "supervisor" || role === "staff"
         ? `/${role}/settings`
         : "/staff/settings";
     router.push(target as any);
+  };
+
+  const handleRightAction = (e?: any) => {
+    if (rightAction) {
+      haptics.light();
+      rightAction.onPress(e);
+    }
   };
 
   return (
@@ -206,7 +216,7 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
           )}
           {rightAction && (
             <TouchableOpacity
-              onPress={rightAction.onPress}
+              onPress={handleRightAction}
               style={styles.backButton}
               {...getAccessibleButtonProps({
                 label: rightAction.label ?? "Header action",
