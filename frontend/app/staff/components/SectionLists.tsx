@@ -14,7 +14,10 @@ import Animated, { FadeInUp } from "react-native-reanimated";
 import { ModernCard } from "../../../src/components/ui";
 import type { SessionType } from "../../../src/types";
 import type { AppTheme } from "../../../src/theme/themes";
+import { hitSlop, radius, spacing, touchTargets } from "../../../src/theme/legacyCompat";
 import { colorWithAlpha } from "../../../src/theme/themeTokens";
+import { useReducedMotion } from "../../../src/hooks/useReducedMotion";
+import { operationalMotion } from "../../../src/utils/motion";
 
 type SessionListItem = {
   id?: string;
@@ -74,6 +77,7 @@ export function SectionLists({
   onResumeSection,
 }: SectionListsProps) {
   const inputRef = React.useRef<TextInput>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   React.useEffect(() => {
     if (!showFinishedSearch) return;
@@ -102,11 +106,13 @@ export function SectionLists({
             </Text>
           </View>
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Start a new section"
+            accessibilityHint="Creates a new stock counting section"
+            hitSlop={hitSlop.small}
             style={[styles.iconButton, { backgroundColor: theme.colors.accent }]}
             onPress={onStartNewSection}
             activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Start a new section"
           >
             <Ionicons name="add" size={20} color={theme.colors.text.inverse} />
           </TouchableOpacity>
@@ -114,13 +120,17 @@ export function SectionLists({
         <Text style={styles.sectionSubtitle}>Tap a section to continue scanning</Text>
 
         {isLoading ? (
-          <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 20 }} />
+          <ActivityIndicator color={theme.colors.accent} style={styles.loadingIndicator} />
         ) : activeSections.length > 0 ? (
           <View style={styles.listContainer}>
             {topActiveSections.map((session, index) => (
               <Animated.View
                 key={session.id || session.session_id}
-                entering={FadeInUp.delay(100 + index * 80)}
+                entering={
+                  prefersReducedMotion
+                    ? undefined
+                    : FadeInUp.delay(operationalMotion.instant + index * operationalMotion.instant)
+                }
               >
                 <ModernCard
                   variant="elevated"
@@ -167,7 +177,11 @@ export function SectionLists({
                   {overflowActiveSections.map((session, index) => (
                     <Animated.View
                       key={session.id || session.session_id}
-                      entering={FadeInUp.delay(300 + index * 60)}
+                      entering={
+                        prefersReducedMotion
+                          ? undefined
+                          : FadeInUp.delay(operationalMotion.slow + index * operationalMotion.fast)
+                      }
                       style={styles.overflowCardWrapper}
                     >
                       <ModernCard
@@ -213,7 +227,7 @@ export function SectionLists({
           </View>
         ) : (
           <ModernCard variant="elevated" intensity={10} style={styles.emptyState}>
-            <View style={{ alignItems: "center" }}>
+            <View style={styles.emptyStateContent}>
               <Ionicons
                 name="checkmark-circle-outline"
                 size={40}
@@ -234,6 +248,15 @@ export function SectionLists({
             <Text style={styles.sectionTitle}>Previous Sessions</Text>
           </View>
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Toggle previous sessions search"
+            accessibilityHint={
+              showFinishedSearch
+                ? "Hides the previous sessions search field"
+                : "Shows a search field for previous sessions"
+            }
+            accessibilityState={{ selected: showFinishedSearch }}
+            hitSlop={hitSlop.small}
             style={[
               styles.searchToggleButton,
               {
@@ -244,8 +267,6 @@ export function SectionLists({
             ]}
             onPress={onToggleSearch}
             activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Toggle previous sessions search"
           >
             <Ionicons
               name="search"
@@ -270,7 +291,13 @@ export function SectionLists({
               autoCorrect={false}
             />
             {finishedSearchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => onSearchQueryChange("")} accessibilityRole="button">
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Clear previous sessions search"
+                accessibilityHint="Clears the current search text"
+                hitSlop={hitSlop.small}
+                onPress={() => onSearchQueryChange("")}
+              >
                 <Ionicons name="close-circle" size={18} color={theme.colors.text.tertiary} />
               </TouchableOpacity>
             )}
@@ -283,13 +310,19 @@ export function SectionLists({
               (session, index) => (
                 <Animated.View
                   key={session.id || session.session_id}
-                  entering={FadeInUp.delay(200 + index * 50)}
+                  entering={
+                    prefersReducedMotion
+                      ? undefined
+                      : FadeInUp.delay(operationalMotion.normal + index * operationalMotion.fast)
+                  }
                 >
                   <View
                     style={[
                       styles.finishedSessionCard,
                       {
-                        backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                        backgroundColor: isDark
+                          ? colorWithAlpha(theme.colors.text.inverse, 0.03)
+                          : colorWithAlpha(theme.colors.text.primary, 0.02),
                       },
                     ]}
                   >
@@ -324,8 +357,17 @@ export function SectionLists({
             )}
             {finishedSections.length > 3 && (
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={
+                  showAllFinished
+                    ? "Show fewer previous sessions"
+                    : `Show ${finishedSections.length - 3} more previous sessions`
+                }
+                accessibilityHint="Toggles the number of previous sessions shown"
+                accessibilityState={{ expanded: showAllFinished }}
+                hitSlop={hitSlop.small}
                 onPress={() => setShowAllFinished(!showAllFinished)}
-                style={{ paddingVertical: 8, alignItems: "center" }}
+                style={styles.showMoreButton}
               >
                 <Text style={styles.moreText}>
                   {showAllFinished ? "Show Less" : `+${finishedSections.length - 3} more sessions`}
@@ -348,18 +390,18 @@ export function SectionLists({
 const createStyles = (theme: AppTheme, isDark: boolean) =>
   StyleSheet.create({
     section: {
-      marginBottom: 32,
+      marginBottom: spacing["3xl"],
     },
     sectionHeaderRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: 16, // Increased from 12
+      marginBottom: spacing.lg,
     },
     sectionHeader: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 10,
+      gap: spacing.md,
     },
     sectionTitle: {
       fontSize: 18,
@@ -370,51 +412,59 @@ const createStyles = (theme: AppTheme, isDark: boolean) =>
     sectionSubtitle: {
       fontSize: 14,
       color: theme.colors.text.secondary,
-      marginBottom: 16,
+      marginBottom: spacing.lg,
     },
     iconButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 12,
+      width: touchTargets.minimum,
+      height: touchTargets.minimum,
+      borderRadius: radius.md,
       justifyContent: "center",
       alignItems: "center",
       backgroundColor: theme.colors.accent,
       elevation: 4,
     },
     searchToggleButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 12,
+      width: touchTargets.minimum,
+      height: touchTargets.minimum,
+      borderRadius: radius.md,
       justifyContent: "center",
       alignItems: "center",
     },
     listContainer: {
-      gap: 12,
+      gap: spacing.md,
     },
     activeSessionCard: {
-      borderRadius: 20,
+      borderRadius: radius.xl,
       borderWidth: 1,
-      borderColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)",
-      marginBottom: 12, // Increased from 4
-      backgroundColor: isDark ? "rgba(30, 41, 59, 0.7)" : "rgba(255, 255, 255, 0.7)",
+      borderColor: isDark
+        ? colorWithAlpha(theme.colors.text.inverse, 0.05)
+        : colorWithAlpha(theme.colors.text.primary, 0.05),
+      marginBottom: spacing.md,
+      backgroundColor: isDark
+        ? colorWithAlpha(theme.colors.background.elevated, 0.7)
+        : colorWithAlpha(theme.colors.background.elevated, 0.7),
     },
     finishedSessionCard: {
-      borderRadius: 20,
+      borderRadius: radius.xl,
       borderWidth: 1,
-      borderColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)",
-      padding: 16,
-      marginBottom: 12, // Increased from 4
-      backgroundColor: isDark ? "rgba(30, 41, 59, 0.4)" : "rgba(255, 255, 255, 0.6)",
+      borderColor: isDark
+        ? colorWithAlpha(theme.colors.text.inverse, 0.05)
+        : colorWithAlpha(theme.colors.text.primary, 0.05),
+      padding: spacing.lg,
+      marginBottom: spacing.md,
+      backgroundColor: isDark
+        ? colorWithAlpha(theme.colors.background.elevated, 0.4)
+        : colorWithAlpha(theme.colors.background.elevated, 0.6),
     },
     sessionCardContent: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 16,
+      gap: spacing.lg,
     },
     sessionIcon: {
       width: 52,
       height: 52,
-      borderRadius: 16,
+      borderRadius: radius.lg,
       justifyContent: "center",
       alignItems: "center",
     },
@@ -425,7 +475,7 @@ const createStyles = (theme: AppTheme, isDark: boolean) =>
       fontSize: 16,
       fontWeight: "600",
       color: theme.colors.text.primary,
-      marginBottom: 4,
+      marginBottom: spacing.xs,
     },
     sessionMeta: {
       fontSize: 13,
@@ -434,21 +484,24 @@ const createStyles = (theme: AppTheme, isDark: boolean) =>
     resumeButton: {
       width: 40,
       height: 40,
-      borderRadius: 14,
+      borderRadius: radius.lg,
       justifyContent: "center",
       alignItems: "center",
       backgroundColor: theme.colors.accent,
     },
     emptyState: {
       alignItems: "center",
-      padding: 32,
-      gap: 12,
-      borderRadius: 24,
+      padding: spacing["3xl"],
+      gap: spacing.md,
+      borderRadius: radius["2xl"],
+    },
+    emptyStateContent: {
+      alignItems: "center",
     },
     emptyTitle: {
       fontSize: 17,
       fontWeight: "700",
-      marginTop: 8,
+      marginTop: spacing.sm,
       color: theme.colors.text.primary,
     },
     emptyText: {
@@ -460,23 +513,27 @@ const createStyles = (theme: AppTheme, isDark: boolean) =>
     searchContainer: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderRadius: 16,
+      gap: spacing.md,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
+      borderRadius: radius.lg,
       borderWidth: 1,
-      borderColor: isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
-      backgroundColor: isDark ? "rgba(15, 23, 42, 0.6)" : "rgba(255, 255, 255, 0.8)",
-      marginBottom: 16,
+      borderColor: isDark
+        ? colorWithAlpha(theme.colors.text.inverse, 0.1)
+        : colorWithAlpha(theme.colors.text.primary, 0.1),
+      backgroundColor: isDark
+        ? colorWithAlpha(theme.colors.background.paper, 0.6)
+        : colorWithAlpha(theme.colors.background.elevated, 0.8),
+      marginBottom: spacing.lg,
     },
     searchInput: {
       flex: 1,
       fontSize: 16,
       color: theme.colors.text.primary,
-      paddingVertical: 4,
+      paddingVertical: spacing.xs,
     },
     emptyStateSmall: {
-      paddingVertical: 24,
+      paddingVertical: spacing["2xl"],
       alignItems: "center",
     },
     emptyTextSmall: {
@@ -488,31 +545,42 @@ const createStyles = (theme: AppTheme, isDark: boolean) =>
       fontSize: 14,
       color: theme.colors.text.secondary,
       textAlign: "center",
-      marginTop: 8,
+      marginTop: spacing.sm,
     },
     overflowHint: {
       fontSize: 12,
       color: theme.colors.text.secondary,
-      marginBottom: 8,
-      marginLeft: 4,
+      marginBottom: spacing.sm,
+      marginLeft: spacing.xs,
     },
     overflowScroll: {
-      marginTop: 4,
+      marginTop: spacing.xs,
     },
     overflowScrollContent: {
-      paddingRight: 20,
-      gap: 12,
+      paddingRight: spacing.xl,
+      gap: spacing.md,
     },
     overflowCardWrapper: {
       flexDirection: "row",
     },
     overflowCard: {
       minWidth: 260,
-      borderRadius: 20,
+      borderRadius: radius.xl,
       borderWidth: 1,
-      borderColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)",
-      padding: 16,
-      backgroundColor: isDark ? "rgba(30, 41, 59, 0.7)" : "rgba(255, 255, 255, 0.7)",
+      borderColor: isDark
+        ? colorWithAlpha(theme.colors.text.inverse, 0.05)
+        : colorWithAlpha(theme.colors.text.primary, 0.05),
+      padding: spacing.lg,
+      backgroundColor: isDark
+        ? colorWithAlpha(theme.colors.background.elevated, 0.7)
+        : colorWithAlpha(theme.colors.background.elevated, 0.7),
+    },
+    loadingIndicator: {
+      marginTop: spacing.xl,
+    },
+    showMoreButton: {
+      paddingVertical: spacing.sm,
+      alignItems: "center",
     },
   });
 
