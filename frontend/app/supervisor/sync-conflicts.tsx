@@ -31,6 +31,7 @@ import {
 } from "../../src/services/api/api";
 import { ModernCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
 import { safeBackNavigation } from "@/utils/navigation";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import {
   createOperationalStyleBridge,
@@ -54,6 +55,7 @@ interface SyncConflict {
 export default function SyncConflictsScreen() {
   const router = useRouter();
   const uiTokens = useUiTokens();
+  const prefersReducedMotion = useReducedMotion();
   const operationalTheme = useMemo(() => createOperationalStyleBridge(uiTokens), [uiTokens]);
   const styles = useMemo(() => createStyles(operationalTheme), [operationalTheme]);
   const { hasPermission } = usePermission();
@@ -66,6 +68,10 @@ export default function SyncConflictsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedConflict, setSelectedConflict] = useState<SyncConflict | null>(null);
   const [resolutionNote, setResolutionNote] = useState("");
+  const headerEntry = prefersReducedMotion ? undefined : FadeInDown.delay(100).springify();
+  const statsEntry = prefersReducedMotion ? undefined : FadeInDown.delay(200).springify();
+  const filterEntry = prefersReducedMotion ? undefined : FadeInDown.delay(300).springify();
+  const batchEntry = prefersReducedMotion ? undefined : FadeInDown.delay(100);
 
   const loadStats = useCallback(async () => {
     try {
@@ -189,6 +195,9 @@ export default function SyncConflictsScreen() {
         onPress={() => toggleConflictSelection(item._id)}
         onLongPress={() => openConflictDetail(item)}
         style={{ marginBottom: operationalTheme.spacing.md }}
+        accessibilityLabel={`${isSelected ? "Selected" : "Unselected"} conflict for ${item.item_code}, ${item.conflict_type}`}
+        accessibilityHint="Selects this conflict. Long press to open conflict details."
+        accessibilityState={{ selected: isSelected }}
       >
         <ModernCard
           variant="outlined"
@@ -257,11 +266,13 @@ export default function SyncConflictsScreen() {
       <StatusBar style="light" />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
+        <Animated.View entering={headerEntry} style={styles.header}>
           <View style={styles.headerLeft}>
             <AnimatedPressable
               onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
+              accessibilityLabel="Back to supervisor"
+              accessibilityHint="Returns to the supervisor area"
             >
               <Ionicons name="arrow-back" size={24} color={operationalTheme.colors.text.primary} />
             </AnimatedPressable>
@@ -273,7 +284,7 @@ export default function SyncConflictsScreen() {
         </Animated.View>
 
         {stats && (
-          <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.statsContainer}>
+          <Animated.View entering={statsEntry} style={styles.statsContainer}>
             <StatsCard
               title="Total"
               value={stats.total?.toString() || "0"}
@@ -299,7 +310,7 @@ export default function SyncConflictsScreen() {
         )}
 
         {/* Filters */}
-        <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.filterBar}>
+        <Animated.View entering={filterEntry} style={styles.filterBar}>
           {["pending", "resolved", "all"].map((status) => (
             <AnimatedPressable
               key={status}
@@ -308,6 +319,9 @@ export default function SyncConflictsScreen() {
                 setFilterStatus(status);
               }}
               style={{ flex: 1 }}
+              accessibilityLabel={`${status.charAt(0).toUpperCase() + status.slice(1)} conflicts`}
+              accessibilityHint="Filters sync conflicts by status"
+              accessibilityState={{ selected: filterStatus === status }}
             >
               <ModernCard
                 variant="outlined"
@@ -337,7 +351,7 @@ export default function SyncConflictsScreen() {
         </Animated.View>
 
         {selectedConflicts.size > 0 && (
-          <Animated.View entering={FadeInDown.delay(100)} style={styles.batchActions}>
+          <Animated.View entering={batchEntry} style={styles.batchActions}>
             <ModernCard
               variant="outlined"
               elevation="none"
@@ -349,6 +363,8 @@ export default function SyncConflictsScreen() {
                 <AnimatedPressable
                   style={[styles.batchButton, { backgroundColor: operationalTheme.colors.success[500] }]}
                   onPress={() => handleBatchResolve("accept_server")}
+                  accessibilityLabel="Accept server values for selected conflicts"
+                  accessibilityHint="Resolves selected conflicts using server data"
                 >
                   <Text style={styles.batchButtonText}>Accept Server</Text>
                 </AnimatedPressable>
@@ -358,6 +374,8 @@ export default function SyncConflictsScreen() {
                     { backgroundColor: operationalTheme.colors.secondary[500] },
                   ]}
                   onPress={() => handleBatchResolve("accept_local")}
+                  accessibilityLabel="Accept local values for selected conflicts"
+                  accessibilityHint="Resolves selected conflicts using local offline data"
                 >
                   <Text style={styles.batchButtonText}>Accept Local</Text>
                 </AnimatedPressable>
@@ -468,6 +486,8 @@ export default function SyncConflictsScreen() {
                         { backgroundColor: operationalTheme.colors.success[500] },
                       ]}
                       onPress={() => handleResolve(selectedConflict._id, "accept_server")}
+                      accessibilityLabel="Accept server value"
+                      accessibilityHint="Resolves this conflict using server data"
                     >
                       <Text style={styles.modalButtonText}>Accept Server</Text>
                     </AnimatedPressable>
@@ -478,6 +498,8 @@ export default function SyncConflictsScreen() {
                         { backgroundColor: operationalTheme.colors.secondary[500] },
                       ]}
                       onPress={() => handleResolve(selectedConflict._id, "accept_local")}
+                      accessibilityLabel="Accept local value"
+                      accessibilityHint="Resolves this conflict using local offline data"
                     >
                       <Text style={styles.modalButtonText}>Accept Local</Text>
                     </AnimatedPressable>
@@ -486,6 +508,8 @@ export default function SyncConflictsScreen() {
                   <AnimatedPressable
                     style={[styles.modalButton, styles.modalButtonCancel]}
                     onPress={() => setModalVisible(false)}
+                    accessibilityLabel="Cancel conflict resolution"
+                    accessibilityHint="Closes the resolve conflict dialog"
                   >
                     <Text style={styles.modalButtonText}>Cancel</Text>
                   </AnimatedPressable>

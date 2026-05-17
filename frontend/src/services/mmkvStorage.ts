@@ -15,8 +15,6 @@ const AsyncStorage: AsyncStorageStatic =
 // resolved in Expo Go (Metro resolves imports statically), so we use
 // AsyncStorage exclusively for maximum compatibility.
 
-log.info("Using AsyncStorage storage engine (Expo Go compatible)");
-
 // Simple in-memory cache to mimic sync behavior for current session
 const memoryCache = new Map<string, string>();
 
@@ -45,31 +43,28 @@ Promise.resolve(
       pairs.forEach(([key, value]: readonly [string, string | null]) => {
         if (value) memoryCache.set(key, value);
       });
-      log.info(`Hydrated ${pairs.length} keys from AsyncStorage`);
     }
   })
-  .catch((e) => log.warn("Failed to hydrate from AsyncStorage", { error: String(e) }));
+  .catch((e) => log.warn("Storage hydration failed", { error: String(e) }));
 
 const storage = {
   set: (key: string, value: string) => {
     memoryCache.set(key, value);
     if (typeof AsyncStorage.setItem === "function") {
-      AsyncStorage.setItem(key, value).catch((e: any) => log.error("AsyncStorage set failed", e));
+      AsyncStorage.setItem(key, value).catch((e: any) => log.error("Storage set failed", e));
     }
   },
   getString: (key: string) => memoryCache.get(key),
   remove: (key: string) => {
     memoryCache.delete(key);
     if (typeof AsyncStorage.removeItem === "function") {
-      AsyncStorage.removeItem(key).catch((e: any) =>
-        log.error("AsyncStorage remove failed", e)
-      );
+      AsyncStorage.removeItem(key).catch((e: any) => log.error("Storage remove failed", e));
     }
   },
   clearAll: () => {
     memoryCache.clear();
     if (typeof AsyncStorage.clear === "function") {
-      AsyncStorage.clear().catch((e: any) => log.error("AsyncStorage clear failed", e));
+      AsyncStorage.clear().catch((e: any) => log.error("Storage clear failed", e));
     }
   },
 };
@@ -134,7 +129,6 @@ export const mmkvStorage = {
    * Initialize (noop for MMKV, maintained for API compatibility)
    */
   initialize: async (): Promise<void> => {
-    log.debug("MMKV storage ready");
     return Promise.resolve();
   },
 
