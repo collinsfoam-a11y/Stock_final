@@ -25,7 +25,6 @@ import {
   withRepeat,
   withTiming,
   withSequence,
-  Easing,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDebounce } from "use-debounce";
@@ -63,9 +62,11 @@ import { colors, spacing, typography, borderRadius } from "@/theme/legacyCompat"
 import { useAuthStore } from "../../src/store/authStore";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { getTokenShadowStyle } from "@/theme/themeTokens";
+import { colorWithAlpha, getTokenShadowStyle } from "@/theme/themeTokens";
 import { zIndex } from "@/theme/designTokens";
 import { flags } from "@/constants/flags";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { operationalMotion } from "@/utils/motion";
 const SCAN_BUFFER_TIMEOUT = 2000; // 2 seconds
 const SCAN_BUFFER_MAX_SIZE = 10;
 const SCAN_CONFIDENCE_THRESHOLD = 2;
@@ -79,6 +80,7 @@ const ScanScreen = React.memo(function ScanScreen() {
 
   const { user, logout, isAuthenticated } = useAuthStore();
   const uiTokens = useUiTokens();
+  const prefersReducedMotion = useReducedMotion();
   const scannerVibration = useSettingsStore((state) => state.settings.scannerVibration);
   const scannerSound = useSettingsStore((state) => state.settings.scannerSound);
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
@@ -203,19 +205,28 @@ const ScanScreen = React.memo(function ScanScreen() {
 
   // Animated scan line
   useEffect(() => {
+    if (prefersReducedMotion) {
+      scanLinePosition.value = 0;
+      cornerOpacity.value = 1;
+      return;
+    }
+
     if (isScanning) {
       scanLinePosition.value = withRepeat(
-        withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: operationalMotion.slow }),
         -1,
         true
       );
       cornerOpacity.value = withRepeat(
-        withSequence(withTiming(0.5, { duration: 1000 }), withTiming(1, { duration: 1000 })),
+        withSequence(
+          withTiming(0.5, { duration: operationalMotion.slow }),
+          withTiming(1, { duration: operationalMotion.slow })
+        ),
         -1,
         false
       );
     }
-  }, [cornerOpacity, isScanning, scanLinePosition]);
+  }, [cornerOpacity, isScanning, prefersReducedMotion, scanLinePosition]);
 
   const animatedScanLine = useAnimatedStyle(() => ({
     transform: [{ translateY: scanLinePosition.value * 200 }],
@@ -711,7 +722,9 @@ const ScanScreen = React.memo(function ScanScreen() {
             styles.pointerEventsNone,
             {
               backgroundColor:
-                uiTokens.mode === "dark" ? "rgba(17,24,39,0.75)" : "rgba(255,255,255,0.88)",
+                uiTokens.mode === "dark"
+                  ? colorWithAlpha(uiTokens.colors.background, 0.75)
+                  : colorWithAlpha(colors.white, 0.88),
             },
           ]}
         >
@@ -777,7 +790,7 @@ const styles = StyleSheet.create({
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255,255,255,0.9)",
+    backgroundColor: colorWithAlpha(colors.white, 0.9),
     justifyContent: "center",
     alignItems: "center",
     zIndex: zIndex.overlay,
@@ -789,9 +802,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 60,
     right: 20,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: colorWithAlpha(colors.black, 0.7),
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
     zIndex: zIndex.tooltip,
   },
@@ -802,10 +815,10 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
   },
   performanceGood: {
-    backgroundColor: "rgba(34,197,94,0.8)",
+    backgroundColor: colorWithAlpha(colors.success[500], 0.8),
   },
   performancePoor: {
-    backgroundColor: "rgba(239,68,68,0.8)",
+    backgroundColor: colorWithAlpha(colors.error[500], 0.8),
   },
   missingSessionContainer: {
     flex: 1,

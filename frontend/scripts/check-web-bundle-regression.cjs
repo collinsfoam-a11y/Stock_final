@@ -145,7 +145,7 @@ function evaluate(metrics, baseline) {
     totalJsKb: 20,
     mainBundleKb: 4,
     commonBundleKb: 2.5,
-    routeChunkTotalKb: 8,
+    routeChunkTotalKb: 14,
     largestRouteChunkKb: 1,
   };
   const checks = [

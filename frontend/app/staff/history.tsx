@@ -15,7 +15,11 @@ import { SkeletonList } from "../../src/components/LoadingSkeleton";
 import { SwipeableRow } from "../../src/components/SwipeableRow";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ModernCard } from "../../src/components/ui/ModernCard";
-import { modernBorderRadius as radius, modernSpacing as spacing, theme } from "../../src/styles/modernDesignSystem";
+import {
+  modernBorderRadius as radius,
+  modernSpacing as spacing,
+  theme,
+} from "../../src/styles/modernDesignSystem";
 import { hitSlop, touchTargets } from "@/theme/unified/spacing";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
@@ -298,15 +302,18 @@ export default function HistoryScreen() {
       </ModernCard>
     );
 
-    const AnimatedCard = flags.enableAnimations && !prefersReducedMotion ? (
-      <Animated.View
-        entering={FadeInUp.delay(index * operationalMotion.fast).springify().damping(12)}
-      >
-        {CardContent}
-      </Animated.View>
-    ) : (
-      CardContent
-    );
+    const AnimatedCard =
+      flags.enableAnimations && !prefersReducedMotion ? (
+        <Animated.View
+          entering={FadeInUp.delay(index * operationalMotion.fast)
+            .springify()
+            .damping(12)}
+        >
+          {CardContent}
+        </Animated.View>
+      ) : (
+        CardContent
+      );
 
     if (flags.enableSwipeActions && Platform.OS !== "web") {
       return (
@@ -670,7 +677,7 @@ const styles = StyleSheet.create({
   },
   reasonText: {
     fontSize: 13,
-    color: unifiedColors.warning[500],
+    color: theme.colors.warning[500],
     fontWeight: "700",
   },
   remark: {
@@ -689,7 +696,7 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 64,
+    paddingVertical: spacing["3xl"],
   },
   emptyText: {
     color: theme.colors.text.secondary,

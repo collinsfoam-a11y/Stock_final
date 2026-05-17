@@ -8,7 +8,7 @@ import {
 } from "@/services/device/expoCamera";
 import { useRouter } from "expo-router";
 
-import { semanticColors, colors } from "@/theme/legacyCompat";
+import { semanticColors, colors, hitSlop, radius, spacing } from "@/theme/legacyCompat";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { useScanGate } from "@/scanner/useScanGate";
 import { ScanMode, normalizeScanValue, scoreCandidate, decide } from "@/scanner/serialScanRules";
@@ -188,7 +188,15 @@ export default function SerialScannerScreen() {
 
 function ModeChip(props: { label: ScanMode; active: boolean; onPress: () => void }) {
   return (
-    <Pressable onPress={props.onPress} style={[styles.chip, props.active && styles.chipActive]}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${props.label} scan mode`}
+      accessibilityHint="Changes which barcode format the scanner expects"
+      accessibilityState={{ selected: props.active }}
+      hitSlop={hitSlop.small}
+      onPress={props.onPress}
+      style={[styles.chip, props.active && styles.chipActive]}
+    >
       <Text style={[styles.chipText, props.active && styles.chipTextActive]}>{props.label}</Text>
     </Pressable>
   );
@@ -197,22 +205,22 @@ function ModeChip(props: { label: ScanMode; active: boolean; onPress: () => void
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.neutral[950] },
   topBar: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
     backgroundColor: colors.neutral[950],
   },
-  modeRow: { flexDirection: "row", gap: 8, marginTop: 10 },
+  modeRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.md },
   hint: {
     color: colorWithAlpha(semanticColors.text.inverse, 0.7),
-    marginTop: 8,
+    marginTop: spacing.sm,
     fontSize: 12,
   },
   permissionContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
   },
   permissionText: {
     color: semanticColors.text.inverse,
@@ -229,27 +237,27 @@ const styles = StyleSheet.create({
     height: 200,
     borderWidth: 2,
     borderColor: colorWithAlpha(semanticColors.text.inverse, 0.6),
-    borderRadius: 12,
+    borderRadius: radius.md,
   },
 
   bottomPanel: {
-    padding: 16,
+    padding: spacing.lg,
     backgroundColor: colorWithAlpha(colors.neutral[950], 0.9),
-    paddingBottom: 32,
+    paddingBottom: spacing["3xl"],
   },
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   count: { color: semanticColors.text.inverse, fontSize: 18, fontWeight: "700" },
   list: { color: colorWithAlpha(semanticColors.text.inverse, 0.6), fontSize: 12 },
 
   chip: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colorWithAlpha(semanticColors.text.inverse, 0.2),
   },
