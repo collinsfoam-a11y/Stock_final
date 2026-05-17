@@ -3,6 +3,7 @@ import { View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Toast } from "./Toast";
 import { ToastData, toastService } from "../../services/toastService";
+import { haptics } from "../../services/haptics";
 import { useUiTokens } from "../../hooks/useUiTokens";
 import { zIndex } from "../../theme";
 
@@ -14,6 +15,22 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     const handleShow = (toast: ToastData) => {
       setToasts((prev) => [...prev, toast]);
+
+      // Trigger haptic feedback based on toast type
+      switch (toast.type) {
+        case "success":
+          void haptics.success();
+          break;
+        case "error":
+          void haptics.error();
+          break;
+        case "warning":
+          void haptics.warning();
+          break;
+        default:
+          void haptics.light();
+          break;
+      }
     };
 
     const handleHide = (data: ToastData) => {

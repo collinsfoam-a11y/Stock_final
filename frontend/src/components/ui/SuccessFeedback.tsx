@@ -4,10 +4,10 @@
  * Used for scan success, form submissions, etc.
  */
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo } from "react";
 import { Text, StyleSheet, Animated } from "react-native";
-import * as Haptics from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { haptics } from "@/services/haptics";
 
 import { colors as uiColors, semanticColors, shadows } from "@/theme/legacyCompat";
 interface SuccessFeedbackProps {
@@ -31,28 +31,28 @@ export const SuccessFeedback: React.FC<SuccessFeedbackProps> = ({
   const scale = useRef(new Animated.Value(0.8)).current;
   const iconScale = useRef(new Animated.Value(0)).current;
 
-  const getVariantConfig = () => {
+  const config = useMemo(() => {
     switch (variant) {
       case "warning":
         return {
           color: uiColors.warning[600],
           bgColor: uiColors.warning[50],
           icon: "warning" as const,
-          hapticType: Haptics.NotificationFeedbackType.Warning,
+          triggerHaptic: () => haptics.warning(),
         };
       case "error":
         return {
           color: uiColors.error[600],
           bgColor: uiColors.error[50],
           icon: "close-circle" as const,
-          hapticType: Haptics.NotificationFeedbackType.Error,
+          triggerHaptic: () => haptics.error(),
         };
       case "info":
         return {
           color: uiColors.primary[500],
           bgColor: uiColors.primary[50],
           icon: "information-circle" as const,
-          hapticType: Haptics.NotificationFeedbackType.Success,
+          triggerHaptic: () => haptics.light(),
         };
       case "success":
       default:
@@ -60,18 +60,16 @@ export const SuccessFeedback: React.FC<SuccessFeedbackProps> = ({
           color: uiColors.success[600],
           bgColor: uiColors.success[50],
           icon: "checkmark-circle" as const,
-          hapticType: Haptics.NotificationFeedbackType.Success,
+          triggerHaptic: () => haptics.success(),
         };
     }
-  };
-
-  const config = getVariantConfig();
+  }, [variant]);
 
   useEffect(() => {
     if (visible) {
       // Trigger haptic feedback
       if (haptic) {
-        Haptics.notificationAsync(config.hapticType);
+        config.triggerHaptic();
       }
 
       // Animate in
@@ -120,7 +118,7 @@ export const SuccessFeedback: React.FC<SuccessFeedbackProps> = ({
       return () => clearTimeout(timer);
     }
     return undefined;
-  }, [visible, opacity, scale, iconScale, duration, haptic, config.hapticType, onComplete]);
+  }, [visible, opacity, scale, iconScale, duration, haptic, config, onComplete]);
 
   if (!visible) return null;
 
@@ -182,7 +180,7 @@ export const ToastFeedback: React.FC<ToastFeedbackProps> = ({
 
   useEffect(() => {
     if (visible) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      void haptics.light();
 
       Animated.parallel([
         Animated.spring(translateY, {

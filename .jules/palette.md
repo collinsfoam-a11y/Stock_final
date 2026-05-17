@@ -13,3 +13,7 @@
 ## 2025-05-18 - Standardizing Tactile Feedback across Design System Components
 **Learning:** For a consistent mobile "feel," all interactive primitive components (Switch, Checkbox, Radio, etc.) should provide subtle haptic feedback on state change. Centralizing this logic in a `haptics` service that respects feature flags and platform constraints (e.g., disabling on web) ensures a robust and unified user experience.
 **Action:** Use `haptics.light()` from the centralized haptics service for all primary toggle/selection interactions in new UI components.
+
+## 2026-05-17 - Standardizing Tactile Feedback and Enhancing Modal Accessibility
+**Learning:** For a consistent and high-quality mobile experience, all feedback mechanisms (Toasts, Success/Error states) should provide tactile confirmation. Using a centralized haptics service ensures these effects can be globally managed and disabled on unsupported platforms (like web). Additionally, stabilizing component configurations with `useMemo` is critical when those configurations are used as dependencies in side-effect hooks like `useEffect`.
+**Action:** Always use the centralized `haptics` service for tactile feedback and ensure that any objects or functions used in `useEffect` dependency arrays are stabilized to prevent redundant execution of effects (like multiple haptic vibrations).
