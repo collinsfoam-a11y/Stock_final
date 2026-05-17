@@ -1,5 +1,4 @@
 import pytest
-import subprocess
 import sys
 from unittest.mock import patch, MagicMock
 from pathlib import Path
