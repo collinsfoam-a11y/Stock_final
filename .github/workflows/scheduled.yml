@@ -30,7 +30,7 @@ jobs:
 
       - name: Check Python dependencies
         run: |
-          pip install safety pip-audit
+          pip install "safety<3.0" pip-audit
           echo "## Security Audit" > audit-report.md
           safety check -r backend/requirements.production.txt --full-report >> audit-report.md || true
           pip-audit -r backend/requirements.production.txt >> audit-report.md || true
