@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import {
   Dimensions,
-  FlatList,
   Platform,
   StyleSheet,
   Text,
@@ -13,6 +12,7 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { AnimatedPressable } from "@/components/ui";
+import { VirtualList } from "@/components/common/VirtualList";
 import {
   getOperationalActionColor,
   getRoleBadgeStyle,
@@ -207,7 +207,10 @@ export function UsersTable({
     ) : null;
 
   return (
-    <FlatList
+    // ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to improve scrolling performance
+    // and reduce memory usage/frame drops for potentially long lists of users.
+    // estimatedItemSize calculated precisely based on token layouts: desktop rows (~53px), mobile cards (~155px).
+    <VirtualList
       contentContainerStyle={styles.listContent}
       data={users}
       keyExtractor={(user) => user.id}
@@ -216,6 +219,7 @@ export function UsersTable({
       ListHeaderComponent={renderHeader}
       refreshControl={refreshControl}
       renderItem={renderUser}
+      estimatedItemSize={showTableLayout ? 53 : 155}
     />
   );
 }
