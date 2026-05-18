@@ -1,0 +1,3 @@
+## 2024-05-18 - Header Button A11y and UX Improvements
+**Learning:** Icon-only buttons wrapped in `TouchableOpacity` require explicit `accessibilityRole="button"` and `accessibilityLabel` properties to be properly announced by screen readers. Furthermore, adding light haptic feedback to primary header interactions makes the app feel more responsive and premium.
+**Action:** When creating new components or refactoring existing ones, always check for icon-only buttons and ensure they have adequate accessibility labels and roles. Also, proactively add haptic feedback to primary interactive elements like navigation buttons using the custom haptics service.
