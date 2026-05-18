@@ -6,6 +6,10 @@
 **Learning:** Adding a clear button to form inputs is a high-impact micro-UX improvement that reduces friction during data correction. When implemented with haptic feedback and automatic refocusing, it creates a "delightful" and efficient interaction. In PNPM-based React Native/Expo environments, Jest transformation configurations must specifically account for the `.pnpm` symlink structure to ensure components with ES modules are correctly transformed.
 **Action:** Use the `showClearButton` prop in `ModernInput` for any searchable or high-correction fields. Ensure `transformIgnorePatterns` in `jest.config.js` is updated if new ES-only dependencies are added.
 
+## 2026-05-18 - [Standardizing Interactive Input Elements]
+**Learning:** Form inputs are high-frequency touchpoints. Adding haptic feedback to utility actions (like clearing text or toggling password visibility) significantly increases the "perceived quality" of the app. Pairing these with explicit accessibility labels (via `getAccessibleButtonProps`) ensures these micro-interactions are as inclusive as they are satisfying.
+**Action:** Always implement haptic feedback and descriptive accessibility labels for secondary actions within input components.
+
 ## 2026-05-06 - Standardizing Core Button Micro-Interactions
 **Learning:** Incorporating haptic feedback and dynamic accessibility labels (e.g., prefixing "Loading, " to the label) directly into the foundational button component ensures consistent UX across the entire application without requiring manual implementation in every screen. When wrapping `onPress` events, it is critical to preserve the `GestureResponderEvent` argument to avoid breaking event-dependent logic in calling components.
 **Action:** Always use the centralized `haptics` service for tactile feedback and ensure core components handle accessibility state changes (like loading) transparently.
