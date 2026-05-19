@@ -1,0 +1,3 @@
+## 2024-05-17 - Icon-only modal close buttons need accessibility labels and haptic feedback
+**Learning:** Icon-only buttons without labels (like those using `Ionicons`) are inaccessible to screen readers, and lack of tactile feedback on primary closing actions can make the app feel unresponsive or disjointed, especially for users with motor difficulties or interacting in noisy environments.
+**Action:** Pair all icon-only buttons with explicit `accessibilityLabel` and `accessibilityRole="button"`, and apply `haptics.light()` to close buttons on modals and overlays to reinforce primary structural interactions.
