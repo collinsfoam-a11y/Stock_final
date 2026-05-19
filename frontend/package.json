@@ -9,6 +9,17 @@
   "engines": {
     "node": ">=20.19.4 <26.0.0"
   },
+  "expo": {
+    "install": {
+      "exclude": [
+        "expo",
+        "expo-file-system",
+        "expo-font",
+        "expo-router",
+        "jest-expo"
+      ]
+    }
+  },
   "scripts": {
     "doctor:node": "node ./scripts/check-node-version.cjs",
     "doctor:expo": "node ./scripts/run-expo-doctor.cjs",
