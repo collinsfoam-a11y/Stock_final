@@ -11,6 +11,7 @@ import * as Haptics from "expo-haptics";
 
 import { useTheme } from "../../hooks/useTheme";
 import { useSettingsStore } from "../../store/settingsStore";
+import { useThemeContext } from "../../context/ThemeContext";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface ThemePickerProps {
@@ -19,8 +20,14 @@ interface ThemePickerProps {
 
 export const ThemePicker: React.FC<ThemePickerProps> = ({ compact = false }) => {
   const { colors } = useTheme();
+  const { setThemeKey } = useThemeContext();
   const theme = useSettingsStore((state) => state.settings.theme);
-  const setSetting = useSettingsStore((state) => state.setSetting);
+
+  const MODES = [
+    { value: "light" as const, label: "Light", icon: "sunny-outline" },
+    { value: "dark" as const, label: "Dark", icon: "moon-outline" },
+    { value: "claude" as const, label: "Claude", icon: "color-palette-outline" },
+  ];
 
   return (
     <View style={styles.container}>
@@ -29,10 +36,7 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ compact = false }) => 
         <View
           style={[styles.modeToggle, { backgroundColor: colors.surface, gap: compact ? 6 : 8 }]}
         >
-          {[
-            { value: "light" as const, label: "Light", icon: "sunny-outline" },
-            { value: "dark" as const, label: "Dark", icon: "moon-outline" },
-          ].map((mode) => (
+          {MODES.map((mode) => (
             <TouchableOpacity
               key={mode.value}
               style={[
@@ -43,7 +47,7 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ compact = false }) => 
                 if (Platform.OS !== "web") {
                   Haptics.selectionAsync();
                 }
-                setSetting("theme", mode.value);
+                setThemeKey(mode.value);
               }}
             >
               <Ionicons

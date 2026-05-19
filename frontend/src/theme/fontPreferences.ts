@@ -12,8 +12,10 @@ export const FONT_STYLE_OPTIONS: {
   { value: "mono", label: "Mono", preview: "01" },
 ];
 
-export const normalizeThemePreference = (value: unknown): "light" | "dark" => {
-  return value === "dark" ? "dark" : "light";
+export const normalizeThemePreference = (value: unknown): "light" | "dark" | "claude" => {
+  if (value === "dark") return "dark";
+  if (value === "claude") return "claude";
+  return "light";
 };
 
 export const normalizeFontSizePreference = (value: unknown): number => {

@@ -761,5 +761,98 @@ export const themes: Record<string, AppTheme> = {
   },
 };
 
+  // Claude Design - Warm Cream & Coral (claude.ai aesthetic)
+  claude: {
+    colors: {
+      background: {
+        default: "#FAF9F5", // Warm cream
+        paper: "#FFFDF9",   // Near-white warm
+        elevated: "#FFFFFF",
+        overlay: "rgba(26, 24, 20, 0.5)",
+        glass: "rgba(255, 253, 249, 0.92)",
+      },
+      text: {
+        primary: "#1A1A1A",
+        secondary: "#5D5D5D",
+        tertiary: "#8A8A8A",
+        muted: "#8A8A8A",
+        disabled: "#ADADAD",
+        inverse: "#FFFFFF",
+        link: "#CF6E4E",
+        linkHover: "#B85C3C",
+      },
+      primary: {
+        500: "#CF6E4E", // Claude coral/orange
+        600: "#B85C3C",
+        400: "#E08060",
+      },
+      secondary: {
+        500: "#7C6F64",
+        600: "#5E5249",
+        400: "#9E9188",
+      },
+      success: {
+        main: "#1B7F4F",
+        light: "#2E9E68",
+        dark: "#115E38",
+        50: "#E6F5EC",
+        700: "#1B7F4F",
+      },
+      error: {
+        main: "#D73A49",
+        light: "#E5626F",
+        dark: "#B02030",
+        50: "#FDE8EA",
+        700: "#C42232",
+      },
+      warning: {
+        main: "#9A6700",
+        light: "#C48B00",
+        dark: "#6E4900",
+        50: "#FFF4D6",
+        700: "#9A6700",
+      },
+      info: {
+        main: "#0969DA",
+        light: "#4A90D9",
+        50: "#E8F4FD",
+        700: "#0550AE",
+      },
+      border: {
+        light: "#EDE8E0",
+        medium: "#D8D2C8",
+        strong: "#B8B0A4",
+      },
+      accent: "#CF6E4E",
+      accentLight: "#E08060",
+      accentDark: "#B85C3C",
+      danger: "#D73A49",
+      overlay: "rgba(26, 24, 20, 0.5)",
+      glass: "rgba(255, 253, 249, 0.85)",
+      shimmer: ["#EDE8E0", "#FAF9F5", "#EDE8E0"],
+      aurora: {
+        ...commonAurora.colors.aurora,
+      },
+    },
+    gradients: {
+      primary: ["#CF6E4E", "#B85C3C", "#9E4C2E"],
+      accent: ["#E08060", "#CF6E4E"],
+      surface: ["#FFFFFF", "#FAF9F5"],
+      success: ["#2E9E68", "#1B7F4F"],
+      danger: ["#E5626F", "#D73A49"],
+      ...commonAurora.gradients,
+    },
+    spacing: commonAurora.spacing,
+    borderRadius: commonAurora.borderRadius,
+    radius: commonAurora.borderRadius,
+    typography: commonAurora.typography,
+    shadows: commonAurora.shadows,
+    glass: commonAurora.glass,
+    animations: commonAurora.animations,
+    componentSizes: commonAurora.componentSizes,
+    layout: commonAurora.layout,
+  },
+};
+
 // Default theme export for quick access
 export const defaultTheme = themes.light;

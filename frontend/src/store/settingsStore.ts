@@ -149,7 +149,7 @@ const getBackupReminderSyncImmediate = () => {
 export interface Settings {
   // Theme
   darkMode: boolean;
-  theme: "light" | "dark";
+  theme: "light" | "dark" | "claude";
 
   // Notifications
   notificationsEnabled: boolean;

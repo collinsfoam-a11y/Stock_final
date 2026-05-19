@@ -1,4 +1,4 @@
-export type Theme = "light" | "dark" | "system";
+export type Theme = "light" | "dark" | "claude" | "system";
 export type ThemeColors = Record<string, string>;
 
 export const lightTheme: ThemeColors = {

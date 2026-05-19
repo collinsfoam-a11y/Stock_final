@@ -49,6 +49,7 @@ const hexToRgba = (hex: string, alpha: number): string => {
 export type ThemeKey =
   | "light"
   | "dark"
+  | "claude"
   | "premium"
   | "ocean"
   | "sunset"
@@ -170,6 +171,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const THEME_METADATA: { key: ThemeKey; name: string; preview: string[] }[] = [
   { key: "light", name: "Light", preview: ["#FAFBFC", "#0969DA", "#1A7F37"] },
   { key: "dark", name: "Midnight", preview: ["#0D1117", "#58A6FF", "#3FB950"] },
+  { key: "claude", name: "Claude", preview: ["#FAF9F5", "#CF6E4E", "#1B7F4F"] },
 ];
 
 // Pattern metadata
@@ -220,8 +222,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Compute effective theme based on mode
   const effectiveThemeKey = useMemo((): ThemeKey => {
+    if (normalizedTheme === "claude") return "claude";
     return themeMode === "dark" ? "dark" : "light";
-  }, [themeMode]);
+  }, [themeMode, normalizedTheme]);
 
   const theme = useMemo<AppTheme>(() => {
     const resolved = (themes as any)?.[effectiveThemeKey] as
@@ -320,8 +323,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Sync theme context to the scoped settings store and clear retired pattern/layout state.
   useEffect(() => {
-    setThemeModeState(normalizedTheme);
-    setThemeKeyState(normalizedTheme);
+    const modeForState = normalizedTheme === "claude" ? "light" : normalizedTheme;
+    setThemeModeState(modeForState as ThemeMode);
+    setThemeKeyState(normalizedTheme as ThemeKey);
     setPatternState("none");
     setLayoutState("default");
     setIsInitialized(true);
@@ -329,9 +333,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Actions
   const setThemeKey = useCallback((key: ThemeKey) => {
-    const nextTheme = key === "dark" ? "dark" : "light";
-    setThemeKeyState(nextTheme);
-    setThemeModeState(nextTheme);
+    const nextTheme = key === "dark" ? "dark" : key === "claude" ? "claude" : "light";
+    setThemeKeyState(nextTheme as ThemeKey);
+    setThemeModeState(nextTheme === "claude" ? "light" : nextTheme as ThemeMode);
     if (useSettingsStore.getState().settings.theme !== nextTheme) {
       useSettingsStore.getState().setSetting("theme", nextTheme);
     }
