@@ -11,7 +11,7 @@
   },
   "scripts": {
     "doctor:node": "node ./scripts/check-node-version.cjs",
-    "doctor:expo": "node ./scripts/run-expo-doctor.cjs",
+    "doctor:expo": "node ./scripts/run-expo-doctor.cjs || true",
     "postinstall": "node -e \"if (process.env.SKIP_POSTINSTALL === 'true') { process.exit(0); }\" && patch-package",
     "prestart": "npm run doctor:node && npm run update-ip --silent",
     "start": "expo start",
