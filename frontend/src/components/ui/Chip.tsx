@@ -12,14 +12,11 @@ import {
   StyleSheet,
   ViewStyle,
   TextStyle,
+  GestureResponderEvent,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import {
-  colorPalette,
-  spacing,
-  typography,
-  borderRadius,
-} from "@/theme/designTokens";
+import { haptics } from "@/services/haptics";
+import { colorPalette, spacing, typography, borderRadius } from "@/theme/designTokens";
 
 export type ChipVariant = "filled" | "outlined";
 export type ChipSize = "sm" | "md" | "lg";
@@ -37,10 +34,7 @@ interface ChipProps {
   textStyle?: TextStyle;
 }
 
-const sizeStyles: Record<
-  ChipSize,
-  { padding: number; fontSize: number; iconSize: number }
-> = {
+const sizeStyles: Record<ChipSize, { padding: number; fontSize: number; iconSize: number }> = {
   sm: { padding: spacing.xs, fontSize: typography.fontSize.xs, iconSize: 14 },
   md: { padding: spacing.sm, fontSize: typography.fontSize.sm, iconSize: 16 },
   lg: { padding: spacing.md, fontSize: typography.fontSize.base, iconSize: 18 },
@@ -59,7 +53,20 @@ export const Chip: React.FC<ChipProps> = ({
   textStyle,
 }) => {
   const sizes = sizeStyles[size];
-  const isInteractive = !disabled && (onPress || onRemove);
+  const isInteractive = !!onPress;
+
+  const handlePress = (_event: GestureResponderEvent) => {
+    if (disabled) return;
+    haptics.light();
+    onPress?.();
+  };
+
+  const handleRemove = (event?: GestureResponderEvent) => {
+    if (disabled) return;
+    event?.stopPropagation?.();
+    haptics.light();
+    onRemove?.();
+  };
 
   const getColors = () => {
     if (disabled) {
@@ -74,9 +81,7 @@ export const Chip: React.FC<ChipProps> = ({
       return {
         bg: "transparent",
         text: selected ? colorPalette.primary[600] : colorPalette.neutral[700],
-        border: selected
-          ? colorPalette.primary[500]
-          : colorPalette.neutral[400],
+        border: selected ? colorPalette.primary[500] : colorPalette.neutral[400],
       };
     }
 
@@ -93,9 +98,12 @@ export const Chip: React.FC<ChipProps> = ({
 
   return (
     <Container
-      onPress={onPress}
+      onPress={isInteractive ? handlePress : undefined}
       disabled={disabled}
       activeOpacity={0.7}
+      accessibilityRole={isInteractive ? "button" : undefined}
+      accessibilityLabel={label}
+      accessibilityState={{ selected, disabled }}
       style={[
         styles.chip,
         {
@@ -110,12 +118,7 @@ export const Chip: React.FC<ChipProps> = ({
       ]}
     >
       {icon && (
-        <Ionicons
-          name={icon}
-          size={sizes.iconSize}
-          color={colors.text}
-          style={styles.icon}
-        />
+        <Ionicons name={icon} size={sizes.iconSize} color={colors.text} style={styles.icon} />
       )}
 
       <Text
@@ -134,15 +137,13 @@ export const Chip: React.FC<ChipProps> = ({
 
       {onRemove && !disabled && (
         <TouchableOpacity
-          onPress={onRemove}
+          onPress={handleRemove}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={styles.removeButton}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${label}`}
         >
-          <Ionicons
-            name="close-circle"
-            size={sizes.iconSize}
-            color={colors.text}
-          />
+          <Ionicons name="close-circle" size={sizes.iconSize} color={colors.text} />
         </TouchableOpacity>
       )}
     </Container>

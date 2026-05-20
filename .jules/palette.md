@@ -13,3 +13,7 @@
 ## 2025-05-18 - Standardizing Tactile Feedback across Design System Components
 **Learning:** For a consistent mobile "feel," all interactive primitive components (Switch, Checkbox, Radio, etc.) should provide subtle haptic feedback on state change. Centralizing this logic in a `haptics` service that respects feature flags and platform constraints (e.g., disabling on web) ensures a robust and unified user experience.
 **Action:** Use `haptics.light()` from the centralized haptics service for all primary toggle/selection interactions in new UI components.
+
+## 2026-05-20 - Standardizing Chip Component Micro-UX and Accessibility
+**Learning:** The `Chip` component, a frequently used UI element for filtering and tagging, was missing both tactile feedback and screen reader support. Adding `haptics.light()` and comprehensive accessibility attributes (`accessibilityRole="button"`, `accessibilityLabel`, and `accessibilityState`) significantly improves the interactive feel and inclusivity of the application.
+**Action:** Ensure all interactive tag-like or filter-like components implement the full suite of accessibility attributes and provide tactile feedback on both primary and secondary (e.g., remove) actions.
