@@ -1,0 +1,4 @@
+# Safety Policy File
+# Minimal policy to satisfy CI requirements
+security:
+  ignore-vulnerabilities: []
