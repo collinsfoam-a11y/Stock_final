@@ -23,6 +23,7 @@ import Animated, {
 import { useThemeContext } from "../../context/ThemeContext";
 import { AppTheme } from "../../theme/themes";
 import { BrandLogo } from "../branding/BrandLogo";
+import { haptics } from "../../services/haptics";
 
 interface PremiumHeaderProps {
   title?: string;
@@ -37,6 +38,7 @@ interface PremiumHeaderProps {
     icon: keyof typeof Ionicons.glyphMap;
     onPress: () => void;
     color?: string;
+    accessibilityLabel?: string;
   };
   style?: ViewStyle;
 }
@@ -100,8 +102,13 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
       return (
         <TouchableOpacity
           style={[styles.actionButton, { backgroundColor: "rgba(99, 102, 241, 0.15)" }]}
-          onPress={rightAction.onPress}
+          onPress={() => {
+            haptics.light();
+            rightAction.onPress();
+          }}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={rightAction.accessibilityLabel || "Action"}
         >
           <Ionicons
             name={rightAction.icon}
@@ -116,8 +123,13 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
       return (
         <TouchableOpacity
           style={[styles.actionButton, styles.logoutButton]}
-          onPress={onLogout}
+          onPress={() => {
+            haptics.light();
+            onLogout();
+          }}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Log out"
         >
           <Ionicons name="log-out-outline" size={22} color={theme.colors.error.main} />
         </TouchableOpacity>
@@ -126,7 +138,16 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
 
     if (onMenuPress) {
       return (
-        <TouchableOpacity style={styles.actionButton} onPress={onMenuPress} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => {
+            haptics.light();
+            onMenuPress();
+          }}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Open menu"
+        >
           <Ionicons name="menu-outline" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
       );
