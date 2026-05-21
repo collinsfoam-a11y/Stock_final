@@ -13,3 +13,7 @@
 ## 2025-05-18 - Standardizing Tactile Feedback across Design System Components
 **Learning:** For a consistent mobile "feel," all interactive primitive components (Switch, Checkbox, Radio, etc.) should provide subtle haptic feedback on state change. Centralizing this logic in a `haptics` service that respects feature flags and platform constraints (e.g., disabling on web) ensures a robust and unified user experience.
 **Action:** Use `haptics.light()` from the centralized haptics service for all primary toggle/selection interactions in new UI components.
+
+## 2026-05-21 - Standardizing Input Field Micro-UX and Accessibility
+**Learning:** Adding a "clear" button to input fields significantly reduces friction for users correcting data. When combined with haptic feedback and explicit ARIA labels for icon-only buttons (like password toggles and clear buttons), it creates a more accessible and delightful experience. Using a centralized `haptics` service and standardized accessibility utilities ensures consistency across the app.
+**Action:** Always include `showClearButton` for high-interaction text fields. Ensure all interactive icons in components use `getAccessibleButtonProps` to provide consistent roles and labels for screen readers.
