@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import {
   Dimensions,
+  FlatList,
   Platform,
   StyleSheet,
   Text,
@@ -12,7 +13,6 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { AnimatedPressable } from "@/components/ui";
-import { VirtualList } from "@/components/common/VirtualList";
 import {
   getOperationalActionColor,
   getRoleBadgeStyle,
@@ -207,11 +207,9 @@ export function UsersTable({
     ) : null;
 
   return (
-    // ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to significantly improve rendering performance and reduce frame drops for potentially long lists of users in the admin dashboard.
-    <VirtualList
+    <FlatList
       contentContainerStyle={styles.listContent}
       data={users}
-      estimatedItemSize={60}
       keyExtractor={(user) => user.id}
       ListEmptyComponent={() => <EmptyUsersState styles={styles} uiTokens={uiTokens} />}
       ListFooterComponent={renderFooter}
