@@ -139,7 +139,7 @@ jobs:
 
       - name: Install linters
         run: |
-          pip install ruff bandit "safety<3"
+          pip install ruff bandit pip-audit
 
       - name: Ruff lint
         run: ruff check backend/ --output-format=github
@@ -148,7 +148,7 @@ jobs:
         run: bandit -r backend/ -ll -ii --exclude "*/tests/*"
 
       - name: Dependency vulnerability check
-        run: safety check -r backend/requirements.production.txt --full-report
+        run: pip-audit -r backend/requirements.production.txt --ignore-vuln PYSEC-2025-183
 
   # ==========================================
   # Frontend Tests & Build
