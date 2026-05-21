@@ -60,6 +60,8 @@ interface ModernInputProps {
   inputStyle?: TextStyle;
   containerStyle?: ViewStyle;
   showClearButton?: boolean;
+  leftIconAriaLabel?: string;
+  rightIconAriaLabel?: string;
 }
 
 export const ModernInput: React.FC<ModernInputProps> = ({
@@ -92,6 +94,8 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   inputStyle,
   containerStyle,
   showClearButton = false,
+  leftIconAriaLabel,
+  rightIconAriaLabel,
 }) => {
   const uiTokens = useUiTokens();
   const [isFocused, setIsFocused] = useState(false);
@@ -180,7 +184,9 @@ export const ModernInput: React.FC<ModernInputProps> = ({
             onPress={onIconPress}
             style={styles.iconContainer}
             disabled={!onIconPress}
-            {...(onIconPress ? getAccessibleButtonProps({ label: `${label || "Input"} action` }) : {})}
+            {...(onIconPress
+              ? getAccessibleButtonProps({ label: leftIconAriaLabel || `${label || "Input"} action` })
+              : {})}
           >
             <Ionicons
               name={icon}
@@ -250,7 +256,9 @@ export const ModernInput: React.FC<ModernInputProps> = ({
             style={styles.iconContainer}
             disabled={!onRightIconPress}
             {...(onRightIconPress
-              ? getAccessibleButtonProps({ label: `${label || "Input"} right action` })
+              ? getAccessibleButtonProps({
+                  label: rightIconAriaLabel || `${label || "Input"} right action`,
+                })
               : {})}
           >
             <Ionicons name={rightIcon} size={20} color={uiTokens.colors.textSecondary} />
