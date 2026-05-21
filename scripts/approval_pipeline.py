@@ -765,8 +765,20 @@ def parse_output_summary(output_text: str) -> dict[str, int]:
     return summary
 
 
+def _normalize_target(target: str | None) -> str | None:
+    """Ensure target paths always have a leading './' for consistent comparison."""
+    if target is None:
+        return None
+    t = target.replace("\\", "/")
+    if t and not t.startswith("./") and not t.startswith("/"):
+        t = "./" + t
+    return t
+
+
 def infer_mutated_metric(command: str, summary: dict[str, int]) -> tuple[str, int] | None:
-    target = extract_target_script(command_to_tokens(normalize_command(command)))
+    target = _normalize_target(
+        extract_target_script(command_to_tokens(normalize_command(command)))
+    )
     if target == "./backend/scripts/backfill_session_snapshots.py" and "repaired" in summary:
         return ("repaired", summary["repaired"])
     if target == "./backend/scripts/cleanup_synthetic_session_data.py" and "deleted_docs" in summary:

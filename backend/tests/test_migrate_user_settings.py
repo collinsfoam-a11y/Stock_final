@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from backend.scripts.migrate_user_settings import migrate_user_settings
+from backend.scripts.archive.migrate_user_settings import migrate_user_settings
 
 
 @pytest.mark.asyncio

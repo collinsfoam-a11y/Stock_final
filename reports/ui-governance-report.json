@@ -130,6 +130,8 @@
     "frontend/src/components/feedback/LoadingSkeleton.tsx",
     "frontend/src/components/feedback/LoadingState.tsx",
     "frontend/src/components/feedback/NetworkStatusBanner.tsx",
+    "frontend/src/components/feedback/OperationalSyncBanner.tsx",
+    "frontend/src/components/feedback/ScannerFeedbackState.tsx",
     "frontend/src/components/feedback/StaffCrashScreen.tsx",
     "frontend/src/components/feedback/Toast.tsx",
     "frontend/src/components/feedback/ToastProvider.tsx",
@@ -273,6 +275,11 @@
     "frontend/src/components/ui/MultiSelectList.tsx",
     "frontend/src/components/ui/MyPressable.tsx",
     "frontend/src/components/ui/OnlineStatus.tsx",
+    "frontend/src/components/ui/OperationalCommandBar.tsx",
+    "frontend/src/components/ui/OperationalListRow.tsx",
+    "frontend/src/components/ui/OperationalListSection.tsx",
+    "frontend/src/components/ui/OperationalSplitView.tsx",
+    "frontend/src/components/ui/OperationalStatusStrip.tsx",
     "frontend/src/components/ui/ParticleField.tsx",
     "frontend/src/components/ui/PatternBackground.tsx",
     "frontend/src/components/ui/PremiumHeader.tsx",
@@ -357,6 +364,7 @@
     "frontend/src/hooks/useHapticFeedback.ts",
     "frontend/src/hooks/useKeepAwake.ts",
     "frontend/src/hooks/useKeyboardShortcuts.ts",
+    "frontend/src/hooks/useOperationalQueueNavigation.ts",
     "frontend/src/hooks/usePerformanceMonitor.ts",
     "frontend/src/hooks/usePermission.ts",
     "frontend/src/hooks/usePermissions.ts",
@@ -414,2033 +422,9 @@
       "title": "Arbitrary spacing/radius value",
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
-      "path": "frontend/app/+not-found.tsx",
-      "lineNumber": 24,
-      "line": "padding: 20,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/+not-found.tsx",
-      "lineNumber": 34,
-      "line": "paddingVertical: 15,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/admin/security.tsx",
-      "lineNumber": 549,
-      "line": "borderRadius: 24,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/admin/security.tsx",
-      "lineNumber": 589,
-      "line": "borderRadius: 4,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/admin/security.tsx",
-      "lineNumber": 631,
-      "line": "borderRadius: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/admin/security.tsx",
-      "lineNumber": 701,
-      "line": "borderRadius: 22,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/admin/security.tsx",
-      "lineNumber": 730,
-      "line": "borderRadius: 3,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/admin/settings.tsx",
-      "lineNumber": 443,
-      "line": "paddingHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/admin/settings.tsx",
-      "lineNumber": 458,
-      "line": "gap: 6,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/admin/settings.tsx",
-      "lineNumber": 462,
-      "line": "paddingHorizontal: 14,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/admin/settings.tsx",
-      "lineNumber": 463,
-      "line": "paddingVertical: 9,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/admin/settings.tsx",
-      "lineNumber": 473,
-      "line": "padding: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/admin/settings.tsx",
-      "lineNumber": 500,
-      "line": "gap: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/admin/settings.tsx",
-      "lineNumber": 501,
-      "line": "padding: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/admin/settings.tsx",
-      "lineNumber": 517,
-      "line": "paddingHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/admin/settings.tsx",
-      "lineNumber": 518,
-      "line": "paddingVertical: 24,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/forgot-password.tsx",
-      "lineNumber": 91,
-      "line": "borderRadius: 40,"
-    },
-    {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/app/forgot-password.tsx",
-      "lineNumber": 201,
-      "line": "entering={FadeInDown.duration(600).springify()}"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/app/help.tsx",
-      "lineNumber": 203,
-      "line": "<TouchableOpacity"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/help.tsx",
-      "lineNumber": 299,
-      "line": "padding: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/help.tsx",
-      "lineNumber": 301,
-      "line": "gap: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/help.tsx",
-      "lineNumber": 304,
-      "line": "borderRadius: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/help.tsx",
-      "lineNumber": 310,
-      "line": "paddingHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/help.tsx",
-      "lineNumber": 313,
-      "line": "gap: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/help.tsx",
-      "lineNumber": 318,
-      "line": "borderRadius: 10,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/help.tsx",
-      "lineNumber": 329,
-      "line": "paddingHorizontal: 10,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/help.tsx",
-      "lineNumber": 337,
-      "line": "paddingVertical: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/help.tsx",
-      "lineNumber": 338,
-      "line": "paddingHorizontal: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/help.tsx",
-      "lineNumber": 339,
-      "line": "borderRadius: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/help.tsx",
-      "lineNumber": 345,
-      "line": "gap: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/help.tsx",
-      "lineNumber": 357,
-      "line": "padding: 14,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/help.tsx",
-      "lineNumber": 358,
-      "line": "borderRadius: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/help.tsx",
-      "lineNumber": 371,
-      "line": "borderRadius: 12,"
-    },
-    {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/app/login.tsx",
-      "lineNumber": 301,
-      "line": "entering={FadeInDown.duration(800).springify()}"
-    },
-    {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/app/login.tsx",
-      "lineNumber": 330,
-      "line": "entering={FadeInDown.duration(800).springify()}"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/app/login.tsx",
-      "lineNumber": 336,
-      "line": "<TouchableOpacity"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/app/login.tsx",
-      "lineNumber": 360,
-      "line": "<TouchableOpacity"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/app/login.tsx",
-      "lineNumber": 410,
-      "line": "<TouchableOpacity"
-    },
-    {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/app/login.tsx",
-      "lineNumber": 418,
-      "line": "entering={FadeInDown.delay(index * 50).duration(300)}"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/app/login.tsx",
-      "lineNumber": 435,
-      "line": "<TouchableOpacity"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/app/login.tsx",
-      "lineNumber": 449,
-      "line": "<TouchableOpacity onPress={handleForgotPin}>"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/app/login.tsx",
-      "lineNumber": 455,
-      "line": "<TouchableOpacity onPress={() => setLoginMode(\"credentials\")}>"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/app/login.tsx",
-      "lineNumber": 490,
-      "line": "<TouchableOpacity"
-    },
-    {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/app/login.tsx",
-      "lineNumber": 516,
-      "line": "entering={FadeInDown.delay(200).duration(800).springify()}"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/login.tsx",
-      "lineNumber": 621,
-      "line": "borderRadius: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/login.tsx",
-      "lineNumber": 640,
-      "line": "borderRadius: 5,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/login.tsx",
-      "lineNumber": 702,
-      "line": "borderRadius: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/notifications.tsx",
-      "lineNumber": 376,
-      "line": "marginHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/notifications.tsx",
-      "lineNumber": 381,
-      "line": "padding: 14,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/notifications.tsx",
-      "lineNumber": 403,
-      "line": "gap: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/notifications.tsx",
-      "lineNumber": 404,
-      "line": "paddingHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/notifications.tsx",
-      "lineNumber": 405,
-      "line": "paddingVertical: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/notifications.tsx",
-      "lineNumber": 411,
-      "line": "paddingHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/notifications.tsx",
-      "lineNumber": 412,
-      "line": "paddingVertical: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/notifications.tsx",
-      "lineNumber": 419,
-      "line": "padding: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/notifications.tsx",
-      "lineNumber": 424,
-      "line": "padding: 14,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/notifications.tsx",
-      "lineNumber": 435,
-      "line": "borderRadius: 24,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/notifications.tsx",
-      "lineNumber": 458,
-      "line": "gap: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/notifications.tsx",
-      "lineNumber": 465,
-      "line": "borderRadius: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/notifications.tsx",
-      "lineNumber": 467,
-      "line": "paddingHorizontal: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/notifications.tsx",
-      "lineNumber": 468,
-      "line": "paddingVertical: 3,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/notifications.tsx",
-      "lineNumber": 476,
-      "line": "borderRadius: 5,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/notifications.tsx",
-      "lineNumber": 486,
-      "line": "paddingVertical: 48,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/otp-verification.tsx",
-      "lineNumber": 77,
-      "line": "borderRadius: 40,"
-    },
-    {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/app/otp-verification.tsx",
-      "lineNumber": 207,
-      "line": "entering={FadeInDown.duration(600).springify()}"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/app/register.tsx",
-      "lineNumber": 308,
-      "line": "<TouchableOpacity onPress={handleBackToLogin}>"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/register.tsx",
-      "lineNumber": 331,
-      "line": "paddingHorizontal: 24,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/register.tsx",
-      "lineNumber": 332,
-      "line": "paddingVertical: 24,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/register.tsx",
-      "lineNumber": 337,
-      "line": "paddingHorizontal: 24,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/register.tsx",
-      "lineNumber": 338,
-      "line": "paddingVertical: 24,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/register.tsx",
-      "lineNumber": 365,
-      "line": "gap: 6,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/reset-password.tsx",
-      "lineNumber": 76,
-      "line": "borderRadius: 40,"
-    },
-    {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/app/reset-password.tsx",
-      "lineNumber": 175,
-      "line": "entering={FadeInDown.duration(600).springify()}"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 236,
-      "line": "<TouchableOpacity"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 326,
-      "line": "<TouchableOpacity"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 328,
-      "line": "style={{ paddingVertical: 8, alignItems: \"center\" }}"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 362,
-      "line": "gap: 10,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 378,
-      "line": "borderRadius: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 387,
-      "line": "borderRadius: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 392,
-      "line": "gap: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 395,
-      "line": "borderRadius: 20,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 402,
-      "line": "borderRadius: 20,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 405,
-      "line": "padding: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 412,
-      "line": "gap: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 417,
-      "line": "borderRadius: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 437,
-      "line": "borderRadius: 14,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 444,
-      "line": "padding: 32,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 445,
-      "line": "gap: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 446,
-      "line": "borderRadius: 24,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 463,
-      "line": "gap: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 464,
-      "line": "paddingHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 465,
-      "line": "paddingVertical: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 466,
-      "line": "borderRadius: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 476,
-      "line": "paddingVertical: 4,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 479,
-      "line": "paddingVertical: 24,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 504,
-      "line": "gap: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 511,
-      "line": "borderRadius: 20,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/components/SectionLists.tsx",
-      "lineNumber": 514,
-      "line": "padding: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 347,
-      "line": "<View style={{ padding: 16 }}>"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 441,
-      "line": "<TouchableOpacity"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 504,
-      "line": "paddingHorizontal: 20,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 512,
-      "line": "borderRadius: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 526,
-      "line": "paddingHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 539,
-      "line": "gap: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 540,
-      "line": "paddingHorizontal: 14,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 541,
-      "line": "paddingVertical: 10,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 542,
-      "line": "borderRadius: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 562,
-      "line": "paddingVertical: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 563,
-      "line": "paddingHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 564,
-      "line": "borderRadius: 14,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 580,
-      "line": "paddingHorizontal: 10,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 581,
-      "line": "paddingVertical: 5,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 582,
-      "line": "borderRadius: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 599,
-      "line": "gap: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 604,
-      "line": "paddingHorizontal: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 605,
-      "line": "paddingVertical: 3,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 606,
-      "line": "borderRadius: 6,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 621,
-      "line": "gap: 10,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 627,
-      "line": "paddingVertical: 10,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 628,
-      "line": "borderRadius: 10,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 646,
-      "line": "borderRadius: 10,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 647,
-      "line": "paddingVertical: 10,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 648,
-      "line": "paddingHorizontal: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 682,
-      "line": "paddingVertical: 64,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 694,
-      "line": "marginHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 695,
-      "line": "padding: 20,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 696,
-      "line": "borderRadius: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 714,
-      "line": "paddingHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 715,
-      "line": "borderRadius: 10,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 720,
-      "line": "gap: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 729,
-      "line": "gap: 10,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 731,
-      "line": "padding: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/history.tsx",
-      "lineNumber": 732,
-      "line": "borderRadius: 12,"
-    },
-    {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/app/staff/scan.screen.tsx",
-      "lineNumber": 208,
-      "line": "withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),"
-    },
-    {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/app/staff/scan.screen.tsx",
-      "lineNumber": 213,
-      "line": "withSequence(withTiming(0.5, { duration: 1000 }), withTiming(1, { duration: 1000 })),"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/scan.screen.tsx",
-      "lineNumber": 793,
-      "line": "paddingHorizontal: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/scan.screen.tsx",
-      "lineNumber": 794,
-      "line": "paddingVertical: 8,"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/app/staff/serial-scanner.tsx",
-      "lineNumber": 191,
-      "line": "<Pressable onPress={props.onPress} style={[styles.chip, props.active && styles.chipActive]}>"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/serial-scanner.tsx",
-      "lineNumber": 200,
-      "line": "paddingHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/serial-scanner.tsx",
-      "lineNumber": 204,
-      "line": "modeRow: { flexDirection: \"row\", gap: 8, marginTop: 10 },"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/serial-scanner.tsx",
-      "lineNumber": 214,
-      "line": "paddingHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/serial-scanner.tsx",
-      "lineNumber": 215,
-      "line": "gap: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/serial-scanner.tsx",
-      "lineNumber": 232,
-      "line": "borderRadius: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/serial-scanner.tsx",
-      "lineNumber": 236,
-      "line": "padding: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/serial-scanner.tsx",
-      "lineNumber": 250,
-      "line": "paddingVertical: 6,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/serial-scanner.tsx",
-      "lineNumber": 251,
-      "line": "paddingHorizontal: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/staff/serial-scanner.tsx",
-      "lineNumber": 252,
-      "line": "borderRadius: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/activity-logs.tsx",
-      "lineNumber": 200,
-      "line": "gap: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/activity-logs.tsx",
-      "lineNumber": 308,
-      "line": "<View style={{ padding: 20 }}>"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/dashboard.tsx",
-      "lineNumber": 644,
-      "line": "gap: 2,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/items.tsx",
-      "lineNumber": 390,
-      "line": "<View style={{ paddingVertical: 20 }}>"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/items.tsx",
-      "lineNumber": 489,
-      "line": "padding: 4,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/offline-queue.tsx",
-      "lineNumber": 404,
-      "line": "gap: 6,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/offline-queue.tsx",
-      "lineNumber": 407,
-      "line": "paddingVertical: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/offline-queue.tsx",
-      "lineNumber": 443,
-      "line": "paddingHorizontal: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/offline-queue.tsx",
-      "lineNumber": 444,
-      "line": "paddingVertical: 2,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/offline-queue.tsx",
-      "lineNumber": 468,
-      "line": "gap: 4,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/offline-queue.tsx",
-      "lineNumber": 470,
-      "line": "paddingHorizontal: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/offline-queue.tsx",
-      "lineNumber": 471,
-      "line": "paddingVertical: 2,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/offline-queue.tsx",
-      "lineNumber": 495,
-      "line": "paddingVertical: 6,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/sessions.tsx",
-      "lineNumber": 313,
-      "line": "gap: 4,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/sessions.tsx",
-      "lineNumber": 370,
-      "line": "gap: 4,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/sessions.tsx",
-      "lineNumber": 375,
-      "line": "gap: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/sessions.tsx",
-      "lineNumber": 384,
-      "line": "gap: 6,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/sessions.tsx",
-      "lineNumber": 393,
-      "line": "gap: 6,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/sessions.tsx",
-      "lineNumber": 402,
-      "line": "paddingHorizontal: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/sessions.tsx",
-      "lineNumber": 403,
-      "line": "paddingVertical: 4,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/sessions.tsx",
-      "lineNumber": 421,
-      "line": "gap: 6,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
       "path": "frontend/app/supervisor/settings.tsx",
       "lineNumber": 163,
       "line": "paddingHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/sync-conflicts.tsx",
-      "lineNumber": 584,
-      "line": "paddingVertical: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/sync-conflicts.tsx",
-      "lineNumber": 622,
-      "line": "paddingHorizontal: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/sync-conflicts.tsx",
-      "lineNumber": 623,
-      "line": "paddingVertical: 4,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/sync-conflicts.tsx",
-      "lineNumber": 688,
-      "line": "padding: 20,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/sync-conflicts.tsx",
-      "lineNumber": 712,
-      "line": "paddingHorizontal: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/sync-conflicts.tsx",
-      "lineNumber": 713,
-      "line": "paddingVertical: 6,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/sync-conflicts.tsx",
-      "lineNumber": 741,
-      "line": "padding: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/sync-conflicts.tsx",
-      "lineNumber": 759,
-      "line": "paddingVertical: 14,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/variance-details.tsx",
-      "lineNumber": 471,
-      "line": "gap: 6,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/variances.tsx",
-      "lineNumber": 272,
-      "line": "borderRadius: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/variances.tsx",
-      "lineNumber": 381,
-      "line": "<View style={{ flexDirection: \"row\", gap: 8 }}>"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/variances.tsx",
-      "lineNumber": 503,
-      "line": "<View style={{ paddingVertical: 20 }}>"
-    },
-    {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/variances.tsx",
-      "lineNumber": 517,
-      "line": "<Animated.View entering={FadeInDown.duration(300)} style={styles.bulkActionBar}>"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/variances.tsx",
-      "lineNumber": 522,
-      "line": "style={{ flexDirection: \"row\", gap: 12, width: \"100%\" }}"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/variances.tsx",
-      "lineNumber": 631,
-      "line": "paddingVertical: 4,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/app/supervisor/variances.tsx",
-      "lineNumber": 732,
-      "line": "gap: 8,"
     },
     {
       "id": "UI017",
@@ -2604,19 +588,8 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/DashboardPanels.tsx",
-      "lineNumber": 27,
+      "lineNumber": 33,
       "line": "<TouchableOpacity"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/src/components/admin/dashboard/DashboardPanels.tsx",
-      "lineNumber": 519,
-      "line": "<TouchableOpacity style={styles.autoFixButton} onPress={() => onAutoFix(issue)}>"
     },
     {
       "id": "UI017",
@@ -2747,29 +720,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 256,
-      "line": "padding: 18,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 258,
-      "line": "gap: 6,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 270,
+      "lineNumber": 259,
       "line": "gap: 24,"
     },
     {
@@ -2780,7 +731,18 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 274,
+      "lineNumber": 263,
+      "line": "gap: 16,"
+    },
+    {
+      "id": "UI015",
+      "category": "token-adoption",
+      "severity": "P2",
+      "title": "Arbitrary spacing/radius value",
+      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
+      "status": "advisory",
+      "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
+      "lineNumber": 269,
       "line": "gap: 16,"
     },
     {
@@ -2792,17 +754,6 @@
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
       "lineNumber": 280,
-      "line": "gap: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 291,
       "line": "padding: 18,"
     },
     {
@@ -2813,7 +764,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 292,
+      "lineNumber": 281,
       "line": "gap: 10,"
     },
     {
@@ -2824,7 +775,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 297,
+      "lineNumber": 286,
       "line": "borderRadius: 21,"
     },
     {
@@ -2835,7 +786,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 313,
+      "lineNumber": 302,
       "line": "padding: 20,"
     },
     {
@@ -2846,7 +797,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 319,
+      "lineNumber": 308,
       "line": "borderRadius: 24,"
     },
     {
@@ -2857,7 +808,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 334,
+      "lineNumber": 323,
       "line": "gap: 24,"
     },
     {
@@ -2868,7 +819,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 340,
+      "lineNumber": 329,
       "line": "padding: 20,"
     },
     {
@@ -2879,7 +830,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 354,
+      "lineNumber": 343,
       "line": "padding: 20,"
     },
     {
@@ -2890,7 +841,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 357,
+      "lineNumber": 346,
       "line": "paddingHorizontal: 20,"
     },
     {
@@ -2901,7 +852,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 363,
+      "lineNumber": 352,
       "line": "paddingVertical: 12,"
     },
     {
@@ -2912,7 +863,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 371,
+      "lineNumber": 360,
       "line": "gap: 12,"
     },
     {
@@ -2923,7 +874,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 376,
+      "lineNumber": 365,
       "line": "borderRadius: 4,"
     },
     {
@@ -2934,7 +885,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 394,
+      "lineNumber": 383,
       "line": "gap: 10,"
     },
     {
@@ -2945,7 +896,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 405,
+      "lineNumber": 394,
       "line": "gap: 6,"
     },
     {
@@ -2956,7 +907,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 406,
+      "lineNumber": 395,
       "line": "paddingHorizontal: 10,"
     },
     {
@@ -2967,7 +918,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 407,
+      "lineNumber": 396,
       "line": "paddingVertical: 7,"
     },
     {
@@ -2978,7 +929,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 408,
+      "lineNumber": 397,
       "line": "borderRadius: 999,"
     },
     {
@@ -2989,7 +940,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 423,
+      "lineNumber": 412,
       "line": "gap: 16,"
     },
     {
@@ -3000,7 +951,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 428,
+      "lineNumber": 417,
       "line": "padding: 20,"
     },
     {
@@ -3011,7 +962,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 440,
+      "lineNumber": 429,
       "line": "padding: 20,"
     },
     {
@@ -3022,7 +973,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 456,
+      "lineNumber": 445,
       "line": "borderRadius: 32,"
     },
     {
@@ -3033,7 +984,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 470,
+      "lineNumber": 459,
       "line": "paddingVertical: 20,"
     },
     {
@@ -3044,7 +995,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 472,
+      "lineNumber": 461,
       "line": "borderRadius: 12,"
     },
     {
@@ -3055,7 +1006,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 487,
+      "lineNumber": 476,
       "line": "gap: 12,"
     },
     {
@@ -3066,7 +1017,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 491,
+      "lineNumber": 480,
       "line": "padding: 16,"
     },
     {
@@ -3077,7 +1028,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 493,
+      "lineNumber": 482,
       "line": "borderRadius: 12,"
     },
     {
@@ -3088,7 +1039,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 495,
+      "lineNumber": 484,
       "line": "gap: 16,"
     },
     {
@@ -3099,7 +1050,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 500,
+      "lineNumber": 489,
       "line": "borderRadius: 20,"
     },
     {
@@ -3110,7 +1061,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 519,
+      "lineNumber": 508,
       "line": "gap: 6,"
     },
     {
@@ -3121,7 +1072,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 521,
+      "lineNumber": 510,
       "line": "paddingVertical: 4,"
     },
     {
@@ -3132,7 +1083,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 522,
+      "lineNumber": 511,
       "line": "paddingHorizontal: 8,"
     },
     {
@@ -3143,7 +1094,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 524,
+      "lineNumber": 513,
       "line": "borderRadius: 6,"
     },
     {
@@ -3154,7 +1105,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 542,
+      "lineNumber": 531,
       "line": "paddingVertical: 40,"
     },
     {
@@ -3165,7 +1116,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 543,
+      "lineNumber": 532,
       "line": "gap: 16,"
     },
     {
@@ -3176,7 +1127,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 551,
+      "lineNumber": 540,
       "line": "padding: 16,"
     },
     {
@@ -3187,7 +1138,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 552,
+      "lineNumber": 541,
       "line": "borderRadius: 12,"
     },
     {
@@ -3198,7 +1149,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 554,
+      "lineNumber": 543,
       "line": "gap: 10,"
     },
     {
@@ -3209,7 +1160,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 563,
+      "lineNumber": 552,
       "line": "gap: 10,"
     },
     {
@@ -3220,7 +1171,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 573,
+      "lineNumber": 562,
       "line": "gap: 16,"
     },
     {
@@ -3231,7 +1182,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 578,
+      "lineNumber": 567,
       "line": "padding: 20,"
     },
     {
@@ -3242,7 +1193,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 582,
+      "lineNumber": 571,
       "line": "gap: 16,"
     },
     {
@@ -3253,7 +1204,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 588,
+      "lineNumber": 577,
       "line": "borderRadius: 12,"
     },
     {
@@ -3264,7 +1215,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 609,
+      "lineNumber": 598,
       "line": "paddingVertical: 10,"
     },
     {
@@ -3275,7 +1226,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 610,
+      "lineNumber": 599,
       "line": "borderRadius: 8,"
     },
     {
@@ -3286,7 +1237,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 611,
+      "lineNumber": 600,
       "line": "gap: 8,"
     },
     {
@@ -3297,7 +1248,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 618,
+      "lineNumber": 607,
       "line": "padding: 20,"
     },
     {
@@ -3308,7 +1259,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 634,
+      "lineNumber": 623,
       "line": "borderRadius: 24,"
     },
     {
@@ -3319,7 +1270,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 642,
+      "lineNumber": 631,
       "line": "padding: 20,"
     },
     {
@@ -3330,7 +1281,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 651,
+      "lineNumber": 640,
       "line": "padding: 20,"
     },
     {
@@ -3341,7 +1292,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 660,
+      "lineNumber": 649,
       "line": "gap: 12,"
     },
     {
@@ -3352,7 +1303,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 668,
+      "lineNumber": 657,
       "line": "gap: 8,"
     },
     {
@@ -3363,7 +1314,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 669,
+      "lineNumber": 658,
       "line": "padding: 12,"
     },
     {
@@ -3374,7 +1325,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 670,
+      "lineNumber": 659,
       "line": "borderRadius: 12,"
     },
     {
@@ -3385,7 +1336,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 685,
+      "lineNumber": 674,
       "line": "padding: 20,"
     },
     {
@@ -3396,7 +1347,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 686,
+      "lineNumber": 675,
       "line": "gap: 12,"
     },
     {
@@ -3407,7 +1358,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 692,
+      "lineNumber": 681,
       "line": "padding: 12,"
     },
     {
@@ -3418,7 +1369,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 693,
+      "lineNumber": 682,
       "line": "borderRadius: 12,"
     },
     {
@@ -3429,7 +1380,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 704,
+      "lineNumber": 693,
       "line": "padding: 12,"
     },
     {
@@ -3440,7 +1391,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/admin/dashboard/dashboardWebShared.ts",
-      "lineNumber": 705,
+      "lineNumber": 694,
       "line": "borderRadius: 12,"
     },
     {
@@ -4254,19 +2205,8 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/AppLogo.tsx",
-      "lineNumber": 79,
+      "lineNumber": 87,
       "line": "gap: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/AppLogo.tsx",
-      "lineNumber": 82,
-      "line": "borderRadius: 12,"
     },
     {
       "id": "UI015",
@@ -4971,83 +2911,6 @@
       "path": "frontend/src/components/feedback/LoadingState.tsx",
       "lineNumber": 270,
       "line": "padding: 20,"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/src/components/feedback/NetworkStatusBanner.tsx",
-      "lineNumber": 76,
-      "line": "<TouchableOpacity style={styles.syncButton} onPress={handleSync} disabled={syncing}>"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/feedback/NetworkStatusBanner.tsx",
-      "lineNumber": 89,
-      "line": "paddingHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/feedback/NetworkStatusBanner.tsx",
-      "lineNumber": 90,
-      "line": "paddingVertical: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/feedback/NetworkStatusBanner.tsx",
-      "lineNumber": 109,
-      "line": "borderRadius: 4,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/feedback/NetworkStatusBanner.tsx",
-      "lineNumber": 126,
-      "line": "paddingHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/feedback/NetworkStatusBanner.tsx",
-      "lineNumber": 127,
-      "line": "paddingVertical: 6,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/feedback/NetworkStatusBanner.tsx",
-      "lineNumber": 128,
-      "line": "borderRadius: 4,"
     },
     {
       "id": "UI015",
@@ -5886,17 +3749,6 @@
       "line": "paddingHorizontal: 16,"
     },
     {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/LoadingSkeleton.tsx",
-      "lineNumber": 20,
-      "line": "borderRadius: 8,"
-    },
-    {
       "id": "UI017",
       "category": "accessibility",
       "severity": "P2",
@@ -5904,107 +3756,8 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/LogoutButton.tsx",
-      "lineNumber": 72,
-      "line": "<TouchableOpacity style={styles.button} disabled>"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/src/components/LogoutButton.tsx",
-      "lineNumber": 79,
+      "lineNumber": 116,
       "line": "<TouchableOpacity"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/LogoutButton.tsx",
-      "lineNumber": 100,
-      "line": "padding: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/LogoutButton.tsx",
-      "lineNumber": 101,
-      "line": "borderRadius: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/LogoutButton.tsx",
-      "lineNumber": 106,
-      "line": "padding: 10,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/LogoutButton.tsx",
-      "lineNumber": 112,
-      "line": "paddingHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/LogoutButton.tsx",
-      "lineNumber": 113,
-      "line": "paddingVertical: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/LogoutButton.tsx",
-      "lineNumber": 117,
-      "line": "paddingHorizontal: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/LogoutButton.tsx",
-      "lineNumber": 118,
-      "line": "paddingVertical: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/LogoutButton.tsx",
-      "lineNumber": 120,
-      "line": "gap: 8,"
     },
     {
       "id": "UI015",
@@ -6355,7 +4108,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 386,
+      "lineNumber": 400,
       "line": "<TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>"
     },
     {
@@ -6366,7 +4119,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 390,
+      "lineNumber": 404,
       "line": "<TouchableOpacity style={styles.permissionButton} onPress={handleOpenSettings}>"
     },
     {
@@ -6377,7 +4130,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 395,
+      "lineNumber": 409,
       "line": "<TouchableOpacity"
     },
     {
@@ -6388,7 +4141,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 404,
+      "lineNumber": 418,
       "line": "<TouchableOpacity"
     },
     {
@@ -6399,7 +4152,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 427,
+      "lineNumber": 441,
       "line": "<TouchableOpacity onPress={() => setShowManualInput(false)}>"
     },
     {
@@ -6410,7 +4163,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 446,
+      "lineNumber": 460,
       "line": "<TouchableOpacity"
     },
     {
@@ -6421,7 +4174,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 493,
+      "lineNumber": 507,
       "line": "<TouchableOpacity style={styles.closeButton} onPress={onClose}>"
     },
     {
@@ -6432,7 +4185,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 558,
+      "lineNumber": 571,
       "line": "<TouchableOpacity"
     },
     {
@@ -6443,7 +4196,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 574,
+      "lineNumber": 587,
       "line": "<TouchableOpacity onPress={handleResetDetected}>"
     },
     {
@@ -6454,7 +4207,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 584,
+      "lineNumber": 597,
       "line": "<TouchableOpacity"
     },
     {
@@ -6465,7 +4218,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 632,
+      "lineNumber": 645,
       "line": "<TouchableOpacity style={styles.doneButton} onPress={onClose}>"
     },
     {
@@ -6476,7 +4229,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 637,
+      "lineNumber": 650,
       "line": "<TouchableOpacity"
     },
     {
@@ -6487,7 +4240,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 663,
+      "lineNumber": 676,
       "line": "<TouchableOpacity onPress={() => setShowManualInput(false)}>"
     },
     {
@@ -6498,7 +4251,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 682,
+      "lineNumber": 695,
       "line": "<TouchableOpacity"
     },
     {
@@ -6509,7 +4262,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 758,
+      "lineNumber": 771,
       "line": "borderRadius: 22,"
     },
     {
@@ -6520,7 +4273,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 780,
+      "lineNumber": 793,
       "line": "borderRadius: 22,"
     },
     {
@@ -6531,7 +4284,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/modals/SerialScannerModal.tsx",
-      "lineNumber": 967,
+      "lineNumber": 980,
       "line": "paddingVertical: 4,"
     },
     {
@@ -6542,18 +4295,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/navigation/AdminSidebar.tsx",
-      "lineNumber": 301,
-      "line": "borderRadius: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/navigation/AdminSidebar.tsx",
-      "lineNumber": 308,
+      "lineNumber": 316,
       "line": "borderRadius: 14,"
     },
     {
@@ -6564,7 +4306,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/navigation/AdminSidebar.tsx",
-      "lineNumber": 327,
+      "lineNumber": 335,
       "line": "borderRadius: 12,"
     },
     {
@@ -6575,7 +4317,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/navigation/AdminSidebar.tsx",
-      "lineNumber": 342,
+      "lineNumber": 350,
       "line": "borderRadius: 20,"
     },
     {
@@ -6586,18 +4328,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/navigation/AdminSidebar.tsx",
-      "lineNumber": 382,
-      "line": "borderRadius: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/navigation/AdminSidebar.tsx",
-      "lineNumber": 395,
+      "lineNumber": 405,
       "line": "borderRadius: 9,"
     },
     {
@@ -6608,7 +4339,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/navigation/AdminSidebar.tsx",
-      "lineNumber": 398,
+      "lineNumber": 408,
       "line": "paddingHorizontal: 4,"
     },
     {
@@ -7125,7 +4856,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/RefreshButton.tsx",
-      "lineNumber": 20,
+      "lineNumber": 23,
       "line": "<TouchableOpacity"
     },
     {
@@ -7136,7 +4867,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/RefreshButton.tsx",
-      "lineNumber": 37,
+      "lineNumber": 40,
       "line": "padding: 8,"
     },
     {
@@ -7147,7 +4878,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/RefreshButton.tsx",
-      "lineNumber": 38,
+      "lineNumber": 41,
       "line": "borderRadius: 8,"
     },
     {
@@ -7169,7 +4900,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 122,
+      "lineNumber": 123,
       "line": "<TouchableOpacity style={styles.closeScannerButton} onPress={onClose}>"
     },
     {
@@ -7180,7 +4911,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 126,
+      "lineNumber": 127,
       "line": "<TouchableOpacity"
     },
     {
@@ -7191,7 +4922,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 149,
+      "lineNumber": 150,
       "line": "<TouchableOpacity"
     },
     {
@@ -7202,7 +4933,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 221,
+      "lineNumber": 219,
       "line": "paddingHorizontal: 24,"
     },
     {
@@ -7213,7 +4944,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 228,
+      "lineNumber": 226,
       "line": "borderRadius: 24,"
     },
     {
@@ -7224,7 +4955,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 229,
+      "lineNumber": 227,
       "line": "padding: 12,"
     },
     {
@@ -7235,7 +4966,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 233,
+      "lineNumber": 231,
       "line": "borderRadius: 20,"
     },
     {
@@ -7246,7 +4977,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 234,
+      "lineNumber": 232,
       "line": "paddingVertical: 8,"
     },
     {
@@ -7257,7 +4988,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 235,
+      "lineNumber": 233,
       "line": "paddingHorizontal: 16,"
     },
     {
@@ -7268,7 +4999,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 238,
+      "lineNumber": 236,
       "line": "gap: 8,"
     },
     {
@@ -7279,8 +5010,30 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 257,
+      "lineNumber": 255,
       "line": "gap: 12,"
+    },
+    {
+      "id": "UI015",
+      "category": "token-adoption",
+      "severity": "P2",
+      "title": "Arbitrary spacing/radius value",
+      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
+      "status": "advisory",
+      "path": "frontend/src/components/scan/BarcodeScanner.tsx",
+      "lineNumber": 259,
+      "line": "borderRadius: 20,"
+    },
+    {
+      "id": "UI015",
+      "category": "token-adoption",
+      "severity": "P2",
+      "title": "Arbitrary spacing/radius value",
+      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
+      "status": "advisory",
+      "path": "frontend/src/components/scan/BarcodeScanner.tsx",
+      "lineNumber": 260,
+      "line": "paddingVertical: 8,"
     },
     {
       "id": "UI015",
@@ -7291,28 +5044,6 @@
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
       "lineNumber": 261,
-      "line": "borderRadius: 20,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 262,
-      "line": "paddingVertical: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 263,
       "line": "paddingHorizontal: 16,"
     },
     {
@@ -7323,7 +5054,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 266,
+      "lineNumber": 264,
       "line": "gap: 8,"
     },
     {
@@ -7334,7 +5065,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 279,
+      "lineNumber": 277,
       "line": "padding: 16,"
     },
     {
@@ -7345,7 +5076,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 280,
+      "lineNumber": 278,
       "line": "borderRadius: 12,"
     },
     {
@@ -7356,7 +5087,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 283,
+      "lineNumber": 281,
       "line": "gap: 12,"
     },
     {
@@ -7367,7 +5098,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 307,
+      "lineNumber": 305,
       "line": "padding: 16,"
     },
     {
@@ -7378,7 +5109,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 308,
+      "lineNumber": 306,
       "line": "borderRadius: 8,"
     },
     {
@@ -7389,7 +5120,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 315,
+      "lineNumber": 313,
       "line": "padding: 8,"
     },
     {
@@ -7400,7 +5131,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/BarcodeScanner.tsx",
-      "lineNumber": 316,
+      "lineNumber": 314,
       "line": "borderRadius: 8,"
     },
     {
@@ -7410,8 +5141,8 @@
       "title": "Direct touchable lacks explicit accessibility props",
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
-      "path": "frontend/src/components/scan/BatchVariantsSection.tsx",
-      "lineNumber": 182,
+      "path": "frontend/src/components/scan/EvidenceNotesSection.tsx",
+      "lineNumber": 261,
       "line": "<TouchableOpacity"
     },
     {
@@ -7422,7 +5153,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/scan/EvidenceNotesSection.tsx",
-      "lineNumber": 254,
+      "lineNumber": 278,
       "line": "<TouchableOpacity"
     },
     {
@@ -7433,7 +5164,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/scan/EvidenceNotesSection.tsx",
-      "lineNumber": 271,
+      "lineNumber": 311,
       "line": "<TouchableOpacity"
     },
     {
@@ -7444,18 +5175,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/scan/EvidenceNotesSection.tsx",
-      "lineNumber": 304,
-      "line": "<TouchableOpacity"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/src/components/scan/EvidenceNotesSection.tsx",
-      "lineNumber": 327,
+      "lineNumber": 340,
       "line": "<TouchableOpacity onPress={onRemoveDamagePhoto}>"
     },
     {
@@ -7466,7 +5186,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/scan/EvidenceNotesSection.tsx",
-      "lineNumber": 349,
+      "lineNumber": 363,
       "line": "<TouchableOpacity"
     },
     {
@@ -7477,7 +5197,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/scan/EvidenceNotesSection.tsx",
-      "lineNumber": 360,
+      "lineNumber": 379,
       "line": "<TouchableOpacity style={styles.addPhotoCard} onPress={onAddItemPhoto}>"
     },
     {
@@ -7499,18 +5219,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/scan/FlexibleDateField.tsx",
-      "lineNumber": 161,
-      "line": "<TouchableOpacity"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/src/components/scan/FlexibleDateField.tsx",
-      "lineNumber": 195,
+      "lineNumber": 212,
       "line": "<TouchableOpacity"
     },
     {
@@ -8038,7 +5747,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/ItemSummarySection.tsx",
-      "lineNumber": 165,
+      "lineNumber": 169,
       "line": "gap: 4,"
     },
     {
@@ -8049,19 +5758,8 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/ItemSummarySection.tsx",
-      "lineNumber": 271,
+      "lineNumber": 275,
       "line": "paddingVertical: 2,"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/src/components/scan/ItemSummarySection.tsx",
-      "lineNumber": 376,
-      "line": "<TouchableOpacity"
     },
     {
       "id": "UI015",
@@ -8907,7 +6605,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/scan/ScanCameraOverlay.tsx",
-      "lineNumber": 74,
+      "lineNumber": 75,
       "line": "<TouchableOpacity onPress={onClose} style={styles.closeCameraButton}>"
     },
     {
@@ -9039,18 +6737,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/scan/ScanLookupPanel.tsx",
-      "lineNumber": 144,
-      "line": "<TouchableOpacity style={styles.resultItem} onPress={onPress} activeOpacity={0.7}>"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/src/components/scan/ScanLookupPanel.tsx",
-      "lineNumber": 219,
+      "lineNumber": 243,
       "line": "<TouchableOpacity"
     },
     {
@@ -9061,7 +6748,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/ScanLookupPanel.tsx",
-      "lineNumber": 344,
+      "lineNumber": 364,
       "line": "borderRadius: 12,"
     },
     {
@@ -9072,7 +6759,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/ScanLookupPanel.tsx",
-      "lineNumber": 353,
+      "lineNumber": 373,
       "line": "borderRadius: 4,"
     },
     {
@@ -9083,7 +6770,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/ScanLookupPanel.tsx",
-      "lineNumber": 362,
+      "lineNumber": 382,
       "line": "borderRadius: 4,"
     },
     {
@@ -9127,7 +6814,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/scan/SectionFocusConfig.tsx",
-      "lineNumber": 84,
+      "lineNumber": 82,
       "line": "<TouchableOpacity"
     },
     {
@@ -9138,7 +6825,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/scan/SectionFocusConfig.tsx",
-      "lineNumber": 100,
+      "lineNumber": 98,
       "line": "<TouchableOpacity"
     },
     {
@@ -9149,7 +6836,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/scan/SectionFocusConfig.tsx",
-      "lineNumber": 117,
+      "lineNumber": 115,
       "line": "<TouchableOpacity"
     },
     {
@@ -9160,7 +6847,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/scan/SectionFocusConfig.tsx",
-      "lineNumber": 183,
+      "lineNumber": 181,
       "line": "<TouchableOpacity onPress={() => setShowFloorModal(false)}>"
     },
     {
@@ -9171,7 +6858,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/scan/SectionFocusConfig.tsx",
-      "lineNumber": 194,
+      "lineNumber": 192,
       "line": "<TouchableOpacity"
     },
     {
@@ -9182,7 +6869,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/SectionFocusConfig.tsx",
-      "lineNumber": 221,
+      "lineNumber": 219,
       "line": "padding: 20,"
     },
     {
@@ -9193,7 +6880,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/SectionFocusConfig.tsx",
-      "lineNumber": 261,
+      "lineNumber": 259,
       "line": "borderRadius: 40,"
     },
     {
@@ -9204,7 +6891,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/scan/SectionFocusConfig.tsx",
-      "lineNumber": 293,
+      "lineNumber": 291,
       "line": "padding: 4,"
     },
     {
@@ -10425,7 +8112,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/suggestions/SmartSuggestionsPanel.tsx",
-      "lineNumber": 104,
+      "lineNumber": 108,
       "line": "<TouchableOpacity"
     },
     {
@@ -10436,7 +8123,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/suggestions/SmartSuggestionsPanel.tsx",
-      "lineNumber": 207,
+      "lineNumber": 210,
       "line": "<TouchableOpacity style={styles.header} onPress={toggleExpanded} activeOpacity={0.7}>"
     },
     {
@@ -10447,7 +8134,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/suggestions/SmartSuggestionsPanel.tsx",
-      "lineNumber": 249,
+      "lineNumber": 252,
       "line": "<TouchableOpacity"
     },
     {
@@ -10458,7 +8145,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/suggestions/SmartSuggestionsPanel.tsx",
-      "lineNumber": 320,
+      "lineNumber": 323,
       "line": "<TouchableOpacity style={styles.showMoreButton} onPress={() => setShowAll(!showAll)}>"
     },
     {
@@ -10469,7 +8156,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/suggestions/SmartSuggestionsPanel.tsx",
-      "lineNumber": 334,
+      "lineNumber": 337,
       "line": "<TouchableOpacity"
     },
     {
@@ -10480,7 +8167,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/suggestions/SmartSuggestionsPanel.tsx",
-      "lineNumber": 400,
+      "lineNumber": 403,
       "line": "borderRadius: 10,"
     },
     {
@@ -10491,7 +8178,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/suggestions/SmartSuggestionsPanel.tsx",
-      "lineNumber": 401,
+      "lineNumber": 404,
       "line": "paddingHorizontal: 8,"
     },
     {
@@ -10502,7 +8189,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/suggestions/SmartSuggestionsPanel.tsx",
-      "lineNumber": 402,
+      "lineNumber": 405,
       "line": "paddingVertical: 2,"
     },
     {
@@ -10513,7 +8200,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/suggestions/SmartSuggestionsPanel.tsx",
-      "lineNumber": 439,
+      "lineNumber": 442,
       "line": "borderRadius: 4,"
     },
     {
@@ -10524,7 +8211,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/suggestions/SmartSuggestionsPanel.tsx",
-      "lineNumber": 459,
+      "lineNumber": 462,
       "line": "borderRadius: 2,"
     },
     {
@@ -10535,7 +8222,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/suggestions/SmartSuggestionsPanel.tsx",
-      "lineNumber": 471,
+      "lineNumber": 474,
       "line": "paddingVertical: 4,"
     },
     {
@@ -10546,7 +8233,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/suggestions/SmartSuggestionsPanel.tsx",
-      "lineNumber": 485,
+      "lineNumber": 488,
       "line": "paddingVertical: 4,"
     },
     {
@@ -10832,7 +8519,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/components/SyncStatusBar.tsx",
-      "lineNumber": 127,
+      "lineNumber": 132,
       "line": "<TouchableOpacity"
     },
     {
@@ -10843,7 +8530,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/SyncStatusBar.tsx",
-      "lineNumber": 166,
+      "lineNumber": 171,
       "line": "padding: 8,"
     },
     {
@@ -10854,7 +8541,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/SyncStatusBar.tsx",
-      "lineNumber": 167,
+      "lineNumber": 172,
       "line": "paddingHorizontal: 12,"
     },
     {
@@ -10865,7 +8552,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/SyncStatusBar.tsx",
-      "lineNumber": 171,
+      "lineNumber": 176,
       "line": "gap: 12,"
     },
     {
@@ -10876,7 +8563,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/SyncStatusBar.tsx",
-      "lineNumber": 179,
+      "lineNumber": 184,
       "line": "gap: 12, // Increased gap between status items"
     },
     {
@@ -10887,7 +8574,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/SyncStatusBar.tsx",
-      "lineNumber": 184,
+      "lineNumber": 189,
       "line": "gap: 4,"
     },
     {
@@ -10898,7 +8585,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/SyncStatusBar.tsx",
-      "lineNumber": 200,
+      "lineNumber": 205,
       "line": "paddingHorizontal: 12,"
     },
     {
@@ -10909,7 +8596,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/SyncStatusBar.tsx",
-      "lineNumber": 201,
+      "lineNumber": 206,
       "line": "paddingVertical: 6,"
     },
     {
@@ -10920,7 +8607,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/SyncStatusBar.tsx",
-      "lineNumber": 202,
+      "lineNumber": 207,
       "line": "borderRadius: 16,"
     },
     {
@@ -10931,7 +8618,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/SyncStatusBar.tsx",
-      "lineNumber": 205,
+      "lineNumber": 210,
       "line": "gap: 6,"
     },
     {
@@ -10942,7 +8629,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/SyncStatusBar.tsx",
-      "lineNumber": 217,
+      "lineNumber": 222,
       "line": "gap: 12,"
     },
     {
@@ -11525,7 +9212,7 @@
       "guidance": "Legacy visual exports are quarantined compatibility surfaces. Do not import them from production workflows; migrate downstream consumers to approved primitives.",
       "status": "quarantine",
       "path": "frontend/src/components/ui/index.ts",
-      "lineNumber": 19,
+      "lineNumber": 45,
       "line": "export * from \"./GlassCard\";"
     },
     {
@@ -11536,7 +9223,7 @@
       "guidance": "Legacy visual exports are quarantined compatibility surfaces. Do not import them from production workflows; migrate downstream consumers to approved primitives.",
       "status": "quarantine",
       "path": "frontend/src/components/ui/index.ts",
-      "lineNumber": 46,
+      "lineNumber": 72,
       "line": "export { AuroraBackground } from \"./AuroraBackground\";"
     },
     {
@@ -11547,7 +9234,7 @@
       "guidance": "Legacy visual exports are quarantined compatibility surfaces. Do not import them from production workflows; migrate downstream consumers to approved primitives.",
       "status": "quarantine",
       "path": "frontend/src/components/ui/index.ts",
-      "lineNumber": 52,
+      "lineNumber": 78,
       "line": "export { ParticleField } from \"./ParticleField\";"
     },
     {
@@ -11558,7 +9245,7 @@
       "guidance": "Legacy visual exports are quarantined compatibility surfaces. Do not import them from production workflows; migrate downstream consumers to approved primitives.",
       "status": "quarantine",
       "path": "frontend/src/components/ui/index.ts",
-      "lineNumber": 95,
+      "lineNumber": 121,
       "line": "export { PatternBackground } from \"./PatternBackground\";"
     },
     {
@@ -11569,7 +9256,7 @@
       "guidance": "Legacy visual exports are quarantined compatibility surfaces. Do not import them from production workflows; migrate downstream consumers to approved primitives.",
       "status": "quarantine",
       "path": "frontend/src/components/ui/index.ts",
-      "lineNumber": 111,
+      "lineNumber": 137,
       "line": "export { EnhancedButton } from \"./EnhancedButton\";"
     },
     {
@@ -11580,7 +9267,7 @@
       "guidance": "Legacy visual exports are quarantined compatibility surfaces. Do not import them from production workflows; migrate downstream consumers to approved primitives.",
       "status": "quarantine",
       "path": "frontend/src/components/ui/index.ts",
-      "lineNumber": 112,
+      "lineNumber": 138,
       "line": "export type { EnhancedButtonProps, ButtonType, ButtonSize, IconPosition } from \"./EnhancedButton\";"
     },
     {
@@ -11591,7 +9278,7 @@
       "guidance": "Legacy visual exports are quarantined compatibility surfaces. Do not import them from production workflows; migrate downstream consumers to approved primitives.",
       "status": "quarantine",
       "path": "frontend/src/components/ui/index.ts",
-      "lineNumber": 134,
+      "lineNumber": 158,
       "line": "export { EnhancedInput } from \"./EnhancedInput\";"
     },
     {
@@ -11602,7 +9289,7 @@
       "guidance": "Legacy visual exports are quarantined compatibility surfaces. Do not import them from production workflows; migrate downstream consumers to approved primitives.",
       "status": "quarantine",
       "path": "frontend/src/components/ui/index.ts",
-      "lineNumber": 135,
+      "lineNumber": 159,
       "line": "export type { EnhancedInputProps, InputSize, LabelPosition } from \"./EnhancedInput\";"
     },
     {
@@ -11701,7 +9388,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/ui/ModernHeader.tsx",
-      "lineNumber": 42,
+      "lineNumber": 43,
       "line": "borderRadius: 8,"
     },
     {
@@ -11712,7 +9399,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/ui/ModernHeader.tsx",
-      "lineNumber": 232,
+      "lineNumber": 257,
       "line": "gap: 4,"
     },
     {
@@ -11723,7 +9410,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/ui/ModernHeader.tsx",
-      "lineNumber": 237,
+      "lineNumber": 262,
       "line": "borderRadius: 8,"
     },
     {
@@ -11998,7 +9685,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/ui/Radio.tsx",
-      "lineNumber": 131,
+      "lineNumber": 128,
       "line": "borderRadius: 10,"
     },
     {
@@ -12009,7 +9696,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/ui/Radio.tsx",
-      "lineNumber": 149,
+      "lineNumber": 150,
       "line": "borderRadius: 5,"
     },
     {
@@ -12064,7 +9751,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/ui/ScreenHeader.tsx",
-      "lineNumber": 395,
+      "lineNumber": 416,
       "line": "paddingHorizontal: 16,"
     },
     {
@@ -12075,7 +9762,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/ui/ScreenHeader.tsx",
-      "lineNumber": 402,
+      "lineNumber": 423,
       "line": "gap: 12,"
     },
     {
@@ -12086,7 +9773,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/ui/ScreenHeader.tsx",
-      "lineNumber": 422,
+      "lineNumber": 443,
       "line": "gap: 8,"
     },
     {
@@ -12097,7 +9784,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/ui/ScreenHeader.tsx",
-      "lineNumber": 427,
+      "lineNumber": 448,
       "line": "gap: 10,"
     },
     {
@@ -12108,7 +9795,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/ui/ScreenHeader.tsx",
-      "lineNumber": 433,
+      "lineNumber": 454,
       "line": "borderRadius: 18,"
     },
     {
@@ -12119,7 +9806,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/ui/ScreenHeader.tsx",
-      "lineNumber": 469,
+      "lineNumber": 490,
       "line": "borderRadius: 12,"
     },
     {
@@ -12343,50 +10030,6 @@
       "line": "gap: 4,"
     },
     {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/src/components/ui/StatusBadge.tsx",
-      "lineNumber": 114,
-      "line": "withTiming(0.6, { duration: 800 }),"
-    },
-    {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/src/components/ui/StatusBadge.tsx",
-      "lineNumber": 115,
-      "line": "withTiming(1, { duration: 800 }),"
-    },
-    {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/src/components/ui/StatusBadge.tsx",
-      "lineNumber": 122,
-      "line": "withTiming(1.02, { duration: 800 }),"
-    },
-    {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/src/components/ui/StatusBadge.tsx",
-      "lineNumber": 123,
-      "line": "withTiming(1, { duration: 800 }),"
-    },
-    {
       "id": "UI015",
       "category": "token-adoption",
       "severity": "P2",
@@ -12449,7 +10092,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/ui/Switch.tsx",
-      "lineNumber": 114,
+      "lineNumber": 121,
       "line": "padding: 2,"
     },
     {
@@ -12460,7 +10103,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/ui/SyncStatusPill.tsx",
-      "lineNumber": 142,
+      "lineNumber": 132,
       "line": "paddingHorizontal: 10,"
     },
     {
@@ -12471,7 +10114,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/ui/SyncStatusPill.tsx",
-      "lineNumber": 143,
+      "lineNumber": 133,
       "line": "paddingVertical: 6,"
     },
     {
@@ -12482,7 +10125,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/components/ui/SyncStatusPill.tsx",
-      "lineNumber": 146,
+      "lineNumber": 136,
       "line": "gap: 6,"
     },
     {
@@ -12594,248 +10237,6 @@
       "path": "frontend/src/components/ui/ThemePicker.tsx",
       "lineNumber": 100,
       "line": "borderRadius: 8,"
-    },
-    {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/src/components/ui/Toast.tsx",
-      "lineNumber": 88,
-      "line": "translateY.value = withTiming(-100, { duration: 300 });"
-    },
-    {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/src/components/ui/Toast.tsx",
-      "lineNumber": 89,
-      "line": "opacity.value = withTiming(0, { duration: 300 }, () => {"
-    },
-    {
-      "id": "UI016",
-      "category": "motion",
-      "severity": "P2",
-      "title": "Inline animation timing",
-      "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
-      "status": "advisory",
-      "path": "frontend/src/components/ui/Toast.tsx",
-      "lineNumber": 99,
-      "line": "opacity.value = withTiming(1, { duration: 300 });"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 113,
-      "line": "<TouchableOpacity"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 122,
-      "line": "<TouchableOpacity style={styles.dismissButton} onPress={onDismiss}>"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 156,
-      "line": "<TouchableOpacity"
-    },
-    {
-      "id": "UI017",
-      "category": "accessibility",
-      "severity": "P2",
-      "title": "Direct touchable lacks explicit accessibility props",
-      "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 164,
-      "line": "<TouchableOpacity style={styles.bannerCloseButton} onPress={onDismiss}>"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 180,
-      "line": "padding: 20,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 184,
-      "line": "borderRadius: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 185,
-      "line": "padding: 24,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 226,
-      "line": "paddingVertical: 14,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 227,
-      "line": "paddingHorizontal: 32,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 228,
-      "line": "borderRadius: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 240,
-      "line": "paddingVertical: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 249,
-      "line": "borderRadius: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 250,
-      "line": "marginHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 251,
-      "line": "marginVertical: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 257,
-      "line": "padding: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 277,
-      "line": "paddingVertical: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 278,
-      "line": "paddingHorizontal: 16,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 279,
-      "line": "borderRadius: 6,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/components/UpgradeNotification.tsx",
-      "lineNumber": 287,
-      "line": "padding: 8,"
     },
     {
       "id": "UI017",
@@ -13219,7 +10620,7 @@
       "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
       "status": "advisory",
       "path": "frontend/src/screens/routes/WelcomeScreen.native.tsx",
-      "lineNumber": 134,
+      "lineNumber": 133,
       "line": "<SafeAnimatedView entering={FadeInUp.duration(1000).springify()} style={styles.header}>"
     },
     {
@@ -13230,7 +10631,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/screens/routes/WelcomeScreen.native.tsx",
-      "lineNumber": 143,
+      "lineNumber": 142,
       "line": "borderRadius: 32,"
     },
     {
@@ -13241,7 +10642,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/screens/routes/WelcomeScreen.native.tsx",
-      "lineNumber": 153,
+      "lineNumber": 152,
       "line": "borderRadius: 29,"
     },
     {
@@ -13252,7 +10653,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/screens/routes/WelcomeScreen.native.tsx",
-      "lineNumber": 173,
+      "lineNumber": 172,
       "line": "borderRadius: 32,"
     },
     {
@@ -13263,7 +10664,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/screens/routes/WelcomeScreen.native.tsx",
-      "lineNumber": 193,
+      "lineNumber": 192,
       "line": "<TouchableOpacity"
     },
     {
@@ -13274,7 +10675,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/screens/routes/WelcomeScreen.native.tsx",
-      "lineNumber": 210,
+      "lineNumber": 209,
       "line": "<TouchableOpacity"
     },
     {
@@ -13285,7 +10686,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/screens/routes/WelcomeScreen.native.tsx",
-      "lineNumber": 255,
+      "lineNumber": 254,
       "line": "padding: 3,"
     },
     {
@@ -13450,7 +10851,7 @@
       "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
       "status": "advisory",
       "path": "frontend/src/screens/staff/StaffHomeScreen.tsx",
-      "lineNumber": 533,
+      "lineNumber": 598,
       "line": "<Animated.View entering={prefersReducedMotion ? undefined : FadeInDown.duration(500)}>"
     },
     {
@@ -13461,7 +10862,7 @@
       "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
       "status": "advisory",
       "path": "frontend/src/screens/staff/StaffHomeScreen.tsx",
-      "lineNumber": 556,
+      "lineNumber": 629,
       "line": "<Animated.View entering={prefersReducedMotion ? undefined : FadeInDown.duration(500)}>"
     },
     {
@@ -13472,7 +10873,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/screens/staff/StaffHomeScreen.tsx",
-      "lineNumber": 579,
+      "lineNumber": 657,
       "line": "<TouchableOpacity"
     },
     {
@@ -13483,7 +10884,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/screens/staff/StaffHomeScreen.tsx",
-      "lineNumber": 656,
+      "lineNumber": 803,
       "line": "<TouchableOpacity"
     },
     {
@@ -13494,7 +10895,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/screens/staff/StaffHomeScreen.tsx",
-      "lineNumber": 667,
+      "lineNumber": 833,
       "line": "<TouchableOpacity"
     },
     {
@@ -13505,7 +10906,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/screens/staff/StaffHomeScreen.tsx",
-      "lineNumber": 705,
+      "lineNumber": 902,
       "line": "<TouchableOpacity"
     },
     {
@@ -13516,7 +10917,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/screens/staff/StaffHomeScreen.tsx",
-      "lineNumber": 728,
+      "lineNumber": 927,
       "line": "<TouchableOpacity"
     },
     {
@@ -13527,7 +10928,7 @@
       "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
       "status": "advisory",
       "path": "frontend/src/screens/staff/StaffHomeScreen.tsx",
-      "lineNumber": 751,
+      "lineNumber": 970,
       "line": "<Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(250)}>"
     },
     {
@@ -13538,7 +10939,7 @@
       "guidance": "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
       "status": "advisory",
       "path": "frontend/src/screens/staff/StaffHomeScreen.tsx",
-      "lineNumber": 759,
+      "lineNumber": 980,
       "line": "<TouchableOpacity"
     },
     {
@@ -13549,7 +10950,7 @@
       "guidance": "Use tokenized motion timings and reduced-motion checks. Routine operational motion should stay within approved durations.",
       "status": "advisory",
       "path": "frontend/src/screens/staff/StaffHomeScreen.tsx",
-      "lineNumber": 787,
+      "lineNumber": 1025,
       "line": "<Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(250)}>"
     },
     {
@@ -13560,7 +10961,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/screens/staff/StaffHomeScreen.tsx",
-      "lineNumber": 960,
+      "lineNumber": 1241,
       "line": "paddingHorizontal: 4,"
     },
     {
@@ -13571,7 +10972,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/screens/staff/StaffHomeScreen.tsx",
-      "lineNumber": 1001,
+      "lineNumber": 1282,
       "line": "gap: 6,"
     },
     {
@@ -13582,7 +10983,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
-      "lineNumber": 865,
+      "lineNumber": 911,
       "line": "gap: 4,"
     },
     {
@@ -13593,7 +10994,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
-      "lineNumber": 958,
+      "lineNumber": 1003,
       "line": "gap: 4,"
     },
     {
@@ -13604,7 +11005,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
-      "lineNumber": 974,
+      "lineNumber": 1019,
       "line": "padding: 4,"
     },
     {
@@ -13615,7 +11016,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
-      "lineNumber": 985,
+      "lineNumber": 1030,
       "line": "gap: 8,"
     },
     {
@@ -13626,7 +11027,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
-      "lineNumber": 1004,
+      "lineNumber": 1049,
       "line": "gap: 4,"
     },
     {
@@ -13637,7 +11038,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
-      "lineNumber": 1005,
+      "lineNumber": 1050,
       "line": "paddingHorizontal: 8,"
     },
     {
@@ -13648,7 +11049,7 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
-      "lineNumber": 1006,
+      "lineNumber": 1051,
       "line": "paddingVertical: 4,"
     },
     {
@@ -13659,52 +11060,8 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
-      "lineNumber": 1048,
+      "lineNumber": 1096,
       "line": "gap: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
-      "lineNumber": 1082,
-      "line": "padding: 12,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
-      "lineNumber": 1106,
-      "line": "gap: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
-      "lineNumber": 1108,
-      "line": "padding: 8,"
-    },
-    {
-      "id": "UI015",
-      "category": "token-adoption",
-      "severity": "P2",
-      "title": "Arbitrary spacing/radius value",
-      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
-      "status": "advisory",
-      "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
-      "lineNumber": 1120,
-      "line": "gap: 12,"
     },
     {
       "id": "UI015",
@@ -13715,6 +11072,17 @@
       "status": "advisory",
       "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
       "lineNumber": 1130,
+      "line": "padding: 12,"
+    },
+    {
+      "id": "UI015",
+      "category": "token-adoption",
+      "severity": "P2",
+      "title": "Arbitrary spacing/radius value",
+      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
+      "status": "advisory",
+      "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
+      "lineNumber": 1154,
       "line": "gap: 8,"
     },
     {
@@ -13725,56 +11093,89 @@
       "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
       "status": "advisory",
       "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
-      "lineNumber": 1132,
+      "lineNumber": 1156,
+      "line": "padding: 8,"
+    },
+    {
+      "id": "UI015",
+      "category": "token-adoption",
+      "severity": "P2",
+      "title": "Arbitrary spacing/radius value",
+      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
+      "status": "advisory",
+      "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
+      "lineNumber": 1168,
+      "line": "gap: 12,"
+    },
+    {
+      "id": "UI015",
+      "category": "token-adoption",
+      "severity": "P2",
+      "title": "Arbitrary spacing/radius value",
+      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
+      "status": "advisory",
+      "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
+      "lineNumber": 1178,
+      "line": "gap: 8,"
+    },
+    {
+      "id": "UI015",
+      "category": "token-adoption",
+      "severity": "P2",
+      "title": "Arbitrary spacing/radius value",
+      "guidance": "Use centralized spacing, radius, and component tokens. Avoid raw numeric layout values in feature UI.",
+      "status": "advisory",
+      "path": "frontend/src/screens/supervisor/SessionDetailScreen.tsx",
+      "lineNumber": 1180,
       "line": "paddingVertical: 12,"
     }
   ],
   "blockingFindings": [],
   "metrics": {
-    "generatedAt": "2026-05-08T15:03:20.500Z",
+    "generatedAt": "2026-05-19T14:54:23.886Z",
     "counts": {
-      "files": 405,
-      "findings": 1211,
+      "files": 413,
+      "findings": 974,
       "blockingFindings": 0,
       "bySeverity": {
-        "P2": 1211
+        "P2": 974
       },
       "byStatus": {
-        "advisory": 1179,
+        "advisory": 942,
         "quarantine": 32
       },
       "byCategory": {
-        "token-adoption": 922,
-        "motion": 64,
-        "accessibility": 193,
+        "token-adoption": 726,
+        "accessibility": 169,
+        "motion": 47,
         "deprecated-usage": 32
       },
       "byRule": {
-        "UI015": 922,
-        "UI016": 64,
-        "UI017": 193,
+        "UI015": 726,
+        "UI017": 169,
+        "UI016": 47,
         "UI010": 32
       }
     },
-    "scannedFiles": 405,
+    "scannedFiles": 413,
     "tokenAdoption": {
-      "advisoryFiles": 142,
-      "estimatedFileAdoption": 0.6493827160493827
+      "advisoryFiles": 116,
+      "estimatedFileAdoption": 0.7191283292978208
     },
     "reducedMotion": {
-      "animationFiles": 74,
-      "coveredFiles": 8,
-      "coverage": 0.10810810810810811
+      "animationFiles": 72,
+      "coveredFiles": 20,
+      "coverage": 0.2777777777777778
     },
     "virtualization": {
       "denseFiles": 68,
-      "virtualizedFiles": 13,
-      "coverage": 0.19117647058823528
+      "virtualizedFiles": 14,
+      "coverage": 0.20588235294117646
     },
     "accessibility": {
-      "interactiveFiles": 120,
-      "filesWithFindings": 69,
-      "estimatedFileCoverage": 0.425
+      "interactiveFiles": 124,
+      "filesWithFindings": 59,
+      "estimatedFileCoverage": 0.5241935483870968
     },
     "deprecated": {
       "total": 0,

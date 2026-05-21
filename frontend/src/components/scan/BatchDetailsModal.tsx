@@ -59,11 +59,16 @@ export const BatchDetailsModal: React.FC<BatchDetailsModalProps> = ({
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/item-batches/${item.item_code}`);
+      const response = await fetch(`/api/item-batches/${encodeURIComponent(item.item_code)}`);
       const data = await response.json();
+      const responseBatches = Array.isArray(data?.batches)
+        ? data.batches
+        : Array.isArray(data?.data?.batches)
+          ? data.data.batches
+          : [];
 
-      if (data.success) {
-        setBatches(data.batches || []);
+      if (response.ok) {
+        setBatches(responseBatches);
       } else {
         Alert.alert("Error", "Failed to fetch batch details");
         setBatches([]);

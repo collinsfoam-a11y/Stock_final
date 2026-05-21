@@ -175,7 +175,7 @@ const createStyles = (theme: AppTheme, isDark: boolean) =>
       zIndex: 100,
     },
     blurContainer: {
-      backgroundColor: isDark ? "rgba(15, 23, 42, 0.75)" : "rgba(255, 255, 255, 0.85)",
+      backgroundColor: isDark ? "rgba(28, 25, 23, 0.75)" : "rgba(255, 255, 255, 0.85)",
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border.light,
     },
@@ -204,11 +204,11 @@ const createStyles = (theme: AppTheme, isDark: boolean) =>
       width: 48,
       height: 48,
       borderRadius: theme.borderRadius.lg,
-      backgroundColor: "rgba(59, 130, 246, 0.12)",
+      backgroundColor: "rgba(204, 120, 92, 0.10)",
       justifyContent: "center",
       alignItems: "center",
       borderWidth: 1,
-      borderColor: "rgba(59, 130, 246, 0.25)",
+      borderColor: "rgba(204, 120, 92, 0.22)",
       ...theme.shadows.sm,
     },
     titleContainer: {

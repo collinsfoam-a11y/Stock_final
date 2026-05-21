@@ -562,7 +562,7 @@ export const getAvailableReports = async () => {
 export type AdminControlReportFormat = "json" | "csv" | "excel";
 
 export type GenerateAdminControlReportResult =
-  | { kind: "json"; data: any }
+  | { kind: "json"; data: unknown }
   | { kind: "file"; blob: Blob; fileName: string; contentType?: string }
   | {
       kind: "file";
@@ -593,7 +593,7 @@ export const generateReport = async (
 
     const response = await api.post("/api/admin/control/reports/generate", null, {
       params,
-      responseType: responseType as any,
+      responseType: responseType as "json" | "blob" | "arraybuffer",
     });
 
     const header =

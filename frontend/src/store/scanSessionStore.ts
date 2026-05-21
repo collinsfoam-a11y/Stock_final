@@ -9,6 +9,8 @@ interface ScanSessionState {
   isSectionActive: boolean;
   activeSessionId: string | null;
   sessionType: "STANDARD" | "BLIND" | "STRICT";
+  /** True once AsyncStorage hydration has completed */
+  _hydrated: boolean;
 
   // Actions
   setFloor: (floor: string) => void;
@@ -17,7 +19,7 @@ interface ScanSessionState {
   clearActiveSession: () => void;
   startSection: () => void;
   closeSection: () => void;
-  resumeSession: () => void; // Explicit resume if needed, though persist handles hydration
+  resumeSession: () => void;
   resetSession: () => void;
 }
 
@@ -27,9 +29,9 @@ export const useScanSessionStore = create<ScanSessionState>()(
       currentFloor: null,
       currentRack: null,
       isSectionActive: false,
-
       activeSessionId: null,
       sessionType: "STANDARD",
+      _hydrated: false,
 
       setFloor: (floor) => set({ currentFloor: floor }),
       setRack: (rack) => set({ currentRack: rack }),
@@ -54,10 +56,10 @@ export const useScanSessionStore = create<ScanSessionState>()(
       },
 
       resumeSession: () => {
-        // Hydration is handled by persist, but this could be used for explicit UI logic
+        // Guard: do not act on stale defaults before AsyncStorage has hydrated
+        if (!get()._hydrated) return;
         const { currentFloor, currentRack, isSectionActive } = get();
         if (isSectionActive && (!currentFloor || !currentRack)) {
-          // Fallback/Safety: if data is missing but active, reset
           set({ isSectionActive: false });
         }
       },
@@ -75,6 +77,13 @@ export const useScanSessionStore = create<ScanSessionState>()(
     {
       name: "scan-session-storage",
       storage: createJSONStorage(() => AsyncStorage),
+      // Mark store as hydrated once AsyncStorage finishes loading so that
+      // resumeSession() never runs safety checks against pre-hydration defaults.
+      onRehydrateStorage: () => (_state, error) => {
+        if (!error) {
+          useScanSessionStore.setState({ _hydrated: true });
+        }
+      },
     },
   ),
 );

@@ -25,6 +25,26 @@ class LockManager:
     async def _eval(self, script: str, numkeys: int, *args: Any) -> Any:
         return await cast(Any, self.redis).eval(script, numkeys, *args)
 
+    async def _compare_and_delete(self, script: str, key: str, owner: str) -> int:
+        redis_with_eval = cast(Any, self.redis)
+        if hasattr(redis_with_eval, "eval"):
+            return int(await redis_with_eval.eval(script, 1, key, owner) or 0)
+
+        current_owner = await self.redis.get(key)
+        if current_owner != owner:
+            return 0
+        return int(await self.redis.delete(key) or 0)
+
+    async def _compare_and_expire(self, script: str, key: str, owner: str, ttl: int) -> int:
+        redis_with_eval = cast(Any, self.redis)
+        if hasattr(redis_with_eval, "eval"):
+            return int(await redis_with_eval.eval(script, 1, key, owner, str(ttl)) or 0)
+
+        current_owner = await self.redis.get(key)
+        if current_owner != owner:
+            return 0
+        return 1 if await self.redis.expire(key, ttl) else 0
+
     # Rack Locking
 
     async def acquire_rack_lock(self, rack_id: str, user_id: str, ttl: int = 60) -> bool:
@@ -91,7 +111,7 @@ class LockManager:
 
         try:
             # C4 fix: Atomic compare-and-delete via Lua script
-            result = await self._eval(self._RELEASE_SCRIPT, 1, lock_key, user_id)
+            result = await self._compare_and_delete(self._RELEASE_SCRIPT, lock_key, user_id)
 
             if result:
                 logger.info(f"Rack lock released: {rack_id} by {user_id}")
@@ -124,7 +144,7 @@ class LockManager:
 
         try:
             # C5 fix: Atomic compare-and-expire via Lua script
-            result = await self._eval(self._RENEW_SCRIPT, 1, lock_key, user_id, str(ttl))
+            result = await self._compare_and_expire(self._RENEW_SCRIPT, lock_key, user_id, ttl)
 
             if result:
                 logger.debug(f"Rack lock renewed: {rack_id} by {user_id} (TTL: {ttl}s)")

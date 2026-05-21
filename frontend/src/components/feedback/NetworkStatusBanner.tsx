@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNetworkStore } from "../../store/networkStore";
 import { getOfflineQueue } from "../../services/offline/offlineStorage";
 import { syncOfflineQueue } from "../../services/api";
+import { OperationalSyncBanner } from "./OperationalSyncBanner";
 
-import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface NetworkStatusBannerProps {
   onSyncPress?: () => void;
 }
@@ -14,16 +13,16 @@ export const NetworkStatusBanner: React.FC<NetworkStatusBannerProps> = ({ onSync
   const [queueCount, setQueueCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
 
-  useEffect(() => {
-    updateQueueCount();
-  }, [isOnline]);
-
-  const updateQueueCount = async () => {
+  const updateQueueCount = useCallback(async () => {
     const queue = await getOfflineQueue();
     setQueueCount(queue.length);
-  };
+  }, []);
 
-  const handleSync = async () => {
+  useEffect(() => {
+    void updateQueueCount();
+  }, [isOnline, updateQueueCount]);
+
+  const handleSync = useCallback(async () => {
     if (!isOnline || syncing) return;
 
     setSyncing(true);
@@ -41,97 +40,45 @@ export const NetworkStatusBanner: React.FC<NetworkStatusBannerProps> = ({ onSync
     } finally {
       setSyncing(false);
     }
-  };
+  }, [isOnline, onSyncPress, syncing, updateQueueCount]);
 
   if (isRestrictedMode) {
     return (
-      <View style={[styles.banner, styles.bannerRestricted]}>
-        <View style={styles.statusContainer}>
-          <View style={[styles.indicator, styles.indicatorOffline]} />
-          <Text style={styles.statusText}>Restricted Mode: Connect to Wi-Fi</Text>
-        </View>
-      </View>
+      <OperationalSyncBanner
+        compact
+        tone="failed"
+        title="Restricted mode"
+        message="Connect to Wi-Fi to resume live inventory updates."
+      />
     );
   }
 
-  if (isOnline && isInternetReachable !== false && queueCount === 0) {
-    return null; // Don't show banner when online and no pending items
+  const hasLiveConnection = isOnline && isInternetReachable !== false;
+
+  if (hasLiveConnection && queueCount === 0) {
+    return null;
   }
 
   return (
-    <View style={[styles.banner, isOnline ? styles.bannerOnlineWithQueue : styles.bannerOffline]}>
-      <View style={styles.statusContainer}>
-        <View
-          style={[styles.indicator, isOnline ? styles.indicatorOnline : styles.indicatorOffline]}
-        />
-        <Text style={styles.statusText}>
-          {isOnline
-            ? queueCount > 0
-              ? `${queueCount} pending items to sync`
-              : "Online"
-            : "Offline Mode - Data will sync when online"}
-        </Text>
-      </View>
-      {isOnline && queueCount > 0 && (
-        <TouchableOpacity style={styles.syncButton} onPress={handleSync} disabled={syncing}>
-          <Text style={styles.syncButtonText}>{syncing ? "Syncing..." : "Sync Now"}</Text>
-        </TouchableOpacity>
-      )}
-    </View>
+    <OperationalSyncBanner
+      compact
+      tone={hasLiveConnection ? "pending" : "offline"}
+      title={hasLiveConnection ? "Pending offline work" : "Offline mode active"}
+      message={
+        hasLiveConnection
+          ? "Upload locally saved inventory changes before closing this workflow."
+          : "Inventory changes will stay on this device and sync when a live connection returns."
+      }
+      pendingCount={queueCount > 0 ? queueCount : undefined}
+      actionLabel={
+        hasLiveConnection && queueCount > 0 ? (syncing ? "Syncing" : "Sync now") : undefined
+      }
+      actionHint="Attempts to upload locally saved offline inventory changes"
+      actionBusy={syncing}
+      actionDisabled={syncing}
+      onActionPress={hasLiveConnection && queueCount > 0 ? handleSync : undefined}
+    />
   );
 };
-
-const styles = StyleSheet.create({
-  banner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  bannerOffline: {
-    backgroundColor: uiColors.error[400],
-  },
-  bannerRestricted: {
-    backgroundColor: uiColors.error[600],
-  },
-  bannerOnlineWithQueue: {
-    backgroundColor: uiColors.warning[500],
-  },
-  statusContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  indicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  indicatorOnline: {
-    backgroundColor: uiColors.success[500],
-  },
-  indicatorOffline: {
-    backgroundColor: uiSemanticColors.text.inverse,
-  },
-  statusText: {
-    color: uiSemanticColors.text.inverse,
-    fontSize: 14,
-    fontWeight: "500",
-    flex: 1,
-  },
-  syncButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 4,
-  },
-  syncButtonText: {
-    color: uiSemanticColors.text.inverse,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-});
 
 export default NetworkStatusBanner;

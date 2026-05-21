@@ -53,6 +53,44 @@ jest.mock("@/components/ui", () => {
       children: React.ReactNode;
       onPress?: () => void;
     }) => React.createElement(TouchableOpacity, { onPress, ...props }, children),
+    OPERATIONAL_LIST_ROW_ESTIMATED_HEIGHT: {
+      compact: 80,
+      standard: 104,
+      comfortable: 120,
+    },
+    OperationalCommandBar: ({ title, subtitle }: { title?: string; subtitle?: string }) =>
+      React.createElement(
+        View,
+        null,
+        title ? React.createElement(Text, null, title) : null,
+        subtitle ? React.createElement(Text, null, subtitle) : null
+      ),
+    OperationalListRow: ({ title }: { title: string }) =>
+      React.createElement(Text, null, title),
+    OperationalListSection: ({
+      children,
+      title,
+      subtitle,
+    }: {
+      children: React.ReactNode;
+      title: string;
+      subtitle?: string;
+    }) =>
+      React.createElement(
+        View,
+        null,
+        React.createElement(Text, null, title),
+        subtitle ? React.createElement(Text, null, subtitle) : null,
+        children
+      ),
+    OperationalSplitView: ({
+      sidebar,
+      detail,
+    }: {
+      sidebar: React.ReactNode;
+      detail: React.ReactNode;
+    }) => React.createElement(View, null, sidebar, detail),
+    OperationalStatusStrip: () => React.createElement(View, null),
     ScreenContainer: ({
       children,
       header,

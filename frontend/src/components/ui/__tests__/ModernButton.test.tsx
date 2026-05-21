@@ -11,15 +11,17 @@ jest.mock("@/services/haptics", () => ({
 }));
 
 // Mock theme context
-jest.mock("../../../context/ThemeContext", () => ({
-  useThemeContextSafe: () => ({
-    theme: {
-      gradients: {
-        primary: ["#000", "#fff"],
-      },
-    },
-  }),
-}));
+jest.mock("../../../context/ThemeContext", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { theme } = require("../../../styles/modernDesignSystem");
+
+  return {
+    useThemeContextSafe: () => ({
+      isDark: false,
+      theme,
+    }),
+  };
+});
 
 describe("ModernButton", () => {
   beforeEach(() => {

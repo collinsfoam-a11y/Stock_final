@@ -69,7 +69,7 @@ export const GlassCard = ({
         : "light"
       : tint;
 
-  const fallbackBackground = theme?.colors.background.paper || "rgba(15, 23, 42, 0.85)";
+  const fallbackBackground = theme?.colors.background.paper || "rgba(28, 25, 23, 0.85)";
   const gradientBorderColors = [
     `${theme?.colors.accent || uiColors.info[500]}66`,
     "rgba(255, 255, 255, 0.10)",

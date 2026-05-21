@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -13,8 +13,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.production.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+# Install uv for fast, reproducible installs
+RUN pip install --no-cache-dir uv
+
+# Use lockfile if present, otherwise fall back to requirements.production.txt
+COPY requirements.production.txt requirements.lock* /app/
+RUN if [ -f /app/requirements.lock ]; then \
+        uv pip install --system --no-cache -r /app/requirements.lock; \
+    else \
+        uv pip install --system --no-cache -r /app/requirements.production.txt; \
+    fi
 
 COPY . /app/backend
 

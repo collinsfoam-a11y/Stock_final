@@ -10,6 +10,10 @@ import {
 import { useNetworkStore } from "../store/networkStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { createLogger } from "./logging";
+import {
+  OPERATIONAL_TELEMETRY_EVENT_REGISTRY,
+  operationalTelemetry,
+} from "./observability/operationalTelemetry";
 import { isDefinitelyOnline } from "../utils/network";
 import type { SyncRecord } from "../types/sync";
 
@@ -99,8 +103,9 @@ export interface SyncRuntimeMetrics {
   lastSyncError: string | null;
 }
 
-// Simple in-memory lock to prevent concurrent syncs
+// Lock + queue: a second sync requested while one is running will execute once after it completes
 let isSyncing = false;
+let pendingSyncOptions: SyncOptions | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let activeSyncCleanup: (() => void) | null = null;
 const EMPTY_SYNC_RESULT: SyncResult = { success: 0, failed: 0, total: 0, errors: [] };
@@ -370,6 +375,8 @@ const buildSyncRecord = (
 
 const getSkipReason = (options?: SyncOptions): string | null => {
   if (isSyncing) {
+    // Queue the incoming options so the next run picks them up after current completes
+    pendingSyncOptions = options ?? pendingSyncOptions ?? {};
     return "sync_in_progress";
   }
 
@@ -475,6 +482,14 @@ export const getSyncRuntimeMetrics = (): SyncRuntimeMetrics => ({
 
 const toErrorMessage = (error: unknown, fallback = "Unknown batch error") =>
   error instanceof Error ? error.message : fallback;
+
+const getOldestQueueAgeMs = (queue: OfflineQueueItem[]): number | undefined => {
+  const timestamps = queue
+    .map((item) => Date.parse(item.timestamp))
+    .filter((value) => Number.isFinite(value));
+  if (timestamps.length === 0) return undefined;
+  return Date.now() - Math.min(...timestamps);
+};
 
 const shouldRetryAfterAuth = (error: unknown) =>
   (error as { response?: { status?: number } })?.response?.status === 401;
@@ -749,6 +764,15 @@ export const syncOfflineQueue = async (
   if (skipReason) {
     syncRuntimeMetrics.syncRunsSkipped += 1;
     log.debug("Skipping sync run", { reason: skipReason });
+    operationalTelemetry.trackQueue(
+      OPERATIONAL_TELEMETRY_EVENT_REGISTRY.SYNC_RUN_SKIPPED,
+      "skipped",
+      {
+        reason: skipReason,
+        wakeReason: options?.wakeReason,
+        background: Boolean(options?.background),
+      }
+    );
     return EMPTY_SYNC_RESULT;
   }
 
@@ -758,14 +782,33 @@ export const syncOfflineQueue = async (
     options?.wakeReason ?? (options?.background ? "periodic" : "manual");
   syncRuntimeMetrics.lastSyncStartedAt = new Date().toISOString();
   syncRuntimeMetrics.lastSyncError = null;
+  const syncMark = operationalTelemetry.markStart({
+    name: OPERATIONAL_TELEMETRY_EVENT_REGISTRY.SYNC_RUN_COMPLETED,
+    category: "queue",
+    surface: "sync_service",
+    tags: {
+      wakeReason: syncRuntimeMetrics.lastWakeReason,
+      background: Boolean(options?.background),
+    },
+  });
+  operationalTelemetry.trackQueue(
+    OPERATIONAL_TELEMETRY_EVENT_REGISTRY.SYNC_RUN_STARTED,
+    "pending",
+    {
+      wakeReason: syncRuntimeMetrics.lastWakeReason,
+      background: Boolean(options?.background),
+    }
+  );
 
   try {
     const queue = await getOfflineQueue();
     if (queue.length === 0) {
+      operationalTelemetry.markEnd(syncMark, "success", { empty: true }, { processed: 0 });
       return EMPTY_SYNC_RESULT;
     }
 
     const total = queue.length;
+    const oldestAgeMs = getOldestQueueAgeMs(queue);
     log.info(`Syncing ${total} items from offline queue`);
 
     // Process in batches of 50 to avoid payload size issues
@@ -796,6 +839,21 @@ export const syncOfflineQueue = async (
       },
     );
 
+    operationalTelemetry.markEnd(
+      syncMark,
+      failedCount > 0 ? "warning" : "success",
+      {
+        wakeReason: syncRuntimeMetrics.lastWakeReason,
+      },
+      {
+        total,
+        processed,
+        success: successCount,
+        failed: failedCount,
+        oldestAgeMs,
+      }
+    );
+
     return {
       success: successCount,
       failed: failedCount,
@@ -809,6 +867,10 @@ export const syncOfflineQueue = async (
     syncRuntimeMetrics.syncRunsFailed += 1;
     syncRuntimeMetrics.lastSyncError = errorMessage;
     syncRuntimeMetrics.lastSyncCompletedAt = new Date().toISOString();
+    operationalTelemetry.markEnd(syncMark, "failure", {
+      error: errorMessage,
+      wakeReason: syncRuntimeMetrics.lastWakeReason,
+    });
     return {
       success: 0,
       failed: 0,
@@ -821,6 +883,14 @@ export const syncOfflineQueue = async (
       syncRuntimeMetrics.lastSyncCompletedAt = new Date().toISOString();
     }
     isSyncing = false;
+    // Drain any sync that was queued while this run was in progress
+    if (pendingSyncOptions !== null) {
+      const queued = pendingSyncOptions;
+      pendingSyncOptions = null;
+      void syncOfflineQueue(queued).catch((err) => {
+        log.warn("Queued sync run failed", { error: err instanceof Error ? err.message : String(err) });
+      });
+    }
   }
 };
 

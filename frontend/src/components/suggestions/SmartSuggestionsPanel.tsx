@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -49,6 +49,10 @@ export const SmartSuggestionsPanel: React.FC<SmartSuggestionsPanelProps> = ({
   const slideAnimation = useRef(new Animated.Value(0)).current;
   const fadeAnimation = useRef(new Animated.Value(0)).current;
   const rotateAnimation = useRef(new Animated.Value(0)).current;
+  const visibleSuggestions = useMemo(
+    () => (showAll ? suggestions : suggestions.slice(0, 3)),
+    [showAll, suggestions]
+  );
 
   // Show/hide animations
   useEffect(() => {
@@ -122,14 +126,13 @@ export const SmartSuggestionsPanel: React.FC<SmartSuggestionsPanelProps> = ({
   // Display suggestions with animation
   useEffect(() => {
     if (expanded) {
-      const initialSuggestions = suggestions.slice(0, 3);
-      setDisplayedSuggestions(initialSuggestions);
+      setDisplayedSuggestions(visibleSuggestions);
 
       // Stagger animation for suggestions
-      initialSuggestions.forEach((_, index) => {
+      visibleSuggestions.forEach((_, index) => {
         setTimeout(() => {
           setDisplayedSuggestions((prev) => {
-            const newSuggestion = suggestions[index];
+            const newSuggestion = visibleSuggestions[index];
             if (newSuggestion && !prev.find((s) => s.id === newSuggestion.id)) {
               return [...prev, newSuggestion];
             }
@@ -140,7 +143,7 @@ export const SmartSuggestionsPanel: React.FC<SmartSuggestionsPanelProps> = ({
     } else {
       setDisplayedSuggestions([]);
     }
-  }, [suggestions, expanded]); // Get icon color based on suggestion type
+  }, [visibleSuggestions, expanded]); // Get icon color based on suggestion type
   const getIconColor = (type: string) => {
     switch (type) {
       case "quantity":

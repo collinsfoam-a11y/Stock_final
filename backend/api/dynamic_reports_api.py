@@ -24,6 +24,14 @@ dynamic_reports_router = APIRouter(prefix="/api/dynamic-reports", tags=["dynamic
 # Global service instance
 _dynamic_report_service: Optional[DynamicReportService] = None
 
+GENERATED_REPORT_RESPONSE_FIELDS = (
+    "file_name",
+    "file_size",
+    "record_count",
+    "format",
+    "generated_at",
+)
+
 
 def get_dynamic_report_service() -> DynamicReportService:
     """Get global dynamic report service instance"""
@@ -31,6 +39,28 @@ def get_dynamic_report_service() -> DynamicReportService:
     if _dynamic_report_service is None:
         _dynamic_report_service = DynamicReportService(get_db())
     return _dynamic_report_service
+
+
+def _build_generated_report_payload(report: dict[str, Any]) -> dict[str, Any]:
+    missing_fields = [field for field in GENERATED_REPORT_RESPONSE_FIELDS if field not in report]
+    if missing_fields:
+        raise RuntimeError(
+            "Generated report missing required metadata: " + ", ".join(missing_fields)
+        )
+
+    report_id = str(report.get("_id") or report.get("id"))
+    if not report_id or report_id == "None":
+        raise RuntimeError("Generated report missing required metadata: id")
+
+    return {
+        "id": report_id,
+        "file_name": report["file_name"],
+        "file_size": report["file_size"],
+        "record_count": report["record_count"],
+        "format": report["format"],
+        "download_url": f"/api/dynamic-reports/{report_id}/download",
+        "generated_at": report["generated_at"],
+    }
 
 
 # Pydantic Models
@@ -211,20 +241,11 @@ async def generate_report(
             runtime_filters=generation_data.runtime_filters or None,
             generated_by=current_user.get("username"),
         )
-        report_id = str(report.get("_id") or report.get("id"))
 
         return {
             "success": True,
             "message": "Report generated successfully",
-            "report": {
-                "id": report_id,
-                "file_name": report["file_name"],
-                "file_size": report["file_size"],
-                "record_count": report["record_count"],
-                "format": report["format"],
-                "download_url": f"/api/dynamic-reports/{report_id}/download",
-                "generated_at": report["generated_at"],
-            },
+            "report": _build_generated_report_payload(report),
         }
 
     except ValueError as e:

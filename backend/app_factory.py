@@ -17,6 +17,7 @@ except ImportError:
     pass
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response  # noqa: E402
+from fastapi.responses import ORJSONResponse  # noqa: E402
 from starlette.requests import Request  # noqa: E402
 
 import sentry_sdk  # noqa: E402
@@ -161,6 +162,23 @@ try:
 except ImportError:
     pass
 
+security_txt_router: Optional[APIRouter] = None
+try:
+    from backend.api.security_txt import security_txt_router as _sec_txt_router  # noqa: E402
+
+    security_txt_router = _sec_txt_router
+except ImportError:
+    pass
+
+test_support_router: Optional[APIRouter] = None
+if getattr(settings, "ENVIRONMENT", "production") in {"development", "test"}:
+    try:
+        from backend.api.test_support_api import router as _test_support_router  # noqa: E402
+
+        test_support_router = _test_support_router
+    except ImportError:
+        pass
+
 SecurityHeadersMiddleware: Any = None
 try:
     from backend.middleware.security_headers import SecurityHeadersMiddleware as SHM  # noqa: E402
@@ -222,6 +240,7 @@ app = FastAPI(
     description="Stock counting and ERP sync API",
     version=getattr(settings, "APP_VERSION", "1.0.0"),
     lifespan=lifespan,
+    default_response_class=ORJSONResponse,
     docs_url="/docs" if _docs_enabled else None,
     redoc_url="/redoc" if _docs_enabled else None,
     openapi_url="/openapi.json" if _docs_enabled else None,
@@ -334,117 +353,6 @@ async def init_default_users():
             sanitize_for_logging(str(e), 200),
         )
         raise
-
-
-# Initialize mock ERP data
-async def init_mock_erp_data():
-    """Populate local mock ERP data when the collection is empty."""
-    count = await db.erp_items.count_documents({})
-    if count == 0:
-        mock_items = [
-            {
-                "item_code": "ITEM001",
-                "item_name": "Rice Bag 25kg",
-                "barcode": "1234567890123",
-                "stock_qty": 150.0,
-                "mrp": 1200.0,
-                "category": "Food",
-                "warehouse": "Main",
-                "image_url": "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=200",
-            },
-            {
-                "item_code": "ITEM002",
-                "item_name": "Cooking Oil 5L",
-                "barcode": "1234567890124",
-                "stock_qty": 80.0,
-                "mrp": 650.0,
-                "category": "Food",
-                "warehouse": "Main",
-            },
-            {
-                "item_code": "ITEM003",
-                "item_name": "Sugar 1kg",
-                "barcode": "1234567890125",
-                "stock_qty": 200.0,
-                "mrp": 50.0,
-                "category": "Food",
-                "warehouse": "Main",
-            },
-            {
-                "item_code": "ITEM004",
-                "item_name": "Tea Powder 250g",
-                "barcode": "1234567890126",
-                "stock_qty": 95.0,
-                "mrp": 180.0,
-                "category": "Beverages",
-                "warehouse": "Main",
-            },
-            {
-                "item_code": "ITEM005",
-                "item_name": "Soap Bar",
-                "barcode": "1234567890127",
-                "stock_qty": 300.0,
-                "mrp": 25.0,
-                "category": "Personal Care",
-                "warehouse": "Main",
-            },
-            {
-                "item_code": "ITEM006",
-                "item_name": "Shampoo 200ml",
-                "barcode": "1234567890128",
-                "stock_qty": 120.0,
-                "mrp": 150.0,
-                "category": "Personal Care",
-                "warehouse": "Main",
-            },
-            {
-                "item_code": "ITEM007",
-                "item_name": "Toothpaste",
-                "barcode": "1234567890129",
-                "stock_qty": 180.0,
-                "mrp": 75.0,
-                "category": "Personal Care",
-                "warehouse": "Main",
-            },
-            {
-                "item_code": "ITEM008",
-                "item_name": "Wheat Flour 10kg",
-                "barcode": "1234567890130",
-                "stock_qty": 90.0,
-                "mrp": 400.0,
-                "category": "Food",
-                "warehouse": "Main",
-            },
-            {
-                "item_code": "ITEM009",
-                "item_name": "Detergent Powder 1kg",
-                "barcode": "1234567890131",
-                "stock_qty": 110.0,
-                "mrp": 120.0,
-                "category": "Household",
-                "warehouse": "Main",
-            },
-            {
-                "item_code": "ITEM010",
-                "item_name": "Biscuits Pack",
-                "barcode": "1234567890132",
-                "stock_qty": 250.0,
-                "mrp": 30.0,
-                "category": "Snacks",
-                "warehouse": "Main",
-            },
-            {
-                "item_code": "ITEM_TEST_E2E",
-                "item_name": "E2E Test Item",
-                "barcode": "513456",
-                "stock_qty": 100.0,
-                "mrp": 999.0,
-                "category": "Test",
-                "warehouse": "Main",
-            },
-        ]
-        await db.erp_items.insert_many(mock_items)
-        logger.info("Mock ERP data initialized")
 
 
 # Routes
@@ -893,6 +801,8 @@ register_routers(
         pin_auth_router=pin_auth_router,
         reconciliation_router=reconciliation_router,
         recount_router=recount_router,
+        security_txt_router=security_txt_router,
+        test_support_router=test_support_router,
         enterprise_available=ENTERPRISE_AVAILABLE,
     ),
     logger,

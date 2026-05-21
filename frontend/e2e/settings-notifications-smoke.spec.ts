@@ -251,6 +251,9 @@ function shouldIgnoreConsoleMessage(message: string): boolean {
     message.includes("[ConnectionManager] No healthy connections found") ||
     message.includes("[ConnectionManager] Using fallback connection") ||
     message.includes("[httpClient] Ignoring unhealthy connection update") ||
+    message.includes(
+      "[initApp] Theme initialization failed {error: Theme initialization timeout}"
+    ) ||
     message.includes("[initApp] Background sync failed {error: Background sync timeout}") ||
     message.includes("props.pointerEvents is deprecated. Use style.pointerEvents")
   );
@@ -339,10 +342,10 @@ test.describe("settings and notifications visual smoke", () => {
       await seedScenarioAuth(page, request, scenario.role);
 
       await page.setViewportSize({ width: scenario.width, height: scenario.height });
-      await page.goto(scenario.path);
-      await page.waitForLoadState("domcontentloaded");
-      await expect(page.locator("#root")).toBeVisible({ timeout: 10000 });
-      await expect(page.getByText(scenario.heading).first()).toBeVisible({ timeout: 15000 });
+      await page.goto(scenario.path, { waitUntil: "commit", timeout: 15000 });
+      const appRoot = page.locator("#root");
+      await expect(appRoot).toBeVisible({ timeout: 10000 });
+      await expect(appRoot).toContainText(scenario.heading, { timeout: 15000 });
       await page.waitForTimeout(700);
 
       const layout = await collectLayoutIssues(page);

@@ -258,7 +258,7 @@ interface LoadingStateProps {
 export const LoadingState: React.FC<LoadingStateProps> = ({
   message,
   size = "large",
-  color = uiColors.info[500],
+  color = modernColors.primary[500], // Claude Terracotta
   fullScreen = false,
   overlay = false,
   containerStyle,
@@ -277,7 +277,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
       zIndex: 999,
     }),
     ...(overlay && {
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      backgroundColor: "rgba(28, 25, 23, 0.55)", // warm dark overlay
     }),
   };
 

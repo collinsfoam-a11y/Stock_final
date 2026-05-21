@@ -81,6 +81,7 @@ export * from "./typography";
 export * from "./themes";
 export * from "./designSystem";
 export * from "./themeTokens";
+export * from "./operationalSeverity";
 
 // Theme Context (Provider, Hook, Types)
 export * from "../context/ThemeContext";

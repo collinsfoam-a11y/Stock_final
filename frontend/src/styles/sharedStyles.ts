@@ -57,37 +57,37 @@ export const FONT_WEIGHT = {
 // ============================================
 
 export const COLORS = {
-  // Primary accent
-  accent: "#0EA5E9",
-  accentLight: "rgba(14, 165, 233, 0.1)",
-  accentBorder: "rgba(14, 165, 233, 0.2)",
+  // Primary accent — Claude Terracotta
+  accent: "#CC785C",
+  accentLight: "rgba(204, 120, 92, 0.10)",
+  accentBorder: "rgba(204, 120, 92, 0.22)",
 
-  // Surface colors
-  surface: "rgba(15, 23, 42, 0.5)",
-  surfaceElevated: "rgba(255, 255, 255, 0.05)",
-  surfaceLight: "rgba(255, 255, 255, 0.03)",
+  // Surface colors — Warm Charcoal
+  surface: "rgba(28, 25, 23, 0.50)",
+  surfaceElevated: "rgba(255, 250, 245, 0.05)",
+  surfaceLight: "rgba(255, 250, 245, 0.03)",
 
-  // Border colors
-  border: "rgba(255, 255, 255, 0.08)",
-  borderLight: "rgba(255, 255, 255, 0.06)",
+  // Border colors — Warm Subtle
+  border: "rgba(255, 250, 245, 0.08)",
+  borderLight: "rgba(255, 250, 245, 0.05)",
 
   // Status colors
   success: "#22C55E",
-  successLight: "rgba(34, 197, 94, 0.1)",
-  successBorder: "rgba(34, 197, 94, 0.2)",
+  successLight: "rgba(34, 197, 94, 0.10)",
+  successBorder: "rgba(34, 197, 94, 0.22)",
 
   warning: "#F59E0B",
-  warningLight: "rgba(245, 158, 11, 0.1)",
-  warningBorder: "rgba(245, 158, 11, 0.2)",
+  warningLight: "rgba(245, 158, 11, 0.10)",
+  warningBorder: "rgba(245, 158, 11, 0.22)",
 
   danger: "#EF4444",
   dangerLight: "rgba(239, 68, 68, 0.06)",
-  dangerBorder: "rgba(239, 68, 68, 0.2)",
+  dangerBorder: "rgba(239, 68, 68, 0.20)",
 
-  // Text colors
-  textPrimary: "#F8FAFC",
-  textSecondary: "#94A3B8",
-  textTertiary: "#64748B",
+  // Text colors — Warm Tones
+  textPrimary: "#F5F0E8",
+  textSecondary: "#B5AFA9",
+  textTertiary: "#78746F",
 } as const;
 
 // ============================================

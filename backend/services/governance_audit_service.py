@@ -44,6 +44,9 @@ class GovernanceAuditService:
         status: str = "SUCCESS",
         metadata: Optional[dict[str, Any]] = None,
         db_session: Optional[Any] = None,
+        gps_lat: Optional[float] = None,
+        gps_lng: Optional[float] = None,
+        device_id: Optional[str] = None,
     ) -> None:
         payload: dict[str, Any] = {
             "event": event,
@@ -58,6 +61,9 @@ class GovernanceAuditService:
             "timestamp": self._utc_now(),
             "status": status,
             "metadata": metadata or {},
+            "gps_lat": gps_lat,
+            "gps_lng": gps_lng,
+            "device_id": device_id,
         }
 
         kwargs: dict[str, Any] = {}

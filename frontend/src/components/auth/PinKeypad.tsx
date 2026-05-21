@@ -247,15 +247,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   key: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: modernColors.surface.secondary, // warm charcoal surface
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.12)",
+    borderColor: modernColors.border.light,           // warm subtle border
     justifyContent: "center",
     alignItems: "center",
   },
   keySpecial: {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: modernColors.surface.base,       // deeper warm surface
+    borderColor: modernColors.border.light,
   },
   keyDisabled: {
     opacity: 0.4,

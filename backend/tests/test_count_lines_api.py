@@ -12,6 +12,7 @@ from pymongo.errors import DuplicateKeyError
 from backend.api.count_lines_routes import (
     CountLineApprovalRequest,
     CountLineRejectRequest,
+    _build_count_line_document,
     _require_supervisor,
     approve_count_line,
     check_item_counted,
@@ -28,6 +29,7 @@ from backend.api.count_lines_routes import (
 )
 from backend.tests.utils.in_memory_db import InMemoryDatabase
 from backend.api.schemas import CountLineCreate
+from backend.services.count_line_write_service import CountLineGovernanceDecision
 
 
 class AsyncIter:
@@ -54,6 +56,58 @@ def reset_globals():
         patch("backend.api.count_lines_routes._variant_service", None),
     ):
         yield
+
+
+def test_build_count_line_document_preserves_batch_payload():
+    line_data = CountLineCreate(
+        session_id="sess-1",
+        item_code="ITEM-1",
+        item_name="Batch Item",
+        barcode="510186",
+        batch_id="510186",
+        counted_qty=5,
+        batches=[
+            {
+                "batch_id": "510186",
+                "batch_no": "510186",
+                "barcode": "510186",
+                "quantity": 2,
+            },
+            {
+                "batch_id": "512883",
+                "batch_no": "512883",
+                "barcode": "512883",
+                "quantity": 3,
+            },
+        ],
+    )
+    governance = CountLineGovernanceDecision(
+        approval_status="pending",
+        approved_at=None,
+        approved_by=None,
+        requires_supervisor_approval=False,
+        status="pending",
+        variance=0,
+        variance_data={},
+        violated_thresholds=[],
+    )
+
+    count_line, _ = _build_count_line_document(
+        line_data=line_data,
+        erp_item={"item_name": "Batch Item", "barcode": "fallback", "batch_id": "fallback"},
+        current_user={"username": "staff1"},
+        erp_qty=5,
+        baseline_hash="baseline",
+        governance=governance,
+        risk_flags=[],
+        financial_impact=0,
+        is_misplaced=False,
+        recount_update_target=None,
+    )
+
+    assert count_line["barcode"] == "510186"
+    assert count_line["batch_id"] == "510186"
+    assert count_line["batches"] == line_data.batches
 
 
 class TestCheckSerialUniqueness:

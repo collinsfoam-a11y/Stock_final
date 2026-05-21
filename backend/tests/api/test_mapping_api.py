@@ -11,6 +11,7 @@ from backend.api.mapping_api import (
     preview_mapping,
     save_mapping,
 )
+from backend.tests.utils.in_memory_db import InMemoryDatabase
 
 # Mock data
 MOCK_TABLES = [("Table1",), ("Table2",)]
@@ -172,3 +173,12 @@ async def test_get_current_mapping_empty(mock_db):
 
     assert response["mapping"] is None
     assert response["connection"] is None
+
+
+@pytest.mark.asyncio
+async def test_get_current_mapping_with_in_memory_db_empty():
+    current_user = {"username": "testuser", "role": "admin"}
+
+    response = await get_current_mapping(current_user=current_user, db=InMemoryDatabase())
+
+    assert response == {"mapping": None, "connection": None}

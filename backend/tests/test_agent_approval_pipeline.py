@@ -19,7 +19,7 @@ from scripts.approval_pipeline import (
 
 
 HIGH_RISK_COMMAND = (
-    "./scripts/python.sh backend/scripts/backfill_session_snapshots.py --execute --limit 1"
+    "./scripts/python.sh backend/scripts/archive/backfill_session_snapshots.py --execute --limit 1"
 )
 GIT_RM_COMMAND = (
     "git rm 'backend/tests/evaluation/reports/evaluation_report_*.json' "

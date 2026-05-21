@@ -1,4 +1,5 @@
 import api from "@/services/httpClient";
+import { Platform } from "react-native";
 import { useAuthStore } from "@/store/authStore";
 import { controlPlaneFlags } from "@/core/config/controlPlaneFlags";
 import { generateUUID } from "@/utils/uuid";
@@ -22,6 +23,9 @@ import { resolveProjectedServerCountLineId } from "@/data/repositories/inventory
 import { incrementControlPlaneMetric } from "@/services/observability/controlPlaneMetrics";
 import { controlPlaneEventBus } from "@/services/control-plane/controlPlaneEventBus";
 import { getNetworkStatus } from "@/utils/network";
+import { createLogger } from "@/services/logging";
+
+const log = createLogger("CountLineReviewControlPlane");
 
 type ReviewCommandOptions = {
   session_id?: string;
@@ -270,12 +274,25 @@ export const overlayCountLineReviewState = async <T extends Record<string, any>>
     return rows;
   }
 
+  if (Platform.OS === "web") {
+    return rows;
+  }
+
   const lineIds = rows.map(toLineLookupId).filter((value): value is string => Boolean(value));
   if (lineIds.length === 0) {
     return rows;
   }
 
-  const projectedStates = await getProjectedCountLineReviewStates(lineIds);
+  let projectedStates: Awaited<ReturnType<typeof getProjectedCountLineReviewStates>>;
+  try {
+    projectedStates = await getProjectedCountLineReviewStates(lineIds);
+  } catch (error) {
+    log.warn("Unable to overlay count-line review projection state", {
+      error: error instanceof Error ? error.message : String(error),
+      lineCount: lineIds.length,
+    });
+    return rows;
+  }
   if (projectedStates.length === 0) {
     return rows;
   }

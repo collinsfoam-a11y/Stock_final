@@ -3,7 +3,7 @@ import { StyleSheet, Platform } from "react-native";
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0F172A",
+    backgroundColor: "#1C1917",
   },
   header: {
     flexDirection: "row",
@@ -11,9 +11,9 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 20,
     paddingTop: Platform.OS === "ios" ? 60 : 40,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: "#242220",
     borderBottomWidth: 1,
-    borderBottomColor: "#2C2C2C",
+    borderBottomColor: "#3D3A37",
     ...Platform.select({
       web: { boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.3)" },
       default: {
@@ -50,18 +50,18 @@ export const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 12,
-    color: "#94A3B8",
+    color: "#B5AFA9",
     marginTop: 2,
   },
   logoutButton: {
     padding: 8,
   },
   datePickerButton: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -76,12 +76,12 @@ export const styles = StyleSheet.create({
     top: 38,
   },
   readOnlyInfoSection: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 8,
     padding: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
   },
   autoIncrementBanner: {
     flexDirection: "row",
@@ -95,7 +95,7 @@ export const styles = StyleSheet.create({
     margin: 16,
   },
   autoIncrementText: {
-    color: "#3B82F6",
+    color: "#CC785C",
     fontSize: 14,
     flex: 1,
   },
@@ -104,13 +104,13 @@ export const styles = StyleSheet.create({
     padding: 16,
   },
   input: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 8,
     padding: 12,
     color: "#fff",
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
     marginBottom: 16,
   },
   text: {
@@ -118,7 +118,7 @@ export const styles = StyleSheet.create({
     fontSize: 16,
   },
   scanButton: {
-    backgroundColor: "#3B82F6",
+    backgroundColor: "#CC785C",
     borderRadius: 24,
     padding: 48,
     alignItems: "center",
@@ -127,7 +127,7 @@ export const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: "0px 8px 16px rgba(59, 130, 246, 0.4)" },
       default: {
-        shadowColor: "#3B82F6",
+        shadowColor: "#CC785C",
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.4,
         shadowRadius: 16,
@@ -136,7 +136,7 @@ export const styles = StyleSheet.create({
     }),
   },
   scanButtonDisabled: {
-    backgroundColor: "#2C2C2C",
+    backgroundColor: "#3D3A37",
     shadowOpacity: 0,
   },
   scanButtonText: {
@@ -169,10 +169,10 @@ export const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#334155",
+    backgroundColor: "#3D3A37",
   },
   orText: {
-    color: "#94A3B8",
+    color: "#B5AFA9",
     marginHorizontal: 16,
     fontSize: 16,
   },
@@ -204,13 +204,13 @@ export const styles = StyleSheet.create({
     marginLeft: 8,
   },
   manualInput: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     color: "#fff",
     padding: 14,
     borderRadius: 8,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
     marginBottom: 8,
   },
   inputDivider: {
@@ -219,7 +219,7 @@ export const styles = StyleSheet.create({
     marginVertical: 12,
   },
   searchButton: {
-    backgroundColor: "#3B82F6",
+    backgroundColor: "#CC785C",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -228,7 +228,7 @@ export const styles = StyleSheet.create({
     marginTop: 4,
   },
   searchButtonDisabled: {
-    backgroundColor: "#334155",
+    backgroundColor: "#3D3A37",
     opacity: 0.5,
   },
   searchButtonText: {
@@ -244,7 +244,7 @@ export const styles = StyleSheet.create({
     padding: 16,
   },
   searchingText: {
-    color: "#94A3B8",
+    color: "#B5AFA9",
     fontSize: 14,
     marginLeft: 8,
   },
@@ -261,7 +261,7 @@ export const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
     height: 60,
     ...Platform.select({
       web: { boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)" },
@@ -285,12 +285,12 @@ export const styles = StyleSheet.create({
     fontWeight: "500",
   },
   searchResultsContainer: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 12,
     marginTop: 8,
     maxHeight: 400,
     borderWidth: 1,
-    borderColor: "#3B82F6",
+    borderColor: "#CC785C",
   },
   searchResultsScrollView: {
     maxHeight: 350,
@@ -298,11 +298,11 @@ export const styles = StyleSheet.create({
   searchResultsTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#3B82F6",
+    color: "#CC785C",
     marginBottom: 12,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "#334155",
+    borderBottomColor: "#3D3A37",
   },
   searchResultsList: {
     padding: 8,
@@ -312,11 +312,11 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 14,
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
     ...Platform.select({
       web: { boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.25)" },
       default: {
@@ -349,16 +349,16 @@ export const styles = StyleSheet.create({
   },
   searchResultCode: {
     fontSize: 12,
-    color: "#94A3B8",
+    color: "#B5AFA9",
   },
   searchResultBarcode: {
     fontSize: 12,
-    color: "#94A3B8",
+    color: "#B5AFA9",
     marginTop: 2,
   },
   searchResultStock: {
     fontSize: 13,
-    color: "#3B82F6",
+    color: "#CC785C",
     marginTop: 4,
     fontWeight: "600",
   },
@@ -368,7 +368,7 @@ export const styles = StyleSheet.create({
   },
   searchResultStockLabel: {
     fontSize: 11,
-    color: "#94A3B8",
+    color: "#B5AFA9",
   },
   noResultsContainer: {
     alignItems: "center",
@@ -376,7 +376,7 @@ export const styles = StyleSheet.create({
   },
   noResultsText: {
     fontSize: 16,
-    color: "#94A3B8",
+    color: "#B5AFA9",
     marginTop: 12,
     marginBottom: 4,
   },
@@ -395,17 +395,17 @@ export const styles = StyleSheet.create({
   searchTipsTitle: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#3B82F6",
+    color: "#CC785C",
     marginBottom: 8,
   },
   searchTip: {
     fontSize: 13,
-    color: "#94A3B8",
+    color: "#B5AFA9",
     marginBottom: 4,
     lineHeight: 18,
   },
   itemCard: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: "#242220",
     borderRadius: 24,
     padding: 24,
     marginBottom: 24,
@@ -414,7 +414,7 @@ export const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: "0px 8px 16px rgba(59, 130, 246, 0.15)" },
       default: {
-        shadowColor: "#3B82F6",
+        shadowColor: "#CC785C",
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.15,
         shadowRadius: 16,
@@ -431,12 +431,12 @@ export const styles = StyleSheet.create({
   },
   itemCode: {
     fontSize: 14,
-    color: "#94A3B8",
+    color: "#B5AFA9",
     marginBottom: 4,
   },
   itemBarcode: {
     fontSize: 14,
-    color: "#94A3B8",
+    color: "#B5AFA9",
     marginBottom: 4,
   },
   locationRow: {
@@ -447,19 +447,19 @@ export const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 14,
-    color: "#3B82F6",
+    color: "#CC785C",
     marginLeft: 6,
     fontWeight: "600",
   },
   itemCategory: {
     fontSize: 13,
-    color: "#94A3B8",
+    color: "#B5AFA9",
     marginTop: 4,
     marginBottom: 12,
   },
   uomText: {
     fontSize: 12,
-    color: "#94A3B8",
+    color: "#B5AFA9",
     marginTop: 4,
   },
   verificationBadge: {
@@ -473,13 +473,13 @@ export const styles = StyleSheet.create({
   },
   verificationText: {
     fontSize: 12,
-    color: "#3B82F6",
+    color: "#CC785C",
     marginLeft: 6,
     fontWeight: "600",
   },
   verificationTime: {
     fontSize: 11,
-    color: "#94A3B8",
+    color: "#B5AFA9",
     fontWeight: "400",
   },
   qtyRow: {
@@ -488,19 +488,19 @@ export const styles = StyleSheet.create({
   },
   qtyBox: {
     flex: 1,
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 12,
     padding: 12,
   },
   qtyLabel: {
     fontSize: 12,
-    color: "#94A3B8",
+    color: "#B5AFA9",
     marginBottom: 4,
   },
   qtyValue: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#3B82F6",
+    color: "#CC785C",
   },
   qtyHeader: {
     flexDirection: "row",
@@ -511,7 +511,7 @@ export const styles = StyleSheet.create({
   refreshButton: {
     padding: 4,
     borderRadius: 4,
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
   },
   refreshButtonDisabled: {
     opacity: 0.5,
@@ -535,7 +535,7 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
     ...Platform.select({
       web: { boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)" },
       default: {
@@ -561,15 +561,15 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
   },
   mrpChangeBox: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
   },
   mrpChangeLabel: {
-    color: "#94A3B8",
+    color: "#B5AFA9",
     fontSize: 14,
     marginBottom: 4,
     textTransform: "uppercase",
@@ -594,11 +594,11 @@ export const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 12,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
     marginBottom: 16,
   },
   mrpVariantsLabel: {
-    color: "#94A3B8",
+    color: "#B5AFA9",
     fontSize: 13,
     marginBottom: 8,
     textTransform: "uppercase",
@@ -611,22 +611,22 @@ export const styles = StyleSheet.create({
   },
   mrpVariantChip: {
     borderWidth: 1,
-    borderColor: "#3B82F6",
+    borderColor: "#CC785C",
     borderRadius: 16,
     paddingVertical: 6,
     paddingHorizontal: 12,
     backgroundColor: "rgba(76, 175, 80, 0.1)",
   },
   mrpVariantChipActive: {
-    backgroundColor: "#3B82F6",
+    backgroundColor: "#CC785C",
   },
   mrpVariantChipText: {
-    color: "#3B82F6",
+    color: "#CC785C",
     fontSize: 13,
     fontWeight: "600",
   },
   mrpVariantChipTextActive: {
-    color: "#1E293B",
+    color: "#2E2B28",
   },
   mrpVariantChipMeta: {
     color: "#9ccc9c",
@@ -638,7 +638,7 @@ export const styles = StyleSheet.create({
     color: "#0d4d1a",
   },
   mrpIncrease: {
-    color: "#3B82F6",
+    color: "#CC785C",
   },
   mrpDecrease: {
     color: "#EF4444",
@@ -658,7 +658,7 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
     gap: 12,
   },
   serialHeader: {
@@ -679,7 +679,7 @@ export const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   serialRequirementText: {
-    color: "#94A3B8",
+    color: "#B5AFA9",
     fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -703,14 +703,14 @@ export const styles = StyleSheet.create({
   serialInputRow: {
     flexDirection: "column",
     gap: 10,
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 10,
     padding: 12,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
   },
   serialInputRowActive: {
-    borderColor: "#3B82F6",
+    borderColor: "#CC785C",
     backgroundColor: "#233323",
   },
   serialInputHeader: {
@@ -737,13 +737,13 @@ export const styles = StyleSheet.create({
   },
   serialTextInput: {
     flex: 1,
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     color: "#fff",
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
     fontSize: 14,
   },
   removeSerialButton: {
@@ -765,10 +765,10 @@ export const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "rgba(76, 175, 80, 0.15)",
     borderWidth: 1,
-    borderColor: "#3B82F6",
+    borderColor: "#CC785C",
   },
   scanSerialButtonText: {
-    color: "#3B82F6",
+    color: "#CC785C",
     fontSize: 14,
     fontWeight: "600",
   },
@@ -782,10 +782,10 @@ export const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "rgba(76, 175, 80, 0.1)",
     borderWidth: 1,
-    borderColor: "#3B82F6",
+    borderColor: "#CC785C",
   },
   addSerialButtonText: {
-    color: "#3B82F6",
+    color: "#CC785C",
     fontSize: 14,
     fontWeight: "600",
   },
@@ -799,7 +799,7 @@ export const styles = StyleSheet.create({
     borderColor: "rgba(76, 175, 80, 0.35)",
   },
   serialOverlayText: {
-    color: "#3B82F6",
+    color: "#CC785C",
     fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
@@ -811,7 +811,7 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
     gap: 12,
   },
   photoSectionHeader: {
@@ -820,7 +820,7 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   photoCountLabel: {
-    color: "#94A3B8",
+    color: "#B5AFA9",
     fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -854,22 +854,22 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#3B82F6",
+    borderColor: "#CC785C",
     backgroundColor: "rgba(76, 175, 80, 0.08)",
   },
   photoTypePillActive: {
-    backgroundColor: "#3B82F6",
+    backgroundColor: "#CC785C",
   },
   photoTypeIcon: {
     marginTop: 1,
   },
   photoTypeText: {
-    color: "#3B82F6",
+    color: "#CC785C",
     fontSize: 13,
     fontWeight: "600",
   },
   photoTypeTextActive: {
-    color: "#1E293B",
+    color: "#2E2B28",
   },
   photoControls: {
     flexDirection: "row",
@@ -879,7 +879,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#3B82F6",
+    backgroundColor: "#CC785C",
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
@@ -889,7 +889,7 @@ export const styles = StyleSheet.create({
     opacity: 0.6,
   },
   photoCaptureButtonText: {
-    color: "#1E293B",
+    color: "#2E2B28",
     fontSize: 14,
     fontWeight: "600",
   },
@@ -903,7 +903,7 @@ export const styles = StyleSheet.create({
     overflow: "hidden",
     marginRight: 12,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
   },
   photoPreviewImage: {
     width: "100%",
@@ -996,11 +996,11 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
     gap: 12,
   },
   conditionHelper: {
-    color: "#94A3B8",
+    color: "#B5AFA9",
     fontSize: 13,
   },
   conditionChips: {
@@ -1014,11 +1014,11 @@ export const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 6,
     paddingHorizontal: 14,
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
   },
   conditionChipActive: {
-    borderColor: "#3B82F6",
-    backgroundColor: "#3B82F6",
+    borderColor: "#CC785C",
+    backgroundColor: "#CC785C",
   },
   conditionChipText: {
     color: "#bbb",
@@ -1026,13 +1026,13 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
   },
   conditionChipTextActive: {
-    color: "#1E293B",
+    color: "#2E2B28",
   },
   varianceBox: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -1040,18 +1040,18 @@ export const styles = StyleSheet.create({
   },
   varianceLabel: {
     fontSize: 16,
-    color: "#94A3B8",
+    color: "#B5AFA9",
   },
   varianceValue: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#3B82F6",
+    color: "#CC785C",
   },
   varianceNonZero: {
     color: "#EF4444",
   },
   remarkInput: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 12,
     padding: 16,
     color: "#fff",
@@ -1059,7 +1059,7 @@ export const styles = StyleSheet.create({
     minHeight: 80,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
   },
   actionButtons: {
     flexDirection: "row",
@@ -1067,12 +1067,12 @@ export const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: "#2C2C2C",
+    backgroundColor: "#3D3A37",
     borderRadius: 16,
     padding: 18,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
   },
   cancelButtonText: {
     color: "#EF4444",
@@ -1081,14 +1081,14 @@ export const styles = StyleSheet.create({
   },
   saveButton: {
     flex: 2,
-    backgroundColor: "#3B82F6",
+    backgroundColor: "#CC785C",
     borderRadius: 16,
     padding: 18,
     alignItems: "center",
     ...Platform.select({
       web: { boxShadow: "0px 4px 8px rgba(59, 130, 246, 0.3)" },
       default: {
-        shadowColor: "#3B82F6",
+        shadowColor: "#CC785C",
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -1146,7 +1146,7 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
   },
   continuousModeActive: {
-    color: "#3B82F6",
+    color: "#CC785C",
   },
   scanFeedbackBanner: {
     position: "absolute",
@@ -1184,7 +1184,7 @@ export const styles = StyleSheet.create({
     position: "absolute",
     width: 50,
     height: 50,
-    borderColor: "#3B82F6",
+    borderColor: "#CC785C",
   },
   cornerTopLeft: {
     top: "30%",
@@ -1226,7 +1226,7 @@ export const styles = StyleSheet.create({
     right: 24,
   },
   scannerSubtext: {
-    color: "#94A3B8",
+    color: "#B5AFA9",
     fontSize: 14,
     textAlign: "center",
     backgroundColor: "rgba(0,0,0,0.6)",
@@ -1248,7 +1248,7 @@ export const styles = StyleSheet.create({
     marginBottom: 24,
   },
   permissionButton: {
-    backgroundColor: "#3B82F6",
+    backgroundColor: "#CC785C",
     borderRadius: 12,
     paddingHorizontal: 24,
     paddingVertical: 12,
@@ -1259,15 +1259,15 @@ export const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   reasonOption: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
     borderWidth: 2,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
   },
   reasonSelected: {
-    borderColor: "#3B82F6",
+    borderColor: "#CC785C",
     backgroundColor: "#1a3a1a",
   },
   reasonText: {
@@ -1275,7 +1275,7 @@ export const styles = StyleSheet.create({
     fontSize: 16,
   },
   noteInput: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 12,
     padding: 16,
     color: "#fff",
@@ -1284,10 +1284,10 @@ export const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
   },
   confirmButton: {
-    backgroundColor: "#3B82F6",
+    backgroundColor: "#CC785C",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
@@ -1303,7 +1303,7 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
   },
   unknownItemInfo: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     padding: 16,
     borderRadius: 8,
     marginBottom: 16,
@@ -1311,13 +1311,13 @@ export const styles = StyleSheet.create({
   modalLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#94A3B8",
+    color: "#B5AFA9",
     marginBottom: 8,
   },
   unknownBarcode: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#3B82F6",
+    color: "#CC785C",
     fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
   },
   modalOverlay: {
@@ -1327,7 +1327,7 @@ export const styles = StyleSheet.create({
     padding: 24,
   },
   modalContent: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 16,
     padding: 24,
   },
@@ -1339,11 +1339,11 @@ export const styles = StyleSheet.create({
   },
   modalSubtitle: {
     fontSize: 14,
-    color: "#94A3B8",
+    color: "#B5AFA9",
     marginBottom: 24,
   },
   voiceButton: {
-    backgroundColor: "#3B82F6",
+    backgroundColor: "#CC785C",
     borderRadius: 12,
     padding: 12,
     alignItems: "center",
@@ -1356,7 +1356,7 @@ export const styles = StyleSheet.create({
     marginBottom: 16,
   },
   itemInfoItem: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 8,
     padding: 12,
     flex: 1,
@@ -1370,7 +1370,7 @@ export const styles = StyleSheet.create({
     marginBottom: 16,
   },
   quickCountLabel: {
-    color: "#94A3B8",
+    color: "#B5AFA9",
     fontSize: 14,
     marginBottom: 8,
   },
@@ -1386,7 +1386,7 @@ export const styles = StyleSheet.create({
     minWidth: 64,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
     ...Platform.select({
       web: { boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)" },
       default: {
@@ -1399,7 +1399,7 @@ export const styles = StyleSheet.create({
     }),
   },
   quickCountButtonText: {
-    color: "#3B82F6",
+    color: "#CC785C",
     fontSize: 16,
     fontWeight: "600",
   },
@@ -1413,21 +1413,21 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   locationInput: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 8,
     padding: 12,
     color: "#fff",
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
   },
   optionalFieldsSection: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
   },
   optionalFieldsToggle: {
     flexDirection: "row",
@@ -1438,7 +1438,7 @@ export const styles = StyleSheet.create({
   optionalFieldsToggleText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#3B82F6",
+    color: "#CC785C",
   },
   optionalFieldsContent: {
     marginTop: 16,
@@ -1451,13 +1451,13 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   optionalInput: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 8,
     padding: 12,
     color: "#fff",
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
   },
   readOnlyInfoTitle: {
     fontSize: 16,
@@ -1471,7 +1471,7 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
   },
   readOnlyInfoLabel: {
-    color: "#94A3B8",
+    color: "#B5AFA9",
     fontSize: 14,
   },
   readOnlyInfoValue: {
@@ -1486,7 +1486,7 @@ export const styles = StyleSheet.create({
   },
   helpText: {
     fontSize: 13,
-    color: "#94A3B8",
+    color: "#B5AFA9",
     fontStyle: "italic",
     marginTop: 8,
     marginBottom: 16,
@@ -1504,7 +1504,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalSubmitButton: {
-    backgroundColor: "#3B82F6",
+    backgroundColor: "#CC785C",
   },
   modalSubmitButtonText: {
     color: "#fff",
@@ -1519,7 +1519,7 @@ export const styles = StyleSheet.create({
     fontSize: 16,
   },
   addQtyInfo: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -1532,7 +1532,7 @@ export const styles = StyleSheet.create({
   },
   addQtyItemCode: {
     fontSize: 14,
-    color: "#94A3B8",
+    color: "#B5AFA9",
     marginBottom: 12,
   },
   addQtyCurrentContainer: {
@@ -1542,7 +1542,7 @@ export const styles = StyleSheet.create({
   },
   addQtyLabel: {
     fontSize: 14,
-    color: "#94A3B8",
+    color: "#B5AFA9",
   },
   addQtyValue: {
     fontSize: 16,
@@ -1553,14 +1553,14 @@ export const styles = StyleSheet.create({
     marginVertical: 12,
   },
   addQtyInput: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 8,
     padding: 12,
     color: "#fff",
     fontSize: 18,
     textAlign: "center",
     borderWidth: 2,
-    borderColor: "#3B82F6",
+    borderColor: "#CC785C",
     marginTop: 8,
   },
   addQtyNewTotal: {
@@ -1573,11 +1573,11 @@ export const styles = StyleSheet.create({
   },
   addQtyTotalValue: {
     fontSize: 18,
-    color: "#3B82F6",
+    color: "#CC785C",
     fontWeight: "bold",
   },
   datePickerModal: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 16,
     padding: 24,
     marginHorizontal: 24,
@@ -1590,24 +1590,24 @@ export const styles = StyleSheet.create({
     textAlign: "center",
   },
   datePickerContainer: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
   },
   dateInput: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 8,
     padding: 12,
     color: "#fff",
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
   },
   damageSection: {
     marginTop: 16,
     padding: 16,
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 12,
     borderLeftWidth: 4,
     borderLeftColor: "#EF4444",
@@ -1625,13 +1625,13 @@ export const styles = StyleSheet.create({
   },
   damageToggleLabel: {
     fontSize: 14,
-    color: "#94A3B8",
+    color: "#B5AFA9",
   },
   damageInputContainer: {
     marginTop: 12,
   },
   damageInput: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 8,
     padding: 12,
     color: "#fff",
@@ -1643,7 +1643,7 @@ export const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#94A3B8",
+    color: "#B5AFA9",
     marginBottom: 8,
   },
   disabledButton: {
@@ -1663,15 +1663,15 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#334155",
+    borderBottomColor: "#3D3A37",
     marginBottom: 16,
   },
   dateButton: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -1681,7 +1681,7 @@ export const styles = StyleSheet.create({
     fontSize: 16,
   },
   placeholderText: {
-    color: "#64748B",
+    color: "#78746F",
   },
   damageRow: {
     flexDirection: "row",
@@ -1704,16 +1704,16 @@ export const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
   },
   conditionOptionSelected: {
-    backgroundColor: "#3B82F6",
-    borderColor: "#3B82F6",
+    backgroundColor: "#CC785C",
+    borderColor: "#CC785C",
   },
   conditionText: {
-    color: "#94A3B8",
+    color: "#B5AFA9",
     fontSize: 14,
     fontWeight: "500",
   },
@@ -1725,12 +1725,12 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
   },
   photoHeader: {
     flexDirection: "row",
@@ -1754,7 +1754,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#1E1E1E",
+    backgroundColor: "#242220",
   },
   camera: {
     flex: 1,
@@ -1779,8 +1779,8 @@ export const styles = StyleSheet.create({
     marginBottom: 16,
   },
   reasonOptionSelected: {
-    backgroundColor: "#3B82F6",
-    borderColor: "#3B82F6",
+    backgroundColor: "#CC785C",
+    borderColor: "#CC785C",
   },
   reasonTextSelected: {
     fontWeight: "600",
@@ -1794,7 +1794,7 @@ export const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: "top",
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
   },
   button: {
     flexDirection: "row",
@@ -1814,12 +1814,12 @@ export const styles = StyleSheet.create({
     }),
   },
   confirmationDetails: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
   },
   detailText: {
     color: "#fff",
@@ -1835,13 +1835,13 @@ export const styles = StyleSheet.create({
     backgroundColor: "#EF4444",
   },
   confirmationModalContent: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#2E2B28",
     borderRadius: 16,
     padding: 24,
     width: "90%",
     maxWidth: 400,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#3D3A37",
     ...Platform.select({
       web: { boxShadow: "0px 10px 20px rgba(0, 0, 0, 0.3)" },
       default: {

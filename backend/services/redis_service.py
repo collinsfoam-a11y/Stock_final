@@ -158,6 +158,10 @@ class RedisService:
         """Set expiration on key"""
         return await self.client.expire(key, seconds)
 
+    async def eval(self, script: str, numkeys: int, *keys_and_args) -> int:
+        """Evaluate a Lua script on Redis."""
+        return await self.client.eval(script, numkeys, *keys_and_args)  # type: ignore
+
     async def ttl(self, key: str) -> int:
         """Get time to live for key"""
         return await self.client.ttl(key)

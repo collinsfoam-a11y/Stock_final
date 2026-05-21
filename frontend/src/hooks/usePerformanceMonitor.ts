@@ -5,6 +5,11 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 
+import {
+  OPERATIONAL_TELEMETRY_EVENT_REGISTRY,
+  operationalTelemetry,
+} from "@/services/observability/operationalTelemetry";
+
 interface PerformanceMetrics {
   fps?: number;
   memoryUsage?: number;
@@ -75,10 +80,30 @@ export function usePerformanceMonitor(
     // Render time estimation
     newMetrics.renderTime = deltaTime;
 
+    operationalTelemetry.trackRuntime(
+      OPERATIONAL_TELEMETRY_EVENT_REGISTRY.RUNTIME_SAMPLE,
+      {
+        performanceWarning: Boolean(newMetrics.fps && newMetrics.fps < performanceThreshold),
+      },
+      {
+        fps: newMetrics.fps,
+        renderTime: newMetrics.renderTime,
+        memoryUsageMb:
+          typeof newMetrics.memoryUsage === "number"
+            ? newMetrics.memoryUsage / (1024 * 1024)
+            : undefined,
+        jsHeapSizeMb:
+          typeof newMetrics.jsHeapSize === "number"
+            ? newMetrics.jsHeapSize / (1024 * 1024)
+            : undefined,
+      },
+      { dedupeMs: Math.max(250, sampleInterval / 2), sampleRate: 1 }
+    );
+
     setMetrics(newMetrics);
     lastFrameTimeRef.current = currentTime;
     frameCountRef.current++;
-  }, [performanceThreshold, enableMemoryMonitoring]);
+  }, [performanceThreshold, enableMemoryMonitoring, sampleInterval]);
 
   const startMonitoring = useCallback(() => {
     if (intervalRef.current) return;

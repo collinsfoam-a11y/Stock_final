@@ -13,6 +13,19 @@ from backend.api.erp_api import (
 )
 
 
+@pytest.fixture
+def erp_search_item():
+    return [
+        {
+            "item_code": "CODE1",
+            "barcode": "510001",
+            "item_name": "Test Item 1",
+            "stock_qty": 10.0,
+            "selling_price": 100.0,
+        }
+    ]
+
+
 @pytest.fixture(autouse=True)
 def setup_mocks():
     mock_db = AsyncMock()
@@ -133,24 +146,13 @@ async def test_refresh_item_stock(setup_mocks):
 
 
 @pytest.mark.asyncio
-async def test_get_all_items_search(setup_mocks):
+async def test_get_all_items_search(setup_mocks, erp_search_item):
     mock_db, _ = setup_mocks
 
-    mock_items = [
-        {
-            "item_code": "CODE1",
-            "barcode": "510001",
-            "item_name": "Test Item 1",
-            "stock_qty": 10.0,
-            "selling_price": 100.0,
-        }
-    ]
-
-    # Fix: Mock cursor chaining correctly
     mock_cursor = MagicMock()
     mock_cursor.skip.return_value = mock_cursor
     mock_cursor.limit.return_value = mock_cursor
-    mock_cursor.to_list = AsyncMock(return_value=mock_items)
+    mock_cursor.to_list = AsyncMock(return_value=erp_search_item)
 
     mock_db.erp_items.find.return_value = mock_cursor
     mock_db.erp_items.count_documents.return_value = 1
@@ -165,31 +167,19 @@ async def test_get_all_items_search(setup_mocks):
 
 
 @pytest.mark.asyncio
-async def test_search_items_compatibility(setup_mocks):
+async def test_search_items_compatibility(setup_mocks, erp_search_item):
     mock_db, _ = setup_mocks
 
-    mock_items = [
-        {
-            "item_code": "CODE1",
-            "barcode": "510001",
-            "item_name": "Test Item 1",
-            "stock_qty": 10.0,
-            "selling_price": 100.0,
-        }
-    ]
-
-    # Fix: Mock cursor chaining correctly
     mock_cursor = MagicMock()
     mock_cursor.skip.return_value = mock_cursor
     mock_cursor.limit.return_value = mock_cursor
-    mock_cursor.to_list = AsyncMock(return_value=mock_items)
+    mock_cursor.to_list = AsyncMock(return_value=erp_search_item)
 
     mock_db.erp_items.find.return_value = mock_cursor
     mock_db.erp_items.count_documents.return_value = 1
 
     current_user = {"username": "testuser"}
 
-    # Fix: Pass explicit page and page_size to avoid Query object issues
     response = await search_items_compatibility(
         query="Test", current_user=current_user, page=1, page_size=50
     )

@@ -83,42 +83,42 @@ export const sizes = {
 // COLORS
 // ==========================================
 export const colors = {
-  // Primary - Electric Blue
-  primary: "#3B82F6",
-  primaryDark: "#2563EB",
-  primaryLight: "#60A5FA",
+  // Primary — Claude Terracotta
+  primary: "#CC785C",
+  primaryDark: "#B06148",
+  primaryLight: "#E8906E",
 
-  // Secondary - Emerald
-  secondary: "#10B981",
-  secondaryDark: "#059669",
-  secondaryLight: "#34D399",
+  // Secondary — Fresh Green
+  secondary: "#22C55E",
+  secondaryDark: "#16A34A",
+  secondaryLight: "#4ADE80",
 
   // Status colors
   success: "#22C55E",
   warning: "#F59E0B",
   error: "#EF4444",
-  info: "#3B82F6",
+  info: "#0EA5E9",
 
-  // Text
+  // Text — Warm Tones
   text: {
-    primary: "#0F172A",
-    secondary: "#64748B",
-    tertiary: "#94A3B8",
-    disabled: "#CBD5E1",
+    primary: "#1C1917",
+    secondary: "#78746F",
+    tertiary: "#A9A5A2",
+    disabled: "#D7D4D1",
     inverse: "#FFFFFF",
   },
 
-  // Background
+  // Background — Warm Parchment
   background: {
-    default: "#FAFBFC",
+    default: "#FAF8F5",
     paper: "#FFFFFF",
-    elevated: "#F8F9FB",
+    elevated: "#F7F4EF",
   },
 
-  // Border
+  // Border — Warm Subtle
   border: {
-    default: "#E2E8F0",
-    strong: "#94A3B8",
+    default: "#EDE9E4",
+    strong: "#B5AFA9",
   },
 };
 

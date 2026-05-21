@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel
 
-from backend.api.schemas import BulkCountLineUpdate, CountLineCreate
+from backend.api.schemas import BulkCountLineUpdate, CountLineCreate, SessionType
 from backend.auth.dependencies import get_current_user
 from backend.core.websocket_manager import manager
 from backend.db.runtime import get_db
@@ -44,12 +44,21 @@ from backend.utils.api_utils import sanitize_for_logging
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# ---------------------------------------------------------------------------
+# SECTION 1: Module-level service singletons & initialisation
+# ---------------------------------------------------------------------------
+
 
 _activity_log_service: Optional[ActivityLogService] = None
 _lock_service: Optional[LockService] = None
 _snapshot_service: Optional[SnapshotService] = None
 _variant_service: Optional[VariantService] = None
 
+
+# ---------------------------------------------------------------------------
+# SECTION 3: Internal helper functions
+# (target: backend/api/count_lines/_helpers.py in future split)
+# ---------------------------------------------------------------------------
 
 def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
     return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
@@ -65,6 +74,11 @@ def _normalize_idempotency_key(value: Any) -> Optional[str]:
 def _raise_count_lines_internal_error(detail: str, exc: Exception) -> NoReturn:
     raise HTTPException(status_code=500, detail=detail) from exc
 
+
+# ---------------------------------------------------------------------------
+# SECTION 2: Request/response schemas
+# (canonical definitions live in backend/api/count_lines/_schemas.py)
+# ---------------------------------------------------------------------------
 
 class CountLineApprovalRequest(BaseModel):
     """Optional metadata for approving a count line."""
@@ -139,8 +153,8 @@ def _get_count_line_write_service(db: Any) -> CountLineWriteService:
 
 
 def _require_supervisor(current_user: dict):
-    if current_user.get("role") not in {"supervisor", "admin"}:
-        raise HTTPException(status_code=403, detail="Supervisor access required")
+    if current_user.get("role") not in {"supervisor", "manager", "admin"}:
+        raise HTTPException(status_code=403, detail="Supervisor or manager access required")
 
 
 async def _get_mutable_session_or_409(db: Any, session_id: str) -> dict[str, Any]:
@@ -211,6 +225,19 @@ async def _ensure_count_line_mutable(
     if is_session_finalized(active_session):
         raise HTTPException(status_code=409, detail="Session is finalized and cannot be modified")
 
+    # STRICT sessions do not allow any edits after a count line has been submitted
+    if isinstance(active_session, dict):
+        session_type = str(
+            active_session.get("session_type") or active_session.get("type") or ""
+        ).upper()
+        if session_type == SessionType.STRICT.value and str(count_line.get("status") or "").upper() in {
+            "SUBMITTED", "APPROVED", "REVIEW", "NEEDS_REVIEW"
+        }:
+            raise HTTPException(
+                status_code=409,
+                detail="STRICT session: count lines cannot be modified after submission",
+            )
+
     return active_session or {}
 
 
@@ -238,7 +265,11 @@ def detect_risk_flags(erp_item: dict, line_data: CountLineCreate, variance: floa
     if abs(variance) > 100 or variance_percent > 50:
         risk_flags.append("LARGE_VARIANCE")
 
-    # Rule 2: MRP reduced significantly
+    # Rule 2a: Any MRP difference → supervisor review route
+    if counted_mrp != erp_mrp and erp_mrp > 0:
+        risk_flags.append("MRP_MISMATCH")
+
+    # Rule 2b: MRP reduced significantly
     if mrp_change_percent < -20:
         risk_flags.append("MRP_REDUCED_SIGNIFICANTLY")
 
@@ -521,7 +552,7 @@ def _build_count_line_risk_context(
 ) -> tuple[list[str], bool, float]:
     risk_flags = detect_risk_flags(erp_item, line_data, variance)
     is_misplaced = _apply_misplaced_stock_flags(erp_item, line_data, risk_flags)
-    if session.get("type") == "STRICT" and abs(variance) > 0:
+    if session.get("type") == SessionType.STRICT.value and abs(variance) > 0:
         risk_flags.append("STRICT_MODE_VARIANCE")
 
     counted_mrp = line_data.mrp_counted or erp_item.get("mrp", 0)
@@ -651,6 +682,10 @@ def _build_count_line_document(
         "previous_version_id": previous_version_id,
         "item_code": line_data.item_code,
         "barcode": line_data.barcode or erp_item.get("barcode"),
+        "batch_id": line_data.batch_id or erp_item.get("batch_id"),
+        "batch_no": erp_item.get("batch_no"),
+        "batches": line_data.batches if line_data.batches else None,
+        "inventory_state": line_data.inventory_state.value if line_data.inventory_state else None,
         "item_name": erp_item.get("item_name", "Unknown"),
         "erp_qty": erp_qty,
         "baseline_hash": baseline_hash,
@@ -707,6 +742,8 @@ def _build_count_line_document(
         "requires_supervisor_approval": governance.requires_supervisor_approval,
         "variance_data": governance.variance_data,
         "violated_thresholds": governance.violated_thresholds,
+        "policy_action": governance.policy_action,
+        "policy_reason": governance.policy_reason,
         "serial_numbers": line_data.serial_numbers if line_data.serial_numbers else None,
         "serial_entries": (
             [serial.model_dump() for serial in line_data.serial_entries]
@@ -995,6 +1032,11 @@ async def _record_high_risk_correction(
     except Exception as exc:
         logger.error("Failed to write audit log: %s", _safe_log_value(exc, max_length=200))
 
+
+# ---------------------------------------------------------------------------
+# SECTION 4: Write routes — POST / PUT / PATCH / DELETE
+# (target: backend/api/count_lines/_routes_write.py in future split)
+# ---------------------------------------------------------------------------
 
 @router.post("/count-lines/draft")
 async def save_count_line_draft(
@@ -1423,6 +1465,11 @@ async def get_count_lines(
     }
 
 
+# ---------------------------------------------------------------------------
+# SECTION 5: Read routes — GET
+# (target: backend/api/count_lines/_routes_read.py in future split)
+# ---------------------------------------------------------------------------
+
 @router.get("/count-lines")
 async def list_count_lines(
     current_user: dict = Depends(get_current_user),
@@ -1503,8 +1550,19 @@ async def approve_count_line(
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     db = _get_db_client()
+    approval_lock_acquired = False
 
     try:
+        if _lock_service:
+            approval_lock_acquired = await _lock_service.lock_count_line_approval(
+                line_id, current_user["username"]
+            )
+            if not approval_lock_acquired:
+                raise HTTPException(
+                    status_code=423,
+                    detail="Count line is currently being approved or rejected by another user",
+                )
+
         count_line = await _find_count_line(db, line_id)
         if not count_line:
             raise HTTPException(status_code=404, detail="Count line not found")
@@ -1593,6 +1651,9 @@ async def approve_count_line(
             _safe_log_value(e, max_length=200),
         )
         _raise_count_lines_internal_error("Failed to approve count line", e)
+    finally:
+        if approval_lock_acquired and _lock_service:
+            await _lock_service.unlock_count_line_approval(line_id, current_user["username"])
 
 
 async def reject_count_line(
@@ -1607,8 +1668,19 @@ async def reject_count_line(
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     db = _get_db_client()
+    approval_lock_acquired = False
 
     try:
+        if _lock_service:
+            approval_lock_acquired = await _lock_service.lock_count_line_approval(
+                line_id, current_user["username"]
+            )
+            if not approval_lock_acquired:
+                raise HTTPException(
+                    status_code=423,
+                    detail="Count line is currently being approved or rejected by another user",
+                )
+
         count_line = await _find_count_line(db, line_id)
         if not count_line:
             raise HTTPException(status_code=404, detail="Count line not found")
@@ -1709,6 +1781,9 @@ async def reject_count_line(
             _safe_log_value(e, max_length=200),
         )
         _raise_count_lines_internal_error("Failed to reject count line", e)
+    finally:
+        if approval_lock_acquired and _lock_service:
+            await _lock_service.unlock_count_line_approval(line_id, current_user["username"])
 
 
 @router.put("/count-lines/{line_id}/approve")
@@ -2181,6 +2256,11 @@ async def check_item_scan_status(
             detail=str(e),
         ) from e
 
+
+# ---------------------------------------------------------------------------
+# SECTION 6: Bulk / batch / merge routes
+# (target: backend/api/count_lines/_routes_bulk.py in future split)
+# ---------------------------------------------------------------------------
 
 @router.post("/count-lines/bulk/approve")
 async def bulk_approve_count_lines(

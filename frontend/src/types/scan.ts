@@ -29,6 +29,8 @@ export interface Item {
   item_name?: string;
   image_url?: string; // item image URL for display
   batch_id?: string;
+  batch_no?: string;
+  batch_number?: string;
   manual_barcode?: string;
   unit2_barcode?: string;
   unit_m_barcode?: string;
@@ -68,6 +70,7 @@ export interface CreateCountLinePayload {
   recount_of_id?: string;
   item_code: string;
   item_name?: string;
+  barcode?: string;
   batch_id?: string;
   counted_qty: number;
   damaged_qty?: number;
@@ -219,6 +222,9 @@ export interface WorkflowState {
 }
 
 export interface CountLineBatch {
+  batch_id?: string;
+  item_code?: string;
+  item_name?: string;
   quantity: number;
   mrp?: number;
   manufacturing_date?: string;

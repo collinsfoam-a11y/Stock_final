@@ -14,7 +14,15 @@ import { FlashList } from "@shopify/flash-list";
 
 import { getActivityLogs, getActivityStats } from "../../src/services/api/api";
 import { useToast } from "../../src/components/feedback/ToastProvider";
-import { ModernCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
+import {
+  AnimatedPressable,
+  OPERATIONAL_LIST_ROW_ESTIMATED_HEIGHT,
+  OperationalListRow,
+  OperationalListSection,
+  ScreenContainer,
+  StatsCard,
+} from "../../src/components/ui";
+import type { OperationalListRowSeverity, OperationalListRowTone } from "../../src/components/ui";
 import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
@@ -37,6 +45,34 @@ interface ActivityLog {
   error_message?: string;
 }
 
+const getLogTone = (status?: string): OperationalListRowTone => {
+  switch (String(status || "").toLowerCase()) {
+    case "success":
+      return "success";
+    case "error":
+    case "failed":
+      return "error";
+    case "warning":
+    case "warn":
+      return "warning";
+    default:
+      return "info";
+  }
+};
+
+const getLogSeverity = (status?: string): OperationalListRowSeverity => {
+  switch (String(status || "").toLowerCase()) {
+    case "error":
+    case "failed":
+      return "high";
+    case "warning":
+    case "warn":
+      return "medium";
+    default:
+      return "low";
+  }
+};
+
 export default function ActivityLogsScreen() {
   const router = useRouter();
   const uiTokens = useUiTokens();
@@ -51,7 +87,6 @@ export default function ActivityLogsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
-  const headerEntry = prefersReducedMotion ? undefined : FadeInDown.delay(100).springify();
   const statsEntry = prefersReducedMotion ? undefined : FadeInDown.delay(200).springify();
 
   const loadLogs = React.useCallback(
@@ -108,12 +143,12 @@ export default function ActivityLogsScreen() {
     }
   };
 
-  const formatTimestamp = (timestamp: string) => {
+  const formatTimestamp = React.useCallback((timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleString();
-  };
+  }, []);
 
-  const getActionIcon = (action: string) => {
+  const getActionIcon = React.useCallback((action: string) => {
     const iconMap: Record<string, string> = {
       login: "log-in-outline",
       logout: "log-out-outline",
@@ -125,130 +160,48 @@ export default function ActivityLogsScreen() {
       sync: "sync-outline",
     };
     return iconMap[action] || "ellipse-outline";
-  };
+  }, []);
 
-  const renderLogItem = ({ item: log }: { item: ActivityLog }) => (
-    <AnimatedPressable
-      style={styles.logPressable}
-      accessibilityLabel={`${log.action.replace(/_/g, " ")}, ${log.status}, ${log.user}, ${formatTimestamp(log.timestamp)}`}
-      accessibilityHint="Shows activity log details"
-    >
-      <ModernCard variant="outlined" elevation="none" padding={operationalTheme.spacing.md}>
-        <View style={styles.logHeader}>
-          <View style={styles.logHeaderLeft}>
-            <View
-              style={[
-                styles.iconContainer,
-                {
-                  backgroundColor:
-                    log.status === "error"
-                      ? colorWithAlpha(operationalTheme.colors.error[500], 0.1)
-                      : colorWithAlpha(operationalTheme.colors.primary[500], 0.1),
-                },
-              ]}
-            >
-              <Ionicons
-                name={getActionIcon(log.action) as any}
-                size={20}
-                color={
-                  log.status === "error"
-                    ? operationalTheme.colors.error[500]
-                    : operationalTheme.colors.primary[500]
-                }
-              />
-            </View>
-            <View style={styles.logInfo}>
-              <Text style={styles.logAction}>{log.action.replace(/_/g, " ").toUpperCase()}</Text>
-              <Text style={styles.logUser}>
-                {log.user} • {log.role}
-              </Text>
-            </View>
-          </View>
-          <Text
-            style={[
-              styles.statusText,
-              {
-                color:
-                  log.status === "success"
-                    ? operationalTheme.colors.success[500]
-                    : log.status === "error"
-                      ? operationalTheme.colors.error[500]
-                      : operationalTheme.colors.warning[500],
-              },
-            ]}
-          >
-            {log.status}
-          </Text>
-        </View>
+  const renderLogItem = React.useCallback(
+    ({ item: log }: { item: ActivityLog }) => {
+      const actionLabel = log.action.replace(/_/g, " ").toUpperCase();
+      const details =
+        Object.keys(log.details || {}).length > 0 && !log.error_message
+          ? `Details ${JSON.stringify(log.details)}`
+          : null;
+      const entity = log.entity_type ? `${log.entity_type}: ${log.entity_id || "N/A"}` : null;
 
-        <Text style={styles.timestamp}>{formatTimestamp(log.timestamp)}</Text>
-
-        {log.entity_type && (
-          <ModernCard
-            variant="outlined"
-            elevation="none"
-            padding={operationalTheme.spacing.xs}
-            style={styles.entityBadge}
-          >
-            <Text style={styles.entityText}>
-              {log.entity_type}: {log.entity_id || "N/A"}
-            </Text>
-          </ModernCard>
-        )}
-
-        {log.error_message && (
-          <ModernCard
-            variant="outlined"
-            elevation="none"
-            padding={operationalTheme.spacing.sm}
-            style={styles.errorCard}
-          >
-            <Ionicons name="alert-circle" size={16} color={operationalTheme.colors.error[500]} />
-            <Text style={[styles.errorText, { color: operationalTheme.colors.error[500] }]}>
-              {log.error_message}
-            </Text>
-          </ModernCard>
-        )}
-
-        {Object.keys(log.details || {}).length > 0 && !log.error_message && (
-          <ModernCard
-            variant="outlined"
-            elevation="none"
-            padding={operationalTheme.spacing.sm}
-            style={styles.detailsCard}
-          >
-            <Text style={styles.detailsText} numberOfLines={3}>
-              {JSON.stringify(log.details, null, 2)}
-            </Text>
-          </ModernCard>
-        )}
-      </ModernCard>
-    </AnimatedPressable>
+      return (
+        <OperationalListRow
+          title={actionLabel}
+          subtitle={`${log.user} - ${log.role}`}
+          metadata={[entity, details].filter(Boolean) as string[]}
+          status={String(log.status || "info").toUpperCase()}
+          statusTone={getLogTone(log.status)}
+          severity={getLogSeverity(log.status)}
+          leftIcon={getActionIcon(log.action) as keyof typeof Ionicons.glyphMap}
+          timestamps={{
+            label: "Logged",
+            value: formatTimestamp(log.timestamp),
+            icon: "time-outline",
+          }}
+          error={log.error_message ? log.error_message : false}
+          accessibility={{
+            label: `${actionLabel}, ${log.status}, ${log.user}, ${formatTimestamp(log.timestamp)}`,
+          }}
+          style={styles.rowSpacing}
+        />
+      );
+    },
+    [formatTimestamp, getActionIcon, styles.rowSpacing]
   );
 
   return (
-    <View style={styles.screen}>
-      <StatusBar style="light" />
-      <View style={styles.container}>
-        {/* Header */}
-        <Animated.View entering={headerEntry} style={styles.header}>
-          <View style={styles.headerLeft}>
-            <AnimatedPressable
-              onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
-              style={styles.backButton}
-              accessibilityLabel="Back to supervisor"
-              accessibilityHint="Returns to the supervisor area"
-            >
-              <Ionicons name="arrow-back" size={24} color={operationalTheme.colors.text.primary} />
-            </AnimatedPressable>
-            <View>
-              <Text style={styles.pageTitle}>Activity Logs</Text>
-              <Text style={styles.pageSubtitle}>System audit & user actions</Text>
-            </View>
-          </View>
-        </Animated.View>
-
-        {stats && (
+    <ScreenContainer
+      header={{
+        title: "Activity Logs",
+        subtitle: "System audit & user actions",
+        toolbar: stats ? (
           <Animated.View entering={statsEntry} style={styles.statsContainer}>
             <StatsCard
               title="Total Activities"
@@ -272,8 +225,11 @@ export default function ActivityLogsScreen() {
               style={{ flex: 1 }}
             />
           </Animated.View>
-        )}
-
+        ) : undefined,
+      }}
+    >
+      <StatusBar style="light" />
+      <View style={styles.container}>
         <View style={styles.listContainer}>
           {loading && logs.length === 0 ? (
             <View style={styles.loadingContainer}>
@@ -281,44 +237,51 @@ export default function ActivityLogsScreen() {
               <Text style={styles.loadingText}>Loading activity logs...</Text>
             </View>
           ) : (
-            <FlashList
-              data={logs}
-              renderItem={renderLogItem}
-              // @ts-ignore
-              estimatedItemSize={180}
-              keyExtractor={(item) => item.id}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={handleRefresh}
-                  tintColor={operationalTheme.colors.primary[500]}
-                />
-              }
-              onEndReached={loadMore}
-              onEndReachedThreshold={0.5}
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Ionicons
-                    name="document-text-outline"
-                    size={64}
-                    color={operationalTheme.colors.text.tertiary}
+            <OperationalListSection
+              title="Activity stream"
+              subtitle={`${logs.length} loaded audit events`}
+              severity={stats?.by_status?.error ? "high" : "none"}
+              style={styles.listSection}
+              contentStyle={styles.sectionListContent}
+            >
+              <FlashList
+                data={logs}
+                renderItem={renderLogItem}
+                drawDistance={OPERATIONAL_LIST_ROW_ESTIMATED_HEIGHT.standard * 6}
+                keyExtractor={(item) => item.id}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={handleRefresh}
+                    tintColor={operationalTheme.colors.primary[500]}
                   />
-                  <Text style={styles.emptyText}>No activity logs found</Text>
-                </View>
-              }
-              ListFooterComponent={
-                loading && logs.length > 0 ? (
-                  <View style={styles.footerLoader}>
-                    <ActivityIndicator color={operationalTheme.colors.primary[500]} />
+                }
+                onEndReached={loadMore}
+                onEndReachedThreshold={0.5}
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <Ionicons
+                      name="document-text-outline"
+                      size={64}
+                      color={operationalTheme.colors.text.tertiary}
+                    />
+                    <Text style={styles.emptyText}>No activity logs found</Text>
                   </View>
-                ) : null
-              }
-              contentContainerStyle={styles.listContent}
-            />
+                }
+                ListFooterComponent={
+                  loading && logs.length > 0 ? (
+                    <View style={styles.footerLoader}>
+                      <ActivityIndicator color={operationalTheme.colors.primary[500]} />
+                    </View>
+                  ) : null
+                }
+                contentContainerStyle={styles.listContent}
+              />
+            </OperationalListSection>
           )}
         </View>
       </View>
-    </View>
+    </ScreenContainer>
   );
 }
 
@@ -369,11 +332,18 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
     listContainer: {
       flex: 1,
     },
+    listSection: {
+      flex: 1,
+      minHeight: 260,
+    },
+    sectionListContent: {
+      flex: 1,
+    },
     listContent: {
       paddingBottom: operationalTheme.spacing.xl,
     },
-    logPressable: {
-      marginBottom: operationalTheme.spacing.md,
+    rowSpacing: {
+      marginBottom: operationalTheme.spacing.sm,
     },
     loadingContainer: {
       flex: 1,

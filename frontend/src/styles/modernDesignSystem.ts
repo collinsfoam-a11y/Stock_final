@@ -1,9 +1,9 @@
 /**
- * Modern Design System - Enhanced UI/UX Upgrade v4.0
- * Unified Design System (formerly Aurora + Modern)
+ * Modern Design System - Claude Design v5.0
+ * Warm Terracotta & Parchment — inspired by Anthropic / Claude UI
  *
  * Features:
- * - Professional Sapphire Blue primary with Emerald accents
+ * - Warm terracotta primary with cream/parchment backgrounds
  * - Refined typography scale for better readability
  * - Optimized spacing system for modern mobile layouts
  * - Subtle glassmorphism and depth effects
@@ -14,122 +14,122 @@
 import { Platform, StyleSheet } from "react-native";
 
 // ==========================================
-// MODERN COLOR PALETTE - DEEP OCEAN
+// CLAUDE COLOR PALETTE - WARM TERRACOTTA
 // ==========================================
 
 export const auroraColors = {
   primary: {
-    50: "#D2E4FA",
-    100: "#A5C9F5",
-    200: "#78AEF0",
-    300: "#4A93EB",
-    400: "#1D78E6",
-    500: "#1560BD",
-    600: "#11509D",
-    700: "#0E407D",
-    800: "#0A305E",
-    900: "#07203F",
+    50: "#FFF3EE",
+    100: "#FFE4D6",
+    200: "#FFC7A8",
+    300: "#FFA47B",
+    400: "#E8906E",
+    500: "#CC785C",
+    600: "#B06148",
+    700: "#924D36",
+    800: "#743A26",
+    900: "#562A18",
   },
   secondary: {
-    50: "#DAE5F7",
-    100: "#B6CBEE",
-    200: "#91B1E6",
-    300: "#6C98DE",
-    400: "#477ED5",
-    500: "#2D68C4",
-    600: "#2555A3",
-    700: "#1E4482",
-    800: "#163362",
-    900: "#0F2241",
+    50: "#F5F3F0",
+    100: "#EAE7E2",
+    200: "#D5CFC8",
+    300: "#BDB4AA",
+    400: "#A09590",
+    500: "#78716C",
+    600: "#57534E",
+    700: "#44403C",
+    800: "#2E2B28",
+    900: "#1C1917",
   },
   accent: {
-    50: "#ECFEFF",
-    100: "#CFFAFE",
-    200: "#A5F3FC",
-    300: "#67E8F9",
-    400: "#22D3EE",
-    500: "#06B6D4",
-    600: "#0891B2",
-    700: "#0E7490",
-    800: "#155E75",
-    900: "#164E63",
+    50: "#FFFBF0",
+    100: "#FEF3D6",
+    200: "#FDE5A8",
+    300: "#FBD070",
+    400: "#F5B942",
+    500: "#E8A020",
+    600: "#C4830F",
+    700: "#9E6508",
+    800: "#794B07",
+    900: "#553405",
   },
 };
 
 export const modernColors = {
-  // Primary Brand Colors - Premium Electric Blue
+  // Primary Brand Colors — Claude Terracotta
   primary: {
-    50: "#EFF6FF",
-    100: "#DBEAFE",
-    200: "#BFDBFE",
-    300: "#93C5FD",
-    400: "#60A5FA",
-    500: "#3B82F6", // Main primary - Electric Blue
-    600: "#2563EB",
-    700: "#1D4ED8",
-    800: "#1E40AF",
-    900: "#1E3A8A",
+    50: "#FFF3EE",
+    100: "#FFE4D6",
+    200: "#FFC7A8",
+    300: "#FFA47B",
+    400: "#E8906E",
+    500: "#CC785C", // Main primary — Claude Terracotta
+    600: "#B06148",
+    700: "#924D36",
+    800: "#743A26",
+    900: "#562A18",
   },
 
-  // Secondary - Emerald Green (Success/Verification)
+  // Secondary — Sage Green (organic, calm)
   secondary: {
-    50: "#ECFDF5",
-    100: "#D1FAE5",
-    200: "#A7F3D0",
-    300: "#6EE7B7",
-    400: "#34D399",
-    500: "#10B981", // Main secondary - Emerald
-    600: "#059669",
-    700: "#047857",
-    800: "#065F46",
-    900: "#064E3B",
+    50: "#F0FDF4",
+    100: "#DCFCE7",
+    200: "#BBF7D0",
+    300: "#86EFAC",
+    400: "#4ADE80",
+    500: "#22C55E", // Main secondary — Fresh Green
+    600: "#16A34A",
+    700: "#15803D",
+    800: "#166534",
+    900: "#14532D",
   },
 
-  // Accent - Cyan (high visibility, non-purple)
+  // Accent — Warm Amber/Gold
   accent: {
-    50: "#ECFEFF",
-    100: "#CFFAFE",
-    200: "#A5F3FC",
-    300: "#67E8F9",
-    400: "#22D3EE",
-    500: "#06B6D4", // Main accent - Cyan
-    600: "#0891B2",
-    700: "#0E7490",
-    800: "#155E75",
-    900: "#164E63",
+    50: "#FFFBF0",
+    100: "#FEF3D6",
+    200: "#FDE5A8",
+    300: "#FBD070",
+    400: "#F5B942",
+    500: "#E8A020", // Main accent — Warm Amber
+    600: "#C4830F",
+    700: "#9E6508",
+    800: "#794B07",
+    900: "#553405",
   },
 
-  // Neutral Grays - Slate (Professional & Clean)
+  // Neutral Grays — Warm Stone (not cold slate)
   neutral: {
-    50: "#F8FAFC",
-    100: "#F1F5F9",
-    200: "#E2E8F0",
-    300: "#CBD5E1",
-    400: "#94A3B8",
-    500: "#64748B",
-    600: "#475569",
-    700: "#334155",
-    800: "#1E293B",
-    900: "#0F172A",
-    950: "#020617",
+    50: "#FAFAF9",
+    100: "#F5F5F4",
+    200: "#E7E5E4",
+    300: "#D7D4D1",
+    400: "#A9A5A2",
+    500: "#78746F",
+    600: "#58534E",
+    700: "#44403C",
+    800: "#2E2B28",
+    900: "#1C1917",
+    950: "#0C0A09",
   },
 
-  // Semantic Colors - More Vibrant
+  // Semantic Colors
   success: {
     light: "#DCFCE7",
-    main: "#22C55E", // Brighter green
+    main: "#22C55E",
     dark: "#16A34A",
     contrast: "#FFFFFF",
-    50: "#ECFDF5",
-    100: "#D1FAE5",
-    200: "#A7F3D0",
-    300: "#6EE7B7",
-    400: "#34D399",
-    500: "#10B981",
-    600: "#059669",
-    700: "#047857",
-    800: "#065F46",
-    900: "#064E3B",
+    50: "#F0FDF4",
+    100: "#DCFCE7",
+    200: "#BBF7D0",
+    300: "#86EFAC",
+    400: "#4ADE80",
+    500: "#22C55E",
+    600: "#16A34A",
+    700: "#15803D",
+    800: "#166534",
+    900: "#14532D",
   },
 
   error: {
@@ -150,10 +150,10 @@ export const modernColors = {
   },
 
   warning: {
-    light: "#FEF9C3",
-    main: "#EAB308", // Brighter yellow
-    dark: "#CA8A04",
-    contrast: "#18181B",
+    light: "#FEF3C7",
+    main: "#F59E0B",
+    dark: "#D97706",
+    contrast: "#1C1917",
     50: "#FFFBEB",
     100: "#FEF3C7",
     200: "#FDE68A",
@@ -166,116 +166,117 @@ export const modernColors = {
     900: "#78350F",
   },
 
+  // Info keeps sky blue — universally understood as informational, distinct from brand terracotta
   info: {
     light: "#E0F2FE",
-    main: "#0EA5E9", // Sky blue
+    main: "#0EA5E9",
     dark: "#0284C7",
     contrast: "#FFFFFF",
   },
 
-  // Background Colors (Dark Mode) - Deeper & Richer
+  // Background Colors — Warm Parchment / Charcoal
   background: {
-    default: "#020617", // Slate 950
-    paper: "#0F172A", // Slate 900
-    elevated: "#1E293B", // Slate 800
-    overlay: "rgba(2, 6, 23, 0.9)",
-    glass: "rgba(15, 23, 42, 0.75)", // Glassmorphism
+    default: "#1C1917", // Warm charcoal (dark mode base)
+    paper: "#242220",   // Slightly lighter warm charcoal
+    elevated: "#2E2B28",
+    overlay: "rgba(12, 10, 9, 0.9)",
+    glass: "rgba(36, 34, 32, 0.80)",
     // Alias for legacy Aurora support
-    primary: "#0F172A",
-    secondary: "#1E293B",
-    tertiary: "#334155",
-    elevatedLegacy: "#475569",
-    blur: "rgba(30, 41, 59, 0.5)",
+    primary: "#242220",
+    secondary: "#2E2B28",
+    tertiary: "#3D3A37",
+    elevatedLegacy: "#4A4744",
+    blur: "rgba(44, 41, 38, 0.5)",
   },
 
   // Surface Colors for legacy Aurora support
   surface: {
-    base: "#0F172A",
-    primary: "#0F172A",
-    secondary: "#1E293B",
-    tertiary: "#334155",
-    elevated: "#475569",
-    card: "#1E293B",
-    overlay: "rgba(15, 23, 42, 0.95)",
-    glass: "rgba(30, 41, 59, 0.7)",
+    base: "#242220",
+    primary: "#242220",
+    secondary: "#2E2B28",
+    tertiary: "#3D3A37",
+    elevated: "#4A4744",
+    card: "#2E2B28",
+    overlay: "rgba(28, 25, 23, 0.95)",
+    glass: "rgba(44, 41, 38, 0.7)",
   },
 
-  // Text Colors - Higher Contrast
+  // Text Colors — Warm Tones
   text: {
-    primary: "#F8FAFC", // Slate 50
-    secondary: "#94A3B8", // Slate 400
-    tertiary: "#64748B", // Slate 500
-    muted: "#94A3B8", // Alias
-    disabled: "#475569", // Slate 600
-    inverse: "#020617", // Slate 950
-    link: "#38BDF8", // Sky 400
-    linkHover: "#7DD3FC", // Sky 300
+    primary: "#F5F0E8",  // Warm cream
+    secondary: "#B5AFA9", // Warm stone
+    tertiary: "#78746F",  // Muted warm
+    muted: "#B5AFA9",
+    disabled: "#58534E",
+    inverse: "#1C1917",
+    link: "#E8906E",      // Terracotta link
+    linkHover: "#CC785C",
   },
 
-  // Border Colors - Subtle & Clean
+  // Border Colors — Warm & Subtle
   border: {
-    light: "#1E293B", // Slate 800
-    medium: "#334155", // Slate 700
-    strong: "#475569", // Slate 600
-    dark: "#475569", // Slate 600
-    focus: "#0EA5E9", // Sky 500
-    error: "#EF4444", // Red 500
-    subtle: "#1E293B", // Alias
-    success: "#10B981", // Alias
+    light: "#3D3A37",
+    medium: "#4A4744",
+    strong: "#58534E",
+    dark: "#58534E",
+    focus: "#CC785C",     // Terracotta focus ring
+    error: "#EF4444",
+    subtle: "#3D3A37",
+    success: "#22C55E",
   },
 
-  // Semantic Colors Shorthand (for backward compatibility)
+  // Semantic Colors Shorthand
   semantic: {
-    success: "#10B981",
+    success: "#22C55E",
     error: "#EF4444",
     warning: "#F59E0B",
     info: "#0EA5E9",
   },
 
-  // Status Colors for legacy Aurora support
+  // Status Colors
   status: {
-    active: "#10B981",
+    active: "#22C55E",
     pending: "#F59E0B",
     error: "#EF4444",
-    inactive: "#64748B",
-    verified: "#06B6D4",
+    inactive: "#78746F",
+    verified: "#E8906E",
     warning: "#FBBF24",
   },
 
-  // Gradient Definitions - More Professional
+  // Gradient Definitions — Warm Claude Palette
   gradients: {
-    primary: ["#0EA5E9", "#0284C7", "#0369A1"] as const, // Sky Blue spectrum
-    secondary: ["#10B981", "#059669", "#047857"] as const, // Emerald spectrum
-    accent: ["#06B6D4", "#0891B2", "#0E7490"] as const, // Cyan spectrum
-    dark: ["#0F172A", "#020617", "#000000"] as const, // Deep background
-    surface: ["#1E293B", "#0F172A", "#020617"] as const, // Surface layers
-    aurora: ["#0EA5E9", "#10B981", "#06B6D4"] as const, // Sky to Emerald to Cyan
+    primary: ["#E8906E", "#CC785C", "#B06148"] as const,   // Terracotta spectrum
+    secondary: ["#4ADE80", "#22C55E", "#16A34A"] as const, // Green spectrum
+    accent: ["#F5B942", "#E8A020", "#C4830F"] as const,    // Amber spectrum
+    dark: ["#242220", "#1C1917", "#0C0A09"] as const,      // Warm dark
+    surface: ["#2E2B28", "#242220", "#1C1917"] as const,   // Warm surfaces
+    aurora: ["#E8906E", "#CC785C", "#E8A020"] as const,    // Terracotta to Amber
 
-    // Aurora Legacy Gradients
-    auroraPrimary: ["#1560BD", "#2D68C4", "#06B6D4"] as const,
-    auroraSecondary: ["#2D68C4", "#0EA5E9", "#06B6D4"] as const,
-    auroraSuccess: ["#10B981", "#14B8A6", "#06B6D4"] as const,
-    auroraWarm: ["#F59E0B", "#F97316", "#06B6D4"] as const,
-    auroraDark: ["#0F172A", "#1E293B", "#334155"] as const,
+    // Aurora Legacy Gradients (warm-mapped)
+    auroraPrimary: ["#CC785C", "#E8906E", "#E8A020"] as const,
+    auroraSecondary: ["#E8906E", "#CC785C", "#B06148"] as const,
+    auroraSuccess: ["#22C55E", "#16A34A", "#15803D"] as const,
+    auroraWarm: ["#F59E0B", "#E8A020", "#CC785C"] as const,
+    auroraDark: ["#242220", "#2E2B28", "#3D3A37"] as const,
 
     // Specific UI Gradients
-    button: ["#0EA5E9", "#0284C7"] as const,
-    card: ["rgba(30, 41, 59, 0.7)", "rgba(15, 23, 42, 0.8)"] as const,
-    input: ["rgba(15, 23, 42, 0.6)", "rgba(2, 6, 23, 0.7)"] as const,
+    button: ["#E8906E", "#CC785C"] as const,
+    card: ["rgba(44, 41, 38, 0.7)", "rgba(28, 25, 23, 0.8)"] as const,
+    input: ["rgba(28, 25, 23, 0.6)", "rgba(12, 10, 9, 0.7)"] as const,
 
-    success: ["#10B981", "#059669"] as const,
+    success: ["#22C55E", "#16A34A"] as const,
     warning: ["#F59E0B", "#D97706"] as const,
     error: ["#EF4444", "#DC2626"] as const,
-    glass: ["rgba(255, 255, 255, 0.08)", "rgba(255, 255, 255, 0.02)"] as const,
+    glass: ["rgba(255, 255, 255, 0.06)", "rgba(255, 255, 255, 0.02)"] as const,
     shimmer: [
-      "rgba(14, 165, 233, 0.1)",
-      "rgba(16, 185, 129, 0.15)",
-      "rgba(14, 165, 233, 0.1)",
+      "rgba(204, 120, 92, 0.08)",
+      "rgba(232, 144, 110, 0.14)",
+      "rgba(204, 120, 92, 0.08)",
     ] as const,
   },
 
   // Shimmer effect colors
-  shimmer: ["#1E293B", "#334155", "#1E293B"] as const,
+  shimmer: ["#2E2B28", "#3D3A37", "#2E2B28"] as const,
 };
 
 export const modernGradients = modernColors.gradients;
@@ -620,14 +621,14 @@ export const modernShadows = {
     }),
   },
 
-  // Colored shadows for brand elements
+  // Colored shadows for brand elements — Claude Terracotta
   primary: {
     ...Platform.select({
-      web: { boxShadow: `0px 4px 8px rgba(59, 130, 246, 0.3)` },
+      web: { boxShadow: `0px 4px 8px rgba(204, 120, 92, 0.35)` },
       default: {
         shadowColor: modernColors.primary[500],
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.35,
         shadowRadius: 8,
         elevation: 4,
       },
@@ -636,7 +637,7 @@ export const modernShadows = {
 
   success: {
     ...Platform.select({
-      web: { boxShadow: `0px 4px 8px rgba(16, 185, 129, 0.3)` },
+      web: { boxShadow: `0px 4px 8px rgba(34, 197, 94, 0.3)` },
       default: {
         shadowColor: modernColors.success.main,
         shadowOffset: { width: 0, height: 4 },
@@ -647,12 +648,12 @@ export const modernShadows = {
     }),
   },
 
-  // Aurora Glows
+  // Warm Glow
   aurora: {
     ...Platform.select({
-      web: { boxShadow: "0px 8px 16px rgba(6, 182, 212, 0.35)" },
+      web: { boxShadow: "0px 8px 16px rgba(232, 144, 110, 0.35)" },
       default: {
-        shadowColor: "#06B6D4",
+        shadowColor: "#E8906E",
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.4,
         shadowRadius: 16,
@@ -663,11 +664,11 @@ export const modernShadows = {
 
   glow: {
     ...Platform.select({
-      web: { boxShadow: "0px 0px 20px rgba(21, 96, 189, 0.6)" },
+      web: { boxShadow: "0px 0px 20px rgba(204, 120, 92, 0.55)" },
       default: {
-        shadowColor: "#1560BD",
+        shadowColor: "#CC785C",
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.6,
+        shadowOpacity: 0.55,
         shadowRadius: 20,
         elevation: 10,
       },
@@ -726,41 +727,41 @@ export const modernAnimations = {
 };
 
 // ==========================================
-// GLASSMORPHISM STYLES
+// GLASSMORPHISM STYLES — Warm Claude
 // ==========================================
 
 export const glassmorphism = {
   light: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)", // Lower opacity
-    borderColor: "rgba(255, 255, 255, 0.15)", // Subtle border
+    backgroundColor: "rgba(255, 250, 245, 0.08)",
+    borderColor: "rgba(255, 245, 235, 0.18)",
     borderWidth: 1,
     backdropFilter: "blur(12px)",
   },
 
   medium: {
-    backgroundColor: "rgba(255, 255, 255, 0.12)",
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "rgba(255, 250, 245, 0.12)",
+    borderColor: "rgba(255, 245, 235, 0.22)",
     borderWidth: 1,
     backdropFilter: "blur(16px)",
   },
 
   strong: {
-    backgroundColor: "rgba(255, 255, 255, 0.18)",
-    borderColor: "rgba(255, 255, 255, 0.25)",
+    backgroundColor: "rgba(255, 250, 245, 0.18)",
+    borderColor: "rgba(255, 245, 235, 0.28)",
     borderWidth: 1.5,
     backdropFilter: "blur(24px)",
   },
 
   dark: {
-    backgroundColor: "rgba(2, 6, 23, 0.4)", // Darker tint for depth
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: "rgba(28, 25, 23, 0.45)",
+    borderColor: "rgba(255, 245, 235, 0.08)",
     borderWidth: 1,
     backdropFilter: "blur(20px)",
   },
 
   modal: {
-    backgroundColor: "rgba(11, 17, 33, 0.85)", // Matches new premium bg
-    borderColor: "rgba(255, 255, 255, 0.15)",
+    backgroundColor: "rgba(28, 25, 23, 0.88)",
+    borderColor: "rgba(255, 245, 235, 0.14)",
     borderWidth: 1,
     backdropFilter: "blur(30px)",
   },
@@ -849,12 +850,12 @@ export const modernLayout = {
 // ==========================================
 
 export const accessibility = {
-  minTouchTarget: 44, // iOS/Android minimum
+  minTouchTarget: 44,
   minTextSize: 14,
   maxTextSize: 24,
   focusRingWidth: 2,
   focusRingOffset: 2,
-  focusRingColor: modernColors.primary[500],
+  focusRingColor: modernColors.primary[500], // Claude Terracotta
   highContrast: {
     text: "#FFFFFF",
     background: "#000000",

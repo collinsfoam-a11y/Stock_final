@@ -16,10 +16,12 @@ interface ItemDisplayProps {
   item: Item;
   refreshingStock?: boolean;
   onRefreshStock?: () => void;
+  sessionType?: "STANDARD" | "BLIND" | "STRICT";
 }
 
 export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
-  ({ item, refreshingStock = false, onRefreshStock }) => {
+  ({ item, refreshingStock = false, onRefreshStock, sessionType = "STANDARD" }) => {
+    const isBlind = sessionType === "BLIND";
     const uiTokens = useUiTokens();
 
     const Container = flags.enableAnimations ? Animated.View : View;
@@ -240,7 +242,7 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
               <View style={[styles.qtyBox, { height: "100%", justifyContent: "center" }]}>
                 <View style={styles.qtyHeader}>
                   <Text style={styles.qtyLabel}>ERP Stock</Text>
-                  {onRefreshStock && (
+                  {!isBlind && onRefreshStock && (
                     <TouchableOpacity
                       style={[
                         styles.refreshButton,
@@ -258,9 +260,13 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
                   )}
                 </View>
                 <View style={{ alignItems: "center", gap: 0 }}>
-                  <Text style={[styles.qtyValue, { fontSize: 32 }]}>
-                    {item.stock_qty ?? item.quantity ?? 0}
-                  </Text>
+                  {isBlind ? (
+                    <Text style={[styles.qtyValue, { fontSize: 32, color: uiTokens.colors.textSecondary }]}>—</Text>
+                  ) : (
+                    <Text style={[styles.qtyValue, { fontSize: 32 }]}>
+                      {item.stock_qty ?? item.quantity ?? 0}
+                    </Text>
+                  )}
                   {item.uom_name && (
                     <Text style={[styles.uomText, { marginTop: 0 }]}>{item.uom_name}</Text>
                   )}
@@ -293,7 +299,8 @@ export const ItemDisplay: React.FC<ItemDisplayProps> = React.memo(
       prevProps.item.mrp === nextProps.item.mrp &&
       prevProps.item.sale_price === nextProps.item.sale_price &&
       prevProps.item.sales_price === nextProps.item.sales_price &&
-      prevProps.refreshingStock === nextProps.refreshingStock
+      prevProps.refreshingStock === nextProps.refreshingStock &&
+      prevProps.sessionType === nextProps.sessionType
     );
   }
 );

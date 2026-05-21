@@ -165,7 +165,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
   const sidebarWidth = collapsed ? layout.sidebarCollapsedWidth : layout.sidebarWidth;
   const panelBackground = theme.colors.surfaceElevated || theme.colors.surface;
   const subtleBorder = theme.colors.borderLight || theme.colors.border;
-  const activeBackground = theme.colors.overlayPrimary || "rgba(14, 165, 233, 0.14)";
+  const activeBackground = theme.colors.overlayPrimary || "rgba(204, 120, 92, 0.12)"; // warm terracotta fallback
 
   if (isMobile && !collapsed) {
     // On mobile, sidebar is handled by drawer component
@@ -303,7 +303,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
                     const active = isActive(item.route);
                     const iconColor = active ? theme.colors.primary : theme.colors.textSecondary;
                     const bgColor = active
-                      ? theme.colors.overlayPrimary || "rgba(76, 175, 80, 0.1)"
+                      ? theme.colors.overlayPrimary || "rgba(204, 120, 92, 0.12)"
                       : "transparent";
 
                     return (

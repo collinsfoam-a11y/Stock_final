@@ -28,15 +28,13 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { modernColors, modernSpacing, modernAnimations } from "../../styles/modernDesignSystem";
+import { modernColors, modernAnimations } from "../../styles/modernDesignSystem";
 import {
-  semanticColors,
-  radius as unifiedRadius,
-  spacing as unifiedSpacing,
   textStyles,
   shadows as unifiedShadows,
 } from "@/theme/legacyCompat";
 import { useThemeContextSafe } from "../../context/ThemeContext";
+import { useUiTokens } from "@/hooks/useUiTokens";
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 const AnimatedView = Animated.createAnimatedComponent(View);
@@ -105,16 +103,17 @@ export const ModernCard: React.FC<ModernCardProps> = ({
   intensity = 20,
 }) => {
   const themeContext = useThemeContextSafe();
+  const uiTokens = useUiTokens();
   const theme = themeContext?.theme;
-  const themeColors = themeContext?.themeLegacy.colors;
-  const cardBackground = themeColors?.card ?? semanticColors.card.background;
-  const cardBorder = themeColors?.border ?? semanticColors.card.border;
-  const textPrimary = themeColors?.textPrimary ?? semanticColors.text.primary;
-  const textSecondary = themeColors?.textSecondary ?? semanticColors.text.secondary;
-  const accentColor = themeColors?.accent ?? semanticColors.interactive.default;
+  const themeColors = themeContext?.themeLegacy?.colors;
+  const cardBackground = uiTokens.colors.surface ?? themeColors?.card ?? modernColors.surface.card;
+  const cardBorder = uiTokens.colors.border ?? themeColors?.border ?? modernColors.border.light;
+  const textPrimary = uiTokens.colors.textPrimary ?? themeColors?.textPrimary ?? modernColors.text.primary;
+  const textSecondary =
+    uiTokens.colors.textSecondary ?? themeColors?.textSecondary ?? modernColors.text.secondary;
+  const accentColor = uiTokens.colors.accent ?? themeColors?.accent ?? modernColors.primary[500];
 
-  const actualPadding =
-    padding !== undefined ? padding : theme ? theme.spacing.md : modernSpacing.cardPadding;
+  const actualPadding = padding !== undefined ? padding : uiTokens.spacing.md;
 
   // Animation values
   const scale = useSharedValue(1);
@@ -155,11 +154,12 @@ export const ModernCard: React.FC<ModernCardProps> = ({
 
   // Memoized dynamic styles aligned with DESIGN.md
   const dynamicStyles = React.useMemo(() => {
-    const spacing = unifiedSpacing;
+    const spacing = uiTokens.spacing;
+    const radius = uiTokens.radius;
 
     return StyleSheet.create({
       card: {
-        borderRadius: unifiedRadius.md,
+        borderRadius: radius.md,
         overflow: "hidden",
       },
       content: {
@@ -179,7 +179,9 @@ export const ModernCard: React.FC<ModernCardProps> = ({
         ...operationalShadows[elevation],
       },
       glass: {
-        backgroundColor: cardBackground,
+        backgroundColor: uiTokens.mode === "dark"
+          ? "rgba(30, 35, 46, 0.72)"
+          : "rgba(255, 255, 255, 0.72)",
         borderWidth: 1,
         borderColor: cardBorder,
       },
@@ -215,7 +217,17 @@ export const ModernCard: React.FC<ModernCardProps> = ({
         marginRight: spacing.sm,
       },
     });
-  }, [cardBackground, cardBorder, elevation, actualPadding, textPrimary, textSecondary]);
+  }, [
+    actualPadding,
+    cardBackground,
+    cardBorder,
+    elevation,
+    textPrimary,
+    textSecondary,
+    uiTokens.mode,
+    uiTokens.radius,
+    uiTokens.spacing,
+  ]);
 
   // Render card content
   const renderContent = () => {

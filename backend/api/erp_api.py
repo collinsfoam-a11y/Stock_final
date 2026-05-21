@@ -284,6 +284,14 @@ async def get_item_batches(
         raise HTTPException(status_code=503, detail="Service not initialized")
 
     normalized_code = _normalize_barcode_input(item_code, strict_numeric=False)
+    regex_match = {"$regex": f"^{re.escape(normalized_code)}$", "$options": "i"}
+    identity_conditions: list[dict[str, Any]] = [
+        {"item_code": normalized_code},
+        {"item_code": regex_match},
+        {"barcode": normalized_code},
+        {"autobarcode": normalized_code},
+        {"auto_barcode": normalized_code},
+    ]
     source = "mongodb_offline_fallback"
     batches: list[dict[str, Any]] = []
 
@@ -302,20 +310,42 @@ async def get_item_batches(
             )
 
     if not batches:
-        regex_match = {"$regex": f"^{re.escape(normalized_code)}$", "$options": "i"}
-        query = {"$or": [{"item_code": normalized_code}, {"item_code": regex_match}]}
+        query = {"$or": identity_conditions}
+        seed_item = await _db.erp_items.find_one(query, {"item_name": 1})
+        seed_item_name = str((seed_item or {}).get("item_name") or "").strip()
+
+        if seed_item_name:
+            name_match = {
+                "$regex": f"^{re.escape(seed_item_name)}$",
+                "$options": "i",
+            }
+            query = {
+                "$or": [
+                    *identity_conditions,
+                    {"item_name": seed_item_name},
+                    {"item_name": name_match},
+                ]
+            }
+
         cursor = _db.erp_items.find(query)
-        mongo_batches = await cursor.to_list(length=100)
+        mongo_batches = await cursor.to_list(length=500)
         batches = mongo_batches if isinstance(mongo_batches, list) else []
         source = "mongodb_offline_fallback"
 
     formatted_batches = []
     for batch in batches:
-        barcode = batch.get("barcode") or batch.get("auto_barcode") or ""
+        barcode = (
+            batch.get("barcode")
+            or batch.get("auto_barcode")
+            or batch.get("autobarcode")
+            or ""
+        )
+        batch_id = batch.get("batch_id") or barcode
+        batch_no = batch.get("batch_no") or batch_id or "DEFAULT"
         formatted_batches.append(
             {
-                "batch_id": batch.get("batch_id"),
-                "batch_no": batch.get("batch_no", "DEFAULT"),
+                "batch_id": batch_id,
+                "batch_no": batch_no,
                 "item_code": batch.get("item_code"),
                 "barcode": barcode,
                 "item_name": batch.get("item_name"),

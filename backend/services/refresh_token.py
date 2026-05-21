@@ -5,7 +5,7 @@ Implements JWT refresh tokens with automatic rotation for enhanced security
 
 import hashlib
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from backend.utils.datetime_utils import utc_now_naive
@@ -25,6 +25,13 @@ class RefreshTokenPersistenceError(RuntimeError):
 def _hash_token(token: str) -> str:
     # Store refresh tokens as a one-way hash to reduce blast radius if DB is leaked.
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _to_utc_naive(value: datetime) -> datetime:
+    """Normalize datetimes to the format MongoDB returns through PyMongo."""
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(timezone.utc).replace(tzinfo=None)
 
 
 class RefreshTokenService:
@@ -119,7 +126,7 @@ class RefreshTokenService:
                 "token_hash": token_hash,
                 "username": username,
                 "created_at": utc_now_naive(),
-                "expires_at": expires_at,
+                "expires_at": _to_utc_naive(expires_at),
                 "revoked": False,
             }
             if ip_address:

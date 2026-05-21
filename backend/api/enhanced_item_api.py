@@ -201,6 +201,13 @@ def _raise_item_not_found(barcode: str, response_time_ms: float) -> None:
     )
 
 
+def _normalize_context_param(value: Any) -> Optional[str]:
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    return value or None
+
+
 async def _resolve_lookup_context(
     session_id: Optional[str], rack_no: Optional[str]
 ) -> tuple[Optional[str], Optional[str]]:
@@ -244,6 +251,8 @@ def _apply_misplaced_flag(
 async def _decorate_item_with_misplacement_context(
     item_data: Optional[dict[str, Any]], session_id: Optional[str], rack_no: Optional[str]
 ) -> None:
+    session_id = _normalize_context_param(session_id)
+    rack_no = _normalize_context_param(rack_no)
     if not item_data or not (session_id or rack_no):
         return
 

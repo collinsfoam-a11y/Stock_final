@@ -98,7 +98,7 @@ The architecture is **Offline-First, Mongo-Primary**.
 | Read-only SQL Server | `backend/README.md`, `sql_server_connector.py` | Implemented | - | - | Maintain strict test enforcement |
 | Offline-First Syncing | `frontend/src/services/offline/offlineQueue.ts`, `backend/api/sync_batch_api.py` | Partially Implemented | Broken | High | Resolve dependency resolution bugs in Expo and properly configure Sync Engine. |
 | Role-Based Auth | `auth_routes.py`, `permissions_api.py` | Implemented | - | - | Secure existing JWT paths. |
-| Variance Approvals | `supervisor_workflow_api.py`, `schemas_variance.py` | Implemented | Partial | Medium | Ensure state machine handles "recount" paths effectively without looping. |
+| Variance Approvals | `supervisor_workflow_api.py`, `schemas.py` | Implemented | Partial | Medium | Ensure state machine handles "recount" paths effectively without looping. |
 | E2E Recount Smoke Test | `frontend/package.json` | Mocked/Broken | Mocked | High | Playwright test configuration needs adjustment for React Native Web to properly execute. |
 
 ---

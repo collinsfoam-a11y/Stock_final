@@ -8,6 +8,7 @@ from typing import Any, Awaitable, Callable, Optional
 from bson import ObjectId
 
 from backend.services.concurrency import ConcurrencyError, build_version_filter, coerce_version
+from backend.services.conflict_detection_service import ConflictDetectionService
 from backend.services.governance_audit_service import GovernanceAuditService
 from backend.services.governance_guard import (
     GovernanceViolation,
@@ -17,6 +18,8 @@ from backend.services.governance_guard import (
     write_authority,
 )
 from backend.services.projection_write_service import ProjectionWriteService
+from backend.services.serial_reconciliation_service import SerialReconciliationService
+from backend.services.snapshot_service import SnapshotService
 from backend.services.transaction_manager import mongo_transaction
 from backend.services.validation_service import ValidationService
 
@@ -48,12 +51,17 @@ class SessionLifecycleService:
         count_line_finalizer: Optional[
             Callable[..., Awaitable[int]]
         ] = None,
+        conflict_detection_service: Optional[ConflictDetectionService] = None,
+        serial_reconciliation_service: Optional[SerialReconciliationService] = None,
     ) -> None:
         self.db = db
         self.validation_service = validation_service or ValidationService(db)
         self.audit_service = audit_service or GovernanceAuditService(db)
         self.projection_service = projection_service or ProjectionWriteService(db)
         self.count_line_finalizer = count_line_finalizer
+        snapshot_svc = SnapshotService(db)
+        self.conflict_detection_service = conflict_detection_service or ConflictDetectionService(db, snapshot_svc)
+        self.serial_reconciliation_service = serial_reconciliation_service or SerialReconciliationService(db)
 
     @staticmethod
     def _lookup(session_id: str) -> dict[str, Any]:
@@ -138,8 +146,17 @@ class SessionLifecycleService:
             )
         )
         if getattr(result, "modified_count", 0) == 0:
+            # Distinguish: did the session disappear, or did a concurrent update change its version?
+            still_exists = await self.db.sessions.find_one(
+                self._lookup(session_id), {"_id": 1}, **kwargs
+            )
+            if not still_exists:
+                raise ConcurrencyError(
+                    f"CRITICAL: Session not found during OCC update: {session_id}"
+                )
             raise ConcurrencyError(
-                f"CRITICAL: Session version mismatch for {session_id} (expected {expected_version})"
+                f"CRITICAL: Session version mismatch for {session_id} "
+                f"(expected {expected_version}) — concurrent update detected"
             )
 
     async def _compute_session_totals(
@@ -256,14 +273,33 @@ class SessionLifecycleService:
         session_doc: dict[str, Any],
         username: str,
         db_session: Optional[Any] = None,
+        _transaction_attempted: bool = False,
     ) -> dict[str, Any]:
-        if db_session is None:
+        if db_session is None and not _transaction_attempted:
             async with mongo_transaction(self.db.client) as tx:
                 return await self.create_session(
                     session_doc=session_doc,
                     username=username,
                     db_session=tx,
+                    _transaction_attempted=True,
                 )
+
+        # Prevent state divergence from multiple simultaneous active sessions per user
+        active_count = await self.db.sessions.count_documents(
+            {
+                "$and": [
+                    {"$or": [{"staff_user": username}, {"user_id": username}, {"created_by": username}]},
+                    {"status": {"$in": ["CREATED", "ACTIVE", "REVIEW"]}},
+                    {"finalized_at": {"$exists": False}},
+                ]
+            },
+            **({"session": db_session} if db_session is not None else {}),
+        )
+        if active_count >= 3:
+            raise GovernanceViolation(
+                f"CONCURRENT_SESSION_LIMIT: user '{username}' already has {active_count} "
+                "active session(s). Finalize or close existing sessions before creating a new one."
+            )
 
         now_dt = _utc_now()
         created_doc = dict(session_doc)
@@ -321,8 +357,9 @@ class SessionLifecycleService:
         note: Optional[str] = None,
         db_session: Optional[Any] = None,
         expected_version: Optional[int] = None,
+        _transaction_attempted: bool = False,
     ) -> dict[str, Any]:
-        if db_session is None:
+        if db_session is None and not _transaction_attempted:
             async with mongo_transaction(self.db.client) as tx:
                 return await self.transition_session(
                     session_id=session_id,
@@ -331,6 +368,7 @@ class SessionLifecycleService:
                     note=note,
                     db_session=tx,
                     expected_version=expected_version,
+                    _transaction_attempted=True,
                 )
 
         session = await self.ensure_session_exists(session_id, db_session=db_session)
@@ -543,13 +581,15 @@ class SessionLifecycleService:
         recount_doc: dict[str, Any],
         actor: str,
         db_session: Optional[Any] = None,
+        _transaction_attempted: bool = False,
     ) -> dict[str, Any]:
-        if db_session is None:
+        if db_session is None and not _transaction_attempted:
             async with mongo_transaction(self.db.client) as tx:
                 return await self.create_recount_request(
                     recount_doc=recount_doc,
                     actor=actor,
                     db_session=tx,
+                    _transaction_attempted=True,
                 )
 
         if not isinstance(recount_doc, dict) or not recount_doc:
@@ -605,8 +645,9 @@ class SessionLifecycleService:
         actor: str,
         fields: Optional[dict[str, Any]] = None,
         db_session: Optional[Any] = None,
+        _transaction_attempted: bool = False,
     ) -> dict[str, Any]:
-        if db_session is None:
+        if db_session is None and not _transaction_attempted:
             async with mongo_transaction(self.db.client) as tx:
                 return await self.transition_recount_request(
                     recount_id=recount_id,
@@ -614,6 +655,7 @@ class SessionLifecycleService:
                     actor=actor,
                     fields=fields,
                     db_session=tx,
+                    _transaction_attempted=True,
                 )
 
         recount = await self.get_recount_request(recount_id, db_session=db_session)
@@ -703,6 +745,15 @@ class SessionLifecycleService:
             }
         )
 
+        # Conflict detection: abort if ERP data changed mid-session
+        conflict_report = await self.conflict_detection_service.detect_session_conflicts(session_id)
+        if conflict_report.has_conflicts:
+            conflict_types = list({c["type"] for c in conflict_report.conflicts})
+            raise GovernanceViolation(
+                f"CRITICAL: Session has unresolved ERP conflicts and cannot be finalized "
+                f"({', '.join(conflict_types)}). Resolve conflicts before finalizing."
+            )
+
         lines = await self.db.count_lines.find({"session_id": session_id}, **kwargs).to_list(
             length=50000
         )
@@ -713,11 +764,13 @@ class SessionLifecycleService:
             )
 
         finalized_at = _utc_now()
+        _skip_statuses = {"locked", "SUPERSEDED", "superseded", "Superseded"}
+        _skip_approvals = {"REJECTED", "NEEDS_REVIEW", "rejected", "needs_review"}
         count_lines_to_finalize = [
             line
             for line in lines
-            if str(line.get("status") or "") not in {"locked", "SUPERSEDED", "superseded"}
-            and str(line.get("approval_status") or "") not in {"REJECTED", "NEEDS_REVIEW"}
+            if str(line.get("status") or "") not in _skip_statuses
+            and str(line.get("approval_status") or "") not in _skip_approvals
         ]
         if count_lines_to_finalize:
             if self.count_line_finalizer is None:
@@ -786,6 +839,32 @@ class SessionLifecycleService:
             actor=actor,
             db_session=db_session,
         )
+
+        # Serial reconciliation: run asynchronously after commit; never blocks finalization
+        import asyncio
+        import logging as _logging
+        _serial_logger = _logging.getLogger(__name__)
+
+        async def _reconcile_serials_async() -> None:
+            try:
+                reports = await self.serial_reconciliation_service.reconcile_session(session_id)
+                for report in reports:
+                    if not report.is_clean:
+                        await self.serial_reconciliation_service.persist_report(report)
+                        _serial_logger.warning(
+                            "Serial anomalies found after finalizing session %s: item=%s "
+                            "missing=%d surplus=%d moved=%d dupes=%d",
+                            session_id,
+                            report.item_code,
+                            len(report.missing),
+                            len(report.surplus),
+                            len(report.moved),
+                            len(report.duplicates),
+                        )
+            except Exception as exc:  # pragma: no cover — best-effort
+                _serial_logger.warning("Serial reconciliation failed for session %s: %s", session_id, exc)
+
+        asyncio.ensure_future(_reconcile_serials_async())
 
         refreshed = await self.ensure_session_exists(session_id, db_session=db_session)
         return {

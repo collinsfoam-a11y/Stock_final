@@ -68,6 +68,55 @@ async def test_get_item_batches_offline_fallback(
 
 
 @pytest.mark.asyncio
+async def test_get_item_batches_groups_same_product_name_with_different_barcodes(
+    async_client: AsyncClient, authenticated_headers, test_db
+):
+    """
+    STOCK.xlsx represents batches as same product name with different Auto Barcode.
+    Those rows must be shown as one batch family even when item codes differ.
+    """
+    item_name = "ANCHOR COOLKING 1200MM IVORY"
+    await test_db.erp_items.delete_many({"item_name": item_name})
+
+    await test_db.erp_items.insert_many(
+        [
+            {
+                "item_code": "5949",
+                "barcode": "515950",
+                "autobarcode": "515950",
+                "item_name": item_name,
+                "batch_no": "515950",
+                "stock_qty": 0,
+                "mrp": 2750,
+                "warehouse": "Main",
+            },
+            {
+                "item_code": "ALT5949",
+                "barcode": "521990",
+                "autobarcode": "521990",
+                "item_name": item_name,
+                "batch_no": "521990",
+                "stock_qty": 1,
+                "mrp": 2750,
+                "warehouse": "Main",
+            },
+        ]
+    )
+
+    response = await async_client.get(
+        "/api/item-batches/5949", headers=authenticated_headers
+    )
+
+    assert response.status_code == 200, f"Response: {response.text}"
+    data = response.json()
+
+    assert data["source"] == "mongodb_offline_fallback"
+    assert data["total_batches"] == 2
+    assert [batch["barcode"] for batch in data["batches"]] == ["521990", "515950"]
+    assert {batch["item_code"] for batch in data["batches"]} == {"5949", "ALT5949"}
+
+
+@pytest.mark.asyncio
 async def test_get_item_batches_sql_path_includes_mrp_and_sorts(
     async_client: AsyncClient, authenticated_headers
 ):

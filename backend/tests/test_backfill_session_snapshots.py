@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from backend.scripts.backfill_session_snapshots import backfill_empty_session_snapshots
+from backend.scripts.archive.backfill_session_snapshots import backfill_empty_session_snapshots
 from backend.tests.utils.in_memory_db import InMemoryDatabase
 
 

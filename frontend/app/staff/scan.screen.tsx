@@ -52,11 +52,12 @@ import { dedupeItemsKeepingHighestStock } from "../../src/utils/itemBatchUtils";
 
 import ModernHeader from "../../src/components/ui/ModernHeader";
 import ModernButton from "../../src/components/ui/ModernButton";
-import { SyncStatusPill } from "../../src/components/ui/SyncStatusPill";
+import { OperationalStatusStrip } from "@/components/ui";
 import { FinishRackModal } from "../../src/components/scan/FinishRackModal";
 import { ScanCameraOverlay } from "../../src/components/scan/ScanCameraOverlay";
 import { ScanLookupPanel, type ScanLookupNotice } from "../../src/components/scan/ScanLookupPanel";
 import { ScanStatsCard } from "../../src/components/scan/ScanStatsCard";
+import { OperationalSyncBanner } from "@/components/feedback/OperationalSyncBanner";
 import { colors, spacing, typography, borderRadius } from "@/theme/legacyCompat";
 
 import { useAuthStore } from "../../src/store/authStore";
@@ -67,6 +68,10 @@ import { zIndex } from "@/theme/designTokens";
 import { flags } from "@/constants/flags";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { operationalMotion } from "@/utils/motion";
+import {
+  OPERATIONAL_TELEMETRY_EVENT_REGISTRY,
+  operationalTelemetry,
+} from "@/services/observability/operationalTelemetry";
 const SCAN_BUFFER_TIMEOUT = 2000; // 2 seconds
 const SCAN_BUFFER_MAX_SIZE = 10;
 const SCAN_CONFIDENCE_THRESHOLD = 2;
@@ -136,6 +141,7 @@ const ScanScreen = React.memo(function ScanScreen() {
   const cornerOpacity = useSharedValue(1);
 
   const scanBufferRef = useRef<{ code: string; count: number; timestamp: number }[]>([]);
+  const activeScanLookupMarkRef = useRef<string | null>(null);
 
   const loadRecentItems = useCallback(async () => {
     try {
@@ -338,6 +344,18 @@ const ScanScreen = React.memo(function ScanScreen() {
     );
 
     if (!confident) {
+      operationalTelemetry.trackScanner(
+        OPERATIONAL_TELEMETRY_EVENT_REGISTRY.SCAN_BUFFERED,
+        "pending",
+        {
+          barcode: trimmedData,
+          source: "camera",
+          offlineMode,
+        },
+        {
+          bufferSize: scanBufferRef.current.length,
+        }
+      );
       if (scannerVibration) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
@@ -345,6 +363,30 @@ const ScanScreen = React.memo(function ScanScreen() {
     }
 
     safeSetState(setScanned, true);
+    operationalTelemetry.trackScanner(
+      OPERATIONAL_TELEMETRY_EVENT_REGISTRY.SCAN_CAPTURED,
+      "success",
+      {
+        barcode: confident.code,
+        source: "camera",
+        offlineMode,
+        autoSubmit: scannerAutoSubmit,
+      },
+      {
+        confidenceCount: confident.count,
+      }
+    );
+    activeScanLookupMarkRef.current = operationalTelemetry.markStart({
+      name: OPERATIONAL_TELEMETRY_EVENT_REGISTRY.SCAN_LOOKUP_COMPLETED,
+      category: "scanner",
+      surface: "staff_scan",
+      tags: {
+        barcode: confident.code,
+        source: "camera",
+        offlineMode,
+        autoSubmit: scannerAutoSubmit,
+      },
+    });
     scanBufferRef.current = [];
     if (scannerVibration) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -367,11 +409,28 @@ const ScanScreen = React.memo(function ScanScreen() {
   const handleLookup = async (barcode: string) => {
     if (loading) return;
     const lookupValue = barcode.trim();
+    const lookupMark =
+      activeScanLookupMarkRef.current ||
+      operationalTelemetry.markStart({
+        name: OPERATIONAL_TELEMETRY_EVENT_REGISTRY.SCAN_LOOKUP_COMPLETED,
+        category: "scanner",
+        surface: "staff_scan",
+        tags: {
+          barcode: lookupValue,
+          source: "manual_or_list",
+          offlineMode,
+        },
+      });
+    activeScanLookupMarkRef.current = null;
     safeSetState(setLastLookupBarcode, lookupValue);
     safeSetState(setLookupNotice, null);
     const validation = validateBarcode(lookupValue);
     if (!validation.valid) {
       void playScanSound("error", scannerSound);
+      operationalTelemetry.markEnd(lookupMark, "invalid", {
+        barcode: lookupValue,
+        reason: validation.error || "invalid_barcode",
+      });
       safeSetState(setLookupNotice, {
         message: `${validation.error || "The barcode format is not valid."} Check the label, edit the code, or scan again before continuing.`,
         title: "Barcode not accepted",
@@ -422,6 +481,10 @@ const ScanScreen = React.memo(function ScanScreen() {
                 void playScanSound("warning", scannerSound);
                 safeSetState(setLoading, false);
                 safeSetState(setScanned, false);
+                operationalTelemetry.markEnd(lookupMark, "duplicate", {
+                  barcode: item.barcode || validation.value,
+                  duplicateLocation: true,
+                });
                 Alert.alert(
                   "Duplicate Scan",
                   `Item already counted here by ${duplicateInLocation.counted_by}.\nQty: ${duplicateInLocation.counted_qty}`,
@@ -449,9 +512,18 @@ const ScanScreen = React.memo(function ScanScreen() {
         }
 
         safeSetState(setLookupNotice, null);
+        operationalTelemetry.markEnd(lookupMark, "success", {
+          barcode: item.barcode || validation.value,
+          itemCode: item.item_code,
+          offlineMode,
+        });
         navigateToDetail(item.barcode || validation.value!);
       } else {
         void playScanSound("warning", scannerSound);
+        operationalTelemetry.markEnd(lookupMark, offlineMode ? "offline" : "not_found", {
+          barcode: validation.value,
+          offlineMode,
+        });
         safeSetState(setLookupNotice, {
           actionLabel: offlineMode ? undefined : "Retry lookup",
           message: offlineMode
@@ -464,6 +536,11 @@ const ScanScreen = React.memo(function ScanScreen() {
     } catch (error: any) {
       void playScanSound("error", scannerSound);
       const reason = error?.message || "The lookup request did not finish.";
+      operationalTelemetry.markEnd(lookupMark, "failure", {
+        barcode: lookupValue,
+        error: reason,
+        offlineMode,
+      });
       safeSetState(setLookupNotice, {
         actionLabel: "Retry lookup",
         message: `${reason} Your scan was not submitted. Retry lookup or rescan the item.`,
@@ -486,12 +563,30 @@ const ScanScreen = React.memo(function ScanScreen() {
 
   const handleFinishRack = async () => {
     if (!sessionId) return;
+    const mark = operationalTelemetry.markStart({
+      name: OPERATIONAL_TELEMETRY_EVENT_REGISTRY.WORKFLOW_ACTION,
+      category: "workflow",
+      surface: "staff_scan",
+      tags: {
+        command: "finish_rack",
+        sessionId,
+        offlineMode,
+      },
+    });
     safeSetState(setIsFinishing, true);
     try {
       await safeAsync(() => updateSessionStatus(sessionId, "reconcile"));
+      operationalTelemetry.markEnd(mark, "success", undefined, {
+        totalItems: sessionStats.totalItems,
+        verifiedItems: sessionStats.verifiedItems,
+        pendingItems: sessionStats.pendingItems,
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/staff/home");
     } catch (error: any) {
+      operationalTelemetry.markEnd(mark, "failure", {
+        error: error?.message || "finish_rack_failed",
+      });
       Alert.alert(
         "Finish Rack Failed",
         `${error.message || "This session could not be submitted for supervisor review."}\n\nYour counts remain in this rack session. Check connectivity and retry.`
@@ -561,6 +656,10 @@ const ScanScreen = React.memo(function ScanScreen() {
                 onPress={() => router.replace("/staff/home")}
                 variant="primary"
                 fullWidth
+                style={{
+                  backgroundColor: uiTokens.colors.accent,
+                  borderColor: uiTokens.colors.accent,
+                }}
               />
               {flags.uiAuthRedirectV2 && (
                 <ModernButton
@@ -633,54 +732,105 @@ const ScanScreen = React.memo(function ScanScreen() {
           />
         }
       >
-        <View style={styles.statusRow}>
-          <SyncStatusPill />
+        <View style={styles.pageSection}>
+          <View style={styles.sectionIntro}>
+            <Text style={[styles.sectionTitle, { color: uiTokens.colors.textPrimary }]}>Scan with confidence</Text>
+            <Text style={[styles.sectionSubtitle, { color: uiTokens.colors.textSecondary }]}>Tap the scanner or enter a barcode to locate the item and verify counts. Finish the rack when all items are confirmed.</Text>
+          </View>
+
+          <OperationalStatusStrip
+            compact
+            offline={offlineMode}
+            syncState={refreshing ? "Refreshing" : offlineMode ? "Queued" : "Ready"}
+            pendingQueueCount={sessionStats.pendingItems}
+            scannerReady={!loading && !initialLoading && (Platform.OS === "web" || Boolean(permission?.granted))}
+            uploadBacklog={offlineMode ? sessionStats.pendingItems : 0}
+            deviceConnectivity={lastMessage ? "Live" : isScreenFocused ? "Ready" : "Idle"}
+            runtimeHealth={performanceWarning ? "Degraded" : "Stable"}
+            items={[
+              {
+                id: "scan-total",
+                label: "Total",
+                value: sessionStats.totalItems,
+                tone: "info",
+                icon: "cube-outline",
+              },
+              {
+                id: "scan-verified",
+                label: "Verified",
+                value: sessionStats.verifiedItems,
+                tone: "success",
+                icon: "checkmark-done-outline",
+              },
+            ]}
+            testID="staff-scan-operational-status-strip"
+          />
+
+          {offlineMode ? (
+            <OperationalSyncBanner
+              compact
+              tone="offline"
+              title="Offline counting enabled"
+              message="Scans and count changes stay on this device until sync is available. Confirm pending work before finishing the rack."
+              style={styles.syncBanner}
+            />
+          ) : null}
+
+          <ScanStatsCard initialLoading={initialLoading} sessionStats={sessionStats} />
         </View>
 
-        <ScanStatsCard initialLoading={initialLoading} sessionStats={sessionStats} />
-
-        <ScanLookupPanel
-          initialLoading={initialLoading}
-          loading={loading}
-          recentItems={recentItems}
-          searchQuery={searchQuery}
-          searchResults={searchResults}
-          notice={lookupNotice}
-          onChangeSearchQuery={(value) => {
-            if (lookupNotice) {
+        <View style={styles.pageSection}>
+          <ScanLookupPanel
+            initialLoading={initialLoading}
+            loading={loading}
+            recentItems={recentItems}
+            searchQuery={searchQuery}
+            searchResults={searchResults}
+            notice={lookupNotice}
+            onChangeSearchQuery={(value) => {
+              if (lookupNotice) {
+                safeSetState(setLookupNotice, null);
+              }
+              safeSetState(setSearchQuery, value);
+            }}
+            onClearSearchQuery={() => {
               safeSetState(setLookupNotice, null);
-            }
-            safeSetState(setSearchQuery, value);
-          }}
-          onClearSearchQuery={() => {
-            safeSetState(setLookupNotice, null);
-            safeSetState(setSearchQuery, "");
-          }}
-          onDismissNotice={() => safeSetState(setLookupNotice, null)}
-          onOpenScanner={() => {
-            safeSetState(setLookupNotice, null);
-            safeSetState(setIsScanning, true);
-          }}
-          onPressItem={(item) => {
-            const code = item.barcode || item.item_code;
-            if (code) {
-              handleLookup(code);
-            }
-          }}
-          onSubmitSearch={() => {
-            if (!searchQuery.trim()) return;
-            if (scannerVibration) {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }
-            handleLookup(searchQuery.trim());
-          }}
-          onRetryNotice={() => {
-            const code = lastLookupBarcode || searchQuery.trim();
-            if (code) {
-              handleLookup(code);
-            }
-          }}
-        />
+              safeSetState(setSearchQuery, "");
+            }}
+            onDismissNotice={() => safeSetState(setLookupNotice, null)}
+            onOpenScanner={() => {
+              safeSetState(setLookupNotice, null);
+              operationalTelemetry.trackScanner(
+                OPERATIONAL_TELEMETRY_EVENT_REGISTRY.SCAN_CAPTURED,
+                "pending",
+                {
+                  source: "open_camera",
+                  offlineMode,
+                }
+              );
+              safeSetState(setIsScanning, true);
+            }}
+            onPressItem={(item) => {
+              const code = item.barcode || item.item_code;
+              if (code) {
+                handleLookup(code);
+              }
+            }}
+            onSubmitSearch={() => {
+              if (!searchQuery.trim()) return;
+              if (scannerVibration) {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }
+              handleLookup(searchQuery.trim());
+            }}
+            onRetryNotice={() => {
+              const code = lastLookupBarcode || searchQuery.trim();
+              if (code) {
+                handleLookup(code);
+              }
+            }}
+          />
+        </View>
 
         <View style={styles.footerSpacer} />
       </ScrollView>
@@ -702,6 +852,10 @@ const ScanScreen = React.memo(function ScanScreen() {
           variant="primary"
           icon="checkmark-circle"
           fullWidth
+          style={{
+            backgroundColor: uiTokens.colors.accent,
+            borderColor: uiTokens.colors.accent,
+          }}
         />
       </View>
 
@@ -721,10 +875,7 @@ const ScanScreen = React.memo(function ScanScreen() {
             styles.loadingOverlay,
             styles.pointerEventsNone,
             {
-              backgroundColor:
-                uiTokens.mode === "dark"
-                  ? colorWithAlpha(uiTokens.colors.background, 0.75)
-                  : colorWithAlpha(colors.white, 0.88),
+              backgroundColor: colorWithAlpha(uiTokens.colors.surface, uiTokens.mode === "dark" ? 0.88 : 0.92),
             },
           ]}
         >
@@ -738,9 +889,10 @@ const ScanScreen = React.memo(function ScanScreen() {
           style={[
             styles.performanceOverlay,
             performanceWarning ? styles.performancePoor : styles.performanceGood,
+            { backgroundColor: colorWithAlpha(uiTokens.colors.surface, 0.95) },
           ]}
         >
-          <Text style={styles.performanceText}>FPS: {performanceMetrics.fps ?? "--"}</Text>
+          <Text style={[styles.performanceText, { color: uiTokens.colors.textPrimary }]}>FPS: {performanceMetrics.fps ?? "--"}</Text>
         </View>
       )}
     </SafeAreaView>
@@ -756,19 +908,19 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.md,
-    paddingTop: spacing.lg,
-    paddingBottom: 100,
+    paddingTop: spacing.md,
+    paddingBottom: 140,
   },
   footerSpacer: {
-    height: 20,
+    height: spacing.lg,
   },
   bottomContainer: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    padding: spacing.lg,
-    paddingBottom: Platform.OS === "ios" ? 34 : spacing.lg,
+    padding: spacing.md,
+    paddingBottom: Platform.OS === "ios" ? 34 : spacing.md,
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.gray[200],
@@ -777,9 +929,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  statusRow: {
-    alignItems: "flex-end",
-    marginBottom: spacing.sm,
+  pageSection: {
+    marginBottom: spacing.lg,
+  },
+  sectionIntro: {
+    marginBottom: spacing.md,
+  },
+  sectionTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    marginBottom: spacing.xs,
+  },
+  sectionSubtitle: {
+    fontSize: typography.fontSize.sm,
+    lineHeight: 20,
+  },
+  syncBanner: {
+    marginTop: spacing.sm,
   },
   logoutButton: {
     width: 44,

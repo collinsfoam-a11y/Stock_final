@@ -10,6 +10,7 @@ These tests are designed to run against a real or staging environment.
 """
 
 import os
+from datetime import timedelta
 
 import pytest
 
@@ -74,7 +75,7 @@ class TestAuthenticationSecurity:
         invalid_tokens = [
             "invalid-token",
             "Bearer invalid-token",
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid.signature",
+            "invalid.jwt.signature",
             "",
         ]
 
@@ -92,10 +93,11 @@ class TestAuthenticationSecurity:
     @pytest.mark.skipif(IS_MOCKED_AUTH, reason="Mock auth always succeeds")
     async def test_expired_token_rejected(self, async_client, test_db):
         """Test that expired tokens are rejected."""
-        # Use a known expired token structure but not an actual valid JWT
-        expired_token = (
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
-            ".eyJzdWIiOiJ0ZXN0IiwiZXhwIjoxfQ.mock_signature_value"
+        from backend.utils.auth_utils import create_access_token
+
+        expired_token = create_access_token(
+            data={"sub": "test"},
+            expires_delta=timedelta(minutes=-1),
         )
 
         response = await async_client.get(

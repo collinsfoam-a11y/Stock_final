@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import ModernButton from "@/components/ui/ModernButton";
 import { borderRadius, colors, spacing, typography } from "@/theme/legacyCompat";
+import { ScannerFeedbackState } from "@/components/feedback/ScannerFeedbackState";
 
 interface ScanCameraOverlayProps {
   animatedCorners: any;
@@ -98,6 +99,15 @@ export function ScanCameraOverlay({
             <Text style={styles.scanTimeoutText}>
               Scanner closes after {timeoutSeconds}s of inactivity
             </Text>
+            {scanned ? (
+              <ScannerFeedbackState
+                compact
+                state="captured"
+                title="Scan captured"
+                message="Checking barcode before lookup."
+                style={styles.captureFeedback}
+              />
+            ) : null}
           </View>
         </SafeAreaView>
       </CameraView>
@@ -199,6 +209,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     fontSize: typography.fontSize.xs,
     fontWeight: "500",
+  },
+  captureFeedback: {
+    alignSelf: "stretch",
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.lg,
   },
   permissionContainer: {
     flex: 1,

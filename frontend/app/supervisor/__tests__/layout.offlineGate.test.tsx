@@ -57,6 +57,19 @@ jest.mock("@/components/ui", () => {
       React.createElement(View, props, children),
     ModernCard: ({ children, ...props }: { children: React.ReactNode }) =>
       React.createElement(View, props, children),
+    ModernButton: ({
+      title,
+      onPress,
+      ...props
+    }: {
+      title: string;
+      onPress?: () => void;
+    }) =>
+      React.createElement(
+        TouchableOpacity,
+        { onPress, ...props },
+        React.createElement(Text, null, title)
+      ),
     ScreenContainer: ({
       children,
       header,

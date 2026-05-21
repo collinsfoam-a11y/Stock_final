@@ -13,12 +13,12 @@ import { View, Text, StyleSheet, Platform, useWindowDimensions } from "react-nat
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { RoleLayoutGuard } from "@/components/auth/RoleLayoutGuard";
 import { SupervisorSidebar } from "@/components/navigation";
-import { AnimatedPressable, ModernCard, ScreenContainer } from "@/components/ui";
+import { ModernButton, ModernCard, ScreenContainer } from "@/components/ui";
 import { useSettingsStore } from "@/store/settingsStore";
 import { isSupervisorRouteEnabled } from "@/constants/roleFeatureFlags";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import type { ThemeTokens } from "@/theme/themeTokens";
-import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
+import { getMinimumTouchTargetStyle } from "@/utils/accessibility";
 
 const OFFLINE_BLOCKED_ROUTES = new Set([
   "activity-logs",
@@ -155,19 +155,18 @@ function SupervisorOfflineFallback({
 
         <View style={styles.quickLinks}>
           {OFFLINE_SAFE_LINKS.map((link) => (
-            <AnimatedPressable
+            <ModernButton
               key={link.route}
-              style={styles.quickLinkButton}
+              title={link.label}
               onPress={() => onNavigate(link.route as any)}
-              {...getAccessibleButtonProps({ label: `Open ${link.label}` })}
-            >
-              <Ionicons
-                name={link.icon as keyof typeof Ionicons.glyphMap}
-                size={18}
-                color={uiTokens.colors.accent}
-              />
-              <Text style={styles.quickLinkText}>{link.label}</Text>
-            </AnimatedPressable>
+              icon={link.icon}
+              iconPosition="left"
+              variant="secondary"
+              fullWidth
+              style={styles.quickLinkButton}
+              accessibilityLabel={`Open ${link.label}`}
+              accessibilityHint={`Navigates to ${link.label}`}
+            />
           ))}
         </View>
       </View>
@@ -215,8 +214,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
     lineHeight: 20,
   },
   quickLinks: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: "column",
     gap: uiTokens.spacing.md,
   },
   quickLinkButton: {
@@ -225,12 +223,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
     flexDirection: "row",
     alignItems: "center",
     gap: uiTokens.spacing.sm,
-    paddingHorizontal: uiTokens.spacing.md,
-    paddingVertical: uiTokens.spacing.md,
     borderRadius: uiTokens.radius.lg,
-    backgroundColor: uiTokens.colors.surface,
-    borderWidth: 1,
-    borderColor: uiTokens.colors.border,
   },
   quickLinkText: {
     color: uiTokens.colors.textPrimary,

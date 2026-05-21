@@ -150,6 +150,12 @@ function collectMetrics() {
       compatibilityOnly: 0,
       quarantine: 0,
     },
+    telemetry: {
+      implementationOwners: 0,
+      blockingTrackCalls: 0,
+      directNetworkCalls: 0,
+      screenLocalBuffers: 0,
+    },
   };
 
   const syncOrchestratorOwners = new Set();
@@ -169,6 +175,28 @@ function collectMetrics() {
     counts.runtime.removeEventListener += countMatches(content, /\.removeEventListener\s*\(/g);
     counts.runtime.netInfoAddListener += countMatches(content, /NetInfo\.addEventListener\s*\(/g);
     counts.runtime.appStateAddListener += countMatches(content, /AppState\.addEventListener\s*\(/g);
+
+    const isTelemetryOwner = file === "frontend/src/services/observability/operationalTelemetry.ts";
+    if (/class\s+OperationalTelemetryService\b/.test(content)) {
+      counts.telemetry.implementationOwners += 1;
+    }
+    if (/new\s+OperationalTelemetryService\s*\(/.test(content) && !isTelemetryOwner) {
+      counts.telemetry.implementationOwners += 1;
+    }
+    counts.telemetry.blockingTrackCalls += countMatches(
+      content,
+      /await\s+operationalTelemetry\.(track|trackScanner|trackQueue|trackRuntime|markEnd|persistNow)\b/g,
+    );
+    counts.telemetry.directNetworkCalls += countMatches(
+      content,
+      /(fetch|sendBeacon)\s*\([^;\n]*(telemetry|analytics|observability)/gi,
+    );
+    if (file.startsWith("frontend/app/")) {
+      counts.telemetry.screenLocalBuffers += countMatches(
+        content,
+        /const\s+\w*(telemetry|analytics|metric)\w*\s*=\s*(\[\]|new\s+(Map|Set)\s*\()/gi,
+      );
+    }
 
     if (intervalMatches > 0) {
       intervalOwnerCounts.set(file, intervalMatches);
@@ -262,6 +290,30 @@ function hardChecks(metrics, baseline) {
       label: "Offline sync wrapper stays shim-only",
       current: metrics.flags.offlineSyncWrapperIsThinShim ? 0 : 1,
       limit: limits.offlineSyncWrapperNonShim ?? 0,
+    },
+    {
+      id: "telemetry-owner-count",
+      label: "Operational telemetry implementation owner count",
+      current: metrics.counts.telemetry.implementationOwners,
+      limit: limits.telemetryImplementationOwners ?? 1,
+    },
+    {
+      id: "telemetry-blocking-calls",
+      label: "Blocking operational telemetry calls",
+      current: metrics.counts.telemetry.blockingTrackCalls,
+      limit: limits.telemetryBlockingTrackCalls ?? 0,
+    },
+    {
+      id: "telemetry-network-calls",
+      label: "Direct telemetry network calls",
+      current: metrics.counts.telemetry.directNetworkCalls,
+      limit: limits.telemetryDirectNetworkCalls ?? 0,
+    },
+    {
+      id: "screen-local-telemetry-buffers",
+      label: "Screen-local telemetry buffers",
+      current: metrics.counts.telemetry.screenLocalBuffers,
+      limit: limits.screenLocalTelemetryBuffers ?? 0,
     },
   ];
 

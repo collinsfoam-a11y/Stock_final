@@ -15,8 +15,11 @@ import {
 
 interface CountQuantitySectionProps {
   isSplitMode: boolean;
+  isQuantityLocked?: boolean;
   isWeightBasedUOM: boolean;
   quantity: string;
+  quantityLockHint?: string;
+  quantityLockLabel?: string;
   splitCounts: string[];
   uomLabel: string;
   uomUnit: string;
@@ -34,8 +37,11 @@ interface CountQuantitySectionProps {
 
 export function CountQuantitySection({
   isSplitMode,
+  isQuantityLocked = false,
   isWeightBasedUOM,
   quantity,
+  quantityLockHint,
+  quantityLockLabel = "Batch Total",
   splitCounts,
   uomLabel,
   uomUnit,
@@ -52,6 +58,17 @@ export function CountQuantitySection({
 }: CountQuantitySectionProps) {
   const uiTokens = useUiTokens();
   const decorativeIconProps = getDecorativeIconProps();
+  const quantityControlsDisabled = isSplitMode || isQuantityLocked;
+  const splitToggleLabel = isQuantityLocked
+    ? "Batch Total"
+    : isSplitMode
+      ? "Piece Count"
+      : "Split Count";
+  const splitToggleIcon = isQuantityLocked
+    ? "layers-outline"
+    : isSplitMode
+      ? "grid"
+      : "grid-outline";
 
   const styles = useMemo(
     () =>
@@ -102,6 +119,13 @@ export function CountQuantitySection({
           fontWeight: "500",
           marginBottom: uiTokens.spacing.sm,
         },
+        lockHintText: {
+          color: uiTokens.colors.textSecondary,
+          fontSize: 12,
+          fontWeight: "700",
+          marginBottom: uiTokens.spacing.sm,
+          textAlign: "center",
+        },
         metaRow: {
           alignItems: "center",
           flexDirection: "row",
@@ -139,12 +163,16 @@ export function CountQuantitySection({
           height: 56,
           justifyContent: "center",
           marginHorizontal: uiTokens.spacing.sm,
+          minWidth: 0,
         },
         qtyText: {
+          alignSelf: "stretch",
           fontSize: 28,
           fontWeight: "800",
+          minWidth: 0,
+          paddingHorizontal: 0,
+          paddingVertical: 0,
           textAlign: "center",
-          width: "100%",
           color: uiTokens.colors.textPrimary,
         },
         quantityContainer: {
@@ -152,6 +180,7 @@ export function CountQuantitySection({
           flexDirection: "row",
           marginTop: uiTokens.spacing.md,
           marginBottom: uiTokens.spacing.md,
+          minWidth: 0,
         },
         removeButton: {
           ...getMinimumTouchTargetStyle(),
@@ -236,7 +265,9 @@ export function CountQuantitySection({
           <Text style={styles.sectionTitle}>Count</Text>
           <View style={styles.metaRow}>
             <View style={styles.modeBadge}>
-              <Text style={styles.modeBadgeText}>{uomLabel} Mode</Text>
+              <Text style={styles.modeBadgeText}>
+                {isQuantityLocked ? quantityLockLabel : `${uomLabel} Mode`}
+              </Text>
             </View>
             <Text style={styles.sectionMeta}>Unit: {uomUnit}</Text>
           </View>
@@ -244,37 +275,57 @@ export function CountQuantitySection({
 
         <TouchableOpacity
           {...getAccessibleToggleProps({
-            label: isSplitMode ? "Switch to piece count mode" : "Switch to split count mode",
+            label: isQuantityLocked
+              ? "Split count is unavailable while batch count is enabled"
+              : isSplitMode
+                ? "Switch to piece count mode"
+                : "Switch to split count mode",
+            disabled: isQuantityLocked,
             selected: isSplitMode,
           })}
           onPress={onToggleSplitMode}
+          disabled={isQuantityLocked}
           style={[
             styles.toggleButton,
             {
-              backgroundColor: isSplitMode
-                ? uiTokens.colors.accent
-                : colorWithAlpha(uiTokens.colors.accent, uiTokens.mode === "dark" ? 0.16 : 0.08),
-              borderColor: isSplitMode
-                ? uiTokens.colors.accent
-                : colorWithAlpha(uiTokens.colors.accent, 0.32),
+              backgroundColor: isQuantityLocked
+                ? uiTokens.colors.surface
+                : isSplitMode
+                  ? uiTokens.colors.accent
+                  : colorWithAlpha(uiTokens.colors.accent, uiTokens.mode === "dark" ? 0.16 : 0.08),
+              borderColor: isQuantityLocked
+                ? uiTokens.colors.border
+                : isSplitMode
+                  ? uiTokens.colors.accent
+                  : colorWithAlpha(uiTokens.colors.accent, 0.32),
             },
           ]}
         >
           <Ionicons
             {...decorativeIconProps}
-            name={isSplitMode ? "grid" : "grid-outline"}
+            name={splitToggleIcon}
             size={14}
-            color={isSplitMode ? uiTokens.colors.surfaceElevated : uiTokens.colors.accentStrong}
+            color={
+              isQuantityLocked
+                ? uiTokens.colors.textMuted
+                : isSplitMode
+                  ? uiTokens.colors.surfaceElevated
+                  : uiTokens.colors.accentStrong
+            }
           />
           <Text
             style={[
               styles.toggleButtonText,
               {
-                color: isSplitMode ? uiTokens.colors.surfaceElevated : uiTokens.colors.accentStrong,
+                color: isQuantityLocked
+                  ? uiTokens.colors.textMuted
+                  : isSplitMode
+                    ? uiTokens.colors.surfaceElevated
+                    : uiTokens.colors.accentStrong,
               },
             ]}
           >
-            {isSplitMode ? "Piece Count" : "Split Count"}
+            {splitToggleLabel}
           </Text>
         </TouchableOpacity>
       </View>
@@ -283,13 +334,13 @@ export function CountQuantitySection({
         <TouchableOpacity
           {...getAccessibleButtonProps({
             label: "Decrease counted quantity",
-            disabled: isSplitMode,
+            disabled: quantityControlsDisabled,
             hitSlop: OPERATIONAL_HIT_SLOP.comfortable,
           })}
           style={[
             styles.qtyButton,
             {
-              backgroundColor: isSplitMode
+              backgroundColor: quantityControlsDisabled
                 ? uiTokens.colors.surface
                 : uiTokens.colors.surfaceElevated,
               borderWidth: 1,
@@ -297,14 +348,16 @@ export function CountQuantitySection({
             },
           ]}
           onPress={onDecrement}
-          disabled={isSplitMode}
+          disabled={quantityControlsDisabled}
           activeOpacity={0.7}
         >
           <Ionicons
             {...decorativeIconProps}
             name="remove"
             size={28}
-            color={isSplitMode ? uiTokens.colors.textMuted : uiTokens.colors.textPrimary}
+            color={
+              quantityControlsDisabled ? uiTokens.colors.textMuted : uiTokens.colors.textPrimary
+            }
           />
         </TouchableOpacity>
 
@@ -321,48 +374,64 @@ export function CountQuantitySection({
             style={[
               styles.qtyText,
               {
-                color: isSplitMode ? uiTokens.colors.accentStrong : uiTokens.colors.textPrimary,
+                color: quantityControlsDisabled
+                  ? uiTokens.colors.accentStrong
+                  : uiTokens.colors.textPrimary,
               },
             ]}
             value={quantity}
             onChangeText={onQuantityChange}
-            editable={!isSplitMode}
+            editable={!quantityControlsDisabled}
             onBlur={onQuantityBlur}
             keyboardType={isWeightBasedUOM ? "decimal-pad" : "number-pad"}
             selectTextOnFocus
             placeholder="0"
             placeholderTextColor={uiTokens.colors.textMuted}
             accessibilityLabel={`Counted quantity in ${uomUnit}`}
-            accessibilityHint="Enter the counted quantity for this item"
+            accessibilityHint={
+              isQuantityLocked
+                ? "The counted quantity is calculated from batch counts"
+                : "Enter the counted quantity for this item"
+            }
           />
         </View>
 
         <TouchableOpacity
           {...getAccessibleButtonProps({
             label: "Increase counted quantity",
-            disabled: isSplitMode,
+            disabled: quantityControlsDisabled,
             hitSlop: OPERATIONAL_HIT_SLOP.comfortable,
           })}
           style={[
             styles.qtyButton,
             {
-              backgroundColor: isSplitMode ? uiTokens.colors.surface : uiTokens.colors.accent,
+              backgroundColor: quantityControlsDisabled
+                ? uiTokens.colors.surface
+                : uiTokens.colors.accent,
               borderWidth: 1,
-              borderColor: isSplitMode ? uiTokens.colors.border : uiTokens.colors.accent,
+              borderColor: quantityControlsDisabled
+                ? uiTokens.colors.border
+                : uiTokens.colors.accent,
             },
           ]}
           onPress={onIncrement}
-          disabled={isSplitMode}
+          disabled={quantityControlsDisabled}
           activeOpacity={0.7}
         >
           <Ionicons
             {...decorativeIconProps}
             name="add"
             size={28}
-            color={isSplitMode ? uiTokens.colors.textMuted : uiTokens.colors.surfaceElevated}
+            color={
+              quantityControlsDisabled ? uiTokens.colors.textMuted : uiTokens.colors.surfaceElevated
+            }
           />
         </TouchableOpacity>
       </View>
+
+      {isQuantityLocked && quantityLockHint ? (
+        <Text style={styles.lockHintText}>{quantityLockHint}</Text>
+      ) : null}
 
       {isSplitMode && (
         <View style={styles.splitCountContainer}>

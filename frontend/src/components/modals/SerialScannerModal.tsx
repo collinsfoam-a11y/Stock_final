@@ -41,6 +41,12 @@ import {
   fontWeight,
   radius as borderRadius,
 } from "@/theme/legacyCompat";
+import { ScannerFeedbackState } from "@/components/feedback/ScannerFeedbackState";
+import type { ScannerFeedbackStateValue } from "@/components/feedback/ScannerFeedbackState";
+import {
+  OPERATIONAL_TELEMETRY_EVENT_REGISTRY,
+  operationalTelemetry,
+} from "@/services/observability/operationalTelemetry";
 
 interface SerialScannerModalProps {
   visible: boolean;
@@ -94,8 +100,9 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
   const [permission, requestPermission] = useCameraPermissions();
 
   const [scanFeedback, setScanFeedback] = useState<{
-    type: "success" | "error" | "warning";
+    type: Extract<ScannerFeedbackStateValue, "success" | "error" | "warning">;
     message: string;
+    barcode?: string;
   } | null>(null);
   const [detectedCodes, setDetectedCodes] = useState<DetectedCode[]>([]);
   const [scanPaused, setScanPaused] = useState(false);
@@ -287,6 +294,15 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
       if (!scannedValue) {
         return;
       }
+      const mark = operationalTelemetry.markStart({
+        name: OPERATIONAL_TELEMETRY_EVENT_REGISTRY.SERIAL_SCAN_COMPLETED,
+        category: "scanner",
+        surface: "serial_scanner_modal",
+        tags: {
+          barcode: scannedValue,
+          scanPaused,
+        },
+      });
 
       const now = Date.now();
       const lastSeenAt = recentScanTimesRef.current.get(scannedValue) ?? 0;
@@ -297,6 +313,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
           windowMs: DEFAULT_SERIAL_RESCAN_WINDOW_MS,
         })
       ) {
+        operationalTelemetry.markEnd(mark, "duplicate", { reason: "rescan_window" });
         return;
       }
       recentScanTimesRef.current.set(scannedValue, now);
@@ -319,6 +336,14 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
       });
 
       if (!validation.valid) {
+        operationalTelemetry.markEnd(
+          mark,
+          validation.error?.includes("already been added") ? "duplicate" : "invalid",
+          {
+            barcode: scannedValue,
+            reason: validation.error || "invalid_serial",
+          }
+        );
         Haptics.notificationAsync(
           validation.error?.includes("barcode")
             ? Haptics.NotificationFeedbackType.Warning
@@ -327,15 +352,18 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
         setScanFeedback({
           type: validation.error?.includes("barcode") ? "warning" : "error",
           message,
+          barcode: scannedValue,
         });
         scheduleBurstPause();
         return;
       }
 
+      operationalTelemetry.markEnd(mark, "success", { barcode: scannedValue });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setScanFeedback({
         type: "warning",
         message: "Code detected. Tap it below to add.",
+        barcode: scannedValue,
       });
       scheduleBurstPause();
     },
@@ -347,20 +375,6 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
       upsertDetectedCode,
     ]
   );
-
-  const getFeedbackStyle = () => {
-    if (!scanFeedback) return styles.feedbackHidden;
-    switch (scanFeedback.type) {
-      case "success":
-        return styles.feedbackSuccess;
-      case "error":
-        return styles.feedbackError;
-      case "warning":
-        return styles.feedbackWarning;
-      default:
-        return styles.feedbackHidden;
-    }
-  };
 
   const isCameraGranted = permission?.granted === true;
   const canAskPermission = permission?.canAskAgain !== false;
@@ -519,20 +533,19 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
           {/* Feedback Area */}
           <View style={styles.feedbackContainer}>
             {scanFeedback && (
-              <View style={[styles.feedbackBadge, getFeedbackStyle()]}>
-                <Ionicons
-                  name={
-                    scanFeedback.type === "success"
-                      ? "checkmark-circle"
-                      : scanFeedback.type === "warning"
-                        ? "warning"
-                        : "close-circle"
-                  }
-                  size={20}
-                  color={colors.white}
-                />
-                <Text style={styles.feedbackText}>{scanFeedback.message}</Text>
-              </View>
+              <ScannerFeedbackState
+                compact
+                state={scanFeedback.type}
+                title={
+                  scanFeedback.type === "success"
+                    ? "Serial accepted"
+                    : scanFeedback.type === "warning"
+                      ? "Review detected code"
+                      : "Serial rejected"
+                }
+                message={scanFeedback.message}
+                barcode={scanFeedback.barcode}
+              />
             )}
           </View>
 

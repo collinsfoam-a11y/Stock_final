@@ -8,7 +8,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from backend.api.dynamic_reports_api import ReportField, ReportGeneration, ReportTemplate
+from backend.api.dynamic_reports_api import (
+    ReportField,
+    ReportGeneration,
+    ReportTemplate,
+    _build_generated_report_payload,
+)
 from backend.server import app
 
 
@@ -79,6 +84,10 @@ class TestReportTemplateModels:
         assert gen.template_id == "template_123"
         assert gen.template_data is None
         assert gen.runtime_filters is None
+
+    def test_generated_report_payload_requires_download_metadata(self):
+        with pytest.raises(RuntimeError, match="missing required metadata"):
+            _build_generated_report_payload({"id": "rpt_123", "status": "completed"})
 
 
 class TestGetDynamicReportService:
@@ -275,7 +284,14 @@ class TestGenerateReportEndpoint:
             return_value={"id": "tmpl_123", "name": "Test", "format": "json"}
         )
         mock_service.generate_report = AsyncMock(
-            return_value={"id": "rpt_123", "data": [], "status": "completed"}
+            return_value={
+                "id": "rpt_123",
+                "file_name": "template_report.json",
+                "file_size": 128,
+                "record_count": 0,
+                "format": "json",
+                "generated_at": "2026-03-15T10:00:00Z",
+            }
         )
 
         async def override_get_current_user():
@@ -299,8 +315,8 @@ class TestGenerateReportEndpoint:
                     "/api/dynamic-reports/generate",
                     json={"template_id": "tmpl_123"},
                 )
-                # May return 200 or 400 depending on template validation
-                assert response.status_code in [200, 400, 500]
+                assert response.status_code == 200
+                assert response.json()["report"]["download_url"].endswith("/rpt_123/download")
         finally:
             app.dependency_overrides.clear()
 
@@ -311,7 +327,14 @@ class TestGenerateReportEndpoint:
         """Test generating report with inline template"""
         mock_service = MagicMock()
         mock_service.generate_report = AsyncMock(
-            return_value={"id": "rpt_123", "data": [], "status": "completed"}
+            return_value={
+                "id": "rpt_123",
+                "file_name": "inline_report.xlsx",
+                "file_size": 256,
+                "record_count": 0,
+                "format": "excel",
+                "generated_at": "2026-03-15T10:00:00Z",
+            }
         )
 
         async def override_get_current_user():
@@ -335,8 +358,8 @@ class TestGenerateReportEndpoint:
                     "/api/dynamic-reports/generate",
                     json={"template_data": sample_report_template},
                 )
-                # May return 200 or 400/500 depending on validation
-                assert response.status_code in [200, 400, 500]
+                assert response.status_code == 200
+                assert response.json()["report"]["file_name"] == "inline_report.xlsx"
         finally:
             app.dependency_overrides.clear()
 

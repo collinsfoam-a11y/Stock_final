@@ -2,6 +2,7 @@
 Tests for Enhanced Item API
 """
 
+import logging
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -54,7 +55,7 @@ async def test_validate_barcode_format():
 
 
 @pytest.mark.asyncio
-async def test_get_item_by_barcode_enhanced_mongodb(setup_mocks):
+async def test_get_item_by_barcode_enhanced_mongodb(setup_mocks, caplog):
     mock_db, mock_cache, mock_monitoring = setup_mocks
 
     # Mock MongoDB response
@@ -72,6 +73,7 @@ async def test_get_item_by_barcode_enhanced_mongodb(setup_mocks):
     request = MagicMock(method="GET")
     current_user = {"username": "testuser"}
 
+    caplog.set_level(logging.WARNING, logger="backend.api.enhanced_item_api")
     response = await get_item_by_barcode_enhanced(
         barcode="510001",
         request=request,
@@ -87,6 +89,7 @@ async def test_get_item_by_barcode_enhanced_mongodb(setup_mocks):
     mock_monitoring.track_request.assert_awaited_once()
     assert mock_monitoring.track_request.await_args.kwargs["method"] == "GET"
     assert mock_monitoring.track_request.await_args.kwargs["status_code"] == 200
+    assert "Failed to calculate is_misplaced" not in caplog.text
 
 
 @pytest.mark.asyncio

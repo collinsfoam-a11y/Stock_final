@@ -1,9 +1,9 @@
 import { Alert, Platform } from "react-native";
-import * as FileSystemLegacy from "expo-file-system/legacy";
+import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 
 const getLocalFileUri = (filename: string) => {
-  const baseDir = FileSystemLegacy.documentDirectory ?? FileSystemLegacy.cacheDirectory ?? "";
+  const baseDir = FileSystem.documentDirectory ?? FileSystem.cacheDirectory ?? "";
   return `${baseDir}${filename}`;
 };
 
@@ -28,8 +28,8 @@ export async function saveArrayBufferExport(
   const fileUri = getLocalFileUri(filename);
   const base64 = Buffer.from(new Uint8Array(content)).toString("base64");
 
-  await FileSystemLegacy.writeAsStringAsync(fileUri, base64, {
-    encoding: FileSystemLegacy.EncodingType.Base64,
+  await FileSystem.writeAsStringAsync(fileUri, base64, {
+    encoding: FileSystem.EncodingType.Base64,
   });
 
   if (await Sharing.isAvailableAsync()) {

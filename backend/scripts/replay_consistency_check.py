@@ -18,7 +18,7 @@ from typing import Any, Optional
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from backend.config import settings
-from backend.scripts.v31_projection_validation import build_projection_state_snapshot
+from backend.scripts.archive.v31_projection_validation import build_projection_state_snapshot
 from backend.services.projection_service import ProjectionService
 
 

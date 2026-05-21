@@ -29,9 +29,24 @@ import {
   batchResolveSyncConflicts,
   getSyncConflictStats,
 } from "../../src/services/api/api";
-import { ModernCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
+import {
+  AnimatedPressable,
+  ModernCard,
+  OPERATIONAL_LIST_ROW_ESTIMATED_HEIGHT,
+  OperationalCommandBar,
+  OperationalListRow,
+  OperationalListSection,
+  OperationalSplitView,
+  OperationalStatusStrip,
+} from "../../src/components/ui";
+import type {
+  OperationalCommandAction,
+  OperationalListRowSeverity,
+  OperationalListRowTone,
+} from "../../src/components/ui";
 import { safeBackNavigation } from "@/utils/navigation";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { useOperationalQueueNavigation } from "@/hooks/useOperationalQueueNavigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import {
@@ -52,6 +67,29 @@ interface SyncConflict {
   resolved_at?: string;
   resolved_by?: string;
 }
+
+const formatConflictTimestamp = (value?: string) => {
+  if (!value) return "Unknown time";
+  return new Date(value).toLocaleString();
+};
+
+const getConflictTone = (status?: string): OperationalListRowTone => {
+  switch (String(status || "").toLowerCase()) {
+    case "resolved":
+    case "accepted":
+      return "completed";
+    case "pending":
+      return "blocked";
+    case "failed":
+    case "error":
+      return "error";
+    default:
+      return "warning";
+  }
+};
+
+const getConflictSeverity = (status?: string): OperationalListRowSeverity =>
+  String(status || "").toLowerCase() === "pending" ? "high" : "low";
 
 export default function SyncConflictsScreen() {
   const router = useRouter();
@@ -77,7 +115,7 @@ export default function SyncConflictsScreen() {
   const loadStats = useCallback(async () => {
     try {
       const response = await getSyncConflictStats();
-      setStats(response.data);
+      setStats(response?.data ?? response);
     } catch (error: any) {
       console.error("Failed to load conflict stats:", error);
     }
@@ -87,7 +125,7 @@ export default function SyncConflictsScreen() {
     try {
       const status = filterStatus === "all" ? undefined : filterStatus;
       const response = await getSyncConflicts(status);
-      setConflicts(response.data?.conflicts || []);
+      setConflicts(response?.data?.conflicts || response?.conflicts || []);
     } catch (error: any) {
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Error", error.message || "Failed to load sync conflicts");
@@ -118,23 +156,27 @@ export default function SyncConflictsScreen() {
     loadData();
   };
 
-  const handleResolve = async (conflictId: string, resolution: string) => {
-    try {
-      await resolveSyncConflict(conflictId, resolution, resolutionNote);
-      if (Platform.OS !== "web")
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Success", "Conflict resolved successfully");
-      setModalVisible(false);
-      setSelectedConflict(null);
-      setResolutionNote("");
-      loadData();
-    } catch (error: any) {
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Error", error.message || "Failed to resolve conflict");
-    }
-  };
+  const handleResolve = useCallback(
+    async (conflictId: string, resolution: string) => {
+      try {
+        await resolveSyncConflict(conflictId, resolution, resolutionNote);
+        if (Platform.OS !== "web")
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert("Success", "Conflict resolved successfully");
+        setModalVisible(false);
+        setSelectedConflict(null);
+        setResolutionNote("");
+        loadData();
+      } catch (error: any) {
+        if (Platform.OS !== "web")
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert("Error", error.message || "Failed to resolve conflict");
+      }
+    },
+    [loadData, resolutionNote]
+  );
 
-  const handleBatchResolve = async (resolution: string) => {
+  const handleBatchResolve = useCallback(async (resolution: string) => {
     if (selectedConflicts.size === 0) {
       Alert.alert("Error", "Please select conflicts to resolve");
       return;
@@ -169,98 +211,312 @@ export default function SyncConflictsScreen() {
         },
       ]
     );
-  };
+  }, [loadData, resolutionNote, selectedConflicts]);
 
-  const toggleConflictSelection = (conflictId: string) => {
+  const toggleConflictSelection = useCallback((conflictId: string) => {
     if (Platform.OS !== "web") Haptics.selectionAsync();
-    const newSelection = new Set(selectedConflicts);
-    if (newSelection.has(conflictId)) {
-      newSelection.delete(conflictId);
-    } else {
-      newSelection.add(conflictId);
-    }
-    setSelectedConflicts(newSelection);
-  };
+    setSelectedConflicts((current) => {
+      const newSelection = new Set(current);
+      if (newSelection.has(conflictId)) {
+        newSelection.delete(conflictId);
+      } else {
+        newSelection.add(conflictId);
+      }
+      return newSelection;
+    });
+  }, []);
 
-  const openConflictDetail = (conflict: SyncConflict) => {
+  const openConflictDetail = useCallback((conflict: SyncConflict) => {
     if (Platform.OS !== "web") Haptics.selectionAsync();
     setSelectedConflict(conflict);
     setModalVisible(true);
-  };
+  }, []);
 
-  const renderConflictCard = ({ item }: { item: SyncConflict }) => {
-    const isSelected = selectedConflicts.has(item._id);
+  const handleConflictPress = useCallback(
+    (conflict: SyncConflict) => {
+      setSelectedConflict(conflict);
+      toggleConflictSelection(conflict._id);
+    },
+    [toggleConflictSelection]
+  );
+
+  const renderConflictCard = useCallback(
+    ({ item }: { item: SyncConflict }) => {
+      const isSelected = selectedConflicts.has(item._id);
+      const statusLabel = String(item.status || "pending").toUpperCase();
+      const localValue = JSON.stringify(item.local_value) ?? "N/A";
+      const serverValue = JSON.stringify(item.server_value) ?? "N/A";
+
+      return (
+        <OperationalListRow
+          title={item.item_code || "Unknown item"}
+          subtitle={item.conflict_type.replace(/_/g, " ")}
+          metadata={[`Session ${item.session_id || "N/A"}`]}
+          metrics={[
+            {
+              label: "Local",
+              value: localValue.length > 18 ? "Changed" : localValue,
+              tone: "warning",
+              icon: "phone-portrait-outline",
+            },
+            {
+              label: "Server",
+              value: serverValue.length > 18 ? "Changed" : serverValue,
+              tone: "info",
+              icon: "cloud-outline",
+            },
+          ]}
+          status={statusLabel}
+          statusTone={getConflictTone(item.status)}
+          severity={getConflictSeverity(item.status)}
+          leftIcon={isSelected ? "checkmark-circle" : "git-compare-outline"}
+          badges={[
+            {
+              label: item.conflict_type.replace(/_/g, " "),
+              tone: item.status === "pending" ? "blocked" : "completed",
+              icon: "swap-horizontal-outline",
+            },
+          ]}
+          timestamps={
+            [
+              {
+                label: "Detected",
+                value: formatConflictTimestamp(item.detected_at),
+                icon: "time-outline",
+              },
+              item.resolved_at
+                ? {
+                    label: "Resolved",
+                    value: formatConflictTimestamp(item.resolved_at),
+                    icon: "checkmark-circle-outline",
+                  }
+                : undefined,
+            ].filter(Boolean) as {
+              label: string;
+              value: string;
+              icon: keyof typeof Ionicons.glyphMap;
+            }[]
+          }
+          selectable
+          selected={isSelected}
+          onPress={() => handleConflictPress(item)}
+          onKeyboardOpen={() => openConflictDetail(item)}
+          onLongPress={() => openConflictDetail(item)}
+          accessibility={{
+            label: `${isSelected ? "Selected" : "Unselected"} conflict for ${item.item_code}, ${item.conflict_type}. Status ${statusLabel}.`,
+            hint: "Selects this conflict. Long press to review local and server values.",
+          }}
+          style={styles.rowSpacing}
+        />
+      );
+    },
+    [handleConflictPress, openConflictDetail, selectedConflicts, styles.rowSpacing]
+  );
+
+  const getConflictId = useCallback((item: SyncConflict) => item._id, []);
+
+  useOperationalQueueNavigation({
+    items: conflicts,
+    selectedItem: selectedConflict,
+    getItemId: getConflictId,
+    onSelect: setSelectedConflict,
+    onOpen: openConflictDetail,
+    onEscape: () => {
+      setModalVisible(false);
+      setSelectedConflict(null);
+    },
+    enabled: !loading,
+  });
+
+  const resolveCommandActions = useMemo<OperationalCommandAction[]>(() => {
+    if (!selectedConflict) return [];
+
+    const itemLabel = selectedConflict.item_code || "selected conflict";
+
+    return [
+      {
+        id: "accept-server",
+        label: "Accept Server",
+        icon: "cloud-done-outline",
+        tone: "success",
+        shortcut: "S",
+        onPress: () => handleResolve(selectedConflict._id, "accept_server"),
+        accessibilityLabel: `Accept server value for ${itemLabel}`,
+        accessibilityHint: "Resolves this conflict using server data",
+      },
+      {
+        id: "accept-local",
+        label: "Accept Local",
+        icon: "phone-portrait-outline",
+        tone: "secondary",
+        shortcut: "L",
+        onPress: () => handleResolve(selectedConflict._id, "accept_local"),
+        accessibilityLabel: `Accept local value for ${itemLabel}`,
+        accessibilityHint: "Resolves this conflict using local offline data",
+      },
+    ];
+  }, [handleResolve, selectedConflict]);
+
+  const batchCommandActions = useMemo<OperationalCommandAction[]>(
+    () => [
+      {
+        id: "batch-accept-server",
+        label: `Server (${selectedConflicts.size})`,
+        icon: "cloud-done-outline",
+        tone: "success",
+        shortcut: "Mod+V",
+        disabled: selectedConflicts.size === 0,
+        onPress: () => void handleBatchResolve("accept_server"),
+        accessibilityLabel: `Accept server values for ${selectedConflicts.size} selected conflicts`,
+        accessibilityHint: "Resolves the selected conflict queue using server data",
+      },
+      {
+        id: "batch-accept-local",
+        label: `Local (${selectedConflicts.size})`,
+        icon: "phone-portrait-outline",
+        tone: "secondary",
+        shortcut: "Mod+Shift+R",
+        disabled: selectedConflicts.size === 0,
+        onPress: () => void handleBatchResolve("accept_local"),
+        accessibilityLabel: `Accept local values for ${selectedConflicts.size} selected conflicts`,
+        accessibilityHint: "Resolves the selected conflict queue using local offline data",
+      },
+    ],
+    [handleBatchResolve, selectedConflicts.size]
+  );
+
+  const modalResolveCommandActions = useMemo<OperationalCommandAction[]>(
+    () => [
+      ...resolveCommandActions,
+      {
+        id: "cancel-resolution",
+        label: "Cancel",
+        icon: "close",
+        tone: "neutral",
+        shortcut: "Escape",
+        onPress: () => setModalVisible(false),
+        accessibilityLabel: "Cancel conflict resolution",
+        accessibilityHint: "Closes the resolve conflict dialog",
+      },
+    ],
+    [resolveCommandActions]
+  );
+
+  const detailPanel = useMemo(() => {
+    if (!selectedConflict) {
+      return (
+        <View style={styles.detailEmpty}>
+          <Ionicons
+            name="git-compare-outline"
+            size={48}
+            color={operationalTheme.colors.text.tertiary}
+          />
+          <Text style={styles.detailEmptyTitle}>Select a conflict</Text>
+          <Text style={styles.detailEmptyBody}>
+            Choose a row to compare local and server values before resolving.
+          </Text>
+        </View>
+      );
+    }
 
     return (
-      <AnimatedPressable
-        onPress={() => toggleConflictSelection(item._id)}
-        onLongPress={() => openConflictDetail(item)}
-        style={{ marginBottom: operationalTheme.spacing.md }}
-        accessibilityLabel={`${isSelected ? "Selected" : "Unselected"} conflict for ${item.item_code}, ${item.conflict_type}`}
-        accessibilityHint="Selects this conflict. Long press to open conflict details."
-        accessibilityState={{ selected: isSelected }}
-      >
-        <ModernCard
-          variant="outlined"
-          elevation="none"
-          padding={operationalTheme.spacing.md}
-          style={
-            isSelected
-              ? { borderColor: operationalTheme.colors.primary[500], borderWidth: 1 }
-              : undefined
-          }
-        >
-          <View style={styles.cardHeader}>
-            <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
-              {isSelected && <Ionicons name="checkmark" size={16} color="white" />}
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.itemCode}>{item.item_code}</Text>
-              <View style={styles.conflictTypeContainer}>
-                <Text style={styles.conflictType}>{item.conflict_type}</Text>
-              </View>
-            </View>
+      <View style={styles.detailPanel}>
+        <View style={styles.detailHeader}>
+          <View style={styles.detailTitleBlock}>
+            <Text style={styles.detailEyebrow}>Conflict detail</Text>
+            <Text style={styles.detailTitle} numberOfLines={2}>
+              {selectedConflict.item_code}
+            </Text>
+            <Text style={styles.detailSubtitle} numberOfLines={1}>
+              {selectedConflict.conflict_type.replace(/_/g, " ")}
+            </Text>
           </View>
-
-          <View style={styles.conflictData}>
-            <View style={styles.dataColumn}>
-              <Text style={styles.dataLabel}>Local Value</Text>
-              <ModernCard variant="outlined" elevation="none" padding={8}>
-                <Text style={styles.dataValue} numberOfLines={2}>
-                  {JSON.stringify(item.local_value)}
-                </Text>
-              </ModernCard>
-            </View>
-            <View style={styles.dataColumn}>
-              <Text style={styles.dataLabel}>Server Value</Text>
-              <ModernCard variant="outlined" elevation="none" padding={8}>
-                <Text style={styles.dataValue} numberOfLines={2}>
-                  {JSON.stringify(item.server_value)}
-                </Text>
-              </ModernCard>
-            </View>
+          <View style={styles.detailStatusBadge}>
+            <Text style={styles.detailStatusText}>
+              {String(selectedConflict.status || "pending").toUpperCase()}
+            </Text>
           </View>
+        </View>
 
-          <Text style={styles.timestamp}>
-            Detected: {new Date(item.detected_at).toLocaleString()}
-          </Text>
+        <View style={styles.detailMetaRow}>
+          <View style={styles.detailMetaItem}>
+            <Text style={styles.detailMetaLabel}>Session</Text>
+            <Text style={styles.detailMetaValue} numberOfLines={1}>
+              {selectedConflict.session_id || "N/A"}
+            </Text>
+          </View>
+          <View style={styles.detailMetaItem}>
+            <Text style={styles.detailMetaLabel}>Detected</Text>
+            <Text style={styles.detailMetaValue} numberOfLines={1}>
+              {formatConflictTimestamp(selectedConflict.detected_at)}
+            </Text>
+          </View>
+        </View>
 
-          {item.status !== "pending" && (
-            <View style={styles.resolvedInfo}>
-              <Ionicons
-                name="checkmark-circle-outline"
-                size={14}
-                color={operationalTheme.colors.success[500]}
-              />
-              <Text style={styles.resolvedText}>
-                Resolved: {item.resolution} by {item.resolved_by}
+        <View style={styles.detailCompareGrid}>
+          <View style={styles.detailCompareColumn}>
+            <Text style={styles.detailSectionTitle}>Local value</Text>
+            <View style={styles.detailCodeBlock}>
+              <Text style={styles.detailCodeText}>
+                {JSON.stringify(selectedConflict.local_value, null, 2)}
               </Text>
             </View>
-          )}
-        </ModernCard>
-      </AnimatedPressable>
+          </View>
+          <View style={styles.detailCompareColumn}>
+            <Text style={styles.detailSectionTitle}>Server value</Text>
+            <View style={styles.detailCodeBlock}>
+              <Text style={styles.detailCodeText}>
+                {JSON.stringify(selectedConflict.server_value, null, 2)}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {selectedConflict.status !== "pending" ? (
+          <View style={styles.detailResolvedCard}>
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={18}
+              color={operationalTheme.colors.success[500]}
+            />
+            <Text style={styles.detailResolvedText}>
+              Resolved {selectedConflict.resolution || ""} by{" "}
+              {selectedConflict.resolved_by || "system"}
+            </Text>
+          </View>
+        ) : null}
+
+        <TextInput
+          style={[styles.modalInput, styles.modalTextArea]}
+          placeholder="Resolution note (optional)"
+          placeholderTextColor={operationalTheme.colors.text.tertiary}
+          value={resolutionNote}
+          onChangeText={setResolutionNote}
+          multiline
+          accessibilityLabel="Resolution note"
+          accessibilityHint="Optional note recorded with this conflict resolution"
+        />
+
+        <OperationalCommandBar
+          compact
+          align="stretch"
+          title="Resolution command"
+          subtitle="Use S for server or L for local when focus is outside the note field."
+          actions={resolveCommandActions}
+          enableKeyboardShortcuts={!modalVisible}
+          style={styles.detailCommandBar}
+        />
+      </View>
     );
-  };
+  }, [
+    operationalTheme.colors.success,
+    operationalTheme.colors.text,
+    modalVisible,
+    resolutionNote,
+    resolveCommandActions,
+    selectedConflict,
+    styles,
+  ]);
 
   return (
     <View style={styles.screen}>
@@ -284,31 +540,38 @@ export default function SyncConflictsScreen() {
           </View>
         </Animated.View>
 
-        {stats && (
-          <Animated.View entering={statsEntry} style={styles.statsContainer}>
-            <StatsCard
-              title="Total"
-              value={stats.total?.toString() || "0"}
-              icon="alert-circle-outline"
-              variant="primary"
-              style={{ flex: 1 }}
-            />
-            <StatsCard
-              title="Pending"
-              value={stats.pending?.toString() || "0"}
-              icon="time-outline"
-              variant="warning"
-              style={{ flex: 1 }}
-            />
-            <StatsCard
-              title="Resolved"
-              value={stats.resolved?.toString() || "0"}
-              icon="checkmark-circle-outline"
-              variant="success"
-              style={{ flex: 1 }}
-            />
-          </Animated.View>
-        )}
+        <Animated.View entering={statsEntry} style={styles.statusStripWrap}>
+          <OperationalStatusStrip
+            compact
+            syncState={loading ? "Loading" : refreshing ? "Refreshing" : "Ready"}
+            pendingQueueCount={stats?.pending ?? conflicts.length}
+            runtimeHealth={(stats?.pending ?? conflicts.length) > 0 ? "Degraded" : "Stable"}
+            items={[
+              {
+                id: "conflict-total",
+                label: "Total",
+                value: stats?.total ?? conflicts.length,
+                tone: "info",
+                icon: "alert-circle-outline",
+              },
+              {
+                id: "conflict-resolved",
+                label: "Resolved",
+                value: stats?.resolved ?? 0,
+                tone: "success",
+                icon: "checkmark-circle-outline",
+              },
+              {
+                id: "conflict-selected",
+                label: "Selected",
+                value: selectedConflicts.size,
+                tone: selectedConflicts.size > 0 ? "active" : "neutral",
+                icon: "checkbox-outline",
+              },
+            ]}
+            testID="sync-conflicts-operational-status-strip"
+          />
+        </Animated.View>
 
         {/* Filters */}
         <Animated.View entering={filterEntry} style={styles.filterBar}>
@@ -353,38 +616,14 @@ export default function SyncConflictsScreen() {
 
         {selectedConflicts.size > 0 && (
           <Animated.View entering={batchEntry} style={styles.batchActions}>
-            <ModernCard
-              variant="outlined"
-              elevation="none"
-              padding={operationalTheme.spacing.md}
-              style={styles.batchCard}
-            >
-              <Text style={styles.batchText}>{selectedConflicts.size} selected</Text>
-              <View style={styles.batchButtons}>
-                <AnimatedPressable
-                  style={[
-                    styles.batchButton,
-                    { backgroundColor: operationalTheme.colors.success[500] },
-                  ]}
-                  onPress={() => handleBatchResolve("accept_server")}
-                  accessibilityLabel="Accept server values for selected conflicts"
-                  accessibilityHint="Resolves selected conflicts using server data"
-                >
-                  <Text style={styles.batchButtonText}>Accept Server</Text>
-                </AnimatedPressable>
-                <AnimatedPressable
-                  style={[
-                    styles.batchButton,
-                    { backgroundColor: operationalTheme.colors.secondary[500] },
-                  ]}
-                  onPress={() => handleBatchResolve("accept_local")}
-                  accessibilityLabel="Accept local values for selected conflicts"
-                  accessibilityHint="Resolves selected conflicts using local offline data"
-                >
-                  <Text style={styles.batchButtonText}>Accept Local</Text>
-                </AnimatedPressable>
-              </View>
-            </ModernCard>
+            <OperationalCommandBar
+              compact
+              align="stretch"
+              title={`${selectedConflicts.size} selected`}
+              subtitle="Cmd/Ctrl+V accepts server. Cmd/Ctrl+Shift+R accepts local."
+              actions={batchCommandActions}
+              style={styles.batchCommandBar}
+            />
           </Animated.View>
         )}
 
@@ -404,24 +643,43 @@ export default function SyncConflictsScreen() {
             <Text style={styles.emptySubtext}>System data is in sync</Text>
           </View>
         ) : (
-          <View style={{ flex: 1 }}>
-            <FlashList
-              data={conflicts}
-              renderItem={renderConflictCard}
-              // @ts-ignore
-              estimatedItemSize={200}
-              keyExtractor={(item) => item._id}
-              contentContainerStyle={styles.listContent}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={handleRefresh}
-                  tintColor={operationalTheme.colors.primary[500]}
-                  colors={[operationalTheme.colors.primary[500]]}
+          <OperationalSplitView
+            collapsible
+            persistSelection={false}
+            sidebarLabel="Conflict queue"
+            detailLabel={
+              selectedConflict
+                ? `Conflict detail for ${selectedConflict.item_code}`
+                : "Conflict detail"
+            }
+            style={styles.splitView}
+            sidebar={
+              <OperationalListSection
+                title="Conflict queue"
+                subtitle={`${conflicts.length} ${filterStatus} ${conflicts.length === 1 ? "conflict" : "conflicts"}`}
+                severity={conflicts.length > 0 ? "high" : "none"}
+                style={styles.listSection}
+                contentStyle={styles.sectionListContent}
+              >
+                <FlashList
+                  data={conflicts}
+                  renderItem={renderConflictCard}
+                  drawDistance={OPERATIONAL_LIST_ROW_ESTIMATED_HEIGHT.comfortable * 6}
+                  keyExtractor={(item) => item._id}
+                  contentContainerStyle={styles.listContent}
+                  refreshControl={
+                    <RefreshControl
+                      refreshing={refreshing}
+                      onRefresh={handleRefresh}
+                      tintColor={operationalTheme.colors.primary[500]}
+                      colors={[operationalTheme.colors.primary[500]]}
+                    />
+                  }
                 />
-              }
-            />
-          </View>
+              </OperationalListSection>
+            }
+            detail={detailPanel}
+          />
         )}
 
         <Modal
@@ -485,40 +743,15 @@ export default function SyncConflictsScreen() {
                     accessibilityHint="Optional note recorded with this conflict resolution"
                   />
 
-                  <View style={styles.modalActions}>
-                    <AnimatedPressable
-                      style={[
-                        styles.modalButton,
-                        { backgroundColor: operationalTheme.colors.success[500] },
-                      ]}
-                      onPress={() => handleResolve(selectedConflict._id, "accept_server")}
-                      accessibilityLabel="Accept server value"
-                      accessibilityHint="Resolves this conflict using server data"
-                    >
-                      <Text style={styles.modalButtonText}>Accept Server</Text>
-                    </AnimatedPressable>
-
-                    <AnimatedPressable
-                      style={[
-                        styles.modalButton,
-                        { backgroundColor: operationalTheme.colors.secondary[500] },
-                      ]}
-                      onPress={() => handleResolve(selectedConflict._id, "accept_local")}
-                      accessibilityLabel="Accept local value"
-                      accessibilityHint="Resolves this conflict using local offline data"
-                    >
-                      <Text style={styles.modalButtonText}>Accept Local</Text>
-                    </AnimatedPressable>
-                  </View>
-
-                  <AnimatedPressable
-                    style={[styles.modalButton, styles.modalButtonCancel]}
-                    onPress={() => setModalVisible(false)}
-                    accessibilityLabel="Cancel conflict resolution"
-                    accessibilityHint="Closes the resolve conflict dialog"
-                  >
-                    <Text style={styles.modalButtonText}>Cancel</Text>
-                  </AnimatedPressable>
+                  <OperationalCommandBar
+                    compact
+                    align="stretch"
+                    title="Resolution command"
+                    subtitle="Use S for server, L for local, or Escape to cancel when focus is outside the note field."
+                    actions={modalResolveCommandActions}
+                    enableKeyboardShortcuts={modalVisible}
+                    style={styles.modalCommandBar}
+                  />
                 </>
               )}
             </ModernCard>
@@ -550,7 +783,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: operationalTheme.spacing.md,
+      marginBottom: operationalTheme.spacing.sm,
     },
     headerLeft: {
       flexDirection: "row",
@@ -574,15 +807,13 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
       fontSize: operationalTheme.typography.fontSize.sm,
       color: operationalTheme.colors.text.secondary,
     },
-    statsContainer: {
-      flexDirection: "row",
-      gap: operationalTheme.spacing.sm,
-      marginBottom: operationalTheme.spacing.md,
+    statusStripWrap: {
+      marginBottom: operationalTheme.spacing.sm,
     },
     filterBar: {
       flexDirection: "row",
       gap: operationalTheme.spacing.sm,
-      marginBottom: operationalTheme.spacing.md,
+      marginBottom: operationalTheme.spacing.sm,
     },
     filterButton: {
       alignItems: "center",
@@ -594,7 +825,165 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
       color: operationalTheme.colors.text.secondary,
     },
     batchActions: {
-      marginBottom: operationalTheme.spacing.md,
+      marginBottom: operationalTheme.spacing.sm,
+    },
+    batchCommandBar: {
+      marginBottom: 0,
+    },
+    splitView: {
+      flex: 1,
+      minHeight: 0,
+    },
+    listSection: {
+      flex: 1,
+      minHeight: 220,
+    },
+    sectionListContent: {
+      flex: 1,
+    },
+    rowSpacing: {
+      marginBottom: operationalTheme.spacing.sm,
+    },
+    detailPanel: {
+      flex: 1,
+      minHeight: 0,
+      padding: operationalTheme.spacing.sm,
+      gap: operationalTheme.spacing.sm,
+    },
+    detailEmpty: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: operationalTheme.spacing.xl,
+    },
+    detailEmptyTitle: {
+      color: operationalTheme.colors.text.primary,
+      fontSize: operationalTheme.typography.fontSize.lg,
+      fontWeight: "800",
+      marginTop: operationalTheme.spacing.md,
+    },
+    detailEmptyBody: {
+      color: operationalTheme.colors.text.secondary,
+      fontSize: operationalTheme.typography.fontSize.sm,
+      lineHeight: 20,
+      textAlign: "center",
+      marginTop: operationalTheme.spacing.xs,
+    },
+    detailHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      gap: operationalTheme.spacing.md,
+    },
+    detailTitleBlock: {
+      flex: 1,
+      minWidth: 0,
+    },
+    detailEyebrow: {
+      color: operationalTheme.colors.text.tertiary,
+      fontSize: operationalTheme.typography.fontSize.xs,
+      fontWeight: "800",
+      textTransform: "uppercase",
+      marginBottom: operationalTheme.spacing.xs,
+    },
+    detailTitle: {
+      color: operationalTheme.colors.text.primary,
+      fontSize: operationalTheme.typography.fontSize["2xl"],
+      fontWeight: "800",
+    },
+    detailSubtitle: {
+      color: operationalTheme.colors.text.secondary,
+      fontSize: operationalTheme.typography.fontSize.sm,
+      fontWeight: "600",
+      marginTop: operationalTheme.spacing.xs,
+      textTransform: "capitalize",
+    },
+    detailStatusBadge: {
+      borderRadius: operationalTheme.borderRadius.full,
+      borderWidth: 1,
+      borderColor: colorWithAlpha(operationalTheme.colors.warning[500], 0.34),
+      backgroundColor: colorWithAlpha(operationalTheme.colors.warning[500], 0.1),
+      paddingHorizontal: operationalTheme.spacing.sm,
+      paddingVertical: operationalTheme.spacing.xs,
+    },
+    detailStatusText: {
+      color: operationalTheme.colors.warning[500],
+      fontSize: operationalTheme.typography.fontSize.xs,
+      fontWeight: "800",
+    },
+    detailMetaRow: {
+      flexDirection: "row",
+      gap: operationalTheme.spacing.sm,
+    },
+    detailMetaItem: {
+      flex: 1,
+      minWidth: 0,
+      borderWidth: 1,
+      borderColor: operationalTheme.colors.border.light,
+      borderRadius: operationalTheme.borderRadius.md,
+      backgroundColor: operationalTheme.colors.background.glass,
+      padding: operationalTheme.spacing.sm,
+    },
+    detailMetaLabel: {
+      color: operationalTheme.colors.text.tertiary,
+      fontSize: operationalTheme.typography.fontSize.xs,
+      fontWeight: "800",
+      textTransform: "uppercase",
+      marginBottom: operationalTheme.spacing.xs,
+    },
+    detailMetaValue: {
+      color: operationalTheme.colors.text.primary,
+      fontSize: operationalTheme.typography.fontSize.xs,
+      fontWeight: "700",
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    },
+    detailCompareGrid: {
+      flexDirection: "row",
+      gap: operationalTheme.spacing.sm,
+    },
+    detailCompareColumn: {
+      flex: 1,
+      minWidth: 0,
+    },
+    detailSectionTitle: {
+      color: operationalTheme.colors.text.tertiary,
+      fontSize: operationalTheme.typography.fontSize.xs,
+      fontWeight: "800",
+      textTransform: "uppercase",
+      marginBottom: operationalTheme.spacing.xs,
+    },
+    detailCodeBlock: {
+      minHeight: 120,
+      borderWidth: 1,
+      borderColor: operationalTheme.colors.border.light,
+      borderRadius: operationalTheme.borderRadius.md,
+      backgroundColor: colorWithAlpha(operationalTheme.colors.text.inverse, 0.05),
+      padding: operationalTheme.spacing.sm,
+    },
+    detailCodeText: {
+      color: operationalTheme.colors.text.primary,
+      fontSize: operationalTheme.typography.fontSize.xs,
+      lineHeight: 18,
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    },
+    detailResolvedCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: operationalTheme.spacing.sm,
+      borderWidth: 1,
+      borderColor: colorWithAlpha(operationalTheme.colors.success[500], 0.28),
+      borderRadius: operationalTheme.borderRadius.md,
+      backgroundColor: colorWithAlpha(operationalTheme.colors.success[500], 0.08),
+      padding: operationalTheme.spacing.sm,
+    },
+    detailResolvedText: {
+      flex: 1,
+      color: operationalTheme.colors.success[500],
+      fontSize: operationalTheme.typography.fontSize.xs,
+      fontWeight: "700",
+    },
+    detailCommandBar: {
+      marginTop: operationalTheme.spacing.xs,
     },
     batchCard: {
       flexDirection: "row",
@@ -780,25 +1169,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) =>
       minHeight: 100,
       textAlignVertical: "top",
     },
-    modalActions: {
-      flexDirection: "row",
-      gap: operationalTheme.spacing.md,
-      marginBottom: operationalTheme.spacing.md,
-    },
-    modalButton: {
-      flex: 1,
-      paddingVertical: operationalTheme.spacing.md,
-      borderRadius: operationalTheme.borderRadius.full,
-      alignItems: "center",
-    },
-    modalButtonCancel: {
-      backgroundColor: operationalTheme.colors.background.glass,
-      borderWidth: 1,
-      borderColor: operationalTheme.colors.border.light,
-    },
-    modalButtonText: {
-      color: operationalTheme.colors.text.primary,
-      fontSize: operationalTheme.typography.fontSize.md,
-      fontWeight: "600",
+    modalCommandBar: {
+      marginTop: operationalTheme.spacing.md,
     },
   });

@@ -238,6 +238,8 @@ class TestCreateSessionEndpoint:
         mock_db.session_snapshots = AsyncMock()
         mock_db.session_snapshots.find_one = AsyncMock(return_value=None)
         mock_db.session_snapshots.insert_one = AsyncMock()
+        mock_db.count_lines = MagicMock()
+        mock_db.count_lines.find = MagicMock(return_value=_AsyncCursor([]))
 
         async def override_get_db():
             return mock_db

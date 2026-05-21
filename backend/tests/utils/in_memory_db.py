@@ -22,11 +22,14 @@ def _normalize_value(val: Any) -> Any:
     """Normalize values for comparison (e.g. ObjectId -> str)."""
     if hasattr(val, "__class__") and val.__class__.__name__ == "ObjectId":
         return str(val)
+    if isinstance(val, datetime) and val.tzinfo is not None:
+        return val.astimezone(timezone.utc).replace(tzinfo=None)
     return val
 
 
 def _match_condition(value: Any, condition: dict[str, Any]) -> bool:
     """Evaluate comparison operators."""
+    value = _normalize_value(value)
     # Handle regex with options if present
     if "$regex" in condition:
         import re
@@ -454,6 +457,7 @@ class InMemoryDatabase:
         self.erp_items = InMemoryCollection()
         self.erp_sync_metadata = InMemoryCollection()
         self.erp_config = InMemoryCollection()
+        self.config = InMemoryCollection()
         self.verification_logs = InMemoryCollection()
         self.verification_sessions = InMemoryCollection()
         self.verification_records = InMemoryCollection()
@@ -485,6 +489,11 @@ class InMemoryDatabase:
         self.verified_items_projection = InMemoryCollection()
         self.variance_summary_projection = InMemoryCollection()
         self.variance_threshold_configs = InMemoryCollection()
+        self.report_templates = InMemoryCollection()
+        self.generated_reports = InMemoryCollection()
+        self.report_files = InMemoryCollection()
+        self.dynamic_field_values = InMemoryCollection()
+        self.session_items = InMemoryCollection()
 
         # Governance Collections
         self.system_settings = InMemoryCollection()

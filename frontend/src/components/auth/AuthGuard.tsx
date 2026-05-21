@@ -75,6 +75,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       "reset-password",
     ]);
     const inAuthGroup = publicSegments.has(firstSegment);
+    const isAuthenticatedUtilityRoute = firstSegment === "help";
     const inProtectedGroup =
       firstSegment === "staff" || firstSegment === "supervisor" || firstSegment === "admin";
     const requiresAuth = !inAuthGroup;
@@ -99,7 +100,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (user && inAuthGroup) {
+    if (user && inAuthGroup && !isAuthenticatedUtilityRoute) {
       if (flags.uiAuthRedirectV2) {
         const authState = useAuthStore.getState();
         void authState

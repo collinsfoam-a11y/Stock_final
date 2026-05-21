@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: modernSpacing.md,
     paddingVertical: modernSpacing.sm,
-    backgroundColor: "rgba(30, 41, 59, 0.85)",
+    backgroundColor: "rgba(44, 41, 38, 0.85)",
     borderRadius: modernBorderRadius.lg,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.1)",

@@ -18,7 +18,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 
 from backend.api.response_models import PaginatedResponse
-from backend.api.schemas import Session, SessionCreate
+from backend.api.schemas import Session, SessionCreate, SessionType
 from backend.auth.dependencies import (
     get_current_user_async as get_current_user,
     require_role,
@@ -46,6 +46,10 @@ router = APIRouter(prefix="/api/sessions", tags=["Session Management"])
 
 ACTIVE_SESSION_STATUSES = ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]
 
+# ---------------------------------------------------------------------------
+# SECTION 1: Schemas & enums
+# (target: backend/api/sessions/_schemas.py in future split)
+# ---------------------------------------------------------------------------
 
 def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
     return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
@@ -222,6 +226,11 @@ PENDING_REVIEW_SLA_MINUTES = 20
 RECOUNT_SLA_MINUTES = 30
 INACTIVE_SESSION_SLA_MINUTES = 10
 
+
+# ---------------------------------------------------------------------------
+# SECTION 2: Internal helper functions
+# (target: backend/api/sessions/_helpers.py in future split)
+# ---------------------------------------------------------------------------
 
 def _normalize_location_value(value: Any) -> Optional[str]:
     if not isinstance(value, str):
@@ -812,7 +821,7 @@ def _build_new_session(
         rack_no=rack_no,
         staff_user=current_user["username"],
         staff_name=current_user.get("full_name", current_user["username"]),
-        type=session_data.type or "STANDARD",
+        type=session_data.type or SessionType.STANDARD.value,
         status="OPEN",
         started_at=now,
         last_heartbeat=now,
@@ -1153,6 +1162,11 @@ def _sort_user_workflows(results: list[UserWorkflowSummary]) -> None:
 # Endpoints
 
 
+# ---------------------------------------------------------------------------
+# SECTION 3: Query / read routes — GET
+# (target: backend/api/sessions/_routes_query.py in future split)
+# ---------------------------------------------------------------------------
+
 @router.get("/", response_model=PaginatedResponse[Session])
 @router.get("", response_model=PaginatedResponse[Session])
 async def get_sessions(
@@ -1220,6 +1234,11 @@ async def get_sessions(
         page_size=page_size,
     )
 
+
+# ---------------------------------------------------------------------------
+# SECTION 4: Lifecycle routes — POST / PUT (create, status changes, finalize)
+# (target: backend/api/sessions/_routes_lifecycle.py in future split)
+# ---------------------------------------------------------------------------
 
 @router.post("/", response_model=Session)
 @router.post("", response_model=Session)
@@ -1820,6 +1839,11 @@ async def check_session_integrity(
         message=msg,
     )
 
+
+# ---------------------------------------------------------------------------
+# SECTION 5: Admin routes — bulk close, logout-all
+# (target: backend/api/sessions/_routes_admin.py in future split)
+# ---------------------------------------------------------------------------
 
 @router.post("/logout-all")
 async def logout_all_sessions(

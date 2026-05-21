@@ -20,7 +20,7 @@
  */
 import api from "../httpClient";
 import { createLogger } from "../logging";
-import { isOnline } from "../../utils/network";
+import { shouldAttemptApiCall } from "../../utils/network";
 
 const log = createLogger("AnalyticsApi");
 
@@ -217,7 +217,7 @@ export const analyticsApi = {
   async getSessionAnalytics(): Promise<SessionAnalyticsResponse> {
     log.debug("Fetching session analytics");
 
-    if (!(await isOnline())) {
+    if (!(shouldAttemptApiCall())) {
       throw new AnalyticsApiError(
         "ANALYTICS_OFFLINE",
         "Analytics require network connection",
@@ -262,7 +262,7 @@ export const analyticsApi = {
   }): Promise<EnrichmentStats> {
     log.debug("Fetching enrichment stats", params);
 
-    if (!(await isOnline())) {
+    if (!(shouldAttemptApiCall())) {
       throw new AnalyticsApiError(
         "ENRICHMENT_STATS_OFFLINE",
         "Enrichment stats require network",
@@ -307,7 +307,7 @@ export const analyticsApi = {
   async getSyncStats(): Promise<SyncStats> {
     log.debug("Fetching sync stats");
 
-    if (!(await isOnline())) {
+    if (!(shouldAttemptApiCall())) {
       // Return empty stats when offline
       return {
         pending_changes: 0,
@@ -336,7 +336,7 @@ export const analyticsApi = {
   async getConflictStats(): Promise<ConflictStats> {
     log.debug("Fetching conflict stats");
 
-    if (!(await isOnline())) {
+    if (!(shouldAttemptApiCall())) {
       throw new AnalyticsApiError(
         "CONFLICT_STATS_OFFLINE",
         "Conflict stats require network",
@@ -372,7 +372,7 @@ export const analyticsApi = {
   async getDashboardSummary(): Promise<DashboardSummary> {
     log.debug("Fetching dashboard summary");
 
-    if (!(await isOnline())) {
+    if (!(shouldAttemptApiCall())) {
       throw new AnalyticsApiError(
         "DASHBOARD_OFFLINE",
         "Dashboard requires network connection",
@@ -475,7 +475,7 @@ export const analyticsApi = {
   ): Promise<VarianceTrendPoint[]> {
     log.debug("Fetching variance trends", { startDate, endDate, warehouseId });
 
-    if (!(await isOnline())) {
+    if (!(shouldAttemptApiCall())) {
       throw new AnalyticsApiError(
         "VARIANCE_OFFLINE",
         "Variance analysis requires network",
@@ -523,7 +523,7 @@ export const analyticsApi = {
   async getPerformanceMetrics(staffId?: string): Promise<PerformanceMetrics> {
     log.debug("Fetching performance metrics", { staffId });
 
-    if (!(await isOnline())) {
+    if (!(shouldAttemptApiCall())) {
       throw new AnalyticsApiError(
         "PERFORMANCE_OFFLINE",
         "Performance metrics require network",
@@ -577,7 +577,7 @@ export const analyticsApi = {
   ): Promise<DashboardMetrics> {
     log.debug("Fetching dashboard metrics", { valuationBasis });
 
-    if (!(await isOnline())) {
+    if (!(shouldAttemptApiCall())) {
       throw new AnalyticsApiError(
         "METRICS_OFFLINE",
         "Dashboard metrics require network",

@@ -8,7 +8,9 @@ import { getStockQty } from "@/utils/itemBatchUtils";
 import { borderRadius, colors, spacing, typography } from "@/theme/legacyCompat";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { colorWithAlpha } from "@/theme/themeTokens";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
+import { ScannerFeedbackState } from "@/components/feedback/ScannerFeedbackState";
+import type { ScannerFeedbackStateValue } from "@/components/feedback/ScannerFeedbackState";
 
 export type ScanLookupNotice = {
   actionLabel?: string;
@@ -85,6 +87,13 @@ function buildItemKey(item: ScanLookupItem, index: number) {
   return `${code}-${barcode}-${id}-${index}`;
 }
 
+function buildItemAccessibilityLabel(item: ScanLookupItem, prefix: string, stockQty?: number) {
+  const itemName = item.item_name || "Unnamed item";
+  const itemCode = item.item_code || "No item code";
+  const stockLabel = stockQty === undefined ? "" : `, stock ${stockQty}`;
+  return `${prefix} ${itemName}, item code ${itemCode}${stockLabel}`;
+}
+
 const RecentItemCard = React.memo(function RecentItemCard({
   item,
   onPress,
@@ -107,6 +116,8 @@ const RecentItemCard = React.memo(function RecentItemCard({
         },
       ]}
       onPress={onPress}
+      accessibilityLabel={buildItemAccessibilityLabel(item, "Open recent item")}
+      accessibilityHint="Opens item verification details"
     >
       <View style={styles.recentRow}>
         <View style={[styles.recentIcon, { backgroundColor: iconWash }]}>
@@ -141,7 +152,15 @@ const SearchResultItem = React.memo(function SearchResultItem({
   const iconWash = uiTokens.mode === "dark" ? "rgba(88, 166, 255, 0.14)" : colors.primary[50];
 
   return (
-    <TouchableOpacity style={styles.resultItem} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      {...getAccessibleButtonProps({
+        label: buildItemAccessibilityLabel(item, "Open search result", stockQty),
+        hint: "Opens item verification details",
+      })}
+      style={styles.resultItem}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <View style={[styles.resultIcon, { backgroundColor: iconWash }]}>
         <Ionicons name="cube-outline" size={20} color={uiTokens.colors.accent} />
       </View>
@@ -164,10 +183,15 @@ const SearchResultItem = React.memo(function SearchResultItem({
 RecentItemCard.displayName = "RecentItemCard";
 SearchResultItem.displayName = "SearchResultItem";
 
-const NOTICE_ICONS: Record<ScanLookupNotice["type"], keyof typeof Ionicons.glyphMap> = {
-  error: "alert-circle-outline",
-  info: "information-circle-outline",
-  warning: "warning-outline",
+const MAX_INLINE_SEARCH_RESULTS = 8;
+
+const getNoticeState = (
+  noticeType: ScanLookupNotice["type"],
+  message: string
+): ScannerFeedbackStateValue => {
+  if (noticeType === "error") return "error";
+  if (message.toLowerCase().includes("not found")) return "not_found";
+  return noticeType === "warning" ? "warning" : "captured";
 };
 
 export function ScanLookupPanel({
@@ -191,12 +215,12 @@ export function ScanLookupPanel({
     borderColor: uiTokens.colors.border,
   };
   const skeletonSurface = { backgroundColor: uiTokens.colors.border };
-  const noticeColor =
-    notice?.type === "error"
-      ? uiTokens.colors.error
-      : notice?.type === "warning"
-        ? uiTokens.colors.warning
-        : uiTokens.colors.info;
+  const trimmedSearchQuery = searchQuery.trim();
+  const searchButtonLabel = trimmedSearchQuery
+    ? "Submit barcode or item search"
+    : "Open barcode scanner";
+  const displayedSearchResults = searchResults.slice(0, MAX_INLINE_SEARCH_RESULTS);
+  const hiddenSearchResultCount = Math.max(searchResults.length - displayedSearchResults.length, 0);
 
   return (
     <>
@@ -234,12 +258,20 @@ export function ScanLookupPanel({
               ],
             ]}
             testID="scan-search-submit"
-            onPress={searchQuery.trim() ? onSubmitSearch : onOpenScanner}
+            onPress={trimmedSearchQuery ? onSubmitSearch : onOpenScanner}
             disabled={loading}
             activeOpacity={0.7}
+            {...getAccessibleButtonProps({
+              label: searchButtonLabel,
+              hint: trimmedSearchQuery
+                ? "Searches for the entered barcode or item code"
+                : "Opens the camera scanner",
+              disabled: loading,
+              busy: loading,
+            })}
           >
             <Ionicons
-              name={searchQuery.trim() ? "arrow-forward" : "scan"}
+              name={trimmedSearchQuery ? "arrow-forward" : "scan"}
               size={24}
               color={colors.white}
             />
@@ -247,67 +279,41 @@ export function ScanLookupPanel({
         </View>
 
         {notice ? (
-          <View
-            style={[
-              styles.notice,
-              {
-                backgroundColor: colorWithAlpha(noticeColor, 0.08),
-                borderColor: colorWithAlpha(noticeColor, 0.28),
-              },
-            ]}
+          <ScannerFeedbackState
+            compact
+            state={getNoticeState(notice.type, `${notice.title} ${notice.message}`)}
+            title={notice.title}
+            message={notice.message}
+            barcode={trimmedSearchQuery || undefined}
+            retry={
+              notice.actionLabel && onRetryNotice
+                ? {
+                    label: notice.actionLabel,
+                    onPress: onRetryNotice,
+                    accessibilityHint: "Retries the scan lookup action",
+                  }
+                : undefined
+            }
+            dismiss={
+              onDismissNotice
+                ? {
+                    onPress: onDismissNotice,
+                    accessibilityLabel: "Dismiss scan message",
+                    accessibilityHint: "Hides this scan lookup message",
+                  }
+                : undefined
+            }
+            style={styles.notice}
             testID="scan-lookup-notice"
-          >
-            <Ionicons
-              name={NOTICE_ICONS[notice.type]}
-              size={20}
-              color={noticeColor}
-              style={styles.noticeIcon}
-            />
-            <View style={styles.noticeBody}>
-              <Text style={[styles.noticeTitle, { color: uiTokens.colors.textPrimary }]}>
-                {notice.title}
-              </Text>
-              <Text style={[styles.noticeMessage, { color: uiTokens.colors.textSecondary }]}>
-                {notice.message}
-              </Text>
-              {notice.actionLabel && onRetryNotice ? (
-                <TouchableOpacity
-                  style={[
-                    styles.noticeAction,
-                    {
-                      borderColor: colorWithAlpha(noticeColor, 0.36),
-                      backgroundColor: colorWithAlpha(noticeColor, 0.12),
-                    },
-                  ]}
-                  onPress={onRetryNotice}
-                  accessibilityRole="button"
-                  accessibilityLabel={notice.actionLabel}
-                >
-                  <Text style={[styles.noticeActionText, { color: noticeColor }]}>
-                    {notice.actionLabel}
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-            {onDismissNotice ? (
-              <TouchableOpacity
-                style={styles.noticeDismiss}
-                onPress={onDismissNotice}
-                accessibilityRole="button"
-                accessibilityLabel="Dismiss scan message"
-              >
-                <Ionicons name="close" size={18} color={uiTokens.colors.textMuted} />
-              </TouchableOpacity>
-            ) : null}
-          </View>
+          />
         ) : null}
 
         {searchResults.length > 0 && (
           <View style={[styles.searchResultsContainer, surfaceStyle]}>
-            {searchResults.map((item, index) => (
+            {displayedSearchResults.map((item, index) => (
               <React.Fragment key={buildItemKey(item, index)}>
                 <SearchResultItem item={item} onPress={() => onPressItem(item)} />
-                {index < searchResults.length - 1 && (
+                {index < displayedSearchResults.length - 1 && (
                   <View
                     style={[
                       styles.searchResultSeparator,
@@ -317,6 +323,20 @@ export function ScanLookupPanel({
                 )}
               </React.Fragment>
             ))}
+            {hiddenSearchResultCount > 0 ? (
+              <View
+                style={[
+                  styles.searchResultsSummary,
+                  { borderTopColor: uiTokens.colors.border },
+                ]}
+              >
+                <Ionicons name="funnel-outline" size={16} color={uiTokens.colors.textMuted} />
+                <Text style={[styles.searchResultsSummaryText, { color: uiTokens.colors.textSecondary }]}>
+                  Showing first {displayedSearchResults.length} of {searchResults.length}. Keep
+                  typing to narrow the match.
+                </Text>
+              </View>
+            ) : null}
           </View>
         )}
       </View>
@@ -422,51 +442,7 @@ const styles = StyleSheet.create({
     borderColor: colors.gray[300],
   },
   notice: {
-    flexDirection: "row",
-    alignItems: "flex-start",
     marginTop: spacing.sm,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-  },
-  noticeIcon: {
-    marginRight: spacing.sm,
-    marginTop: 2,
-  },
-  noticeBody: {
-    flex: 1,
-  },
-  noticeTitle: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[900],
-  },
-  noticeMessage: {
-    marginTop: 2,
-    fontSize: typography.fontSize.xs,
-    lineHeight: 18,
-    color: colors.gray[600],
-  },
-  noticeAction: {
-    alignSelf: "flex-start",
-    justifyContent: "center",
-    minHeight: 44,
-    marginTop: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-  },
-  noticeActionText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  noticeDismiss: {
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 44,
-    minHeight: 44,
-    marginLeft: spacing.xs,
-    marginTop: -spacing.xs,
   },
   searchResultsContainer: {
     marginTop: spacing.sm,
@@ -481,6 +457,19 @@ const styles = StyleSheet.create({
   searchResultSeparator: {
     height: 1,
     backgroundColor: colors.gray[100],
+  },
+  searchResultsSummary: {
+    alignItems: "center",
+    borderTopWidth: 1,
+    flexDirection: "row",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  searchResultsSummaryText: {
+    flex: 1,
+    fontSize: typography.fontSize.xs,
+    lineHeight: 18,
   },
   resultItem: {
     flexDirection: "row",

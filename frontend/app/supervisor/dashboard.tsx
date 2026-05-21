@@ -9,8 +9,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Platform,
-  RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -50,6 +48,14 @@ import { createSession, getSessions, getWarehouses, getZones } from "../../src/s
 import { theme } from "../../src/styles/modernDesignSystem";
 import { colorWithAlpha } from "../../src/theme/themeTokens";
 import { Session } from "../../src/types";
+
+type RecommendedActionItem = {
+  key: string;
+  title: string;
+  description: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+};
 
 export default function SupervisorDashboard() {
   const router = useRouter();
@@ -336,10 +342,7 @@ export default function SupervisorDashboard() {
     highRiskSessions: stats.highRiskSessions,
     openSessions: stats.openSessions,
     totalSessions: stats.totalSessions,
-    onCreateSession: () => setShowCreateSessionModal(true),
-    onOpenHelp: () => router.push("/help" as any),
     onOpenSessions: () => router.push("/supervisor/sessions" as any),
-    onOpenSyncConflicts: () => router.push("/supervisor/sync-conflicts" as any),
     onOpenVariances: () => router.push("/supervisor/variances" as any),
     onOpenWorkflows: () => router.push("/supervisor/user-workflows" as any),
   });
@@ -358,119 +361,80 @@ export default function SupervisorDashboard() {
       }}
       backgroundType="solid"
       statusBarStyle="dark"
-      contentMode="static"
+      contentMode="scroll"
       noPadding
+      loading={loading && !refreshing}
+      loadingText="Loading dashboard..."
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      contentContainerStyle={styles.contentContainer}
     >
-      {loading && !refreshing ? (
-        <View style={styles.loadingState}>
-          <Ionicons
-            name="cube-outline"
-            size={48}
-            color={uiTokens.colors.accent}
-            style={styles.loadingIcon}
-          />
-          <Text style={[styles.loadingText, { color: uiTokens.colors.textSecondary }]}>
-            Loading Dashboard...
-          </Text>
-        </View>
-      ) : (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          nestedScrollEnabled
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={uiTokens.colors.accent}
-              colors={[uiTokens.colors.accent]}
-            />
-          }
-          showsVerticalScrollIndicator={false}
-        >
-          <SupervisorOverviewCard
-            completionPercentage={completionPercentage}
-            highRiskSessions={stats.highRiskSessions}
-            openSessions={stats.openSessions}
-            overviewActions={overviewActions}
-          />
+      <SupervisorOverviewCard
+        completionPercentage={completionPercentage}
+        highRiskSessions={stats.highRiskSessions}
+        openSessions={stats.openSessions}
+        overviewActions={overviewActions}
+      />
 
-          <SupervisorStatsSection
-            completionPercentage={completionPercentage}
-            onStatPress={handleStatPress}
-            stats={stats}
-          />
+      <SupervisorStatsSection
+        completionPercentage={completionPercentage}
+        onStatPress={handleStatPress}
+        stats={stats}
+      />
 
-          <ModernCard style={styles.recommendationsCard} variant="outlined" elevation="none">
-            <View style={styles.recommendationsHeader}>
-              <Ionicons name="bulb-outline" size={18} color={uiTokens.colors.accent} />
-              <Text style={[styles.recommendationsTitle, { color: uiTokens.colors.textPrimary }]}>
-                Suggested next steps
-              </Text>
-            </View>
-            <View style={styles.recommendationsList}>
-              {recommendedActions.map((action) => (
-                <AnimatedPressable
-                  key={action.key}
+      {recommendedActions.length > 0 ? (
+        <ModernCard style={styles.recommendationsCard} variant="outlined" elevation="none">
+          <View style={styles.recommendationsHeader}>
+            <Ionicons name="bulb-outline" size={18} color={uiTokens.colors.accent} />
+            <Text style={[styles.recommendationsTitle, { color: uiTokens.colors.textPrimary }]}>Suggested next steps</Text>
+          </View>
+          <View style={styles.recommendationsList}>
+            {recommendedActions.map((action) => (
+              <AnimatedPressable
+                key={action.key}
+                style={[
+                  styles.recommendationAction,
+                  {
+                    backgroundColor: uiTokens.colors.surface,
+                    borderColor: uiTokens.colors.border,
+                  },
+                ]}
+                onPress={action.onPress}
+                accessibilityLabel={action.title}
+                accessibilityHint={action.description}
+              >
+                <View
                   style={[
-                    styles.recommendationAction,
-                    {
-                      backgroundColor: uiTokens.colors.surface,
-                      borderColor: uiTokens.colors.border,
-                    },
+                    styles.recommendationIcon,
+                    { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.12) },
                   ]}
-                  onPress={action.onPress}
-                  accessibilityLabel={action.title}
-                  accessibilityHint={action.description}
                 >
-                  <View
-                    style={[
-                      styles.recommendationIcon,
-                      { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.12) },
-                    ]}
-                  >
-                    <Ionicons name={action.icon} size={16} color={uiTokens.colors.accent} />
-                  </View>
-                  <View style={styles.recommendationCopy}>
-                    <Text
-                      style={[styles.recommendationTitle, { color: uiTokens.colors.textPrimary }]}
-                    >
-                      {action.title}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.recommendationDescription,
-                        { color: uiTokens.colors.textSecondary },
-                      ]}
-                    >
-                      {action.description}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color={uiTokens.colors.textMuted} />
-                </AnimatedPressable>
-              ))}
-            </View>
-          </ModernCard>
+                  <Ionicons name={action.icon} size={16} color={uiTokens.colors.accent} />
+                </View>
+                <View style={styles.recommendationCopy}>
+                  <Text style={[styles.recommendationTitle, { color: uiTokens.colors.textPrimary }]}> {action.title}</Text>
+                  <Text style={[styles.recommendationDescription, { color: uiTokens.colors.textSecondary }]}> {action.description}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={uiTokens.colors.textMuted} />
+              </AnimatedPressable>
+            ))}
+          </View>
+        </ModernCard>
+      ) : null}
 
-          <SupervisorActivitySection
-            activities={activities}
-            onOpenActivity={(activityId) => router.push(`/supervisor/session/${activityId}` as any)}
-            onViewAll={() => router.push("/supervisor/activity-logs" as any)}
-          />
+      <SupervisorActivitySection
+        activities={activities}
+        onOpenActivity={(activityId) => router.push(`/supervisor/session/${activityId}` as any)}
+        onViewAll={() => router.push("/supervisor/activity-logs" as any)}
+      />
 
-          <SupervisorRecentSessionsSection
-            onOpenSession={(sessionId) => router.push(`/supervisor/session/${sessionId}` as any)}
-            onViewAll={() => router.push("/supervisor/sessions" as any)}
-            sessions={sessions}
-          />
+      <SupervisorRecentSessionsSection
+        onOpenSession={(sessionId) => router.push(`/supervisor/session/${sessionId}` as any)}
+        onViewAll={() => router.push("/supervisor/sessions" as any)}
+        sessions={sessions}
+      />
 
-          <View
-            style={[styles.bottomSpacer, !showCompactQuickActions && styles.bottomSpacerCompact]}
-          />
-        </ScrollView>
-      )}
+      <View style={[styles.bottomSpacer, !showCompactQuickActions && styles.bottomSpacerCompact]} />
 
       <CreateSessionModal
         isCreatingSession={isCreatingSession}
@@ -498,21 +462,10 @@ export default function SupervisorDashboard() {
   );
 }
 
-interface RecommendedActionItem {
-  description: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  key: string;
-  onPress: () => void;
-  title: string;
-}
-
 function buildRecommendedActions({
   completionPercentage,
   highRiskSessions,
-  onCreateSession,
-  onOpenHelp,
   onOpenSessions,
-  onOpenSyncConflicts,
   onOpenVariances,
   onOpenWorkflows,
   openSessions,
@@ -520,10 +473,7 @@ function buildRecommendedActions({
 }: {
   completionPercentage: number;
   highRiskSessions: number;
-  onCreateSession: () => void;
-  onOpenHelp: () => void;
   onOpenSessions: () => void;
-  onOpenSyncConflicts: () => void;
   onOpenVariances: () => void;
   onOpenWorkflows: () => void;
   openSessions: number;
@@ -558,34 +508,6 @@ function buildRecommendedActions({
       description: "Completion is below 70%. Review open sessions and clear pending items.",
       icon: "albums-outline",
       onPress: onOpenSessions,
-    });
-  }
-
-  actions.push({
-    key: "sync-health",
-    title: "Resolve sync issues",
-    description: "Fix sync issues so data stays up to date across devices.",
-    icon: "sync-outline",
-    onPress: onOpenSyncConflicts,
-  });
-
-  if (totalSessions === 0) {
-    actions.unshift({
-      key: "create-session",
-      title: "Create first session",
-      description: "No session exists yet. Start a session so staff can begin counting.",
-      icon: "add-circle-outline",
-      onPress: onCreateSession,
-    });
-  }
-
-  if (actions.length < 3) {
-    actions.push({
-      key: "open-help",
-      title: "Open help guide",
-      description: "Need support? Use the help page for quick instructions.",
-      icon: "help-circle-outline",
-      onPress: onOpenHelp,
     });
   }
 

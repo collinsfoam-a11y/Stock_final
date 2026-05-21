@@ -11,8 +11,7 @@ import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
 export default function StaffAppearanceScreen() {
   return (
     <ScreenContainer
-      backgroundType="aurora"
-      auroraVariant="primary"
+      backgroundType="solid"
       header={{
         title: "Appearance",
         showBackButton: true,
@@ -21,11 +20,7 @@ export default function StaffAppearanceScreen() {
       }}
       contentMode="scroll"
     >
-      <AppearanceSettings
-        showTitle={false}
-        scrollable={false}
-        compact={false}
-      />
+      <AppearanceSettings showTitle={false} scrollable={false} compact={false} />
     </ScreenContainer>
   );
 }

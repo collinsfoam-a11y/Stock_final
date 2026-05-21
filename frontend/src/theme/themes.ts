@@ -173,13 +173,13 @@ export type AppTheme = {
 // Common Aurora tokens to reuse
 const commonAurora = {
   colors: {
-    accent: modernColors.primary[400],
-    accentLight: modernColors.primary[300],
-    accentDark: modernColors.primary[600],
+    accent: modernColors.primary[400],       // Terracotta 400
+    accentLight: modernColors.primary[300],  // Terracotta 300
+    accentDark: modernColors.primary[600],   // Terracotta 600
     danger: modernColors.error.main,
-    overlay: "rgba(0, 0, 0, 0.5)",
-    glass: "rgba(255, 255, 255, 0.15)",
-    shimmer: ["rgba(255,255,255,0)", "rgba(255,255,255,0.05)", "rgba(255,255,255,0)"] as const,
+    overlay: "rgba(12, 10, 9, 0.5)",
+    glass: "rgba(255, 250, 245, 0.12)",
+    shimmer: ["rgba(204,120,92,0)", "rgba(232,144,110,0.06)", "rgba(204,120,92,0)"] as const,
     aurora: {
       primary: modernGradients.auroraPrimary,
       secondary: modernGradients.auroraSecondary,
@@ -208,269 +208,269 @@ const commonAurora = {
 };
 
 export const themes: Record<string, AppTheme> = {
-  // Modern Light Theme - Clean & Professional
+  // Claude Light Theme — Warm Parchment & Terracotta
   light: {
     colors: {
       background: {
-        default: "#FAF9F6",
+        default: "#FAF8F5",    // Warm parchment
         paper: "#FFFFFF",
-        elevated: "#FFFFFF",
-        overlay: "rgba(27, 31, 36, 0.5)",
-        glass: "rgba(255, 255, 255, 0.95)",
+        elevated: "#F7F4EF",   // Slightly warm elevated
+        overlay: "rgba(28, 25, 23, 0.5)",
+        glass: "rgba(255, 255, 255, 0.92)",
       },
       text: {
-        primary: "#1A1C1A",
-        secondary: "#586377",
-        tertiary: "#6E797A",
-        muted: "#6E797A",
-        disabled: "#9AA3A4",
+        primary: "#1C1917",    // Warm near-black
+        secondary: "#6B6762",  // Warm gray
+        tertiary: "#96918C",   // Muted warm
+        muted: "#96918C",
+        disabled: "#C4BFB9",
         inverse: "#FFFFFF",
-        link: "#007B83",
-        linkHover: "#006067",
+        link: "#CC785C",       // Terracotta links
+        linkHover: "#B06148",
       },
       primary: {
-        500: "#007B83",
-        600: "#006067",
-        400: "#2CAFB6",
+        500: "#CC785C",        // Claude Terracotta
+        600: "#B06148",
+        400: "#E8906E",
       },
       secondary: {
-        500: "#545F72",
-        600: "#3C475A",
-        400: "#7B879A",
+        500: "#78716C",        // Warm stone
+        600: "#58534E",
+        400: "#A09590",
       },
       success: {
-        main: "#1A7F37",
-        light: "#2DA44E",
-        dark: "#115E26",
-        50: "#DAFBE1",
-        700: "#1A7F37",
+        main: "#16A34A",
+        light: "#22C55E",
+        dark: "#15803D",
+        50: "#F0FDF4",
+        700: "#15803D",
       },
       error: {
-        main: "#D1242F",
-        light: "#EE5A5D",
-        dark: "#A40E26",
-        50: "#FFEBE9",
-        700: "#CF222E",
-      },
-      warning: {
-        main: "#9A6700",
-        light: "#D4A72C",
-        dark: "#704D00",
-        50: "#FFF8C5",
-        700: "#BF8700",
-      },
-      info: {
-        main: "#007B83",
-        light: "#C8ECEE",
-        50: "#E4F5F6",
-        700: "#006067",
-      },
-      border: {
-        light: "#EFEEEB",
-        medium: "#E2E2E2",
-        strong: "#BDC9CA",
-      },
-      accent: "#007B83",
-      accentLight: "#2CAFB6",
-      accentDark: "#006067",
-      danger: "#D1242F",
-      overlay: "rgba(27, 31, 36, 0.5)",
-      glass: "rgba(255, 255, 255, 0.85)",
-      shimmer: ["#E2E2E2", "#FAF9F6", "#E2E2E2"],
-      aurora: {
-        ...commonAurora.colors.aurora,
-      },
-    },
-    gradients: {
-      primary: ["#007B83", "#006067", "#004F54"],
-      accent: ["#2CAFB6", "#007B83"],
-      surface: ["#FFFFFF", "#F4F3F1"],
-      success: ["#2DA44E", "#1A7F37"],
-      danger: ["#FA4549", "#CF222E"],
-      ...commonAurora.gradients,
-    },
-    spacing: commonAurora.spacing,
-    borderRadius: commonAurora.borderRadius,
-    radius: commonAurora.borderRadius,
-    typography: commonAurora.typography,
-    shadows: commonAurora.shadows,
-    glass: commonAurora.glass,
-    animations: commonAurora.animations,
-    componentSizes: commonAurora.componentSizes,
-    layout: commonAurora.layout,
-  },
-
-  // Midnight Dark Theme - Deep & Elegant
-  dark: {
-    colors: {
-      background: {
-        default: "#0D1117",
-        paper: "#161B22",
-        elevated: "#21262D",
-        overlay: "rgba(1, 4, 9, 0.8)",
-        glass: "rgba(22, 27, 34, 0.85)",
-      },
-      text: {
-        primary: "#F0F6FC",
-        secondary: "#8B949E",
-        tertiary: "#6E7681",
-        muted: "#6E7681",
-        disabled: "#6E7681",
-        inverse: "#0D1117",
-        link: "#58A6FF",
-        linkHover: "#388BFD",
-      },
-      primary: {
-        500: "#58A6FF",
-        600: "#388BFD",
-        400: "#79C0FF",
-      },
-      secondary: {
-        500: "#3FB950",
-        600: "#3FB950",
-        400: "#56D364",
-      },
-      success: {
-        main: "#3FB950",
-        light: "#56D364",
-        dark: "#238636",
-        50: "#0E1C12",
-        700: "#3FB950",
-      },
-      error: {
-        main: "#F85149",
-        light: "#FF7B72",
-        dark: "#DA3633",
-        50: "#1E1212",
-        700: "#F85149",
-      },
-      warning: {
-        main: "#D29922",
-        light: "#E3B341",
-        dark: "#9E6A03",
-        50: "#19150E",
-        700: "#D29922",
-      },
-      info: {
-        main: "#58A6FF",
-        light: "#79C0FF",
-        50: "#0C141C",
-        700: "#58A6FF",
-      },
-      border: {
-        light: "#3D444D",
-        medium: "#30363D",
-        strong: "#30363D",
-      },
-      accent: "#58A6FF",
-      accentLight: "#79C0FF",
-      accentDark: "#388BFD",
-      danger: "#F85149",
-      overlay: "rgba(1, 4, 9, 0.8)",
-      glass: "rgba(22, 27, 34, 0.85)",
-      shimmer: ["#21262D", "#30363D", "#21262D"],
-      aurora: {
-        ...commonAurora.colors.aurora,
-      },
-    },
-    gradients: {
-      primary: ["#58A6FF", "#388BFD", "#1F6FEB"],
-      accent: ["#79C0FF", "#58A6FF"],
-      surface: ["#21262D", "#161B22"],
-      success: ["#56D364", "#3FB950"],
-      danger: ["#FF7B72", "#F85149"],
-      ...commonAurora.gradients,
-    },
-    spacing: commonAurora.spacing,
-    borderRadius: commonAurora.borderRadius,
-    radius: commonAurora.borderRadius,
-    typography: commonAurora.typography,
-    shadows: commonAurora.shadows,
-    glass: commonAurora.glass,
-    animations: commonAurora.animations,
-    componentSizes: commonAurora.componentSizes,
-    layout: commonAurora.layout,
-  },
-
-  // Aurora Premium - Deep Ocean & Emerald (Professional & Modern)
-  premium: {
-    colors: {
-      background: {
-        default: "#0B1121", // Deep Ocean
-        paper: "#151B2E", // Slightly lighter navy
-        elevated: "#1E293B",
-        overlay: "rgba(11, 17, 33, 0.95)", // Matches default background
-        glass: "rgba(21, 27, 46, 0.8)", // Frosted navy
-      },
-      text: {
-        primary: "#F8FAFC",
-        secondary: "#94A3B8",
-        tertiary: "#64748B",
-        muted: "#64748B",
-        disabled: "#64748B",
-        inverse: "#020617",
-        link: "#0EA5E9",
-        linkHover: "#38BDF8",
-      },
-      primary: {
-        500: "#0EA5E9",
-        600: "#0284C7",
-        400: "#38BDF8",
-      },
-      secondary: {
-        500: "#10B981",
-        600: "#10B981",
-        400: "#34D399",
-      },
-      success: {
-        main: "#10B981",
-        light: "#34D399",
-        dark: "#065F46",
-        50: "#ECFDF5",
-        700: "#047857",
-      },
-      error: {
-        main: "#EF4444",
-        light: "#F87171",
+        main: "#DC2626",
+        light: "#EF4444",
         dark: "#B91C1C",
         50: "#FEF2F2",
         700: "#B91C1C",
       },
       warning: {
-        main: "#F59E0B",
-        light: "#FBBF24",
+        main: "#D97706",
+        light: "#F59E0B",
         dark: "#B45309",
         50: "#FFFBEB",
         700: "#B45309",
       },
       info: {
-        main: "#0EA5E9",
+        main: "#0284C7",
         light: "#38BDF8",
         50: "#F0F9FF",
-        700: "#0EA5E9",
+        700: "#0369A1",
       },
       border: {
-        light: "#334155",
-        medium: "#1E293B",
-        strong: "#1E293B",
+        light: "#EDE9E4",      // Very subtle warm border
+        medium: "#D7D1CB",     // Medium warm border
+        strong: "#B5AFA9",     // Strong warm border
       },
-      accent: "#0EA5E9",
-      accentLight: "#38BDF8",
-      accentDark: "#0284C7",
-      danger: "#EF4444",
-      overlay: "rgba(2, 6, 23, 0.9)",
-      glass: "rgba(15, 23, 42, 0.75)",
-      shimmer: ["#1E293B", "#334155", "#1E293B"],
+      accent: "#CC785C",       // Terracotta
+      accentLight: "#E8906E",
+      accentDark: "#B06148",
+      danger: "#DC2626",
+      overlay: "rgba(28, 25, 23, 0.5)",
+      glass: "rgba(255, 255, 255, 0.88)",
+      shimmer: ["#E7E3DE", "#FAF8F5", "#E7E3DE"],
       aurora: {
         ...commonAurora.colors.aurora,
       },
     },
     gradients: {
-      primary: ["#0EA5E9", "#0284C7", "#0369A1"],
-      accent: ["#38BDF8", "#0EA5E9"],
-      surface: ["#1E293B", "#0F172A"],
-      success: ["#34D399", "#10B981"],
-      danger: ["#F87171", "#EF4444"],
+      primary: ["#E8906E", "#CC785C", "#B06148"],
+      accent: ["#F5B942", "#E8A020"],
+      surface: ["#FFFFFF", "#F7F4EF"],
+      success: ["#22C55E", "#16A34A"],
+      danger: ["#EF4444", "#DC2626"],
+      ...commonAurora.gradients,
+    },
+    spacing: commonAurora.spacing,
+    borderRadius: commonAurora.borderRadius,
+    radius: commonAurora.borderRadius,
+    typography: commonAurora.typography,
+    shadows: commonAurora.shadows,
+    glass: commonAurora.glass,
+    animations: commonAurora.animations,
+    componentSizes: commonAurora.componentSizes,
+    layout: commonAurora.layout,
+  },
+
+  // Claude Dark Theme — Warm Charcoal & Terracotta
+  dark: {
+    colors: {
+      background: {
+        default: "#1C1917",    // Warm charcoal (not cold navy)
+        paper: "#242220",      // Slightly lighter warm charcoal
+        elevated: "#2E2B28",   // Elevated warm surface
+        overlay: "rgba(12, 10, 9, 0.82)",
+        glass: "rgba(36, 34, 32, 0.88)",
+      },
+      text: {
+        primary: "#F5F0E8",    // Warm cream
+        secondary: "#B5AFA9",  // Warm stone
+        tertiary: "#78746F",   // Muted warm
+        muted: "#78746F",
+        disabled: "#58534E",
+        inverse: "#1C1917",
+        link: "#E8906E",       // Bright terracotta links
+        linkHover: "#CC785C",
+      },
+      primary: {
+        500: "#E8906E",        // Bright terracotta for dark mode
+        600: "#CC785C",
+        400: "#F5A882",
+      },
+      secondary: {
+        500: "#4ADE80",
+        600: "#22C55E",
+        400: "#86EFAC",
+      },
+      success: {
+        main: "#4ADE80",
+        light: "#86EFAC",
+        dark: "#22C55E",
+        50: "#0A1F0E",
+        700: "#4ADE80",
+      },
+      error: {
+        main: "#F87171",
+        light: "#FCA5A5",
+        dark: "#EF4444",
+        50: "#1F0A0A",
+        700: "#F87171",
+      },
+      warning: {
+        main: "#FBBF24",
+        light: "#FDE68A",
+        dark: "#F59E0B",
+        50: "#1A140A",
+        700: "#FBBF24",
+      },
+      info: {
+        main: "#38BDF8",
+        light: "#7DD3FC",
+        50: "#071620",
+        700: "#38BDF8",
+      },
+      border: {
+        light: "#3D3A37",      // Warm dark border
+        medium: "#4A4744",
+        strong: "#58534E",
+      },
+      accent: "#E8906E",       // Bright terracotta
+      accentLight: "#F5A882",
+      accentDark: "#CC785C",
+      danger: "#F87171",
+      overlay: "rgba(12, 10, 9, 0.82)",
+      glass: "rgba(36, 34, 32, 0.88)",
+      shimmer: ["#2E2B28", "#3D3A37", "#2E2B28"],
+      aurora: {
+        ...commonAurora.colors.aurora,
+      },
+    },
+    gradients: {
+      primary: ["#F5A882", "#E8906E", "#CC785C"],
+      accent: ["#F5A882", "#E8906E"],
+      surface: ["#2E2B28", "#242220"],
+      success: ["#86EFAC", "#4ADE80"],
+      danger: ["#FCA5A5", "#F87171"],
+      ...commonAurora.gradients,
+    },
+    spacing: commonAurora.spacing,
+    borderRadius: commonAurora.borderRadius,
+    radius: commonAurora.borderRadius,
+    typography: commonAurora.typography,
+    shadows: commonAurora.shadows,
+    glass: commonAurora.glass,
+    animations: commonAurora.animations,
+    componentSizes: commonAurora.componentSizes,
+    layout: commonAurora.layout,
+  },
+
+  // Claude Premium — Deep Warm & Terracotta
+  premium: {
+    colors: {
+      background: {
+        default: "#18140F", // Deep warm espresso
+        paper: "#22190F",   // Warm dark brown-black
+        elevated: "#2E2318",
+        overlay: "rgba(18, 14, 9, 0.95)",
+        glass: "rgba(34, 25, 15, 0.82)",
+      },
+      text: {
+        primary: "#F5F0E8",
+        secondary: "#C4B8A8",
+        tertiary: "#8C7F72",
+        muted: "#8C7F72",
+        disabled: "#6B6057",
+        inverse: "#1C1917",
+        link: "#E8906E",
+        linkHover: "#F5A882",
+      },
+      primary: {
+        500: "#E8906E",
+        600: "#CC785C",
+        400: "#F5A882",
+      },
+      secondary: {
+        500: "#4ADE80",
+        600: "#22C55E",
+        400: "#86EFAC",
+      },
+      success: {
+        main: "#4ADE80",
+        light: "#86EFAC",
+        dark: "#22C55E",
+        50: "#0A1F0E",
+        700: "#4ADE80",
+      },
+      error: {
+        main: "#F87171",
+        light: "#FCA5A5",
+        dark: "#EF4444",
+        50: "#1F0A0A",
+        700: "#F87171",
+      },
+      warning: {
+        main: "#FBBF24",
+        light: "#FDE68A",
+        dark: "#F59E0B",
+        50: "#1A140A",
+        700: "#FBBF24",
+      },
+      info: {
+        main: "#38BDF8",
+        light: "#7DD3FC",
+        50: "#071620",
+        700: "#38BDF8",
+      },
+      border: {
+        light: "#3D3020",
+        medium: "#2E2318",
+        strong: "#2E2318",
+      },
+      accent: "#E8906E",
+      accentLight: "#F5A882",
+      accentDark: "#CC785C",
+      danger: "#F87171",
+      overlay: "rgba(18, 14, 9, 0.92)",
+      glass: "rgba(34, 25, 15, 0.78)",
+      shimmer: ["#2E2318", "#3D3020", "#2E2318"],
+      aurora: {
+        ...commonAurora.colors.aurora,
+      },
+    },
+    gradients: {
+      primary: ["#F5A882", "#E8906E", "#CC785C"],
+      accent: ["#F5A882", "#E8906E"],
+      surface: ["#2E2318", "#22190F"],
+      success: ["#86EFAC", "#4ADE80"],
+      danger: ["#FCA5A5", "#F87171"],
       ...commonAurora.gradients,
     },
     spacing: commonAurora.spacing,

@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
+    backgroundColor: "rgba(28, 25, 23, 0.45)",
     padding: spacing.lg,
   },
   content: {

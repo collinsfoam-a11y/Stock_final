@@ -29,7 +29,7 @@ export const shadows = {
   /** Subtle shadow - borders, dividers */
   xs: {
     ...Platform.select({
-      web: { boxShadow: "0px 1px 2px rgba(15, 23, 42, 0.05)" },
+      web: { boxShadow: "0px 1px 2px rgba(28, 25, 23, 0.05)" },
       default: {
         shadowColor: colors.neutral[900],
         shadowOffset: { width: 0, height: 1 },
@@ -43,7 +43,7 @@ export const shadows = {
   /** Small shadow - cards, buttons */
   sm: {
     ...Platform.select({
-      web: { boxShadow: "0px 2px 4px rgba(15, 23, 42, 0.08)" },
+      web: { boxShadow: "0px 2px 4px rgba(28, 25, 23, 0.08)" },
       default: {
         shadowColor: colors.neutral[900],
         shadowOffset: { width: 0, height: 2 },
@@ -57,7 +57,7 @@ export const shadows = {
   /** Medium shadow - floating elements */
   md: {
     ...Platform.select({
-      web: { boxShadow: "0px 4px 8px rgba(15, 23, 42, 0.1)" },
+      web: { boxShadow: "0px 4px 8px rgba(28, 25, 23, 0.1)" },
       default: {
         shadowColor: colors.neutral[900],
         shadowOffset: { width: 0, height: 4 },
@@ -71,7 +71,7 @@ export const shadows = {
   /** Large shadow - modals, dropdowns */
   lg: {
     ...Platform.select({
-      web: { boxShadow: "0px 8px 16px rgba(15, 23, 42, 0.12)" },
+      web: { boxShadow: "0px 8px 16px rgba(28, 25, 23, 0.12)" },
       default: {
         shadowColor: colors.neutral[900],
         shadowOffset: { width: 0, height: 8 },
@@ -85,7 +85,7 @@ export const shadows = {
   /** Extra large shadow - popovers, tooltips */
   xl: {
     ...Platform.select({
-      web: { boxShadow: "0px 12px 24px rgba(15, 23, 42, 0.15)" },
+      web: { boxShadow: "0px 12px 24px rgba(28, 25, 23, 0.15)" },
       default: {
         shadowColor: colors.neutral[900],
         shadowOffset: { width: 0, height: 12 },
@@ -99,7 +99,7 @@ export const shadows = {
   /** Maximum shadow - full-screen overlays */
   "2xl": {
     ...Platform.select({
-      web: { boxShadow: "0px 16px 32px rgba(15, 23, 42, 0.2)" },
+      web: { boxShadow: "0px 16px 32px rgba(28, 25, 23, 0.2)" },
       default: {
         shadowColor: colors.neutral[900],
         shadowOffset: { width: 0, height: 16 },
@@ -175,11 +175,11 @@ export const glass = {
 
   /** Dark glass effect */
   dark: {
-    backgroundColor: "rgba(15, 23, 42, 0.7)",
+    backgroundColor: "rgba(28, 25, 23, 0.7)",
     ...Platform.select({
       ios: {},
       android: {
-        backgroundColor: "rgba(15, 23, 42, 0.9)",
+        backgroundColor: "rgba(28, 25, 23, 0.9)",
       },
     }),
   } as ViewStyle,

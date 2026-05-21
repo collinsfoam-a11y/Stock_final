@@ -30,7 +30,6 @@ omit =
     core/validators/pin_validator.py
     debug_response_model.py
     fix_typing.py
-    locustfile.py
     models/analytics.py
     models/sync.py
     seed_e2e.py

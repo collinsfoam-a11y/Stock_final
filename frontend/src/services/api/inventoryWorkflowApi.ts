@@ -1,7 +1,7 @@
 import { useAuthStore } from "../../store/authStore";
 import { AppError, type AppErrorCode } from "../../utils/errors";
 import { retryWithBackoff } from "../../utils/retry";
-import { CreateCountLinePayload, Item } from "../../types/scan";
+import { CountLineBatch, CreateCountLinePayload, Item } from "../../types/scan";
 import { generateUUID } from "../../utils/uuid";
 import { validateBarcode } from "../../utils/validation";
 import api from "../httpClient";
@@ -29,23 +29,108 @@ import { isOnline, shouldAttemptReadApi } from "./sessionManagementApi";
 
 const log = createLogger("InventoryWorkflowApi");
 
+interface RawApiItem {
+  id?: string;
+  _id?: string;
+  item_code?: string;
+  barcode?: string;
+  item_name?: string;
+  name?: string;
+  description?: string;
+  uom_name?: string;
+  uom?: string;
+  uom_code?: string;
+  stock_qty?: number | null;
+  current_stock?: number | null;
+  sales_price?: number | null;
+  sale_price?: number | null;
+  standard_rate?: number;
+  mrp?: number;
+  mrp_variants?: unknown[];
+  category?: string;
+  subcategory?: string;
+  warehouse?: string;
+  batch_id?: string;
+  manual_barcode?: string;
+  unit2_barcode?: string;
+  unit_m_barcode?: string;
+  manufacturing_date?: string;
+  mfg_date?: string;
+  expiry_date?: string;
+  is_serialized?: boolean;
+  is_misplaced?: boolean;
+  expected_location?: string;
+}
+
+interface CachedItem {
+  item_code: string;
+  item_name: string;
+  barcode?: string;
+  description?: string;
+  uom_name?: string;
+  uom?: string;
+  mrp?: number;
+  sales_price?: number;
+  sale_price?: number;
+  category?: string;
+  subcategory?: string;
+  warehouse?: string;
+  manual_barcode?: string;
+  unit2_barcode?: string;
+  unit_m_barcode?: string;
+  batch_id?: string;
+  current_stock?: number;
+  stock_qty?: number;
+  is_serialized?: boolean;
+  cached_at?: string;
+}
+
+interface Pagination {
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
+interface ApiErrorLike {
+  response?: { status?: number; data?: unknown };
+  message?: string;
+}
+
+interface CountLineRecord {
+  id?: string;
+  _id?: string;
+  item_code?: string;
+  item_name?: string;
+  barcode?: string;
+  verified?: boolean;
+  is_misplaced?: boolean;
+  _source?: DataSource;
+  _offline?: boolean;
+  _degraded?: boolean;
+  [key: string]: unknown;
+}
+
 type InventoryItemResult = Item & {
   _source?: DataSource;
   _cachedAt?: string;
   _stale?: boolean;
   _degraded?: boolean;
+  description?: string;
 };
 
 type CountLineListResponse = {
-  items: any[];
-  pagination: any;
+  items: CountLineRecord[];
+  pagination: Pagination;
   _source?: DataSource;
   _stale?: boolean;
   _degraded?: boolean;
 };
 
-const toCachedInventoryItem = (cached: any): InventoryItemResult => {
-  const stale = isCacheStale(cached.cached_at);
+const toCachedInventoryItem = (cached: CachedItem): InventoryItemResult => {
+  const stale = isCacheStale(cached.cached_at ?? null);
   const stockValue = cached.current_stock ?? cached.stock_qty ?? 0;
   return {
     id: cached.item_code,
@@ -92,7 +177,7 @@ const getCachedBarcodeItem = async (
   });
 };
 
-const resolveInventoryDataSource = (responseData: any): DataSource => {
+const resolveInventoryDataSource = (responseData: { metadata?: { source?: string } }): DataSource => {
   if (responseData.metadata?.source === "sql_server_sync") {
     return "sql";
   }
@@ -102,13 +187,13 @@ const resolveInventoryDataSource = (responseData: any): DataSource => {
   return "api";
 };
 
-const resolveDisplayName = (itemData: any) => {
+const resolveDisplayName = (itemData: RawApiItem) => {
   if (itemData.item_name) return itemData.item_name;
   if (itemData.category) return itemData.category;
   return `Item ${itemData.item_code}`;
 };
 
-const resolveStockQuantity = (itemData: any) => {
+const resolveStockQuantity = (itemData: RawApiItem) => {
   if (itemData.stock_qty !== undefined && itemData.stock_qty !== null) {
     return itemData.stock_qty;
   }
@@ -118,13 +203,13 @@ const resolveStockQuantity = (itemData: any) => {
   return 0;
 };
 
-const resolveUomName = (itemData: any) => {
+const resolveUomName = (itemData: RawApiItem) => {
   if (itemData.uom_name) return itemData.uom_name;
   if (itemData.uom) return itemData.uom;
   return itemData.uom_code;
 };
 
-const resolveSalesPrice = (itemData: any) => {
+const resolveSalesPrice = (itemData: RawApiItem) => {
   if (itemData.sales_price !== undefined && itemData.sales_price !== null) {
     return itemData.sales_price;
   }
@@ -134,20 +219,21 @@ const resolveSalesPrice = (itemData: any) => {
   return itemData.standard_rate;
 };
 
-const resolveSalePrice = (itemData: any) => {
+const resolveSalePrice = (itemData: RawApiItem) => {
   if (itemData.sale_price !== undefined && itemData.sale_price !== null) {
     return itemData.sale_price;
   }
-  return itemData.sales_price;
+  return itemData.sales_price ?? undefined;
 };
 
-const resolveManufacturingDate = (itemData: any) => {
+const resolveManufacturingDate = (itemData: RawApiItem) => {
   if (itemData.manufacturing_date) return itemData.manufacturing_date;
   return itemData.mfg_date;
 };
 
-const normalizeApiInventoryItem = (itemData: any, responseData: any): InventoryItemResult => {
+const normalizeApiInventoryItem = (itemData: RawApiItem, responseData: { metadata?: { source?: string } }): InventoryItemResult => {
   const displayName = resolveDisplayName(itemData);
+  const itemCode = itemData.item_code || itemData.barcode || itemData.id || itemData._id || "";
   const stockQty = resolveStockQuantity(itemData);
   const uomName = resolveUomName(itemData);
   const salesPrice = resolveSalesPrice(itemData);
@@ -155,9 +241,9 @@ const normalizeApiInventoryItem = (itemData: any, responseData: any): InventoryI
   const dataSource = resolveInventoryDataSource(responseData);
 
   return {
-    id: itemData.id || itemData._id || itemData.item_code,
+    id: itemData.id || itemData._id || itemCode,
     name: itemData.name || displayName,
-    item_code: itemData.item_code,
+    item_code: itemCode,
     barcode: itemData.barcode,
     item_name: itemData.item_name || displayName,
     uom_name: uomName,
@@ -176,7 +262,7 @@ const normalizeApiInventoryItem = (itemData: any, responseData: any): InventoryI
     unit_m_barcode: itemData.unit_m_barcode,
     manufacturing_date: resolveManufacturingDate(itemData),
     expiry_date: itemData.expiry_date,
-    mrp_variants: itemData.mrp_variants,
+    mrp_variants: Array.isArray(itemData.mrp_variants) ? itemData.mrp_variants : undefined,
     is_serialized: itemData.is_serialized ?? false,
     is_misplaced: itemData.is_misplaced,
     expected_location: itemData.expected_location,
@@ -189,7 +275,7 @@ const cacheResolvedInventoryItem = async (item: InventoryItemResult): Promise<vo
     item_code: item.item_code,
     barcode: item.barcode,
     item_name: item.item_name || item.name || item.item_code || "",
-    description: (item as any).description,
+    description: item.description,
     uom: item.uom ?? item.uom_code ?? item.uom_name,
     uom_name: item.uom_name,
     mrp: item.mrp,
@@ -207,7 +293,7 @@ const cacheResolvedInventoryItem = async (item: InventoryItemResult): Promise<vo
   });
 };
 
-const mapCachedSearchItem = (item: any): Item & { _source: DataSource } => ({
+const mapCachedSearchItem = (item: CachedItem): Item & { _source: DataSource } => ({
   id: item.item_code,
   name: item.item_name,
   item_code: item.item_code,
@@ -243,7 +329,7 @@ const normalizeBarcodeInput = (barcode: string) => {
   return validation.value;
 };
 
-const shouldRetryInventoryLookup = (error: any) => {
+const shouldRetryInventoryLookup = (error: ApiErrorLike): boolean => {
   const status = error?.response?.status;
   return !(status && status >= 400 && status < 500);
 };
@@ -293,12 +379,12 @@ const tryCacheResolvedItem = async (item: InventoryItemResult) => {
   }
 };
 
-const isNotFoundApiError = (apiError: any) => {
+const isNotFoundApiError = (apiError: ApiErrorLike) => {
   const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
   return apiError?.response?.status === 404 || errorMessage.includes("404");
 };
 
-const handleBarcodeLookupFailure = async (trimmedBarcode: string, apiError: any) => {
+const handleBarcodeLookupFailure = async (trimmedBarcode: string, apiError: ApiErrorLike) => {
   if (isNotFoundApiError(apiError)) {
     log.info("Item not found via API", { barcode: trimmedBarcode });
   } else {
@@ -317,12 +403,14 @@ const handleBarcodeLookupFailure = async (trimmedBarcode: string, apiError: any)
       _source: "cache" as DataSource,
       _degraded: true,
     };
-  } catch (cacheError: any) {
+  } catch (cacheError: unknown) {
     if (cacheError instanceof AppError) {
       throw cacheError;
     }
 
-    log.error("Cache fallback also failed", { error: cacheError.message });
+    log.error("Cache fallback also failed", {
+      error: cacheError instanceof Error ? cacheError.message : String(cacheError),
+    });
     throw AppError.fromApiError(apiError, {
       barcode: trimmedBarcode,
       fallbackAttempted: true,
@@ -359,8 +447,8 @@ export const getItemByBarcode = async (
     log.debug("Found via API", { itemCode: normalizedItem.item_code });
     await tryCacheResolvedItem(normalizedItem);
     return normalizedItem;
-  } catch (apiError: any) {
-    return await handleBarcodeLookupFailure(trimmedBarcode, apiError);
+  } catch (apiError: unknown) {
+    return await handleBarcodeLookupFailure(trimmedBarcode, apiError as ApiErrorLike);
   }
 };
 
@@ -423,9 +511,9 @@ export const searchItems = async (
       total: result.total,
       hasMore: !!result.has_more,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     log.error("searchItems failed, falling back to cache", {
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
     });
     const cachedItems = await searchItemsInCache(query);
     return {
@@ -491,6 +579,8 @@ export const searchItemsOptimized = async (
       unit2_barcode: item.unit2_barcode as string,
       unit_m_barcode: item.unit_m_barcode as string,
       batch_id: item.batch_id as string,
+      batch_no: item.batch_no as string,
+      batch_number: item.batch_number as string,
       category: item.category as string,
       subcategory: item.subcategory as string,
       warehouse: item.warehouse as string,
@@ -499,7 +589,7 @@ export const searchItemsOptimized = async (
       _source: "api" as DataSource,
     }));
 
-    await Promise.all(mappedItems.slice(0, 10).map((item) => cacheItem(item as any)));
+    await Promise.all(mappedItems.slice(0, 10).map((item) => cacheItem(item as unknown as Parameters<typeof cacheItem>[0])));
 
     return {
       items: mappedItems,
@@ -511,8 +601,10 @@ export const searchItemsOptimized = async (
       next_cursor: metadata.next_cursor,
       has_more: metadata.has_more,
     };
-  } catch (error: any) {
-    log.error("searchItemsOptimized failed", { error: error.message });
+  } catch (error: unknown) {
+    log.error("searchItemsOptimized failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     throw error;
   }
 };
@@ -577,7 +669,7 @@ export const searchItemsSemantic = async (query: string, limit: number = 20): Pr
     });
 
     const items = response.data.data?.items || [];
-    return items.map((item: any) => ({
+    return items.map((item: Record<string, unknown>) => ({
       ...item,
       id: item.id || item._id,
       name: item.name || item.item_name,
@@ -620,11 +712,12 @@ export const identifyItem = async (imageUri: string): Promise<Item[]> => {
     const match = /\.(\w+)$/.exec(filename || "");
     const type = match ? `image/${match[1]}` : "image";
 
+    // React Native's FormData accepts {uri,name,type} — not the browser Blob shape
     formData.append("file", {
       uri: imageUri,
       name: filename || "upload.jpg",
       type,
-    } as any);
+    } as unknown as Blob);
 
     const response = await api.post("/api/v2/items/identify", formData, {
       headers: {
@@ -634,7 +727,7 @@ export const identifyItem = async (imageUri: string): Promise<Item[]> => {
     });
 
     const items = response.data.data?.items || [];
-    return items.map((item: any) => ({
+    return items.map((item: Record<string, unknown>) => ({
       ...item,
       id: item.id || item._id,
       name: item.name || item.item_name,
@@ -717,12 +810,12 @@ const createOfflineCountLineResult = async (
   countData: CreateCountLinePayload,
   username?: string,
   degraded: boolean = false
-): Promise<any & { _source: DataSource; _offline: boolean; _degraded?: boolean }> => {
+): Promise<CountLineRecord> => {
   const itemName = await resolveCountLineItemName(countData);
   const offlineCountLine = (await createOfflineCountLine(countData, {
     username,
     itemName,
-  })) as any;
+  })) as unknown as CountLineRecord;
 
   return {
     ...offlineCountLine,
@@ -745,7 +838,7 @@ const filterCountLinesByVerified = <T extends { verified?: boolean }>(
 ): T[] => (verified !== undefined ? lines.filter((line) => line.verified === verified) : lines);
 
 const paginateCountLineItems = (
-  items: any[],
+  items: CountLineRecord[],
   requestedPage: number,
   requestedPageSize: number,
   source: DataSource = "cache",
@@ -796,9 +889,9 @@ export const saveDraft = async (lineData: CreateCountLinePayload) => {
     if (!isOnline()) return null;
     const response = await api.post("/api/count-lines/draft", lineData);
     return response.data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     log.warn("Failed to save draft", {
-      error: error?.message || String(error),
+      error: error instanceof Error ? error.message : String(error),
     });
     return null;
   }
@@ -864,7 +957,7 @@ const hydrateCountLineNames = async <
  */
 export const createCountLine = async (
   countData: CreateCountLinePayload
-): Promise<any & { _source?: DataSource; _offline?: boolean }> => {
+): Promise<CountLineRecord> => {
   const user = useAuthStore.getState().user;
   const countDataWithIdempotency = ensureCountLineIdempotencyKey(countData);
 
@@ -884,7 +977,7 @@ export const createCountLine = async (
     log.debug("Online mode - creating count line via API");
     const response = await api.post("/api/count-lines", countDataWithIdempotency, {
       skipOfflineQueue: true,
-    } as any);
+    } as unknown as Record<string, unknown>);
     await cacheCountLine(response.data);
 
     log.debug("Created count line via API", {
@@ -894,11 +987,12 @@ export const createCountLine = async (
       ...response.data,
       _source: "api" as DataSource,
     };
-  } catch (error: any) {
-    if (error.response) {
+  } catch (error: unknown) {
+    const apiError = error as ApiErrorLike;
+    if (apiError.response) {
       log.error("Server returned error, NOT falling back to offline", {
-        status: error.response.status,
-        data: error.response.data,
+        status: apiError.response.status,
+        data: apiError.response.data,
       });
       throw error;
     }
@@ -961,7 +1055,7 @@ export const getCountLines = async (
       items: reviewedLines,
       _source: "api" as DataSource,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     log.warn("Count lines API unavailable; falling back to cache", {
       error: error instanceof Error ? error.message : String(error),
     });
@@ -1032,10 +1126,12 @@ export const checkItemCounted = async (sessionId: string, itemCode: string) => {
 export const addQuantityToCountLine = async (
   lineId: string,
   additionalQty: number,
-  batches?: any[]
+  batches?: CountLineBatch[]
 ) => {
   try {
-    const payload: any = { additional_qty: additionalQty };
+    const payload: { additional_qty: number; batches?: CountLineBatch[] } = {
+      additional_qty: additionalQty,
+    };
     if (batches) {
       payload.batches = batches;
     }
@@ -1129,7 +1225,7 @@ export const createUnknownItem = async (itemData: Record<string, unknown>) => {
 
     const response = await api.post("/api/unknown-items", itemData, {
       skipOfflineQueue: true,
-    } as any);
+    } as unknown as Record<string, unknown>);
     return response.data;
   } catch (error) {
     __DEV__ && console.error("Error creating unknown item:", error);
@@ -1162,7 +1258,7 @@ export const deleteCountLine = async (lineId: string) => {
   try {
     const response = await api.delete(`/api/count-lines/${lineId}`);
     return response.data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     __DEV__ && console.error("Delete count line error:", error);
     throw error;
   }

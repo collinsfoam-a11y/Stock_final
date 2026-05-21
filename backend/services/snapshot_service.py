@@ -67,3 +67,48 @@ class SnapshotService:
             snapshot["item_code"], snapshot["erp_qty"], snapshot["timestamp"]
         )
         return snapshot["baseline_hash"] == expected_hash
+
+    async def detect_erp_qty_drift(
+        self,
+        session_id: str,
+        item_code: str,
+        current_erp_qty: float,
+        *,
+        threshold: float = 1.0,
+    ) -> Optional[dict[str, Any]]:
+        """Return a drift report when ERP qty has moved since the session snapshot was taken.
+
+        Returns None if no snapshot exists (caller decides whether that is itself an anomaly)
+        or if drift is within threshold.
+        """
+        snapshot = await self.get_or_create_snapshot(session_id, item_code, "system")
+        if not snapshot:
+            logger.warning(
+                "detect_erp_qty_drift: no baseline snapshot for item %s session %s",
+                item_code,
+                session_id,
+            )
+            return None
+
+        snapshotted_qty = float(snapshot.get("erp_qty") or 0.0)
+        drift = abs(current_erp_qty - snapshotted_qty)
+        if drift < threshold:
+            return None
+
+        report = {
+            "item_code": item_code,
+            "session_id": session_id,
+            "snapshotted_qty": snapshotted_qty,
+            "current_erp_qty": current_erp_qty,
+            "drift": drift,
+            "drift_pct": round(drift / snapshotted_qty * 100, 2) if snapshotted_qty else None,
+            "stale": True,
+        }
+        logger.warning(
+            "Stale ERP baseline detected: item %s drifted %.2f units (snapshot=%.2f current=%.2f)",
+            item_code,
+            drift,
+            snapshotted_qty,
+            current_erp_qty,
+        )
+        return report

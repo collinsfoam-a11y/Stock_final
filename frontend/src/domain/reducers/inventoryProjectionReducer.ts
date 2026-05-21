@@ -74,7 +74,8 @@ const normalizeBatchRecord = (
   batch: CountLineBatch,
   updatedAt: string
 ): ProjectedBatchRecord | null => {
-  const batchId = batch.batch_no || batch.batch_number || payload.batch_id || batch.barcode || null;
+  const batchId =
+    batch.batch_id || batch.batch_no || batch.batch_number || payload.batch_id || batch.barcode || null;
   if (!batchId) {
     return null;
   }

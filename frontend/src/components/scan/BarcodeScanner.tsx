@@ -4,13 +4,14 @@
  * Features: 1D-only mode, scan throttling, haptic feedback, visual overlay
  */
 import React, { useRef, useCallback } from "react";
-import { View, Text, TouchableOpacity, Modal, ActivityIndicator, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, Modal, StyleSheet } from "react-native";
 import { CameraView } from "@/services/device/expoCamera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ScannerMode } from "@/types/scan";
 import { SCANNER_CONFIG, ScanThrottleManager, BarcodeValidator } from "@/config/scannerConfig";
 import { ScanAreaOverlay } from "./ScanAreaOverlay";
 import { hapticService } from "@/services/hapticService";
+import { ScannerFeedbackState } from "@/components/feedback/ScannerFeedbackState";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface BarcodeScannerProps {
@@ -179,20 +180,17 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             )}
           </View>
 
-          {(scanFeedback || isLoadingItem) && (
-            <View style={[styles.scanFeedbackBanner, isLoadingItem && styles.scanFeedbackLoading]}>
-              {isLoadingItem ? (
-                <ActivityIndicator
-                  size="small"
-                  color={uiSemanticColors.text.inverse}
-                  style={{ marginRight: 8 }}
-                />
-              ) : (
-                <Ionicons name="checkmark-circle" size={24} color={uiColors.info[500]} />
-              )}
-              <Text style={styles.scanFeedbackText}>{scanFeedback || "Loading..."}</Text>
-            </View>
-          )}
+          {scanFeedback || isLoadingItem ? (
+            <ScannerFeedbackState
+              compact
+              state={isLoadingItem ? "processing" : "captured"}
+              title={isLoadingItem ? "Checking scan" : "Scan captured"}
+              message={scanFeedback || "Loading item details..."}
+              item={scannerMode === "serial" ? serialLabel : undefined}
+              metadata={scannerMode === "serial" ? scannerSubtext : undefined}
+              style={styles.scanFeedbackBanner}
+            />
+          ) : null}
 
           {/* Enhanced scan area overlay with animations */}
           <ScanAreaOverlay feedbackState={scanState} hintText={scannerInstruction} />

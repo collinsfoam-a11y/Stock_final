@@ -6,7 +6,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, RefreshControl, ScrollView, Text, View } from "react-native";
+import { Alert, RefreshControl, ScrollView, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
@@ -26,7 +26,7 @@ import {
   startService,
   stopService,
 } from "../../src/services/api";
-import { ModernCard } from "../../src/components/ui";
+import { OperationalSyncBanner } from "../../src/components/feedback";
 import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
 import {
   DashboardAnalyticsPanel,
@@ -251,7 +251,7 @@ export default function DashboardWeb() {
     const frontendRunning = Boolean(servicesStatus?.frontend?.running);
     if (!backendRunning || !frontendRunning || (healthScore ?? 100) < 80) {
       suggestions.push({
-        key: "recommended-monitoring",
+        key: "monitoring",
         title: "Stabilize system health",
         subtitle: "Check service status and recovery metrics",
         icon: "pulse",
@@ -260,7 +260,7 @@ export default function DashboardWeb() {
     }
 
     suggestions.push({
-      key: "recommended-variances",
+      key: "variances",
       title: "Review count differences",
       subtitle: "Prioritize blocked staff work and recount assignments",
       icon: "alert-circle",
@@ -268,7 +268,7 @@ export default function DashboardWeb() {
     });
 
     suggestions.push({
-      key: "recommended-help",
+      key: "help",
       title: "Open help guide",
       subtitle: "Use quick instructions before client handoff",
       icon: "help-circle-outline",
@@ -475,20 +475,14 @@ export default function DashboardWeb() {
             <RefreshControl refreshing={refreshing} onRefresh={() => loadDashboardData(true)} />
           }
         >
-          {offlineMode && (
-            <ModernCard
-              variant="outlined"
-              elevation="none"
-              padding={0}
-              style={styles.offlineNotice}
-            >
-              <Text style={styles.offlineNoticeTitle}>Admin dashboard is in offline mode</Text>
-              <Text style={styles.offlineNoticeBody}>
-                Monitoring, reports, diagnosis, and service controls require a live backend
-                connection. Reconnect to refresh this dashboard.
-              </Text>
-            </ModernCard>
-          )}
+          {offlineMode ? (
+            <OperationalSyncBanner
+              tone="offline"
+              title="Admin dashboard is in offline mode"
+              message="Monitoring, reports, diagnosis, and service controls require a live backend connection. Reconnect to refresh this dashboard."
+              style={styles.operationalNotice}
+            />
+          ) : null}
 
           {activeTab === "overview" && (
             <DashboardOverviewPanel

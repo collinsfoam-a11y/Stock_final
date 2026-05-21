@@ -41,6 +41,7 @@ import {
   touchTargets,
 } from "@/theme/legacyCompat";
 import { useThemeContextSafe } from "../../context/ThemeContext";
+import { useUiTokens } from "@/hooks/useUiTokens";
 import { getDecorativeIconProps } from "@/utils/accessibility";
 import { haptics } from "@/services/haptics";
 
@@ -91,18 +92,19 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   accessibilityLabel,
   accessibilityHint,
 }) => {
+  const uiTokens = useUiTokens();
   const themeContext = useThemeContextSafe();
   const theme = themeContext?.themeLegacy;
   const themedColors = theme?.colors;
-  const primaryBackground = theme?.isDark ? colors.primary[500] : semanticColors.button.primary;
-  const primaryBorder = theme?.isDark ? colors.primary[600] : semanticColors.button.primary;
-  const secondaryBackground = themedColors?.surfaceElevated ?? semanticColors.button.secondary;
-  const surfaceBorder = themedColors?.border ?? semanticColors.border.default;
+  const primaryBackground = uiTokens.colors.accent;
+  const primaryBorder = uiTokens.colors.accentStrong;
+  const secondaryBackground = uiTokens.colors.surface;
+  const surfaceBorder = uiTokens.colors.border;
   const primaryText = colors.white;
-  const bodyText = themedColors?.textPrimary ?? semanticColors.text.primary;
-  const secondaryText = themedColors?.textSecondary ?? semanticColors.button.secondaryText;
-  const accentText = themedColors?.accent ?? semanticColors.text.link;
-  const dangerBackground = themedColors?.error ?? semanticColors.status.error;
+  const bodyText = uiTokens.colors.textPrimary ?? themedColors?.textPrimary ?? semanticColors.text.primary;
+  const secondaryText = uiTokens.colors.textSecondary;
+  const accentText = uiTokens.colors.accent;
+  const dangerBackground = uiTokens.colors.error ?? themedColors?.error ?? semanticColors.status.error;
 
   // Animation values
   const scale = useSharedValue(1);
@@ -145,11 +147,11 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   // Get button styles based on variant and size
   const getButtonStyles = (): ViewStyle => {
     const baseStyle: ViewStyle = {
-      borderRadius: radius.sm,
+      borderRadius: uiTokens.radius.sm,
       alignItems: "center",
       justifyContent: "center",
       flexDirection: "row",
-      gap: spacing.sm,
+      gap: uiTokens.spacing.sm,
       minHeight: getSizeConfig().height,
       paddingHorizontal: getSizeConfig().paddingHorizontal,
       ...(fullWidth && { width: "100%" }),
@@ -232,19 +234,19 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
     const configs = {
       small: {
         height: 36,
-        paddingHorizontal: spacing.md,
+        paddingHorizontal: uiTokens.spacing.md,
         typography: textStyles.button,
         iconSize: 16,
       },
       medium: {
         height: touchTargets.minimum,
-        paddingHorizontal: spacing.lg,
+        paddingHorizontal: uiTokens.spacing.lg,
         typography: textStyles.button,
         iconSize: 20,
       },
       large: {
         height: touchTargets.large,
-        paddingHorizontal: spacing.xl,
+        paddingHorizontal: uiTokens.spacing.xl,
         typography: textStyles.button,
         iconSize: 24,
       },
@@ -277,9 +279,7 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
           size="small"
           color={
             variant === "outline" || variant === "ghost"
-              ? theme
-                ? theme.colors.accent
-                : modernColors.primary[500]
+              ? accentText
               : primaryText
           }
         />

@@ -10,12 +10,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Platform,
   useWindowDimensions,
   ViewStyle,
   Linking,
 } from "react-native";
-import { BlurView } from "expo-blur";
 import { useRouter, useSegments } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
@@ -23,7 +21,7 @@ import { useAuthStore } from "../../store/authStore";
 import { layout, spacing, typography, breakpoints } from "../../styles/globalStyles";
 import { ADMIN_NAV_GROUPS, AdminNavItem } from "./adminNavShared";
 
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { radius as uiRadius, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface AdminSidebarProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -79,228 +77,238 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const sidebarWidth = collapsed ? layout.sidebarCollapsedWidth : layout.sidebarWidth;
   const panelBackground = theme.colors.surfaceElevated || theme.colors.surface;
   const subtleBorder = theme.colors.borderLight || theme.colors.border;
-  const activeBackground = theme.colors.overlayPrimary || "rgba(76, 175, 80, 0.14)";
+  const activeBackground = theme.colors.overlayPrimary || theme.colors.surface;
 
   if (isMobile && !collapsed) {
     return null;
   }
 
   return (
-    <View style={[styles.outerContainer, { width: sidebarWidth }]}>
-      <BlurView
-        intensity={collapsed ? 0 : 40}
-        tint="dark"
-        style={[
-          styles.container,
-          {
-            width: sidebarWidth,
-            backgroundColor: collapsed ? theme.colors.surface : "rgba(10, 10, 10, 0.4)",
-            borderRightColor: "rgba(255, 255, 255, 0.1)",
-          },
-          style,
-        ]}
-        testID={testID}
+    <View
+      style={[
+        styles.container,
+        {
+          width: sidebarWidth,
+          backgroundColor: theme.colors.surface,
+          borderRightColor: theme.colors.border,
+        },
+        style,
+      ]}
+      testID={testID}
+    >
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View
+          style={[
+            styles.brandSection,
+            {
+              borderBottomColor: subtleBorder,
+              backgroundColor: panelBackground,
+            },
+          ]}
+        >
           <View
             style={[
-              styles.brandSection,
+              styles.brandBadge,
+              { backgroundColor: activeBackground, borderColor: subtleBorder },
+            ]}
+          >
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={collapsed ? 20 : 18}
+              color={theme.colors.primary}
+            />
+          </View>
+
+          {!collapsed && (
+            <View style={styles.brandCopy}>
+              <Text style={[styles.brandTitle, { color: theme.colors.text }]}>Admin Control</Text>
+              <Text style={[styles.brandSubtitle, { color: theme.colors.textSecondary }]}>
+                System oversight and control
+              </Text>
+            </View>
+          )}
+
+          {onToggleCollapse && (
+            <TouchableOpacity
+              style={[
+                styles.collapseButton,
+                { backgroundColor: activeBackground, borderColor: subtleBorder },
+              ]}
+              onPress={onToggleCollapse}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={collapsed ? "Expand admin sidebar" : "Collapse admin sidebar"}
+            >
+              <Ionicons
+                name={collapsed ? "chevron-forward-outline" : "chevron-back-outline"}
+                size={18}
+                color={theme.colors.text}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* User Profile Section */}
+        {!collapsed && (
+          <View
+            style={[
+              styles.profileSection,
               {
                 borderBottomColor: subtleBorder,
                 backgroundColor: panelBackground,
               },
             ]}
           >
+            <View style={[styles.profileAvatar, { backgroundColor: activeBackground }]}>
+              <Ionicons name="person" size={24} color={theme.colors.primary} />
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={[styles.profileName, { color: theme.colors.text }]} numberOfLines={1}>
+                {user?.full_name || "Admin"}
+              </Text>
+              <Text style={[styles.profileRole, { color: theme.colors.textSecondary }]}>
+                Administrator
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Navigation Groups */}
+        {ADMIN_NAV_GROUPS.map((group) => {
+          const isExpanded = expandedGroups.has(group.title);
+
+          return (
             <View
+              key={group.title}
               style={[
-                styles.brandBadge,
-                { backgroundColor: activeBackground, borderColor: subtleBorder },
+                styles.group,
+                {
+                  backgroundColor: panelBackground,
+                  borderColor: subtleBorder,
+                },
               ]}
             >
-              <Ionicons
-                name="shield-checkmark-outline"
-                size={collapsed ? 20 : 18}
-                color={theme.colors.primary}
-              />
-            </View>
+              {!collapsed && (
+                <TouchableOpacity
+                  style={styles.groupHeader}
+                  onPress={() => toggleGroup(group.title)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.groupTitle, { color: theme.colors.textSecondary }]}>
+                    {group.title}
+                  </Text>
+                  <Ionicons
+                    name={isExpanded ? "chevron-down" : "chevron-forward"}
+                    size={16}
+                    color={theme.colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              )}
 
-            {!collapsed && (
-              <View style={styles.brandCopy}>
-                <Text style={[styles.brandTitle, { color: theme.colors.text }]}>Admin Control</Text>
-                <Text style={[styles.brandSubtitle, { color: theme.colors.textSecondary }]}>
-                  System oversight and control
-                </Text>
-              </View>
-            )}
+              {(!collapsed && isExpanded) || collapsed ? (
+                <View style={styles.groupItems}>
+                  {group.items.map((item) => {
+                    const active = isActive(item.route);
+                    const iconColor = active ? theme.colors.primary : theme.colors.textSecondary;
+                    const bgColor = active ? activeBackground : panelBackground;
 
-            {onToggleCollapse && (
-              <TouchableOpacity
-                style={[
-                  styles.collapseButton,
-                  { backgroundColor: activeBackground, borderColor: subtleBorder },
-                ]}
-                onPress={onToggleCollapse}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={collapsed ? "Expand admin sidebar" : "Collapse admin sidebar"}
-              >
-                <Ionicons
-                  name={collapsed ? "chevron-forward-outline" : "chevron-back-outline"}
-                  size={18}
-                  color={theme.colors.text}
-                />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* User Profile Section */}
-          {!collapsed && (
-            <View style={[styles.profileSection, { borderBottomColor: theme.colors.border }]}>
-              <View style={styles.profileAvatar}>
-                <Ionicons name="person" size={24} color={theme.colors.primary} />
-              </View>
-              <View style={styles.profileInfo}>
-                <Text style={[styles.profileName, { color: theme.colors.text }]} numberOfLines={1}>
-                  {user?.full_name || "Admin"}
-                </Text>
-                <Text style={[styles.profileRole, { color: theme.colors.textSecondary }]}>
-                  Administrator
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {/* Navigation Groups */}
-          {ADMIN_NAV_GROUPS.map((group) => {
-            const isExpanded = expandedGroups.has(group.title);
-
-            return (
-              <View key={group.title} style={styles.group}>
-                {!collapsed && (
-                  <TouchableOpacity
-                    style={styles.groupHeader}
-                    onPress={() => toggleGroup(group.title)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.groupTitle, { color: theme.colors.textSecondary }]}>
-                      {group.title}
-                    </Text>
-                    <Ionicons
-                      name={isExpanded ? "chevron-down" : "chevron-forward"}
-                      size={16}
-                      color={theme.colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                )}
-
-                {(!collapsed && isExpanded) || collapsed ? (
-                  <View style={styles.groupItems}>
-                    {group.items.map((item) => {
-                      const active = isActive(item.route);
-                      const iconColor = active ? theme.colors.primary : theme.colors.textSecondary;
-                      const bgColor = active
-                        ? theme.colors.overlayPrimary || "rgba(76, 175, 80, 0.1)"
-                        : "transparent";
-
-                      return (
-                        <TouchableOpacity
-                          key={item.key}
-                          style={[
-                            styles.item,
-                            { backgroundColor: bgColor },
-                            active && styles.itemActive,
-                          ]}
-                          onPress={() => handleItemPress(item)}
-                          activeOpacity={0.7}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected: active }}
-                          accessibilityLabel={item.label}
-                        >
-                          <Ionicons name={item.icon} size={20} color={iconColor} />
-                          {!collapsed && (
-                            <>
-                              <Text
-                                style={[
-                                  styles.itemLabel,
-                                  {
-                                    color: active ? theme.colors.primary : theme.colors.text,
-                                  },
-                                ]}
+                    return (
+                      <TouchableOpacity
+                        key={item.key}
+                        style={[
+                          styles.item,
+                          {
+                            backgroundColor: bgColor,
+                            borderColor: active ? theme.colors.primary : panelBackground,
+                          },
+                          active && styles.itemActive,
+                        ]}
+                        onPress={() => handleItemPress(item)}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: active }}
+                        accessibilityLabel={item.label}
+                      >
+                        <Ionicons name={item.icon} size={20} color={iconColor} />
+                        {!collapsed && (
+                          <>
+                            <Text
+                              style={[
+                                styles.itemLabel,
+                                {
+                                  color: active ? theme.colors.primary : theme.colors.text,
+                                },
+                              ]}
+                            >
+                              {item.label}
+                            </Text>
+                            {item.badge !== undefined && item.badge > 0 && (
+                              <View
+                                style={[styles.itemBadge, { backgroundColor: theme.colors.error }]}
                               >
-                                {item.label}
-                              </Text>
-                              {item.badge !== undefined && item.badge > 0 && (
-                                <View
-                                  style={[
-                                    styles.itemBadge,
-                                    { backgroundColor: theme.colors.error },
-                                  ]}
-                                >
-                                  <Text style={styles.itemBadgeText}>
-                                    {item.badge > 99 ? "99+" : item.badge}
-                                  </Text>
-                                </View>
-                              )}
-                            </>
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                ) : null}
-              </View>
-            );
-          })}
-        </ScrollView>
+                                <Text style={styles.itemBadgeText}>
+                                  {item.badge > 99 ? "99+" : item.badge}
+                                </Text>
+                              </View>
+                            )}
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
+      </ScrollView>
 
-        {/* Logout Button */}
-        {!collapsed && (
-          <TouchableOpacity
-            style={[styles.logoutButton, { borderTopColor: theme.colors.border }]}
-            onPress={handleLogout}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Logout"
-          >
-            <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
-            <Text style={[styles.logoutLabel, { color: theme.colors.error }]}>Logout</Text>
-          </TouchableOpacity>
-        )}
-      </BlurView>
+      {/* Logout Button */}
+      {!collapsed && (
+        <TouchableOpacity
+          style={[
+            styles.logoutButton,
+            {
+              borderTopColor: subtleBorder,
+              backgroundColor: panelBackground,
+            },
+          ]}
+          onPress={handleLogout}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Logout"
+        >
+          <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
+          <Text style={[styles.logoutLabel, { color: theme.colors.error }]}>Logout</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  outerContainer: {
-    height: "100%",
-    flexShrink: 0,
-    zIndex: 100,
-  },
   container: {
     height: "100%",
     borderRightWidth: 1,
-    overflow: "hidden",
-    ...(Platform.OS === "web"
-      ? {
-          position: "fixed" as const,
-          left: 0,
-          top: 0,
-          bottom: 0,
-        }
-      : {}),
-  } as any,
+  },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    padding: spacing.sm,
+    gap: spacing.sm,
   },
   brandSection: {
     flexDirection: "row",
     alignItems: "center",
     padding: spacing.md,
     borderBottomWidth: 1,
-    borderRadius: 16,
+    borderRadius: uiRadius.lg,
     gap: spacing.sm,
-    marginBottom: spacing.sm,
   },
   brandBadge: {
     width: 40,
@@ -334,13 +342,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: spacing.md,
     borderBottomWidth: 1,
-    marginBottom: spacing.sm,
+    borderRadius: uiRadius.lg,
   },
   profileAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(76, 175, 80, 0.1)",
     justifyContent: "center",
     alignItems: "center",
     marginRight: spacing.sm,
@@ -357,7 +364,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   group: {
-    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderRadius: uiRadius.lg,
+    overflow: "hidden",
   },
   groupHeader: {
     flexDirection: "row",
@@ -379,7 +388,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     marginHorizontal: spacing.xs,
-    borderRadius: 8,
+    borderRadius: uiRadius.md,
+    borderWidth: 1,
     gap: spacing.sm,
   },
   itemActive: {
@@ -407,6 +417,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: spacing.md,
     borderTopWidth: 1,
+    margin: spacing.sm,
+    borderRadius: uiRadius.lg,
     gap: spacing.sm,
   },
   logoutLabel: {

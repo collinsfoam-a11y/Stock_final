@@ -9,48 +9,48 @@ export const modernBranding = {
   name: "Lavanya Mart",
   tagline: "Stock Verification System",
   colors: {
-    primary: "#0655A5",
-    primaryDark: "#043C7A",
-    secondary: "#0F766E",
-    accent: "#0F766E",
+    primary: "#CC785C",       // Claude Terracotta
+    primaryDark: "#924D36",
+    secondary: "#22C55E",     // Fresh Green
+    accent: "#E8A020",        // Warm Amber
   },
 } as const;
 
-// Modern Color Palette - Accessible and Vibrant
+// Modern Color Palette — Claude Warm Design
 const lightColors = {
-  // Primary Brand Colors
+  // Primary Brand Colors — Claude Terracotta
   primary: {
-    50: "#EBF4FF",
-    100: "#D6E8FF",
-    200: "#AFD1FF",
-    300: "#82B5FF",
-    400: "#5C94FF",
-    500: "#0655A5",
-    600: "#054992",
-    700: "#043C7A",
-    800: "#032B59",
-    900: "#011732",
+    50: "#FFF3EE",
+    100: "#FFE4D6",
+    200: "#FFC7A8",
+    300: "#FFA47B",
+    400: "#E8906E",
+    500: "#CC785C",   // Claude Terracotta
+    600: "#B06148",
+    700: "#924D36",
+    800: "#743A26",
+    900: "#562A18",
   },
 
-  // Neutral Grays - Modern and Clean
+  // Neutral — Warm Stone
   gray: {
-    50: "#F6F8FB",
-    100: "#EEF2F6",
-    200: "#D9E1EA",
-    300: "#B8C4D2",
-    400: "#8EA0B3",
-    500: "#657789",
-    600: "#46586A",
-    700: "#2E3E4F",
-    800: "#1B2A3A",
-    900: "#111827",
+    50: "#FAFAF9",
+    100: "#F5F5F4",
+    200: "#E7E5E4",
+    300: "#D7D4D1",
+    400: "#A9A5A2",
+    500: "#78746F",
+    600: "#58534E",
+    700: "#44403C",
+    800: "#2E2B28",
+    900: "#1C1917",
   },
 
   // Semantic Colors
   success: {
-    50: "#ECFDF5",
-    500: "#10B981",
-    600: "#059669",
+    50: "#F0FDF4",
+    500: "#22C55E",
+    600: "#16A34A",
   },
 
   warning: {
@@ -71,27 +71,27 @@ const lightColors = {
   transparent: "transparent",
 
   // Overlay colors for modals/sheets
-  overlay: "rgba(0, 0, 0, 0.6)",
-  glassBg: "rgba(255, 255, 255, 0.1)",
+  overlay: "rgba(28, 25, 23, 0.6)",
+  glassBg: "rgba(255, 250, 245, 0.12)",
 } as const;
 
-// Dark Theme Colors
+// Dark Theme Colors — Warm Charcoal
 export const darkColors = {
   ...lightColors,
   gray: {
-    50: "#1F2937",
-    100: "#374151",
-    200: "#4B5563",
-    300: "#6B7280",
-    400: "#9CA3AF",
-    500: "#D1D5DB",
-    600: "#E5E7EB",
-    700: "#F3F4F6",
-    800: "#F9FAFB",
-    900: "#FFFFFF",
+    50: "#2E2B28",
+    100: "#3D3A37",
+    200: "#4A4744",
+    300: "#58534E",
+    400: "#78746F",
+    500: "#A9A5A2",
+    600: "#D7D4D1",
+    700: "#E7E5E4",
+    800: "#F5F5F4",
+    900: "#FAFAF9",
   },
-  white: "#000000",
-  black: "#FFFFFF",
+  white: "#1C1917",
+  black: "#F5F0E8",
 } as const;
 
 // Determine static colors based on OS preference at boot time
@@ -238,16 +238,16 @@ export const componentSizes = {
   },
 } as const;
 
-// Modern Gradients
+// Modern Gradients — Claude Warm Palette
 export const gradients = {
-  primary: ["#0655A5", "#043C7A"],
-  secondary: ["#0F766E", "#115E59"],
-  accent: ["#0F766E", "#115E59"],
-  success: ["#10B981", "#059669"],
+  primary: ["#E8906E", "#CC785C"],     // Terracotta
+  secondary: ["#4ADE80", "#22C55E"],   // Fresh Green
+  accent: ["#F5B942", "#E8A020"],      // Warm Amber
+  success: ["#22C55E", "#16A34A"],
   warning: ["#F59E0B", "#D97706"],
   error: ["#EF4444", "#DC2626"],
-  glass: ["rgba(255, 255, 255, 0.1)", "rgba(255, 255, 255, 0.05)"],
-  darkGlass: ["rgba(0, 0, 0, 0.1)", "rgba(0, 0, 0, 0.05)"],
+  glass: ["rgba(255, 250, 245, 0.12)", "rgba(255, 250, 245, 0.05)"],
+  darkGlass: ["rgba(28, 25, 23, 0.12)", "rgba(28, 25, 23, 0.05)"],
 } as const;
 
 // Layout Constants

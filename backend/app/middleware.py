@@ -53,9 +53,19 @@ def _resolve_allowed_hosts(settings: Any, env: str) -> list[str]:
 def _resolve_allowed_origins(settings: Any, env: str, logger: Any) -> list[str]:
     configured_origins = _parse_csv_values(getattr(settings, "CORS_ALLOW_ORIGINS", None))
     if configured_origins:
+        if "*" in configured_origins and env == "production":
+            raise ValueError(
+                "Wildcard '*' in CORS_ALLOW_ORIGINS is not permitted in production. "
+                "Set CORS_ALLOW_ORIGINS to an explicit list of allowed origins."
+            )
         return configured_origins
 
-    if env != "development":
+    if env == "production":
+        raise ValueError(
+            "CORS_ALLOW_ORIGINS must be explicitly configured in production. "
+            "Set it to a comma-separated list of allowed origins (e.g. https://app.example.com)."
+        )
+    if env not in {"development", "test"}:
         logger.warning(
             "CORS_ALLOW_ORIGINS not configured for non-development environment; "
             "requests may be blocked"
@@ -99,20 +109,28 @@ def _register_trusted_host_middleware(
         )
 
 
-def _register_security_headers(app: FastAPI, security_headers_middleware: Any, logger: Any) -> None:
+def _register_security_headers(
+    app: FastAPI, security_headers_middleware: Any, logger: Any, *, env: str
+) -> None:
     if security_headers_middleware is None:
         logger.warning("Security headers middleware not available")
         return
 
     try:
         strict_csp = os.getenv("STRICT_CSP", "false").lower() == "true"
+        if not strict_csp and env == "production":
+            logger.warning(
+                "STRICT_CSP is not set — forcing strict Content-Security-Policy in production. "
+                "Set STRICT_CSP=true to suppress this warning."
+            )
+            strict_csp = True
         force_https = os.getenv("FORCE_HTTPS", "false").lower() == "true"
         app.add_middleware(
             security_headers_middleware,  # type: ignore[arg-type]
             STRICT_CSP=strict_csp,
             force_https=force_https,
         )
-        logger.info("Security headers middleware enabled")
+        logger.info("Security headers middleware enabled (strict_csp=%s)", strict_csp)
     except Exception as exc:
         logger.warning("Security headers middleware registration failed: %s", exc)
 
@@ -181,7 +199,7 @@ def register_middleware(
     )
 
     _register_trusted_host_middleware(app, allowed_hosts=allowed_hosts, env=env, logger=logger)
-    _register_security_headers(app, security_headers_middleware, logger)
+    _register_security_headers(app, security_headers_middleware, logger, env=env)
     _register_lan_enforcement(app, settings, logger)
     _register_projection_consistency_guard(app, settings, logger)
 

@@ -37,6 +37,38 @@ const resolveRecountTargetId = (line: Record<string, any> | null | undefined): s
   return typeof candidate === "string" && candidate.trim() ? candidate : null;
 };
 
+const normalizeBatchIdentityText = (value: unknown): string =>
+  typeof value === "string" ? value.trim().toLowerCase() : "";
+
+const mapBatchVariant = (batch: any, fallbackItemCode: string): ItemDetailItem => {
+  const stockQty = getStockQty(batch);
+  return {
+    ...batch,
+    item_code: batch.item_code ?? fallbackItemCode,
+    barcode: batch.barcode ?? batch.auto_barcode ?? batch.autobarcode ?? "",
+    stock_qty: stockQty,
+    current_stock: stockQty,
+    mrp: batch.mrp ?? null,
+    manufacturing_date: batch.manufacturing_date ?? batch.mfg_date ?? null,
+  } as ItemDetailItem;
+};
+
+const mergeBatchVariants = (variants: ItemDetailItem[]): ItemDetailItem[] => {
+  const byBarcode = new Map<string, ItemDetailItem>();
+  const unkeyed: ItemDetailItem[] = [];
+
+  for (const variant of variants) {
+    const key = normalizeBatchIdentityText(variant.barcode);
+    if (!key) {
+      unkeyed.push(variant);
+      continue;
+    }
+    byBarcode.set(key, { ...byBarcode.get(key), ...variant });
+  }
+
+  return [...byBarcode.values(), ...unkeyed];
+};
+
 interface UseItemDetailDataParams {
   barcode?: string;
   sessionId?: string;
@@ -99,17 +131,76 @@ export const useItemDetailData = ({
   );
 
   const sameNameVariants = useMemo(() => {
-    if (!rawVariants.length || !item?.item_code) return [];
+    if (!rawVariants.length || !item) return [];
+
+    const currentBarcode = normalizeBatchIdentityText(item.barcode || barcode);
+    const currentCode = normalizeBatchIdentityText(item.item_code);
+    const currentName = normalizeBatchIdentityText(item.item_name || item.name);
 
     const filtered = rawVariants.filter((variant) => {
-      if (variant.item_code !== item.item_code) return false;
-      if (variant.barcode === item.barcode) return false;
+      const variantBarcode = normalizeBatchIdentityText(variant.barcode);
+      const variantCode = normalizeBatchIdentityText(variant.item_code);
+      const variantName = normalizeBatchIdentityText(variant.item_name || variant.name);
+      const sameProduct =
+        Boolean(currentCode && variantCode === currentCode) ||
+        Boolean(currentName && variantName === currentName);
+
+      if (!sameProduct) return false;
+      if (variantBarcode && currentBarcode && variantBarcode === currentBarcode) return false;
       if (!showZeroStock && getStockQty(variant) <= 0) return false;
       return true;
     });
 
     return sortItemsByStockDesc(filtered);
-  }, [item, rawVariants, showZeroStock]);
+  }, [barcode, item, rawVariants, showZeroStock]);
+
+  const batchCountVariants = useMemo(() => {
+    if (!rawVariants.length || !item) return [];
+
+    const currentBarcode = normalizeBatchIdentityText(item.barcode || barcode);
+    const currentCode = normalizeBatchIdentityText(item.item_code);
+    const currentName = normalizeBatchIdentityText(item.item_name || item.name);
+    const currentBatch = mapBatchVariant(
+      {
+        ...item,
+        barcode: item.barcode || barcode,
+        batch_id: item.batch_id || item.barcode || barcode,
+        batch_no: (item as any).batch_no || item.batch_id || item.barcode || barcode,
+      },
+      item.item_code || barcode || ""
+    );
+
+    const sameProductVariants = rawVariants.filter((variant) => {
+      const variantCode = normalizeBatchIdentityText(variant.item_code);
+      const variantName = normalizeBatchIdentityText(variant.item_name || variant.name);
+      return (
+        Boolean(currentCode && variantCode === currentCode) ||
+        Boolean(currentName && variantName === currentName)
+      );
+    });
+
+    const merged = mergeBatchVariants([currentBatch, ...sameProductVariants]);
+    const filtered = merged.filter((variant) => {
+      const variantBarcode = normalizeBatchIdentityText(variant.barcode);
+      const isCurrent = Boolean(
+        currentBarcode && variantBarcode && variantBarcode === currentBarcode
+      );
+      return isCurrent || showZeroStock || getStockQty(variant) > 0;
+    });
+
+    const currentRows: ItemDetailItem[] = [];
+    const otherRows: ItemDetailItem[] = [];
+    for (const variant of filtered) {
+      const variantBarcode = normalizeBatchIdentityText(variant.barcode);
+      if (currentBarcode && variantBarcode && variantBarcode === currentBarcode) {
+        currentRows.push(variant);
+      } else {
+        otherRows.push(variant);
+      }
+    }
+
+    return [...currentRows, ...sortItemsByStockDesc(otherRows)];
+  }, [barcode, item, rawVariants, showZeroStock]);
 
   const handleSelectMrpVariant = useCallback(
     (variant: MrpVariant) => {
@@ -281,26 +372,43 @@ export const useItemDetailData = ({
         const data = response.data || {};
         const batches = Array.isArray(data.batches) ? data.batches : [];
 
-        const mappedBatches = batches.map((batch: any) => {
-          const stockQty = getStockQty(batch);
-          return {
-            ...batch,
-            item_code: batch.item_code ?? item.item_code,
-            barcode: batch.barcode ?? batch.auto_barcode ?? "",
-            stock_qty: stockQty,
-            current_stock: stockQty,
-            mrp: batch.mrp ?? null,
-            manufacturing_date: batch.manufacturing_date ?? batch.mfg_date ?? null,
-          };
-        });
+        const mappedBatches: ItemDetailItem[] = batches.map((batch: any) =>
+          mapBatchVariant(batch, item.item_code)
+        );
 
-        setRawVariants(mappedBatches);
+        const currentItemName = normalizeBatchIdentityText(item.item_name || item.name);
+        const currentBarcode = normalizeBatchIdentityText(item.barcode || barcode);
+        const hasOtherSameNameBatch = mappedBatches.some(
+          (batch) =>
+            normalizeBatchIdentityText(batch.item_name || batch.name) === currentItemName &&
+            normalizeBatchIdentityText(batch.barcode) !== currentBarcode
+        );
+
+        if (currentItemName && !hasOtherSameNameBatch) {
+          const results = await searchItems(
+            item.item_name || item.name || item.item_code,
+            undefined,
+            50
+          );
+          const sameNameResults = (results.items || [])
+            .filter(
+              (result) =>
+                normalizeBatchIdentityText(result.item_name || result.name) === currentItemName
+            )
+            .map((result) => mapBatchVariant(result, item.item_code));
+
+          setRawVariants(mergeBatchVariants([...mappedBatches, ...sameNameResults]));
+          return;
+        }
+
+        setRawVariants(mergeBatchVariants(mappedBatches));
       } catch (error) {
         console.warn("Failed to load batches:", error);
         try {
+          const fallbackQuery = item.item_name || item.name || item.item_code;
           const results = offlineMode
-            ? { items: await localDb.searchItems(item.item_code) }
-            : await searchItems(item.item_code);
+            ? { items: await localDb.searchItems(fallbackQuery) }
+            : await searchItems(fallbackQuery, undefined, 50);
           setRawVariants((results.items || []) as ItemDetailItem[]);
         } catch (fallbackError) {
           console.warn("Batch fallback search failed:", fallbackError);
@@ -317,7 +425,7 @@ export const useItemDetailData = ({
     };
 
     void loadVariants();
-  }, [item, offlineMode]);
+  }, [barcode, item, offlineMode]);
 
   return {
     batchError,
@@ -328,6 +436,7 @@ export const useItemDetailData = ({
     item,
     loading,
     mrpVariants,
+    batchCountVariants,
     rawVariantsCount: rawVariants.length,
     recountBlockedReason,
     recountTargetId,

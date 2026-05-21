@@ -13,19 +13,40 @@ import { PullToRefresh } from "../../src/components/PullToRefresh";
 import { BottomSheet } from "../../src/components/ui/BottomSheet";
 import { SkeletonList } from "../../src/components/LoadingSkeleton";
 import { SwipeableRow } from "../../src/components/SwipeableRow";
-import Animated, { FadeInUp } from "react-native-reanimated";
-import { ModernCard } from "../../src/components/ui/ModernCard";
+import { OPERATIONAL_LIST_ROW_ESTIMATED_HEIGHT, OperationalListRow } from "../../src/components/ui";
+import type { OperationalListRowSeverity, OperationalListRowTone } from "../../src/components/ui";
 import {
   modernBorderRadius as radius,
   modernSpacing as spacing,
   theme,
 } from "../../src/styles/modernDesignSystem";
-import { hitSlop, touchTargets } from "@/theme/unified/spacing";
+import { hitSlop, touchTargets } from "@/theme/legacyCompat";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { useReducedMotion } from "@/hooks/useReducedMotion";
-import { operationalMotion } from "@/utils/motion";
 import { ScreenContainer } from "../../src/components/ui";
+
+const getHistoryStatusTone = (status?: string): OperationalListRowTone => {
+  switch (String(status || "").toLowerCase()) {
+    case "approved":
+    case "verified":
+      return "completed";
+    case "rejected":
+      return "error";
+    case "pending":
+      return "pending";
+    default:
+      return "neutral";
+  }
+};
+
+const getHistorySeverity = (
+  status: string | undefined,
+  variance: number
+): OperationalListRowSeverity => {
+  if (String(status || "").toLowerCase() === "rejected") return "high";
+  if (variance !== 0) return "medium";
+  return "low";
+};
 
 const getHistoryFailureReason = (error: unknown): string => {
   if (error instanceof Error && error.message) {
@@ -50,7 +71,6 @@ export default function HistoryScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const uiTokens = useUiTokens();
-  const prefersReducedMotion = useReducedMotion();
 
   interface CountLine {
     id: string;
@@ -94,7 +114,7 @@ export default function HistoryScreen() {
     try {
       setLoadError(null);
       const data = await getCountLines(sessionId as string);
-      const safeData = Array.isArray(data?.items) ? data.items : [];
+      const safeData = (Array.isArray(data?.items) ? data.items : []) as unknown as CountLine[];
       setLoadWarning(
         (data as { _degraded?: boolean })?._degraded
           ? "Live history refresh failed. Showing cached count lines from this device. Pull down to refresh or retry when connected."
@@ -158,10 +178,10 @@ export default function HistoryScreen() {
     return () => window.removeEventListener("keydown", onKey);
   }, [onRefresh]);
 
-  const handleDeleteRequest = (item: CountLine) => {
+  const handleDeleteRequest = React.useCallback((item: CountLine) => {
     setSelectedLineForDelete(item);
     setPinModalVisible(true);
-  };
+  }, []);
 
   const handlePinSuccess = async () => {
     if (!selectedLineForDelete) return;
@@ -183,154 +203,80 @@ export default function HistoryScreen() {
     }
   };
 
-  const renderCountLine = ({ item, index }: { item: CountLine; index: number }) => {
-    const varianceColor = item.variance === 0 ? uiTokens.colors.success : uiTokens.colors.error;
-    const normalizedStatus = normalizeStatus(item.status);
-    const statusColor =
-      normalizedStatus === "approved"
-        ? uiTokens.colors.success
-        : normalizedStatus === "rejected"
-          ? uiTokens.colors.error
-          : uiTokens.colors.warning;
-    const statusTextColor =
-      normalizedStatus === "pending" ? uiTokens.colors.textPrimary : theme.colors.text.inverse;
-
-    const CardContent = (
-      <ModernCard
-        variant="outlined"
-        elevation="none"
-        padding={0}
-        style={[
-          styles.countCard,
-          { backgroundColor: uiTokens.colors.surface, borderColor: uiTokens.colors.border },
-        ]}
-      >
-        <View style={styles.cardHeader}>
-          <Text style={[styles.itemName, { color: uiTokens.colors.textPrimary }]}>
-            {item.item_name || "Unknown Item"}
-          </Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-            <Text style={[styles.statusText, { color: statusTextColor }]}>
-              {(normalizedStatus || "pending").toUpperCase()}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.codeRow}>
-          <Text style={[styles.itemCode, { color: uiTokens.colors.textSecondary }]}>
-            Code: {item.item_code || "N/A"}
-          </Text>
-          {item.batch_id && (
-            <View
-              style={[
-                styles.batchBadge,
-                {
-                  backgroundColor: colorWithAlpha(uiTokens.colors.info, 0.1),
-                  borderColor: colorWithAlpha(uiTokens.colors.info, 0.24),
-                },
-              ]}
+  const renderCountLine = React.useCallback(
+    ({ item }: { item: CountLine }) => {
+      const normalizedStatus = normalizeStatus(item.status);
+      const variance = Number(item.variance ?? 0);
+      const CardContent = (
+        <OperationalListRow
+          title={item.item_name || "Unknown Item"}
+          subtitle={`Code ${item.item_code || "N/A"}`}
+          metadata={[
+            `ERP ${item.erp_qty ?? 0}`,
+            `Counted ${item.counted_qty ?? 0}`,
+            `Variance ${variance}`,
+          ]}
+          status={(normalizedStatus || "pending").toUpperCase()}
+          statusTone={getHistoryStatusTone(normalizedStatus)}
+          severity={getHistorySeverity(normalizedStatus, variance)}
+          leftIcon={variance !== 0 ? "analytics-outline" : "checkmark-circle-outline"}
+          badges={
+            [
+              item.batch_id
+                ? {
+                    label: `Batch ${item.batch_id}`,
+                    tone: "info" as const,
+                    icon: "cube-outline" as const,
+                  }
+                : undefined,
+              item.variance_reason
+                ? {
+                    label: item.variance_reason,
+                    tone: "variance" as const,
+                    icon: "warning-outline" as const,
+                  }
+                : undefined,
+              item.remark
+                ? {
+                    label: item.remark,
+                    tone: "neutral" as const,
+                    icon: "chatbox-ellipses-outline" as const,
+                  }
+                : undefined,
+            ].filter(Boolean) as NonNullable<
+              React.ComponentProps<typeof OperationalListRow>["badges"]
             >
-              <Text style={[styles.batchBadgeText, { color: uiTokens.colors.info }]}>
-                Batch: {item.batch_id}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.qtyRow}>
-          <View
-            style={[
-              styles.qtyItem,
-              { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.06) },
-            ]}
-          >
-            <Text style={[styles.qtyLabel, { color: uiTokens.colors.textMuted }]}>ERP</Text>
-            <Text style={[styles.qtyValue, { color: uiTokens.colors.textPrimary }]}>
-              {item.erp_qty ?? 0}
-            </Text>
-          </View>
-          <View
-            style={[
-              styles.qtyItem,
-              { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.06) },
-            ]}
-          >
-            <Text style={[styles.qtyLabel, { color: uiTokens.colors.textMuted }]}>Counted</Text>
-            <Text style={[styles.qtyValue, { color: uiTokens.colors.textPrimary }]}>
-              {item.counted_qty ?? 0}
-            </Text>
-          </View>
-          <View
-            style={[
-              styles.qtyItem,
-              { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.06) },
-            ]}
-          >
-            <Text style={[styles.qtyLabel, { color: uiTokens.colors.textMuted }]}>Variance</Text>
-            <Text style={[styles.qtyValue, { color: varianceColor }]}>{item.variance ?? 0}</Text>
-          </View>
-        </View>
-
-        {item.variance_reason && (
-          <View
-            style={[
-              styles.reasonBox,
-              {
-                backgroundColor: colorWithAlpha(uiTokens.colors.warning, 0.08),
-                borderColor: colorWithAlpha(uiTokens.colors.warning, 0.22),
-              },
-            ]}
-          >
-            <Text style={[styles.reasonLabel, { color: uiTokens.colors.textSecondary }]}>
-              Reason:
-            </Text>
-            <Text style={[styles.reasonText, { color: uiTokens.colors.warning }]}>
-              {item.variance_reason}
-            </Text>
-          </View>
-        )}
-
-        {item.remark && (
-          <Text style={[styles.remark, { color: uiTokens.colors.textSecondary }]}>
-            Remark: {item.remark}
-          </Text>
-        )}
-
-        <Text style={[styles.timestamp, { color: uiTokens.colors.textMuted }]}>
-          {new Date(item.counted_at).toLocaleString()}
-        </Text>
-      </ModernCard>
-    );
-
-    const AnimatedCard =
-      flags.enableAnimations && !prefersReducedMotion ? (
-        <Animated.View
-          entering={FadeInUp.delay(index * operationalMotion.fast)
-            .springify()
-            .damping(12)}
-        >
-          {CardContent}
-        </Animated.View>
-      ) : (
-        CardContent
-      );
-
-    if (flags.enableSwipeActions && Platform.OS !== "web") {
-      return (
-        <SwipeableRow
-          rightLabel="Delete"
-          onRightAction={() => {
-            if (flags.enableHaptics) haptics.selection?.();
-            handleDeleteRequest(item);
+          }
+          timestamps={{
+            label: "Counted",
+            value: new Date(item.counted_at).toLocaleString(),
+            icon: "time-outline",
           }}
-        >
-          {AnimatedCard}
-        </SwipeableRow>
+          accessibility={{
+            label: `${item.item_name || "Unknown item"}. ${normalizedStatus || "pending"}. ERP quantity ${item.erp_qty ?? 0}. Counted quantity ${item.counted_qty ?? 0}. Variance ${variance}.`,
+          }}
+          style={styles.countRow}
+        />
       );
-    }
 
-    return AnimatedCard;
-  };
+      if (flags.enableSwipeActions && Platform.OS !== "web") {
+        return (
+          <SwipeableRow
+            rightLabel="Delete"
+            onRightAction={() => {
+              if (flags.enableHaptics) haptics.selection?.();
+              handleDeleteRequest(item);
+            }}
+          >
+            {CardContent}
+          </SwipeableRow>
+        );
+      }
+
+      return CardContent;
+    },
+    [handleDeleteRequest, normalizeStatus]
+  );
 
   return (
     <ScreenContainer
@@ -360,6 +306,7 @@ export default function HistoryScreen() {
           <FlashList
             data={countLines}
             renderItem={renderCountLine}
+            drawDistance={OPERATIONAL_LIST_ROW_ESTIMATED_HEIGHT.standard * 6}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.list}
             ListHeaderComponent={
@@ -579,6 +526,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.lg,
+  },
+  countRow: {
+    marginBottom: spacing.sm,
   },
   cardHeader: {
     flexDirection: "row",

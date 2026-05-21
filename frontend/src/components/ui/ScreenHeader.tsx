@@ -39,6 +39,7 @@ import Animated, {
 
 import { useAuthStore } from "../../store/authStore";
 import { useThemeContext } from "../../context/ThemeContext";
+import { useUiTokens } from "../../hooks/useUiTokens";
 import { safeBackNavigation } from "../../utils/navigation";
 import type { UserRole } from "../../utils/roleNavigation";
 
@@ -53,6 +54,8 @@ export interface ScreenHeaderProps {
   subtitle?: string;
   /** Show back button (defaults to false) */
   showBackButton?: boolean;
+  /** Optional toolbar row rendered beneath the header */
+  toolbar?: React.ReactNode;
   /** Custom back button handler (defaults to safe role-aware back navigation) */
   onBackPress?: () => void;
   /** Show logout button (defaults to true) */
@@ -142,32 +145,35 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   showSettingsButton = true,
   rightAction,
   customRightContent,
+  toolbar,
   style,
   transparent = false,
   logoutConfirmMessage = "Are you sure you want to logout?",
 }) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { theme, isDark } = useThemeContext();
+  const { isDark } = useThemeContext();
+  const uiTokens = useUiTokens();
   const { user, logout } = useAuthStore();
 
   const [leftSectionWidth, setLeftSectionWidth] = useState(0);
   const [rightSectionWidth, setRightSectionWidth] = useState(0);
 
-  // Compute colors from theme
+  const buttonBackground = isDark
+    ? "rgba(255, 255, 255, 0.12)"
+    : "rgba(28, 25, 23, 0.06)";
+  const dangerBackground = isDark
+    ? "rgba(239, 68, 68, 0.15)"
+    : "rgba(239, 68, 68, 0.1)";
   const colors = {
-    background: transparent
-      ? "transparent"
-      : isDark
-        ? "rgba(15, 23, 42, 0.92)"
-        : "rgba(255, 255, 255, 0.96)",
-    text: theme.colors.text.primary,
-    textSecondary: isDark ? theme.colors.text.secondary : theme.colors.text.tertiary,
-    accent: theme.colors.accent,
-    danger: theme.colors.danger,
-    border: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(15, 23, 42, 0.08)",
-    buttonBg: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(15, 23, 42, 0.06)",
-    dangerBg: isDark ? "rgba(239, 68, 68, 0.15)" : "rgba(239, 68, 68, 0.1)",
+    background: transparent ? "transparent" : uiTokens.colors.surfaceElevated,
+    text: uiTokens.colors.textPrimary,
+    textSecondary: uiTokens.colors.textSecondary,
+    accent: uiTokens.colors.accent,
+    danger: uiTokens.colors.error,
+    border: uiTokens.colors.border,
+    buttonBg: buttonBackground,
+    dangerBg: dangerBackground,
   };
 
   // Handlers
@@ -249,8 +255,8 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 
     return (
       <Animated.View entering={FadeIn.delay(100)} style={styles.userSection}>
-        <View style={[styles.avatarContainer, { backgroundColor: `${theme.colors.accent}20` }]}>
-          <Ionicons name="person" size={16} color={theme.colors.accent} />
+        <View style={[styles.avatarContainer, { backgroundColor: colors.buttonBg }]}>
+          <Ionicons name="person" size={16} color={colors.accent} />
         </View>
         <View style={styles.userTextContainer}>
           <Text style={[styles.welcomeText, { color: colors.textSecondary }]} numberOfLines={1}>
@@ -284,75 +290,90 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 
   // Render content
   const renderContent = () => (
-    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
-      {/* Left Section */}
-      <View style={styles.leftSection} onLayout={handleLeftLayout}>
-        {showBackButton && (
-          <Animated.View entering={FadeInLeft.delay(50)}>
-            <AnimatedButton
-              onPress={handleBackPress}
-              icon="chevron-back"
-              iconColor={colors.text}
-              backgroundColor={colors.buttonBg}
-              size={24}
-              testID="back-button"
-            />
-          </Animated.View>
-        )}
-        {!title && renderUserInfo()}
-      </View>
-
-      {/* Center Section (overlay-centered, avoids overlap with left/right content) */}
-      {title && (
-        <View
-          style={[
-            styles.centerOverlay,
-            styles.pointerEventsNone,
-            {
-              paddingLeft: leftSectionWidth + 12,
-              paddingRight: rightSectionWidth + 12,
-            },
-          ]}
-        >
-          {renderTitle()}
+    <View style={[styles.headerWrapper, { paddingTop: insets.top + uiTokens.spacing.sm }]}>
+      <View style={styles.container}>
+        {/* Left Section */}
+        <View style={styles.leftSection} onLayout={handleLeftLayout}>
+          {showBackButton && (
+            <Animated.View entering={FadeInLeft.delay(50)}>
+              <AnimatedButton
+                onPress={handleBackPress}
+                icon="chevron-back"
+                iconColor={colors.text}
+                backgroundColor={colors.buttonBg}
+                size={24}
+                testID="back-button"
+              />
+            </Animated.View>
+          )}
+          {!title && renderUserInfo()}
         </View>
-      )}
 
-      {/* Right Section */}
-      <Animated.View
-        entering={FadeInRight.delay(100)}
-        style={styles.rightSection}
-        onLayout={handleRightLayout}
-      >
-        {customRightContent}
-        {showSettingsButton && user && rightAction?.icon !== "settings-outline" && (
-          <AnimatedButton
-            onPress={handleSettingsPress}
-            icon="settings-outline"
-            iconColor={colors.accent}
-            backgroundColor={colors.buttonBg}
-            testID="settings-button"
-          />
+        {/* Center Section (overlay-centered, avoids overlap with left/right content) */}
+        {title && (
+          <View
+            style={[
+              styles.centerOverlay,
+              styles.pointerEventsNone,
+              {
+                paddingLeft: leftSectionWidth + 12,
+                paddingRight: rightSectionWidth + 12,
+              },
+            ]}
+          >
+            {renderTitle()}
+          </View>
         )}
-        {rightAction && (
-          <AnimatedButton
-            onPress={handleRightAction}
-            icon={rightAction.icon}
-            iconColor={colors.accent}
-            backgroundColor={colors.buttonBg}
-            testID="right-action-button"
-          />
-        )}
-        {showLogoutButton && (
-          <AnimatedButton
-            onPress={handleLogout}
-            icon="log-out-outline"
-            iconColor={colors.danger}
-            backgroundColor={colors.dangerBg}
-            testID="logout-button"
-          />
-        )}
-      </Animated.View>
+
+        {/* Right Section */}
+        <Animated.View
+          entering={FadeInRight.delay(100)}
+          style={styles.rightSection}
+          onLayout={handleRightLayout}
+        >
+          {customRightContent}
+          {showSettingsButton && user && rightAction?.icon !== "settings-outline" && (
+            <AnimatedButton
+              onPress={handleSettingsPress}
+              icon="settings-outline"
+              iconColor={colors.accent}
+              backgroundColor={colors.buttonBg}
+              testID="settings-button"
+            />
+          )}
+          {rightAction && (
+            <AnimatedButton
+              onPress={handleRightAction}
+              icon={rightAction.icon}
+              iconColor={colors.accent}
+              backgroundColor={colors.buttonBg}
+              testID="right-action-button"
+            />
+          )}
+          {showLogoutButton && (
+            <AnimatedButton
+              onPress={handleLogout}
+              icon="log-out-outline"
+              iconColor={colors.danger}
+              backgroundColor={colors.dangerBg}
+              testID="logout-button"
+            />
+          )}
+        </Animated.View>
+      </View>
+      {toolbar ? (
+        <View
+          style={{
+            paddingHorizontal: uiTokens.spacing.lg,
+            paddingTop: uiTokens.spacing.sm,
+            paddingBottom: uiTokens.spacing.md,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+          }}
+        >
+          {toolbar}
+        </View>
+      ) : null}
     </View>
   );
 
@@ -382,6 +403,9 @@ const styles = StyleSheet.create({
   wrapper: {
     position: "relative",
     zIndex: 100,
+  },
+  headerWrapper: {
+    width: "100%",
   },
   blurContainer: {
     borderBottomWidth: 1,
@@ -420,6 +444,12 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     flexShrink: 0,
     gap: 8,
+  },
+  toolbarRow: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.08)",
   },
   userSection: {
     flexDirection: "row",

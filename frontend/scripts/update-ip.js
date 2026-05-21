@@ -72,7 +72,12 @@ async function main() {
   console.log(`Detected Local IP: ${localIp}`);
 
   try {
-    let envContent = fs.readFileSync(envPath, "utf8");
+    let envContent = "";
+    if (fs.existsSync(envPath)) {
+      envContent = fs.readFileSync(envPath, "utf8");
+    } else {
+      console.log("No frontend .env file found; creating one with the detected backend URL.");
+    }
 
     const candidatePorts = [
       preferredPort,

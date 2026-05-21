@@ -1,5 +1,5 @@
 // app/staff/serial-scanner.tsx
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import {
   CameraView,
@@ -8,82 +8,198 @@ import {
 } from "@/services/device/expoCamera";
 import { useRouter } from "expo-router";
 
-import { semanticColors, colors, hitSlop, radius, spacing } from "@/theme/legacyCompat";
+import {
+  semanticColors,
+  colors,
+  hitSlop,
+  radius,
+  spacing,
+  touchTargets,
+} from "@/theme/legacyCompat";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { useScanGate } from "@/scanner/useScanGate";
 import { ScanMode, normalizeScanValue, scoreCandidate, decide } from "@/scanner/serialScanRules";
 import ModernHeader from "@/components/ui/ModernHeader";
 import ModernButton from "@/components/ui/ModernButton";
+import ModernInput from "@/components/ui/ModernInput";
+import { ScannerFeedbackState } from "@/components/feedback/ScannerFeedbackState";
+import type { ScannerFeedbackStateValue } from "@/components/feedback/ScannerFeedbackState";
 import { safeBackNavigation } from "@/utils/navigation";
-function toast(msg: string) {
-  Alert.alert("Scan", msg);
-}
+import { useUiTokens } from "@/hooks/useUiTokens";
+import {
+  OPERATIONAL_TELEMETRY_EVENT_REGISTRY,
+  operationalTelemetry,
+} from "@/services/observability/operationalTelemetry";
+
+type SerialScannerFeedback = {
+  state: Extract<
+    ScannerFeedbackStateValue,
+    "success" | "warning" | "duplicate" | "invalid" | "found"
+  >;
+  title: string;
+  message?: string;
+  barcode?: string;
+  timestamp: number;
+};
 
 export default function SerialScannerScreen() {
   const router = useRouter();
+  const uiTokens = useUiTokens();
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<ScanMode>("SERIAL");
+  const [manualValue, setManualValue] = useState("");
   const [serials, setSerials] = useState<string[]>([]);
+  const [feedback, setFeedback] = useState<SerialScannerFeedback | null>(null);
+  const serialsRef = useRef(serials);
 
   // Fix 2: Destructure for stable dependencies
   const { canProcess, release } = useScanGate();
 
-  // Fix 3: Simplified dedupe logic (Authored by addValue)
-  const addValue = useCallback((value: string) => {
-    setSerials((prev) => {
-      // Logic: For display consistency, we might want to keep the format from decision
-      // We already normalized.
-      if (prev.includes(value)) return prev;
-      return [...prev, value];
-    });
+  useEffect(() => {
+    serialsRef.current = serials;
+  }, [serials]);
+
+  useEffect(() => {
+    if (!feedback) return undefined;
+    const timer = setTimeout(() => setFeedback(null), 2400);
+    return () => clearTimeout(timer);
+  }, [feedback]);
+
+  const showFeedback = useCallback((nextFeedback: Omit<SerialScannerFeedback, "timestamp">) => {
+    setFeedback({ ...nextFeedback, timestamp: Date.now() });
   }, []);
 
-  const onBarcodeScanned = useCallback(
-    (res: BarcodeScanningResult) => {
-      const raw = res.data ?? "";
-      const symbology = (res.type ?? "").toString();
-      // Fix 4: Normalized with symbology context
+  const addSerialValue = useCallback(
+    (value: string) => {
+      if (serialsRef.current.includes(value)) {
+        showFeedback({
+          state: "duplicate",
+          title: "Serial already scanned",
+          message: "This serial is already in the current scan set.",
+          barcode: value,
+        });
+        return false;
+      }
+
+      setSerials((prev) => [...prev, value]);
+      showFeedback({
+        state: "success",
+        title: "Serial added",
+        message: "Ready for the next serial.",
+        barcode: value,
+      });
+      return true;
+    },
+    [showFeedback]
+  );
+
+  const processCandidate = useCallback(
+    (rawInput: string, symbology: string) => {
+      const raw = rawInput ?? "";
       const value = normalizeScanValue(raw, symbology);
+      const mark = operationalTelemetry.markStart({
+        name: OPERATIONAL_TELEMETRY_EVENT_REGISTRY.SERIAL_SCAN_COMPLETED,
+        category: "scanner",
+        surface: "serial_scanner_screen",
+        tags: {
+          mode,
+          symbology,
+          barcode: value || raw,
+        },
+      });
 
-      if (!value) return;
+      if (!value) {
+        operationalTelemetry.markEnd(mark, "invalid", { reason: "empty_value" });
+        showFeedback({
+          state: "invalid",
+          title: "Scan value required",
+          message: "Enter a serial or item barcode before submitting.",
+        });
+        return false;
+      }
 
-      if (!canProcess(value)) return;
+      if (!canProcess(value)) {
+        operationalTelemetry.markEnd(mark, "skipped", { reason: "scan_gate" });
+        return false;
+      }
 
       try {
         const score = scoreCandidate(mode, value, symbology);
         if (score < 0) {
-          toast(
-            mode === "SERIAL"
-              ? "Wrong code detected. Scan the SERIAL barcode (alphanumeric)."
-              : "Wrong code detected. Scan the ITEM EAN barcode (digits)."
-          );
-          return;
+          operationalTelemetry.markEnd(mark, "invalid", { reason: "wrong_code_type" });
+          showFeedback({
+            state: "warning",
+            title: "Wrong code type",
+            message:
+              mode === "SERIAL"
+                ? "Scan the SERIAL barcode, usually the alphanumeric label."
+                : "Scan the ITEM EAN/UPC barcode, usually the numeric product label.",
+            barcode: value,
+          });
+          return false;
         }
 
         const decision = decide(mode, { raw, value, symbology });
 
         if (!decision.ok) {
-          toast(decision.reason);
-          return;
+          operationalTelemetry.markEnd(mark, "invalid", { reason: decision.reason });
+          showFeedback({
+            state: "warning",
+            title: "Code not accepted",
+            message: decision.reason,
+            barcode: value,
+          });
+          return false;
         }
 
         if (decision.kind === "SERIAL") {
-          // Optimized check inside addValue via local state updater is sufficient,
-          // but checking here prevents unnecessary toast if we want to alert "Duplicate"
-          // We can't access latest 'serials' without dependency, so let's rely on setSerials
-          // to handle the add, and we can't easily toast "Duplicate" without ref or dependency.
-          // For simplicity in this drop-in: verify in setSerials (silent reject) or use ref if alert needed.
-          // User asked to remove redundant Set. We'll simply try add.
-          addValue(decision.value);
-          return;
+          const accepted = addSerialValue(decision.value);
+          operationalTelemetry.markEnd(mark, accepted ? "success" : "duplicate", {
+            barcode: decision.value,
+          });
+          return accepted;
         }
 
-        toast(`Item barcode: ${decision.value}`);
+        operationalTelemetry.markEnd(mark, "success", {
+          barcode: decision.value,
+          kind: decision.kind,
+        });
+        showFeedback({
+          state: "found",
+          title: "Item barcode detected",
+          message: "Use this item code for item-mode verification.",
+          barcode: decision.value,
+        });
+        return true;
       } finally {
         release();
       }
     },
-    [mode, canProcess, release, addValue]
+    [mode, canProcess, release, addSerialValue, showFeedback]
+  );
+
+  const onBarcodeScanned = useCallback(
+    (res: BarcodeScanningResult) => {
+      processCandidate(res.data ?? "", (res.type ?? "").toString());
+    },
+    [processCandidate]
+  );
+
+  const handleManualSubmit = useCallback(() => {
+    const accepted = processCandidate(manualValue, "manual");
+    if (accepted) {
+      setManualValue("");
+    }
+  }, [manualValue, processCandidate]);
+
+  const manualEntryLabel = useMemo(
+    () =>
+      mode === "ITEM"
+        ? "Manual item barcode"
+        : mode === "AUTO"
+          ? "Manual serial or item barcode"
+          : "Manual serial number",
+    [mode]
   );
 
   // Fix 5: Dynamic barcode types
@@ -114,9 +230,24 @@ export default function SerialScannerScreen() {
 
       <View style={styles.topBar}>
         <View style={styles.modeRow}>
-          <ModeChip label="SERIAL" active={mode === "SERIAL"} onPress={() => setMode("SERIAL")} />
-          <ModeChip label="ITEM" active={mode === "ITEM"} onPress={() => setMode("ITEM")} />
-          <ModeChip label="AUTO" active={mode === "AUTO"} onPress={() => setMode("AUTO")} />
+          <ModeChip
+            active={mode === "SERIAL"}
+            activeColor={uiTokens.colors.accent}
+            label="SERIAL"
+            onPress={() => setMode("SERIAL")}
+          />
+          <ModeChip
+            active={mode === "ITEM"}
+            activeColor={uiTokens.colors.accent}
+            label="ITEM"
+            onPress={() => setMode("ITEM")}
+          />
+          <ModeChip
+            active={mode === "AUTO"}
+            activeColor={uiTokens.colors.accent}
+            label="AUTO"
+            onPress={() => setMode("AUTO")}
+          />
         </View>
 
         <Text style={styles.hint}>
@@ -131,21 +262,31 @@ export default function SerialScannerScreen() {
       {!permission?.granted ? (
         <View style={styles.permissionContainer}>
           <Text style={styles.permissionText}>
-            Camera permission is required for serial scanning.
+            Camera permission is needed for scan mode. Manual entry is still available below.
           </Text>
           {permission?.canAskAgain !== false ? (
             <ModernButton
               title="Grant Permission"
               variant="primary"
-              style={{ minHeight: 44, width: "100%" }}
+              style={{
+                ...styles.permissionButton,
+                backgroundColor: uiTokens.colors.accent,
+                borderColor: uiTokens.colors.accent,
+              }}
               onPress={requestPermission}
+              accessibilityHint="Allows camera scanning for serial and item barcodes"
             />
           ) : (
             <ModernButton
               title="Open Settings"
               variant="primary"
-              style={{ minHeight: 44, width: "100%" }}
+              style={{
+                ...styles.permissionButton,
+                backgroundColor: uiTokens.colors.accent,
+                borderColor: uiTokens.colors.accent,
+              }}
               onPress={handleOpenSettings}
+              accessibilityHint="Opens device settings so camera permission can be enabled"
             />
           )}
         </View>
@@ -163,13 +304,60 @@ export default function SerialScannerScreen() {
         </View>
       )}
 
+      {feedback ? (
+        <ScannerFeedbackState
+          compact
+          state={feedback.state}
+          title={feedback.title}
+          message={feedback.message}
+          barcode={feedback.barcode}
+          timestamp={feedback.timestamp}
+          style={styles.feedbackState}
+        />
+      ) : null}
+
       <View style={styles.bottomPanel}>
+        <View style={styles.manualEntry}>
+          <Text style={styles.manualTitle}>Manual entry</Text>
+          <View style={styles.manualRow}>
+            <View style={styles.manualInputWrap}>
+              <ModernInput
+                value={manualValue}
+                onChangeText={setManualValue}
+                placeholder={manualEntryLabel}
+                autoCapitalize={mode === "ITEM" ? "none" : "characters"}
+                autoCorrect={false}
+                keyboardType={mode === "ITEM" ? "number-pad" : "default"}
+                onSubmitEditing={handleManualSubmit}
+                returnKeyType="done"
+                testID="serial-scanner-manual-input"
+                containerStyle={styles.manualInputContainer}
+                rightIcon={manualValue ? "close-circle" : undefined}
+                onRightIconPress={() => setManualValue("")}
+                rightIconAccessibilityLabel="Clear manual scan value"
+              />
+            </View>
+            <ModernButton
+              title="Add"
+              variant="secondary"
+              style={styles.manualAddButton}
+              onPress={handleManualSubmit}
+              disabled={!manualValue.trim()}
+              accessibilityLabel={`Add ${manualEntryLabel.toLowerCase()}`}
+            />
+          </View>
+        </View>
+
         <View style={styles.statsRow}>
           <Text style={styles.count}>Scanned: {serials.length}</Text>
           <ModernButton
             title="Done"
             variant="primary"
-            style={{ height: 40, minWidth: 100 }}
+            style={{
+              ...styles.doneButton,
+              backgroundColor: uiTokens.colors.accent,
+              borderColor: uiTokens.colors.accent,
+            }}
             onPress={() => {
               safeBackNavigation(router, { userRole: "staff" });
               // In a real app, you might do: router.push({ pathname: '..', params: { newSerials: serials }})
@@ -179,14 +367,19 @@ export default function SerialScannerScreen() {
         </View>
 
         <Text style={styles.list} numberOfLines={3}>
-          {serials.slice(-6).join(", ")}
+          {serials.length > 0 ? serials.slice(-6).join(", ") : "No serials scanned yet."}
         </Text>
       </View>
     </View>
   );
 }
 
-function ModeChip(props: { label: ScanMode; active: boolean; onPress: () => void }) {
+function ModeChip(props: {
+  label: ScanMode;
+  active: boolean;
+  activeColor: string;
+  onPress: () => void;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -195,7 +388,13 @@ function ModeChip(props: { label: ScanMode; active: boolean; onPress: () => void
       accessibilityState={{ selected: props.active }}
       hitSlop={hitSlop.small}
       onPress={props.onPress}
-      style={[styles.chip, props.active && styles.chipActive]}
+      style={[
+        styles.chip,
+        props.active && {
+          backgroundColor: props.activeColor,
+          borderColor: props.activeColor,
+        },
+      ]}
     >
       <Text style={[styles.chipText, props.active && styles.chipTextActive]}>{props.label}</Text>
     </Pressable>
@@ -227,8 +426,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
   },
+  permissionButton: {
+    minHeight: touchTargets.minimum,
+    width: "100%",
+  },
 
   cameraWrap: { flex: 1, position: "relative" },
+  feedbackState: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+  },
   frame: {
     position: "absolute",
     left: 40,
@@ -245,11 +452,39 @@ const styles = StyleSheet.create({
     backgroundColor: colorWithAlpha(colors.neutral[950], 0.9),
     paddingBottom: spacing["3xl"],
   },
+  manualEntry: {
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+  },
+  manualTitle: {
+    color: colorWithAlpha(semanticColors.text.inverse, 0.82),
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  manualRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  manualInputWrap: {
+    flex: 1,
+  },
+  manualInputContainer: {
+    marginBottom: spacing.none,
+  },
+  manualAddButton: {
+    minWidth: touchTargets.large,
+  },
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: spacing.md,
+  },
+  doneButton: {
+    height: touchTargets.minimum,
+    minWidth: touchTargets.large,
   },
   count: { color: semanticColors.text.inverse, fontSize: 18, fontWeight: "700" },
   list: { color: colorWithAlpha(semanticColors.text.inverse, 0.6), fontSize: 12 },
@@ -260,10 +495,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colorWithAlpha(semanticColors.text.inverse, 0.2),
-  },
-  chipActive: {
-    backgroundColor: colors.primary[500],
-    borderColor: colors.primary[500],
   },
   chipText: { color: semanticColors.text.inverse, fontSize: 12, fontWeight: "600" },
   chipTextActive: { color: semanticColors.text.inverse },

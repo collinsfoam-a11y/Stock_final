@@ -25,6 +25,14 @@ import {
 
 const log = createLogger("SessionManagementApi");
 
+interface ApiErrorLike {
+  response?: { status?: number; data?: unknown };
+  message?: string;
+}
+
+type CachedSession = Session & { _local_session_id?: string };
+type ProjectedSessionWithSync = Session & { _sync_status?: string };
+
 export interface CreateSessionParams {
   warehouse?: string;
   type?: string;
@@ -89,32 +97,64 @@ const paginateSessions = (sessions: Session[], page: number, pageSize: number): 
   };
 };
 
+const isProjectionStorageUnavailable = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("navigator.storage not available") ||
+    message.includes("Invalid VFS state")
+  );
+};
+
+const readProjectedSessions = async (): Promise<Session[]> => {
+  try {
+    return ((await getProjectedSessionsRead()) || []) as Session[];
+  } catch (error) {
+    const details = {
+      error: error instanceof Error ? error.message : String(error),
+    };
+    if (isProjectionStorageUnavailable(error)) {
+      log.debug("Unable to read projected sessions", details);
+    } else {
+      log.warn("Unable to read projected sessions", details);
+    }
+    return [];
+  }
+};
+
 const getOfflinePaginatedSessions = async (
   page: number,
   pageSize: number
 ): Promise<SessionPage> => {
-  const projectedSessions = (await getProjectedSessionsRead()) || [];
+  const projectedSessions = await readProjectedSessions();
   if (projectedSessions.length > 0) {
-    return paginateSessions(projectedSessions as Session[], page, pageSize);
+    return paginateSessions(projectedSessions, page, pageSize);
   }
 
-  const cache = await getSessionsCache();
-  return paginateSessions(Object.values(cache) as Session[], page, pageSize);
+  try {
+    const cache = await getSessionsCache();
+    return paginateSessions(Object.values(cache) as Session[], page, pageSize);
+  } catch (error) {
+    log.warn("Unable to read cached sessions", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return paginateSessions([], page, pageSize);
+  }
 };
 
 const normalizeSessionsResponse = (
-  responseData: any,
+  responseData: { items?: Session[]; pagination?: SessionPage["pagination"] } | Session[],
   page: number,
   pageSize: number
 ): SessionPage => {
-  const sessions = Array.isArray(responseData?.items)
-    ? (responseData.items as Session[])
-    : Array.isArray(responseData)
-      ? (responseData as Session[])
+  const sessions = Array.isArray(responseData)
+    ? responseData
+    : Array.isArray((responseData as { items?: Session[] }).items)
+      ? (responseData as { items: Session[] }).items
       : [];
+  const pagination = Array.isArray(responseData) ? undefined : responseData?.pagination;
   return {
     items: sessions,
-    pagination: responseData?.pagination || {
+    pagination: pagination || {
       page,
       page_size: pageSize,
       total: sessions.length,
@@ -144,7 +184,7 @@ const mergeSessionsWithVisibleCache = async (sessions: Session[]): Promise<Sessi
         session?.id,
         session?.session_id,
         session?._id,
-        (session as any)?._local_session_id,
+        (session as CachedSession)?._local_session_id,
       ])
       .filter(Boolean)
   );
@@ -152,13 +192,13 @@ const mergeSessionsWithVisibleCache = async (sessions: Session[]): Promise<Sessi
     (session) =>
       !seenIds.has(session.id) &&
       !seenIds.has(session.session_id) &&
-      !seenIds.has((session as any)._local_session_id)
+      !seenIds.has((session as CachedSession)._local_session_id)
   );
   return missingCached.length > 0 ? [...sessions, ...missingCached] : sessions;
 };
 
 const mergeProjectedSessions = async (sessions: Session[]): Promise<Session[]> => {
-  const projectedSessions = (await getProjectedSessionsRead()) || [];
+  const projectedSessions = await readProjectedSessions();
   if (projectedSessions.length === 0) {
     return sessions;
   }
@@ -180,8 +220,8 @@ const mergeProjectedSessions = async (sessions: Session[]): Promise<Session[]> =
     }
 
     if (
-      (projectedSession as any)._sync_status &&
-      (projectedSession as any)._sync_status !== "synced"
+      (projectedSession as ProjectedSessionWithSync)._sync_status &&
+      (projectedSession as ProjectedSessionWithSync)._sync_status !== "synced"
     ) {
       merged.set(displayId, {
         ...existing,
@@ -298,8 +338,8 @@ export const getSessions = async (page: number = 1, pageSize: number = 20) => {
       items: mergedSessions,
       pagination: normalizedResponse.pagination,
     };
-  } catch (error: any) {
-    if (error?.response?.status !== 401) {
+  } catch (error: unknown) {
+    if ((error as ApiErrorLike)?.response?.status !== 401) {
       __DEV__ && console.error("Error getting sessions:", error);
     }
 
@@ -329,14 +369,15 @@ export const getSession = async (sessionId: string) => {
           ...projectedSession,
         }
       : response.data;
-  } catch (error: any) {
-    if (error?.response?.status === 404 && !sessionId.startsWith("offline_")) {
+  } catch (error: unknown) {
+    const apiError = error as ApiErrorLike;
+    if (apiError?.response?.status === 404 && !sessionId.startsWith("offline_")) {
       log.warn(`Session ${sessionId} not found on server, removing from cache`);
       await removeSessionFromCache(sessionId);
       return await getProjectedSessionRead(sessionId);
     }
 
-    if (error?.response?.status !== 401) {
+    if (apiError?.response?.status !== 401) {
       log.warn("Error getting session:", error);
     }
 
@@ -385,11 +426,11 @@ export const getSessionStats = async (sessionId: string): Promise<SessionStatsRe
       durationSeconds: data.duration_seconds ?? 0,
       itemsPerMinute: data.items_per_minute ?? 0,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof ProjectionReadError) {
       throw error;
     }
-    if (error?.response?.status === 404) {
+    if ((error as ApiErrorLike)?.response?.status === 404) {
       if (!sessionId.startsWith("offline_")) {
         log.warn(`Session ${sessionId} not found on server, removing from cache`);
         await removeSessionFromCache(sessionId);

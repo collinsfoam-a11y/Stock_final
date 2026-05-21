@@ -67,7 +67,12 @@ python-test:
 
 python-load-test:
 	@echo "Running Locust load test..."
-	cd backend && ../scripts/python.sh -m locust -f locustfile.py --headless -u 10 -r 2 -t 30s --host http://localhost:8001
+	cd backend && ../scripts/python.sh -m locust -f scripts/load_test_search.py --headless -u 10 -r 2 -t 30s --host http://localhost:8001
+
+python-lock:
+	@echo "Generating Python lockfile with uv..."
+	cd backend && pip install uv --quiet && uv pip compile requirements.production.txt -o requirements.lock
+	@echo "Lockfile written to backend/requirements.lock"
 
 python-lint:
 	@echo "Running Python linters..."
@@ -80,12 +85,12 @@ python-format:
 
 python-typecheck:
 	@echo "Running Python type checker (non-blocking)..."
-	@$(PYTHON) -m mypy backend --ignore-missing-imports --python-version=3.11 || \
+	@$(PYTHON) -m mypy backend --ignore-missing-imports --python-version=3.12 || \
 		( echo "⚠️  mypy found type issues (non-blocking). Run \`make python-typecheck-strict\` to fail the build."; exit 0 )
 
 python-typecheck-strict:
 	@echo "Running Python type checker (strict)..."
-	$(PYTHON) -m mypy backend --ignore-missing-imports --python-version=3.11
+	$(PYTHON) -m mypy backend --ignore-missing-imports --python-version=3.12
 
 # =============================================================================
 # 📦 NODE.JS FRONTEND

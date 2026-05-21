@@ -4,7 +4,13 @@ import * as Haptics from "expo-haptics";
 
 import { createCountLine } from "@/services/api/api";
 import { toastService } from "@/services/toastService";
-import { CreateCountLinePayload, DateFormatType, Item, SerialEntryData } from "@/types/scan";
+import {
+  CountLineBatch,
+  CreateCountLinePayload,
+  DateFormatType,
+  Item,
+  SerialEntryData,
+} from "@/types/scan";
 import { normalizeSerialValue } from "@/utils/scanUtils";
 import { toBackendPhotoProofs } from "./submissionPayload";
 import { getReadableInventoryErrorMessage } from "./errorMessages";
@@ -18,6 +24,7 @@ interface UseDeferredItemSubmissionParams {
   currentRack?: string | null;
   item: Item | null;
   quantity: string;
+  batches?: CountLineBatch[];
   condition: string;
   remark: string;
   isDamageEnabled: boolean;
@@ -101,6 +108,7 @@ type SubmissionPayloadContext = {
   sessionId: string;
   item: Item;
   quantity: string;
+  batches?: CountLineBatch[];
   currentFloor?: string | null;
   currentRack?: string | null;
   condition: string;
@@ -150,6 +158,12 @@ const resolveManufacturingDateValue = (hasMfgDate: boolean, itemMfgDate: string,
 const resolveExpiryDateValue = (hasExpiryDate: boolean, itemExpiryDate: string, item: Item) =>
   hasExpiryDate && itemExpiryDate ? itemExpiryDate : item.expiry_date;
 
+const resolveBatchId = (
+  item: Item,
+  barcode: string | undefined,
+  batches: CountLineBatch[] | undefined
+) => item.batch_id || batches?.[0]?.batch_id || batches?.[0]?.batch_no || barcode;
+
 const resolvePhotoProofs = (damagePhoto: string | null, itemPhotos: string[]) => {
   const nowIso = new Date().toISOString();
   const backendPhotoProofs = toBackendPhotoProofs(
@@ -165,6 +179,7 @@ const buildCountLinePayload = (context: SubmissionPayloadContext): CreateCountLi
     sessionId,
     item,
     quantity,
+    batches,
     currentFloor,
     currentRack,
     condition,
@@ -191,13 +206,20 @@ const buildCountLinePayload = (context: SubmissionPayloadContext): CreateCountLi
   const serialEntriesData = getValidSerialEntries(isSerializedItem, serialEntries);
   const photoProofs = resolvePhotoProofs(damagePhoto, itemPhotos);
   const damageQuantities = resolveDamageQuantities(isDamageEnabled, damageType, damageQty);
+  const batchPayload = batches && batches.length > 0 ? batches : undefined;
+  const countedQty =
+    batchPayload?.reduce((sum, batch) => sum + (Number(batch.quantity) || 0), 0) ??
+    parseFloat(quantity);
 
   return {
     session_id: sessionId,
     recount_of_id: context.recountTargetId || undefined,
     item_code: resolveItemCode(item, barcode),
     item_name: resolveItemName(item, barcode),
-    counted_qty: parseFloat(quantity),
+    barcode,
+    batch_id: resolveBatchId(item, barcode, batchPayload),
+    counted_qty: countedQty,
+    batches: batchPayload,
     floor_no: resolveLocationValue(currentFloor),
     rack_no: resolveLocationValue(currentRack),
     item_condition: condition,
@@ -244,6 +266,7 @@ export const useDeferredItemSubmission = ({
   currentRack,
   item,
   quantity,
+  batches,
   condition,
   remark,
   isDamageEnabled,
@@ -349,6 +372,7 @@ export const useDeferredItemSubmission = ({
         sessionId,
         item,
         quantity,
+        batches,
         currentFloor,
         currentRack,
         condition,
@@ -381,6 +405,7 @@ export const useDeferredItemSubmission = ({
     }
   }, [
     barcode,
+    batches,
     condition,
     currentFloor,
     currentRack,

@@ -597,6 +597,10 @@ class ProjectionConsistencyGuardMiddleware(BaseHTTPMiddleware):
         if py_path.exists():
             return [str(py_path)]
 
+        archive_path = self.root / "backend" / "scripts" / "archive" / f"{base_name}.py"
+        if archive_path.exists():
+            return [str(archive_path)]
+
         cache_dir = self.root / "backend" / "scripts" / "__pycache__"
         preferred = f"{base_name}.cpython-{sys.version_info.major}{sys.version_info.minor}.pyc"
         preferred_path = cache_dir / preferred

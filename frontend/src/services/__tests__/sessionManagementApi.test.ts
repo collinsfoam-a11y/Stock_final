@@ -288,4 +288,108 @@ describe("sessionManagementApi.getSession", () => {
 
     expect(result.items.map((item: any) => item.id)).toEqual(["session-api", "session-cache"]);
   });
+
+  it("keeps API sessions visible when projected session storage is unavailable", async () => {
+    let authStore: any;
+    let httpClient: any;
+    let offlineStorage: any;
+    let network: any;
+    let controlPlane: any;
+    let getSessions: any;
+
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      authStore = require("../../store/authStore");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      httpClient = require("../httpClient").default;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      offlineStorage = require("../offline/offlineStorage");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      network = require("../../utils/network");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      controlPlane = require("../control-plane/sessionControlPlane");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ({ getSessions } = require("../api/sessionManagementApi"));
+    });
+
+    authStore.useAuthStore.getState.mockReturnValue({
+      user: { username: "staff1", role: "staff" },
+      isAuthenticated: true,
+    });
+    network.getNetworkStatus.mockReturnValue({
+      status: "ONLINE",
+      isOnline: true,
+      isInternetReachable: true,
+      connectionType: "wifi",
+    });
+    httpClient.get.mockResolvedValue({
+      data: {
+        items: [{ id: "session-api", staff_user: "staff1", status: "OPEN" }],
+        pagination: {
+          page: 1,
+          page_size: 20,
+          total: 1,
+          total_pages: 1,
+          has_next: false,
+          has_prev: false,
+        },
+      },
+    });
+    offlineStorage.cacheSessions.mockResolvedValue(undefined);
+    offlineStorage.getSessionsCache.mockResolvedValue({});
+    controlPlane.getProjectedSessionsRead.mockRejectedValue(
+      new Error("navigator.storage not available")
+    );
+
+    const result = await getSessions(1, 20);
+
+    expect(result.items).toEqual([{ id: "session-api", staff_user: "staff1", status: "OPEN" }]);
+    expect(httpClient.get).toHaveBeenCalledWith("/api/sessions", {
+      params: {
+        page: 1,
+        page_size: 20,
+      },
+    });
+  });
+
+  it("returns an empty offline page when local session storage is unavailable", async () => {
+    let offlineStorage: any;
+    let network: any;
+    let controlPlane: any;
+    let getSessions: any;
+
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      offlineStorage = require("../offline/offlineStorage");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      network = require("../../utils/network");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      controlPlane = require("../control-plane/sessionControlPlane");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ({ getSessions } = require("../api/sessionManagementApi"));
+    });
+
+    network.getNetworkStatus.mockReturnValue({
+      status: "OFFLINE",
+      isOnline: false,
+      isInternetReachable: false,
+      connectionType: "none",
+    });
+    controlPlane.getProjectedSessionsRead.mockRejectedValue(new Error("Invalid VFS state"));
+    offlineStorage.getSessionsCache.mockRejectedValue(new Error("cache unavailable"));
+
+    const result = await getSessions(1, 20);
+
+    expect(result).toEqual({
+      items: [],
+      pagination: {
+        page: 1,
+        page_size: 20,
+        total: 0,
+        total_pages: 0,
+        has_next: false,
+        has_prev: false,
+      },
+    });
+  });
 });

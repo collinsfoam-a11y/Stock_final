@@ -11,7 +11,9 @@ from typing import Any, Optional, cast
 from bson import ObjectId
 from fastapi import HTTPException
 
+from backend.api.schemas import SessionType
 from backend.services.concurrency import ConcurrencyError, coerce_version
+from backend.services.approval_policy_service import ApprovalPolicyService
 from backend.services.governance_audit_service import GovernanceAuditService
 from backend.services.governance_guard import (
     GovernanceViolation,
@@ -165,6 +167,9 @@ class CountLineGovernanceDecision:
     variance: float
     variance_data: dict[str, Any]
     violated_thresholds: list[dict[str, Any]]
+    # Policy engine decision (AUTO_APPROVE | SUPERVISOR_REVIEW | MANAGER_REVIEW | BLOCK)
+    policy_action: str = "AUTO_APPROVE"
+    policy_reason: str = ""
 
 
 @dataclass(frozen=True)
@@ -209,6 +214,7 @@ class CountLineWriteService:
         lifecycle_service: Optional[SessionLifecycleService] = None,
         audit_service: Optional[GovernanceAuditService] = None,
         projection_service: Optional[ProjectionWriteService] = None,
+        approval_policy_service: Optional[ApprovalPolicyService] = None,
     ) -> None:
         self.db = db
         self.snapshot_service = snapshot_service or SnapshotService(db)
@@ -217,6 +223,7 @@ class CountLineWriteService:
         self.lifecycle_service = lifecycle_service or SessionLifecycleService(db)
         self.audit_service = audit_service or GovernanceAuditService(db)
         self.projection_service = projection_service or ProjectionWriteService(db)
+        self.approval_policy_service = approval_policy_service or ApprovalPolicyService(db)
         self._session_snapshot_cache: dict[str, Optional[dict[str, Any]]] = {}
         self._session_snapshot_item_index: dict[str, dict[str, float]] = {}
 
@@ -264,8 +271,9 @@ class CountLineWriteService:
 
         count_line_filter = {
             "session_id": session_id,
-            "status": {"$nin": ["locked", "SUPERSEDED", "superseded"]},
-            "approval_status": {"$nin": ["REJECTED", "NEEDS_REVIEW"]},
+            # Include all casing variants to guard against inconsistent status writes
+            "status": {"$nin": ["locked", "SUPERSEDED", "superseded", "Superseded"]},
+            "approval_status": {"$nin": ["REJECTED", "NEEDS_REVIEW", "rejected", "needs_review"]},
         }
         kwargs = {"session": db_session} if db_session is not None else {}
         result = await self._execute_authorized_write(
@@ -1129,17 +1137,44 @@ class CountLineWriteService:
                 },
             )
 
-        approved_at = None if requires_approval else _utc_now()
-        approved_by = None if requires_approval else "system"
+        # Policy engine: determines WHO approves when VarianceService says approval is needed.
+        # It does NOT create new approval requirements — it only routes existing ones.
+        erp_mrp = float(item.get("mrp") or 0.0)
+        policy_decision = await self.approval_policy_service.evaluate(
+            erp_qty=float(expected_qty),
+            counted_qty=float(counted_qty),
+            erp_mrp=erp_mrp,
+        )
+
+        if not requires_approval:
+            # VarianceService cleared this — policy engine does not override
+            approval_status = "APPROVED"
+            effective_requires_approval = False
+        elif policy_decision.action == "BLOCK":
+            # BLOCK is advisory: flag it but don't hard-error here; route layer enforces
+            approval_status = "BLOCKED"
+            effective_requires_approval = True
+        elif policy_decision.action == "MANAGER_REVIEW":
+            approval_status = "MANAGER_REVIEW"
+            effective_requires_approval = True
+        else:
+            # SUPERVISOR_REVIEW or AUTO_APPROVE with requires_approval=True → supervisor queue
+            approval_status = "NEEDS_REVIEW"
+            effective_requires_approval = True
+
+        approved_at = None if effective_requires_approval else _utc_now()
+        approved_by = None if effective_requires_approval else "system"
         return CountLineGovernanceDecision(
-            approval_status="NEEDS_REVIEW" if requires_approval else "APPROVED",
+            approval_status=approval_status,
             approved_at=approved_at,
             approved_by=approved_by,
-            requires_supervisor_approval=requires_approval,
-            status="pending" if requires_approval else "approved",
+            requires_supervisor_approval=effective_requires_approval,
+            status="pending" if effective_requires_approval else "approved",
             variance=variance,
             variance_data=variance_data,
             violated_thresholds=violated_thresholds,
+            policy_action=policy_decision.action,
+            policy_reason=policy_decision.reason,
         )
 
     async def evaluate_new_count_line(
@@ -1454,6 +1489,8 @@ class CountLineWriteService:
 
         if abs(variance) > 100 or variance_percent > 50:
             risk_flags.append("LARGE_VARIANCE")
+        if mrp_counted != mrp_erp and mrp_erp > 0:
+            risk_flags.append("MRP_MISMATCH")
         if mrp_change_percent < -20:
             risk_flags.append("MRP_REDUCED_SIGNIFICANTLY")
         if mrp_erp > 10000 and variance_percent > 5:
@@ -1509,7 +1546,7 @@ class CountLineWriteService:
         else:
             document["is_misplaced"] = bool(document.get("is_misplaced", False))
 
-        if str((session or {}).get("type") or "").upper() == "STRICT" and abs(variance) > 0:
+        if str((session or {}).get("type") or "").upper() == SessionType.STRICT.value and abs(variance) > 0:
             risk_flags.append("STRICT_MODE_VARIANCE")
 
         return sorted(set(risk_flags))

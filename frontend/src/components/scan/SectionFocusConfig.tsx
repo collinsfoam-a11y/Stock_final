@@ -38,7 +38,6 @@ export const SectionFocusConfig: React.FC = () => {
   ]);
 
   useEffect(() => {
-    console.log("Location type changed:", locationType);
     if (locationType === "showroom") {
       setFloorOptions(["Ground Floor", "First Floor", "Second Floor"]);
     } else {
@@ -48,7 +47,6 @@ export const SectionFocusConfig: React.FC = () => {
   }, [locationType]);
 
   const handleOpenModal = () => {
-    console.log("Opening floor modal");
     setShowFloorModal(true);
   };
 
@@ -248,7 +246,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.1)",
     backgroundColor:
-      Platform.OS === "android" ? modernColors.background.paper : "rgba(30, 41, 59, 0.6)",
+      Platform.OS === "android" ? modernColors.background.paper : "rgba(44, 41, 38, 0.6)",
   },
   header: {
     alignItems: "center",
@@ -259,11 +257,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "rgba(59, 130, 246, 0.1)",
+    backgroundColor: "rgba(204, 120, 92, 0.10)",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(59, 130, 246, 0.2)",
+    borderColor: "rgba(204, 120, 92, 0.20)",
   },
   title: {
     ...modernTypography.h2,
@@ -288,7 +286,7 @@ const styles = StyleSheet.create({
   },
   toggleContainer: {
     flexDirection: "row",
-    backgroundColor: "rgba(30, 41, 59, 0.5)",
+    backgroundColor: "rgba(44, 41, 38, 0.5)",
     borderRadius: modernBorderRadius.lg,
     padding: 4,
     marginBottom: modernSpacing.lg,
@@ -380,7 +378,7 @@ const styles = StyleSheet.create({
     marginBottom: modernSpacing.xs,
   },
   optionItemSelected: {
-    backgroundColor: "rgba(59, 130, 246, 0.1)",
+    backgroundColor: "rgba(204, 120, 92, 0.10)",
   },
   optionText: {
     ...modernTypography.body.large,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.scripts.v31_projection_validation import (
+from backend.scripts.archive.v31_projection_validation import (
     build_projection_state_snapshot,
     build_projection_validation_report,
 )

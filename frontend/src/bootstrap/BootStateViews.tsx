@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   continuePill: {
-    backgroundColor: "rgba(59, 130, 246, 0.1)",
+    backgroundColor: "rgba(204, 120, 92, 0.10)",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

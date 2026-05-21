@@ -122,7 +122,15 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
           <Controller
             control={control}
             name="countedQty"
-            rules={{ required: "Physical quantity is required" }}
+            rules={{
+              required: "Physical quantity is required",
+              validate: (val) => {
+                const num = parseFloat(val);
+                if (isNaN(num)) return "Enter a valid number";
+                if (num <= 0) return "Quantity must be greater than zero";
+                return true;
+              },
+            }}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 style={styles.countInput}
@@ -225,6 +233,15 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
               <Controller
                 control={control}
                 name="returnableDamageQty"
+                rules={{
+                  validate: (val) => {
+                    if (!val || val === "") return true;
+                    const num = parseFloat(val);
+                    if (isNaN(num)) return "Enter a valid number";
+                    if (num < 0) return "Damage quantity cannot be negative";
+                    return true;
+                  },
+                }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
                     style={[
@@ -245,6 +262,9 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
                   />
                 )}
               />
+              {errors.returnableDamageQty && (
+                <Text style={styles.errorText}>{errors.returnableDamageQty.message}</Text>
+              )}
             </View>
 
             <View style={styles.inputGroup}>
@@ -252,6 +272,15 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
               <Controller
                 control={control}
                 name="nonReturnableDamageQty"
+                rules={{
+                  validate: (val) => {
+                    if (!val || val === "") return true;
+                    const num = parseFloat(val);
+                    if (isNaN(num)) return "Enter a valid number";
+                    if (num < 0) return "Damage quantity cannot be negative";
+                    return true;
+                  },
+                }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
                     style={[
@@ -272,6 +301,9 @@ export const QuantityInputForm: React.FC<QuantityInputFormProps> = React.memo(
                   />
                 )}
               />
+              {errors.nonReturnableDamageQty && (
+                <Text style={styles.errorText}>{errors.nonReturnableDamageQty.message}</Text>
+              )}
             </View>
           </View>
         )}

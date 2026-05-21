@@ -252,19 +252,8 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     padding: 24,
     paddingBottom: 40,
   },
-  offlineNotice: {
-    padding: 18,
-    marginBottom: 20,
-    gap: 6,
-  },
-  offlineNoticeTitle: {
-    ...typography.bodyStrong,
-    fontSize: 15,
-  },
-  offlineNoticeBody: {
-    ...typography.small,
-    color: dashboardTheme.colors.text.secondary,
-    lineHeight: 18,
+  operationalNotice: {
+    marginBottom: uiTokens.spacing.lg,
   },
   tabContent: {
     gap: 24,

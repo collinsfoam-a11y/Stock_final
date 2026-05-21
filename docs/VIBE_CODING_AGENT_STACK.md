@@ -68,7 +68,6 @@ Low-priority for this repo right now:
 ## Repo-Local Skills
 
 - `agent_skills/session-snapshot-maintenance/SKILL.md`
-  - Dry-run-first workflow for `backfill_session_snapshots.py` and `cleanup_synthetic_session_data.py`
   - Uses `scripts/agent_approval_log.py` to attach `run_id` and `call_id` to risky steps
 
 ## Next Skill Candidates

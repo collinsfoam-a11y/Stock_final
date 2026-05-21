@@ -138,6 +138,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: "600",
-    letterSpacing: 0.3,
+    letterSpacing: 0,
   },
 });

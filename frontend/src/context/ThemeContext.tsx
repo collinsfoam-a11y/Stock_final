@@ -168,8 +168,8 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 // Theme metadata for picker UI
 const THEME_METADATA: { key: ThemeKey; name: string; preview: string[] }[] = [
-  { key: "light", name: "Light", preview: ["#FAFBFC", "#0969DA", "#1A7F37"] },
-  { key: "dark", name: "Midnight", preview: ["#0D1117", "#58A6FF", "#3FB950"] },
+  { key: "light", name: "Light", preview: ["#FAF8F5", "#CC785C", "#22C55E"] },
+  { key: "dark", name: "Midnight", preview: ["#1C1917", "#E8906E", "#4ADE80"] },
 ];
 
 // Pattern metadata
@@ -216,7 +216,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   const normalizedTheme = normalizeThemePreference(settings.theme);
   const fontSize = settings.fontSizeValue || 16;
   const fontFamilies = resolveFontFamilies(settings.fontStyle);
-  const primaryColor = themes[normalizedTheme]?.colors.accent || "#0EA5E9";
+  const primaryColor = themes[normalizedTheme]?.colors.accent || "#CC785C"; // Claude Terracotta
 
   // Compute effective theme based on mode
   const effectiveThemeKey = useMemo((): ThemeKey => {
@@ -472,40 +472,40 @@ export const useThemeContext = (): ThemeContextType => {
         theme: "light",
         isDark: false,
         colors: {
-          primary: "#0EA5E9",
-          secondary: "#6B7280",
-          muted: "#9CA3AF",
-          background: "#FAFBFC",
+          primary: "#CC785C",         // Claude Terracotta
+          secondary: "#78746F",
+          muted: "#A9A5A2",
+          background: "#FAF8F5",      // Warm parchment
           surface: "#FFFFFF",
-          surfaceElevated: "#F9FAFB",
-          surfaceDark: "#F3F4F6",
-          text: "#111827",
-          textTokens: { primary: "#111827", secondary: "#6B7280", muted: "#9CA3AF" },
-          textPrimary: "#111827",
-          textSecondary: "#6B7280",
-          textTertiary: "#9CA3AF",
-          border: "#E5E7EB",
-          borderLight: "#F3F4F6",
+          surfaceElevated: "#F7F4EF",
+          surfaceDark: "#F5F5F4",
+          text: "#1C1917",
+          textTokens: { primary: "#1C1917", secondary: "#78746F", muted: "#A9A5A2" },
+          textPrimary: "#1C1917",
+          textSecondary: "#78746F",
+          textTertiary: "#A9A5A2",
+          border: "#EDE9E4",
+          borderLight: "#F5F2EE",
           error: "#EF4444",
-          success: "#10B981",
+          success: "#22C55E",
           warning: "#F59E0B",
-          info: "#3B82F6",
+          info: "#0EA5E9",
           danger: "#DC2626",
-          overlay: "rgba(0, 0, 0, 0.5)",
-          overlayPrimary: "rgba(14, 165, 233, 0.12)",
-          accent: "#0EA5E9",
-          accentLight: "#38BDF8",
-          accentDark: "#0284C7",
-          glass: "rgba(255, 255, 255, 0.1)",
+          overlay: "rgba(28, 25, 23, 0.5)",
+          overlayPrimary: "rgba(204, 120, 92, 0.10)",
+          accent: "#CC785C",
+          accentLight: "#E8906E",
+          accentDark: "#B06148",
+          glass: "rgba(255, 255, 255, 0.10)",
           card: "#FFFFFF",
-          placeholder: "#9CA3AF",
-          disabled: "#9CA3AF",
+          placeholder: "#A9A5A2",
+          disabled: "#A9A5A2",
         },
-        gradients: { primary: ["#0EA5E9", "#0284C7"], secondary: ["#10B981", "#059669"] },
+        gradients: { primary: ["#E8906E", "#CC785C"], secondary: ["#4ADE80", "#22C55E"] },
         spacing: { xs: 4, sm: 8, md: 16, base: 16, lg: 24, xl: 32, xxl: 48 },
         typography: { fontSize: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, xxl: 24 } },
         borderRadius: { sm: 4, md: 8, lg: 12, xl: 16, round: 50 },
-        shadows: { sm: "0 1px 2px 0 rgba(0, 0, 0, 0.05)", md: "0 4px 6px -1px rgba(0, 0, 0, 0.1)", lg: "0 10px 15px -3px rgba(0, 0, 0, 0.1)", xl: "0 20px 25px -5px rgba(0, 0, 0, 0.1)" },
+        shadows: { sm: "0 1px 2px 0 rgba(28,25,23,0.05)", md: "0 4px 6px -1px rgba(28,25,23,0.10)", lg: "0 10px 15px -3px rgba(28,25,23,0.10)", xl: "0 20px 25px -5px rgba(28,25,23,0.10)" },
         animations: { duration: 300, easing: "ease-in-out" },
         componentSizes: { button: 48, input: 48, card: 16 },
         layout: { padding: 16, margin: 16 },
@@ -516,7 +516,7 @@ export const useThemeContext = (): ThemeContextType => {
       pattern: "none",
       layout: "default",
       fontSize: 16,
-      primaryColor: "#0EA5E9",
+      primaryColor: "#CC785C", // Claude Terracotta
       setThemeKey: () => { },
       setThemeMode: () => { },
       setPattern: () => { },

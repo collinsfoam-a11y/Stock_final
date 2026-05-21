@@ -239,7 +239,7 @@ export const QuickStatCard: React.FC<QuickStatCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "rgba(30, 41, 59, 0.6)",
+    backgroundColor: "rgba(44, 41, 38, 0.6)",
     borderRadius: modernBorderRadius.lg,
     padding: modernSpacing.md,
     borderWidth: 1,

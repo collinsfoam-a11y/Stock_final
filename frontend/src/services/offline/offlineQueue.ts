@@ -5,6 +5,10 @@ import { useNetworkStore } from "../../store/networkStore";
 import { flags } from "../../constants/flags";
 import { toastService } from "../toastService";
 import { createLogger } from "../logging";
+import {
+  OPERATIONAL_TELEMETRY_EVENT_REGISTRY,
+  operationalTelemetry,
+} from "../observability/operationalTelemetry";
 import { onlineManager } from "@tanstack/react-query";
 
 // NOTE: This module is entirely gated by flags.enableOfflineQueue
@@ -70,6 +74,17 @@ export async function enqueueMutation(config: AxiosRequestConfig): Promise<Queue
   };
   queue.push(item);
   await saveQueue(queue);
+  operationalTelemetry.trackQueue(
+    OPERATIONAL_TELEMETRY_EVENT_REGISTRY.QUEUE_ENQUEUED,
+    "offline",
+    {
+      method: item.method,
+      url: item.url,
+    },
+    {
+      queueLength: queue.length,
+    }
+  );
   return item;
 }
 
@@ -86,7 +101,16 @@ export async function flushOfflineQueue(
   const { isOnline, isInternetReachable, isRestrictedMode } = useNetworkStore.getState();
   const online = !isRestrictedMode && isOnline && (isInternetReachable ?? true);
   onlineManager.setOnline(online);
-  if (!online) return { processed: 0, remaining: (await loadQueue()).length };
+  if (!online) {
+    const remaining = (await loadQueue()).length;
+    operationalTelemetry.trackQueue(
+      OPERATIONAL_TELEMETRY_EVENT_REGISTRY.QUEUE_FLUSH_COMPLETED,
+      "skipped",
+      { reason: "offline" },
+      { processed: 0, remaining }
+    );
+    return { processed: 0, remaining };
+  }
 
   flushPromise = _doFlush(client);
   return flushPromise;
@@ -95,9 +119,15 @@ export async function flushOfflineQueue(
 async function _doFlush(
   client: AxiosInstance
 ): Promise<{ processed: number; remaining: number }> {
+  const flushMark = operationalTelemetry.markStart({
+    name: OPERATIONAL_TELEMETRY_EVENT_REGISTRY.QUEUE_FLUSH_COMPLETED,
+    category: "queue",
+    surface: "offline_queue_interceptor",
+  });
   try {
     let queue = await loadQueue();
     let processed = 0;
+    const startingLength = queue.length;
 
     while (queue.length > 0) {
       const item = queue[0]!;
@@ -159,7 +189,23 @@ async function _doFlush(
       await saveQueue(queue);
     }
 
-    return { processed, remaining: queue.length };
+    const result = { processed, remaining: queue.length };
+    operationalTelemetry.markEnd(
+      flushMark,
+      result.remaining > 0 ? "warning" : "success",
+      undefined,
+      {
+        startingLength,
+        processed: result.processed,
+        remaining: result.remaining,
+      }
+    );
+    return result;
+  } catch (error) {
+    operationalTelemetry.markEnd(flushMark, "failure", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
   } finally {
     flushPromise = null;
   }

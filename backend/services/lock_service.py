@@ -103,3 +103,42 @@ class LockService:
             logger.warning(
                 f"Attempted to release lock {key} owned by {owner}, but it was not found or owned by someone else."
             )
+
+    # ------------------------------------------------------------------
+    # Item-level and approval-level convenience helpers
+    # ------------------------------------------------------------------
+
+    def _item_lock_key(self, session_id: str, item_code: str) -> str:
+        return f"item:{session_id}:{item_code}"
+
+    def _approval_lock_key(self, count_line_id: str) -> str:
+        return f"approval:{count_line_id}"
+
+    async def lock_item(
+        self,
+        session_id: str,
+        item_code: str,
+        owner: str,
+        ttl_seconds: int = DEFAULT_LOCK_TTL,
+    ) -> bool:
+        """Prevent two staff members from counting the same item simultaneously."""
+        return await self.acquire_lock(
+            self._item_lock_key(session_id, item_code), owner, ttl_seconds
+        )
+
+    async def unlock_item(self, session_id: str, item_code: str, owner: str) -> None:
+        await self.release_lock(self._item_lock_key(session_id, item_code), owner)
+
+    async def lock_count_line_approval(
+        self,
+        count_line_id: str,
+        approver: str,
+        ttl_seconds: int = 120,
+    ) -> bool:
+        """Prevent concurrent approval/rejection of the same count line."""
+        return await self.acquire_lock(
+            self._approval_lock_key(count_line_id), approver, ttl_seconds
+        )
+
+    async def unlock_count_line_approval(self, count_line_id: str, approver: str) -> None:
+        await self.release_lock(self._approval_lock_key(count_line_id), approver)

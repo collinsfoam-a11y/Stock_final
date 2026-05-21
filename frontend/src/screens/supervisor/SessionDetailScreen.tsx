@@ -10,10 +10,15 @@ import * as Haptics from "expo-haptics";
 import { Screen } from "@/components/layout/Screen";
 import ModernCard from "@/components/ui/ModernCard";
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import {
+  OPERATIONAL_LIST_ROW_ESTIMATED_HEIGHT,
+  OperationalListRow,
+} from "@/components/ui/OperationalListRow";
 import RecountAssignmentModal, {
   type AssignableStaffUser,
 } from "@/components/supervisor/RecountAssignmentModal";
 import { useToast } from "@/components/feedback/ToastProvider";
+import { OperationalSyncBanner } from "@/components/feedback/OperationalSyncBanner";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useSettingsStore } from "@/store/settingsStore";
 import { colors, spacing, typography, borderRadius, shadows } from "@/theme/legacyCompat";
@@ -92,6 +97,12 @@ const getLineStatusTone = (status: string): BadgeTone => {
     default:
       return "neutral";
   }
+};
+
+const getLineSeverity = (status: string, variance: number) => {
+  if (status.trim().toUpperCase() === "REJECTED") return "high";
+  if (variance !== 0) return "medium";
+  return "low";
 };
 
 export default function SessionDetail() {
@@ -201,46 +212,52 @@ export default function SessionDetail() {
     }
   }, [assignableStaff, offlineMode, show]);
 
-  const handleApproveLine = async (lineId: string) => {
-    if (offlineMode) {
-      show("Approvals require a live connection", "warning");
-      return;
-    }
+  const handleApproveLine = React.useCallback(
+    async (lineId: string) => {
+      if (offlineMode) {
+        show("Approvals require a live connection", "warning");
+        return;
+      }
 
-    try {
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      try {
+        if (Platform.OS !== "web") {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        }
+        await approveCountLine(lineId);
+        await loadData();
+        show("Count line approved", "success");
+      } catch {
+        show("Failed to approve", "error");
+        if (Platform.OS !== "web") {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
       }
-      await approveCountLine(lineId);
-      await loadData();
-      show("Count line approved", "success");
-    } catch {
-      show("Failed to approve", "error");
-      if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
-    }
-  };
+    },
+    [loadData, offlineMode, show]
+  );
 
-  const handleRejectLine = async (line: any) => {
-    if (offlineMode) {
-      show("Recount requests require a live connection", "warning");
-      return;
-    }
+  const handleRejectLine = React.useCallback(
+    async (line: any) => {
+      if (offlineMode) {
+        show("Recount requests require a live connection", "warning");
+        return;
+      }
 
-    try {
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      try {
+        if (Platform.OS !== "web") {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        }
+        await loadAssignableStaff();
+        setPendingRejectLine(line);
+        setRecountModalVisible(true);
+      } catch {
+        if (Platform.OS !== "web") {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
       }
-      await loadAssignableStaff();
-      setPendingRejectLine(line);
-      setRecountModalVisible(true);
-    } catch {
-      if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
-    }
-  };
+    },
+    [loadAssignableStaff, offlineMode, show]
+  );
 
   const handleSubmitReject = async ({ notes, assignTo }: { notes: string; assignTo?: string }) => {
     if (offlineMode) {
@@ -276,53 +293,59 @@ export default function SessionDetail() {
     }
   };
 
-  const handleVerifyStock = async (lineId: string) => {
-    if (offlineMode) {
-      show("Stock verification requires a live connection", "warning");
-      return;
-    }
+  const handleVerifyStock = React.useCallback(
+    async (lineId: string) => {
+      if (offlineMode) {
+        show("Stock verification requires a live connection", "warning");
+        return;
+      }
 
-    try {
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      try {
+        if (Platform.OS !== "web") {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        }
+        setVerifying(lineId);
+        await verifyStock(lineId);
+        await loadData();
+        show("Stock verified", "success");
+      } catch {
+        show("Failed to verify stock", "error");
+        if (Platform.OS !== "web") {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
+      } finally {
+        setVerifying(null);
       }
-      setVerifying(lineId);
-      await verifyStock(lineId);
-      await loadData();
-      show("Stock verified", "success");
-    } catch {
-      show("Failed to verify stock", "error");
-      if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
-    } finally {
-      setVerifying(null);
-    }
-  };
+    },
+    [loadData, offlineMode, show]
+  );
 
-  const handleUnverifyStock = async (lineId: string) => {
-    if (offlineMode) {
-      show("Verification changes require a live connection", "warning");
-      return;
-    }
+  const handleUnverifyStock = React.useCallback(
+    async (lineId: string) => {
+      if (offlineMode) {
+        show("Verification changes require a live connection", "warning");
+        return;
+      }
 
-    try {
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      try {
+        if (Platform.OS !== "web") {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        }
+        setVerifying(lineId);
+        await unverifyStock(lineId);
+        await loadData();
+        show("Verification removed", "success");
+      } catch {
+        show("Failed to remove verification", "error");
+        if (Platform.OS !== "web") {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
+      } finally {
+        setVerifying(null);
       }
-      setVerifying(lineId);
-      await unverifyStock(lineId);
-      await loadData();
-      show("Verification removed", "success");
-    } catch {
-      show("Failed to remove verification", "error");
-      if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
-    } finally {
-      setVerifying(null);
-    }
-  };
+    },
+    [loadData, offlineMode, show]
+  );
 
   const handleUpdateStatus = async (newStatus: string) => {
     if (offlineMode) {
@@ -377,69 +400,6 @@ export default function SessionDetail() {
     }
     setActiveTab(tab);
   };
-
-  if (!loading && sessionMissing) {
-    return (
-      <Screen padding={0} backgroundColor={colors.gray[50]}>
-        <StatusBar style="dark" />
-        <View style={styles.header}>
-          <AnimatedPressable
-            onPress={() => router.replace("/supervisor/sessions")}
-            style={styles.backButton}
-            accessibilityRole="button"
-            accessibilityLabel="Back to sessions"
-          >
-            <Ionicons name="arrow-back" size={22} color={colors.gray[700]} />
-          </AnimatedPressable>
-          <Text style={styles.headerTitle}>Session Details</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-
-        <View style={styles.loadingContainer}>
-          <Ionicons name="alert-circle-outline" size={56} color={colors.warning[500]} />
-          <Text style={styles.loadingText}>This session is no longer available.</Text>
-          {offlineMode ? (
-            <Text style={styles.offlineMissingText}>
-              It is not available in the local session cache.
-            </Text>
-          ) : null}
-          <AnimatedPressable
-            onPress={() => router.replace("/supervisor/sessions")}
-            style={[styles.primaryActionButton, styles.successActionButton]}
-            accessibilityRole="button"
-            accessibilityLabel="Back to sessions"
-          >
-            <Text style={styles.buttonText}>Back to Sessions</Text>
-          </AnimatedPressable>
-        </View>
-      </Screen>
-    );
-  }
-
-  if (loading || !session) {
-    return (
-      <Screen padding={0} backgroundColor={colors.gray[50]}>
-        <StatusBar style="dark" />
-        <View style={styles.header}>
-          <AnimatedPressable
-            onPress={() => safeBackNavigation(router, { fallbackHref: "/supervisor/sessions" })}
-            style={styles.backButton}
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-          >
-            <Ionicons name="arrow-back" size={22} color={colors.gray[700]} />
-          </AnimatedPressable>
-          <Text style={styles.headerTitle}>Session Details</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary[500]} />
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      </Screen>
-    );
-  }
 
   const currentLines = activeTab === "toVerify" ? toVerifyLines : verifiedLines;
   const totalVariance = Number(session?.total_variance ?? 0);
@@ -525,19 +485,13 @@ export default function SessionDetail() {
       ) : null}
 
       {offlineMode ? (
-        <Animated.View entering={getFadeInDown(220)}>
-          <View style={[styles.noticeCard, styles.noticeWarning]}>
-            <View style={styles.noticeRow}>
-              <Ionicons name="cloud-offline-outline" size={18} color={colors.warning[600]} />
-              <View style={styles.noticeCopy}>
-                <Text style={styles.noticeTitle}>Viewing cached session data</Text>
-                <Text style={styles.noticeBody}>
-                  Count lines and session details can be reviewed offline, but approvals, recounts,
-                  verification changes, and status updates require a live connection.
-                </Text>
-              </View>
-            </View>
-          </View>
+        <Animated.View entering={getFadeInDown(220)} style={styles.noticeSpacing}>
+          <OperationalSyncBanner
+            compact
+            tone="offline"
+            title="Viewing cached session data"
+            message="Count lines and session details can be reviewed offline, but approvals, recounts, verification changes, and status updates require a live connection."
+          />
         </Animated.View>
       ) : null}
 
@@ -584,143 +538,173 @@ export default function SessionDetail() {
     </View>
   );
 
-  const renderItem = ({ item }: { item: any }) => {
-    const normalizedStatus = String(item.status || "").toLowerCase();
-    const requiresSupervisorReview = Number(item.variance ?? 0) !== 0;
-    const varianceColor = item.variance === 0 ? colors.success[600] : colors.error[600];
-    const verifiedAtLabel = item.verified_at
-      ? new Date(item.verified_at).toLocaleString()
-      : "Unknown time";
+  const renderItem = React.useCallback(
+    ({ item }: { item: any }) => {
+      const normalizedStatus = String(item.status || "").toLowerCase();
+      const requiresSupervisorReview = Number(item.variance ?? 0) !== 0;
+      const varianceColor = item.variance === 0 ? colors.success[600] : colors.error[600];
+      const verifiedAtLabel = item.verified_at
+        ? new Date(item.verified_at).toLocaleString()
+        : "Unknown time";
 
-    return (
-      <ModernCard variant="elevated" style={styles.lineCard}>
-        <View style={styles.lineHeader}>
-          <Text style={styles.lineName} numberOfLines={2}>
-            {item.item_name}
-          </Text>
-          <View style={styles.badgeContainer}>
-            {item.verified ? renderBadge("Verified", "success", "checkmark-circle") : null}
-            {renderBadge(
-              (normalizedStatus || "pending").toUpperCase(),
-              getLineStatusTone(normalizedStatus)
-            )}
-          </View>
-        </View>
+      return (
+        <OperationalListRow
+          title={item.item_name || "Unknown item"}
+          subtitle={`Code: ${item.item_code}${item.barcode ? ` | Barcode: ${item.barcode}` : ""}`}
+          status={(normalizedStatus || "pending").toUpperCase()}
+          statusTone={getLineStatusTone(normalizedStatus)}
+          severity={getLineSeverity(normalizedStatus, Number(item.variance ?? 0))}
+          leftIcon={item.verified ? "checkmark-circle-outline" : "clipboard-outline"}
+          badges={
+            [
+              item.verified
+                ? { label: "Verified", tone: "success", icon: "checkmark-circle" }
+                : undefined,
+              requiresSupervisorReview
+                ? {
+                    label: `Variance ${item.variance}`,
+                    tone: "variance",
+                    icon: "analytics-outline",
+                  }
+                : undefined,
+            ].filter(Boolean) as NonNullable<
+              React.ComponentProps<typeof OperationalListRow>["badges"]
+            >
+          }
+          metadata={
+            <View>
+              <View style={styles.qtyRow}>
+                <View style={styles.qtyItem}>
+                  <Text style={styles.qtyLabel}>ERP</Text>
+                  <Text style={styles.qtyValue}>{item.erp_qty}</Text>
+                </View>
+                <View style={styles.qtyItem}>
+                  <Text style={styles.qtyLabel}>Counted</Text>
+                  <Text style={styles.qtyValue}>{item.counted_qty}</Text>
+                </View>
+                <View style={styles.qtyItem}>
+                  <Text style={styles.qtyLabel}>Variance</Text>
+                  <Text style={[styles.qtyValue, { color: varianceColor }]}>{item.variance}</Text>
+                </View>
+              </View>
 
-        <Text style={styles.lineCode}>Code: {item.item_code}</Text>
-        {item.barcode ? <Text style={styles.lineCode}>Barcode: {item.barcode}</Text> : null}
+              {item.variance_reason ? (
+                <View style={styles.reasonBox}>
+                  <Text style={styles.reasonLabel}>Reason: {item.variance_reason}</Text>
+                  {item.variance_note ? (
+                    <Text style={styles.reasonNote}>{item.variance_note}</Text>
+                  ) : null}
+                </View>
+              ) : null}
 
-        <View style={styles.qtyRow}>
-          <View style={styles.qtyItem}>
-            <Text style={styles.qtyLabel}>ERP</Text>
-            <Text style={styles.qtyValue}>{item.erp_qty}</Text>
-          </View>
-          <View style={styles.qtyItem}>
-            <Text style={styles.qtyLabel}>Counted</Text>
-            <Text style={styles.qtyValue}>{item.counted_qty}</Text>
-          </View>
-          <View style={styles.qtyItem}>
-            <Text style={styles.qtyLabel}>Variance</Text>
-            <Text style={[styles.qtyValue, { color: varianceColor }]}>{item.variance}</Text>
-          </View>
-        </View>
+              {item.remark ? <Text style={styles.remark}>Remark: {item.remark}</Text> : null}
 
-        {item.variance_reason ? (
-          <View style={styles.reasonBox}>
-            <Text style={styles.reasonLabel}>Reason: {item.variance_reason}</Text>
-            {item.variance_note ? (
-              <Text style={styles.reasonNote}>{item.variance_note}</Text>
-            ) : null}
-          </View>
-        ) : null}
+              {item.verified && item.verified_by ? (
+                <View style={styles.verifiedInfo}>
+                  <Ionicons name="checkmark-circle" size={16} color={colors.success[600]} />
+                  <Text style={styles.verifiedInfoText}>
+                    Verified by {item.verified_by} on {verifiedAtLabel}
+                  </Text>
+                </View>
+              ) : null}
 
-        {item.remark ? <Text style={styles.remark}>Remark: {item.remark}</Text> : null}
+              {!offlineMode && !sessionFinalized ? (
+                <View style={styles.lineActions}>
+                  {requiresSupervisorReview && normalizedStatus === "pending" ? (
+                    <>
+                      <AnimatedPressable
+                        style={[styles.inlineActionButton, styles.successActionButton]}
+                        onPress={() => handleApproveLine(item.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Approve ${item.item_name}`}
+                      >
+                        <Ionicons name="checkmark" size={20} color={colors.white} />
+                        <Text style={styles.actionButtonText}>Approve</Text>
+                      </AnimatedPressable>
 
-        {item.verified && item.verified_by ? (
-          <View style={styles.verifiedInfo}>
-            <Ionicons name="checkmark-circle" size={16} color={colors.success[600]} />
-            <Text style={styles.verifiedInfoText}>
-              Verified by {item.verified_by} on {verifiedAtLabel}
-            </Text>
-          </View>
-        ) : null}
+                      <AnimatedPressable
+                        style={[styles.inlineActionButton, styles.dangerActionButton]}
+                        onPress={() => void handleRejectLine(item)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Reject ${item.item_name}`}
+                      >
+                        <Ionicons name="close" size={20} color={colors.white} />
+                        <Text style={styles.actionButtonText}>Reject</Text>
+                      </AnimatedPressable>
+                    </>
+                  ) : null}
 
-        {!offlineMode && !sessionFinalized ? (
-          <View style={styles.lineActions}>
-            {requiresSupervisorReview && normalizedStatus === "pending" ? (
-              <>
-                <AnimatedPressable
-                  style={[styles.inlineActionButton, styles.successActionButton]}
-                  onPress={() => handleApproveLine(item.id)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Approve ${item.item_name}`}
-                >
-                  <Ionicons name="checkmark" size={20} color={colors.white} />
-                  <Text style={styles.actionButtonText}>Approve</Text>
-                </AnimatedPressable>
+                  {requiresSupervisorReview && activeTab === "toVerify" && !item.verified ? (
+                    <AnimatedPressable
+                      style={[
+                        styles.inlineActionButton,
+                        styles.primaryActionFill,
+                        verifying === item.id && styles.buttonDisabled,
+                      ]}
+                      onPress={() => handleVerifyStock(item.id)}
+                      disabled={verifying === item.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Verify stock for ${item.item_name}`}
+                    >
+                      {verifying === item.id ? (
+                        <ActivityIndicator size="small" color={colors.white} />
+                      ) : (
+                        <>
+                          <Ionicons
+                            name="checkmark-circle-outline"
+                            size={20}
+                            color={colors.white}
+                          />
+                          <Text style={styles.actionButtonText}>Verify Stock</Text>
+                        </>
+                      )}
+                    </AnimatedPressable>
+                  ) : null}
 
-                <AnimatedPressable
-                  style={[styles.inlineActionButton, styles.dangerActionButton]}
-                  onPress={() => void handleRejectLine(item)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Reject ${item.item_name}`}
-                >
-                  <Ionicons name="close" size={20} color={colors.white} />
-                  <Text style={styles.actionButtonText}>Reject</Text>
-                </AnimatedPressable>
-              </>
-            ) : null}
-
-            {requiresSupervisorReview && activeTab === "toVerify" && !item.verified ? (
-              <AnimatedPressable
-                style={[
-                  styles.inlineActionButton,
-                  styles.primaryActionFill,
-                  verifying === item.id && styles.buttonDisabled,
-                ]}
-                onPress={() => handleVerifyStock(item.id)}
-                disabled={verifying === item.id}
-                accessibilityRole="button"
-                accessibilityLabel={`Verify stock for ${item.item_name}`}
-              >
-                {verifying === item.id ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <>
-                    <Ionicons name="checkmark-circle-outline" size={20} color={colors.white} />
-                    <Text style={styles.actionButtonText}>Verify Stock</Text>
-                  </>
-                )}
-              </AnimatedPressable>
-            ) : null}
-
-            {activeTab === "verified" && item.verified ? (
-              <AnimatedPressable
-                style={[
-                  styles.inlineActionButton,
-                  styles.warningActionButton,
-                  verifying === item.id && styles.buttonDisabled,
-                ]}
-                onPress={() => handleUnverifyStock(item.id)}
-                disabled={verifying === item.id}
-                accessibilityRole="button"
-                accessibilityLabel={`Remove verification for ${item.item_name}`}
-              >
-                {verifying === item.id ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <>
-                    <Ionicons name="close-circle-outline" size={20} color={colors.white} />
-                    <Text style={styles.actionButtonText}>Unverify</Text>
-                  </>
-                )}
-              </AnimatedPressable>
-            ) : null}
-          </View>
-        ) : null}
-      </ModernCard>
-    );
-  };
+                  {activeTab === "verified" && item.verified ? (
+                    <AnimatedPressable
+                      style={[
+                        styles.inlineActionButton,
+                        styles.warningActionButton,
+                        verifying === item.id && styles.buttonDisabled,
+                      ]}
+                      onPress={() => handleUnverifyStock(item.id)}
+                      disabled={verifying === item.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove verification for ${item.item_name}`}
+                    >
+                      {verifying === item.id ? (
+                        <ActivityIndicator size="small" color={colors.white} />
+                      ) : (
+                        <>
+                          <Ionicons name="close-circle-outline" size={20} color={colors.white} />
+                          <Text style={styles.actionButtonText}>Unverify</Text>
+                        </>
+                      )}
+                    </AnimatedPressable>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
+          }
+          accessibility={{
+            label: `${item.item_name || "Unknown item"}. Status ${normalizedStatus || "pending"}. ERP ${item.erp_qty}. Counted ${item.counted_qty}. Variance ${item.variance}.`,
+          }}
+          style={styles.lineRow}
+        />
+      );
+    },
+    [
+      activeTab,
+      handleApproveLine,
+      handleRejectLine,
+      handleUnverifyStock,
+      handleVerifyStock,
+      offlineMode,
+      sessionFinalized,
+      verifying,
+    ]
+  );
 
   const renderEmpty = () => (
     <ModernCard
@@ -738,6 +722,69 @@ export default function SessionDetail() {
       </Text>
     </ModernCard>
   );
+
+  if (!loading && sessionMissing) {
+    return (
+      <Screen padding={0} backgroundColor={colors.gray[50]}>
+        <StatusBar style="dark" />
+        <View style={styles.header}>
+          <AnimatedPressable
+            onPress={() => router.replace("/supervisor/sessions")}
+            style={styles.backButton}
+            accessibilityRole="button"
+            accessibilityLabel="Back to sessions"
+          >
+            <Ionicons name="arrow-back" size={22} color={colors.gray[700]} />
+          </AnimatedPressable>
+          <Text style={styles.headerTitle}>Session Details</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        <View style={styles.loadingContainer}>
+          <Ionicons name="alert-circle-outline" size={56} color={colors.warning[500]} />
+          <Text style={styles.loadingText}>This session is no longer available.</Text>
+          {offlineMode ? (
+            <Text style={styles.offlineMissingText}>
+              It is not available in the local session cache.
+            </Text>
+          ) : null}
+          <AnimatedPressable
+            onPress={() => router.replace("/supervisor/sessions")}
+            style={[styles.primaryActionButton, styles.successActionButton]}
+            accessibilityRole="button"
+            accessibilityLabel="Back to sessions"
+          >
+            <Text style={styles.buttonText}>Back to Sessions</Text>
+          </AnimatedPressable>
+        </View>
+      </Screen>
+    );
+  }
+
+  if (loading || !session) {
+    return (
+      <Screen padding={0} backgroundColor={colors.gray[50]}>
+        <StatusBar style="dark" />
+        <View style={styles.header}>
+          <AnimatedPressable
+            onPress={() => safeBackNavigation(router, { fallbackHref: "/supervisor/sessions" })}
+            style={styles.backButton}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="arrow-back" size={22} color={colors.gray[700]} />
+          </AnimatedPressable>
+          <Text style={styles.headerTitle}>Session Details</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary[500]} />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </Screen>
+    );
+  }
 
   return (
     <Screen padding={0} backgroundColor={colors.gray[50]}>
@@ -760,8 +807,7 @@ export default function SessionDetail() {
         <FlashList
           data={currentLines}
           renderItem={renderItem}
-          // @ts-ignore
-          estimatedItemSize={260}
+          drawDistance={OPERATIONAL_LIST_ROW_ESTIMATED_HEIGHT.comfortable * 6}
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={renderEmpty}
           contentContainerStyle={styles.listContent}
@@ -944,9 +990,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.success[50],
     borderColor: colors.success[200],
   },
-  noticeWarning: {
-    backgroundColor: colors.warning[50],
-    borderColor: colors.warning[200],
+  noticeSpacing: {
+    marginBottom: spacing.lg,
   },
   noticeRow: {
     flexDirection: "row",
@@ -1026,6 +1071,9 @@ const styles = StyleSheet.create({
     color: colors.gray[600],
   },
   lineCard: {
+    marginBottom: spacing.md,
+  },
+  lineRow: {
     marginBottom: spacing.md,
   },
   lineHeader: {

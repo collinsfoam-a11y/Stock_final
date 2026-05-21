@@ -6,13 +6,34 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from decimal import Decimal, InvalidOperation
-from datetime import datetime, timezone
+from datetime import datetime, date, timezone
 from typing import Any, Optional, cast
 
 from backend.services.governance_guard import GovernanceViolation
 
 logger = logging.getLogger(__name__)
+
+_BARCODE_RE = re.compile(r"^[A-Za-z0-9\-\./_\s]{4,50}$")
+
+
+def validate_barcode_format(barcode: Any) -> None:
+    """Raise GovernanceViolation if barcode is malformed.  Absent/None barcodes are allowed."""
+    if barcode is None or barcode == "":
+        return
+    raw = str(barcode).strip()
+    if not raw:
+        return
+    if len(raw) < 4:
+        raise GovernanceViolation(f"INVALID_BARCODE: too short (min 4 chars): {raw!r}")
+    if len(raw) > 50:
+        raise GovernanceViolation(f"INVALID_BARCODE: too long (max 50 chars): {raw!r}")
+    if not _BARCODE_RE.match(raw):
+        raise GovernanceViolation(
+            f"INVALID_BARCODE: only alphanumeric and -./_ characters allowed: {raw!r}"
+        )
+
 
 FRACTIONAL_UOMS = {
     "KG",
@@ -70,6 +91,7 @@ def _as_decimal(value: Any, *, default: str = "0") -> Decimal:
 def _normalize_serials(doc: dict[str, Any]) -> list[str]:
     normalized: list[str] = []
     seen: set[str] = set()
+    duplicate_count = 0
     for value in doc.get("serial_numbers") or []:
         serial = _normalize_string(value)
         if serial:
@@ -77,6 +99,8 @@ def _normalize_serials(doc: dict[str, Any]) -> list[str]:
             if serial_upper not in seen:
                 normalized.append(serial_upper)
                 seen.add(serial_upper)
+            else:
+                duplicate_count += 1
     for entry in doc.get("serial_entries") or []:
         if not isinstance(entry, dict):
             continue
@@ -86,6 +110,14 @@ def _normalize_serials(doc: dict[str, Any]) -> list[str]:
             if serial_upper not in seen:
                 normalized.append(serial_upper)
                 seen.add(serial_upper)
+            else:
+                duplicate_count += 1
+    if duplicate_count > 0:
+        logger.warning(
+            "Serial number deduplication removed %d duplicate(s) from input; "
+            "verify input data quality.",
+            duplicate_count,
+        )
     return normalized
 
 
@@ -145,6 +177,8 @@ class ValidationService:
         kwargs = self._kwargs(db_session)
         barcode = _normalize_string(doc.get("barcode"))
         item_code = _normalize_string(doc.get("item_code"))
+
+        validate_barcode_format(barcode)
 
         if barcode:
             existing = await self.db.erp_items.find_one({"barcode": barcode}, **kwargs)
@@ -376,6 +410,20 @@ class ValidationService:
             "is_serial_item": is_serial_item,
         }
 
+    @staticmethod
+    def _parse_date_best_effort(value: Any) -> Optional[date]:
+        """Try common date formats; return None on failure."""
+        if not value:
+            return None
+        raw = str(value).strip()
+        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%Y", "%Y"):
+            try:
+                parsed = datetime.strptime(raw, fmt)
+                return parsed.date()
+            except ValueError:
+                continue
+        return None
+
     async def enforce_count_line_business_rules(
         self,
         doc: dict[str, Any],
@@ -385,6 +433,14 @@ class ValidationService:
     ) -> dict[str, Any]:
         if not isinstance(doc, dict):
             return {}
+
+        # Expiry must be on or after manufacturing date
+        mfg_date = self._parse_date_best_effort(doc.get("manufacturing_date"))
+        expiry_date = self._parse_date_best_effort(doc.get("expiry_date"))
+        if mfg_date and expiry_date and expiry_date < mfg_date:
+            raise GovernanceViolation(
+                "EXPIRY_BEFORE_MFG: expiry_date must be on or after manufacturing_date"
+            )
 
         item_master = await self.resolve_item_master(doc, item=item, db_session=db_session)
         normalized_qty = self.normalize_quantity_for_item(item=item_master, doc=doc)

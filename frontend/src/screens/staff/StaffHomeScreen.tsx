@@ -36,8 +36,11 @@ import ModernHeader from "@/components/ui/ModernHeader";
 import ModernCard from "@/components/ui/ModernCard";
 import ModernButton from "@/components/ui/ModernButton";
 import ModernInput from "@/components/ui/ModernInput";
+import { SyncStatusPill } from "@/components/ui/SyncStatusPill";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { colors, spacing, typography, borderRadius } from "@/theme/legacyCompat";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
 
 interface Zone {
   id: string;
@@ -136,6 +139,7 @@ const StaffHome = React.memo(function StaffHome() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const prefersReducedMotion = useReducedMotion();
+  const uiTokens = useUiTokens();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const unreadCount = useNotificationStore((state) => state.unreadCount);
@@ -476,51 +480,112 @@ const StaffHome = React.memo(function StaffHome() {
     return (
       <ModernCard
         key={session.id || session._id}
-        style={styles.sessionCard}
+        style={[
+          styles.sessionCard,
+          {
+            backgroundColor: uiTokens.colors.surface,
+            borderColor: uiTokens.colors.border,
+          },
+        ]}
         padding={spacing.md}
         onPress={() => onPress(session)}
       >
         <View style={styles.sessionHeader}>
-          <View style={styles.sessionIcon}>
-            <Ionicons name="cube-outline" size={22} color={colors.primary[700]} />
+          <View
+            style={[
+              styles.sessionIcon,
+              {
+                backgroundColor: colorWithAlpha(
+                  uiTokens.colors.accent,
+                  uiTokens.mode === "dark" ? 0.18 : 0.1
+                ),
+              },
+            ]}
+          >
+            <Ionicons name="cube-outline" size={22} color={uiTokens.colors.accentStrong} />
           </View>
           <View style={styles.sessionInfo}>
-            <Text style={styles.warehouseText} numberOfLines={2}>
+            <Text
+              style={[styles.warehouseText, { color: uiTokens.colors.textPrimary }]}
+              numberOfLines={2}
+            >
               {session.warehouse}
             </Text>
-            <Text style={styles.dateText}>Last used: {formatSessionDateTime(session)}</Text>
+            <Text style={[styles.dateText, { color: uiTokens.colors.textSecondary }]}>
+              Last used: {formatSessionDateTime(session)}
+            </Text>
           </View>
-          <View style={[styles.statusPill, !isOpenStatus && styles.statusPillMuted]}>
-            <View style={[styles.statusDot, !isOpenStatus && styles.statusDotMuted]} />
-            <Text style={[styles.statusPillText, !isOpenStatus && styles.statusPillTextMuted]}>
+          <View
+            style={[
+              styles.statusPill,
+              {
+                backgroundColor: isOpenStatus
+                  ? colorWithAlpha(uiTokens.colors.success, uiTokens.mode === "dark" ? 0.18 : 0.1)
+                  : uiTokens.colors.surfaceElevated,
+                borderColor: isOpenStatus
+                  ? colorWithAlpha(uiTokens.colors.success, 0.32)
+                  : uiTokens.colors.border,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.statusDot,
+                {
+                  backgroundColor: isOpenStatus
+                    ? uiTokens.colors.success
+                    : uiTokens.colors.textMuted,
+                },
+              ]}
+            />
+            <Text
+              style={[
+                styles.statusPillText,
+                { color: isOpenStatus ? uiTokens.colors.success : uiTokens.colors.textSecondary },
+              ]}
+            >
               {status}
             </Text>
           </View>
         </View>
 
-        <View style={styles.sessionStats}>
+        <View
+          style={[
+            styles.sessionStats,
+            {
+              backgroundColor: uiTokens.colors.surfaceElevated,
+              borderColor: uiTokens.colors.border,
+            },
+          ]}
+        >
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{getScannedCount(session)}</Text>
-            <Text style={styles.statLabel}>Scanned</Text>
+            <Text style={[styles.statValue, { color: uiTokens.colors.textPrimary }]}>
+              {getScannedCount(session)}
+            </Text>
+            <Text style={[styles.statLabel, { color: uiTokens.colors.textSecondary }]}>
+              Scanned
+            </Text>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, { backgroundColor: uiTokens.colors.border }]} />
           <View style={styles.statItem}>
             <Text
               style={[
                 styles.statValue,
                 {
-                  color: issueCount > 0 ? colors.error[600] : colors.success[600],
+                  color: issueCount > 0 ? uiTokens.colors.error : uiTokens.colors.success,
                 },
               ]}
             >
               {issueCount}
             </Text>
-            <Text style={styles.statLabel}>Issues</Text>
+            <Text style={[styles.statLabel, { color: uiTokens.colors.textSecondary }]}>Issues</Text>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, { backgroundColor: uiTokens.colors.border }]} />
           <View style={styles.statItem}>
-            <Ionicons name="chevron-forward" size={20} color={colors.gray[500]} />
-            <Text style={styles.statLabel}>Details</Text>
+            <Ionicons name="chevron-forward" size={20} color={uiTokens.colors.textMuted} />
+            <Text style={[styles.statLabel, { color: uiTokens.colors.textSecondary }]}>
+              Details
+            </Text>
           </View>
         </View>
       </ModernCard>
@@ -535,14 +600,22 @@ const StaffHome = React.memo(function StaffHome() {
             title="Start New Session"
             icon="barcode-outline"
             onPress={() => setShowCreateModal(true)}
-            style={styles.createButton}
+            style={{
+              ...styles.createButton,
+              backgroundColor: uiTokens.colors.accent,
+              borderColor: uiTokens.colors.accent,
+            }}
           />
 
           {uniqueActiveSessions.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="clipboard-outline" size={48} color={colors.gray[300]} />
-              <Text style={styles.emptyText}>No active sessions</Text>
-              <Text style={styles.emptySubtext}>Start a new session to begin scanning</Text>
+              <Ionicons name="clipboard-outline" size={48} color={uiTokens.colors.textMuted} />
+              <Text style={[styles.emptyText, { color: uiTokens.colors.textPrimary }]}>
+                No active sessions
+              </Text>
+              <Text style={[styles.emptySubtext, { color: uiTokens.colors.textSecondary }]}>
+                Start a new session to begin scanning
+              </Text>
             </View>
           ) : (
             uniqueActiveSessions.map((session) => renderSessionCard(session, handleResumeSession))
@@ -556,8 +629,10 @@ const StaffHome = React.memo(function StaffHome() {
         <Animated.View entering={prefersReducedMotion ? undefined : FadeInDown.duration(500)}>
           {finishedSessions.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="time-outline" size={48} color={colors.gray[300]} />
-              <Text style={styles.emptyText}>No history yet</Text>
+              <Ionicons name="time-outline" size={48} color={uiTokens.colors.textMuted} />
+              <Text style={[styles.emptyText, { color: uiTokens.colors.textPrimary }]}>
+                No history yet
+              </Text>
             </View>
           ) : (
             finishedSessions.map((session) => renderSessionCard(session, handleOpenSessionHistory))
@@ -570,14 +645,24 @@ const StaffHome = React.memo(function StaffHome() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: uiTokens.colors.background }]}
+      edges={["top"]}
+    >
       <ModernHeader
         title="Stock Verify"
         subtitle={user?.full_name || user?.username || "Staff"}
         showSettingsButton={false}
         rightComponent={
           <TouchableOpacity
-            style={styles.headerIconButton}
+            style={[
+              styles.headerIconButton,
+              {
+                backgroundColor: uiTokens.colors.surfaceElevated,
+                borderWidth: 1,
+                borderColor: uiTokens.colors.border,
+              },
+            ]}
             onPress={() => router.push("/notifications" as any)}
             accessibilityRole="button"
             accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
@@ -585,10 +670,18 @@ const StaffHome = React.memo(function StaffHome() {
             <Ionicons
               name={unreadCount > 0 ? "notifications" : "notifications-outline"}
               size={22}
-              color={colors.gray[700]}
+              color={uiTokens.colors.accent}
             />
             {unreadCount > 0 ? (
-              <View style={styles.notificationBadge}>
+              <View
+                style={[
+                  styles.notificationBadge,
+                  {
+                    backgroundColor: uiTokens.colors.error,
+                    borderColor: uiTokens.colors.surface,
+                  },
+                ]}
+              >
                 <Text style={styles.notificationBadgeText}>
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </Text>
@@ -623,29 +716,83 @@ const StaffHome = React.memo(function StaffHome() {
         }}
       />
 
-      <View style={styles.summaryPanel}>
-        <View style={styles.summaryCopy}>
-          <Text style={styles.summaryEyebrow}>Current workload</Text>
-          <Text style={styles.summaryTitle}>
-            {uniqueActiveSessions.length} active{" "}
-            {uniqueActiveSessions.length === 1 ? "session" : "sessions"}
-          </Text>
-        </View>
-        <View style={styles.summaryMetrics}>
-          <View style={styles.summaryMetric}>
-            <Text style={styles.summaryValue}>{activeSummary.scanned}</Text>
-            <Text style={styles.summaryLabel}>Scanned</Text>
+      <View style={styles.pageContent}>
+        <ModernCard
+          padding={spacing.lg}
+          style={[
+            styles.summaryCard,
+            {
+              backgroundColor: uiTokens.colors.surface,
+              borderColor: uiTokens.colors.border,
+            },
+          ]}
+        >
+        <View style={styles.summaryTopRow}>
+          <View style={styles.summaryCopy}>
+            <Text style={[styles.summaryEyebrow, { color: uiTokens.colors.accentStrong }]}>
+              Current workload
+            </Text>
+            <Text style={[styles.summaryTitle, { color: uiTokens.colors.textPrimary }]}>
+              {uniqueActiveSessions.length} active{" "}
+              {uniqueActiveSessions.length === 1 ? "session" : "sessions"}
+            </Text>
           </View>
-          <View style={styles.summaryMetricDivider} />
+          <View style={styles.syncPillWrap}>
+            <SyncStatusPill />
+          </View>
+        </View>
+        <View
+          style={[
+            styles.summaryMetrics,
+            {
+              backgroundColor: uiTokens.colors.surfaceElevated,
+              borderColor: uiTokens.colors.border,
+            },
+          ]}
+        >
+          <View style={styles.summaryMetric}>
+            <Text style={[styles.summaryValue, { color: uiTokens.colors.textPrimary }]}>
+              {activeSummary.scanned}
+            </Text>
+            <Text style={[styles.summaryLabel, { color: uiTokens.colors.textSecondary }]}>
+              Scanned
+            </Text>
+          </View>
+          <View
+            style={[styles.summaryMetricDivider, { backgroundColor: uiTokens.colors.border }]}
+          />
           <View style={styles.summaryMetric}>
             <Text
-              style={[styles.summaryValue, activeSummary.issues > 0 && styles.summaryValueWarning]}
+              style={[
+                styles.summaryValue,
+                {
+                  color:
+                    activeSummary.issues > 0 ? uiTokens.colors.error : uiTokens.colors.textPrimary,
+                },
+              ]}
             >
               {activeSummary.issues}
             </Text>
-            <Text style={styles.summaryLabel}>Issues</Text>
+            <Text style={[styles.summaryLabel, { color: uiTokens.colors.textSecondary }]}>
+              Issues
+            </Text>
           </View>
         </View>
+      </ModernCard>
+
+      <View style={styles.actionRow}>
+        <ModernButton
+          title="Start New Session"
+          icon="barcode-outline"
+          onPress={() => setShowCreateModal(true)}
+          size="large"
+          fullWidth
+          style={{
+            backgroundColor: uiTokens.colors.accent,
+            borderColor: uiTokens.colors.accent,
+          }}
+          accessibilityLabel="Start a new stock verification session"
+        />
       </View>
 
       <View
@@ -654,27 +801,67 @@ const StaffHome = React.memo(function StaffHome() {
         accessibilityLabel="Session dashboard sections"
       >
         <TouchableOpacity
-          style={[styles.tab, activeTab === "active" && styles.activeTab]}
+          style={[
+            styles.tab,
+            {
+              backgroundColor:
+                activeTab === "active"
+                  ? colorWithAlpha(uiTokens.colors.accent, uiTokens.mode === "dark" ? 0.22 : 0.1)
+                  : uiTokens.colors.surface,
+              borderColor: activeTab === "active" ? uiTokens.colors.accent : uiTokens.colors.border,
+            },
+          ]}
           onPress={() => setActiveTab("active")}
           accessibilityRole="tab"
           accessibilityState={{ selected: activeTab === "active" }}
           accessibilityLabel={`Active sessions, ${uniqueActiveSessions.length} items`}
         >
-          <Text style={[styles.tabText, activeTab === "active" && styles.activeTabText]}>
+          <Text
+            style={[
+              styles.tabText,
+              {
+                color:
+                  activeTab === "active"
+                    ? uiTokens.colors.accentStrong
+                    : uiTokens.colors.textSecondary,
+              },
+            ]}
+          >
             Active ({uniqueActiveSessions.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === "history" && styles.activeTab]}
+          style={[
+            styles.tab,
+            {
+              backgroundColor:
+                activeTab === "history"
+                  ? colorWithAlpha(uiTokens.colors.accent, uiTokens.mode === "dark" ? 0.22 : 0.1)
+                  : uiTokens.colors.surface,
+              borderColor:
+                activeTab === "history" ? uiTokens.colors.accent : uiTokens.colors.border,
+            },
+          ]}
           onPress={() => setActiveTab("history")}
           accessibilityRole="tab"
           accessibilityState={{ selected: activeTab === "history" }}
           accessibilityLabel={`Session history, ${finishedSessions.length} items`}
         >
-          <Text style={[styles.tabText, activeTab === "history" && styles.activeTabText]}>
+          <Text
+            style={[
+              styles.tabText,
+              {
+                color:
+                  activeTab === "history"
+                    ? uiTokens.colors.accentStrong
+                    : uiTokens.colors.textSecondary,
+              },
+            ]}
+          >
             History
           </Text>
         </TouchableOpacity>
+      </View>
       </View>
 
       <ScrollView
@@ -698,17 +885,27 @@ const StaffHome = React.memo(function StaffHome() {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.modalContainer}
+          style={[styles.modalContainer, { backgroundColor: uiTokens.colors.background }]}
         >
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>New Session</Text>
+          <View
+            style={[
+              styles.modalHeader,
+              {
+                backgroundColor: uiTokens.colors.surface,
+                borderBottomColor: uiTokens.colors.border,
+              },
+            ]}
+          >
+            <Text style={[styles.modalTitle, { color: uiTokens.colors.textPrimary }]}>
+              New Session
+            </Text>
             <TouchableOpacity
               onPress={() => setShowCreateModal(false)}
               style={styles.modalCloseButton}
               accessibilityRole="button"
               accessibilityLabel="Close new session modal"
             >
-              <Ionicons name="close" size={24} color={colors.gray[500]} />
+              <Ionicons name="close" size={24} color={uiTokens.colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -718,7 +915,9 @@ const StaffHome = React.memo(function StaffHome() {
             keyboardDismissMode="none"
             nestedScrollEnabled
           >
-            <Text style={styles.sectionLabel}>Select Location</Text>
+            <Text style={[styles.sectionLabel, { color: uiTokens.colors.textSecondary }]}>
+              Select Location
+            </Text>
             <View
               style={styles.chipContainer}
               accessibilityRole="radiogroup"
@@ -727,7 +926,22 @@ const StaffHome = React.memo(function StaffHome() {
               {zones.map((zone) => (
                 <TouchableOpacity
                   key={zone.id}
-                  style={[styles.chip, locationType === zone.zone_name && styles.chipActive]}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor:
+                        locationType === zone.zone_name
+                          ? colorWithAlpha(
+                              uiTokens.colors.accent,
+                              uiTokens.mode === "dark" ? 0.22 : 0.1
+                            )
+                          : uiTokens.colors.surfaceElevated,
+                      borderColor:
+                        locationType === zone.zone_name
+                          ? uiTokens.colors.accent
+                          : uiTokens.colors.border,
+                    },
+                  ]}
                   onPress={() => setLocationType(zone.zone_name)}
                   accessibilityRole="radio"
                   accessibilityState={{
@@ -738,7 +952,12 @@ const StaffHome = React.memo(function StaffHome() {
                   <Text
                     style={[
                       styles.chipText,
-                      locationType === zone.zone_name && styles.chipTextActive,
+                      {
+                        color:
+                          locationType === zone.zone_name
+                            ? uiTokens.colors.accentStrong
+                            : uiTokens.colors.textSecondary,
+                      },
                     ]}
                   >
                     {zone.zone_name}
@@ -749,7 +968,9 @@ const StaffHome = React.memo(function StaffHome() {
 
             {locationType && (
               <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(250)}>
-                <Text style={styles.sectionLabel}>Select Floor / Area</Text>
+                <Text style={[styles.sectionLabel, { color: uiTokens.colors.textSecondary }]}>
+                  Select Floor / Area
+                </Text>
                 <View
                   style={styles.chipContainer}
                   accessibilityRole="radiogroup"
@@ -760,7 +981,19 @@ const StaffHome = React.memo(function StaffHome() {
                       key={wh.id}
                       style={[
                         styles.chip,
-                        selectedFloor === wh.warehouse_name && styles.chipActive,
+                        {
+                          backgroundColor:
+                            selectedFloor === wh.warehouse_name
+                              ? colorWithAlpha(
+                                  uiTokens.colors.accent,
+                                  uiTokens.mode === "dark" ? 0.22 : 0.1
+                                )
+                              : uiTokens.colors.surfaceElevated,
+                          borderColor:
+                            selectedFloor === wh.warehouse_name
+                              ? uiTokens.colors.accent
+                              : uiTokens.colors.border,
+                        },
                       ]}
                       onPress={() => setSelectedFloor(wh.warehouse_name)}
                       accessibilityRole="radio"
@@ -772,7 +1005,12 @@ const StaffHome = React.memo(function StaffHome() {
                       <Text
                         style={[
                           styles.chipText,
-                          selectedFloor === wh.warehouse_name && styles.chipTextActive,
+                          {
+                            color:
+                              selectedFloor === wh.warehouse_name
+                                ? uiTokens.colors.accentStrong
+                                : uiTokens.colors.textSecondary,
+                          },
                         ]}
                       >
                         {wh.warehouse_name}
@@ -796,13 +1034,25 @@ const StaffHome = React.memo(function StaffHome() {
             )}
           </ScrollView>
 
-          <View style={styles.modalFooter}>
+          <View
+            style={[
+              styles.modalFooter,
+              {
+                backgroundColor: uiTokens.colors.surface,
+                borderTopColor: uiTokens.colors.border,
+              },
+            ]}
+          >
             <ModernButton
               title="Start Session"
               onPress={handleStartSession}
               loading={isCreating}
               disabled={!locationType || !selectedFloor || !rackName.trim()}
               fullWidth
+              style={{
+                backgroundColor: uiTokens.colors.accent,
+                borderColor: uiTokens.colors.accent,
+              }}
             />
           </View>
         </KeyboardAvoidingView>
@@ -816,6 +1066,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.gray[50],
   },
+  pageContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  summaryCard: {
+    marginBottom: spacing.md,
+    borderRadius: borderRadius.md,
+  },
+  summaryTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  actionRow: {
+    marginBottom: spacing.md,
+  },
   summaryPanel: {
     marginHorizontal: spacing.lg,
     marginTop: spacing.md,
@@ -826,8 +1095,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.gray[200],
   },
-  summaryCopy: {
+  summaryHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: spacing.md,
     marginBottom: spacing.md,
+  },
+  summaryCopy: {
+    flex: 1,
+  },
+  syncPillWrap: {
+    minHeight: 32,
+    alignItems: "flex-end",
+    justifyContent: "center",
   },
   summaryEyebrow: {
     fontSize: typography.fontSize.xs,

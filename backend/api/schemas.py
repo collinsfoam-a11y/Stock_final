@@ -8,6 +8,31 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 T = TypeVar("T")
 
 
+class SessionStatus(str, Enum):
+    """Formal session lifecycle states.
+
+    Transitions (simplified):
+        CREATED → ACTIVE → REVIEW → PENDING_APPROVAL → FINALIZED
+        Any state → PAUSED → previous state
+        Any state → CANCELLED
+        CONFLICT may be raised from ACTIVE/REVIEW; resolves back to REVIEW
+    """
+    CREATED = "CREATED"                   # Session object created, not yet started
+    ACTIVE = "ACTIVE"                     # Counting in progress
+    PAUSED = "PAUSED"                     # Temporarily suspended (break/shift change)
+    REVIEW = "REVIEW"                     # Submitted; awaiting supervisor review
+    PENDING_APPROVAL = "PENDING_APPROVAL" # Supervisor reviewed; awaiting manager sign-off
+    CONFLICT = "CONFLICT"                 # ERP data changed mid-session; reconciliation needed
+    FINALIZED = "FINALIZED"               # Approved and written to ERP
+    CANCELLED = "CANCELLED"              # Abandoned before finalization
+
+
+class SessionType(str, Enum):
+    STANDARD = "STANDARD"  # Normal counting with ERP qty visible
+    BLIND = "BLIND"        # ERP qty hidden to prevent anchoring bias
+    STRICT = "STRICT"      # No edits allowed after count line is submitted
+
+
 class ApiResponse(BaseModel, Generic[T]):
     success: bool
     data: Optional[T] = None
@@ -223,6 +248,17 @@ class RelocationStatus(str, Enum):
     IGNORED = "IGNORED"
 
 
+class InventoryState(str, Enum):
+    """Formal inventory state of the physical stock for a count line."""
+    AVAILABLE = "AVAILABLE"        # Good stock, available for sale/use
+    RESERVED = "RESERVED"          # Allocated to an order, not available
+    DAMAGED = "DAMAGED"            # Returnable damaged stock
+    NON_RETURNABLE = "NON_RETURNABLE"  # Irreparable; write-off candidate
+    QUARANTINED = "QUARANTINED"    # Held pending quality inspection
+    IN_TRANSIT = "IN_TRANSIT"      # Moving between locations/warehouses
+    EXPIRED = "EXPIRED"            # Past expiry date
+
+
 class CountLineCreate(BaseModel):
     session_id: str
     location_id: Optional[str] = None
@@ -272,6 +308,9 @@ class CountLineCreate(BaseModel):
     correction_metadata: Optional[CorrectionMetadata] = None
     category_correction: Optional[str] = None
     subcategory_correction: Optional[str] = None
+
+    # Inventory state classification
+    inventory_state: Optional[InventoryState] = InventoryState.AVAILABLE
 
     # Misplaced Stock Fields
     is_misplaced: Optional[bool] = False

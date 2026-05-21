@@ -261,8 +261,8 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
     ],
     # ERP Items Collection (existing)
     "erp_items": [
-        # Item code
-        ([("item_code", 1)], {"unique": True, "name": "idx_item_code"}),
+        # Item code. Multiple ERP batches/barcodes can share the same item code.
+        ([("item_code", 1)], {"name": "idx_item_code"}),
         # Barcode lookups
         ([("barcode", 1)], {"name": "idx_barcode"}),
         ([("autobarcode", 1)], {"name": "idx_autobarcode", "sparse": True}),

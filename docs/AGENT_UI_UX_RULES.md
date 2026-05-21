@@ -27,6 +27,24 @@ External skills are supporting references only:
 - Use `vercel-react-native-skills` for React Native performance, list rendering, animation, and technical UI quality.
 - If any external skill conflicts with this document, this document wins.
 
+### 1.1 Quick Reference
+- Prefer the existing unified design system and shared primitives over feature-local styling.
+- Verify offline visibility, pending sync count, failed sync count, last sync timestamp, and retry path before merge.
+- Treat accessibility as operational reliability: touch targets, labels, focus order, contrast, text scaling, and reduced motion must all be preserved.
+- Do not introduce new visual systems, arbitrary spacing/colors, or duplicate component families in operational workflows.
+- Run typecheck, lint, governance checks, and build preview for affected UI surfaces.
+
+### 1.2 Glossary
+- `semantic token`: a named token representing product meaning, such as `error`, `success`, `info`, or `surfaceElevated`.
+- `shared primitive`: an approved reusable UI component exported from canonical entry points such as `frontend/src/components/ui`.
+- `operational surface`: any screen or workflow used for stock counting, scanning, review, sync, or admin triage.
+- `legacy visual system`: an older component/style family kept only for migration and not to be expanded in new work.
+- `recoverability`: the ability for users to return to a valid state after interruption, failure, or navigation.
+- `offline visibility`: UI that clearly communicates online/offline state, queue status, and sync health.
+- `high-frequency scan path`: the scan-and-count workflow that must remain fast, low-friction, and thumb-friendly.
+
+> See also `frontend/src/theme/unified/` for existing project token and governance patterns.
+
 ## 2. Governance Philosophy
 
 The design system is a production dependency. It must be managed with the same discipline as API contracts, database schemas, and authentication boundaries.
@@ -184,7 +202,13 @@ Typography must use the central type scale and platform font families. Operation
 
 ## 5. Component Standards
 
-### 5.1 Canonical Component Entry Points
+### 5.1 Reuse-First Workflow
+- Inspect the existing shared component first. The component paths under `frontend/src/components/ui`, `frontend/src/components/feedback`, and `frontend/src/components/navigation` are the default assets.
+- Extend an approved variant only when the existing primitive does not cover the operational use case.
+- Create a new component only when no approved primitive fits and the new component is documented with purpose, token usage, accessibility behavior, and test expectations.
+- Export new shared primitives from the canonical component entry points and avoid feature-local duplicates.
+
+### 5.2 Canonical Component Entry Points
 
 Reusable UI must be exported from:
 
@@ -194,7 +218,7 @@ Reusable UI must be exported from:
 
 Feature components may compose shared primitives, but they must not fork button, input, card, badge, dialog, loading, sync, or offline behavior.
 
-### 5.2 Mandatory Reusable Primitives
+### 5.3 Mandatory Reusable Primitives
 
 The following primitives must exist as shared components and be reused before feature-local variants are considered:
 
@@ -210,7 +234,7 @@ The following primitives must exist as shared components and be reused before fe
 - Sync indicators: pending count, last sync time, retry action, failed queue count
 - Retry components: inline retry, full-screen retry, queued retry, idempotent action retry
 
-### 5.3 Component Governance Rules
+### 5.4 Component Governance Rules
 
 - Use `Pressable`-based shared primitives where possible.
 - All interactive components must support disabled, loading, pressed, focused, error, and success states where applicable.
@@ -220,7 +244,7 @@ The following primitives must exist as shared components and be reused before fe
 - Feature components must not duplicate shared primitive logic.
 - New components must document purpose, variants, accessibility behavior, token usage, and test expectations.
 
-### 5.4 Prohibited Component Patterns
+### 5.5 Prohibited Component Patterns
 
 - Feature-local `PrimaryButton`, `Card`, `Badge`, `Modal`, `Toast`, `OfflineBanner`, or `SyncPill` duplicates.
 - Components that hardcode spacing, color, elevation, or typography.
@@ -228,7 +252,7 @@ The following primitives must exist as shared components and be reused before fe
 - Cards nested inside cards unless the inner element is a true repeated item or modal content block.
 - New decorative-only components such as particle backgrounds, aurora backgrounds, animated blobs, ornamental gradients, or non-operational glass surfaces on workflow screens.
 
-### 5.5 Deprecation Direction
+### 5.6 Deprecation Direction
 
 Legacy visual components may remain while migration is in progress, but new work must not expand their usage unless explicitly approved. Components with names implying decorative systems, such as glass, aurora, particle, premium, or purely aesthetic animation, require justification before use on operational screens.
 
@@ -381,6 +405,13 @@ The UI must expose:
 - retry action
 - local save state
 - sync conflict state when applicable
+
+Required offline UI elements:
+- visible network status badge or banner
+- explicit saved-local / pending-sync text
+- retry action clearly labeled and actionable
+- queue size or failed item count visible without drilling in
+- last sync timestamp or status label on every operational screen when sync is relevant
 
 Silent failures are prohibited.
 
@@ -544,7 +575,24 @@ Every PR that changes UI must confirm:
 
 ### 12.6 Recommended Validation Commands
 
-Use the narrowest useful validation first, then widen when risk requires:
+Use the narrowest useful validation first, then widen when risk requires.
+
+When to run these:
+- For any UI or workflow change: `cd frontend && npm run typecheck` and `cd frontend && npm run lint`
+- For changed UI files: `cd frontend && npm run governance:ui:changed`
+- For release gating or high-risk UI work: `cd frontend && npm run governance:ui:changed:strict`
+- For broader design system or token changes: `cd frontend && npm run governance:ui`
+- For behavior or component changes after type/lint pass: `cd frontend && npm test`
+- For web preview changes: `cd frontend && npm run build:web`
+- For component or bundle impact review: `cd frontend && npm run bundle:web:report`
+- For end-to-end repository validation: `make agent-ci`
+
+Common practice:
+- Run typecheck and lint before governance checks.
+- Run `build:web` when the change affects web preview or shared style tokens.
+- Run `governance:ui:changed:strict` on release branches or when introducing new shared components.
+
+Recommended command list:
 
 - `cd frontend && npm run typecheck`
 - `cd frontend && npm run lint`
@@ -554,7 +602,7 @@ Use the narrowest useful validation first, then widen when risk requires:
 - `cd frontend && npm test`
 - `cd frontend && npm run build:web`
 - `cd frontend && npm run bundle:web:report`
-- `make agent-ci` for broader repo validation
+- `make agent-ci`
 
 Native certification requires real Android and iOS build/device evidence. Do not claim full native readiness from web checks alone.
 
@@ -622,7 +670,12 @@ Design system changes must be versioned by impact:
 
 Every minor or major change must include migration guidance.
 
-### 13.6 Documentation Requirements
+### 13.6 Change Impact Categories
+- Patch: small fix to an existing style, token, or documentation update that does not alter workflow or API.
+- Minor: new reusable component, new semantic token, or added variant that remains backward-compatible.
+- Major: changes to token scales, shared component APIs, navigation models, new visual systems, or any workflow order change.
+
+### 13.7 Documentation Requirements
 
 New shared components must document:
 
@@ -667,6 +720,18 @@ Examples:
 - touch targets are too small in high-frequency controls
 
 Required action: fix before release unless explicitly accepted by product and engineering leads.
+
+### Risk Decision Table
+| Finding | Recommended Severity |
+|---|---|
+| Failed sync shown as complete | P0 |
+| Scan appears saved but not persisted locally | P0 |
+| Offline status hidden during counting | P1 |
+| Duplicate scan state ambiguous | P1 |
+| Non-critical icon missing label | P2 |
+| Minor spacing inconsistency on low-risk screen | P3 |
+| Legacy visual component used in new feature | P1 |
+| New token scale or visual system introduced without approval | P0 |
 
 ### P2: Medium UX Or Accessibility Defect
 

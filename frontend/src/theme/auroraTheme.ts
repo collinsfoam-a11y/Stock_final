@@ -20,46 +20,46 @@ import { createShadow } from "./shadowUtils";
 // ==========================================
 
 export const auroraColors = {
-  // Primary - Tech Blue (from Kombai API)
+  // Primary — Claude Terracotta
   primary: {
-    50: "#D2E4FA",
-    100: "#A5C9F5",
-    200: "#78AEF0",
-    300: "#4A93EB",
-    400: "#1D78E6",
-    500: "#1560BD", // Main - Tech Blue
-    600: "#11509D",
-    700: "#0E407D",
-    800: "#0A305E",
-    900: "#07203F",
+    50: "#FFF3EE",
+    100: "#FFE4D6",
+    200: "#FFC7A8",
+    300: "#FFA47B",
+    400: "#E8906E",
+    500: "#CC785C", // Main — Claude Terracotta
+    600: "#B06148",
+    700: "#924D36",
+    800: "#743A26",
+    900: "#562A18",
   },
 
-  // Secondary - Smart Blue
+  // Secondary — Warm Stone
   secondary: {
-    50: "#DAE5F7",
-    100: "#B6CBEE",
-    200: "#91B1E6",
-    300: "#6C98DE",
-    400: "#477ED5",
-    500: "#2D68C4", // Main - Smart Blue
-    600: "#2555A3",
-    700: "#1E4482",
-    800: "#163362",
-    900: "#0F2241",
+    50: "#FAFAF9",
+    100: "#F5F5F4",
+    200: "#E7E5E4",
+    300: "#D7D4D1",
+    400: "#A9A5A2",
+    500: "#78746F", // Main — Warm Stone
+    600: "#58534E",
+    700: "#44403C",
+    800: "#2E2B28",
+    900: "#1C1917",
   },
 
-  // Accent - Cyan (for aurora blend)
+  // Accent — Warm Amber
   accent: {
-    50: "#ECFEFF",
-    100: "#CFFAFE",
-    200: "#A5F3FC",
-    300: "#67E8F9",
-    400: "#22D3EE",
-    500: "#06B6D4",
-    600: "#0891B2",
-    700: "#0E7490",
-    800: "#155E75",
-    900: "#164E63",
+    50: "#FFFBF0",
+    100: "#FEF3D6",
+    200: "#FDE5A8",
+    300: "#FBD070",
+    400: "#F5B942",
+    500: "#E8A020",
+    600: "#C4830F",
+    700: "#9E6508",
+    800: "#794B07",
+    900: "#553405",
   },
 
   // Success - Emerald
@@ -104,70 +104,70 @@ export const auroraColors = {
     900: "#7F1D1D",
   },
 
-  // Neutral - Slate (Dark Mode Optimized)
+  // Neutral — Warm Stone
   neutral: {
-    50: "#F8FAFC",
-    100: "#F1F5F9",
-    200: "#E2E8F0",
-    300: "#CBD5E1",
-    400: "#94A3B8",
-    500: "#64748B",
-    600: "#475569",
-    700: "#334155",
-    800: "#1E293B",
-    900: "#0F172A",
-    950: "#020617",
+    50: "#FAFAF9",
+    100: "#F5F5F4",
+    200: "#E7E5E4",
+    300: "#D7D4D1",
+    400: "#A9A5A2",
+    500: "#78746F",
+    600: "#58534E",
+    700: "#44403C",
+    800: "#2E2B28",
+    900: "#1C1917",
+    950: "#0C0A09",
   },
 
-  // Aurora Gradients (for backgrounds and effects)
+  // Aurora Gradients — Warm Claude Palette
   aurora: {
-    // Primary aurora blend (Blue to Cyan)
-    primary: ["#1560BD", "#2D68C4", "#06B6D4"] as const,
-    // Secondary aurora blend (Blue to Teal)
-    secondary: ["#2D68C4", "#0EA5E9", "#06B6D4"] as const,
+    // Primary warm blend (Terracotta to Amber)
+    primary: ["#CC785C", "#E8906E", "#E8A020"] as const,
+    // Secondary warm blend
+    secondary: ["#E8906E", "#CC785C", "#B06148"] as const,
     // Success aurora blend
-    success: ["#10B981", "#14B8A6", "#06B6D4"] as const,
-    // Warm aurora blend
-    warm: ["#F59E0B", "#F97316", "#06B6D4"] as const,
-    // Dark aurora blend (for backgrounds)
-    dark: ["#0F172A", "#1E293B", "#334155"] as const,
-    // Glass overlay
-    glass: ["rgba(255, 255, 255, 0.1)", "rgba(255, 255, 255, 0.05)"] as const,
+    success: ["#22C55E", "#16A34A", "#15803D"] as const,
+    // Warm aurora blend (Amber to Terracotta)
+    warm: ["#F59E0B", "#E8A020", "#CC785C"] as const,
+    // Dark aurora blend (Warm Charcoal)
+    dark: ["#1C1917", "#2E2B28", "#3D3A37"] as const,
+    // Glass overlay — warm tint
+    glass: ["rgba(255, 250, 245, 0.10)", "rgba(255, 250, 245, 0.04)"] as const,
   },
 
-  // Background Colors (Dark Theme)
+  // Background Colors — Warm Charcoal
   background: {
-    primary: "#0F172A", // Slate 900
-    secondary: "#1E293B", // Slate 800
-    tertiary: "#334155", // Slate 700
-    elevated: "#475569", // Slate 600
-    overlay: "rgba(15, 23, 42, 0.95)",
-    glass: "rgba(30, 41, 59, 0.7)",
-    blur: "rgba(30, 41, 59, 0.5)",
+    primary: "#1C1917",
+    secondary: "#2E2B28",
+    tertiary: "#3D3A37",
+    elevated: "#4A4744",
+    overlay: "rgba(12, 10, 9, 0.95)",
+    glass: "rgba(44, 41, 38, 0.70)",
+    blur: "rgba(44, 41, 38, 0.50)",
   },
 
-  // Surface Colors (alias for background - for compatibility)
+  // Surface Colors (alias for background)
   surface: {
-    base: "#0F172A", // Slate 900
-    primary: "#0F172A", // Slate 900
-    secondary: "#1E293B", // Slate 800
-    tertiary: "#334155", // Slate 700
-    elevated: "#475569", // Slate 600
-    card: "#1E293B", // Slate 800
-    overlay: "rgba(15, 23, 42, 0.95)",
-    glass: "rgba(30, 41, 59, 0.7)",
+    base: "#1C1917",
+    primary: "#1C1917",
+    secondary: "#2E2B28",
+    tertiary: "#3D3A37",
+    elevated: "#4A4744",
+    card: "#2E2B28",
+    overlay: "rgba(12, 10, 9, 0.95)",
+    glass: "rgba(44, 41, 38, 0.70)",
   },
 
-  // Text Colors
+  // Text Colors — Warm Cream
   text: {
-    primary: "#F8FAFC", // Slate 50
-    secondary: "#CBD5E1", // Slate 300
-    tertiary: "#94A3B8", // Slate 400
-    muted: "#94A3B8", // Slate 400 (alias for tertiary)
-    disabled: "#64748B", // Slate 500
-    inverse: "#0F172A", // Slate 900
-    link: "#60A5FA",
-    linkHover: "#93C5FD",
+    primary: "#F5F0E8",
+    secondary: "#D7D4D1",
+    tertiary: "#B5AFA9",
+    muted: "#B5AFA9",
+    disabled: "#78746F",
+    inverse: "#1C1917",
+    link: "#E8906E",
+    linkHover: "#F5A882",
   },
 
   // Border Colors
@@ -176,7 +176,7 @@ export const auroraColors = {
     subtle: "rgba(255, 255, 255, 0.1)", // alias for light
     medium: "rgba(255, 255, 255, 0.2)",
     strong: "rgba(255, 255, 255, 0.3)",
-    focus: "#1560BD",
+    focus: "#CC785C", // Claude Terracotta focus ring
     error: "#EF4444",
     success: "#10B981",
   },
@@ -186,12 +186,11 @@ export const auroraColors = {
     active: "#10B981",
     pending: "#F59E0B",
     error: "#EF4444",
-    inactive: "#64748B",
+    inactive: "#78746F",
     verified: "#06B6D4",
     warning: "#FBBF24",
   },
-  // Shimmer effect colors
-  shimmer: ["#1E293B", "#334155", "#1E293B"] as const,
+  shimmer: ["#2E2B28", "#3D3A37", "#2E2B28"] as const, // warm charcoal shimmer
 };
 
 // ==========================================
@@ -317,7 +316,7 @@ export const auroraShadows = {
   xl: createShadow({ color: "#000", offsetY: 12, opacity: 0.25, radius: 24, elevation: 12 }),
   // Colored shadows for aurora effects
   aurora: createShadow({ color: "#06B6D4", offsetY: 8, opacity: 0.4, radius: 16, elevation: 8 }),
-  glow: createShadow({ color: "#1560BD", opacity: 0.6, radius: 20, elevation: 10 }),
+  glow: createShadow({ color: "#CC785C", opacity: 0.55, radius: 20, elevation: 10 }), // Claude Terracotta glow
 };
 
 // ==========================================
@@ -350,7 +349,7 @@ export const auroraGlass = {
   } as ViewStyle,
 
   modal: {
-    backgroundColor: "rgba(30, 41, 59, 0.8)",
+    backgroundColor: "rgba(44, 41, 38, 0.8)",
     borderColor: "rgba(255, 255, 255, 0.2)",
     borderWidth: 1,
   } as ViewStyle,

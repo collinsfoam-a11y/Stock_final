@@ -1,13 +1,13 @@
 /**
- * Unified Color System
- * Single source of truth for all colors in the app
+ * Unified Color System — Claude Design v5.0
+ * Warm Terracotta & Parchment palette
  *
  * Migration: Replace hardcoded colors with these tokens
- * Example: '#0EA5E9' → colors.primary[400]
+ * Example: '#CC785C' → colors.primary[500]
  */
 
 // ==========================================
-// COLOR PALETTE - Semantic Colors with Shades
+// COLOR PALETTE — Claude Warm Design
 // ==========================================
 export const colors = {
   // Base colors
@@ -15,35 +15,35 @@ export const colors = {
   black: "#000000",
   transparent: "transparent",
 
-  // Primary Brand - Lavanya Corporate Blue
+  // Primary Brand — Claude Terracotta
   primary: {
-    50: "#EBF4FF",
-    100: "#D6E8FF",
-    200: "#AFD1FF",
-    300: "#82B5FF",
-    400: "#5C94FF", // Light accent
-    500: "#0655A5", // Main brand color (Lavanya eMart Blue)
-    600: "#054992", // Hover state
-    700: "#043C7A", // Active state
-    800: "#032B59",
-    900: "#011732",
+    50: "#FFF3EE",
+    100: "#FFE4D6",
+    200: "#FFC7A8",
+    300: "#FFA47B",
+    400: "#E8906E", // Light accent
+    500: "#CC785C", // Main — Claude Terracotta
+    600: "#B06148", // Hover state
+    700: "#924D36", // Active state
+    800: "#743A26",
+    900: "#562A18",
   },
 
-  // Secondary - Teal/Cyan (supporting actions)
+  // Secondary — Warm Stone (supporting / neutral)
   secondary: {
-    50: "#ECFEFF",
-    100: "#CFFAFE",
-    200: "#A5F3FC",
-    300: "#67E8F9",
-    400: "#22D3EE", // Accent
-    500: "#06B6D4", // Main
-    600: "#0891B2",
-    700: "#0E7490",
-    800: "#155E75",
-    900: "#164E63",
+    50: "#FAFAF9",
+    100: "#F5F5F4",
+    200: "#E7E5E4",
+    300: "#D7D4D1",
+    400: "#A9A5A2",
+    500: "#78746F", // Main
+    600: "#58534E",
+    700: "#44403C",
+    800: "#2E2B28",
+    900: "#1C1917",
   },
 
-  // Success - Green (positive states, completion, verified)
+  // Success — Fresh Green
   success: {
     50: "#F0FDF4",
     100: "#DCFCE7",
@@ -57,7 +57,7 @@ export const colors = {
     900: "#14532D",
   },
 
-  // Warning - Amber (caution, attention needed)
+  // Warning — Warm Amber
   warning: {
     50: "#FFFBEB",
     100: "#FEF3C7",
@@ -71,7 +71,7 @@ export const colors = {
     900: "#78350F",
   },
 
-  // Error - Red (errors, destructive actions, alerts)
+  // Error — Warm Red
   error: {
     50: "#FEF2F2",
     100: "#FEE2E2",
@@ -85,34 +85,34 @@ export const colors = {
     900: "#7F1D1D",
   },
 
-  // Info - Blue (informational, hints, tips)
+  // Info — Sky Blue
   info: {
-    50: "#EFF6FF",
-    100: "#DBEAFE",
-    200: "#BFDBFE",
-    300: "#93C5FD",
-    400: "#60A5FA",
-    500: "#3B82F6", // Main
-    600: "#2563EB",
-    700: "#1D4ED8",
-    800: "#1E40AF",
-    900: "#1E3A8A",
+    50: "#F0F9FF",
+    100: "#E0F2FE",
+    200: "#BAE6FD",
+    300: "#7DD3FC",
+    400: "#38BDF8",
+    500: "#0EA5E9", // Main
+    600: "#0284C7",
+    700: "#0369A1",
+    800: "#075985",
+    900: "#0C4A6E",
   },
 
-  // Neutral - Slate (text, backgrounds, borders)
+  // Neutral — Warm Stone (not cold slate)
   neutral: {
     0: "#FFFFFF",
-    50: "#F8FAFC",
-    100: "#F1F5F9",
-    200: "#E2E8F0",
-    300: "#CBD5E1",
-    400: "#94A3B8",
-    500: "#64748B",
-    600: "#475569",
-    700: "#334155",
-    800: "#1E293B",
-    900: "#0F172A",
-    950: "#020617",
+    50: "#FAFAF9",
+    100: "#F5F5F4",
+    200: "#E7E5E4",
+    300: "#D7D4D1",
+    400: "#A9A5A2",
+    500: "#78746F",
+    600: "#58534E",
+    700: "#44403C",
+    800: "#2E2B28",
+    900: "#1C1917",
+    950: "#0C0A09",
   },
 } as const;
 
@@ -122,33 +122,33 @@ export const colors = {
 export const semanticColors = {
   // Text colors
   text: {
-    primary: colors.neutral[900], // Main text
-    secondary: colors.neutral[600], // Subtle text
-    tertiary: colors.neutral[500], // Placeholder, hint
-    muted: colors.neutral[400], // Muted text (alias for tertiary)
-    disabled: colors.neutral[400], // Disabled state
-    inverse: colors.neutral[0], // Text on dark backgrounds
-    link: colors.primary[600], // Clickable text
+    primary: colors.neutral[900],    // Warm near-black
+    secondary: colors.neutral[600],  // Warm gray
+    tertiary: colors.neutral[500],   // Muted warm
+    muted: colors.neutral[400],
+    disabled: colors.neutral[400],
+    inverse: colors.neutral[0],
+    link: colors.primary[500],       // Terracotta links
   },
 
   // Background colors
   background: {
-    default: colors.neutral[0], // Alias for primary
-    primary: colors.neutral[0], // Main background
-    secondary: colors.neutral[50], // Cards, sections
-    tertiary: colors.neutral[100], // Nested sections
-    elevated: colors.neutral[0], // Elevated surfaces
-    paper: colors.neutral[0], // Paper/sheet background
-    card: colors.neutral[0], // Card background
-    overlay: "rgba(15, 23, 42, 0.5)", // Modal overlays
+    default: "#FAF8F5",              // Warm parchment
+    primary: "#FAF8F5",
+    secondary: colors.neutral[50],
+    tertiary: colors.neutral[100],
+    elevated: colors.neutral[0],
+    paper: colors.neutral[0],
+    card: colors.neutral[0],
+    overlay: "rgba(28, 25, 23, 0.5)",
   },
 
   // Border colors
   border: {
-    default: colors.neutral[200], // Default borders
-    subtle: colors.neutral[100], // Subtle dividers
-    strong: colors.neutral[300], // Emphasized borders
-    focus: colors.primary[500], // Focus rings
+    default: "#EDE9E4",              // Warm subtle border
+    subtle: "#F5F2EE",
+    strong: colors.neutral[300],
+    focus: colors.primary[500],      // Terracotta focus ring
   },
 
   // Interactive states
@@ -169,24 +169,24 @@ export const semanticColors = {
 
   // Component-specific semantic colors
   button: {
-    primary: colors.primary[500],
+    primary: colors.primary[500],       // Terracotta
     primaryText: colors.white,
     secondary: colors.neutral[100],
     secondaryText: colors.neutral[900],
-    outline: colors.neutral[200],
+    outline: "#EDE9E4",
     disabled: colors.neutral[200],
     disabledText: colors.neutral[400],
   },
 
   card: {
     background: colors.white,
-    border: colors.neutral[200],
-    shadow: "rgba(15, 23, 42, 0.08)",
+    border: "#EDE9E4",
+    shadow: "rgba(28, 25, 23, 0.08)",
   },
 
   input: {
     background: colors.white,
-    border: colors.neutral[300],
+    border: "#D7D4D1",
     focus: colors.primary[500],
     placeholder: colors.neutral[400],
     text: colors.neutral[900],
@@ -194,34 +194,34 @@ export const semanticColors = {
 } as const;
 
 // ==========================================
-// DARK MODE COLORS (future-ready)
+// DARK MODE COLORS
 // ==========================================
 export const darkColors = {
   text: {
-    primary: colors.neutral[50],
-    secondary: colors.neutral[300],
-    tertiary: colors.neutral[400],
-    muted: colors.neutral[500],
-    disabled: colors.neutral[600],
+    primary: "#F5F0E8",              // Warm cream
+    secondary: "#B5AFA9",            // Warm stone
+    tertiary: "#78746F",
+    muted: "#78746F",
+    disabled: "#58534E",
     inverse: colors.neutral[900],
-    link: colors.primary[400],
+    link: colors.primary[400],       // Bright terracotta
   },
 
   background: {
-    default: colors.neutral[900],
-    primary: colors.neutral[900],
-    secondary: colors.neutral[800],
-    tertiary: colors.neutral[700],
-    elevated: colors.neutral[800],
-    paper: colors.neutral[800],
-    card: colors.neutral[800],
-    overlay: "rgba(0, 0, 0, 0.7)",
+    default: "#1C1917",              // Warm charcoal
+    primary: "#1C1917",
+    secondary: "#242220",
+    tertiary: "#2E2B28",
+    elevated: "#242220",
+    paper: "#242220",
+    card: "#242220",
+    overlay: "rgba(12, 10, 9, 0.75)",
   },
 
   border: {
-    default: colors.neutral[700],
-    subtle: colors.neutral[800],
-    strong: colors.neutral[600],
+    default: "#3D3A37",              // Warm dark border
+    subtle: "#2E2B28",
+    strong: "#4A4744",
     focus: colors.primary[400],
   },
 } as const;
@@ -230,13 +230,13 @@ export const darkColors = {
 // GRADIENT PRESETS
 // ==========================================
 export const gradients = {
-  primary: [colors.primary[600], colors.primary[700]],
+  primary: [colors.primary[500], colors.primary[600]],   // Terracotta
   secondary: [colors.secondary[500], colors.secondary[600]],
   success: [colors.success[500], colors.success[600]],
-  sunset: [colors.warning[500], colors.error[500]],
-  aurora: ["#0F766E", "#0891B2", "#2563EB"] as const, // Darker teal-cyan-blue gradient
-  auroraLight: [colors.primary[400], colors.secondary[400], colors.success[400]],
-  glass: ["rgba(255, 255, 255, 0.15)", "rgba(255, 255, 255, 0.08)"],
+  sunset: ["#E8906E", "#F59E0B"],                        // Terracotta to Amber
+  aurora: ["#CC785C", "#E8A020", "#22C55E"] as const,    // Warm aurora
+  auroraLight: [colors.primary[400], "#F5B942", colors.success[400]],
+  glass: ["rgba(255, 250, 245, 0.15)", "rgba(255, 250, 245, 0.06)"],
 } as const;
 
 // Type exports

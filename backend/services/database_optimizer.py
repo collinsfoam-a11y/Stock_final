@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 # Collection → Index definitions mapping for data-driven indexing
 _INDEX_DEFINITIONS: dict[str, list[tuple[Any, dict[str, Any]]]] = {
     "erp_items": [
-        ("item_code", {"unique": True}),
+        # ERP exports can contain multiple batch/barcode rows for the same item code.
+        ("item_code", {}),
         ("barcode", {}),
         ([("item_name", "text")], {}),
     ],

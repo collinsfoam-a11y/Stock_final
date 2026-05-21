@@ -86,6 +86,19 @@ export interface OfflineQueueItem {
   idempotency_key?: string;
   last_error?: string | null;
   last_attempted_at?: string | null;
+  /** ISO timestamp after which the item should be pruned rather than synced */
+  expires_at?: string;
+}
+
+const OFFLINE_QUEUE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+export function makeQueueItemExpiry(now = Date.now()): string {
+  return new Date(now + OFFLINE_QUEUE_TTL_MS).toISOString();
+}
+
+export function isQueueItemExpired(item: OfflineQueueItem, now = Date.now()): boolean {
+  if (!item.expires_at) return false;
+  return new Date(item.expires_at).getTime() <= now;
 }
 
 export interface CachedSession {
@@ -383,6 +396,7 @@ export const addToOfflineQueue = async (
       idempotency_key: idempotencyKey,
       last_error: null,
       last_attempted_at: null,
+      expires_at: makeQueueItemExpiry(),
     };
 
     if (existingIndex >= 0) {
@@ -417,10 +431,24 @@ export const addToOfflineQueue = async (
 
 export const getOfflineQueue = async (): Promise<OfflineQueueItem[]> => {
   try {
-    const queue = await storage.get<OfflineQueueItem[]>(STORAGE_KEYS.OFFLINE_QUEUE, {
+    const raw = await storage.get<OfflineQueueItem[]>(STORAGE_KEYS.OFFLINE_QUEUE, {
       defaultValue: [],
     });
-    return Array.isArray(queue) ? queue.map(normalizeQueueItem) : [];
+    if (!Array.isArray(raw)) return [];
+
+    const now = Date.now();
+    const normalized = raw.map(normalizeQueueItem);
+    const expired = normalized.filter((item) => isQueueItemExpired(item, now));
+    const active = normalized.filter((item) => !isQueueItemExpired(item, now));
+
+    if (expired.length > 0) {
+      log.warn(`Pruned ${expired.length} expired offline queue item(s)`, {
+        expiredIds: expired.map((i) => i.id),
+      });
+      await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, active);
+    }
+
+    return active;
   } catch (error) {
     logStorageError("Error getting offline queue", error);
     return [];

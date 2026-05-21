@@ -36,3 +36,6 @@ export { hapticService, HapticService, scanHaptics } from "./hapticService";
 // Version Service
 export { checkVersion, getBackendVersion, versionApi } from "./versionService";
 export type { VersionCheckResult } from "./versionService";
+
+// Operational observability
+export * from "./observability";

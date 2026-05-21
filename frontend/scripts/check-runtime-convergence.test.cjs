@@ -11,6 +11,10 @@ const baseline = {
     uiToastImports: 0,
     syncOrchestratorOwners: 1,
     offlineSyncWrapperNonShim: 0,
+    telemetryImplementationOwners: 1,
+    telemetryBlockingTrackCalls: 0,
+    telemetryDirectNetworkCalls: 0,
+    screenLocalTelemetryBuffers: 0,
   },
   advisoryCeilings: {
     legacyCompatImports: 120,
@@ -27,6 +31,7 @@ function metrics(overrides = {}) {
   const importOverrides = overrides.counts?.imports || {};
   const runtimeOverrides = overrides.counts?.runtime || {};
   const wrapperOverrides = overrides.counts?.wrappers || {};
+  const telemetryOverrides = overrides.counts?.telemetry || {};
   const topLevelOverrides = { ...overrides };
   delete topLevelOverrides.counts;
   delete topLevelOverrides.flags;
@@ -50,6 +55,13 @@ function metrics(overrides = {}) {
       wrappers: {
         existing: 10,
         ...wrapperOverrides,
+      },
+      telemetry: {
+        implementationOwners: 1,
+        blockingTrackCalls: 0,
+        directNetworkCalls: 0,
+        screenLocalBuffers: 0,
+        ...telemetryOverrides,
       },
     },
     flags: {
@@ -76,6 +88,14 @@ function testHardChecksFailWhenDuplicateSyncImportAppears() {
   assert.equal(checks.find((check) => check.id === "offline-sync-imports")?.status, "fail");
 }
 
+function testHardChecksFailWhenTelemetryFragments() {
+  const checks = hardChecks(
+    metrics({ counts: { telemetry: { implementationOwners: 2 } } }),
+    baseline,
+  );
+  assert.equal(checks.find((check) => check.id === "telemetry-owner-count")?.status, "fail");
+}
+
 function testAdvisoryWarnByDefault() {
   const checks = advisoryChecks(
     metrics({ counts: { imports: { legacyCompat: 125 } } }),
@@ -97,6 +117,7 @@ function testStrictAdvisoryFails() {
 testParseArgs();
 testHardChecksPass();
 testHardChecksFailWhenDuplicateSyncImportAppears();
+testHardChecksFailWhenTelemetryFragments();
 testAdvisoryWarnByDefault();
 testStrictAdvisoryFails();
 

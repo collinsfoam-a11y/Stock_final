@@ -9,7 +9,9 @@ import { SimpleBarChart } from "@/components/charts/SimpleBarChart";
 import { SimpleLineChart } from "@/components/charts/SimpleLineChart";
 import { SimplePieChart } from "@/components/charts/SimplePieChart";
 import { DateRangePicker } from "@/components/forms/DateRangePicker";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
 
 type DashboardTab = "overview" | "monitoring" | "reports" | "analytics" | "diagnosis";
 
@@ -22,14 +24,20 @@ interface DashboardTabBarProps {
 
 export function DashboardTabBar({ activeTab, onChangeTab, styles, tabs }: DashboardTabBarProps) {
   return (
-    <View style={styles.tabsContainer}>
+    <View
+      style={styles.tabsContainer}
+      accessibilityRole="tablist"
+      accessibilityLabel="Admin dashboard sections"
+    >
       {tabs.map((tab) => (
         <TouchableOpacity
           key={tab}
           onPress={() => onChangeTab(tab)}
           style={[styles.tab, activeTab === tab && styles.activeTab]}
           testID={`dashboard-tab-${tab}`}
+          accessibilityRole="tab"
           accessibilityLabel={`${tab} dashboard tab`}
+          accessibilityState={{ selected: activeTab === tab }}
         >
           <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -69,9 +77,11 @@ export function DashboardOverviewPanel({
   systemStats,
   uiTokens,
 }: DashboardOverviewPanelProps) {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
     <Animated.View
-      entering={FadeInDown.delay(200).springify()}
+      entering={prefersReducedMotion ? undefined : FadeInDown.delay(200).springify()}
       style={styles.tabContent}
       testID="overview-panel"
     >
@@ -147,13 +157,17 @@ export function DashboardOverviewPanel({
         {adminTools.map((tool, index) => (
           <Animated.View
             key={tool.key}
-            entering={FadeInDown.delay(120 + index * 40).springify()}
+            entering={
+              prefersReducedMotion ? undefined : FadeInDown.delay(120 + index * 40).springify()
+            }
             style={styles.toolCardWrapper}
           >
             <AnimatedPressable
               style={styles.toolCardPressable}
               onPress={tool.onPress}
               testID={`admin-tool-${tool.key}`}
+              accessibilityLabel={tool.title}
+              accessibilityHint={tool.subtitle}
             >
               <ModernCard variant="outlined" elevation="none" style={styles.toolCard}>
                 <View style={styles.toolIcon}>
@@ -206,9 +220,11 @@ export function DashboardMonitoringPanel({
   styles,
   uiTokens,
 }: DashboardMonitoringPanelProps) {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
     <Animated.View
-      entering={FadeInDown.delay(200).springify()}
+      entering={prefersReducedMotion ? undefined : FadeInDown.delay(200).springify()}
       style={styles.tabContent}
       testID="monitoring-panel"
     >
@@ -334,9 +350,11 @@ export function DashboardReportsPanel({
   styles,
   uiTokens,
 }: DashboardReportsPanelProps) {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
     <Animated.View
-      entering={FadeInDown.delay(200).springify()}
+      entering={prefersReducedMotion ? undefined : FadeInDown.delay(200).springify()}
       style={styles.tabContent}
       testID="reports-panel"
     >
@@ -383,6 +401,8 @@ export function DashboardReportsPanel({
                 style={styles.generateButton}
                 onPress={() => onOpenReport(report.id)}
                 testID={`generate-report-${report.id}`}
+                accessibilityLabel={`Generate ${report.name}`}
+                accessibilityHint="Opens report generation options"
               >
                 <Text style={styles.generateButtonText}>Generate Report</Text>
                 <Ionicons
@@ -412,8 +432,13 @@ export function DashboardAnalyticsPanel({
   sessionChartData,
   styles,
 }: DashboardAnalyticsPanelProps) {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
-    <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.tabContent}>
+    <Animated.View
+      entering={prefersReducedMotion ? undefined : FadeInDown.delay(200).springify()}
+      style={styles.tabContent}
+    >
       <ModernCard variant="outlined" elevation="none" style={styles.analyticsCard}>
         <View style={styles.analyticsHeader}>
           <Text style={styles.sectionTitle}>Performance Analytics</Text>
@@ -451,9 +476,11 @@ export function DashboardDiagnosisPanel({
   styles,
   uiTokens,
 }: DashboardDiagnosisPanelProps) {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
     <Animated.View
-      entering={FadeInDown.delay(200).springify()}
+      entering={prefersReducedMotion ? undefined : FadeInDown.delay(200).springify()}
       style={styles.tabContent}
       testID="diagnosis-panel"
     >
@@ -516,7 +543,14 @@ export function DashboardDiagnosisPanel({
                   <Text style={styles.issueTitle}>{issue.title || issue.type}</Text>
                   <Text style={styles.issueDesc}>{issue.description || issue.message}</Text>
                   {issue.auto_fix_available && (
-                    <TouchableOpacity style={styles.autoFixButton} onPress={() => onAutoFix(issue)}>
+                    <TouchableOpacity
+                      {...getAccessibleButtonProps({
+                        label: `Auto-fix ${issue.title || issue.type || "issue"}`,
+                        hint: "Attempts an automated recovery for this system issue",
+                      })}
+                      style={styles.autoFixButton}
+                      onPress={() => onAutoFix(issue)}
+                    >
                       <Ionicons
                         name="build-outline"
                         size={14}

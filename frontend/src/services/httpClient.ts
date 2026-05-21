@@ -133,9 +133,29 @@ const CAN_USE_COOKIE_AUTH = Platform.OS === "web";
 
 let refreshInFlight: Promise<string | null> | null = null;
 
+const isJwtExpired = (token: string): boolean => {
+  try {
+    const parts = token.split(".");
+    const encodedPayload = parts[1];
+    if (parts.length !== 3 || !encodedPayload) return true;
+    // atob is available in React Native (JSC/Hermes) and all browsers
+    const payload = JSON.parse(atob(encodedPayload));
+    return typeof payload.exp === "number" && payload.exp * 1000 < Date.now();
+  } catch {
+    return false; // On parse failure, let the server decide
+  }
+};
+
 const refreshAccessToken = async (): Promise<string | null> => {
   const refreshToken = await secureStorage.getItem("refresh_token");
   if (!refreshToken && !CAN_USE_COOKIE_AUTH) return null;
+
+  // If the refresh token itself is expired, force re-login immediately rather
+  // than making a network round-trip that will always return 401.
+  if (refreshToken && isJwtExpired(refreshToken)) {
+    log.warn("Refresh token is expired; forcing re-login");
+    return null;
+  }
 
   const baseURL = apiClient.defaults.baseURL || API_BASE_URL;
   const refreshUrl = toFullUrl(baseURL, "/api/auth/refresh");
@@ -411,6 +431,62 @@ const handleUnauthorizedError = async (error: any, fullUrl: string): Promise<any
   return retryUnauthorizedRequest(error, fullUrl);
 };
 
+/**
+ * Enrich an Axios error with a human-readable `userMessage` property so that
+ * callers and UI layers can display a specific, actionable message instead of a
+ * generic "network error".
+ */
+const enrichErrorWithUserMessage = (error: any, status: number | undefined): void => {
+  if (error.isBlocked) {
+    error.userMessage = "You are not logged in. Please sign in to continue.";
+    return;
+  }
+  if (!status) {
+    if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+      error.userMessage = "The request timed out. Check your connection and try again.";
+    } else if (error.request) {
+      error.userMessage = "No response from server. Check your network connection.";
+    } else {
+      error.userMessage = "An unexpected error occurred. Please try again.";
+    }
+    return;
+  }
+  switch (status) {
+    case 400:
+      error.userMessage =
+        error.response?.data?.detail || error.response?.data?.message || "Invalid request data.";
+      break;
+    case 401:
+      error.userMessage = "Your session has expired. Please sign in again.";
+      break;
+    case 403:
+      error.userMessage = "You do not have permission to perform this action.";
+      break;
+    case 404:
+      error.userMessage = "The requested item was not found.";
+      break;
+    case 409:
+      error.userMessage =
+        error.response?.data?.detail ||
+        "This record was updated by another device. Please refresh and try again.";
+      break;
+    case 422:
+      error.userMessage =
+        error.response?.data?.detail || "Validation failed. Check your input and try again.";
+      break;
+    case 429:
+      error.userMessage = "Too many requests. Please wait a moment before trying again.";
+      break;
+    case 500:
+    case 502:
+    case 503:
+      error.userMessage = "Server error. Please try again later or contact support.";
+      break;
+    default:
+      error.userMessage = `Request failed (${status}). Please try again.`;
+  }
+};
+
 const logResponseError = (error: any, fullUrl: string, status: number | undefined): void => {
   const responseSummary = {
     status,
@@ -457,6 +533,8 @@ const handleResponseError = async (error: any) => {
   const status = error.response?.status;
   const data = error.response?.data as { code?: string; message?: string } | undefined;
   const errorCode = data?.code;
+
+  enrichErrorWithUserMessage(error, status);
 
   if (handleNetworkRestrictedError(status, errorCode, fullUrl)) {
     return Promise.reject(error);

@@ -16,6 +16,12 @@ Tracked guides:
 This repository currently keeps a smaller tracked docs set. Keep this section aligned with the
 files that actually exist in git so a fresh clone does not point at missing documentation.
 
+Design and UI planning:
+
+- `docs/AGENT_UI_UX_RULES.md`
+- `docs/STOCK_VERIFICATION_V3_UI_UX_GUIDE.md`
+- `docs/UI_UX_REDESIGN_PLANNING_GUIDELINES.md`
+
 ## Quick Start
 
 Development:
@@ -157,5 +163,3 @@ Kill frontend (macOS/Linux):
 ```bash
 lsof -ti :8081,19000,19001,19002,19006 | xargs kill -9
 ```
-# Trigger CI
-# Trigger CI

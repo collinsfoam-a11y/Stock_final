@@ -63,6 +63,8 @@ class RouterRegistry:
     pin_auth_router: Optional[APIRouter] = None
     reconciliation_router: Optional[APIRouter] = None
     recount_router: Optional[APIRouter] = None
+    security_txt_router: Optional[APIRouter] = None
+    test_support_router: Optional[APIRouter] = None
     enterprise_available: bool = False
 
 
@@ -202,6 +204,20 @@ def _register_optional_router_set(app: FastAPI, registry: RouterRegistry, logger
         logger,
         success_log="Recount API router registered",
         failure_log="Recount router registration failed",
+    )
+    _include_optional_router(
+        app,
+        registry.security_txt_router,
+        logger,
+        success_log="security.txt router registered",
+        failure_log="security.txt router registration failed",
+    )
+    _include_optional_router(
+        app,
+        registry.test_support_router,
+        logger,
+        success_log="Test-support router registered (dev/test only)",
+        failure_log="Test-support router registration failed",
     )
 
 

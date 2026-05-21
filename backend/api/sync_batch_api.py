@@ -16,6 +16,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from backend.api.schemas import SessionType
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
 from backend.middleware.security import batch_rate_limiter
@@ -681,9 +682,9 @@ def _extract_warehouse(session_data: dict[str, Any]) -> str:
 
 
 def _normalize_session_type(value: Any) -> str:
-    normalized_type = value.strip().upper() if isinstance(value, str) else "STANDARD"
-    if normalized_type not in {"STANDARD", "BLIND", "STRICT"}:
-        return "STANDARD"
+    normalized_type = value.strip().upper() if isinstance(value, str) else SessionType.STANDARD.value
+    if normalized_type not in {t.value for t in SessionType}:
+        return SessionType.STANDARD.value
     return normalized_type
 
 
@@ -844,6 +845,8 @@ def _collect_risk_flags(
     mrp_change_percent = ((counted_mrp - erp_mrp) / erp_mrp * 100) if erp_mrp > 0 else 0
     if abs(variance) > 100 or variance_percent > 50:
         risk_flags.append("LARGE_VARIANCE")
+    if counted_mrp != erp_mrp and erp_mrp > 0:
+        risk_flags.append("MRP_MISMATCH")
     if mrp_change_percent < -20:
         risk_flags.append("MRP_REDUCED_SIGNIFICANTLY")
     if erp_mrp > 10000 and variance_percent > 5:
