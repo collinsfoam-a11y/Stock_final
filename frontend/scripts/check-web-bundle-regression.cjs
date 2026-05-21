@@ -15,6 +15,7 @@ function parseArgs(argv) {
     strict: false,
     writeBaseline: false,
     outputPath: null,
+    toleranceKb: 0,
   };
 
   for (const arg of argv) {
@@ -30,6 +31,8 @@ function parseArgs(argv) {
     } else if (arg.startsWith("--output=")) {
       const value = arg.split("=").slice(1).join("=");
       args.outputPath = path.isAbsolute(value) ? value : path.join(repoRoot, value);
+    } else if (arg.startsWith("--tolerance-kb=")) {
+      args.toleranceKb = Number(arg.split("=")[1]) || 0;
     } else if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
@@ -49,6 +52,7 @@ Options:
   --output=PATH         Write JSON result to this file.
   --write-baseline      Write the current metrics to baseline file.
   --strict              Fail when current metrics exceed baseline ceilings.
+  --tolerance-kb=N      Add N kB of headroom to each size ceiling (default: 0).
   --json                Print machine-readable report.
   -h, --help            Show this help.
 `);
@@ -139,8 +143,10 @@ function readBaseline(baselinePath) {
   return JSON.parse(fs.readFileSync(baselinePath, "utf8"));
 }
 
-function evaluate(metrics, baseline) {
+function evaluate(metrics, baseline, toleranceKb = 0) {
   const ceilings = baseline.ceilings || {};
+  const sizeLimit = (base) =>
+    Number.isFinite(base) ? Number((base + toleranceKb).toFixed(2)) : base;
   const checks = [
     {
       id: "bundle-count",
@@ -152,35 +158,35 @@ function evaluate(metrics, baseline) {
       id: "total-js-kb",
       label: "Total JS size",
       current: Number(metrics.totalJsKb.toFixed(2)),
-      limit: ceilings.totalJsKb,
+      limit: sizeLimit(ceilings.totalJsKb),
       unit: "kB",
     },
     {
       id: "main-bundle-kb",
       label: "Main bundle size",
       current: Number(metrics.mainBundleKb.toFixed(2)),
-      limit: ceilings.mainBundleKb,
+      limit: sizeLimit(ceilings.mainBundleKb),
       unit: "kB",
     },
     {
       id: "common-bundle-kb",
       label: "Common bundle size",
       current: Number(metrics.commonBundleKb.toFixed(2)),
-      limit: ceilings.commonBundleKb,
+      limit: sizeLimit(ceilings.commonBundleKb),
       unit: "kB",
     },
     {
       id: "route-total-kb",
       label: "Route chunk aggregate size",
       current: Number(metrics.routeChunkTotalKb.toFixed(2)),
-      limit: ceilings.routeChunkTotalKb,
+      limit: sizeLimit(ceilings.routeChunkTotalKb),
       unit: "kB",
     },
     {
       id: "largest-route-kb",
       label: "Largest route chunk",
       current: Number(metrics.largestRouteChunkKb.toFixed(2)),
-      limit: ceilings.largestRouteChunkKb,
+      limit: sizeLimit(ceilings.largestRouteChunkKb),
       unit: "kB",
     },
   ].map((check) => {
@@ -233,7 +239,7 @@ function main() {
   }
 
   const baseline = readBaseline(args.baselinePath);
-  const evaluation = evaluate(metrics, baseline);
+  const evaluation = evaluate(metrics, baseline, args.toleranceKb);
 
   const result = {
     generatedAt: new Date().toISOString(),

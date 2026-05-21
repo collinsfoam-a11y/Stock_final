@@ -1,38 +1,38 @@
 {
-  "generatedAt": "2026-05-08T17:15:47.545Z",
+  "generatedAt": "2026-05-21T14:46:05.935Z",
   "baseline": {
     "path": "reports/web-bundle-baseline.json",
-    "updatedAt": "2026-05-08T17:11:47.830Z"
+    "updatedAt": "2026-05-21T14:40:52.776Z"
   },
   "status": "pass",
   "metrics": {
-    "generatedAt": "2026-05-08T17:15:47.545Z",
+    "generatedAt": "2026-05-21T14:46:05.935Z",
     "bundleCount": 67,
-    "totalJsKb": 4003.0654296875,
-    "mainBundleKb": 1976.8212890625,
-    "commonBundleKb": 1474.9052734375,
+    "totalJsKb": 4086.703125,
+    "mainBundleKb": 1969.0185546875,
+    "commonBundleKb": 1566.7607421875,
     "routeChunkCount": 58,
-    "routeChunkTotalKb": 375.16796875,
+    "routeChunkTotalKb": 374.6171875,
     "largestRouteChunkKb": 27.62890625,
     "topRouteChunks": [
       {
         "route": "dashboard",
-        "file": "dashboard-bb1ce23925666ea1e4307708f867adb8.js",
+        "file": "dashboard-39f75ffe9f40c8b236ebf15f88025412.js",
         "sizeKb": 27.63
       },
       {
         "route": "SessionDetailScreen",
-        "file": "SessionDetailScreen-b39ecd71e76cbe9a3382a8e9295c7d3b.js",
-        "sizeKb": 23.33
+        "file": "SessionDetailScreen-89b615d0b942e3d4f97efbaa96c52946.js",
+        "sizeKb": 24.01
       },
       {
         "route": "history",
-        "file": "history-34b0325691889971a7bd945467bce4d5.js",
-        "sizeKb": 22.75
+        "file": "history-14994cc92630aae167bb866a3939348e.js",
+        "sizeKb": 21.53
       },
       {
         "route": "StaffHomeScreen",
-        "file": "StaffHomeScreen-28546ffe658f35256856a73730845239.js",
+        "file": "StaffHomeScreen-b7803325d58249237265685611bde440.js",
         "sizeKb": 20.03
       },
       {
@@ -42,22 +42,22 @@
       },
       {
         "route": "offline-queue",
-        "file": "offline-queue-de7f3a55bd9c52e48522099ca1830117.js",
+        "file": "offline-queue-d9bb19526fc4fe4e4398f89a238f81d5.js",
         "sizeKb": 14.79
       },
       {
         "route": "sync-conflicts",
-        "file": "sync-conflicts-7531b242159a249746966ede2c4713b0.js",
+        "file": "sync-conflicts-0c07733c3db6715ee2f953b78bc79e39.js",
         "sizeKb": 14.14
       },
       {
         "route": "user-workflows",
-        "file": "user-workflows-af55a3f387cb81d0b358e92be339d5a8.js",
+        "file": "user-workflows-724e380e6e494685effbe44f18dac6de.js",
         "sizeKb": 14.12
       },
       {
         "route": "variances",
-        "file": "variances-f40e9e64f00a423172c51afb07d5e5ef.js",
+        "file": "variances-7f59af9814e76dbb0940403e23dce5dc.js",
         "sizeKb": 13.87
       },
       {
@@ -72,7 +72,7 @@
       },
       {
         "route": "items",
-        "file": "items-a72910ef6181491ac13a3acdff5d7a4a.js",
+        "file": "items-8d783293fc19bbd9dcfff05e114fcc55.js",
         "sizeKb": 10.75
       }
     ]
@@ -82,38 +82,38 @@
       "id": "bundle-count",
       "label": "Web bundle file count",
       "current": 67,
-      "limit": 70,
+      "limit": 67,
       "status": "pass"
     },
     {
       "id": "total-js-kb",
       "label": "Total JS size",
-      "current": 4003.07,
-      "limit": 4050,
+      "current": 4086.7,
+      "limit": 4086.7,
       "unit": "kB",
       "status": "pass"
     },
     {
       "id": "main-bundle-kb",
       "label": "Main bundle size",
-      "current": 1976.82,
-      "limit": 1995,
+      "current": 1969.02,
+      "limit": 1969.02,
       "unit": "kB",
       "status": "pass"
     },
     {
       "id": "common-bundle-kb",
       "label": "Common bundle size",
-      "current": 1474.91,
-      "limit": 1495,
+      "current": 1566.76,
+      "limit": 1566.76,
       "unit": "kB",
       "status": "pass"
     },
     {
       "id": "route-total-kb",
       "label": "Route chunk aggregate size",
-      "current": 375.17,
-      "limit": 390,
+      "current": 374.62,
+      "limit": 374.62,
       "unit": "kB",
       "status": "pass"
     },
@@ -121,7 +121,7 @@
       "id": "largest-route-kb",
       "label": "Largest route chunk",
       "current": 27.63,
-      "limit": 35,
+      "limit": 27.63,
       "unit": "kB",
       "status": "pass"
     }
