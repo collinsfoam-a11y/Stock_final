@@ -21,6 +21,7 @@ import Animated, {
   FadeIn,
 } from "react-native-reanimated";
 import { useThemeContext } from "../../context/ThemeContext";
+import { haptics } from "../../services/haptics";
 import { AppTheme } from "../../theme/themes";
 import { BrandLogo } from "../branding/BrandLogo";
 
@@ -37,6 +38,7 @@ interface PremiumHeaderProps {
     icon: keyof typeof Ionicons.glyphMap;
     onPress: () => void;
     color?: string;
+    accessibilityLabel?: string;
   };
   style?: ViewStyle;
 }
@@ -100,8 +102,13 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
       return (
         <TouchableOpacity
           style={[styles.actionButton, { backgroundColor: "rgba(99, 102, 241, 0.15)" }]}
-          onPress={rightAction.onPress}
+          onPress={() => {
+            void haptics.light();
+            rightAction.onPress();
+          }}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={rightAction.accessibilityLabel ?? "Header action"}
         >
           <Ionicons
             name={rightAction.icon}
@@ -116,8 +123,13 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
       return (
         <TouchableOpacity
           style={[styles.actionButton, styles.logoutButton]}
-          onPress={onLogout}
+          onPress={() => {
+            void haptics.light();
+            onLogout();
+          }}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Log out"
         >
           <Ionicons name="log-out-outline" size={22} color={theme.colors.error.main} />
         </TouchableOpacity>
@@ -126,7 +138,16 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
 
     if (onMenuPress) {
       return (
-        <TouchableOpacity style={styles.actionButton} onPress={onMenuPress} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => {
+            void haptics.light();
+            onMenuPress();
+          }}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Open menu"
+        >
           <Ionicons name="menu-outline" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
       );
@@ -273,8 +294,8 @@ const createStyles = (theme: AppTheme, isDark: boolean) =>
       fontSize: 10,
     },
     actionButton: {
-      width: 42,
-      height: 42,
+      width: 44,
+      height: 44,
       borderRadius: theme.borderRadius.lg,
       backgroundColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)",
       justifyContent: "center",

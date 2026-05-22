@@ -27,6 +27,7 @@ import {
 } from "@/theme/legacyCompat";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { haptics } from "@/services/haptics";
 const ICON_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
 
 interface ModernInputProps {
@@ -44,9 +45,11 @@ interface ModernInputProps {
   numberOfLines?: number;
   icon?: keyof typeof Ionicons.glyphMap;
   onIconPress?: () => void;
+  iconAccessibilityLabel?: string;
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightIconPress?: () => void;
   rightIconAccessibilityLabel?: string;
+  showClearButton?: boolean;
   onSubmitEditing?: () => void;
   onBlur?: React.ComponentProps<typeof TextInput>["onBlur"];
   onFocus?: React.ComponentProps<typeof TextInput>["onFocus"];
@@ -76,9 +79,11 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   numberOfLines = 1,
   icon,
   onIconPress,
+  iconAccessibilityLabel,
   rightIcon,
   onRightIconPress,
   rightIconAccessibilityLabel,
+  showClearButton = false,
   onSubmitEditing,
   onBlur,
   onFocus,
@@ -98,14 +103,36 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   const inputRef = useRef<TextInput>(null);
 
   const isPassword = secureTextEntry;
-  const showPasswordToggle = isPassword && value.length > 0;
   const isInputInteractive = editable && !disabled;
+  const showPasswordToggle = isPassword && value.length > 0;
+  const showClear = showClearButton && isInputInteractive && value.length > 0;
+  const resolvedIconLabel = iconAccessibilityLabel ?? `${label ?? "Input"} action`;
   const resolvedRightIconLabel =
     rightIconAccessibilityLabel ?? (rightIcon === "close-circle" ? "Clear input" : "Input action");
 
   const togglePasswordVisibility = () => {
     if (!isInputInteractive) return;
+    void haptics.light();
     setIsPasswordVisible(!isPasswordVisible);
+  };
+
+  const handleIconPress = () => {
+    if (!onIconPress || !isInputInteractive) return;
+    void haptics.light();
+    onIconPress();
+  };
+
+  const handleRightIconPress = () => {
+    if (!onRightIconPress || !isInputInteractive) return;
+    void haptics.light();
+    onRightIconPress();
+  };
+
+  const handleClear = () => {
+    if (!isInputInteractive) return;
+    void haptics.light();
+    onChangeText("");
+    inputRef.current?.focus();
   };
 
   const getInputContainerStyles = (): ViewStyle => {
@@ -172,12 +199,12 @@ export const ModernInput: React.FC<ModernInputProps> = ({
       >
         {icon && (
           <TouchableOpacity
-            onPress={onIconPress}
+            onPress={onIconPress ? handleIconPress : undefined}
             style={styles.iconContainer}
-            disabled={!onIconPress}
+            disabled={!onIconPress || !isInputInteractive}
             accessibilityRole={onIconPress ? "button" : "image"}
-            accessibilityLabel={onIconPress ? "Input icon action" : undefined}
-            accessibilityState={onIconPress ? { disabled: false } : undefined}
+            accessibilityLabel={onIconPress ? resolvedIconLabel : undefined}
+            accessibilityState={onIconPress ? { disabled: !isInputInteractive } : undefined}
             hitSlop={ICON_HIT_SLOP}
           >
             <Ionicons
@@ -216,6 +243,20 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           testID={testID}
         />
 
+        {showClear && (
+          <TouchableOpacity
+            onPress={handleClear}
+            style={styles.iconContainer}
+            accessibilityRole="button"
+            accessibilityLabel="Clear input"
+            accessibilityState={{ disabled: false }}
+            hitSlop={ICON_HIT_SLOP}
+            testID={testID ? `${testID}-clear-button` : undefined}
+          >
+            <Ionicons name="close-circle" size={20} color={uiTokens.colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+
         {showPasswordToggle && (
           <TouchableOpacity
             onPress={isInputInteractive ? togglePasswordVisibility : undefined}
@@ -236,12 +277,12 @@ export const ModernInput: React.FC<ModernInputProps> = ({
 
         {rightIcon && !showPasswordToggle && (
           <TouchableOpacity
-            onPress={onRightIconPress}
+            onPress={onRightIconPress ? handleRightIconPress : undefined}
             style={styles.iconContainer}
-            disabled={!onRightIconPress}
+            disabled={!onRightIconPress || !isInputInteractive}
             accessibilityRole={onRightIconPress ? "button" : "image"}
             accessibilityLabel={onRightIconPress ? resolvedRightIconLabel : undefined}
-            accessibilityState={onRightIconPress ? { disabled: false } : undefined}
+            accessibilityState={onRightIconPress ? { disabled: !isInputInteractive } : undefined}
             hitSlop={ICON_HIT_SLOP}
           >
             <Ionicons name={rightIcon} size={20} color={uiTokens.colors.textSecondary} />

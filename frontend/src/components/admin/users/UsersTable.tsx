@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import {
   Dimensions,
-  FlatList,
   Platform,
   StyleSheet,
   Text,
@@ -12,6 +11,7 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+import { VirtualList } from "@/components/common/VirtualList";
 import { AnimatedPressable } from "@/components/ui";
 import {
   getOperationalActionColor,
@@ -207,9 +207,10 @@ export function UsersTable({
     ) : null;
 
   return (
-    <FlatList
+    <VirtualList
       contentContainerStyle={styles.listContent}
       data={users}
+      estimatedItemSize={60}
       keyExtractor={(user) => user.id}
       ListEmptyComponent={() => <EmptyUsersState styles={styles} uiTokens={uiTokens} />}
       ListFooterComponent={renderFooter}

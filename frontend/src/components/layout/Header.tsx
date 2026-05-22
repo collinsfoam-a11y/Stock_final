@@ -6,6 +6,8 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+
+import { haptics } from "@/services/haptics";
 import { useTheme } from "../../hooks/useTheme";
 import { shadows as uiShadows } from "@/theme/legacyCompat";
 
@@ -36,6 +38,18 @@ export const Header: React.FC<HeaderProps> = ({
   const subtitleColor = theme.colors.textSecondary;
   const iconColor = theme.colors.textPrimary;
   const iconBtnBg = theme.isDark ? "rgba(255,250,245,0.06)" : "rgba(28,25,23,0.05)";
+  const leftAccessibilityLabel =
+    showBack || leftIcon === "arrow-back" ? "Go back" : "Header action";
+
+  const handleLeftPress = () => {
+    void haptics.light();
+    onLeftPress?.();
+  };
+
+  const handleRightPress = () => {
+    void haptics.light();
+    onRightPress?.();
+  };
 
   return (
     <>
@@ -56,31 +70,29 @@ export const Header: React.FC<HeaderProps> = ({
           {(leftIcon || showBack) && (
             <TouchableOpacity
               style={[styles.iconButton, { backgroundColor: iconBtnBg }]}
-              onPress={onLeftPress}
+              onPress={handleLeftPress}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={leftAccessibilityLabel}
             >
-              <Ionicons
-                name={leftIcon || "arrow-back"}
-                size={22}
-                color={iconColor}
-              />
+              <Ionicons name={leftIcon || "arrow-back"} size={22} color={iconColor} />
             </TouchableOpacity>
           )}
         </View>
 
         <View style={styles.centerContainer}>
           <Text style={[styles.title, { color: titleColor }]}>{title}</Text>
-          {subtitle && (
-            <Text style={[styles.subtitle, { color: subtitleColor }]}>{subtitle}</Text>
-          )}
+          {subtitle && <Text style={[styles.subtitle, { color: subtitleColor }]}>{subtitle}</Text>}
         </View>
 
         <View style={styles.rightContainer}>
           {rightIcon && (
             <TouchableOpacity
               style={[styles.iconButton, { backgroundColor: iconBtnBg }]}
-              onPress={onRightPress}
+              onPress={handleRightPress}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Header action"
             >
               <Ionicons name={rightIcon} size={22} color={iconColor} />
             </TouchableOpacity>
@@ -116,8 +128,8 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   iconButton: {
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",

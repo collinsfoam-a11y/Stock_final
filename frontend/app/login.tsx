@@ -530,6 +530,7 @@ export default function LoginScreen() {
                       autoCapitalize="none"
                       icon="person"
                       disabled={isLoading}
+                      showClearButton
                     />
 
                     <ModernInput
