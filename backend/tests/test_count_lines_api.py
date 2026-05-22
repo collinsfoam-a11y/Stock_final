@@ -13,6 +13,7 @@ from pymongo.errors import DuplicateKeyError
 from backend.api.count_lines_routes import (
     CountLineApprovalRequest,
     CountLineRejectRequest,
+    _apply_count_line_location_context,
     _build_count_line_document,
     _require_supervisor,
     approve_count_line,
@@ -109,6 +110,53 @@ def test_build_count_line_document_preserves_batch_payload():
     assert count_line["barcode"] == "510186"
     assert count_line["batch_id"] == "510186"
     assert count_line["batches"] == line_data.batches
+
+
+def test_apply_count_line_location_context_derives_required_governance_fields():
+    line_data = CountLineCreate(
+        session_id="sess-1",
+        item_code="ITEM-1",
+        item_name="Location Item",
+        barcode="527107",
+        counted_qty=1,
+        floor_no="Showroom - First Floor",
+        rack_no="AT2",
+    )
+    session = {
+        "id": "sess-1",
+        "warehouse": "Showroom - First Floor - AT2",
+        "location_type": "Showroom",
+        "location_name": "First Floor",
+        "rack_no": "AT2",
+    }
+    governance = CountLineGovernanceDecision(
+        approval_status="pending",
+        approved_at=None,
+        approved_by=None,
+        requires_supervisor_approval=False,
+        status="pending",
+        variance=0,
+        variance_data={},
+        violated_thresholds=[],
+    )
+
+    _apply_count_line_location_context(line_data, session)
+    count_line, _ = _build_count_line_document(
+        line_data=line_data,
+        erp_item={"item_name": "Location Item", "barcode": "527107"},
+        current_user={"username": "staff1"},
+        erp_qty=1,
+        baseline_hash="baseline",
+        governance=governance,
+        risk_flags=[],
+        financial_impact=0,
+        is_misplaced=False,
+        recount_update_target=None,
+    )
+
+    assert count_line["location_id"] == "Showroom - First Floor - AT2"
+    assert count_line["floor_id"] == "Showroom - First Floor"
+    assert count_line["rack_id"] == "AT2"
 
 
 class TestCheckSerialUniqueness:

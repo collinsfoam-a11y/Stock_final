@@ -71,6 +71,78 @@ def _normalize_idempotency_key(value: Any) -> Optional[str]:
     return normalized or None
 
 
+def _normalize_optional_string(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def _first_present_string(*values: Any) -> Optional[str]:
+    for value in values:
+        normalized = _normalize_optional_string(value)
+        if normalized:
+            return normalized
+    return None
+
+
+def _derive_location_id(
+    *,
+    session: dict[str, Any],
+    floor_id: Optional[str],
+    rack_id: Optional[str],
+) -> Optional[str]:
+    explicit_location = _first_present_string(
+        session.get("location_id"),
+        session.get("location_key"),
+        session.get("warehouse"),
+        session.get("location"),
+    )
+    if explicit_location:
+        return explicit_location
+
+    parts = [
+        _normalize_optional_string(session.get("location_type")),
+        floor_id,
+        rack_id,
+    ]
+    derived = "::".join(part for part in parts if part)
+    return derived or floor_id
+
+
+def _apply_count_line_location_context(
+    line_data: CountLineCreate,
+    session: Optional[dict[str, Any]],
+) -> None:
+    """Populate canonical location fields before the governed count-line write."""
+    session_doc = session if isinstance(session, dict) else {}
+    floor_id = _first_present_string(
+        line_data.floor_id,
+        line_data.floor_no,
+        session_doc.get("floor_id"),
+        session_doc.get("floor"),
+        session_doc.get("location_name"),
+    )
+    rack_id = _first_present_string(
+        line_data.rack_id,
+        line_data.rack_no,
+        session_doc.get("rack_id"),
+        session_doc.get("rack_no"),
+        session_doc.get("rack"),
+    )
+    location_id = _first_present_string(line_data.location_id) or _derive_location_id(
+        session=session_doc,
+        floor_id=floor_id,
+        rack_id=rack_id,
+    )
+
+    line_data.location_id = location_id
+    line_data.floor_id = floor_id
+    line_data.rack_id = rack_id
+    line_data.floor_no = line_data.floor_no or floor_id
+    line_data.rack_no = line_data.rack_no or rack_id
+
+
 def _raise_count_lines_internal_error(detail: str, exc: Exception) -> NoReturn:
     raise HTTPException(status_code=500, detail=detail) from exc
 
@@ -849,6 +921,7 @@ async def _create_and_persist_count_line(
     current_user: dict[str, Any],
     write_service: CountLineWriteService,
 ) -> tuple[dict[str, Any], datetime, CountLineGovernanceDecision, list[str], float]:
+    _apply_count_line_location_context(line_data, session)
     erp_item = await _get_erp_item_for_count_line(db, line_data)
     erp_qty, baseline_hash = await write_service.resolve_baseline(
         session_id=line_data.session_id,
@@ -1051,6 +1124,7 @@ async def save_count_line_draft(
     db = _get_db_client()
     session = await find_session(db, line_data.session_id)
     if isinstance(session, dict):
+        _apply_count_line_location_context(line_data, session)
         await _enforce_count_line_session_logic(
             db=db,
             session=session,
@@ -1157,6 +1231,7 @@ async def create_count_line(
     db = _get_db_client()
     write_service = _get_count_line_write_service(db)
     session = await _get_mutable_session_or_409(db, line_data.session_id)
+    _apply_count_line_location_context(line_data, session)
     await _enforce_count_line_session_logic(
         db=db,
         session=session,
