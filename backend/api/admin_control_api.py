@@ -1,3 +1,4 @@
+import asyncio
 """
 Admin Control Panel API
 Provides endpoints for service management, status monitoring, and system control
@@ -62,7 +63,11 @@ def _get_backend_ports() -> list[int]:
     ports: list[int] = []
 
     # Dynamic list based on settings.PORT
-    base_port = _safe_int(getattr(settings, "PORT", None)) or _safe_int(os.getenv("PORT")) or 8001
+    base_port = (
+        _safe_int(getattr(settings, "PORT", None))
+        or _safe_int(os.getenv("PORT"))
+        or 8001
+    )
     if base_port:
         ports.extend([base_port] + [base_port + i for i in range(1, 6)])
 
@@ -70,7 +75,11 @@ def _get_backend_ports() -> list[int]:
     if env_ports:
         ports.extend(_parse_ports_csv(env_ports))
 
-    configured = _safe_int(getattr(settings, "PORT", None)) or _safe_int(os.getenv("PORT")) or 8001
+    configured = (
+        _safe_int(getattr(settings, "PORT", None))
+        or _safe_int(os.getenv("PORT"))
+        or 8001
+    )
     ports.append(configured)
 
     seen: set[int] = set()
@@ -137,7 +146,9 @@ def _safe_int(value: Any) -> Optional[int]:
 def require_admin(current_user: dict = Depends(get_current_user)):
     """Require admin role"""
     if current_user.get("role") != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
     return current_user
 
 
@@ -257,7 +268,9 @@ def _get_sql_server_status() -> ServiceStatus:
         "running": is_connected,
         "port": config.get("port"),
         "status": "connected" if is_connected else "disconnected",
-        "url": (f"{config.get('host')}:{config.get('port')}" if config.get("host") else None),
+        "url": (
+            f"{config.get('host')}:{config.get('port')}" if config.get("host") else None
+        ),
     }
 
 
@@ -321,7 +334,11 @@ def _collect_system_issues() -> list[dict[str, Any]]:
 
     # Add SQL Server check
     if not _test_sql_connection():
-        issues.append(_format_issue("sql_server", "SQL Server is not connected", severity="medium"))
+        issues.append(
+            _format_issue(
+                "sql_server", "SQL Server is not connected", severity="medium"
+            )
+        )
 
     return issues
 
@@ -435,11 +452,12 @@ async def start_backend(current_user: dict = Depends(require_admin)):
             return existing_backend
 
         # Start backend (this would typically be done via script)
-        return {
-            "success": True,
-            "message": "Backend start command issued. Check status for updates.",
-            "note": "Backend should be started using scripts/start_backend.sh or scripts/start_backend.ps1",
-        }
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Service management via API is not supported. Please use the CLI 'make backend' or 'make start' command.",
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Error starting backend: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
@@ -498,11 +516,12 @@ async def start_frontend(current_user: dict = Depends(require_admin)):
                     except Exception:
                         pass
 
-        return {
-            "success": True,
-            "message": "Frontend start command issued. Check status for updates.",
-            "note": "Frontend should be started using scripts/start_frontend.sh or scripts/start_frontend.ps1",
-        }
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Service management via API is not supported. Please use the CLI 'make frontend' or 'make start' command.",
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Error starting frontend: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
@@ -705,12 +724,20 @@ async def generate_report(
             )
         elif format == "excel":
             if not data:
-                import pandas as pd
+                try:
+                    import pandas as pd
 
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                    pd.DataFrame([{"message": "No data"}]).to_excel(writer, index=False)
-                data = output.getvalue()
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+                        pd.DataFrame([{"message": "No data"}]).to_excel(
+                            writer, index=False
+                        )
+                    data = output.getvalue()
+                except ImportError:
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Pandas or xlsxwriter is not installed. Excel export is disabled.",
+                    )
             return StreamingResponse(
                 io.BytesIO(data),
                 media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -796,7 +823,9 @@ async def get_service_logs(
             # Read backend logs from file
             log_file = settings.LOG_FILE or "app.log"
             log_path = Path(log_file)
-            logs = _read_log_file(log_path, lines, level, service)
+            logs = await asyncio.to_thread(
+                _read_log_file, log_path, lines, level, service
+            )
 
         if not logs and service == "frontend":
             frontend_status = _get_frontend_status()
@@ -808,7 +837,9 @@ async def get_service_logs(
                     "timestamp": datetime.now().isoformat(),
                     "level": "INFO",
                     "message": (
-                        f"Expo server running on port {port}" if port else "Expo server running"
+                        f"Expo server running on port {port}"
+                        if port
+                        else "Expo server running"
                     ),
                 },
             ]
@@ -895,7 +926,9 @@ async def update_sql_server_config(
         password = config.get("password")
 
         if not host or not database:
-            raise HTTPException(status_code=400, detail="Host and database are required")
+            raise HTTPException(
+                status_code=400, detail="Host and database are required"
+            )
 
         # Try to connect
         # connect() raises exception on failure
@@ -908,7 +941,9 @@ async def update_sql_server_config(
         }
 
     except Exception as e:
-        logger.error("Error updating SQL Server config: %s", sanitize_for_logging(str(e)))
+        logger.error(
+            "Error updating SQL Server config: %s", sanitize_for_logging(str(e))
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update configuration: {str(e)}",
@@ -929,7 +964,9 @@ async def test_sql_server_connection(
             password = config.get("password")
 
             if not host or not database:
-                raise HTTPException(status_code=400, detail="Host and database are required")
+                raise HTTPException(
+                    status_code=400, detail="Host and database are required"
+                )
 
             # Try to connect
             sql_connector.connect(host, int(port or 1433), database, user, password)
@@ -939,7 +976,9 @@ async def test_sql_server_connection(
             success = sql_connector.test_connection()
             return {
                 "success": success,
-                "message": ("Connection is active" if success else "Connection is inactive"),
+                "message": (
+                    "Connection is active" if success else "Connection is inactive"
+                ),
             }
     except Exception as e:
         return {"success": False, "message": f"Connection failed: {str(e)}"}
@@ -951,7 +990,9 @@ async def get_system_health_score(current_user: dict = Depends(require_admin)):
     try:
         services_status = await get_services_status(current_user)
         services = services_status["data"]
-        base_score, running_critical, running_optional = _calculate_service_scores(services)
+        base_score, running_critical, running_optional = _calculate_service_scores(
+            services
+        )
 
         issues_data = await get_system_issues(current_user)
         issues_payload = issues_data.get("data", {})

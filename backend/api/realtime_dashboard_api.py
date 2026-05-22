@@ -573,11 +573,35 @@ async def _ws_process_message(
 # ==========================================
 
 
-@realtime_dashboard_router.websocket("/ws/{token}")
-async def websocket_endpoint(websocket: WebSocket, token: str):
+from backend.api.websocket_api import _extract_jwt_from_websocket
+from backend.config import settings
+from backend.auth.jwt_provider import decode
+
+@realtime_dashboard_router.websocket("/ws")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    token: Optional[str] = Query(None),
+):
     """WebSocket endpoint for bidirectional real-time communication."""
-    user_id = token
-    await manager.connect(websocket, user_id)
+    jwt_token, accept_subprotocol = _extract_jwt_from_websocket(websocket, token)
+
+    if not jwt_token:
+        await websocket.accept()
+        await websocket.close(code=1008)
+        return
+
+    try:
+        payload = decode(jwt_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        user_id = payload.get("sub")
+        if not user_id:
+            raise ValueError("No user_id in token")
+    except Exception as e:
+        logger.warning("WebSocket auth failed: %s", sanitize_for_logging(str(e)))
+        await websocket.accept()
+        await websocket.close(code=1008)
+        return
+
+    await manager.connect(websocket, user_id, subprotocol=accept_subprotocol)
 
     try:
         db = get_db()
