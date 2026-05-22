@@ -26,6 +26,16 @@ from typing import Any
 from .metrics_collector import MetricsCollector
 
 
+def _configure_console_output() -> None:
+    """Keep evaluation output portable on Windows consoles with legacy encodings."""
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
+
+_configure_console_output()
+
+
 class EvaluationRunner:
     """
     Main evaluation runner that orchestrates all evaluation types.

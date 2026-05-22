@@ -4,8 +4,20 @@
  */
 
 import { Alert, Platform } from "react-native";
-import * as FileSystem from "expo-file-system/legacy";
-import * as Sharing from "expo-sharing";
+
+type FileSystemModule = typeof import("expo-file-system/legacy");
+type SharingModule = typeof import("expo-sharing");
+
+const loadNativeExportModules = async (): Promise<{
+  FileSystem: FileSystemModule;
+  Sharing: SharingModule;
+}> => {
+  const [FileSystem, Sharing] = await Promise.all([
+    import("expo-file-system/legacy"),
+    import("expo-sharing"),
+  ]);
+  return { FileSystem, Sharing };
+};
 
 export const downloadCSV = async (csvContent: string, filename: string): Promise<void> => {
   if (Platform.OS === "web") {
@@ -22,6 +34,7 @@ export const downloadCSV = async (csvContent: string, filename: string): Promise
     return;
   }
 
+  const { FileSystem, Sharing } = await loadNativeExportModules();
   const baseDir = FileSystem.documentDirectory ?? FileSystem.cacheDirectory ?? "";
   const fileUri = `${baseDir}${filename}`;
 
