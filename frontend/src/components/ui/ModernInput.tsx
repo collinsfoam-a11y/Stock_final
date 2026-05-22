@@ -27,6 +27,8 @@ import {
 } from "@/theme/legacyCompat";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { haptics } from "@/services/haptics";
+
 interface ModernInputProps {
   label?: string;
   placeholder?: string;
@@ -56,6 +58,7 @@ interface ModernInputProps {
   style?: ViewStyle;
   inputStyle?: TextStyle;
   containerStyle?: ViewStyle;
+  showClearButton?: boolean;
 }
 
 export const ModernInput: React.FC<ModernInputProps> = ({
@@ -87,6 +90,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   style,
   inputStyle,
   containerStyle,
+  showClearButton = false,
 }) => {
   const uiTokens = useUiTokens();
   const [isFocused, setIsFocused] = useState(false);
@@ -98,6 +102,12 @@ export const ModernInput: React.FC<ModernInputProps> = ({
 
   const togglePasswordVisibility = () => {
     setIsPasswordVisible(!isPasswordVisible);
+  };
+
+  const handleClear = () => {
+    void haptics.light();
+    onChangeText("");
+    inputRef.current?.focus();
   };
 
   const getInputContainerStyles = (): ViewStyle => {
@@ -179,6 +189,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
         <TextInput
           ref={inputRef}
           style={[getInputStyles(), inputStyle]}
+          testID={testID}
           placeholder={placeholder}
           placeholderTextColor={uiTokens.colors.textSecondary}
           value={value}
@@ -201,11 +212,29 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           }}
           onSubmitEditing={onSubmitEditing}
           returnKeyType={returnKeyType}
-          testID={testID}
         />
 
+        {showClearButton && !disabled && value.length > 0 && (
+          <TouchableOpacity
+            onPress={handleClear}
+            style={styles.iconContainer}
+            accessibilityRole="button"
+            accessibilityLabel="Clear text"
+          >
+            <Ionicons name="close-circle" size={20} color={uiTokens.colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+
         {showPasswordToggle && (
-          <TouchableOpacity onPress={togglePasswordVisibility} style={styles.iconContainer}>
+          <TouchableOpacity
+            onPress={() => {
+              void haptics.light();
+              togglePasswordVisibility();
+            }}
+            style={styles.iconContainer}
+            accessibilityRole="button"
+            accessibilityLabel={isPasswordVisible ? "Hide password" : "Show password"}
+          >
             <Ionicons
               name={isPasswordVisible ? "eye-off" : "eye"}
               size={20}

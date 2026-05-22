@@ -52,4 +52,31 @@ describe("ModernInput", () => {
 
     expect(getByTestId("modern-input").props.editable).toBe(false);
   });
+
+  it("shows clear button and clears text when pressed", () => {
+    const onChangeText = jest.fn();
+    const { getByLabelText, queryByLabelText, rerender } = render(
+      <ModernInput
+        value="test"
+        onChangeText={onChangeText}
+        showClearButton={true}
+      />
+    );
+
+    const clearButton = getByLabelText("Clear text");
+    expect(clearButton).toBeTruthy();
+
+    fireEvent.press(clearButton);
+    expect(onChangeText).toHaveBeenCalledWith("");
+
+    // Verify it doesn't show when value is empty
+    rerender(
+      <ModernInput
+        value=""
+        onChangeText={onChangeText}
+        showClearButton={true}
+      />
+    );
+    expect(queryByLabelText("Clear text")).toBeNull();
+  });
 });
