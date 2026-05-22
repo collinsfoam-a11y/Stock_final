@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import sys
 import time
+from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI
+import pytest
 
 from backend.middleware.projection_consistency_guard import ProjectionConsistencyGuardMiddleware
 
@@ -52,3 +56,41 @@ def test_circuit_open_response_shape(monkeypatch) -> None:
     assert response.status_code == 503
     assert "PROJECTION_INCONSISTENT" in payload
     assert "CIRCUIT_OPEN" in payload
+
+
+def test_projection_guard_rejects_invalid_repair_script_names() -> None:
+    middleware = ProjectionConsistencyGuardMiddleware(FastAPI())
+
+    with pytest.raises(ValueError, match="Invalid projection repair script name"):
+        middleware._resolve_script_command("../backfill")
+
+    with pytest.raises(ValueError, match="Invalid projection repair script name"):
+        middleware._resolve_script_command("backfill;rm")
+
+
+def test_projection_guard_repair_cycle_validates_commands(monkeypatch) -> None:
+    middleware = ProjectionConsistencyGuardMiddleware(FastAPI())
+    calls: list[tuple[list[str], dict[str, Any]]] = []
+
+    class _Result:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def _fake_run(cmd: list[str], **kwargs: Any) -> _Result:
+        calls.append((cmd, kwargs))
+        return _Result()
+
+    monkeypatch.setattr(
+        "backend.middleware.projection_consistency_guard.subprocess.run",
+        _fake_run,
+    )
+
+    middleware._run_projection_repair_cycle()
+
+    scripts_dir = (middleware.root / "backend" / "scripts").resolve()
+    assert len(calls) == 3
+    for cmd, kwargs in calls:
+        assert Path(cmd[0]).resolve() == Path(sys.executable).resolve()
+        assert Path(cmd[1]).resolve().is_relative_to(scripts_dir)
+        assert kwargs["shell"] is False

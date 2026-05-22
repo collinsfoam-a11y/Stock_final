@@ -35,6 +35,10 @@ def connect() -> pymssql.Connection:
     Returns:
         Connection object if successful, None if connection fails
     """
+    if not PASSWORD:
+        logger.error("SQL_SERVER_PASSWORD is required but is not set or is empty.")
+        return None
+
     try:
         conn = pymssql.connect(
             server=SERVER,

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import * as Crypto from "expo-crypto";
 import { Alert } from "react-native";
 
 import { checkSerialUniqueness } from "@/services/api/api";
@@ -17,7 +18,7 @@ interface UseSerialEntryManagerParams {
   onQuantityChange: (value: string) => void;
 }
 
-const createSerialEntryId = () => `serial_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+const createSerialEntryId = () => `serial_${Crypto.randomUUID()}`;
 
 const getDefaultMrp = (mrp: string, item: Item | null) => {
   const parsedMrp = parseFloat(mrp);
@@ -130,7 +131,7 @@ export const useSerialEntryManager = ({
         if (previous.length <= 1) {
           return [
             {
-              id: `serial_${Date.now()}`,
+              id: createSerialEntryId(),
               serial_number: "",
               mrp: getDefaultMrp(mrp, item),
               is_valid: false,

@@ -12,6 +12,7 @@ from collections import deque
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import time
@@ -566,11 +567,13 @@ class ProjectionConsistencyGuardMiddleware(BaseHTTPMiddleware):
         for label, cmd in command_sets:
             started = time.time()
             try:
+                self._validate_repair_command(cmd)
                 result = subprocess.run(
                     cmd,
                     cwd=str(self.root),
                     env=env,
                     check=False,
+                    shell=False,
                     capture_output=True,
                     text=True,
                     timeout=90,
@@ -592,7 +595,22 @@ class ProjectionConsistencyGuardMiddleware(BaseHTTPMiddleware):
                 sanitize_for_logging((result.stderr or "").strip()[:600]),
             )
 
+    def _validate_repair_command(self, cmd: list[str]) -> None:
+        if len(cmd) < 2:
+            raise ValueError("Projection repair command is incomplete")
+
+        if Path(cmd[0]).resolve() != Path(sys.executable).resolve():
+            raise ValueError("Projection repair command must use the current Python executable")
+
+        script_path = Path(cmd[1]).resolve()
+        scripts_dir = (self.root / "backend" / "scripts").resolve()
+        if not script_path.is_relative_to(scripts_dir):
+            raise ValueError("Projection repair script must be inside backend/scripts")
+
     def _resolve_script_command(self, base_name: str) -> list[str]:
+        if not re.fullmatch(r"[A-Za-z0-9_]+", base_name):
+            raise ValueError(f"Invalid projection repair script name: {base_name}")
+
         py_path = self.root / "backend" / "scripts" / f"{base_name}.py"
         if py_path.exists():
             return [str(py_path)]
