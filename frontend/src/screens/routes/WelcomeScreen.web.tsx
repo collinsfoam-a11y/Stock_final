@@ -6,8 +6,9 @@ import { StatusBar } from "expo-status-bar";
 import { useAuthStore } from "@/store/authStore";
 import { getRouteForRole, type UserRole } from "@/utils/roleNavigation";
 
-import { semanticColors, colors } from "@/theme/legacyCompat";
+import { semanticColors, colors, spacing, radius, touchTargets } from "@/theme/legacyCompat";
 import { getFlag } from "@/constants/flags";
+
 const FEATURE_ITEMS = [
   "Offline-first stock counts",
   "Role-based supervisor routing",
@@ -33,7 +34,7 @@ function WelcomeScreen() {
     <View style={styles.page}>
       <StatusBar style="dark" />
       <View style={[styles.shell, isWide && styles.shellWide]}>
-        <View style={[styles.panel, styles.heroPanel]}>
+        <View style={[styles.panel, styles.heroPanel, isWide && styles.shellWideHeroPanel]}>
           <Text style={styles.kicker}>Lavanya Mart</Text>
           <Text style={styles.title}>Stock Verification</Text>
           <Text style={styles.subtitle}>
@@ -49,7 +50,7 @@ function WelcomeScreen() {
           </View>
         </View>
 
-        <View style={[styles.panel, styles.actionPanel]}>
+        <View style={[styles.panel, styles.actionPanel, isWide && styles.shellWideActionPanel]}>
           <Text style={styles.actionTitle}>Start a session</Text>
           <Text style={styles.actionCopy}>
             {publicRegistrationEnabled
@@ -59,6 +60,8 @@ function WelcomeScreen() {
 
           <Pressable
             onPress={() => router.push("/login")}
+            accessibilityRole="button"
+            accessibilityLabel="Sign in to Stock Verification"
             style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
           >
             <Text style={styles.primaryButtonText}>Sign In</Text>
@@ -67,6 +70,8 @@ function WelcomeScreen() {
           {publicRegistrationEnabled ? (
             <Pressable
               onPress={() => router.push("/register")}
+              accessibilityRole="button"
+              accessibilityLabel="Create a Stock Verification account"
               style={({ pressed }) => [
                 styles.secondaryButton,
                 pressed && styles.secondaryButtonPressed,
@@ -90,35 +95,45 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     backgroundColor: semanticColors.background.secondary,
-    padding: 24,
-    justifyContent: "center",
+    padding: spacing.xl,
+    justifyContent: "flex-start",
   },
   shell: {
     width: "100%",
-    maxWidth: 1120,
+    maxWidth: 1040,
     alignSelf: "center",
-    gap: 20,
+    gap: spacing.lg,
   },
   shellWide: {
     flexDirection: "row",
-    alignItems: "stretch",
+    alignItems: "center",
   },
   panel: {
-    flex: 1,
-    borderRadius: 24,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: semanticColors.border.default,
     backgroundColor: semanticColors.background.primary,
-    padding: 28,
-    boxShadow: "0px 16px 40px rgba(15, 23, 42, 0.08)",
+    padding: spacing["2xl"],
+    boxShadow: "0px 8px 24px rgba(15, 23, 42, 0.08)",
   },
   heroPanel: {
-    justifyContent: "space-between",
-    minHeight: 360,
+    justifyContent: "flex-start",
+    gap: spacing.md,
+  },
+  shellWideHeroPanel: {
+    flex: 1,
   },
   actionPanel: {
     maxWidth: 420,
-    justifyContent: "center",
+    alignSelf: "center",
+    justifyContent: "flex-start",
+    width: "100%",
+  },
+  shellWideActionPanel: {
+    alignSelf: "stretch",
+    flexBasis: 420,
+    flexGrow: 0,
+    flexShrink: 0,
   },
   kicker: {
     fontSize: 12,
@@ -126,32 +141,33 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
     textTransform: "uppercase",
     color: colors.secondary[700],
-    marginBottom: 14,
+    marginBottom: spacing.xs,
   },
   title: {
     fontSize: 40,
     lineHeight: 44,
     fontWeight: "700",
     color: semanticColors.text.primary,
-    marginBottom: 14,
+    marginBottom: spacing.sm,
   },
   subtitle: {
     fontSize: 16,
     lineHeight: 24,
     color: semanticColors.text.secondary,
-    marginBottom: 28,
     maxWidth: 520,
   },
   featureList: {
-    gap: 14,
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
   featureItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
+    gap: spacing.md,
+    minHeight: touchTargets.minimum,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.sm,
     backgroundColor: semanticColors.background.secondary,
     borderWidth: 1,
     borderColor: semanticColors.border.default,
@@ -164,27 +180,28 @@ const styles = StyleSheet.create({
   },
   featureText: {
     fontSize: 15,
+    lineHeight: 20,
     color: semanticColors.text.primary,
   },
   actionTitle: {
     fontSize: 24,
     fontWeight: "700",
     color: semanticColors.text.primary,
-    marginBottom: 10,
+    marginBottom: spacing.sm,
   },
   actionCopy: {
     fontSize: 15,
     lineHeight: 22,
     color: semanticColors.text.secondary,
-    marginBottom: 28,
+    marginBottom: spacing.xl,
   },
   primaryButton: {
-    minHeight: 52,
-    borderRadius: 14,
+    minHeight: touchTargets.comfortable,
+    borderRadius: radius.sm,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.secondary[700],
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   primaryButtonPressed: {
     opacity: 0.9,
@@ -195,8 +212,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   secondaryButton: {
-    minHeight: 52,
-    borderRadius: 14,
+    minHeight: touchTargets.comfortable,
+    borderRadius: radius.sm,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: semanticColors.background.primary,
@@ -212,7 +229,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   footer: {
-    marginTop: 22,
+    marginTop: spacing.xl,
     fontSize: 12,
     color: semanticColors.text.tertiary,
   },
