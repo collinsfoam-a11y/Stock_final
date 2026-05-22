@@ -3,11 +3,14 @@ import { TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { colors as uiColors } from "@/theme/legacyCompat";
+import { haptics } from "@/services/haptics";
+
 interface RefreshButtonProps {
   onRefresh: () => void;
   loading?: boolean;
   size?: number;
   color?: string;
+  accessibilityLabel?: string;
 }
 
 export const RefreshButton: React.FC<RefreshButtonProps> = ({
@@ -15,13 +18,22 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({
   loading = false,
   size = 24,
   color = uiColors.success[500],
+  accessibilityLabel = "Refresh data",
 }) => {
+  const handlePress = () => {
+    haptics.light();
+    onRefresh();
+  };
+
   return (
     <TouchableOpacity
       style={[styles.button, { opacity: loading ? 0.6 : 1 }]}
-      onPress={onRefresh}
+      onPress={handlePress}
       disabled={loading}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ busy: loading, disabled: loading }}
     >
       {loading ? (
         <ActivityIndicator size="small" color={color} />
