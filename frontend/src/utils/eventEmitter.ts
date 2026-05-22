@@ -43,7 +43,7 @@ export class EventEmitter {
         try {
           callback(...args);
         } catch (error) {
-          console.error(`Error in event listener for ${event}:`, error);
+          __DEV__ && console.error(`Error in event listener for ${event}:`, error);
         }
       });
     }

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from backend.api.response_models import ApiResponse
@@ -33,8 +33,7 @@ async def get_session_predictions(
         # Check if user is supervisor or admin
         user_role = current_user.get("role", "staff")
         if user_role not in ["supervisor", "admin"]:
-            # We still allow it for now but in production we would restrict
-            pass
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
 
         predictions_data = await ai_variance_service.predict_session_risks(db, session_id, limit)
 

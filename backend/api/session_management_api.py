@@ -483,7 +483,12 @@ def _current_utc_naive() -> datetime:
 
 
 def _session_identifier(session: Optional[dict[str, Any]]) -> str:
-    return str((session or {}).get("id") or (session or {}).get("session_id") or "")
+    return str(
+        (session or {}).get("id")
+        or (session or {}).get("session_id")
+        or (session or {}).get("_id")
+        or ""
+    )
 
 
 def _session_owner(session: Optional[dict[str, Any]]) -> str:
@@ -528,7 +533,7 @@ def _build_session_detail_from_doc(
     finalized_at = _datetime_to_timestamp(session.get("finalized_at"))
 
     return SessionDetail(
-        id=str(session.get("id") or session.get("session_id")),
+        id=_session_identifier(session),
         user_id=str(session.get("staff_user") or session.get("user_id") or ""),
         warehouse=session.get("warehouse"),
         staff_name=session.get("staff_name"),

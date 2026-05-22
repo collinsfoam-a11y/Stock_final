@@ -355,7 +355,7 @@ export default function HistoryScreen() {
                     Count history unavailable
                   </Text>
                   <Text style={[styles.errorBody, { color: uiTokens.colors.textSecondary }]}>
-                    Could not load this session's count lines. Reason: {loadError} Pull down to
+                    Could not load this session&apos;s count lines. Reason: {loadError} Pull down to
                     refresh or retry now.
                   </Text>
                   <TouchableOpacity

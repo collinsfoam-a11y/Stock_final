@@ -25,9 +25,23 @@ import {
   unverifyStockCommand,
   verifyStockCommand,
 } from "../control-plane/countLineReviewControlPlane";
-import { isOnline, shouldAttemptReadApi } from "./sessionManagementApi";
+import {
+  finalizeSession as finalizeSessionViaSessionApi,
+  isOnline,
+  shouldAttemptReadApi,
+  updateSessionStatus as updateSessionStatusViaSessionApi,
+} from "./sessionManagementApi";
 
 const log = createLogger("InventoryWorkflowApi");
+const STRICT_NUMERIC_BARCODE_PATTERN = /^(51|52|53)\d{4}$/;
+const LOOKUP_IDENTITY_FIELDS = [
+  "barcode",
+  "item_code",
+  "manual_barcode",
+  "unit2_barcode",
+  "unit_m_barcode",
+] as const;
+type LookupIdentityField = (typeof LOOKUP_IDENTITY_FIELDS)[number];
 
 interface RawApiItem {
   id?: string;
@@ -121,6 +135,11 @@ type InventoryItemResult = Item & {
   description?: string;
 };
 
+type LookupIdentityItem = Pick<
+  RawApiItem,
+  LookupIdentityField
+>;
+
 type CountLineListResponse = {
   items: CountLineRecord[];
   pagination: Pagination;
@@ -162,9 +181,13 @@ const getCachedBarcodeItem = async (
   }
 ): Promise<InventoryItemResult> => {
   const items = await searchItemsInCache(barcode);
-  if (items.length > 0 && items[0]) {
-    log.debug("Found in cache", { itemCode: items[0].item_code });
-    return toCachedInventoryItem(items[0]);
+  const cachedItem =
+    items.find((item) => itemMatchesLookupIdentity(item, barcode)) ??
+    (items.length === 1 ? items[0] : undefined);
+
+  if (cachedItem) {
+    log.debug("Found in cache", { itemCode: cachedItem.item_code });
+    return toCachedInventoryItem(cachedItem);
   }
 
   throw new AppError({
@@ -177,7 +200,9 @@ const getCachedBarcodeItem = async (
   });
 };
 
-const resolveInventoryDataSource = (responseData: { metadata?: { source?: string } }): DataSource => {
+const resolveInventoryDataSource = (responseData: {
+  metadata?: { source?: string };
+}): DataSource => {
   if (responseData.metadata?.source === "sql_server_sync") {
     return "sql";
   }
@@ -231,7 +256,10 @@ const resolveManufacturingDate = (itemData: RawApiItem) => {
   return itemData.mfg_date;
 };
 
-const normalizeApiInventoryItem = (itemData: RawApiItem, responseData: { metadata?: { source?: string } }): InventoryItemResult => {
+const normalizeApiInventoryItem = (
+  itemData: RawApiItem,
+  responseData: { metadata?: { source?: string } }
+): InventoryItemResult => {
   const displayName = resolveDisplayName(itemData);
   const itemCode = itemData.item_code || itemData.barcode || itemData.id || itemData._id || "";
   const stockQty = resolveStockQuantity(itemData);
@@ -268,6 +296,51 @@ const normalizeApiInventoryItem = (itemData: RawApiItem, responseData: { metadat
     expected_location: itemData.expected_location,
     _source: dataSource,
   };
+};
+
+const isStrictNumericBarcodeLookup = (value: string): boolean =>
+  STRICT_NUMERIC_BARCODE_PATTERN.test(value);
+
+const normalizeLookupText = (value: unknown): string => {
+  if (typeof value !== "string" && typeof value !== "number") return "";
+  return String(value).trim().toUpperCase();
+};
+
+const itemMatchesLookupIdentity = (itemData: LookupIdentityItem, lookup: string): boolean => {
+  const normalizedLookup = normalizeLookupText(lookup);
+  return LOOKUP_IDENTITY_FIELDS.some(
+    (field) => normalizeLookupText(itemData[field]) === normalizedLookup
+  );
+};
+
+const extractOptimizedSearchItems = (responseData: unknown): RawApiItem[] => {
+  if (!responseData || typeof responseData !== "object") {
+    return [];
+  }
+
+  const envelope = responseData as { data?: unknown; items?: unknown };
+  const payload =
+    envelope.data && typeof envelope.data === "object"
+      ? (envelope.data as { items?: unknown })
+      : envelope;
+  const items = payload.items;
+
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  return items.filter((item): item is RawApiItem => Boolean(item && typeof item === "object"));
+};
+
+const selectLookupSearchCandidate = (
+  items: RawApiItem[],
+  lookup: string
+): RawApiItem | undefined => {
+  const exactMatch = items.find((item) => itemMatchesLookupIdentity(item, lookup));
+  if (exactMatch) {
+    return exactMatch;
+  }
+  return items.length === 1 ? items[0] : undefined;
 };
 
 const cacheResolvedInventoryItem = async (item: InventoryItemResult): Promise<void> => {
@@ -369,6 +442,40 @@ const fetchInventoryItemFromApi = async (
   return normalizeApiInventoryItem(itemData, response.data);
 };
 
+const fetchInventoryItemFromSearchApi = async (
+  lookup: string,
+  retryCount: number
+): Promise<InventoryItemResult> => {
+  const response = await retryWithBackoff(
+    () =>
+      api.get("/api/items/search/optimized", {
+        params: {
+          q: lookup,
+          limit: 5,
+          offset: 0,
+        },
+      }),
+    {
+      retries: retryCount,
+      backoffMs: 1000,
+      shouldRetry: shouldRetryInventoryLookup,
+    }
+  );
+
+  const candidate = selectLookupSearchCandidate(extractOptimizedSearchItems(response.data), lookup);
+  if (!candidate?.item_code) {
+    throw new AppError({
+      code: "ITEM_NOT_FOUND",
+      severity: "USER",
+      message: `No exact item match found for '${lookup}'`,
+      userMessage: `No exact item match found for ${lookup}. Select an item from search results or scan a barcode.`,
+      context: { lookup },
+    });
+  }
+
+  return normalizeApiInventoryItem(candidate, { metadata: { source: "api" } });
+};
+
 const tryCacheResolvedItem = async (item: InventoryItemResult) => {
   try {
     await cacheResolvedInventoryItem(item);
@@ -380,6 +487,13 @@ const tryCacheResolvedItem = async (item: InventoryItemResult) => {
 };
 
 const isNotFoundApiError = (apiError: ApiErrorLike) => {
+  if (
+    apiError instanceof AppError &&
+    ["ITEM_NOT_FOUND", "ITEM_CACHE_MISS", "INVALID_BARCODE"].includes(apiError.code)
+  ) {
+    return true;
+  }
+
   const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
   return apiError?.response?.status === 404 || errorMessage.includes("404");
 };
@@ -436,15 +550,14 @@ export const getItemByBarcode = async (
   }
 
   try {
-    log.debug("Online mode - calling API");
-    const normalizedItem = await fetchInventoryItemFromApi(
-      trimmedBarcode,
-      retryCount,
-      sessionId,
-      rackNo
-    );
+    const normalizedItem = isStrictNumericBarcodeLookup(trimmedBarcode)
+      ? await fetchInventoryItemFromApi(trimmedBarcode, retryCount, sessionId, rackNo)
+      : await fetchInventoryItemFromSearchApi(trimmedBarcode, retryCount);
 
-    log.debug("Found via API", { itemCode: normalizedItem.item_code });
+    log.debug("Found via API", {
+      itemCode: normalizedItem.item_code,
+      lookupMode: isStrictNumericBarcodeLookup(trimmedBarcode) ? "barcode" : "search",
+    });
     await tryCacheResolvedItem(normalizedItem);
     return normalizedItem;
   } catch (apiError: unknown) {
@@ -589,7 +702,11 @@ export const searchItemsOptimized = async (
       _source: "api" as DataSource,
     }));
 
-    await Promise.all(mappedItems.slice(0, 10).map((item) => cacheItem(item as unknown as Parameters<typeof cacheItem>[0])));
+    await Promise.all(
+      mappedItems
+        .slice(0, 10)
+        .map((item) => cacheItem(item as unknown as Parameters<typeof cacheItem>[0]))
+    );
 
     return {
       items: mappedItems,
@@ -882,11 +999,12 @@ const buildOfflinePaginatedCountLines = async (
 };
 
 /**
- * Persists a draft count line when the device is online.
+ * Persists a draft count line when the device is online and the session is server-backed.
  */
 export const saveDraft = async (lineData: CreateCountLinePayload) => {
   try {
-    if (!isOnline()) return null;
+    const isOfflineSession = String(lineData.session_id || "").startsWith("offline_");
+    if (!isOnline() || isOfflineSession) return null;
     const response = await api.post("/api/count-lines/draft", lineData);
     return response.data;
   } catch (error: unknown) {
@@ -1180,37 +1298,14 @@ export const rejectCountLine = async (
  * Applies a session status transition using the appropriate backend endpoint.
  */
 export const updateSessionStatus = async (sessionId: string, status: string) => {
-  const normalizedStatus = (status || "").toUpperCase();
-  if (normalizedStatus === "COMPLETED" || normalizedStatus === "FINALIZED") {
-    const response = await api.post(`/api/sessions/${sessionId}/finalize`);
-    return response.data;
-  }
-
-  if (normalizedStatus === "CLOSED") {
-    // Legacy "close" now maps to the canonical review handoff.
-    const response = await api.put(`/api/sessions/${sessionId}/status?status=RECONCILE`);
-    return response.data;
-  }
-
-  // All other status transitions go through the generic PUT /status endpoint
-  // which validates against the SessionStateMachine
-  const response = await api.put(
-    `/api/sessions/${sessionId}/status?status=${encodeURIComponent(normalizedStatus)}`
-  );
-  return response.data;
+  return updateSessionStatusViaSessionApi(sessionId, status);
 };
 
 /**
  * Finalizes a session through the supervisor-only finalize workflow.
  */
 export const finalizeSession = async (sessionId: string, payload?: { note?: string }) => {
-  try {
-    const response = await api.post(`/api/sessions/${sessionId}/finalize`, payload || {});
-    return response.data;
-  } catch (error: unknown) {
-    __DEV__ && console.error("Finalize session error:", error);
-    throw error;
-  }
+  return finalizeSessionViaSessionApi(sessionId, payload);
 };
 
 /**

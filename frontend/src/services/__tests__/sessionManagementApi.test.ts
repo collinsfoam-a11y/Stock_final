@@ -25,6 +25,13 @@ jest.mock("../control-plane/sessionControlPlane", () => ({
   updateSessionStatusCommand: jest.fn(),
 }));
 
+jest.mock("../control-plane/countLineControlPlane", () => ({
+  ProjectionReadError: class ProjectionReadError extends Error {
+    code = "MISSING_PROJECTION";
+  },
+  getProjectedSessionStatsRead: jest.fn(),
+}));
+
 jest.mock("../../utils/network", () => ({
   getNetworkStatus: jest.fn(),
 }));
@@ -173,6 +180,103 @@ describe("sessionManagementApi.getSession", () => {
     expect(result).toEqual({
       id: "session-unknown",
       status: "OPEN",
+    });
+  });
+
+  it("loads live session detail when projected session storage is unavailable", async () => {
+    let httpClient: any;
+    let network: any;
+    let controlPlane: any;
+    let getSession: any;
+
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      httpClient = require("../httpClient").default;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      network = require("../../utils/network");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      controlPlane = require("../control-plane/sessionControlPlane");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ({ getSession } = require("../api/sessionManagementApi"));
+    });
+
+    network.getNetworkStatus.mockReturnValue({
+      status: "ONLINE",
+      isOnline: true,
+      isInternetReachable: true,
+      connectionType: "wifi",
+    });
+    controlPlane.getProjectedSessionRead.mockRejectedValue(
+      new Error("navigator.storage not available")
+    );
+    httpClient.get.mockResolvedValue({
+      data: {
+        id: "session-live",
+        status: "OPEN",
+        warehouse: "Showroom - Ground - A1",
+      },
+    });
+
+    const result = await getSession("session-live");
+
+    expect(httpClient.get).toHaveBeenCalledWith("/api/sessions/session-live");
+    expect(result).toEqual({
+      id: "session-live",
+      status: "OPEN",
+      warehouse: "Showroom - Ground - A1",
+    });
+  });
+
+  it("loads live session stats when projected stats storage is unavailable", async () => {
+    let httpClient: any;
+    let network: any;
+    let countLineControlPlane: any;
+    let getSessionStats: any;
+
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      httpClient = require("../httpClient").default;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      network = require("../../utils/network");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      countLineControlPlane = require("../control-plane/countLineControlPlane");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ({ getSessionStats } = require("../api/sessionManagementApi"));
+    });
+
+    network.getNetworkStatus.mockReturnValue({
+      status: "ONLINE",
+      isOnline: true,
+      isInternetReachable: true,
+      connectionType: "wifi",
+    });
+    countLineControlPlane.getProjectedSessionStatsRead.mockRejectedValue(
+      new Error("Invalid VFS state")
+    );
+    httpClient.get.mockResolvedValue({
+      data: {
+        id: "session-live",
+        total_items: 12,
+        verified_items: 4,
+        pending_items: 3,
+        damage_items: 1,
+        duration_seconds: 60,
+        items_per_minute: 7,
+      },
+    });
+
+    const result = await getSessionStats("session-live");
+
+    expect(httpClient.get).toHaveBeenCalledWith("/api/sessions/session-live/stats");
+    expect(result).toEqual({
+      id: "session-live",
+      totalItems: 12,
+      scannedItems: 7,
+      verifiedItems: 4,
+      pendingItems: 3,
+      damageItems: 1,
+      durationSeconds: 60,
+      itemsPerMinute: 7,
     });
   });
 

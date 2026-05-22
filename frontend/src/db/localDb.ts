@@ -1,8 +1,22 @@
 import * as SQLite from "expo-sqlite";
 import type { CreateCountLinePayload, Item } from "@/types/scan";
 import { ensureControlPlaneSchema } from "@/data/db/controlPlaneDb";
+import { isLocalDbUnavailableError } from "@/db/localDbErrors";
 
 const DB_NAME = "stock_verify.db";
+
+// OPFS (used by expo-sqlite on web) requires a secure context (HTTPS or localhost).
+// On HTTP + IP address, throw immediately so callers can fall back to server-direct mode
+// rather than waiting for the worker to fail with an opaque error.
+const assertSecureContextForWeb = (): void => {
+  if (typeof window !== "undefined" && window.isSecureContext === false) {
+    const err = new Error(
+      "Local database unavailable: OPFS requires a secure context (HTTPS or localhost)."
+    );
+    (err as any).isLocalDbUnavailable = true;
+    throw err;
+  }
+};
 
 export interface LocalItem {
   barcode: string;
@@ -77,11 +91,19 @@ const ensureSchema = async (db: SQLite.SQLiteDatabase) => {
  * Initialize the local database and create tables if they don't exist.
  */
 export const initDb = async () => {
-  const db = await SQLite.openDatabaseAsync(DB_NAME);
-  await ensureSchema(db);
+  assertSecureContextForWeb();
+  try {
+    const db = await SQLite.openDatabaseAsync(DB_NAME);
+    await ensureSchema(db);
 
-  __DEV__ && console.log("Local database initialized");
-  return db;
+    __DEV__ && console.log("Local database initialized");
+    return db;
+  } catch (error) {
+    if (isLocalDbUnavailableError(error)) {
+      cachedDb = null;
+    }
+    throw error;
+  }
 };
 
 /**
@@ -89,10 +111,18 @@ export const initDb = async () => {
  */
 export const getDb = async () => {
   if (cachedDb) return cachedDb;
-  const db = await SQLite.openDatabaseAsync(DB_NAME);
-  await ensureSchema(db);
-  cachedDb = db;
-  return db;
+  assertSecureContextForWeb();
+  try {
+    const db = await SQLite.openDatabaseAsync(DB_NAME);
+    await ensureSchema(db);
+    cachedDb = db;
+    return db;
+  } catch (error) {
+    if (isLocalDbUnavailableError(error)) {
+      cachedDb = null;
+    }
+    throw error;
+  }
 };
 
 /**

@@ -111,6 +111,24 @@ describe("useWebSocket", () => {
     expect(mockSockets).toHaveLength(1);
   });
 
+  it("does not reconnect after a normal component unmount close", async () => {
+    renderHook(() => useWebSocket("sess-123"));
+
+    await waitFor(() => {
+      expect(mockSockets).toHaveLength(1);
+    });
+
+    await act(async () => {
+      mockSockets[0]?.emitClose(1000, "Component unmounted");
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    expect(mockSockets).toHaveLength(1);
+  });
+
   it("does not connect when disabled", async () => {
     renderHook(() => useWebSocket("sess-123", false));
 

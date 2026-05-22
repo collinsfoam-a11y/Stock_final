@@ -84,10 +84,21 @@ const showSubmissionError = (error: any) => {
   }
 
   const titleByStatus: Record<number, string> = {
+    400: "Check the Details",
     409: "Duplicate Scan",
     422: "Check the Details",
   };
   Alert.alert(titleByStatus[status] || "Unable to Save Count", message);
+};
+
+const resolveExpectedQuantity = (item: Item): number | null => {
+  const value = item.current_stock ?? item.stock_qty;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+};
+
+const hasCountVariance = (item: Item, countedQty: number): boolean => {
+  const expectedQty = resolveExpectedQuantity(item);
+  return expectedQty !== null && Math.abs(countedQty - expectedQty) > 1e-9;
 };
 
 const resolveDamageQuantities = (
@@ -319,6 +330,14 @@ export const useDeferredItemSubmission = ({
       return false;
     }
 
+    if (hasCountVariance(item, qty) && varianceRemark.trim().length === 0) {
+      Alert.alert(
+        "Variance Reason Required",
+        "Enter a variance remark before saving a count that differs from system stock."
+      );
+      return false;
+    }
+
     const hasSerials = serialEntries.some((entry) => entry.serial_number.trim().length > 0);
     if (isSerializedItem && hasSerials && !validateSerials()) {
       const errorDetails =
@@ -358,6 +377,7 @@ export const useDeferredItemSubmission = ({
     serialValidationErrors,
     sessionId,
     validateSerials,
+    varianceRemark,
   ]);
 
   const executeSubmit = useCallback(async () => {

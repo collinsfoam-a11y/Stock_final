@@ -414,7 +414,10 @@ const StaffHome = React.memo(function StaffHome() {
         params: { sessionId },
       } as any);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to create session";
+      const anyError = error as any;
+      const errorMessage =
+        anyError?.userMessage ||
+        (error instanceof Error ? error.message : "Failed to create session");
       toastService.showError(errorMessage);
     } finally {
       setIsCreating(false);
@@ -896,17 +899,70 @@ const StaffHome = React.memo(function StaffHome() {
               },
             ]}
           >
-            <Text style={[styles.modalTitle, { color: uiTokens.colors.textPrimary }]}>
-              New Session
-            </Text>
-            <TouchableOpacity
-              onPress={() => setShowCreateModal(false)}
-              style={styles.modalCloseButton}
-              accessibilityRole="button"
-              accessibilityLabel="Close new session modal"
-            >
-              <Ionicons name="close" size={24} color={uiTokens.colors.textSecondary} />
-            </TouchableOpacity>
+            <View style={styles.modalHeaderTop}>
+              <Text style={[styles.modalTitle, { color: uiTokens.colors.textPrimary }]}>
+                New Session
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowCreateModal(false)}
+                style={styles.modalCloseButton}
+                accessibilityRole="button"
+                accessibilityLabel="Close new session modal"
+              >
+                <Ionicons name="close" size={24} color={uiTokens.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalStepRow}>
+              {(
+                [
+                  { label: "Location", done: !!locationType },
+                  { label: "Floor", done: !!selectedFloor },
+                  { label: "Rack", done: !!(locationType && selectedFloor && rackName.trim()) },
+                ] as { label: string; done: boolean }[]
+              ).map((step, i, arr) => (
+                <React.Fragment key={step.label}>
+                  <View style={styles.modalStepItem}>
+                    <View
+                      style={[
+                        styles.modalStepDot,
+                        {
+                          backgroundColor: step.done
+                            ? uiTokens.colors.accent
+                            : "transparent",
+                          borderColor: step.done
+                            ? uiTokens.colors.accent
+                            : uiTokens.colors.border,
+                        },
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles.modalStepLabel,
+                        {
+                          color: step.done
+                            ? uiTokens.colors.accent
+                            : uiTokens.colors.textSecondary,
+                        },
+                      ]}
+                    >
+                      {step.label}
+                    </Text>
+                  </View>
+                  {i < arr.length - 1 && (
+                    <View
+                      style={[
+                        styles.modalStepConnector,
+                        {
+                          backgroundColor: arr[i + 1]?.done
+                            ? uiTokens.colors.accent
+                            : uiTokens.colors.border,
+                        },
+                      ]}
+                    />
+                  )}
+                </React.Fragment>
+              ))}
+            </View>
           </View>
 
           <ScrollView
@@ -1032,6 +1088,44 @@ const StaffHome = React.memo(function StaffHome() {
                 />
               </Animated.View>
             )}
+
+            {locationType && selectedFloor && rackName.trim() ? (
+              <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(300)}>
+                <View
+                  style={[
+                    styles.sessionPreviewCard,
+                    {
+                      backgroundColor: colorWithAlpha(
+                        uiTokens.colors.accent,
+                        uiTokens.mode === "dark" ? 0.12 : 0.07
+                      ),
+                      borderColor: colorWithAlpha(uiTokens.colors.accent, 0.28),
+                    },
+                  ]}
+                >
+                  <Ionicons name="checkmark-circle" size={22} color={uiTokens.colors.accent} />
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.sessionPreviewTitle,
+                        { color: uiTokens.colors.textSecondary },
+                      ]}
+                    >
+                      Session Preview
+                    </Text>
+                    <Text
+                      style={[
+                        styles.sessionPreviewName,
+                        { color: uiTokens.colors.accentStrong },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {locationType} · {selectedFloor} · {rackName.trim().toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+              </Animated.View>
+            ) : null}
           </ScrollView>
 
           <View
@@ -1330,17 +1424,65 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   modalHeader: {
+    padding: spacing.lg,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[100],
+  },
+  modalHeaderTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[100],
+    marginBottom: spacing.md,
   },
   modalTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
     color: colors.gray[900],
+  },
+  modalStepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.sm,
+  },
+  modalStepItem: {
+    alignItems: "center",
+    gap: 5,
+  },
+  modalStepDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+  },
+  modalStepLabel: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+  },
+  modalStepConnector: {
+    flex: 1,
+    height: 2,
+    marginHorizontal: spacing.sm,
+    minWidth: 28,
+  },
+  sessionPreviewCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  sessionPreviewTitle: {
+    fontSize: typography.fontSize.xs,
+    marginBottom: 2,
+  },
+  sessionPreviewName: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
   modalCloseButton: {
     width: 44,

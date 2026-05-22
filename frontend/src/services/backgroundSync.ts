@@ -12,6 +12,12 @@ const logInfo = (...args: unknown[]) => {
   }
 };
 
+const logError = (...args: unknown[]) => {
+  if (__DEV__) {
+    console.error(...args);
+  }
+};
+
 /**
  * Define the background task.
  */
@@ -24,7 +30,7 @@ if (Platform.OS !== "web" && TaskManager?.defineTask) {
 
       return BackgroundTask.BackgroundTaskResult.Success;
     } catch (error) {
-      console.error("Background sync task failed:", error);
+      logError("Background sync task failed:", error);
       return BackgroundTask.BackgroundTaskResult.Failed;
     }
   });
@@ -77,7 +83,7 @@ export const registerBackgroundSync = async () => {
 
     logInfo("Background sync task registered");
   } catch (error) {
-    console.error("Failed to register background sync task:", error);
+    logError("Failed to register background sync task:", error);
   }
 };
 
@@ -91,6 +97,6 @@ export const unregisterBackgroundSync = async () => {
     await BackgroundTask.unregisterTaskAsync(BACKGROUND_SYNC_TASK);
     logInfo("Background sync task unregistered");
   } catch (error) {
-    console.error("Failed to unregister background sync task:", error);
+    logError("Failed to unregister background sync task:", error);
   }
 };

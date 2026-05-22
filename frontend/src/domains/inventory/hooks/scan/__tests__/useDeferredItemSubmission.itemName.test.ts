@@ -82,6 +82,66 @@ describe("useDeferredItemSubmission", () => {
     );
   });
 
+  it("blocks variance submissions without a variance remark when stock is known", async () => {
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+    const onSuccess = jest.fn();
+
+    const { result } = renderHook(() =>
+      useDeferredItemSubmission({
+        barcode: "8901234567890",
+        sessionId: "session-1",
+        currentFloor: "F1",
+        currentRack: "R1",
+        item: {
+          id: "item-1",
+          item_code: "ITEM001",
+          barcode: "8901234567890",
+          item_name: "Batch Item Name",
+          name: "Batch Item Name",
+          mrp: 42,
+          current_stock: 5,
+        },
+        quantity: "3",
+        condition: "Good",
+        remark: "note",
+        isDamageEnabled: false,
+        damageQty: "0",
+        damageType: "returnable",
+        damagePhoto: null,
+        itemPhotos: [],
+        isSerializedItem: false,
+        serialEntries: [],
+        serialNumbers: [],
+        serialValidationErrors: [],
+        validateSerials: () => true,
+        varianceRemark: "",
+        mrp: "42",
+        hasMfgDate: false,
+        itemMfgDate: "",
+        itemMfgDateFormat: "none",
+        hasExpiryDate: false,
+        itemExpiryDate: "",
+        itemExpiryDateFormat: "none",
+        blindRecountRequired: false,
+        recountTargetId: null,
+        recountBlockedReason: null,
+        onSuccess,
+        countdownSeconds: 0,
+      })
+    );
+
+    await act(async () => {
+      result.current.handleSubmitPress();
+    });
+
+    expect(mockCreateCountLine).not.toHaveBeenCalled();
+    expect(alertSpy).toHaveBeenCalledWith(
+      "Variance Reason Required",
+      "Enter a variance remark before saving a count that differs from system stock."
+    );
+    alertSpy.mockRestore();
+  });
+
   it("includes recount_of_id for blind recount submissions", async () => {
     const onSuccess = jest.fn();
 

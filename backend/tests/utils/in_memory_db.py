@@ -780,12 +780,7 @@ def _initialize_apis(monkeypatch, fake_db, server_module, cache_service) -> None
 
 
 def _setup_auth_and_seed_users(monkeypatch, fake_db, server_module) -> None:
-    """Setup authentication overrides and seed default test users."""
-    pass
-
-    # Removed server_module auth patches, settings handles this now
-
-    # Updated seed function to populate both users collection and pin_authentication collection
+    """Seed default test users into the in-memory DB for authentication tests."""
     def _seed_user(username: str, password: str, full_name: str, role: str):
         user_id = os.urandom(12).hex()  # Generate persistent ID
         fake_db.users._documents.append(

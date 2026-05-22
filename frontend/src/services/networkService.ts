@@ -18,11 +18,17 @@ function applyNetInfoState(state: {
   isInternetReachable?: boolean | null;
   type?: string;
 }): void {
-  const isConnected = state.isConnected ?? false;
-  const reachable = toReachableValue(isConnected, state.isInternetReachable);
-  const type = state.type ?? "unknown";
-
   const store = useNetworkStore.getState();
+  const isConnected =
+    typeof state.isConnected === "boolean"
+      ? state.isConnected
+      : store.isOnline;
+  const reachable =
+    typeof state.isConnected === "boolean"
+      ? toReachableValue(isConnected, state.isInternetReachable)
+      : store.isInternetReachable;
+  const type = state.type ?? store.connectionType ?? "unknown";
+
   store.setIsOnline(isConnected);
   store.setConnectionType(type);
   store.setIsInternetReachable(reachable);

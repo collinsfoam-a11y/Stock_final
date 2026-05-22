@@ -75,6 +75,9 @@ exports/
 .autogpt.yml
 .autopilot.json
 .agent/approval-log*.jsonl
+.claude/settings.local.json
+.claude/worktrees/
+.codex/skills/*
 .clinerules
 .cursorrules
 .devon.yml
@@ -82,6 +85,7 @@ exports/
 .kilocodemodes
 .swe-agent.yml
 .secrets.baseline
+agent-skills-repos/
 cooking_agent/
 
 # Test output
@@ -110,6 +114,13 @@ backups/mongo/*.archive.gz
 
 # Generated evaluation artifacts (never commit)
 backend/tests/evaluation/reports/*.json
+output/
+
+# Local TLS certificates (keep nginx/ssl/.gitignore trackable)
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt
+nginx/ssl/*.cer
 
 # Generated frontend debug exports (never commit)
 frontend/dist/

@@ -1,13 +1,13 @@
 const mockGetItem = jest.fn();
 const mockSetItem = jest.fn();
-const mockRandomUUID = jest.fn();
+const mockGenerateUUID = jest.fn();
 const mockDebug = jest.fn();
 const mockInfo = jest.fn();
 const mockWarn = jest.fn();
 const mockError = jest.fn();
 
-jest.mock("expo-crypto", () => ({
-  randomUUID: () => mockRandomUUID(),
+jest.mock("../../utils/uuid", () => ({
+  generateUUID: () => mockGenerateUUID(),
 }));
 
 jest.mock("../mmkvStorage", () => ({
@@ -43,19 +43,19 @@ describe("getDeviceId", () => {
 
     expect(mockGetItem).toHaveBeenCalledWith("device_id");
     expect(mockSetItem).not.toHaveBeenCalled();
-    expect(mockRandomUUID).not.toHaveBeenCalled();
+    expect(mockGenerateUUID).not.toHaveBeenCalled();
   });
 
   it("generates, stores, and caches a device id when storage is empty", async () => {
     mockGetItem.mockReturnValue(null);
-    mockRandomUUID.mockReturnValue("generated-device");
+    mockGenerateUUID.mockReturnValue("generated-device");
 
     await expect(getDeviceId()).resolves.toBe("generated-device");
     await expect(getDeviceId()).resolves.toBe("generated-device");
 
     expect(mockGetItem).toHaveBeenCalledTimes(1);
     expect(mockSetItem).toHaveBeenCalledWith("device_id", "generated-device");
-    expect(mockRandomUUID).toHaveBeenCalledTimes(1);
+    expect(mockGenerateUUID).toHaveBeenCalledTimes(1);
     expect(mockInfo).toHaveBeenCalledWith("Generated new Device ID");
   });
 
@@ -63,13 +63,13 @@ describe("getDeviceId", () => {
     mockGetItem.mockImplementation(() => {
       throw new Error("storage unavailable");
     });
-    mockRandomUUID.mockReturnValue("temporary-device");
+    mockGenerateUUID.mockReturnValue("temporary-device");
 
     await expect(getDeviceId()).resolves.toBe("temporary-device");
     await expect(getDeviceId()).resolves.toBe("temporary-device");
 
     expect(mockSetItem).not.toHaveBeenCalled();
-    expect(mockRandomUUID).toHaveBeenCalledTimes(1);
+    expect(mockGenerateUUID).toHaveBeenCalledTimes(1);
     expect(mockWarn).toHaveBeenCalledWith("Using temporary Device ID after storage fallback", {
       error: "storage unavailable",
     });

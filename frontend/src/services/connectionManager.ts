@@ -25,6 +25,21 @@ const STORAGE_KEY = "connection_info";
 const HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
 const CONNECTION_TIMEOUT = 5000; // 5 seconds
 
+const dedupeCandidatesByHighestPriority = (
+  candidates: { url: string; priority: number }[],
+): { url: string; priority: number }[] => {
+  const byUrl = new Map<string, { url: string; priority: number }>();
+
+  for (const candidate of candidates) {
+    const existing = byUrl.get(candidate.url);
+    if (!existing || candidate.priority > existing.priority) {
+      byUrl.set(candidate.url, candidate);
+    }
+  }
+
+  return Array.from(byUrl.values()).sort((a, b) => b.priority - a.priority);
+};
+
 class ConnectionManager {
   private static instance: ConnectionManager;
   private currentConnection: ConnectionInfo | null = null;
@@ -131,13 +146,30 @@ class ConnectionManager {
     const currentOrigin = this.getCurrentOrigin();
     if (currentOrigin) {
       candidates.push({ url: normalize(currentOrigin), priority: 11 });
+
+      if (Platform.OS === "web") {
+        try {
+          const originUrl = new URL(currentOrigin);
+          const host = originUrl.hostname;
+          const protocol = originUrl.protocol === "https:" ? "https" : "http";
+          const webPorts = [8001, 8000, 8002, 8003, 8085];
+          for (const port of webPorts) {
+            candidates.push({
+              url: `${protocol}://${host}:${port}`,
+              priority: port === 8001 ? 10 : 9,
+            });
+          }
+        } catch {
+          // Ignore malformed current origin and continue with remaining candidates.
+        }
+      }
     }
 
     // 1.5 Current connection gets high priority for stability.
     if (this.currentConnection?.backendUrl) {
       candidates.push({
         url: normalize(this.currentConnection.backendUrl),
-        priority: 9,
+        priority: 12,
       });
     }
 
@@ -146,16 +178,18 @@ class ConnectionManager {
     const expoHost = hostUri?.split(":")[0];
     if (expoHost) {
       candidates.push({ url: `http://${expoHost}:8001`, priority: 8 });
+      candidates.push({ url: `http://${expoHost}:8000`, priority: 7 });
     }
 
     // 3. Platform-specific defaults
     if (Platform.OS === "android") {
       // Android emulator default
       candidates.push({ url: "http://10.0.2.2:8001", priority: 5 });
+      candidates.push({ url: "http://10.0.2.2:8000", priority: 4 });
     }
 
     // 4. Common development ports
-    const commonPorts = [8001, 8002, 8003, 8085];
+    const commonPorts = [8001, 8000, 8002, 8003, 8085];
     const detectedIp = this.getDeviceIp();
 
     for (const port of commonPorts) {
@@ -171,10 +205,8 @@ class ConnectionManager {
       candidates.push({ url: "http://127.0.0.1:8001", priority: 2 });
     }
 
-    // Remove duplicates and sort by priority
-    const unique = Array.from(
-      new Map(candidates.map((c) => [c.url, c])).values(),
-    ).sort((a, b) => b.priority - a.priority);
+    // Remove duplicates and sort by the strongest signal for each URL.
+    const unique = dedupeCandidatesByHighestPriority(candidates);
 
     log.debug("Built connection candidates", unique);
     return unique;
@@ -189,6 +221,9 @@ class ConnectionManager {
     if (expoHost) return expoHost;
 
     if (Platform.OS === "android") return "10.0.2.2";
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      return window.location.hostname || "localhost";
+    }
     if (Platform.OS === "web") return "localhost";
     return "127.0.0.1";
   }
@@ -263,8 +298,12 @@ class ConnectionManager {
    * Set fallback connection when no healthy backend is found
    */
   private setFallbackConnection(): void {
+    const webDefaultFallbackUrl =
+      Platform.OS === "web" && typeof window !== "undefined"
+        ? `${window.location.protocol === "https:" ? "https" : "http"}://${window.location.hostname || "localhost"}:8001`
+        : "http://localhost:8001";
     const defaultFallbackUrl =
-      Platform.OS === "android" ? "http://10.0.2.2:8001" : "http://localhost:8001";
+      Platform.OS === "android" ? "http://10.0.2.2:8001" : webDefaultFallbackUrl;
     const rawFallbackUrl =
       process.env.EXPO_PUBLIC_BACKEND_URL?.trim() || defaultFallbackUrl;
     const fallbackUrl = /^https?:\/\//i.test(rawFallbackUrl)

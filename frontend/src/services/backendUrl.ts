@@ -15,7 +15,10 @@ const parsePort = (value?: string | null): number | null => {
 
 const getCandidatePorts = (): number[] => {
   const envPort = parsePort(process.env.EXPO_PUBLIC_BACKEND_PORT);
-  const fallbackPorts = [8001, 8002, 8003, 8085];
+  // 8444 = local-ssl-proxy in front of backend (HTTPS). When the web client
+  // loads over https://lan:8443 we must probe an https port for the API or
+  // mixed-content rules block the request.
+  const fallbackPorts = [8444, 8001, 8000, 8002, 8003, 8085];
   if (envPort) {
     return Array.from(new Set([envPort, ...fallbackPorts]));
   }
@@ -159,7 +162,7 @@ export const resolveBackendUrl = async (): Promise<string> => {
   if (currentOrigin) {
     const isCurrentOriginHealthy = await timeoutFetch(`${currentOrigin}${HEALTH_PATH}`, 1500);
     if (isCurrentOriginHealthy) {
-      console.log(`[BackendURL] Reusing healthy same-origin backend: ${currentOrigin}`);
+      __DEV__ && console.log(`[BackendURL] Reusing healthy same-origin backend: ${currentOrigin}`);
       resolvedBackendUrl = currentOrigin;
       return currentOrigin;
     }
@@ -167,18 +170,18 @@ export const resolveBackendUrl = async (): Promise<string> => {
 
   const candidates = buildCandidates();
 
-  console.log("[BackendURL] Probing candidates:", candidates);
+  __DEV__ && console.log("[BackendURL] Probing candidates:", candidates);
 
   for (const url of candidates) {
     const isHealthy = await timeoutFetch(`${url}${HEALTH_PATH}`, 3000);
     if (!isHealthy) continue;
 
-    console.log(`[BackendURL] Resolved healthy backend at: ${url}`);
+    __DEV__ && console.log(`[BackendURL] Resolved healthy backend at: ${url}`);
     resolvedBackendUrl = url;
     return url;
   }
 
-  // Fallback if nothing responds
+  // Fallback if nothing responds — warn in all environments; this indicates a startup failure
   console.warn(
     "[BackendURL] No healthy backend found! Fallback to:",
     BACKEND_URL,
@@ -189,7 +192,7 @@ export const resolveBackendUrl = async (): Promise<string> => {
 
 export const initializeBackendURL = async (): Promise<string> => {
   const url = await resolveBackendUrl();
-  console.log("[BackendURL] Initialized with:", url);
+  __DEV__ && console.log("[BackendURL] Initialized with:", url);
   return url;
 };
 

@@ -71,9 +71,17 @@ export class WiFiConnectionService {
   async checkStatus(): Promise<WiFiStatus> {
     try {
       const state = await NetInfo.fetch();
+      const resolvedIsConnected =
+        typeof state.isConnected === "boolean"
+          ? state.isConnected
+          : this.lastStatus?.isConnected ?? true;
+      const resolvedIsWiFi =
+        typeof state.type === "string"
+          ? state.type === "wifi"
+          : this.lastStatus?.isWiFi ?? false;
       const status: WiFiStatus = {
-        isConnected: state.isConnected ?? false,
-        isWiFi: state.type === "wifi",
+        isConnected: resolvedIsConnected,
+        isWiFi: resolvedIsWiFi,
         lastChecked: new Date(),
         ssid: (state.details as any)?.ssid,
         strength: (state.details as any)?.strength,
@@ -100,11 +108,13 @@ export class WiFiConnectionService {
         error instanceof Error ? error : new Error(String(error)),
         "WiFiConnectionService.checkStatus",
       );
-      return {
-        isConnected: false,
-        isWiFi: false,
-        lastChecked: new Date(),
-      };
+      return (
+        this.lastStatus ?? {
+          isConnected: true,
+          isWiFi: false,
+          lastChecked: new Date(),
+        }
+      );
     }
   }
 

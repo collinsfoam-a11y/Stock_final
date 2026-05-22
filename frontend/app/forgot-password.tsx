@@ -216,7 +216,7 @@ export default function ForgotPasswordScreen() {
               Forgot Password?
             </Text>
             <Text style={[styles.subtitle, { color: uiTokens.colors.textSecondary }]}>
-              Enter your username or registered phone number. We'll send a verification code to the
+              Enter your username or registered phone number. We&apos;ll send a verification code to the
               phone number associated with your account
             </Text>
 

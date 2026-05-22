@@ -11,6 +11,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from bson import ObjectId
+
 ACTIVE_SESSION_STATUSES = {"OPEN", "ACTIVE", "PAUSED", "RECONCILE"}
 FINALIZED_SESSION_STATUSES = {"COMPLETED", "CLOSED", "CANCELLED"}
 LOCKED_COUNT_LINE_STATUSES = {"locked"}
@@ -118,7 +120,10 @@ def materialize_count_line_review_state(count_line: dict[str, Any]) -> dict[str,
 
 
 def build_session_lookup(session_id: str) -> dict[str, Any]:
-    return {"$or": [{"id": session_id}, {"session_id": session_id}]}
+    clauses: list[dict[str, Any]] = [{"id": session_id}, {"session_id": session_id}]
+    if ObjectId.is_valid(session_id):
+        clauses.append({"_id": ObjectId(session_id)})
+    return {"$or": clauses}
 
 
 async def find_session(db: Any, session_id: str) -> Optional[dict[str, Any]]:

@@ -11,6 +11,21 @@ import uvicorn
 from backend.utils.port_detector import PortDetector, save_backend_info
 
 
+def _load_backend_env(project_root: Path, logger: Any) -> None:
+    """Populate process env from backend/.env for runtime-only validators."""
+    env_path = project_root / "backend" / ".env"
+    if not env_path.exists():
+        return
+
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        logger.warning("python-dotenv not installed; backend .env was not loaded")
+        return
+
+    load_dotenv(env_path, override=False)
+
+
 def run_server_main(
     *,
     app_import_path: str,
@@ -19,6 +34,8 @@ def run_server_main(
     project_root: Path,
 ) -> None:
     """Run uvicorn with environment validation and runtime port/cert selection."""
+    _load_backend_env(project_root, logger)
+
     try:
         from backend.utils.env_validation import get_env_summary, validate_environment
 
@@ -51,7 +68,7 @@ def run_server_main(
         logger.info(f"🔒 SSL certificates found. Starting server with HTTPS on port {port}...")
         uvicorn.run(
             app_import_path,
-            host=os.getenv("HOST", "127.0.0.1"),
+            host=os.getenv("HOST", "0.0.0.0"),  # nosec B104 - LAN HTTPS access requires binding all interfaces
             port=port,
             reload=False,
             log_level="info",

@@ -106,6 +106,10 @@ export const useWebSocket = (sessionId?: string, enabled: boolean = true) => {
         return;
       }
 
+      if (event.code === 1000) {
+        return;
+      }
+
       // Reconnect logic
       if (shouldReconnectRef.current && isAuthenticated) {
         log.warn("Retrying websocket connection", {

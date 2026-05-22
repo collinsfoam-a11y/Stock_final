@@ -192,6 +192,7 @@ def register_middleware(
             "Content-Language",
             "Content-Type",
             "Authorization",
+            "X-Idempotency-Key",
             "X-Device-ID",
             "X-Requested-With",
             "X-Request-ID",

@@ -3,9 +3,12 @@
  * Helper functions for exporting data to CSV
  */
 
-export const downloadCSV = (csvContent: string, filename: string) => {
-  // For web
-  if (typeof window !== "undefined") {
+import { Alert, Platform } from "react-native";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
+
+export const downloadCSV = async (csvContent: string, filename: string): Promise<void> => {
+  if (Platform.OS === "web") {
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -15,10 +18,23 @@ export const downloadCSV = (csvContent: string, filename: string) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  } else {
-    // For mobile, we'll need to use a file system library
-    __DEV__ && console.warn("CSV export not supported on mobile yet");
+    URL.revokeObjectURL(url);
+    return;
   }
+
+  const baseDir = FileSystem.documentDirectory ?? FileSystem.cacheDirectory ?? "";
+  const fileUri = `${baseDir}${filename}`;
+
+  await FileSystem.writeAsStringAsync(fileUri, csvContent, {
+    encoding: FileSystem.EncodingType.UTF8,
+  });
+
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(fileUri, { mimeType: "text/csv" });
+    return;
+  }
+
+  Alert.alert("Success", `CSV saved to: ${fileUri}`);
 };
 
 export const convertToCSV = (data: any[], headers: string[]): string => {

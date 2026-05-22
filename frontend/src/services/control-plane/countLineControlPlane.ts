@@ -40,6 +40,7 @@ import {
 import { overlayCountLineReviewState } from "@/services/control-plane/countLineReviewControlPlane";
 import { controlPlaneEventBus } from "@/services/control-plane/controlPlaneEventBus";
 import { rebindCountLineReviewLineId } from "@/data/repositories/countLineReviewControlPlaneRepository";
+import { isLocalDbUnavailableError } from "@/db/localDbErrors";
 
 export class ProjectionReadError extends Error {
   code = "MISSING_PROJECTION";
@@ -198,6 +199,14 @@ const isServerValidationError = (error: unknown): boolean => {
 
 const recordProjectionGap = async (metricName: ControlPlaneMetricName): Promise<void> => {
   incrementControlPlaneMetric(metricName);
+};
+
+const handleProjectionStorageReadError = async (error: unknown): Promise<null> => {
+  if (!isLocalDbUnavailableError(error)) {
+    throw error;
+  }
+  await recordProjectionGap("projection_fallback_count");
+  return null;
 };
 
 export const submitCountLineCommand = async (countData: CreateCountLinePayload): Promise<any> => {
@@ -421,25 +430,29 @@ export const getProjectedCountLinesForSession = async (
     return null;
   }
 
-  const projectionSessionIds = await resolveProjectionSessionIds(sessionId);
-  const projected = await getProjectedCountLinesBySessionIds(projectionSessionIds);
-  if (projected.length > 0) {
-    incrementControlPlaneMetric("projection_read_hit_count");
-    return overlayCountLineReviewState(projected.map(mergeProjectedPayload));
-  }
-
-  const cachedLines = await getCountLinesBySessionFromCache(projectionSessionIds);
-  if (cachedLines.length > 0) {
-    await recordProjectionGap("projection_fallback_count");
-    if (controlPlaneFlags.strictProjectionReads) {
-      incrementControlPlaneMetric("projection_strict_error_count");
-      throw new ProjectionReadError(
-        `Projection missing for session ${sessionId} while cached count lines exist.`
-      );
+  try {
+    const projectionSessionIds = await resolveProjectionSessionIds(sessionId);
+    const projected = await getProjectedCountLinesBySessionIds(projectionSessionIds);
+    if (projected.length > 0) {
+      incrementControlPlaneMetric("projection_read_hit_count");
+      return overlayCountLineReviewState(projected.map(mergeProjectedPayload));
     }
-  }
 
-  return null;
+    const cachedLines = await getCountLinesBySessionFromCache(projectionSessionIds);
+    if (cachedLines.length > 0) {
+      await recordProjectionGap("projection_fallback_count");
+      if (controlPlaneFlags.strictProjectionReads) {
+        incrementControlPlaneMetric("projection_strict_error_count");
+        throw new ProjectionReadError(
+          `Projection missing for session ${sessionId} while cached count lines exist.`
+        );
+      }
+    }
+
+    return null;
+  } catch (error) {
+    return handleProjectionStorageReadError(error);
+  }
 };
 
 export const getProjectedSessionStatsRead = async (
@@ -454,25 +467,29 @@ export const getProjectedSessionStatsRead = async (
     return null;
   }
 
-  const projectionSessionIds = await resolveProjectionSessionIds(sessionId);
-  const projectedStats = await getProjectedSessionStatsBySessionIds(projectionSessionIds);
-  if (projectedStats) {
-    incrementControlPlaneMetric("projection_read_hit_count");
-    return projectedStats;
-  }
-
-  const cachedLines = await getCountLinesBySessionFromCache(projectionSessionIds);
-  if (cachedLines.length > 0) {
-    await recordProjectionGap("projection_fallback_count");
-    if (controlPlaneFlags.strictProjectionReads) {
-      incrementControlPlaneMetric("projection_strict_error_count");
-      throw new ProjectionReadError(
-        `Projection missing for session stats ${sessionId} while cached lines exist.`
-      );
+  try {
+    const projectionSessionIds = await resolveProjectionSessionIds(sessionId);
+    const projectedStats = await getProjectedSessionStatsBySessionIds(projectionSessionIds);
+    if (projectedStats) {
+      incrementControlPlaneMetric("projection_read_hit_count");
+      return projectedStats;
     }
-  }
 
-  return null;
+    const cachedLines = await getCountLinesBySessionFromCache(projectionSessionIds);
+    if (cachedLines.length > 0) {
+      await recordProjectionGap("projection_fallback_count");
+      if (controlPlaneFlags.strictProjectionReads) {
+        incrementControlPlaneMetric("projection_strict_error_count");
+        throw new ProjectionReadError(
+          `Projection missing for session stats ${sessionId} while cached lines exist.`
+        );
+      }
+    }
+
+    return null;
+  } catch (error) {
+    return handleProjectionStorageReadError(error);
+  }
 };
 
 export const getProjectedScanStatusRead = async (
@@ -493,26 +510,30 @@ export const getProjectedScanStatusRead = async (
     return null;
   }
 
-  const projectionSessionIds = await resolveProjectionSessionIds(sessionId);
-  const projectedStatus = await getProjectedScanStatusBySessionIds(projectionSessionIds, itemCode);
-  if (projectedStatus.scanned) {
-    incrementControlPlaneMetric("projection_read_hit_count");
-    return projectedStatus;
-  }
-
-  const cachedLines = await getCountLinesBySessionFromCache(projectionSessionIds);
-  const matchingCached = cachedLines.filter((line) => line.item_code === itemCode);
-  if (matchingCached.length > 0) {
-    await recordProjectionGap("projection_fallback_count");
-    if (controlPlaneFlags.strictProjectionReads) {
-      incrementControlPlaneMetric("projection_strict_error_count");
-      throw new ProjectionReadError(
-        `Projection missing for ${sessionId}/${itemCode} while cached lines exist.`
-      );
+  try {
+    const projectionSessionIds = await resolveProjectionSessionIds(sessionId);
+    const projectedStatus = await getProjectedScanStatusBySessionIds(projectionSessionIds, itemCode);
+    if (projectedStatus.scanned) {
+      incrementControlPlaneMetric("projection_read_hit_count");
+      return projectedStatus;
     }
-  }
 
-  return null;
+    const cachedLines = await getCountLinesBySessionFromCache(projectionSessionIds);
+    const matchingCached = cachedLines.filter((line) => line.item_code === itemCode);
+    if (matchingCached.length > 0) {
+      await recordProjectionGap("projection_fallback_count");
+      if (controlPlaneFlags.strictProjectionReads) {
+        incrementControlPlaneMetric("projection_strict_error_count");
+        throw new ProjectionReadError(
+          `Projection missing for ${sessionId}/${itemCode} while cached lines exist.`
+        );
+      }
+    }
+
+    return null;
+  } catch (error) {
+    return handleProjectionStorageReadError(error);
+  }
 };
 
 export const getControlPlaneReadMetrics = () => ({

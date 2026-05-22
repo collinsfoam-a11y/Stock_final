@@ -59,7 +59,7 @@ export function FinishRackModal({
           </Text>
           <Text style={[styles.modalText, { color: uiTokens.colors.textSecondary }]}>
             This will finalize the scan for {currentFloor || "this location"}{" "}
-            {currentRack ? `• ${currentRack}` : ""}. You won't be able to add more items after
+            {currentRack ? `• ${currentRack}` : ""}. You won&apos;t be able to add more items after
             confirming.
           </Text>
 

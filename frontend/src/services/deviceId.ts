@@ -1,18 +1,12 @@
-import * as Crypto from "expo-crypto";
 import { createLogger } from "./logging";
 import { mmkvStorage } from "./mmkvStorage";
+import { generateUUID } from "../utils/uuid";
 
 const log = createLogger("deviceId");
 const DEVICE_ID_KEY = "device_id";
 let cachedDeviceId: string | null = null;
 
-const createDeviceId = (): string => {
-  if (typeof Crypto.randomUUID === "function") {
-    return Crypto.randomUUID();
-  }
-
-  return `device_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-};
+const createDeviceId = (): string => generateUUID();
 
 const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error && error.message) {

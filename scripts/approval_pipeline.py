@@ -779,7 +779,7 @@ def infer_mutated_metric(command: str, summary: dict[str, int]) -> tuple[str, in
     target = _normalize_target(
         extract_target_script(command_to_tokens(normalize_command(command)))
     )
-    if target == "./backend/scripts/backfill_session_snapshots.py" and "repaired" in summary:
+    if target == "./backend/scripts/archive/backfill_session_snapshots.py" and "repaired" in summary:
         return ("repaired", summary["repaired"])
     if target == "./backend/scripts/cleanup_synthetic_session_data.py" and "deleted_docs" in summary:
         return ("deleted_docs", summary["deleted_docs"])

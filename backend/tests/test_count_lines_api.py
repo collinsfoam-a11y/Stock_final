@@ -6,6 +6,7 @@ Target: Increase coverage from 18% to 85%
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from bson import ObjectId
 from fastapi import HTTPException
 from pymongo.errors import DuplicateKeyError
 
@@ -875,6 +876,26 @@ class TestCreateCountLine:
         inserted_payload = mock_db.count_line_drafts.insert_one.call_args.args[0]
         assert inserted_payload["user_id"] == "testuser"
         assert inserted_payload["line_id"] == "ITEM001|F1|R1|"
+
+    @pytest.mark.asyncio
+    async def test_save_count_line_draft_response_omits_mongo_object_id(self, mock_db, line_data):
+        inserted_id = ObjectId()
+
+        async def _insert_one(document):
+            document["_id"] = inserted_id
+            return Mock(inserted_id=inserted_id)
+
+        mock_db.count_line_drafts.insert_one = AsyncMock(side_effect=_insert_one)
+
+        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+            result = await save_count_line_draft(
+                request=AsyncMock(),
+                line_data=line_data,
+                current_user={"username": "testuser"},
+            )
+
+        assert result["data"]["id"] == str(inserted_id)
+        assert "_id" not in result["data"]
 
     @pytest.mark.asyncio
     async def test_save_count_line_draft_recovers_from_duplicate_key(self, mock_db, line_data):

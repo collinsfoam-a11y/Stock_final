@@ -3,9 +3,10 @@ Self-Diagnosis API Endpoints
 Provide real-time error diagnosis and health monitoring
 """
 
+import asyncio
 import logging
 from backend.utils.api_utils import sanitize_for_logging
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,6 +14,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
 from backend.services.auto_diagnosis import AutoDiagnosisService
+
+HEALTH_CHECK_TIMEOUT_SECONDS = 2.0
 
 # Global instance
 _diagnosis_service = None
@@ -34,12 +37,32 @@ self_diagnosis_router = APIRouter(tags=["Self-Diagnosis"])
 @self_diagnosis_router.get("/health")
 async def get_health_with_diagnosis(current_user: dict = Depends(get_current_user)):
     """
-    Get comprehensive health status with auto-diagnosis
+    Get comprehensive health status with auto-diagnosis.
+
+    Returns a degraded payload if the underlying check exceeds
+    HEALTH_CHECK_TIMEOUT_SECONDS, since this endpoint backs a dashboard widget
+    that must never block initial render.
     """
+    diagnosis_service = get_auto_diagnosis()
     try:
-        diagnosis_service = get_auto_diagnosis()
-        health_report = await diagnosis_service.health_check()
-        return health_report
+        return await asyncio.wait_for(
+            diagnosis_service.health_check(),
+            timeout=HEALTH_CHECK_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            "Health check exceeded %.1fs budget; returning degraded payload",
+            HEALTH_CHECK_TIMEOUT_SECONDS,
+        )
+        return {
+            "status": "degraded",
+            "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+            "checks": {},
+            "diagnoses": [],
+            "recommendations": [
+                f"Health check exceeded {HEALTH_CHECK_TIMEOUT_SECONDS:.1f}s budget"
+            ],
+        }
     except Exception as e:
         logger.error("Health check failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")

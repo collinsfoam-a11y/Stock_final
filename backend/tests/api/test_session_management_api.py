@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from bson import ObjectId
 from httpx import ASGITransport, AsyncClient
 
 from backend.api.session_management_api import _collect_snapshot_items
@@ -539,6 +540,59 @@ class TestGetSessionDetailEndpoint:
                 assert response.status_code == 200
                 data = response.json()
                 assert data["id"] == "sess_123"
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_get_session_detail_supports_legacy_object_id(self, mock_user_staff):
+        """Session list may expose _id as id for legacy documents."""
+        legacy_id = ObjectId("64c13ab08edf48a008793cac")
+        legacy_session = {
+            "_id": legacy_id,
+            "warehouse": "WH001",
+            "staff_user": "staff1",
+            "staff_name": "Staff User",
+            "status": "ACTIVE",
+            "type": "STANDARD",
+            "started_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            "last_heartbeat": datetime.now(timezone.utc).replace(tzinfo=None),
+        }
+
+        mock_db = MagicMock()
+        mock_db.sessions = MagicMock()
+        mock_db.sessions.find_one = AsyncMock(return_value=legacy_session)
+        mock_db.count_lines = MagicMock()
+        mock_db.count_lines.find = MagicMock(return_value=_AsyncCursor([]))
+
+        async def override_get_db():
+            return mock_db
+
+        async def override_get_current_user():
+            return mock_user_staff
+
+        from backend.auth.dependencies import get_current_user_async
+        from backend.db.runtime import get_db
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user_async] = override_get_current_user
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://localhost",
+            ) as client:
+                response = await client.get(f"/api/sessions/{legacy_id}")
+                assert response.status_code == 200
+                assert response.json()["id"] == str(legacy_id)
+                mock_db.sessions.find_one.assert_awaited_once_with(
+                    {
+                        "$or": [
+                            {"id": str(legacy_id)},
+                            {"session_id": str(legacy_id)},
+                            {"_id": legacy_id},
+                        ]
+                    }
+                )
         finally:
             app.dependency_overrides.clear()
 

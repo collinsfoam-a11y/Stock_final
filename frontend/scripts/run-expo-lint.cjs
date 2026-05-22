@@ -7,7 +7,6 @@ const { spawnSync } = require("node:child_process");
 
 const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "expo-lint-pnpm-"));
-const legacyConfigPath = path.join(process.cwd(), ".eslint-legacy-temp.cjs");
 
 try {
   const shimScript = `
@@ -58,37 +57,14 @@ process.exit(result.status ?? 1);
     fs.chmodSync(shimPath, 0o755);
   }
 
-  fs.copyFileSync(path.join(process.cwd(), ".eslintrc.js.legacy"), legacyConfigPath);
-
   const result = spawnSync(
     npxCommand,
-    [
-      "eslint",
-      ".",
-      "--ext",
-      ".js,.jsx,.ts,.tsx",
-      "--config",
-      legacyConfigPath,
-      "--no-error-on-unmatched-pattern",
-      "--ignore-pattern",
-      ".expo/**",
-      "--ignore-pattern",
-      "dist/**",
-      "--ignore-pattern",
-      "build/**",
-      "--ignore-pattern",
-      "coverage/**",
-      "--ignore-pattern",
-      "android/**",
-      "--ignore-pattern",
-      "ios/**",
-    ],
+    ["eslint", "."],
     {
       cwd: process.cwd(),
       encoding: "utf8",
       env: {
         ...process.env,
-        ESLINT_USE_FLAT_CONFIG: "false",
         PATH: `${tempDir}${path.delimiter}${process.env.PATH || ""}`,
       },
       shell: process.platform === "win32",
@@ -106,6 +82,5 @@ process.exit(result.status ?? 1);
 
   process.exit(result.status ?? 1);
 } finally {
-  fs.rmSync(legacyConfigPath, { force: true });
   fs.rmSync(tempDir, { recursive: true, force: true });
 }

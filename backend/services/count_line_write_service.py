@@ -10,6 +10,7 @@ from typing import Any, Optional, cast
 
 from bson import ObjectId
 from fastapi import HTTPException
+import pymongo.errors
 
 from backend.api.schemas import SessionType
 from backend.services.concurrency import ConcurrencyError, coerce_version
@@ -1079,7 +1080,8 @@ class CountLineWriteService:
                     **kwargs,
                 )
             )
-        except Exception:
+        except pymongo.errors.PyMongoError as exc:
+            logger.warning("Legacy snapshot lookup failed for %s/%s: %s", session_id, normalized_item_code, exc)
             legacy_snapshot = None
         if isinstance(legacy_snapshot, dict):
             return float(legacy_snapshot.get("erp_qty") or 0.0), str(

@@ -1135,12 +1135,14 @@ async def save_count_line_draft(
         _safe_log_value(line_data.item_code),
         line_data.counted_qty,
     )
+    response_payload = dict(draft_payload)
+    response_payload.pop("_id", None)
     return {
         "success": True,
         "message": "Draft saved successfully",
         "data": {
             "id": draft_id,
-            **draft_payload,
+            **response_payload,
         },
     }
 

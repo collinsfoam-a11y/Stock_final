@@ -1,4 +1,5 @@
-import api from "@/services/httpClient";
+import api, { updateBaseURL } from "@/services/httpClient";
+import { resolveBackendUrl } from "@/services/backendUrl";
 import { useAuthStore } from "@/store/authStore";
 import { controlPlaneFlags } from "@/core/config/controlPlaneFlags";
 import { generateOfflineId, generateUUID } from "@/utils/uuid";
@@ -36,6 +37,7 @@ import {
 import { incrementControlPlaneMetric } from "@/services/observability/controlPlaneMetrics";
 import { controlPlaneEventBus } from "@/services/control-plane/controlPlaneEventBus";
 import { getNetworkStatus } from "@/utils/network";
+import { isLocalDbUnavailableError } from "@/db/localDbErrors";
 
 const isServerValidationError = (error: unknown): boolean => {
   const status = (error as { response?: { status?: number } })?.response?.status;
@@ -47,6 +49,9 @@ const readErrorMessage = (error: unknown, fallback: string): string =>
   (error instanceof Error ? error.message : fallback);
 
 const isMutationSafeOnline = () => getNetworkStatus().status === "ONLINE";
+const canAttemptServerMutation = () => getNetworkStatus().status !== "OFFLINE";
+// Session creation can include snapshot and projection writes on the backend.
+const SESSION_MUTATION_TIMEOUT_MS = 45000;
 
 const getCurrentActor = () => {
   const user = useAuthStore.getState().user;
@@ -212,9 +217,64 @@ const rollbackFailedStartEvent = async (event: SessionEvent): Promise<void> => {
   }
 };
 
-const createServerSession = async (event: Extract<SessionEvent, { type: "SESSION_STARTED" }>) => {
+const createServerSessionFromParams = async (
+  params: CreateSessionParams,
+  idempotencyKey?: string
+) => {
   const response = await api.post(
     "/api/sessions",
+    {
+      warehouse: params.warehouse || "",
+      type: params.type || "STANDARD",
+      location_type: params.location_type,
+      location_name: params.location_name,
+      rack_no: params.rack_no,
+    },
+    {
+      timeout: SESSION_MUTATION_TIMEOUT_MS,
+      skipOfflineQueue: true,
+      ...(idempotencyKey
+        ? {
+            headers: {
+              "X-Idempotency-Key": idempotencyKey,
+            },
+          }
+        : {}),
+    } as any
+  );
+  return response.data;
+};
+
+const markServerSessionSynced = async (event: SessionEvent, serverSession: any): Promise<void> => {
+  try {
+    await bindServerSessionId(event.aggregateId, serverSession);
+    await markSessionEventSynced(event.id);
+  } catch (error) {
+    if (!isLocalDbUnavailableError(error)) {
+      throw error;
+    }
+    incrementControlPlaneMetric("projection_fallback_count");
+  }
+};
+
+const cacheProjectedSessionBestEffort = async (
+  sessionId: string
+): Promise<Awaited<ReturnType<typeof getProjectedSessionRead>> | null> => {
+  try {
+    const display = await getProjectedSessionRead(sessionId);
+    await cacheProjectedSession(display);
+    return display;
+  } catch (error) {
+    if (!isLocalDbUnavailableError(error)) {
+      throw error;
+    }
+    incrementControlPlaneMetric("projection_fallback_count");
+    return null;
+  }
+};
+
+const createServerSession = async (event: Extract<SessionEvent, { type: "SESSION_STARTED" }>) => {
+  const responseData = await createServerSessionFromParams(
     {
       warehouse: event.payload.warehouse,
       type: event.payload.type,
@@ -222,17 +282,10 @@ const createServerSession = async (event: Extract<SessionEvent, { type: "SESSION
       location_name: event.payload.location_name,
       rack_no: event.payload.rack_no,
     },
-    {
-      timeout: 3000,
-      skipOfflineQueue: true,
-      headers: {
-        "X-Idempotency-Key": event.meta.idempotencyKey,
-      },
-    } as any
+    event.meta.idempotencyKey
   );
-  await bindServerSessionId(event.aggregateId, response.data);
-  await markSessionEventSynced(event.id);
-  return response.data;
+  await markServerSessionSynced(event, responseData);
+  return responseData;
 };
 
 const pushSessionStatusToServer = async (
@@ -279,8 +332,7 @@ const syncSessionEvent = async (event: SessionEvent): Promise<any> => {
         headers: { "X-Idempotency-Key": event.meta.idempotencyKey },
       } as any
     );
-    await bindServerSessionId(event.aggregateId, response.data);
-    await markSessionEventSynced(event.id);
+    await markServerSessionSynced(event, response.data);
     return response.data;
   }
 
@@ -290,15 +342,13 @@ const syncSessionEvent = async (event: SessionEvent): Promise<any> => {
       event.payload.status,
       event.payload.note
     );
-    await bindServerSessionId(event.aggregateId, response);
-    await markSessionEventSynced(event.id);
+    await markServerSessionSynced(event, response);
     return response;
   }
 
   if (event.type === "SESSION_RESUMED") {
     const response = await pushSessionStatusToServer(serverSessionId, "ACTIVE");
-    await bindServerSessionId(event.aggregateId, response);
-    await markSessionEventSynced(event.id);
+    await markServerSessionSynced(event, response);
     return response;
   }
 
@@ -316,40 +366,127 @@ export class SessionControlPlaneError extends Error {
   }
 }
 
+const localStorageUnavailableError = () =>
+  new SessionControlPlaneError(
+    "LOCAL_STORAGE_UNAVAILABLE",
+    "Local session storage is unavailable. Connect to the backend and try again."
+  );
+
+const createServerSessionDirectWhenStorageUnavailable = async (
+  params: CreateSessionParams,
+  idempotencyKey: string,
+  error: unknown
+) => {
+  if (!isLocalDbUnavailableError(error)) {
+    throw error;
+  }
+
+  incrementControlPlaneMetric("projection_fallback_count");
+  if (!canAttemptServerMutation()) {
+    throw localStorageUnavailableError();
+  }
+
+  // On web with HTTP+IP access, the initial baseURL is the Expo dev server origin
+  // (e.g. http://192.168.x.x:8082) until ConnectionManager finishes probing.
+  // Resolve the actual backend URL before the POST so it reaches the right server.
+  try {
+    const resolvedUrl = await resolveBackendUrl();
+    updateBaseURL(resolvedUrl);
+  } catch {
+    // Best-effort; proceed with current baseURL on resolution failure
+  }
+
+  try {
+    const response = await createServerSessionFromParams(params, idempotencyKey);
+    return {
+      ...response,
+      _controlPlane: true,
+      _projection_unavailable: true,
+    };
+  } catch (serverError) {
+    if (isServerValidationError(serverError)) {
+      throw new SessionControlPlaneError(
+        "SESSION_CREATE_REJECTED",
+        readErrorMessage(serverError, "Session creation failed")
+      );
+    }
+    const networkMessage =
+      (serverError as any)?.userMessage ||
+      readErrorMessage(serverError, "Unable to create session. Check your network connection.");
+    throw new SessionControlPlaneError("SESSION_CREATE_NETWORK_ERROR", networkMessage);
+  }
+};
+
+const pushSessionStatusDirectWhenStorageUnavailable = async (
+  sessionId: string,
+  status: string,
+  note: string | undefined,
+  error: unknown
+) => {
+  if (!isLocalDbUnavailableError(error)) {
+    throw error;
+  }
+
+  incrementControlPlaneMetric("projection_fallback_count");
+  if (!canAttemptServerMutation()) {
+    throw localStorageUnavailableError();
+  }
+
+  const response = await pushSessionStatusToServer(sessionId, status, note);
+  return {
+    ...response,
+    _controlPlane: true,
+    _projection_unavailable: true,
+  };
+};
+
 export const createSessionCommand = async (params: CreateSessionParams): Promise<any> => {
   if (!controlPlaneFlags.enableEventDrivenSessions) {
     return api
       .post("/api/sessions", params, {
-        timeout: 3000,
+        timeout: SESSION_MUTATION_TIMEOUT_MS,
         skipOfflineQueue: true,
       } as any)
       .then((response) => response.data);
   }
 
+  const event = buildSessionStartEvent(params);
   const locationKey = buildSessionLocationKey({
     warehouse: params.warehouse || null,
     locationType: params.location_type || null,
     locationName: params.location_name || null,
     rackNo: params.rack_no || null,
   });
-  const existing = await findActiveProjectedSessionForLocation(locationKey);
-  if (existing) {
-    throw new SessionControlPlaneError(
-      "SESSION_ALREADY_ACTIVE",
-      "A session for this location is already active."
+
+  let projected: Awaited<ReturnType<typeof getProjectedSessionRead>>;
+  try {
+    const existing = await findActiveProjectedSessionForLocation(locationKey);
+    if (existing) {
+      throw new SessionControlPlaneError(
+        "SESSION_ALREADY_ACTIVE",
+        "A session for this location is already active."
+      );
+    }
+
+    await recordSessionEvent(event);
+    controlPlaneEventBus.publish("session.changed", {
+      sessionId: event.aggregateId,
+      localSessionId: event.aggregateId,
+      reason: "recorded",
+    });
+
+    projected = await getProjectedSessionRead(event.aggregateId);
+    await cacheProjectedSession(projected);
+  } catch (error) {
+    if (error instanceof SessionControlPlaneError) {
+      throw error;
+    }
+    return createServerSessionDirectWhenStorageUnavailable(
+      params,
+      event.meta.idempotencyKey,
+      error
     );
   }
-
-  const event = buildSessionStartEvent(params);
-  await recordSessionEvent(event);
-  controlPlaneEventBus.publish("session.changed", {
-    sessionId: event.aggregateId,
-    localSessionId: event.aggregateId,
-    reason: "recorded",
-  });
-
-  const projected = await getProjectedSessionRead(event.aggregateId);
-  await cacheProjectedSession(projected);
 
   if (!isMutationSafeOnline()) {
     return {
@@ -363,8 +500,7 @@ export const createSessionCommand = async (params: CreateSessionParams): Promise
 
   try {
     const response = await createServerSession(event);
-    const display = await getProjectedSessionRead(event.aggregateId);
-    await cacheProjectedSession(display);
+    await cacheProjectedSessionBestEffort(event.aggregateId);
     controlPlaneEventBus.publish("session.changed", {
       sessionId: response?.id || event.aggregateId,
       localSessionId: event.aggregateId,
@@ -414,15 +550,21 @@ export const updateSessionStatusCommand = async (
     return pushSessionStatusToServer(sessionId, status, note);
   }
 
-  const event = await buildStatusEvent(sessionId, status, note);
-  await recordSessionEvent(event);
-  controlPlaneEventBus.publish("session.changed", {
-    sessionId,
-    localSessionId: event.aggregateId,
-    reason: "status_changed",
-  });
-  const projected = await getProjectedSessionRead(sessionId);
-  await cacheProjectedSession(projected);
+  let event: Awaited<ReturnType<typeof buildStatusEvent>>;
+  let projected: Awaited<ReturnType<typeof getProjectedSessionRead>>;
+  try {
+    event = await buildStatusEvent(sessionId, status, note);
+    await recordSessionEvent(event);
+    controlPlaneEventBus.publish("session.changed", {
+      sessionId,
+      localSessionId: event.aggregateId,
+      reason: "status_changed",
+    });
+    projected = await getProjectedSessionRead(sessionId);
+    await cacheProjectedSession(projected);
+  } catch (error) {
+    return pushSessionStatusDirectWhenStorageUnavailable(sessionId, status, note, error);
+  }
 
   if (!isMutationSafeOnline()) {
     return {
@@ -435,8 +577,7 @@ export const updateSessionStatusCommand = async (
 
   try {
     const response = await syncSessionEvent(event);
-    const display = await getProjectedSessionRead(sessionId);
-    await cacheProjectedSession(display);
+    await cacheProjectedSessionBestEffort(sessionId);
     controlPlaneEventBus.publish("session.changed", {
       sessionId,
       localSessionId: event.aggregateId,
@@ -482,15 +623,26 @@ export const finalizeSessionCommand = async (
       .then((response) => response.data);
   }
 
-  const event = await buildFinalizeEvent(sessionId, payload?.note);
-  await recordSessionEvent(event);
-  controlPlaneEventBus.publish("session.changed", {
-    sessionId,
-    localSessionId: event.aggregateId,
-    reason: "finalized",
-  });
-  const projected = await getProjectedSessionRead(sessionId);
-  await cacheProjectedSession(projected);
+  let event: Awaited<ReturnType<typeof buildFinalizeEvent>>;
+  let projected: Awaited<ReturnType<typeof getProjectedSessionRead>>;
+  try {
+    event = await buildFinalizeEvent(sessionId, payload?.note);
+    await recordSessionEvent(event);
+    controlPlaneEventBus.publish("session.changed", {
+      sessionId,
+      localSessionId: event.aggregateId,
+      reason: "finalized",
+    });
+    projected = await getProjectedSessionRead(sessionId);
+    await cacheProjectedSession(projected);
+  } catch (error) {
+    return pushSessionStatusDirectWhenStorageUnavailable(
+      sessionId,
+      "FINALIZED",
+      payload?.note,
+      error
+    );
+  }
 
   if (!isMutationSafeOnline()) {
     return {
@@ -503,8 +655,7 @@ export const finalizeSessionCommand = async (
 
   try {
     const response = await syncSessionEvent(event);
-    const display = await getProjectedSessionRead(sessionId);
-    await cacheProjectedSession(display);
+    await cacheProjectedSessionBestEffort(sessionId);
     controlPlaneEventBus.publish("session.changed", {
       sessionId,
       localSessionId: event.aggregateId,
@@ -548,29 +699,37 @@ export const recordSessionHeartbeatCommand = async (sessionId: string) => {
     return null;
   }
 
-  const localSessionId = await resolveLocalSessionId(sessionId);
-  const actor = getCurrentActor();
-  const event = createSessionHeartbeatEvent({
-    payload: {
-      local_session_id: localSessionId,
-      heartbeat_at: new Date().toISOString(),
-      sync_status: "pending",
-    },
-    meta: {
-      idempotencyKey: generateUUID(),
-      createdBy: actor.username,
-      sourceScreen: "session_heartbeat",
-    },
-  });
-  await recordSessionEvent(event);
-  controlPlaneEventBus.publish("session.changed", {
-    sessionId,
-    localSessionId,
-    reason: "heartbeat",
-  });
-  const projected = await getProjectedSessionRead(sessionId);
-  await cacheProjectedSession(projected);
-  return projected;
+  try {
+    const localSessionId = await resolveLocalSessionId(sessionId);
+    const actor = getCurrentActor();
+    const event = createSessionHeartbeatEvent({
+      payload: {
+        local_session_id: localSessionId,
+        heartbeat_at: new Date().toISOString(),
+        sync_status: "pending",
+      },
+      meta: {
+        idempotencyKey: generateUUID(),
+        createdBy: actor.username,
+        sourceScreen: "session_heartbeat",
+      },
+    });
+    await recordSessionEvent(event);
+    controlPlaneEventBus.publish("session.changed", {
+      sessionId,
+      localSessionId,
+      reason: "heartbeat",
+    });
+    const projected = await getProjectedSessionRead(sessionId);
+    await cacheProjectedSession(projected);
+    return projected;
+  } catch (error) {
+    if (!isLocalDbUnavailableError(error)) {
+      throw error;
+    }
+    incrementControlPlaneMetric("projection_fallback_count");
+    return null;
+  }
 };
 
 export const syncPendingSessionEvents = async (): Promise<{
@@ -583,7 +742,16 @@ export const syncPendingSessionEvents = async (): Promise<{
     return { success: 0, failed: 0, total: 0, errors: [] };
   }
 
-  const events = await getPendingSessionEvents();
+  let events: SessionEvent[];
+  try {
+    events = await getPendingSessionEvents();
+  } catch (error) {
+    if (!isLocalDbUnavailableError(error)) {
+      throw error;
+    }
+    incrementControlPlaneMetric("projection_fallback_count");
+    return { success: 0, failed: 0, total: 0, errors: [] };
+  }
   if (events.length === 0) {
     return { success: 0, failed: 0, total: 0, errors: [] };
   }

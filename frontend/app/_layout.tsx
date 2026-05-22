@@ -329,7 +329,7 @@ export default function RootLayout() {
   return (
     <View style={styles.root}>
       {appShell}
-      <Animated.View pointerEvents="none" style={[styles.bootOverlay, { opacity: bootOpacity }]}>
+      <Animated.View style={[styles.bootOverlay, { opacity: bootOpacity, pointerEvents: "none" }]}>
         <BootLoadingView
           initError={null}
           progress={Math.max(initProgress, 95)}

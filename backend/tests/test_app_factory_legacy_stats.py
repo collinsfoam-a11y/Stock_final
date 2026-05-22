@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from bson import ObjectId
 
 import backend.app_factory as app_factory
 from backend.services.canonical_inventory import build_session_lookup
@@ -9,6 +10,18 @@ from backend.services.canonical_inventory import build_session_lookup
 def test_build_session_lookup_matches_id_and_session_id():
     assert build_session_lookup("session-123") == {
         "$or": [{"id": "session-123"}, {"session_id": "session-123"}]
+    }
+
+
+def test_build_session_lookup_supports_legacy_object_id():
+    session_id = "64c13ab08edf48a008793cac"
+
+    assert build_session_lookup(session_id) == {
+        "$or": [
+            {"id": session_id},
+            {"session_id": session_id},
+            {"_id": ObjectId(session_id)},
+        ]
     }
 
 

@@ -127,13 +127,15 @@ export const normalizeDiagnosisHealth = (
 
 /**
  * Get comprehensive health status with auto-diagnosis.
+ * Uses a short per-call timeout because this is a non-critical dashboard widget
+ * that is wrapped in `.catch(() => null)` at every call site.
  */
 export const getDiagnosisHealth = async () => {
   try {
-    const response = await api.get("/api/diagnosis/health");
+    const response = await api.get("/api/diagnosis/health", { timeout: 5000 });
     return normalizeDiagnosisHealth(response.data);
   } catch (error: unknown) {
-    __DEV__ && console.error("Get diagnosis health error:", error);
+    __DEV__ && console.debug("Get diagnosis health unavailable:", error);
     throw error;
   }
 };

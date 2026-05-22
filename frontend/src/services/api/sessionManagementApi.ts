@@ -22,6 +22,7 @@ import {
   getProjectedSessionsRead,
   updateSessionStatusCommand,
 } from "../control-plane/sessionControlPlane";
+import { isLocalDbUnavailableError } from "@/db/localDbErrors";
 
 const log = createLogger("SessionManagementApi");
 
@@ -97,14 +98,6 @@ const paginateSessions = (sessions: Session[], page: number, pageSize: number): 
   };
 };
 
-const isProjectionStorageUnavailable = (error: unknown): boolean => {
-  const message = error instanceof Error ? error.message : String(error);
-  return (
-    message.includes("navigator.storage not available") ||
-    message.includes("Invalid VFS state")
-  );
-};
-
 const readProjectedSessions = async (): Promise<Session[]> => {
   try {
     return ((await getProjectedSessionsRead()) || []) as Session[];
@@ -112,12 +105,56 @@ const readProjectedSessions = async (): Promise<Session[]> => {
     const details = {
       error: error instanceof Error ? error.message : String(error),
     };
-    if (isProjectionStorageUnavailable(error)) {
+    if (isLocalDbUnavailableError(error)) {
       log.debug("Unable to read projected sessions", details);
     } else {
       log.warn("Unable to read projected sessions", details);
     }
     return [];
+  }
+};
+
+const readProjectedSession = async (sessionId: string): Promise<Session | null> => {
+  try {
+    return ((await getProjectedSessionRead(sessionId)) || null) as Session | null;
+  } catch (error) {
+    const details = {
+      sessionId,
+      error: error instanceof Error ? error.message : String(error),
+    };
+    if (isLocalDbUnavailableError(error)) {
+      log.debug("Unable to read projected session", details);
+    } else {
+      log.warn("Unable to read projected session", details);
+    }
+    return null;
+  }
+};
+
+const readProjectedSessionStats = async (
+  sessionId: string
+): Promise<{
+  scannedItems: number;
+  pendingItems: number;
+  verifiedItems: number;
+  lastCountedAt: string | null;
+} | null> => {
+  try {
+    return await getProjectedSessionStatsRead(sessionId);
+  } catch (error) {
+    if (error instanceof ProjectionReadError) {
+      throw error;
+    }
+    const details = {
+      sessionId,
+      error: error instanceof Error ? error.message : String(error),
+    };
+    if (isLocalDbUnavailableError(error)) {
+      log.debug("Unable to read projected session stats", details);
+    } else {
+      log.warn("Unable to read projected session stats", details);
+    }
+    return null;
   }
 };
 
@@ -351,8 +388,9 @@ export const getSessions = async (page: number = 1, pageSize: number = 20) => {
  * Returns a single session from the API or offline cache.
  */
 export const getSession = async (sessionId: string) => {
+  const projectedSession = await readProjectedSession(sessionId);
+
   try {
-    const projectedSession = await getProjectedSessionRead(sessionId);
     if (!shouldAttemptReadApi()) {
       return projectedSession || (await getSessionFromCache(sessionId));
     }
@@ -374,14 +412,14 @@ export const getSession = async (sessionId: string) => {
     if (apiError?.response?.status === 404 && !sessionId.startsWith("offline_")) {
       log.warn(`Session ${sessionId} not found on server, removing from cache`);
       await removeSessionFromCache(sessionId);
-      return await getProjectedSessionRead(sessionId);
+      return projectedSession;
     }
 
     if (apiError?.response?.status !== 401) {
       log.warn("Error getting session:", error);
     }
 
-    return (await getProjectedSessionRead(sessionId)) || (await getSessionFromCache(sessionId));
+    return projectedSession || (await getSessionFromCache(sessionId));
   }
 };
 
@@ -389,8 +427,9 @@ export const getSession = async (sessionId: string) => {
  * Loads normalized session statistics for dashboards and active workflows.
  */
 export const getSessionStats = async (sessionId: string): Promise<SessionStatsResponse | null> => {
+  const projectedStats = await readProjectedSessionStats(sessionId);
+
   try {
-    const projectedStats = await getProjectedSessionStatsRead(sessionId);
     if (projectedStats && !shouldAttemptReadApi()) {
       return {
         id: sessionId,
@@ -427,9 +466,6 @@ export const getSessionStats = async (sessionId: string): Promise<SessionStatsRe
       itemsPerMinute: data.items_per_minute ?? 0,
     };
   } catch (error: unknown) {
-    if (error instanceof ProjectionReadError) {
-      throw error;
-    }
     if ((error as ApiErrorLike)?.response?.status === 404) {
       if (!sessionId.startsWith("offline_")) {
         log.warn(`Session ${sessionId} not found on server, removing from cache`);

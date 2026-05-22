@@ -58,6 +58,8 @@ export const updateBaseURL = (newBaseUrl: string) => {
 };
 
 connectionManager.addListener((connection: ConnectionInfo) => {
+  const networkStore = useNetworkStore.getState();
+
   if (!connection.isHealthy) {
     log.warn("Ignoring unhealthy connection update", {
       candidate: connection.backendUrl,
@@ -65,6 +67,10 @@ connectionManager.addListener((connection: ConnectionInfo) => {
     });
     return;
   }
+
+  networkStore.setIsOnline(true);
+  networkStore.setIsInternetReachable(true);
+  networkStore.setRestrictedMode(false);
 
   // L3 fix: Log old URL before updating to avoid logging stale value
   const previousUrl = apiClient.defaults.baseURL;
@@ -521,6 +527,11 @@ const logResponseError = (error: any, fullUrl: string, status: number | undefine
 };
 
 const handleResponseSuccess = (response: any) => {
+  const networkStore = useNetworkStore.getState();
+  networkStore.setIsOnline(true);
+  networkStore.setIsInternetReachable(true);
+  networkStore.setRestrictedMode(false);
+
   if (shouldLogNetworkDebug) {
     const fullUrl = toFullUrl(response.config.baseURL, response.config.url);
     log.debug("API response", { status: response.status, url: fullUrl });
