@@ -106,7 +106,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
 
   const handleClear = () => {
     void haptics.light();
-    onChangeText("");
+    onChangeText?.("");
     inputRef.current?.focus();
   };
 
