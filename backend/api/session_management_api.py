@@ -277,7 +277,7 @@ def _infer_snapshot_warehouse_aliases(
     )
 
     if "showroom" in hints or "floor" in hints:
-        return ["Primary"]
+        return ["Primary", "Main"]
     if "godown" in hints or "damage" in hints:
         return ["Main"]
     return []

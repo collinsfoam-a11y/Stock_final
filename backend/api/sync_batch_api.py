@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from backend.api.schemas import SessionType
 from backend.auth.dependencies import get_current_user_async as get_current_user
+from backend.config import settings
 from backend.db.runtime import get_db
 from backend.middleware.security import batch_rate_limiter
 from backend.services.canonical_inventory import (
@@ -36,6 +37,28 @@ from backend.services.transaction_manager import mongo_transaction
 from backend.services.validation_service import ValidationService
 
 logger = logging.getLogger(__name__)
+
+
+class _SyncBatchRedisFallback:
+    async def get(self, key: str) -> None:
+        return None
+
+
+async def get_sync_batch_redis():
+    try:
+        return await get_redis()
+    except Exception as exc:
+        environment = str(getattr(settings, "ENVIRONMENT", "development")).lower()
+        if environment in {"development", "test"}:
+            logger.warning(
+                "Redis unavailable for batch sync in %s; skipping rack-lock validation: %s",
+                environment,
+                sanitize_for_logging(str(exc)),
+            )
+            return _SyncBatchRedisFallback()
+
+        logger.error("Redis unavailable for batch sync: %s", sanitize_for_logging(str(exc)))
+        raise HTTPException(status_code=503, detail="Sync lock service unavailable") from exc
 
 
 def _normalize_serial_numbers(values: list[str]) -> list[str]:
@@ -359,7 +382,7 @@ async def sync_single_record(
 async def sync_batch(
     request: BatchSyncRequest,
     current_user: dict[str, Any] = Depends(get_current_user),
-    redis_service=Depends(get_redis),
+    redis_service=Depends(get_sync_batch_redis),
 ) -> BatchSyncResponse:
     """
     Batch sync endpoint - sync multiple records in one request
@@ -410,8 +433,9 @@ async def sync_batch(
     # Get database
     db = get_db()
 
-    # Get lock manager
-    lock_manager = get_lock_manager(redis_service)
+    # Batch sync can use a per-request lock manager because local fallback should not
+    # replace the global Redis-backed lock manager used by rack/session endpoints.
+    lock_manager = LockManager(redis_service)
 
     # Get circuit breaker
     from backend.services.circuit_breaker import CircuitBreakerConfig

@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-05-22T14:36:17.015Z",
+  "generatedAt": "2026-05-22T16:23:22.399Z",
   "baseline": {
     "path": "reports/web-bundle-baseline.json",
-    "updatedAt": "2026-05-22T14:36:10.967Z"
+    "updatedAt": "2026-05-22T16:23:15.648Z"
   },
   "status": "pass",
   "metrics": {
-    "generatedAt": "2026-05-22T14:36:17.012Z",
+    "generatedAt": "2026-05-22T16:23:22.397Z",
     "bundleCount": 69,
-    "totalJsKb": 4215.81640625,
+    "totalJsKb": 4227.1025390625,
     "mainBundleKb": 1965.9970703125,
-    "commonBundleKb": 1632.1708984375,
+    "commonBundleKb": 1643.3935546875,
     "routeChunkCount": 58,
-    "routeChunkTotalKb": 417.7109375,
+    "routeChunkTotalKb": 417.7744140625,
     "largestRouteChunkKb": 26.5732421875,
     "topRouteChunks": [
       {
@@ -22,12 +22,12 @@
       },
       {
         "route": "StaffHomeScreen",
-        "file": "StaffHomeScreen-a15ea5cd236d545031aca8bd5772cbe2.js",
-        "sizeKb": 25.79
+        "file": "StaffHomeScreen-6447782f00bb48e6c2daba7da66b87d5.js",
+        "sizeKb": 25.84
       },
       {
         "route": "SessionDetailScreen",
-        "file": "SessionDetailScreen-22550365e59e307cd9525aa7130927fa.js",
+        "file": "SessionDetailScreen-12224cbc7f4a62b26f2ab913f383a59b.js",
         "sizeKb": 24.21
       },
       {
@@ -57,8 +57,8 @@
       },
       {
         "route": "login",
-        "file": "login-b47cab211340bfb4069e560c4cdf0afe.js",
-        "sizeKb": 14.57
+        "file": "login-ea206ca837178ae340bc3935c0c49877.js",
+        "sizeKb": 14.58
       },
       {
         "route": "user-workflows",
@@ -89,11 +89,11 @@
     {
       "id": "total-js-kb",
       "label": "Total JS size",
-      "current": 4215.82,
-      "limit": 4215.82,
+      "current": 4227.1,
+      "limit": 4227.1,
       "tolerance": 20,
       "unit": "kB",
-      "effectiveLimit": 4235.82,
+      "effectiveLimit": 4247.1,
       "status": "pass"
     },
     {
@@ -109,21 +109,21 @@
     {
       "id": "common-bundle-kb",
       "label": "Common bundle size",
-      "current": 1632.17,
-      "limit": 1632.17,
+      "current": 1643.39,
+      "limit": 1643.39,
       "tolerance": 2.5,
       "unit": "kB",
-      "effectiveLimit": 1634.67,
+      "effectiveLimit": 1645.89,
       "status": "pass"
     },
     {
       "id": "route-total-kb",
       "label": "Route chunk aggregate size",
-      "current": 417.71,
-      "limit": 417.71,
+      "current": 417.77,
+      "limit": 417.77,
       "tolerance": 14,
       "unit": "kB",
-      "effectiveLimit": 431.71,
+      "effectiveLimit": 431.77,
       "status": "pass"
     },
     {

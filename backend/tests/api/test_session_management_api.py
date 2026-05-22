@@ -163,6 +163,31 @@ class TestSnapshotLocationMatching:
         assert snapshot_items[0].item_code == "ITEM-001"
         assert snapshot_items[0].warehouse == "Primary"
 
+    @pytest.mark.asyncio
+    async def test_collect_snapshot_items_falls_back_to_main_for_showroom_session(self):
+        db = InMemoryDatabase()
+        await db.erp_items.insert_one(
+            {
+                "item_code": "ITEM-002",
+                "stock_qty": 5,
+                "warehouse": "Main",
+                "barcode": "789012",
+            }
+        )
+
+        snapshot_items = await _collect_snapshot_items(
+            db,
+            "Showroom - First Floor - AT2",
+            location_type="Showroom",
+            location_name="First Floor",
+            rack_no="AT2",
+        )
+
+        assert len(snapshot_items) == 1
+        assert snapshot_items[0].item_code == "ITEM-002"
+        assert snapshot_items[0].stock_qty == 5.0
+        assert snapshot_items[0].warehouse == "Main"
+
 
 class TestCreateSessionEndpoint:
     """Test POST /api/sessions/"""

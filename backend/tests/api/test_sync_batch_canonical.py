@@ -1,6 +1,36 @@
 from datetime import datetime, timezone
 
 import pytest
+from fastapi import HTTPException
+
+from backend.api import sync_batch_api
+
+
+@pytest.mark.asyncio
+async def test_sync_batch_redis_dependency_falls_back_in_development(monkeypatch):
+    async def fail_get_redis():
+        raise RuntimeError("redis down")
+
+    monkeypatch.setattr(sync_batch_api, "get_redis", fail_get_redis)
+    monkeypatch.setattr(sync_batch_api.settings, "ENVIRONMENT", "development")
+
+    redis_service = await sync_batch_api.get_sync_batch_redis()
+
+    assert await redis_service.get("rack:lock:R1") is None
+
+
+@pytest.mark.asyncio
+async def test_sync_batch_redis_dependency_returns_503_outside_local_env(monkeypatch):
+    async def fail_get_redis():
+        raise RuntimeError("redis down")
+
+    monkeypatch.setattr(sync_batch_api, "get_redis", fail_get_redis)
+    monkeypatch.setattr(sync_batch_api.settings, "ENVIRONMENT", "production")
+
+    with pytest.raises(HTTPException) as exc:
+        await sync_batch_api.get_sync_batch_redis()
+
+    assert exc.value.status_code == 503
 
 
 def _legacy_count_line_op(
