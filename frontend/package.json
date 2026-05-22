@@ -3,11 +3,8 @@
   "version": "2.1.0",
   "private": true,
   "main": "index.js",
-  "pnpm": {
-    "overrides": {
-      "@tootallnate/once": "^3.0.1",
-      "postcss": "8.5.10"
-    }
+  "overrides": {
+    "@tootallnate/once": "^3.0.1"
   },
   "engines": {
     "node": ">=20.19.4 <26.0.0"
@@ -27,7 +24,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "web:clear": "expo start --web --clear",
-    "lint": "node ./scripts/run-expo-lint.cjs && npm run governance:ui:changed:strict",
+    "lint": "expo lint -- --no-error-on-unmatched-pattern && npm run governance:ui:changed:strict",
     "lint:fix": "expo lint -- --fix --no-error-on-unmatched-pattern",
     "test": "node ./scripts/run-jest.cjs",
     "test:watch": "node ./scripts/run-jest.cjs --watch",
@@ -38,7 +35,7 @@
     "e2e:settings-notifications-smoke": "E2E_MOCK_AUTH=true playwright test e2e/settings-notifications-smoke.spec.ts --project='Desktop Chrome'",
     "typecheck": "tsc --noEmit",
     "typecheck:watch": "tsc --noEmit --watch",
-    "build:web": "node ./scripts/clean-web-export.cjs && expo export --clear -p web",
+    "build:web": "expo export --clear -p web",
     "bundle:web:report": "node ./scripts/report-web-bundle.cjs",
     "bundle:web:report:strict": "node ./scripts/report-web-bundle.cjs --strict",
     "bundle:web:baseline": "node ./scripts/check-web-bundle-regression.cjs --write-baseline",
@@ -64,9 +61,9 @@
     "build:android": "eas build -p android",
     "build:ios": "eas build -p ios",
     "ci": "npm run lint && npm run typecheck && npm run test",
-    "ci:parallel": "npm-run-all --npm-path npm --parallel lint typecheck test",
-    "preflight": "npm-run-all --npm-path npm doctor:expo lint typecheck test build:web:analyze",
-    "validate": "npm-run-all --npm-path npm --parallel lint typecheck && npm run test",
+    "ci:parallel": "npm-run-all --parallel lint typecheck test",
+    "preflight": "npm-run-all doctor:expo lint typecheck test build:web:analyze",
+    "validate": "npm-run-all --parallel lint typecheck && npm run test",
     "clean": "rm -rf node_modules/.cache .expo dist",
     "clean:all": "rm -rf node_modules .expo dist && npm install",
     "deps:check": "npx npm-check -u",
@@ -79,7 +76,6 @@
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
-    "@expo/dom-webview": "55.0.6",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "8.6.0",
@@ -150,13 +146,12 @@
     "babel-plugin-module-resolver": "^5.0.2",
     "babel-plugin-transform-import-meta": "^2.3.3",
     "babel-plugin-transform-remove-console": "^6.9.4",
-    "eslint": "^9.0.0",
+    "eslint": "^8.57.1",
     "eslint-config-expo": "~55.0.1",
     "eslint-import-resolver-typescript": "^4.4.4",
-    "globals": "^16.0.0",
     "husky": "^9.1.7",
     "jest": "~29.7.0",
-    "jest-environment-jsdom": "~29.7.0",
+    "jest-environment-jsdom": "^30.3.0",
     "jest-expo": "~55.0.17",
     "lint-staged": "^16.2.7",
     "npm-run-all2": "^7.0.2",
