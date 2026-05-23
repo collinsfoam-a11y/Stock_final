@@ -13,7 +13,3 @@
 ## 2025-05-18 - Standardizing Tactile Feedback across Design System Components
 **Learning:** For a consistent mobile "feel," all interactive primitive components (Switch, Checkbox, Radio, etc.) should provide subtle haptic feedback on state change. Centralizing this logic in a `haptics` service that respects feature flags and platform constraints (e.g., disabling on web) ensures a robust and unified user experience.
 **Action:** Use `haptics.light()` from the centralized haptics service for all primary toggle/selection interactions in new UI components.
-
-## 2026-05-23 - [Enhanced Input Micro-Interactions]
-**Learning:** Adding a clear button to form inputs significantly improves data entry efficiency on mobile. Implementing standardized haptic feedback for all interactive icons (clear, toggle, custom actions) and ensuring full accessibility via `getAccessibleButtonProps` creates a more professional and inclusive experience.
-**Action:** When creating interactive input components, always include a clear button option, tactile feedback for all state changes, and explicit ARIA labels for icon-only actions.
