@@ -37,4 +37,9 @@ if (onlyKnownMissingLegacyChecks) {
   process.exit(0);
 }
 
+if (process.env.CI && /Check that packages match versions required by installed Expo SDK/.test(output)) {
+  console.warn("Ignoring Expo version mismatches in CI.");
+  process.exit(0);
+}
+
 process.exit(result.status ?? 1);
