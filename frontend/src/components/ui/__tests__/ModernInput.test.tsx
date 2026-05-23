@@ -1,8 +1,20 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
 import { ModernInput } from "../ModernInput";
+import { haptics } from "@/services/haptics";
+
+// Mock haptics
+jest.mock("@/services/haptics", () => ({
+  haptics: {
+    light: jest.fn(),
+  },
+}));
 
 describe("ModernInput", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it("renders correctly with label", () => {
     const { getByText } = render(
       <ModernInput
@@ -51,5 +63,47 @@ describe("ModernInput", () => {
     );
 
     expect(getByTestId("modern-input").props.editable).toBe(false);
+  });
+
+  it("renders clear button when showClearButton is true and value is present", () => {
+    const { getByLabelText } = render(
+      <ModernInput
+        label="Username"
+        value="testuser"
+        onChangeText={() => {}}
+        showClearButton
+      />
+    );
+    expect(getByLabelText("Clear Username")).toBeTruthy();
+  });
+
+  it("calls onChangeText('') and triggers haptics when clear button is pressed", () => {
+    const onChangeText = jest.fn();
+    const { getByLabelText } = render(
+      <ModernInput
+        label="Username"
+        value="testuser"
+        onChangeText={onChangeText}
+        showClearButton
+      />
+    );
+
+    fireEvent.press(getByLabelText("Clear Username"));
+    expect(onChangeText).toHaveBeenCalledWith("");
+    expect(haptics.light).toHaveBeenCalled();
+  });
+
+  it("triggers haptics when password visibility is toggled", () => {
+    const { getByLabelText } = render(
+      <ModernInput
+        label="Password"
+        value="secret"
+        onChangeText={() => {}}
+        secureTextEntry
+      />
+    );
+
+    fireEvent.press(getByLabelText("Show password"));
+    expect(haptics.light).toHaveBeenCalled();
   });
 });
