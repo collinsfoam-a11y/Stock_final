@@ -1,0 +1,3 @@
+## 2024-05-23 - Standardizing Icon-Only Buttons
+**Learning:** React Native `TouchableOpacity` components wrapping icon-only elements (like `Ionicons`) need explicit accessibility roles, labels, and state to be navigable by screen readers. Furthermore, the icons themselves should be marked as decorative so they are ignored by the screen reader to avoid redundant or confusing announcements.
+**Action:** Consistently use `getAccessibleButtonProps` for the touchable wrapper and `getDecorativeIconProps` for the icon element from `src/utils/accessibility.ts` across the application. Added these to the close button in `ImageViewerModal` along with a light haptic feedback to improve the UX.

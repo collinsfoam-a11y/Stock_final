@@ -12,6 +12,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "../../utils/accessibility";
+import { haptics } from "../../services/haptics";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -54,8 +56,15 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
             )}
           />
           <SafeAreaView style={styles.header}>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={28} color="white" />
+            <TouchableOpacity
+              onPress={() => {
+                void haptics.light();
+                onClose();
+              }}
+              style={styles.closeButton}
+              {...getAccessibleButtonProps({ label: "Close image viewer" })}
+            >
+              <Ionicons name="close" size={28} color="white" {...getDecorativeIconProps()} />
             </TouchableOpacity>
           </SafeAreaView>
         </View>
