@@ -1,0 +1,4 @@
+* @your-org/stock-verify-maintainers
+/backend/ @your-org/stock-verify-backend
+/frontend/ @your-org/stock-verify-frontend
+

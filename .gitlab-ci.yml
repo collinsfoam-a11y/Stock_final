@@ -7,10 +7,11 @@ stages:
   - build
 
 variables:
-  PYTHON_VERSION: "3.10"
-  NODE_VERSION: "22"
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20.19.4"
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.cache/npm"
+  PNPM_STORE_PATH: "$CI_PROJECT_DIR/.cache/pnpm"
   # Default fallback if not using GitLab Container Registry
   DOCKER_IMAGE_TAG: $CI_COMMIT_SHA
 
@@ -19,7 +20,7 @@ variables:
 # ==========================================
 backend-lint:
   stage: lint
-  image: python:3.10-slim
+  image: python:3.11-slim
   cache:
     key: backend-pip
     paths:
@@ -41,20 +42,21 @@ backend-lint:
 # ==========================================
 frontend-lint:
   stage: lint
-  image: node:22-bookworm-slim
+  image: node:20.19.4-bookworm-slim
   cache:
-    key: frontend-npm
+    key: frontend-pnpm
     paths:
-      - .cache/npm
+      - .cache/pnpm
       - frontend/node_modules
   before_script:
     - cd frontend
-    - npm ci --cache ../.cache/npm --legacy-peer-deps
+    - corepack enable
+    - pnpm install --frozen-lockfile --store-dir ../.cache/pnpm
   script:
     - echo "Checking Types..."
-    - npm run typecheck
+    - pnpm run typecheck
     - echo "Running ESLint..."
-    - npm run lint
+    - pnpm run lint
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
@@ -64,7 +66,7 @@ frontend-lint:
 # ==========================================
 backend-tests:
   stage: test
-  image: python:3.10-slim
+  image: python:3.11-slim
   services:
     - name: mongo:6.0
       alias: mongodb
@@ -96,17 +98,18 @@ backend-tests:
 # ==========================================
 frontend-tests:
   stage: test
-  image: node:22-bookworm-slim
+  image: node:20.19.4-bookworm-slim
   cache:
-    key: frontend-npm
+    key: frontend-pnpm
     paths:
-      - .cache/npm
+      - .cache/pnpm
       - frontend/node_modules
   before_script:
     - cd frontend
-    - npm ci --cache ../.cache/npm --legacy-peer-deps
+    - corepack enable
+    - pnpm install --frozen-lockfile --store-dir ../.cache/pnpm
   script:
-    - npm test -- --coverage --watchAll=false
+    - pnpm test -- --coverage --watchAll=false
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
