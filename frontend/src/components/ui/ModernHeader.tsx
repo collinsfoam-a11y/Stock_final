@@ -20,6 +20,7 @@ import { flags } from "@/constants/flags";
 import { safeBackNavigation } from "@/utils/navigation";
 import type { UserRole } from "@/utils/roleNavigation";
 import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 interface ModernHeaderProps {
   title?: string;
   showLogo?: boolean;
@@ -74,6 +75,7 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
     !!user && showSettingsButton && rightAction?.icon !== "settings-outline";
 
   const handleBackPress = () => {
+    void haptics.light();
     if (onBackPress) {
       onBackPress();
       return;
@@ -83,6 +85,7 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
   };
 
   const onPressSettings = () => {
+    void haptics.light();
     const role = user?.role;
     const target =
       role === "admin" || role === "supervisor" || role === "staff"
@@ -206,7 +209,10 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
           )}
           {rightAction && (
             <TouchableOpacity
-              onPress={rightAction.onPress}
+              onPress={() => {
+                void haptics.light();
+                rightAction.onPress();
+              }}
               style={styles.backButton}
               {...getAccessibleButtonProps({
                 label: rightAction.label ?? "Header action",
