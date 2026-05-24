@@ -7,11 +7,6 @@
       "exclude": ["expo", "expo-camera", "expo-file-system", "expo-font", "expo-image", "expo-router", "expo-sharing", "jest-expo"]
     }
   },
-  "expo": {
-    "install": {
-      "exclude": ["expo", "expo-camera", "expo-file-system", "expo-font", "expo-image", "expo-router", "expo-sharing", "jest-expo"]
-    }
-  },
   "main": "index.js",
   "overrides": {
     "@tootallnate/once": "^3.0.1"

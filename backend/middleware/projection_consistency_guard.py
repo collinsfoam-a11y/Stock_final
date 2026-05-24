@@ -168,7 +168,9 @@ class ProjectionConsistencyGuardMiddleware(BaseHTTPMiddleware):
             30,
             int(os.getenv("PROJECTION_GUARD_REPAIR_LOCK_TTL_SECONDS", "90")),
         )
-        self.circuit_enabled = os.getenv("PROJECTION_GUARD_CIRCUIT_ENABLED", "true").lower() == "true"
+        self.circuit_enabled = (
+            os.getenv("PROJECTION_GUARD_CIRCUIT_ENABLED", "true").lower() == "true"
+        )
         self.circuit_window_seconds = max(
             5.0,
             float(os.getenv("PROJECTION_GUARD_CIRCUIT_WINDOW_SECONDS", "60")),
@@ -351,7 +353,9 @@ class ProjectionConsistencyGuardMiddleware(BaseHTTPMiddleware):
             [sanitize_for_logging(sid) for sid in state.missing_session_ids[:10]],
         )
         if write_to_visibility_ms is not None:
-            ProjectionConsistencyGuardMiddleware._visibility_samples_ms.append(write_to_visibility_ms)
+            ProjectionConsistencyGuardMiddleware._visibility_samples_ms.append(
+                write_to_visibility_ms
+            )
             self._emit_visibility_sla_summary()
 
     async def _repair_once(self, missing_session_ids: list[str]) -> bool:

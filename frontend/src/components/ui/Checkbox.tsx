@@ -12,15 +12,10 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from "react-native-reanimated";
-import {
-  colors,
-  semanticColors,
-  spacing,
-  radius,
-  textStyles,
-  touchTargets,
-  hitSlop,
-} from "@/theme/unified";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { colorPalette } from "@/theme/designTokens";
+import { hitSlop, touchTargets } from "@/theme/legacyCompat";
 import { haptics } from "@/services/haptics";
 
 interface CheckboxProps {
@@ -40,6 +35,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
   disabled = false,
   indeterminate = false,
 }) => {
+  const uiTokens = useUiTokens();
   const isSelected = checked || indeterminate;
   const scale = useSharedValue(isSelected ? 1 : 0);
 
@@ -60,6 +56,63 @@ export const Checkbox: React.FC<CheckboxProps> = ({
       onChange(!checked);
     }
   };
+
+  const styles = React.useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flexDirection: "row",
+          alignItems: "flex-start",
+          minHeight: touchTargets.minimum,
+          paddingVertical: uiTokens.spacing.xs,
+        },
+        checkbox: {
+          width: 20,
+          height: 20,
+          borderRadius: uiTokens.radius.sm,
+          borderWidth: 2,
+          borderColor: uiTokens.colors.border,
+          alignItems: "center",
+          justifyContent: "center",
+          marginRight: uiTokens.spacing.sm,
+          marginTop: 2,
+          backgroundColor: uiTokens.colors.surface,
+        },
+        checkboxChecked: {
+          borderColor: uiTokens.colors.accent,
+          backgroundColor: uiTokens.colors.accent,
+        },
+        checkboxDisabled: {
+          borderColor: colorWithAlpha(uiTokens.colors.border, 0.45),
+          backgroundColor: colorWithAlpha(uiTokens.colors.surface, 0.8),
+        },
+        checkboxDisabledChecked: {
+          borderColor: colorWithAlpha(uiTokens.colors.border, 0.6),
+          backgroundColor: colorWithAlpha(uiTokens.colors.border, 0.45),
+        },
+        labelContainer: {
+          flex: 1,
+          paddingTop: 1,
+        },
+        label: {
+          fontSize: 14,
+          fontWeight: "500",
+          color: uiTokens.colors.textPrimary,
+        },
+        labelDisabled: {
+          color: uiTokens.colors.textMuted,
+        },
+        description: {
+          fontSize: 12,
+          color: uiTokens.colors.textSecondary,
+          marginTop: uiTokens.spacing.xs,
+        },
+        descriptionDisabled: {
+          color: uiTokens.colors.textMuted,
+        },
+      }),
+    [uiTokens]
+  );
 
   return (
     <TouchableOpacity
@@ -86,7 +139,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
           <Ionicons
             name={indeterminate ? "remove" : "checkmark"}
             size={16}
-            color={disabled ? colors.neutral[700] : colors.white}
+            color={disabled ? uiTokens.colors.textMuted : colorPalette.neutral[0]}
           />
         </Animated.View>
       </View>
@@ -111,56 +164,3 @@ export const Checkbox: React.FC<CheckboxProps> = ({
     </TouchableOpacity>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    minHeight: touchTargets.minimum,
-    paddingVertical: spacing.xs,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: radius.xs,
-    borderWidth: 2,
-    borderColor: semanticColors.input.border,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: spacing.sm,
-    marginTop: 2,
-    backgroundColor: semanticColors.input.background,
-  },
-  checkboxChecked: {
-    borderColor: semanticColors.interactive.default,
-    backgroundColor: semanticColors.interactive.default,
-  },
-  checkboxDisabled: {
-    borderColor: colors.neutral[300],
-    backgroundColor: colors.neutral[100],
-  },
-  checkboxDisabledChecked: {
-    borderColor: colors.neutral[400],
-    backgroundColor: colors.neutral[300],
-  },
-  labelContainer: {
-    flex: 1,
-    paddingTop: 1,
-  },
-  label: {
-    ...textStyles.bodySmall,
-    fontWeight: "500",
-    color: semanticColors.text.primary,
-  },
-  labelDisabled: {
-    color: semanticColors.text.disabled,
-  },
-  description: {
-    ...textStyles.caption,
-    color: semanticColors.text.secondary,
-    marginTop: spacing.xs,
-  },
-  descriptionDisabled: {
-    color: semanticColors.text.disabled,
-  },
-});

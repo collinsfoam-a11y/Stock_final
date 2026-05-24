@@ -1189,23 +1189,28 @@ class TestGetCountLines:
     async def test_get_count_lines_with_verified_filter(self):
         """Test count lines retrieval with verified filter"""
         mock_db = Mock()
+
         class AsyncIterMock:
             def __init__(self, items):
                 self.items = items
+
             async def __aiter__(self):
                 for item in self.items:
                     yield item
+
             def sort(self, *args, **kwargs):
                 return self
-                
-        mock_db.count_lines.find.return_value = AsyncIterMock([
-            {
-                "id": "3",
-                "session_id": "session123",
-                "counted_qty": 20,
-                "verified": True,
-            }
-        ])
+
+        mock_db.count_lines.find.return_value = AsyncIterMock(
+            [
+                {
+                    "id": "3",
+                    "session_id": "session123",
+                    "counted_qty": 20,
+                    "verified": True,
+                }
+            ]
+        )
 
         with patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db):
             result = await get_count_lines(

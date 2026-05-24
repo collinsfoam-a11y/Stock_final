@@ -300,7 +300,9 @@ class ProjectionReadService:
             "damage_items": int(row.get("damage_items") or 0),
             "pending_items": pending_items,
             "duration_seconds": duration_seconds,
-            "items_per_minute": (scanned_items / (duration_seconds / 60.0)) if duration_seconds > 0 else 0,
+            "items_per_minute": (
+                (scanned_items / (duration_seconds / 60.0)) if duration_seconds > 0 else 0
+            ),
             "scanned_items": scanned_items,
             "remaining_items": max(int(row.get("total_items") or 0) - scanned_items, 0),
             "completion_percent": _as_float(row.get("completion_percent")),
@@ -464,7 +466,9 @@ class ProjectionReadService:
         positive_variance = sum(max(_as_float(row.get("variance")), 0.0) for row in rows)
         negative_variance = sum(min(_as_float(row.get("variance")), 0.0) for row in rows)
         verified_count = sum(1 for row in rows if _line_verified(row))
-        total_value = sum(_as_float(row.get("counted_qty")) * _as_float(row.get("mrp")) for row in rows)
+        total_value = sum(
+            _as_float(row.get("counted_qty")) * _as_float(row.get("mrp")) for row in rows
+        )
         variance_value = sum(
             _as_float(row.get("variance")) * _as_float(row.get("mrp")) for row in rows
         )
@@ -510,7 +514,9 @@ class ProjectionReadService:
                 "aggregations": {
                     "total_items": filtered_records,
                     "total_variance": total_variance,
-                    "avg_variance": (total_variance / filtered_records) if filtered_records else 0.0,
+                    "avg_variance": (
+                        (total_variance / filtered_records) if filtered_records else 0.0
+                    ),
                     "total_value": total_value,
                     "variance_value": variance_value,
                     "verified_count": verified_count,
@@ -530,9 +536,11 @@ class ProjectionReadService:
             "pagination": {
                 "page": int(config.page),
                 "page_size": int(config.page_size),
-                "total_pages": (filtered_records + int(config.page_size) - 1) // int(config.page_size)
-                if int(config.page_size) > 0
-                else 1,
+                "total_pages": (
+                    (filtered_records + int(config.page_size) - 1) // int(config.page_size)
+                    if int(config.page_size) > 0
+                    else 1
+                ),
                 "has_next": skip + int(config.page_size) < filtered_records,
                 "has_prev": int(config.page) > 1,
             },
@@ -684,7 +692,8 @@ class ProjectionReadService:
         active_sessions = sum(
             1
             for row in rows
-            if str(row.get("status") or "").strip().upper() in {"OPEN", "ACTIVE", "PAUSED", "RECONCILE"}
+            if str(row.get("status") or "").strip().upper()
+            in {"OPEN", "ACTIVE", "PAUSED", "RECONCILE"}
         )
         return {
             "total_sessions": total_sessions,
@@ -746,9 +755,10 @@ class ProjectionReadService:
             variance = _as_float(row.get("variance"))
             if abs(variance) <= 1e-9:
                 continue
-            if getattr(filters, "status", None) and str(row.get("status") or "").lower() != str(
-                filters.status
-            ).lower():
+            if (
+                getattr(filters, "status", None)
+                and str(row.get("status") or "").lower() != str(filters.status).lower()
+            ):
                 continue
             if getattr(filters, "user_id", None) and row.get("counted_by") != filters.user_id:
                 continue
@@ -865,7 +875,8 @@ class ProjectionReadService:
         legacy_variance_total = sum(_as_float(row.get("variance")) for row in legacy_lines)
         projection_variance_total = sum(_as_float(row.get("variance")) for row in variance_rows)
         legacy_financial_total = sum(
-            _as_float(row.get("counted_qty")) * _as_float(row.get("mrp_counted") or row.get("mrp_erp"))
+            _as_float(row.get("counted_qty"))
+            * _as_float(row.get("mrp_counted") or row.get("mrp_erp"))
             for row in legacy_lines
         )
         projection_financial_total = sum(

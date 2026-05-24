@@ -1,7 +1,7 @@
 # Makefile for STOCK_VERIFY CI and Development Tasks
 # Usage: make <target>
 
-.PHONY: help ci test lint format typecheck pre-commit install clean eval security secrets agent-ci agent-python agent-node audit-count-line-names
+.PHONY: help ci test lint format typecheck pre-commit install install-ai clean eval security secrets agent-ci agent-python agent-node audit-count-line-names
 
 PYTHON := ./scripts/python.sh
 
@@ -26,6 +26,7 @@ help:
 	@echo ""
 	@echo "🛠️  Development:"
 	@echo "  make install     - Install dependencies"
+	@echo "  make install-ai  - Install optional AI dependencies"
 	@echo "  make clean       - Clean build artifacts"
 	@echo ""
 
@@ -96,7 +97,7 @@ node-ci: node-lint node-typecheck node-test
 
 node-test:
 	@echo "Running Node.js tests..."
-	cd frontend && npm test
+	cd frontend && corepack pnpm test
 
 node-test-watch:
 	@echo "Running Node.js tests in watch mode..."
@@ -108,23 +109,23 @@ node-test-coverage:
 
 node-lint:
 	@echo "Running Node.js linter..."
-	cd frontend && npm run lint
+	cd frontend && corepack pnpm run lint
 
 node-lint-fix:
 	@echo "Fixing Node.js lint issues..."
-	cd frontend && npm run lint:fix
+	cd frontend && corepack pnpm run lint:fix
 
 node-typecheck:
 	@echo "Running TypeScript type checker..."
-	cd frontend && npm run typecheck
+	cd frontend && corepack pnpm run typecheck
 
 node-ui-governance:
 	@echo "Running UI governance scan..."
-	cd frontend && npm run governance:ui:changed
+	cd frontend && corepack pnpm run governance:ui:changed
 
 node-ui-governance-strict:
 	@echo "Running strict UI governance scan..."
-	cd frontend && npm run governance:ui:changed:strict
+	cd frontend && corepack pnpm run governance:ui:changed:strict
 
 node-typecheck-watch:
 	@echo "Running TypeScript type checker in watch mode..."
@@ -132,11 +133,11 @@ node-typecheck-watch:
 
 node-clean:
 	@echo "Cleaning Node.js cache and build artifacts..."
-	cd frontend && npm run clean
+	cd frontend && corepack pnpm run clean
 
 node-e2e-recount-smoke:
 	@echo "Running recount assignment smoke against backend on http://127.0.0.1:8001..."
-	cd frontend && E2E_BACKEND_URL=http://127.0.0.1:8001 npm run e2e:recount-smoke
+	cd frontend && E2E_BACKEND_URL=http://127.0.0.1:8001 corepack pnpm run e2e:recount-smoke
 
 # =============================================================================
 # 🔄 COMBINED TARGETS
@@ -177,9 +178,13 @@ install:
 	@echo "Installing Python dependencies..."
 	$(PYTHON) -m pip install -r backend/requirements.dev.txt
 	@echo "Installing Node.js dependencies..."
-	cd frontend && npm ci
+	cd frontend && corepack pnpm install --frozen-lockfile
 	@echo "Installing pre-commit hooks..."
-	pre-commit install
+	pre-commit install || true
+
+install-ai:
+	@echo "Installing optional AI dependencies..."
+	$(PYTHON) -m pip install -r backend/requirements.ai.txt
 
 clean:
 	@echo "Cleaning build artifacts..."

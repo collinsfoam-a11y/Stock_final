@@ -50,12 +50,9 @@ class RefreshTokenService:
         """Create a short-lived access token"""
         expire = utc_now_naive() + self.access_token_expiry
         to_encode = data.copy()
-        to_encode.update({
-            "exp": expire,
-            "type": "access",
-            "iss": "stk-verify-api",
-            "aud": "stk-verify-client"
-        })
+        to_encode.update(
+            {"exp": expire, "type": "access", "iss": "stk-verify-api", "aud": "stk-verify-client"}
+        )
         return jwt.encode(to_encode, self.access_secret_key, algorithm=self.algorithm)
 
     def create_refresh_token(self, data: dict[str, Any]) -> str:
@@ -64,13 +61,15 @@ class RefreshTokenService:
         to_encode = data.copy()
         # Include a unique token identifier so concurrent logins do not
         # generate identical JWT payloads and collide on the token hash index.
-        to_encode.update({
-            "exp": expire,
-            "type": "refresh",
-            "jti": str(uuid4()),
-            "iss": "stk-verify-api",
-            "aud": "stk-verify-client"
-        })
+        to_encode.update(
+            {
+                "exp": expire,
+                "type": "refresh",
+                "jti": str(uuid4()),
+                "iss": "stk-verify-api",
+                "aud": "stk-verify-client",
+            }
+        )
         token = jwt.encode(to_encode, self.refresh_secret_key, algorithm=self.algorithm)
 
         return token
@@ -167,7 +166,7 @@ class RefreshTokenService:
                 self.refresh_secret_key,
                 algorithms=[self.algorithm],
                 issuer="stk-verify-api",
-                audience="stk-verify-client"
+                audience="stk-verify-client",
             )
 
             if payload.get("type") != "refresh":
@@ -237,9 +236,7 @@ class RefreshTokenService:
             now = utc_now_naive()
             update_data = {"revoked": True, "revoked_at": now}
             if grace_period_seconds > 0:
-                update_data["grace_until"] = now + timedelta(
-                    seconds=grace_period_seconds
-                )
+                update_data["grace_until"] = now + timedelta(seconds=grace_period_seconds)
 
             result = await self.db.refresh_tokens.update_many(
                 {"username": username, "revoked": False},
@@ -270,9 +267,7 @@ class RefreshTokenService:
             try:
                 user_profile = await self.db.users.find_one({"username": username})
             except Exception as fetch_error:
-                logger.warning(
-                    "Failed to fetch user profile for refresh response: %s", fetch_error
-                )
+                logger.warning("Failed to fetch user profile for refresh response: %s", fetch_error)
 
         # Rotate refresh token (issue new one, store it, revoke old one)
         new_refresh_token = self.create_refresh_token({"sub": username, "role": role})

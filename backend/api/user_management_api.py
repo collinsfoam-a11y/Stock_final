@@ -115,6 +115,14 @@ class UpdateUserRequest(BaseModel):
     disabled_permissions: Optional[list[str]] = None
 
 
+class ResetPasswordRequest(BaseModel):
+    new_password: str = Field(..., min_length=6, max_length=128)
+
+
+class ResetPinRequest(BaseModel):
+    new_pin: str = Field(..., pattern=r"^\d{4}$")
+
+
 class BulkUserAction(BaseModel):
     """Request for bulk user actions"""
 
@@ -779,10 +787,10 @@ async def get_available_roles(
     }
 
 
-@user_management_router.post("/{user_id}/reset-password")
+@user_management_router.post("/{user_id}/reset-password", status_code=status.HTTP_200_OK)
 async def reset_user_password(
     user_id: str,
-    new_password: str = Query(..., min_length=6, max_length=128),
+    payload: ResetPasswordRequest,
     current_user: dict = Depends(require_admin),
 ):
     """
@@ -796,7 +804,7 @@ async def reset_user_password(
         {"_id": oid},
         {
             "$set": {
-                "hashed_password": get_password_hash(new_password),
+                "hashed_password": get_password_hash(payload.new_password),
                 "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
             }
         },
@@ -811,10 +819,10 @@ async def reset_user_password(
     return {"success": True, "message": "Password reset successfully"}
 
 
-@user_management_router.post("/{user_id}/reset-pin")
+@user_management_router.post("/{user_id}/reset-pin", status_code=status.HTTP_200_OK)
 async def reset_user_pin(
     user_id: str,
-    new_pin: str = Query(..., pattern=r"^\d{4}$"),
+    payload: ResetPinRequest,
     current_user: dict = Depends(require_admin),
 ):
     """
@@ -828,8 +836,8 @@ async def reset_user_pin(
         {"_id": oid},
         {
             "$set": {
-                "pin_hash": get_pin_hash(new_pin),
-                "pin_lookup_hash": get_pin_lookup_hash(new_pin),
+                "pin_hash": get_pin_hash(payload.new_pin),
+                "pin_lookup_hash": get_pin_lookup_hash(payload.new_pin),
                 "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
             }
         },

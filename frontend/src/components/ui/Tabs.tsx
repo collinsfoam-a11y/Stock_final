@@ -18,15 +18,10 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from "react-native-reanimated";
-import {
-  colors,
-  semanticColors,
-  spacing,
-  radius,
-  textStyles,
-  touchTargets,
-  hitSlop,
-} from "@/theme/unified";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { colorPalette } from "@/theme/designTokens";
+import { hitSlop, touchTargets } from "@/theme/legacyCompat";
 
 export interface Tab {
   key: string;
@@ -50,6 +45,7 @@ export const Tabs: React.FC<TabsProps> = ({
   variant = "default",
   scrollable = false,
 }) => {
+  const uiTokens = useUiTokens();
   const [tabLayouts, setTabLayouts] = useState<Record<string, { x: number; width: number }>>(
     {},
   );
@@ -128,6 +124,82 @@ export const Tabs: React.FC<TabsProps> = ({
     );
   };
 
+  const styles = React.useMemo(
+    () =>
+      StyleSheet.create({
+        wrapper: {
+          position: "relative",
+        },
+        container: {
+          flexDirection: "row",
+          backgroundColor: uiTokens.colors.surface,
+          borderBottomWidth: 1,
+          borderBottomColor: uiTokens.colors.border,
+        },
+        scrollContent: {
+          paddingHorizontal: uiTokens.spacing.sm,
+          gap: uiTokens.spacing.xs,
+        },
+        tab: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: touchTargets.minimum,
+          paddingHorizontal: uiTokens.spacing.md,
+          paddingVertical: uiTokens.spacing.sm,
+          gap: uiTokens.spacing.xs,
+        },
+        tabFlex: {
+          flex: 1,
+        },
+        tabPill: {
+          borderRadius: uiTokens.radius.full,
+          backgroundColor: colorWithAlpha(uiTokens.colors.border, uiTokens.mode === "dark" ? 0.22 : 0.14),
+        },
+        tabPillActive: {
+          backgroundColor: uiTokens.colors.accent,
+        },
+        tabIcon: {
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        tabLabel: {
+          fontSize: 14,
+          fontWeight: "500",
+          color: uiTokens.colors.textSecondary,
+        },
+        tabLabelActive: {
+          color: uiTokens.colors.accent,
+          fontWeight: "600",
+        },
+        tabLabelPillActive: {
+          color: colorPalette.neutral[0],
+        },
+        badge: {
+          backgroundColor: uiTokens.colors.error,
+          borderRadius: uiTokens.radius.full,
+          paddingHorizontal: uiTokens.spacing.xs,
+          paddingVertical: 2,
+          minWidth: 20,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        badgeText: {
+          fontSize: 11,
+          fontWeight: "600",
+          color: colorPalette.neutral[0],
+        },
+        indicator: {
+          position: "absolute",
+          bottom: 0,
+          height: 3,
+          backgroundColor: uiTokens.colors.accent,
+          borderRadius: uiTokens.radius.sm,
+        },
+      }),
+    [uiTokens]
+  );
+
   return (
     <View style={styles.wrapper}>
       {scrollable ? (
@@ -149,75 +221,3 @@ export const Tabs: React.FC<TabsProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  wrapper: {
-    position: "relative",
-  },
-  container: {
-    flexDirection: "row",
-    backgroundColor: semanticColors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: semanticColors.border.subtle,
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.sm,
-    gap: spacing.xs,
-  },
-  tab: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: touchTargets.minimum,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    gap: spacing.xs,
-  },
-  tabFlex: {
-    flex: 1,
-  },
-  tabPill: {
-    borderRadius: radius.full,
-    backgroundColor: semanticColors.background.tertiary,
-  },
-  tabPillActive: {
-    backgroundColor: semanticColors.interactive.default,
-  },
-  tabIcon: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tabLabel: {
-    ...textStyles.bodySmall,
-    fontWeight: "500",
-    color: semanticColors.text.secondary,
-  },
-  tabLabelActive: {
-    color: semanticColors.interactive.default,
-    fontWeight: "600",
-  },
-  tabLabelPillActive: {
-    color: colors.white,
-  },
-  badge: {
-    backgroundColor: semanticColors.status.error,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-    minWidth: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  badgeText: {
-    ...textStyles.captionSmall,
-    fontWeight: "600",
-    color: colors.white,
-  },
-  indicator: {
-    position: "absolute",
-    bottom: 0,
-    height: 3,
-    backgroundColor: semanticColors.interactive.default,
-    borderRadius: radius.xs,
-  },
-});

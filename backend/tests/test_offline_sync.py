@@ -73,9 +73,7 @@ async def test_modern_batch_sync_success(async_client: AsyncClient, authenticate
     assert line["counted_qty"] == 10.0
     assert line["idempotency_key"] == client_record_id
 
-    replay = await async_client.post(
-        "/api/sync/batch", json=payload, headers=authenticated_headers
-    )
+    replay = await async_client.post("/api/sync/batch", json=payload, headers=authenticated_headers)
     assert replay.status_code == 200
     assert client_record_id in replay.json()["ok"]
     assert await test_db.count_lines.count_documents({"client_record_id": client_record_id}) == 1

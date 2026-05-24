@@ -122,7 +122,10 @@ def _match_filter(document: dict[str, Any], filter_query: dict[str, Optional[Any
                 return False
         else:
             value = _normalize_value(value)
-            if doc_value != value:
+            if isinstance(doc_value, list):
+                if value not in [_normalize_value(v) for v in doc_value]:
+                    return False
+            elif doc_value != value:
                 return False
     return True
 
@@ -437,6 +440,10 @@ class InMemoryDatabase:
         self.audit_logs = InMemoryCollection()
         self.system_events = InMemoryCollection()
         self.item_serials = InMemoryCollection()
+        self.serial_registry = InMemoryCollection()
+        self.event_log = InMemoryCollection()
+        self.items_snapshot = InMemoryCollection()
+        self.session_dashboard_projection = InMemoryCollection()
         self.variance_threshold_configs = InMemoryCollection()
 
         # Governance Collections
@@ -481,13 +488,18 @@ class InMemoryDatabase:
 
     def __getitem__(self, name: str) -> InMemoryCollection:
         """Allow accessing collections via db['name']."""
-        if hasattr(self, name):
-            return getattr(self, name)
+        if name in self.__dict__:
+            return self.__dict__[name]
 
         # Create dynamically if not exists (mimics Mongo behavior)
         collection = InMemoryCollection()
         setattr(self, name, collection)
         return collection
+
+    def __getattr__(self, name: str) -> InMemoryCollection:
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return self[name]
 
 
 class InMemoryClientSession:

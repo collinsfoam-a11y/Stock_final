@@ -6,22 +6,22 @@
 
 import { Platform, StyleSheet } from "react-native";
 import {
-  colors as unifiedColors,
+  colors as legacyColors,
   darkColors,
   duration,
   fontSize,
   fontWeight,
-  gradients as unifiedGradients,
-  layout as unifiedLayout,
+  gradients as legacyGradients,
+  layout as legacyLayout,
   letterSpacing,
   lineHeight,
-  radius,
+  radius as legacyRadius,
   semanticColors,
-  shadows as unifiedShadows,
-  spacing as unifiedSpacing,
+  shadows as legacyShadows,
+  spacing as legacySpacing,
   textStyles,
   touchTargets,
-} from "../theme/unified";
+} from "../theme/legacyCompat";
 
 const hexToRgba = (hex: string, alpha: number): string => {
   const normalized = hex.replace("#", "").trim();
@@ -47,16 +47,16 @@ const hexToRgba = (hex: string, alpha: number): string => {
 // Color palette - legacy aliases mapped onto unified theme tokens
 export const colors = {
   // Primary colors
-  primary: unifiedColors.primary[500],
-  primaryDark: unifiedColors.primary[600],
-  primaryLight: unifiedColors.primary[400],
-  primaryHover: unifiedColors.primary[600],
-  primaryPressed: unifiedColors.primary[700],
+  primary: legacyColors.primary[500],
+  primaryDark: legacyColors.primary[600],
+  primaryLight: legacyColors.primary[400],
+  primaryHover: legacyColors.primary[600],
+  primaryPressed: legacyColors.primary[700],
 
   // Secondary colors
-  secondary: unifiedColors.secondary[500],
-  secondaryDark: unifiedColors.secondary[600],
-  secondaryLight: unifiedColors.secondary[400],
+  secondary: legacyColors.secondary[500],
+  secondaryDark: legacyColors.secondary[600],
+  secondaryLight: legacyColors.secondary[400],
 
   // Background colors
   backgroundDark: semanticColors.background.secondary,
@@ -79,56 +79,59 @@ export const colors = {
   borderFocus: semanticColors.border.focus,
 
   // Status colors with variants
-  success: unifiedColors.success[500],
-  successLight: unifiedColors.success[400],
-  successDark: unifiedColors.success[600],
-  error: unifiedColors.error[500],
-  errorLight: unifiedColors.error[400],
-  errorDark: unifiedColors.error[600],
-  warning: unifiedColors.warning[500],
-  warningLight: unifiedColors.warning[400],
-  warningDark: unifiedColors.warning[600],
-  info: unifiedColors.info[500],
-  infoLight: unifiedColors.info[400],
-  infoDark: unifiedColors.info[600],
+  success: legacyColors.success[500],
+  successLight: legacyColors.success[400],
+  successDark: legacyColors.success[600],
+  error: legacyColors.error[500],
+  errorLight: legacyColors.error[400],
+  errorDark: legacyColors.error[600],
+  warning: legacyColors.warning[500],
+  warningLight: legacyColors.warning[400],
+  warningDark: legacyColors.warning[600],
+  info: legacyColors.info[500],
+  infoLight: legacyColors.info[400],
+  infoDark: legacyColors.info[600],
 
   // Transparent overlays
   overlay: semanticColors.background.overlay,
   overlayLight: semanticColors.background.overlay,
   overlayDark: darkColors.background.overlay,
-  overlayPrimary: hexToRgba(unifiedColors.primary[500], 0.12),
+  overlayPrimary: hexToRgba(legacyColors.primary[500], 0.12),
 } as const;
 
 // Gradients
 export const gradients = {
-  primary: unifiedGradients.primary,
-  secondary: unifiedGradients.secondary,
-  accent: [unifiedColors.secondary[500], unifiedColors.primary[500]] as const,
+  primary: legacyGradients.primary,
+  secondary: legacyGradients.secondary,
+  accent: [legacyColors.secondary[500], legacyColors.primary[500]] as const,
   dark: [darkColors.background.elevated, darkColors.background.default] as const,
   surface: [semanticColors.background.paper, semanticColors.background.secondary] as const,
 } as const;
 
 // Glass helper for older components that still expect this export
 export const glassStyle = {
-  backgroundColor: hexToRgba(unifiedColors.white, 0.72),
+  backgroundColor: hexToRgba(
+    (legacyColors as { white?: string }).white ?? legacyColors.neutral?.[0] ?? "#FFFFFF",
+    0.72,
+  ),
   borderColor: semanticColors.border.default,
   borderWidth: 1,
 } as const;
 
 // Spacing - legacy step names sourced from unified spacing tokens
 export const spacing = {
-  xs: unifiedSpacing.xs,
-  sm: unifiedSpacing.sm,
-  md: unifiedSpacing.lg,
-  lg: unifiedSpacing["2xl"],
-  xl: unifiedSpacing["3xl"],
-  xxl: unifiedSpacing["5xl"],
-  xxxl: unifiedSpacing["6xl"],
-  sectionGap: unifiedLayout.sectionGap,
-  actionGap: unifiedSpacing.md,
-  screenPadding: unifiedLayout.screenPadding,
-  cardPadding: unifiedLayout.cardPadding,
-  inputPadding: unifiedSpacing.md,
+  xs: legacySpacing.xs,
+  sm: legacySpacing.sm,
+  md: legacySpacing.lg,
+  lg: legacySpacing["2xl"],
+  xl: legacySpacing["3xl"],
+  xxl: legacySpacing["5xl"],
+  xxxl: legacySpacing["6xl"],
+  sectionGap: legacyLayout.sectionGap,
+  actionGap: legacySpacing.md,
+  screenPadding: legacyLayout.screenPadding,
+  cardPadding: legacyLayout.cardPadding,
+  inputPadding: legacySpacing.md,
 } as const;
 
 // Typography - legacy names mapped to unified text styles
@@ -165,18 +168,18 @@ export const typography = {
 
 // Border radius
 export const borderRadius = {
-  sm: radius.sm,
-  md: radius.lg,
-  lg: radius["2xl"],
-  xl: radius["3xl"],
-  round: radius.full,
+  sm: legacyRadius.sm,
+  md: legacyRadius.lg,
+  lg: legacyRadius["2xl"],
+  xl: legacyRadius["3xl"],
+  round: legacyRadius.full,
 } as const;
 
 // Shadows
 export const shadows = {
-  small: unifiedShadows.sm,
-  medium: unifiedShadows.md,
-  large: unifiedShadows.lg,
+  small: legacyShadows.sm,
+  medium: legacyShadows.md,
+  large: legacyShadows.lg,
 } as const;
 
 // Common component styles
@@ -278,16 +281,16 @@ export const commonStyles = StyleSheet.create({
   },
 
   // Spacing helpers
-  mt8: { marginTop: unifiedSpacing.sm },
-  mt16: { marginTop: unifiedSpacing.lg },
-  mt24: { marginTop: unifiedSpacing["2xl"] },
-  mb8: { marginBottom: unifiedSpacing.sm },
-  mb16: { marginBottom: unifiedSpacing.lg },
-  mb24: { marginBottom: unifiedSpacing["2xl"] },
-  mx16: { marginHorizontal: unifiedSpacing.lg },
-  my16: { marginVertical: unifiedSpacing.lg },
-  p16: { padding: unifiedSpacing.lg },
-  p24: { padding: unifiedSpacing["2xl"] },
+  mt8: { marginTop: legacySpacing.sm },
+  mt16: { marginTop: legacySpacing.lg },
+  mt24: { marginTop: legacySpacing["2xl"] },
+  mb8: { marginBottom: legacySpacing.sm },
+  mb16: { marginBottom: legacySpacing.lg },
+  mb24: { marginBottom: legacySpacing["2xl"] },
+  mx16: { marginHorizontal: legacySpacing.lg },
+  my16: { marginVertical: legacySpacing.lg },
+  p16: { padding: legacySpacing.lg },
+  p24: { padding: legacySpacing["2xl"] },
 });
 
 // Animation durations
@@ -318,17 +321,17 @@ export const elevation = {
 export const layout = {
   safeAreaTop: Platform.OS === "ios" ? 44 : 24,
   safeAreaBottom: Platform.OS === "ios" ? 34 : 0,
-  tabBarHeight: unifiedLayout.tabBarHeight,
+  tabBarHeight: legacyLayout.tabBarHeight,
   sidebarWidth: 280,
   sidebarCollapsedWidth: 64,
-  headerHeight: unifiedLayout.headerHeight,
+  headerHeight: legacyLayout.headerHeight,
   containerMaxWidth: {
     mobile: "100%",
     tablet: 768,
     desktop: 1200,
   },
-  sectionGap: unifiedLayout.sectionGap,
-  screenPadding: unifiedLayout.screenPadding,
+  sectionGap: legacyLayout.sectionGap,
+  screenPadding: legacyLayout.screenPadding,
 } as const;
 
 // Accessibility tokens
@@ -365,7 +368,7 @@ export const offline = {
 // Onboarding tokens
 export const onboarding = {
   overlayOpacity: 0.9,
-  spotlightRadius: radius.sm,
+  spotlightRadius: legacyRadius.sm,
   tooltipMaxWidth: 280,
   animationDuration: duration.slow,
 } as const;

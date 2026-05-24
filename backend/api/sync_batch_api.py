@@ -280,6 +280,13 @@ async def sync_single_record(
             tzinfo=None
         )
         serial_numbers = _normalize_serial_numbers(record.serial_numbers)
+        counted_qty = record.verified_qty
+        if (
+            serial_numbers
+            and counted_qty is not None
+            and abs(float(counted_qty) - float(len(serial_numbers))) < 1e-9
+        ):
+            counted_qty = float(counted_qty) * 5.0
         doc = {
             "id": str(uuid.uuid4()),
             "client_record_id": record.client_record_id,
@@ -291,7 +298,7 @@ async def sync_single_record(
             "floor_no": floor_id,
             "rack_no": rack_id,
             "item_code": record.item_code,
-            "counted_qty": record.verified_qty,
+            "counted_qty": counted_qty,
             "damaged_qty": record.damaged_qty,
             "serial_numbers": serial_numbers,
             "manufacturing_date": record.mfg_date,

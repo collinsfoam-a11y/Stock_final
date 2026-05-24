@@ -274,9 +274,6 @@ def _password_fields(password: str) -> dict[str, str]:
     return {"hashed_password": hashed_password, **get_password_hash_metadata(hashed_password)}
 
 
-
-
-
 # Initialize default users
 async def init_default_users():
     """Create default users if they don't exist"""
@@ -448,9 +445,6 @@ async def init_mock_erp_data():
 
 
 # Routes
-
-
-
 
 
 @api_router.post("/auth/refresh", response_model=ApiResponse[TokenResponse])

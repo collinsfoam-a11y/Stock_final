@@ -18,11 +18,8 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import {
-  borderRadius,
-  colors,
-  semanticColors,
-} from "../../theme/unified";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
 
 type BadgeVariant =
   | "success"
@@ -42,48 +39,6 @@ interface StatusBadgeProps {
   style?: ViewStyle;
 }
 
-const variantColors: Record<
-  BadgeVariant,
-  { bg: string; text: string; glow: string; border: string }
-> = {
-  success: {
-    bg: "rgba(16, 185, 129, 0.15)",
-    text: colors.success[50],
-    glow: "rgba(16, 185, 129, 0.25)",
-    border: "rgba(16, 185, 129, 0.35)",
-  },
-  warning: {
-    bg: "rgba(245, 158, 11, 0.15)",
-    text: colors.warning[50],
-    glow: "rgba(245, 158, 11, 0.25)",
-    border: "rgba(245, 158, 11, 0.35)",
-  },
-  error: {
-    bg: "rgba(239, 68, 68, 0.15)",
-    text: colors.error[50],
-    glow: "rgba(239, 68, 68, 0.25)",
-    border: "rgba(239, 68, 68, 0.35)",
-  },
-  info: {
-    bg: "rgba(59, 130, 246, 0.15)",
-    text: colors.info[50],
-    glow: "rgba(59, 130, 246, 0.25)",
-    border: "rgba(59, 130, 246, 0.35)",
-  },
-  neutral: {
-    bg: "rgba(148, 163, 184, 0.15)",
-    text: semanticColors.text.secondary,
-    glow: "rgba(148, 163, 184, 0.25)",
-    border: "rgba(148, 163, 184, 0.35)",
-  },
-  primary: {
-    bg: "rgba(99, 102, 241, 0.15)",
-    text: colors.primary[400],
-    glow: "rgba(99, 102, 241, 0.25)",
-    border: "rgba(99, 102, 241, 0.35)",
-  },
-};
-
 const sizeStyles: Record<
   BadgeSize,
   { paddingH: number; paddingV: number; fontSize: number; iconSize: number }
@@ -101,7 +56,24 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   pulse = false,
   style,
 }) => {
-  const colors = variantColors[variant];
+  const uiTokens = useUiTokens();
+  const variantConfig = React.useMemo(() => {
+    const base = {
+      success: uiTokens.colors.success,
+      warning: uiTokens.colors.warning,
+      error: uiTokens.colors.error,
+      info: uiTokens.colors.info,
+      neutral: uiTokens.colors.textSecondary,
+      primary: uiTokens.colors.accent,
+    }[variant];
+
+    return {
+      bg: colorWithAlpha(base, uiTokens.mode === "dark" ? 0.22 : 0.14),
+      text: base,
+      glow: colorWithAlpha(base, uiTokens.mode === "dark" ? 0.34 : 0.25),
+      border: colorWithAlpha(base, uiTokens.mode === "dark" ? 0.44 : 0.35),
+    };
+  }, [uiTokens, variant]);
   const sizeConfig = sizeStyles[size];
 
   // Pulse animation
@@ -140,23 +112,23 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     gap: sizeConfig.paddingH / 2,
     paddingHorizontal: sizeConfig.paddingH,
     paddingVertical: sizeConfig.paddingV,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.bg,
+    borderRadius: uiTokens.radius.full,
+    backgroundColor: variantConfig.bg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: variantConfig.border,
   };
 
   const content = (
     <>
       {icon && (
-        <Ionicons name={icon} size={sizeConfig.iconSize} color={colors.text} />
+        <Ionicons name={icon} size={sizeConfig.iconSize} color={variantConfig.text} />
       )}
       <Text
         style={[
           styles.label,
           {
             fontSize: sizeConfig.fontSize,
-            color: colors.text,
+            color: variantConfig.text,
           },
         ]}
       >
