@@ -10,6 +10,10 @@ import {
   operationalTelemetry,
 } from "../observability/operationalTelemetry";
 import { onlineManager } from "@tanstack/react-query";
+import {
+  appendMutationJournalEvent,
+  readMutationJournalSnapshot,
+} from "./offlineMutationJournal";
 
 // NOTE: This module is entirely gated by flags.enableOfflineQueue
 // It safely no-ops when the flag is false.
@@ -17,6 +21,7 @@ import { onlineManager } from "@tanstack/react-query";
 const STORAGE_KEY = "offlineQueue:v1";
 const CONFLICTS_KEY = "offlineQueue:conflicts:v1";
 const log = createLogger("OfflineQueue");
+const MUTATION_QUEUE_LEASE_MS = 10 * 60 * 1000;
 
 export type QueueMethod = "post" | "put" | "patch" | "delete";
 
@@ -29,29 +34,177 @@ export interface QueuedMutation {
   headers?: Record<string, string>;
   createdAt: number;
   retries: number;
+  leaseOwner?: string | null;
+  leaseToken?: string | null;
+  leaseAcquiredAt?: number | null;
+  leaseExpiresAt?: number | null;
+}
+
+interface MutationQueueLease {
+  owner: string;
+  token: string;
 }
 
 function generateId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-async function loadQueue(): Promise<QueuedMutation[]> {
-  const list = await storage.get<QueuedMutation[]>(STORAGE_KEY, {
+const flushOwner = `offline-flush-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+let legacyMutationQueueMigrationChecked = false;
+
+const createLease = (): MutationQueueLease => ({
+  owner: flushOwner,
+  token: generateId(),
+});
+
+const normalizeQueuedMutation = (item: QueuedMutation): QueuedMutation => ({
+  ...item,
+  retries: Number.isFinite(Number(item.retries)) ? Number(item.retries) : 0,
+  leaseOwner: item.leaseOwner ?? null,
+  leaseToken: item.leaseToken ?? null,
+  leaseAcquiredAt: item.leaseAcquiredAt ?? null,
+  leaseExpiresAt: item.leaseExpiresAt ?? null,
+});
+
+function isLeaseActive(item: QueuedMutation, now = Date.now()): boolean {
+  return Boolean(
+    item.leaseOwner &&
+      item.leaseToken &&
+      item.leaseExpiresAt &&
+      Number(item.leaseExpiresAt) > now
+  );
+}
+
+function isLeaseOwnedBy(
+  item: QueuedMutation,
+  lease: MutationQueueLease,
+  now = Date.now()
+): boolean {
+  return (
+    isLeaseActive(item, now) &&
+    item.leaseOwner === lease.owner &&
+    item.leaseToken === lease.token
+  );
+}
+
+async function migrateLegacyMutationQueueIfNeeded(): Promise<void> {
+  if (legacyMutationQueueMigrationChecked) return;
+  legacyMutationQueueMigrationChecked = true;
+
+  const snapshot = await readMutationJournalSnapshot();
+  if (snapshot.queue.length > 0 || snapshot.conflicts.length > 0) return;
+
+  const legacyQueue = await storage.get<QueuedMutation[]>(STORAGE_KEY, {
     defaultValue: [],
     silent: true,
   });
-  return Array.isArray(list) ? list : [];
+  if (Array.isArray(legacyQueue)) {
+    for (const item of legacyQueue.map(normalizeQueuedMutation)) {
+      await appendMutationJournalEvent("enqueue", item.id, item);
+    }
+  }
+
+  const legacyConflicts = await storage.get<any[]>(CONFLICTS_KEY, {
+    defaultValue: [],
+    silent: true,
+  });
+  if (Array.isArray(legacyConflicts)) {
+    for (const conflict of legacyConflicts) {
+      if (conflict?.id) {
+        await appendMutationJournalEvent("conflict", String(conflict.id), conflict);
+      }
+    }
+  }
 }
 
-async function saveQueue(queue: QueuedMutation[]): Promise<void> {
-  await storage.set(STORAGE_KEY, queue, { silent: true });
+async function loadQueue(): Promise<QueuedMutation[]> {
+  await migrateLegacyMutationQueueIfNeeded();
+  const snapshot = await readMutationJournalSnapshot();
+  return snapshot.queue.map((item) => normalizeQueuedMutation(item as QueuedMutation));
+}
+
+async function loadConflicts(): Promise<any[]> {
+  await migrateLegacyMutationQueueIfNeeded();
+  const snapshot = await readMutationJournalSnapshot();
+  return snapshot.conflicts;
 }
 
 async function addConflict(item: QueuedMutation, detail?: any): Promise<void> {
-  const existing = (await storage.get<any[]>(CONFLICTS_KEY, { defaultValue: [] })) || [];
   const record = { ...item, detail, resolved: false, timestamp: Date.now() };
-  existing.push(record);
-  await storage.set(CONFLICTS_KEY, existing, { silent: true });
+  await appendMutationJournalEvent("conflict", item.id, record);
+}
+
+async function acquireMutationLease(
+  itemId: string,
+  lease: MutationQueueLease,
+  leaseMs = MUTATION_QUEUE_LEASE_MS
+): Promise<QueuedMutation | null> {
+  const queue = await loadQueue();
+  const item = queue.find((entry) => entry.id === itemId);
+  if (!item) return null;
+  const now = Date.now();
+  if (isLeaseActive(item, now) && !isLeaseOwnedBy(item, lease, now)) {
+    return null;
+  }
+
+  const leasedItem = normalizeQueuedMutation({
+    ...item,
+    leaseOwner: lease.owner,
+    leaseToken: lease.token,
+    leaseAcquiredAt: now,
+    leaseExpiresAt: now + leaseMs,
+  });
+  await appendMutationJournalEvent("update", itemId, {
+    leaseOwner: leasedItem.leaseOwner,
+    leaseToken: leasedItem.leaseToken,
+    leaseAcquiredAt: leasedItem.leaseAcquiredAt,
+    leaseExpiresAt: leasedItem.leaseExpiresAt,
+  });
+  return leasedItem;
+}
+
+async function updateQueuedMutation(
+  itemId: string,
+  patch: Partial<QueuedMutation>,
+  lease: MutationQueueLease
+): Promise<boolean> {
+  const queue = await loadQueue();
+  const item = queue.find((entry) => entry.id === itemId);
+  if (!item || !isLeaseOwnedBy(item, lease)) return false;
+  await appendMutationJournalEvent("update", itemId, patch);
+  return true;
+}
+
+async function removeQueuedMutation(
+  itemId: string,
+  lease: MutationQueueLease,
+  reason: string
+): Promise<boolean> {
+  const queue = await loadQueue();
+  const item = queue.find((entry) => entry.id === itemId);
+  if (!item || !isLeaseOwnedBy(item, lease)) return false;
+  await appendMutationJournalEvent("remove", itemId, {
+    reason,
+    removedAt: Date.now(),
+    leaseOwner: lease.owner,
+  });
+  return true;
+}
+
+async function releaseMutationLease(
+  itemId: string,
+  lease: MutationQueueLease
+): Promise<boolean> {
+  return updateQueuedMutation(
+    itemId,
+    {
+      leaseOwner: null,
+      leaseToken: null,
+      leaseAcquiredAt: null,
+      leaseExpiresAt: null,
+    },
+    lease
+  );
 }
 
 function isMutatingMethod(method?: string): method is QueueMethod {
@@ -61,7 +214,6 @@ function isMutatingMethod(method?: string): method is QueueMethod {
 }
 
 export async function enqueueMutation(config: AxiosRequestConfig): Promise<QueuedMutation> {
-  const queue = await loadQueue();
   const item: QueuedMutation = {
     id: generateId(),
     method: (config.method || "post").toLowerCase() as QueueMethod,
@@ -71,9 +223,13 @@ export async function enqueueMutation(config: AxiosRequestConfig): Promise<Queue
     headers: config.headers as Record<string, string> | undefined,
     createdAt: Date.now(),
     retries: 0,
+    leaseOwner: null,
+    leaseToken: null,
+    leaseAcquiredAt: null,
+    leaseExpiresAt: null,
   };
-  queue.push(item);
-  await saveQueue(queue);
+  await appendMutationJournalEvent("enqueue", item.id, item);
+  const queue = await loadQueue();
   operationalTelemetry.trackQueue(
     OPERATIONAL_TELEMETRY_EVENT_REGISTRY.QUEUE_ENQUEUED,
     "offline",
@@ -130,17 +286,23 @@ async function _doFlush(
     const startingLength = queue.length;
 
     while (queue.length > 0) {
-      const item = queue[0]!;
+      const candidate = queue[0]!;
+      const lease = createLease();
+      const item = await acquireMutationLease(candidate.id, lease);
+      if (!item) {
+        break;
+      }
 
       // Safety check: Drop auth requests that might have been queued
       // This prevents infinite loops if a login request got stuck in the queue
       if (item.url && item.url.includes("/auth/")) {
         log.warn("Dropping queued auth request", { url: item.url, id: item.id });
-        queue = queue.slice(1);
-        await saveQueue(queue);
+        await removeQueuedMutation(item.id, lease, "auth_request_not_replayable");
+        queue = await loadQueue();
         continue;
       }
 
+      let itemRemoved = false;
       try {
         await client.request({
           method: item.method,
@@ -155,6 +317,7 @@ async function _doFlush(
         const status = error.response?.status;
         // Network still down or server unreachable: stop processing, keep remaining
         if (!error.response) {
+          await releaseMutationLease(item.id, lease);
           break;
         }
         // Conflict, validation error, or AUTH error: record and drop this item, continue
@@ -165,6 +328,8 @@ async function _doFlush(
         ) {
           await addConflict(item, error.response?.data);
           processed += 1; // we consider it handled (moved to conflicts)
+          await removeQueuedMutation(item.id, lease, "terminal_response_conflict");
+          itemRemoved = true;
         } else {
           // C6 fix: On 5xx server errors, increment retry counter instead of silently dropping.
           // If max retries exceeded, move to conflicts; otherwise leave in queue for later.
@@ -176,17 +341,20 @@ async function _doFlush(
               lastResponse: error.response?.data,
             });
             processed += 1;
+            await removeQueuedMutation(item.id, lease, "max_retries_exceeded");
+            itemRemoved = true;
           } else {
-            // Update item in queue with incremented retry count and stop processing
-            queue[0] = item;
-            await saveQueue(queue);
+            await updateQueuedMutation(item.id, { retries: item.retries }, lease);
+            await releaseMutationLease(item.id, lease);
             break;
           }
         }
       }
       // Remove the head item we just processed
-      queue = queue.slice(1);
-      await saveQueue(queue);
+      if (!itemRemoved) {
+        await removeQueuedMutation(item.id, lease, "sync_confirmed");
+      }
+      queue = await loadQueue();
     }
 
     const result = { processed, remaining: queue.length };
@@ -342,7 +510,7 @@ export async function listQueue(): Promise<QueuedMutation[]> {
 }
 
 export async function getConflicts(): Promise<any[]> {
-  return (await storage.get<any[]>(CONFLICTS_KEY, { defaultValue: [] })) || [];
+  return loadConflicts();
 }
 
 export async function getConflictsCount(): Promise<number> {
@@ -351,8 +519,10 @@ export async function getConflictsCount(): Promise<number> {
 }
 
 export async function resolveConflict(id: string): Promise<boolean> {
-  const list = await getConflicts();
-  const next = list.filter((c) => c.id !== id);
-  await storage.set(CONFLICTS_KEY, next, { silent: true });
-  return next.length !== list.length;
+  const existing = await getConflicts();
+  const found = existing.some((conflict) => conflict.id === id);
+  if (found) {
+    await appendMutationJournalEvent("resolve_conflict", id, { resolvedAt: Date.now() });
+  }
+  return found;
 }

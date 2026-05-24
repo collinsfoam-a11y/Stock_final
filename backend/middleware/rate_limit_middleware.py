@@ -66,8 +66,8 @@ class RateLimitMiddleware:
             client_ip = forwarded_for.split(",")[0].strip() if forwarded_for else None
             user_id = client_ip or (request.client.host if request.client else "anonymous")
 
-        # Check rate limit
-        allowed, info = self.rate_limiter.is_allowed(user_id=user_id, endpoint=path)
+        # Check rate limit (LU-05: is_allowed() is now async)
+        allowed, info = await self.rate_limiter.is_allowed(user_id=user_id, endpoint=path)
 
         limit = info.get("limit", self.rate_limiter.default_rate)
         remaining = info.get("remaining", 0)

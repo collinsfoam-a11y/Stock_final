@@ -25,6 +25,7 @@ from backend.services.canonical_inventory import (
     is_count_line_effectively_reviewed,
     is_session_finalized,
     materialize_count_line_review_state,
+    normalize_session_status,
     recompute_session_totals,
 )
 from backend.services.count_line_write_service import (
@@ -196,6 +197,19 @@ def init_count_lines_api(
     _lock_service = lock_service
     _snapshot_service = snapshot_service
     _variant_service = variant_service
+
+    # PW-02: Warn operators when snapshot_service is unavailable so the silent
+    # baseline-fallback behaviour is surfaced at startup rather than discovered
+    # mid-count when baselines appear missing.
+    if _snapshot_service is None:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "⚠️  OPERATOR ACTION REQUIRED: SnapshotService is None. "
+            "Count-line baseline snapshots will not be stored; this is expected "
+            "only during tests or before the DB is fully reachable. "
+            "If you see this in production, check that the database is connected "
+            "and that SnapshotService initializes without error."
+        )
 
 
 def _get_db_client(db_override=None):
@@ -499,8 +513,22 @@ async def _broadcast_dashboard_refresh(
 
 
 def _ensure_session_accepts_counts(session: dict[str, Any]) -> None:
-    if session.get("status") not in ["OPEN", "ACTIVE"]:
-        raise HTTPException(status_code=400, detail="Session is not active")
+    """Guard that the session is in a state that accepts new count lines.
+
+    Uses ``normalize_session_status`` so that legacy lowercase values ("open",
+    "active"), aliased values ("in_progress" → "ACTIVE"), and case-mixed values
+    from external sync are all treated equivalently.  Raw string comparison
+    against the stored value would silently reject valid sessions.
+    """
+    normalized = normalize_session_status(
+        session.get("status"),
+        reconciled_at=session.get("reconciled_at"),
+    )
+    if normalized not in {"OPEN", "ACTIVE"}:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Session is not active (current status: {normalized})",
+        )
     if session.get("reconciled_at"):
         raise HTTPException(status_code=400, detail="Session is in reconciliation mode")
 
@@ -837,6 +865,10 @@ def _build_count_line_document(
     count_line["recount_iteration"] = int(
         (recount_update_target or {}).get("recount_iteration", 0) or 0
     ) + (1 if recount_update_target else 0)
+
+    # H-02 fix: materialize the composite review predicate as a plain boolean so
+    # MongoDB can filter on it directly without fetching all lines into Python.
+    count_line["effective_reviewed"] = is_count_line_effectively_reviewed(count_line)
 
     return count_line, counted_at
 
@@ -1488,49 +1520,42 @@ async def get_count_lines(
     *,
     db_override=None,
 ):
-    """Get count lines with pagination. Shared between routes and tests."""
+    """Get count lines with pagination. Shared between routes and tests.
+
+    H-02 fix: when ``verified`` is specified, filter on the materialized
+    ``effective_reviewed`` field (a plain boolean stored on each document) so
+    MongoDB can use the ``idx_session_effective_reviewed`` compound index.
+
+    Previously the code streamed ALL lines for the session and applied the
+    composite ``is_count_line_effectively_reviewed`` predicate in Python —
+    O(N) full cursor scan that blocked the event loop for large sessions.
+    The materialized field is kept in sync by every write path:
+    ``_build_count_line_document`` (insert) and the approve/reject/verify/
+    unverify ``$set`` blocks.
+    """
     db_client = _get_db_client(db_override)
-    if verified is None:
-        skip = (page - 1) * page_size
-        total = await db_client.count_lines.count_documents({"session_id": session_id})
-        lines_cursor = (
-            db_client.count_lines.find({"session_id": session_id}, {"_id": 0})
-            .sort("counted_at", -1)
-            .skip(skip)
-            .limit(page_size)
-        )
-        lines = await lines_cursor.to_list(length=page_size)
-        projected_lines = [materialize_count_line_review_state(line) for line in lines]
-        return {
-            "items": projected_lines,
-            "pagination": {
-                "page": page,
-                "page_size": page_size,
-                "total": total,
-                "total_pages": (total + page_size - 1) // page_size if page_size else 0,
-                "has_next": skip + page_size < total,
-                "has_prev": page > 1,
-            },
-        }
-
-    lines_cursor = db_client.count_lines.find({"session_id": session_id}, {"_id": 0}).sort(
-        "counted_at", -1
-    )
-
-    total = 0
     skip = (page - 1) * page_size
-    limit_end = skip + page_size
-    lines_page = []
 
-    async for line in lines_cursor:
-        projected_line = materialize_count_line_review_state(line)
-        if is_count_line_effectively_reviewed(projected_line) == verified:
-            if skip <= total < limit_end:
-                lines_page.append(projected_line)
-            total += 1
+    filter_query: dict[str, Any] = {"session_id": session_id}
+    if verified is not None:
+        # DB-side filter — uses compound index (session_id, effective_reviewed).
+        # Falls back gracefully for older documents that predate this field:
+        # those documents will have effective_reviewed missing (falsy), so
+        # verified=True will correctly exclude them until the backfill runs.
+        filter_query["effective_reviewed"] = verified
+
+    total = await db_client.count_lines.count_documents(filter_query)
+    lines_cursor = (
+        db_client.count_lines.find(filter_query, {"_id": 0})
+        .sort("counted_at", -1)
+        .skip(skip)
+        .limit(page_size)
+    )
+    lines = await lines_cursor.to_list(length=page_size)
+    projected_lines = [materialize_count_line_review_state(line) for line in lines]
 
     return {
-        "items": lines_page,
+        "items": projected_lines,
         "pagination": {
             "page": page,
             "page_size": page_size,
@@ -1658,7 +1683,15 @@ async def approve_count_line(
         result = await write_service.process_write(
             {
                 "operation": "update_one",
-                "filter": {"_id": count_line["_id"]},
+                # OCC guard: only update if the line has not already been
+                # approved or rejected by a concurrent request.  Without this,
+                # two supervisors acting simultaneously can both succeed and
+                # create duplicate audit/notification events.
+                "filter": {
+                    "_id": count_line["_id"],
+                    "approval_status": {"$nin": ["APPROVED", "REJECTED"]},
+                    "status": {"$nin": ["approved", "rejected", "locked"]},
+                },
                 "update": {
                     "$set": {
                         "status": "approved",
@@ -1668,6 +1701,7 @@ async def approve_count_line(
                         "approval_note": request.notes if request else None,
                         "rejection_reason": None,
                         "assigned_to": None,
+                        "effective_reviewed": True,
                     }
                 },
             },
@@ -1678,6 +1712,18 @@ async def approve_count_line(
         )
 
         if result.matched_count == 0:
+            # Distinguish "not found" from "already decided" to give callers
+            # an actionable error message.
+            current = await _find_count_line(db, line_id)
+            if current and current.get("approval_status") in ("APPROVED", "REJECTED"):
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"Count line has already been "
+                        f"{current['approval_status'].lower()} "
+                        f"by {current.get('approved_by') or current.get('rejected_by', 'another user')}."
+                    ),
+                )
             raise HTTPException(status_code=404, detail="Count line not found")
 
         await _recompute_session_totals(db, str(count_line.get("session_id") or ""))
@@ -1781,7 +1827,12 @@ async def reject_count_line(
         result = await write_service.process_write(
             {
                 "operation": "update_one",
-                "filter": {"_id": count_line["_id"]},
+                # OCC guard: prevents double-reject or reject-after-approve.
+                "filter": {
+                    "_id": count_line["_id"],
+                    "approval_status": {"$nin": ["APPROVED", "REJECTED"]},
+                    "status": {"$nin": ["approved", "rejected", "locked"]},
+                },
                 "update": {
                     "$set": {
                         "status": "rejected",
@@ -1795,6 +1846,7 @@ async def reject_count_line(
                         "recount_requested_at": rejected_at,
                         "recount_requested_by": current_user["username"],
                         "assigned_to": assigned_to,
+                        "effective_reviewed": False,
                     }
                 },
             },
@@ -1805,6 +1857,16 @@ async def reject_count_line(
         )
 
         if result.matched_count == 0:
+            current = await _find_count_line(db, line_id)
+            if current and current.get("approval_status") in ("APPROVED", "REJECTED"):
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"Count line has already been "
+                        f"{current['approval_status'].lower()} "
+                        f"by {current.get('approved_by') or current.get('rejected_by', 'another user')}."
+                    ),
+                )
             raise HTTPException(status_code=404, detail="Count line not found")
 
         await _recompute_session_totals(db, str(count_line.get("session_id") or ""))
@@ -2443,8 +2505,8 @@ async def create_count_lines_batch(
         current_user=current_user,
         operation_name="create_count_lines_batch",
     )
-    if session.get("status") not in ["OPEN", "ACTIVE"]:
-        raise HTTPException(status_code=400, detail="Session is not active")
+    # Use the same normalised check as the single-create path.
+    _ensure_session_accepts_counts(session)
 
     for idx, line_data in enumerate(batch_data.lines):
         try:
@@ -2800,7 +2862,7 @@ async def merge_count_lines(
                 await write_service.process_write(
                     {
                         "operation": "update_one",
-                        "filter": {"id": source_id},
+                        "filter": {"_id": source_id},
                         "update": {
                             "$set": {"merged_into_id": payload.target_line_id},
                         },
@@ -2811,8 +2873,9 @@ async def merge_count_lines(
                         "db_session": tx,
                         "governance_mode": "mutable_session",
                         "skip_session_totals_update": True,
-                    },
+                                    },
                 )
+
             results["merged"].append(source_id)
             target_qty = merged_qty
             target_line["counted_qty"] = merged_qty

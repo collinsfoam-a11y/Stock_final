@@ -4,12 +4,32 @@ from __future__ import annotations
 
 import inspect
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator, Optional
 
 from pymongo.errors import OperationFailure
 
 logger = logging.getLogger(__name__)
+
+
+def _transactions_required() -> bool:
+    try:
+        from backend.config import settings
+
+        environment = str(getattr(settings, "ENVIRONMENT", "") or "").strip().lower()
+    except Exception:
+        environment = ""
+    environment = environment or os.getenv("ENVIRONMENT", "").strip().lower()
+    allow_downgrade = os.getenv("ALLOW_NON_TRANSACTIONAL_GOVERNED_WRITES", "").lower() == "true"
+    return environment in {"production", "prod", "staging"} and not allow_downgrade
+
+
+def _raise_transaction_required(reason: str) -> None:
+    raise RuntimeError(
+        "CRITICAL: Mongo transactions are required for governed writes in this environment "
+        f"({reason}). Configure MongoDB as a replica set or sharded cluster."
+    )
 
 
 def _transaction_not_supported(exc: Exception) -> bool:
@@ -50,9 +70,13 @@ async def mongo_transaction(client: Any) -> AsyncIterator[Optional[Any]]:
     strict transactional behavior on real Mongo deployments.
     """
     if client is None or not hasattr(client, "start_session"):
+        if _transactions_required():
+            _raise_transaction_required("client has no session support")
         yield None
         return
     if not await _client_supports_transactions(client):
+        if _transactions_required():
+            _raise_transaction_required("deployment does not report transaction support")
         yield None
         return
 
@@ -61,6 +85,8 @@ async def mongo_transaction(client: Any) -> AsyncIterator[Optional[Any]]:
 
     try:
         if not hasattr(session, "start_transaction"):
+            if _transactions_required():
+                _raise_transaction_required("session has no transaction support")
             yield session
             return
 
@@ -70,6 +96,8 @@ async def mongo_transaction(client: Any) -> AsyncIterator[Optional[Any]]:
                 txn_cm = await txn_cm
         except Exception as exc:
             if _transaction_not_supported(exc):
+                if _transactions_required():
+                    _raise_transaction_required("start_transaction is unsupported")
                 logger.debug(
                     "Mongo transactions unsupported on current deployment; using non-transaction path"
                 )
@@ -88,6 +116,8 @@ async def mongo_transaction(client: Any) -> AsyncIterator[Optional[Any]]:
             return
 
         # Test doubles may expose start_transaction without context manager behavior.
+        if _transactions_required():
+            _raise_transaction_required("transaction context manager is unavailable")
         yield session
     finally:
         if hasattr(session, "end_session"):

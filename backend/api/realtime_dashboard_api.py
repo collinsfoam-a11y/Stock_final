@@ -14,7 +14,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSock
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from backend.auth.dependencies import get_current_user, require_role
+from backend.auth.dependencies import auth_deps, get_current_user, require_role
+from backend.config import settings
 from backend.db.runtime import get_db
 from backend.services.advanced_report_service import (
     AdvancedReportService,
@@ -85,54 +86,22 @@ class ItemDetails(BaseModel):
 
 
 # ==========================================
-# WebSocket Connection Manager
+# WebSocket Connection Manager (unified)
 # ==========================================
+# The dashboard WebSocket now uses the application-wide core manager so that
+# scan events broadcast from count_lines_routes.py (via core manager) are
+# visible to supervisors connected to the dashboard endpoint.
+#
+# Previously this module defined its own ConnectionManager singleton, which
+# meant dashboard WS clients were on a completely separate broadcast graph —
+# they never received scan events.
 
+from backend.core.websocket_manager import manager
 
-class ConnectionManager:
-    """Manages WebSocket connections for real-time updates."""
-
-    def __init__(self):
-        self.active_connections: dict[str, WebSocket] = {}
-        self.user_configs: dict[str, DashboardConfig] = {}
-
-    async def connect(self, websocket: WebSocket, user_id: str):
-        await websocket.accept()
-        self.active_connections[user_id] = websocket
-        logger.info("WebSocket connected: %s", sanitize_for_logging(user_id))
-
-    def disconnect(self, user_id: str):
-        self.active_connections.pop(user_id, None)
-        self.user_configs.pop(user_id, None)
-        logger.info("WebSocket disconnected: %s", sanitize_for_logging(user_id))
-
-    async def send_personal_message(self, message: dict, user_id: str):
-        if user_id in self.active_connections:
-            try:
-                await self.active_connections[user_id].send_json(message)
-            except Exception as e:
-                logger.error("Error sending to {user_id}: %s", sanitize_for_logging(str(e)))
-                self.disconnect(user_id)
-
-    async def broadcast(self, message: dict):
-        disconnected = []
-        for user_id, connection in self.active_connections.items():
-            try:
-                await connection.send_json(message)
-            except Exception:
-                disconnected.append(user_id)
-
-        for user_id in disconnected:
-            self.disconnect(user_id)
-
-    def set_config(self, user_id: str, config: DashboardConfig):
-        self.user_configs[user_id] = config
-
-    def get_config(self, user_id: str) -> Optional[DashboardConfig]:
-        return self.user_configs.get(user_id)
-
-
-manager = ConnectionManager()
+# Per-user DashboardConfig storage (was manager.user_configs).
+# Stored at module level because DashboardConfig is dashboard-specific state
+# that doesn't belong in the generic WebSocketManager.
+_dashboard_configs: dict[str, DashboardConfig] = {}
 
 
 # ==========================================
@@ -501,7 +470,7 @@ async def _ws_handle_config_update(
 ) -> DashboardConfig:
     """Handle config_update message, return new config."""
     new_config = DashboardConfig(**data.get("config", {}))
-    manager.set_config(user_id, new_config)
+    _dashboard_configs[user_id] = new_config
     result = await _ws_get_report(service, new_config)
     await manager.send_personal_message({"type": "data_update", "payload": result}, user_id)
     return new_config
@@ -573,17 +542,108 @@ async def _ws_process_message(
 # ==========================================
 
 
-@realtime_dashboard_router.websocket("/ws/{token}")
-async def websocket_endpoint(websocket: WebSocket, token: str):
-    """WebSocket endpoint for bidirectional real-time communication."""
-    user_id = token
-    await manager.connect(websocket, user_id)
+def _dashboard_extract_jwt(websocket: WebSocket) -> tuple[Optional[str], Optional[str]]:
+    """Extract JWT from Authorization header, Sec-WebSocket-Protocol subprotocol, or cookie.
+
+    Returns (token, accept_subprotocol).  The accept_subprotocol must be echoed
+    back in websocket.accept(subprotocol=...) so the client handshake completes.
+
+    NOTE: Do NOT accept a token from a URL path segment.  Path parameters are
+    logged verbatim by Nginx and Uvicorn, leaking the JWT into server logs.
+    """
+    auth_header = websocket.headers.get("authorization", "")
+    if auth_header.lower().startswith("bearer "):
+        return auth_header.split(" ", 1)[1].strip(), None
+
+    # Preferred browser-safe delivery: Sec-WebSocket-Protocol: jwt,<token>
+    raw_proto = websocket.headers.get("sec-websocket-protocol", "")
+    protocols = [p.strip() for p in raw_proto.split(",") if p.strip()]
+    if len(protocols) >= 2 and protocols[0].lower() in {"jwt", "bearer"}:
+        return protocols[1], protocols[0].lower()
+    if len(protocols) == 1 and protocols[0].count(".") == 2:
+        return protocols[0], None
+
+    # HttpOnly cookie fallback (browser sessions)
+    cookie_name = getattr(settings, "AUTH_ACCESS_COOKIE_NAME", "sv_access_token")
+    cookie_token = websocket.cookies.get(cookie_name, "")
+    if cookie_token:
+        # Strip surrounding quotes if present
+        if len(cookie_token) >= 2 and cookie_token[0] == cookie_token[-1] == '"':
+            cookie_token = cookie_token[1:-1]
+        if cookie_token:
+            return cookie_token, None
+
+    return None, None
+
+
+def _dashboard_replay_cursor(websocket: WebSocket) -> Optional[int]:
+    raw_value = (
+        websocket.query_params.get("last_ws_sequence")
+        or websocket.query_params.get("after_ws_sequence")
+        or websocket.query_params.get("after_sequence")
+    )
+    if raw_value is None:
+        return None
+    try:
+        cursor = int(raw_value)
+    except (TypeError, ValueError):
+        return None
+    return cursor if cursor >= 0 else None
+
+
+@realtime_dashboard_router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for bidirectional real-time communication.
+
+    Token delivery (in priority order):
+      1. Authorization: Bearer <token>
+      2. Sec-WebSocket-Protocol: jwt,<token>   ← preferred for browser clients
+      3. HttpOnly auth cookie
+
+    The /ws/{token} path parameter form has been removed because path
+    parameters are recorded in Nginx/Uvicorn access logs, which would expose
+    the JWT.  Clients that previously used /ws/{token} must migrate to one
+    of the three header/cookie mechanisms above.
+    """
+    jwt_token, accept_subprotocol = _dashboard_extract_jwt(websocket)
+
+    if not jwt_token:
+        await websocket.accept()
+        await websocket.close(code=1008, reason="Missing authentication token")
+        return
+
+    try:
+        payload = auth_deps.decode_token(jwt_token)
+        user_id = payload.get("sub") or payload.get("username") or payload.get("id")
+        role = (payload.get("role") or "").lower()
+        if not user_id:
+            await websocket.accept()
+            await websocket.close(code=1008, reason="Invalid token: missing subject")
+            return
+    except Exception:
+        await websocket.accept()
+        await websocket.close(code=1008, reason="Invalid or expired token")
+        return
+
+    # Delegate accept() + connection tracking to the core manager so this
+    # endpoint shares the same broadcast graph as all other WebSocket consumers.
+    # Before this change, dashboard clients were on a separate local manager and
+    # never received scan-event broadcasts from count_lines_routes.py.
+    await manager.connect(
+        websocket,
+        user_id,
+        session_id=None,
+        role=role,
+        subprotocol=accept_subprotocol,
+        replay_after=_dashboard_replay_cursor(websocket),
+    )
+    logger.info("Dashboard WebSocket connected: %s", sanitize_for_logging(user_id))
 
     try:
         db = get_db()
         service = AdvancedReportService(db)
         config = DashboardConfig()
-        manager.set_config(user_id, config)
+        _dashboard_configs[user_id] = config
 
         # Send initial data
         result = await _ws_get_report(service, config)
@@ -595,15 +655,35 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                 data = await asyncio.wait_for(
                     websocket.receive_json(), timeout=config.refresh_interval_seconds
                 )
+                if isinstance(data, dict) and data.get("type") == "replay_request":
+                    cursor = (
+                        data.get("last_ws_sequence")
+                        or data.get("after_ws_sequence")
+                        or data.get("after_sequence")
+                    )
+                    try:
+                        after_sequence = int(cursor)
+                    except (TypeError, ValueError):
+                        after_sequence = None
+                    await manager.replay_missed(
+                        websocket,
+                        user_id=user_id,
+                        role=role,
+                        after_sequence=after_sequence,
+                    )
+                    continue
                 config = await _ws_process_message(data, user_id, service, config, db)
+                _dashboard_configs[user_id] = config
             except asyncio.TimeoutError:
                 await _ws_handle_auto_refresh(user_id, service, config)
 
     except WebSocketDisconnect:
-        manager.disconnect(user_id)
+        manager.disconnect(websocket, user_id)
+        _dashboard_configs.pop(user_id, None)
     except Exception as e:
-        logger.error("WebSocket error for {user_id}: %s", sanitize_for_logging(str(e)))
-        manager.disconnect(user_id)
+        logger.error("WebSocket error for %s: %s", sanitize_for_logging(user_id), sanitize_for_logging(str(e)))
+        manager.disconnect(websocket, user_id)
+        _dashboard_configs.pop(user_id, None)
 
 
 # ==========================================

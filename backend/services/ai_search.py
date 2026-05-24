@@ -3,6 +3,7 @@ AI Search Service
 Handles semantic search using sentence-transformers.
 """
 
+import asyncio
 import logging
 from typing import Any, Optional
 
@@ -63,11 +64,20 @@ class AISearchService:
             logger.error(f"Encoding error: {e}")
             return None
 
-    def search_rerank(
+    async def search_rerank(
         self, query: str, candidates: list[dict[str, Any]], top_k: int = 20
     ) -> list[dict[str, Any]]:
-        """
-        Rorank a list of candidate items based on semantic similarity to the query.
+        """Rerank a list of candidate items based on semantic similarity to the query.
+
+        ``sentence_transformers.encode()`` is synchronous CPU work — running it
+        directly on the event loop thread blocks all other HTTP requests for the
+        entire duration of the encode call (typically 50–500 ms per batch).
+
+        This method offloads the encoding to the default thread-pool executor via
+        ``asyncio.get_running_loop().run_in_executor``, so the event loop stays
+        free to handle other requests while the CPU-bound work runs in a worker
+        thread.  Only the final cosine-similarity computation (fast) and sorting
+        (in-process) remain on the event loop.
         """
         self.initialize_model()
         if self._model is None or not candidates:
@@ -76,37 +86,33 @@ class AISearchService:
         try:
             from sentence_transformers import util
 
-            # 1. Encode Query
-            query_embedding = self._model.encode(query, convert_to_tensor=True)
-
-            # 2. Prepare Candidate Texts
-            # Combine name + category for better context
+            # Pre-compute candidate texts on the event loop (cheap string ops)
             candidate_texts = [
                 f"{item.get('item_name', '')} {item.get('category', '')} {item.get('subcategory', '')}"
                 for item in candidates
             ]
 
-            # 3. Encode Candidates (in batch)
-            # Ideally we'd cache these, but for "reranking" small sets (e.g. 50-100), live encoding is OK.
-            # For larger sets, we need pre-computed embeddings.
-            candidate_embeddings = self._model.encode(candidate_texts, convert_to_tensor=True)
+            loop = asyncio.get_running_loop()
 
-            # 4. Calculate Cosine Similarity
+            def _encode_sync() -> tuple:
+                """CPU-bound work — runs in thread pool."""
+                q_emb = self._model.encode(query, convert_to_tensor=True)
+                c_embs = self._model.encode(candidate_texts, convert_to_tensor=True)
+                return q_emb, c_embs
+
+            query_embedding, candidate_embeddings = await loop.run_in_executor(
+                None, _encode_sync
+            )
+
+            # Cosine-similarity is a fast tensor op — stays on event loop
             scores = util.cos_sim(query_embedding, candidate_embeddings)[0]
 
-            # 5. Zip and Sort
-            scored_candidates = []
-            for idx, score in enumerate(scores):
-                scored_candidates.append((score.item(), candidates[idx]))
-
-            # Sort descending
+            scored_candidates = [(score.item(), candidates[idx]) for idx, score in enumerate(scores)]
             scored_candidates.sort(key=lambda x: x[0], reverse=True)
-
-            # Return top_k
             return [x[1] for x in scored_candidates[:top_k]]
 
         except Exception as e:
-            logger.error(f"Semantic reranking failed: {e}")
+            logger.error("Semantic reranking failed: %s", e)
             return candidates[:top_k]
 
 

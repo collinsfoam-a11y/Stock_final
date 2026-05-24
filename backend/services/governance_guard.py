@@ -52,6 +52,58 @@ _GUARD_WRITE_METHODS: tuple[str, ...] = (
     "find_one_and_delete",
     "bulk_write",
 )
+# All write operations blocked by the guard — used both for explicit method
+# definitions on GovernedCollection and as a fallback catch in __getattr__.
+_GUARD_WRITE_METHODS_SET: frozenset[str] = frozenset(_GUARD_WRITE_METHODS)
+
+# Additional destructive / administrative operations that are NOT in
+# _GUARD_WRITE_METHODS (so they are not explicitly overridden as class
+# methods on GovernedCollection) but must still be blocked to prevent
+# governance bypass through __getattr__.
+_GOVERNANCE_BLOCKED_FALLTHROUGH: frozenset[str] = _GUARD_WRITE_METHODS_SET | frozenset({
+    "drop",               # destroys the collection entirely
+    "rename",             # renames (moves) the collection
+    "create_index",       # index management — administrative writes
+    "create_indexes",
+    "drop_index",
+    "drop_indexes",
+    "drop_search_index",
+    "create_search_index",
+    "update_search_index",
+    "map_reduce",         # legacy write op (can write to output collections)
+})
+
+# LU-07: Whitelist of Motor attributes that GovernedCollection.__getattr__ is
+# permitted to proxy through to the underlying collection.  Write methods are
+# not listed here because they are explicitly defined as class methods on
+# GovernedCollection and never reach __getattr__ in normal operation.
+# Administrative write ops (drop, rename, create_index, …) are deliberately
+# absent — they will hit the _GOVERNANCE_BLOCKED_FALLTHROUGH guard instead.
+# If a new legitimate Motor read-only attribute is needed, add it here after
+# review; do NOT widen the fallthrough to "allow by default".
+_GOVERNED_COLLECTION_ALLOWED_ATTRS: frozenset[str] = frozenset({
+    # --- Query / read operations ---
+    "find",
+    "find_one",
+    "aggregate",
+    "count_documents",
+    "estimated_document_count",
+    "distinct",
+    "watch",
+    # --- Index introspection (read-only) ---
+    "index_information",
+    "list_indexes",
+    # --- Collection metadata / configuration (read-only) ---
+    "name",
+    "full_name",
+    "database",
+    "codec_options",
+    "read_preference",
+    "write_concern",
+    "read_concern",
+    "with_options",
+    "options",
+})
 _DB_GUARD_INSTALLED_ATTR = "__governance_write_guard_installed__"
 _DB_GUARD_PROXIES_ATTR = "__governance_collection_proxies__"
 _DB_GUARD_GETITEM_PATCHED_ATTR = "__governance_getitem_patched__"
@@ -248,7 +300,34 @@ class GovernedCollection:
         self._collection = collection
 
     def __getattr__(self, item: str) -> Any:
-        return getattr(self._collection, item)
+        # Always pass through dunder / private attrs (Python & Motor internals).
+        if item.startswith("_"):
+            return getattr(self._collection, item)
+
+        # LU-07: Whitelist — only explicitly permitted attributes are proxied.
+        if item in _GOVERNED_COLLECTION_ALLOWED_ATTRS:
+            return getattr(self._collection, item)
+
+        # Belt-and-suspenders: write/destructive methods are explicitly defined
+        # as class methods above and should never reach here, but block them
+        # again in case of unexpected attribute lookup paths (e.g., getattr()
+        # with a dynamic name, or a subclass that overrides __dict__).
+        if item in _GOVERNANCE_BLOCKED_FALLTHROUGH:
+            raise GovernanceViolation(
+                f"CRITICAL: Direct DB write forbidden ({self._collection_name}.{item}). "
+                "Use the collection's canonical domain service."
+            )
+
+        # LU-07: Unknown attribute — raise AttributeError rather than silently
+        # proxying to Motor.  This prevents new Motor releases from adding write
+        # methods that accidentally bypass the governance guard without a
+        # conscious review.  To add a new legitimate Motor attribute, append it
+        # to _GOVERNED_COLLECTION_ALLOWED_ATTRS above.
+        raise AttributeError(
+            f"'{type(self).__name__}' does not proxy attribute '{item}'. "
+            f"If this is a required Motor attribute, add it to "
+            f"_GOVERNED_COLLECTION_ALLOWED_ATTRS in governance_guard.py after review."
+        )
 
     def _guard(self, method_name: str) -> None:
         _require_write_authority(f"{self._collection_name}.{method_name}")

@@ -75,6 +75,12 @@ async def get_session_reconciliation_summary(
                     ],
                 }
             },
+            # L-03: Sort ascending by counted_at so that $first in the group
+            # stage picks the ERP baseline from the earliest count line — i.e.
+            # the value recorded when the item was first scanned in this session.
+            # Using $max previously caused the baseline to be inflated whenever
+            # any count line carried a higher erp_qty than the original.
+            {"$sort": {"counted_at": 1}},
             # Group by item_code to aggregate total counted qty
             {
                 "$group": {
@@ -82,7 +88,7 @@ async def get_session_reconciliation_summary(
                     "item_name": {"$first": "$item_name"},
                     "barcode": {"$first": "$barcode"},
                     "total_counted": {"$sum": "$counted_qty"},
-                    "baseline_qty": {"$max": {"$ifNull": ["$erp_qty", 0]}},
+                    "baseline_qty": {"$first": {"$ifNull": ["$erp_qty", 0]}},
                     "baseline_values": {"$addToSet": {"$ifNull": ["$erp_qty", 0]}},
                     "baseline_hash": {"$first": "$baseline_hash"},
                     "last_counted_at": {"$max": "$counted_at"},

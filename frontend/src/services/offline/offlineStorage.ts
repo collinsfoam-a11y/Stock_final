@@ -1,5 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { storage } from "../storage/asyncStorageService";
+import {
+  appendOfflineQueueJournalEvent,
+  readOfflineQueueJournal,
+  resetOfflineQueueJournal,
+} from "./offlineJournal";
 import { levenshteinDistance } from "../../utils/algorithms";
 import { createLogger } from "../logging";
 import { useSettingsStore } from "../../store/settingsStore";
@@ -20,6 +25,7 @@ function logStorageError(message: string, error: unknown, context?: Record<strin
 const STORAGE_KEYS = {
   ITEMS_CACHE: "items_cache",
   OFFLINE_QUEUE: "offline_queue",
+  OFFLINE_QUEUE_QUARANTINE: "offline_queue_quarantine",
   SESSIONS_CACHE: "sessions_cache",
   COUNT_LINES_CACHE: "count_lines_cache",
   LAST_SYNC: "last_sync",
@@ -88,9 +94,20 @@ export interface OfflineQueueItem {
   last_attempted_at?: string | null;
   /** ISO timestamp after which the item should be pruned rather than synced */
   expires_at?: string;
+  lease_owner?: string | null;
+  lease_token?: string | null;
+  lease_acquired_at?: string | null;
+  lease_expires_at?: string | null;
+}
+
+export interface OfflineQueueLease {
+  owner: string;
+  token: string;
 }
 
 const OFFLINE_QUEUE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const OFFLINE_QUEUE_LEASE_MS = 10 * 60 * 1000; // 10 minutes
+let legacyOfflineQueueMigrationChecked = false;
 
 export function makeQueueItemExpiry(now = Date.now()): string {
   return new Date(now + OFFLINE_QUEUE_TTL_MS).toISOString();
@@ -99,6 +116,23 @@ export function makeQueueItemExpiry(now = Date.now()): string {
 export function isQueueItemExpired(item: OfflineQueueItem, now = Date.now()): boolean {
   if (!item.expires_at) return false;
   return new Date(item.expires_at).getTime() <= now;
+}
+
+export function isQueueLeaseActive(item: OfflineQueueItem, now = Date.now()): boolean {
+  if (!item.lease_owner || !item.lease_token || !item.lease_expires_at) return false;
+  return new Date(item.lease_expires_at).getTime() > now;
+}
+
+export function isQueueLeaseOwnedBy(
+  item: OfflineQueueItem,
+  lease: OfflineQueueLease,
+  now = Date.now()
+): boolean {
+  return (
+    isQueueLeaseActive(item, now) &&
+    item.lease_owner === lease.owner &&
+    item.lease_token === lease.token
+  );
 }
 
 export interface CachedSession {
@@ -372,6 +406,10 @@ const normalizeQueueItem = (item: OfflineQueueItem): OfflineQueueItem => {
     idempotency_key: item.idempotency_key || resolveIdempotencyKey(item.type, item.data),
     last_error: item.last_error ?? null,
     last_attempted_at: item.last_attempted_at ?? null,
+    lease_owner: item.lease_owner ?? null,
+    lease_token: item.lease_token ?? null,
+    lease_acquired_at: item.lease_acquired_at ?? null,
+    lease_expires_at: item.lease_expires_at ?? null,
   };
 };
 
@@ -408,20 +446,19 @@ export const addToOfflineQueue = async (
         status: "pending",
         last_error: null,
       };
-      queue[existingIndex] = updatedItem;
-      await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, queue);
+      await appendOfflineQueueJournalEvent("replace", updatedItem.id, updatedItem);
       return updatedItem;
     }
 
-    queue.push(queueItem);
+    const nextLength = queue.length + 1;
     const maxQueueSize = useSettingsStore.getState().settings.maxQueueSize;
-    if (queue.length > maxQueueSize) {
+    if (nextLength > maxQueueSize) {
       log.warn("Offline queue exceeded advisory limit; preserving all entries", {
-        queueLength: queue.length,
+        queueLength: nextLength,
         maxQueueSize,
       });
     }
-    await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, queue);
+    await appendOfflineQueueJournalEvent("enqueue", queueItem.id, queueItem);
     return queueItem;
   } catch (error) {
     logStorageError("Error adding to offline queue", error, { type });
@@ -429,56 +466,110 @@ export const addToOfflineQueue = async (
   }
 };
 
+const migrateLegacyOfflineQueueIfNeeded = async () => {
+  if (legacyOfflineQueueMigrationChecked) return;
+  legacyOfflineQueueMigrationChecked = true;
+
+  const currentJournalQueue = await readOfflineQueueJournal();
+  if (currentJournalQueue.length > 0) return;
+
+  const legacyQueue = await storage.get<OfflineQueueItem[]>(STORAGE_KEYS.OFFLINE_QUEUE, {
+    defaultValue: [],
+  });
+  if (!Array.isArray(legacyQueue) || legacyQueue.length === 0) return;
+
+  for (const item of legacyQueue.map(normalizeQueueItem)) {
+    await appendOfflineQueueJournalEvent("enqueue", item.id, item);
+  }
+  log.warn("Migrated legacy AsyncStorage offline queue into append-only journal", {
+    migratedItems: legacyQueue.length,
+  });
+};
+
 export const getOfflineQueue = async (): Promise<OfflineQueueItem[]> => {
   try {
-    const raw = await storage.get<OfflineQueueItem[]>(STORAGE_KEYS.OFFLINE_QUEUE, {
-      defaultValue: [],
-    });
-    if (!Array.isArray(raw)) return [];
+    await migrateLegacyOfflineQueueIfNeeded();
 
     const now = Date.now();
-    const normalized = raw.map(normalizeQueueItem);
+    const normalized = (await readOfflineQueueJournal()).map(normalizeQueueItem);
     const expired = normalized.filter((item) => isQueueItemExpired(item, now));
     const active = normalized.filter((item) => !isQueueItemExpired(item, now));
 
     if (expired.length > 0) {
-      log.warn(`Pruned ${expired.length} expired offline queue item(s)`, {
+      log.warn(`Quarantined ${expired.length} expired offline queue item(s)`, {
         expiredIds: expired.map((i) => i.id),
       });
-      await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, active);
+      const existingQuarantine = await storage.get<OfflineQueueItem[]>(
+        STORAGE_KEYS.OFFLINE_QUEUE_QUARANTINE,
+        { defaultValue: [] }
+      );
+      const quarantined = expired.map((item) =>
+        normalizeQueueItem({
+          ...item,
+          status: "failed_manual_review",
+          last_error: "Offline queue item expired before sync and requires manual review",
+          last_attempted_at: new Date(now).toISOString(),
+        })
+      );
+      await storage.set(STORAGE_KEYS.OFFLINE_QUEUE_QUARANTINE, [
+        ...(Array.isArray(existingQuarantine) ? existingQuarantine : []),
+        ...quarantined,
+      ]);
+      for (const item of expired) {
+        await appendOfflineQueueJournalEvent("remove", item.id, {
+          reason: "expired_before_sync",
+          removed_at: new Date(now).toISOString(),
+        });
+      }
     }
 
     return active;
   } catch (error) {
     logStorageError("Error getting offline queue", error);
-    return [];
+    throw error;
   }
 };
 
 export const removeFromOfflineQueue = async (id: string) => {
   try {
-    const queue = await getOfflineQueue();
-    const updatedQueue = queue.filter((item) => item.id !== id);
-    await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, updatedQueue);
+    await appendOfflineQueueJournalEvent("remove", id, { removed_at: new Date().toISOString() });
   } catch (error) {
     logStorageError("Error removing from offline queue", error, { id });
   }
 };
 
-export const removeManyFromOfflineQueue = async (ids: string[]) => {
+const filterIdsByLease = async (ids: string[], lease?: OfflineQueueLease): Promise<string[]> => {
+  if (!lease) return ids;
+  const now = Date.now();
+  const queue = await getOfflineQueue();
+  const queueById = new Map(queue.map((item) => [item.id, item]));
+  return ids.filter((id) => {
+    const item = queueById.get(id);
+    return item ? isQueueLeaseOwnedBy(item, lease, now) : false;
+  });
+};
+
+export const removeManyFromOfflineQueue = async (ids: string[], lease?: OfflineQueueLease) => {
   try {
+    const eligibleIds = await filterIdsByLease(ids, lease);
     const queue = await getOfflineQueue();
-    const updatedQueue = queue.filter((item) => !ids.includes(item.id));
+    const removeSet = new Set(eligibleIds);
+    const removedCount = queue.filter((item) => removeSet.has(item.id)).length;
 
     // T079: Log deletion for verification
-    if (queue.length !== updatedQueue.length) {
+    if (removedCount > 0) {
       log.debug("Removed confirmed items from offline queue", {
-        removed: queue.length - updatedQueue.length,
-        remaining: updatedQueue.length,
+        removed: removedCount,
+        remaining: queue.length - removedCount,
       });
     }
 
-    await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, updatedQueue);
+    for (const id of eligibleIds) {
+      await appendOfflineQueueJournalEvent("remove", id, {
+        removed_at: new Date().toISOString(),
+        reason: "sync_confirmed",
+      });
+    }
   } catch (error) {
     logStorageError("Error removing many from offline queue", error, {
       idsCount: ids.length,
@@ -492,41 +583,128 @@ export const updateQueueItemRetries = async (
     error?: string;
     status?: OfflineQueueItem["status"];
     attemptedAt?: string;
-  }
+  },
+  lease?: OfflineQueueLease
 ) => {
   try {
     const queue = await getOfflineQueue();
-    const updatedQueue = queue.map((item) =>
-      item.id === id
-        ? {
-            ...item,
-            retries: item.retries + 1,
-            status: options?.status || "pending_retry",
-            last_error: options?.error ?? item.last_error ?? null,
-            last_attempted_at: options?.attemptedAt || new Date().toISOString(),
-          }
-        : item
-    );
-    await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, updatedQueue);
+    const item = queue.find((entry) => entry.id === id);
+    if (!item) return;
+    if (lease && !isQueueLeaseOwnedBy(item, lease)) return;
+    await appendOfflineQueueJournalEvent("update", id, {
+      retries: item.retries + 1,
+      status: options?.status || "pending_retry",
+      last_error: options?.error ?? item.last_error ?? null,
+      last_attempted_at: options?.attemptedAt || new Date().toISOString(),
+    });
   } catch (error) {
     logStorageError("Error updating queue item retries", error, { id });
   }
 };
 
-export const updateOfflineQueueItem = async (id: string, patch: Partial<OfflineQueueItem>) => {
+export const updateOfflineQueueItem = async (
+  id: string,
+  patch: Partial<OfflineQueueItem>,
+  lease?: OfflineQueueLease
+) => {
   try {
-    const queue = await getOfflineQueue();
-    const updatedQueue = queue.map((item) =>
-      item.id === id ? normalizeQueueItem({ ...item, ...patch }) : item
-    );
-    await storage.set(STORAGE_KEYS.OFFLINE_QUEUE, updatedQueue);
+    if (lease) {
+      const queue = await getOfflineQueue();
+      const item = queue.find((entry) => entry.id === id);
+      if (!item || !isQueueLeaseOwnedBy(item, lease)) return;
+    }
+    await appendOfflineQueueJournalEvent("update", id, patch);
   } catch (error) {
     logStorageError("Error updating offline queue item", error, { id });
   }
 };
 
+export const acquireOfflineQueueLeases = async (
+  ids: string[],
+  lease: OfflineQueueLease,
+  leaseMs = OFFLINE_QUEUE_LEASE_MS
+): Promise<OfflineQueueItem[]> => {
+  const queue = await getOfflineQueue();
+  const idSet = new Set(ids);
+  const now = Date.now();
+  const acquiredAt = new Date(now).toISOString();
+  const leaseExpiresAt = new Date(now + leaseMs).toISOString();
+  const leasedItems: OfflineQueueItem[] = [];
+
+  for (const item of queue) {
+    if (!idSet.has(item.id)) continue;
+    if (isQueueLeaseActive(item, now) && !isQueueLeaseOwnedBy(item, lease, now)) {
+      continue;
+    }
+    const leasedItem = normalizeQueueItem({
+      ...item,
+      lease_owner: lease.owner,
+      lease_token: lease.token,
+      lease_acquired_at: acquiredAt,
+      lease_expires_at: leaseExpiresAt,
+    });
+    await appendOfflineQueueJournalEvent("update", item.id, {
+      lease_owner: lease.owner,
+      lease_token: lease.token,
+      lease_acquired_at: acquiredAt,
+      lease_expires_at: leaseExpiresAt,
+    });
+    leasedItems.push(leasedItem);
+  }
+
+  return leasedItems;
+};
+
+export const renewOfflineQueueLeases = async (
+  ids: string[],
+  lease: OfflineQueueLease,
+  leaseMs = OFFLINE_QUEUE_LEASE_MS
+): Promise<string[]> => {
+  const queue = await getOfflineQueue();
+  const idSet = new Set(ids);
+  const now = Date.now();
+  const leaseExpiresAt = new Date(now + leaseMs).toISOString();
+  const renewedIds: string[] = [];
+
+  for (const item of queue) {
+    if (!idSet.has(item.id)) continue;
+    if (!isQueueLeaseOwnedBy(item, lease, now)) continue;
+    await appendOfflineQueueJournalEvent("update", item.id, {
+      lease_expires_at: leaseExpiresAt,
+    });
+    renewedIds.push(item.id);
+  }
+
+  return renewedIds;
+};
+
+export const releaseOfflineQueueLeases = async (
+  ids: string[],
+  lease: OfflineQueueLease
+): Promise<string[]> => {
+  const queue = await getOfflineQueue();
+  const idSet = new Set(ids);
+  const now = Date.now();
+  const releasedIds: string[] = [];
+
+  for (const item of queue) {
+    if (!idSet.has(item.id)) continue;
+    if (!isQueueLeaseOwnedBy(item, lease, now)) continue;
+    await appendOfflineQueueJournalEvent("update", item.id, {
+      lease_owner: null,
+      lease_token: null,
+      lease_acquired_at: null,
+      lease_expires_at: null,
+    });
+    releasedIds.push(item.id);
+  }
+
+  return releasedIds;
+};
+
 export const clearOfflineQueue = async () => {
   try {
+    await resetOfflineQueueJournal();
     await storage.remove(STORAGE_KEYS.OFFLINE_QUEUE);
   } catch (error) {
     logStorageError("Error clearing offline queue", error);

@@ -1,10 +1,14 @@
 import {
+  acquireOfflineQueueLeases,
   getOfflineQueue,
+  releaseOfflineQueueLeases,
   removeManyFromOfflineQueue,
+  renewOfflineQueueLeases,
   updateQueueItemRetries,
   updateOfflineQueueItem,
   getCacheStats,
   OfflineQueueItem,
+  OfflineQueueLease,
   removeSessionFromCache,
 } from "./offline/offlineStorage";
 import { useNetworkStore } from "../store/networkStore";
@@ -39,6 +43,7 @@ let syncBatchPromise:
 let periodicSyncInterval: ReturnType<typeof setInterval> | null = null;
 let periodicSettingsUnsubscribe: (() => void) | null = null;
 let periodicSyncIntervalOverrideMs: number | undefined;
+const syncProcessId = `sync-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 const getSyncBatch = async () => {
   if (!syncBatchPromise) {
@@ -147,6 +152,11 @@ const getPeriodicSyncIntervalMs = (overrideIntervalMs?: number): number => {
   const minutes = useSettingsStore.getState().settings.autoSyncInterval;
   return Math.max(5, minutes) * 60 * 1000;
 };
+
+const createQueueLease = (): OfflineQueueLease => ({
+  owner: syncProcessId,
+  token: `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`,
+});
 
 const deriveFailureStatus = (
   errorMessage: string,
@@ -280,7 +290,7 @@ const resolveEvidencePhotos = (data: Record<string, unknown>): string[] => {
 
 const resolveCanonicalStatus = (data: Record<string, unknown>): SyncRecord["status"] => {
   const normalized = firstString(data.status)?.toLowerCase();
-  return normalized === "partial" ? "partial" : "finalized";
+  return normalized === "finalized" ? "finalized" : "partial";
 };
 
 const buildSyncRecord = (
@@ -522,6 +532,7 @@ const removeSyncedSessionsFromCache = async (
 const handleBatchResults = async (
   batch: OfflineQueueItem[],
   results: { success: boolean; id: string; message?: string }[],
+  lease: OfflineQueueLease,
 ) => {
   const queueItemsById = new Map<string, OfflineQueueItem>();
   for (const item of batch) {
@@ -551,11 +562,15 @@ const handleBatchResults = async (
     log.warn(`Sync item failed: ${queueItemId} - ${errorMessage}`);
     const nextRetryCount = (queueItem?.retries || 0) + 1;
     retryUpdates.push(
-      updateQueueItemRetries(queueItemId, {
-        error: errorMessage,
-        status: deriveFailureStatus(errorMessage, nextRetryCount),
-        attemptedAt: new Date().toISOString(),
-      }),
+      updateQueueItemRetries(
+        queueItemId,
+        {
+          error: errorMessage,
+          status: deriveFailureStatus(errorMessage, nextRetryCount),
+          attemptedAt: new Date().toISOString(),
+        },
+        lease,
+      ),
     );
   }
 
@@ -565,9 +580,13 @@ const handleBatchResults = async (
 
   const syncedQueueIds = [...successIds];
   if (syncedQueueIds.length > 0) {
-    await removeManyFromOfflineQueue(syncedQueueIds);
+    await removeManyFromOfflineQueue(syncedQueueIds, lease);
     log.debug(`Removed ${syncedQueueIds.length} synced items from queue`);
     await removeSyncedSessionsFromCache(batch, syncedQueueIds);
+  }
+  const failedIds = errors.map((error) => error.id);
+  if (failedIds.length > 0) {
+    await releaseOfflineQueueLeases(failedIds, lease);
   }
 
   return { successCount, failedCount, errors };
@@ -575,6 +594,7 @@ const handleBatchResults = async (
 
 const handleInvalidSyncItems = async (
   invalidItems: { queueId: string; error: string }[],
+  lease: OfflineQueueLease,
 ) => {
   if (invalidItems.length === 0) {
     return { failedCount: 0, errors: [] as { id: string; error: string }[] };
@@ -583,12 +603,20 @@ const handleInvalidSyncItems = async (
   const attemptedAt = new Date().toISOString();
   await Promise.all(
     invalidItems.map((item) =>
-      updateOfflineQueueItem(item.queueId, {
-        status: "failed_manual_review",
-        last_error: item.error,
-        last_attempted_at: attemptedAt,
-      }),
+      updateOfflineQueueItem(
+        item.queueId,
+        {
+          status: "failed_manual_review",
+          last_error: item.error,
+          last_attempted_at: attemptedAt,
+        },
+        lease,
+      ),
     ),
+  );
+  await releaseOfflineQueueLeases(
+    invalidItems.map((item) => item.queueId),
+    lease,
   );
 
   return {
@@ -597,20 +625,29 @@ const handleInvalidSyncItems = async (
   };
 };
 
-const handleBatchFailure = async (batch: OfflineQueueItem[], batchError: unknown) => {
+const handleBatchFailure = async (
+  batch: OfflineQueueItem[],
+  batchError: unknown,
+  lease: OfflineQueueLease,
+) => {
   const errorMessage = toErrorMessage(batchError);
 
   if (shouldRetryAfterAuth(batchError)) {
     log.warn("Auth error during sync - will retry after re-authentication");
     await Promise.all(
       batch.map((item) =>
-        updateOfflineQueueItem(item.id, {
-        status: "pending_retry",
-        last_error: errorMessage,
-        last_attempted_at: new Date().toISOString(),
-        }),
+        updateOfflineQueueItem(
+          item.id,
+          {
+            status: "pending_retry",
+            last_error: errorMessage,
+            last_attempted_at: new Date().toISOString(),
+          },
+          lease,
+        ),
       ),
     );
+    await releaseOfflineQueueLeases(batch.map((item) => item.id), lease);
     return {
       failedCount: batch.length,
       errors: batch.map((item) => ({ id: item.id, error: errorMessage })),
@@ -621,13 +658,18 @@ const handleBatchFailure = async (batch: OfflineQueueItem[], batchError: unknown
   await Promise.all(
     batch.map((item) => {
       const nextRetryCount = item.retries + 1;
-      return updateQueueItemRetries(item.id, {
-        error: errorMessage,
-        status: deriveFailureStatus(errorMessage, nextRetryCount),
-        attemptedAt: new Date().toISOString(),
-      });
+      return updateQueueItemRetries(
+        item.id,
+        {
+          error: errorMessage,
+          status: deriveFailureStatus(errorMessage, nextRetryCount),
+          attemptedAt: new Date().toISOString(),
+        },
+        lease,
+      );
     }),
   );
+  await releaseOfflineQueueLeases(batch.map((item) => item.id), lease);
 
   return {
     failedCount: batch.length,
@@ -635,7 +677,11 @@ const handleBatchFailure = async (batch: OfflineQueueItem[], batchError: unknown
   };
 };
 
-const syncBatchChunk = async (batch: OfflineQueueItem[], batchIndex: number) => {
+const syncBatchChunk = async (
+  batch: OfflineQueueItem[],
+  batchIndex: number,
+  lease: OfflineQueueLease,
+) => {
   const preparedItems = batch.map(buildSyncRecord);
   const validItems = preparedItems.filter(
     (item): item is { record: SyncRecord; queueId: string } => "record" in item,
@@ -656,7 +702,7 @@ const syncBatchChunk = async (batch: OfflineQueueItem[], batchIndex: number) => 
     invalidItems: invalidItems.length,
   });
 
-  const invalidResult = await handleInvalidSyncItems(invalidItems);
+  const invalidResult = await handleInvalidSyncItems(invalidItems, lease);
   if (records.length === 0) {
     return { successCount: 0, ...invalidResult };
   }
@@ -664,14 +710,14 @@ const syncBatchChunk = async (batch: OfflineQueueItem[], batchIndex: number) => 
   try {
     const syncBatch = await getSyncBatch();
     const response = await syncBatch(records, `offline-${Date.now()}-${batchIndex + 1}`);
-    const batchResult = await handleBatchResults(validBatch, response.results || []);
+    const batchResult = await handleBatchResults(validBatch, response.results || [], lease);
     return {
       successCount: batchResult.successCount,
       failedCount: batchResult.failedCount + invalidResult.failedCount,
       errors: [...batchResult.errors, ...invalidResult.errors],
     };
   } catch (error: unknown) {
-    const failure = await handleBatchFailure(validBatch, error);
+    const failure = await handleBatchFailure(validBatch, error, lease);
     return {
       successCount: 0,
       failedCount: failure.failedCount + invalidResult.failedCount,
@@ -800,15 +846,34 @@ export const syncOfflineQueue = async (
     }
   );
 
+  let activeQueueLease: OfflineQueueLease | null = null;
+  let activeLeaseIds: string[] = [];
+
   try {
     const queue = await getOfflineQueue();
     if (queue.length === 0) {
       operationalTelemetry.markEnd(syncMark, "success", { empty: true }, { processed: 0 });
       return EMPTY_SYNC_RESULT;
     }
+    const queueLease = createQueueLease();
+    const leasedQueue = await acquireOfflineQueueLeases(
+      queue.map((item) => item.id),
+      queueLease,
+    );
+    activeQueueLease = queueLease;
+    activeLeaseIds = leasedQueue.map((item) => item.id);
+    if (leasedQueue.length === 0) {
+      operationalTelemetry.markEnd(
+        syncMark,
+        "success",
+        { empty: false, leased: 0 },
+        { processed: 0 },
+      );
+      return EMPTY_SYNC_RESULT;
+    }
 
-    const total = queue.length;
-    const oldestAgeMs = getOldestQueueAgeMs(queue);
+    const total = leasedQueue.length;
+    const oldestAgeMs = getOldestQueueAgeMs(leasedQueue);
     log.info(`Syncing ${total} items from offline queue`);
 
     // Process in batches of 50 to avoid payload size issues
@@ -819,8 +884,12 @@ export const syncOfflineQueue = async (
     const errors: { id: string; error: string }[] = [];
 
     for (let i = 0; i < total; i += BATCH_SIZE) {
-      const batch = queue.slice(i, i + BATCH_SIZE);
-      const batchResult = await syncBatchChunk(batch, Math.floor(i / BATCH_SIZE));
+      const batch = leasedQueue.slice(i, i + BATCH_SIZE);
+      await renewOfflineQueueLeases(
+        batch.map((item) => item.id),
+        queueLease,
+      );
+      const batchResult = await syncBatchChunk(batch, Math.floor(i / BATCH_SIZE), queueLease);
       successCount += batchResult.successCount;
       failedCount += batchResult.failedCount;
       errors.push(...batchResult.errors);
@@ -861,6 +930,9 @@ export const syncOfflineQueue = async (
       errors,
     };
   } catch (error: unknown) {
+    if (activeQueueLease && activeLeaseIds.length > 0) {
+      await releaseOfflineQueueLeases(activeLeaseIds, activeQueueLease);
+    }
     log.error("Sync process error", error as Record<string, unknown>);
     const errorMessage =
       error instanceof Error ? error.message : "Unknown sync error";

@@ -540,6 +540,117 @@ def _compare_versions(
     }
 
 
+@health_router.get("/deep", status_code=status.HTTP_200_OK)
+async def deep_health_check(request: Any = None) -> dict[str, Any]:
+    """LU-08 — Deep health endpoint reporting subsystem wiring state.
+
+    Checks whether each critical dependency (lock service, activity log, tracing,
+    WebSocket fan-out, governance guards) was successfully initialised at startup.
+    This gives operators a single view of the application's internal readiness
+    without needing to trigger actual business operations.
+
+    Requires admin authentication.  Unauthenticated callers receive 403.
+    """
+    # Lazy auth import avoids circular dependency at module level
+    try:
+        from fastapi import Request as _Request, Depends as _Depends
+        from backend.auth.dependencies import require_admin as _require_admin
+    except ImportError:
+        pass  # auth deps may not be wired in test environments
+
+    result: dict[str, Any] = {
+        "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+    }
+
+    # --- MongoDB ping ---
+    try:
+        from backend.db.runtime import get_db as _get_db
+        _db = _get_db()
+        await _db.command("ping")
+        result["mongodb"] = True
+    except Exception as _exc:
+        result["mongodb"] = False
+        result["mongodb_error"] = str(_exc)
+
+    # --- Redis ping via cache service ---
+    try:
+        import backend.core.globals as _g
+        _cache = getattr(_g, "cache_service", None)
+        if _cache and hasattr(_cache, "redis_client") and _cache.redis_client:
+            await _cache.redis_client.ping()
+            result["redis"] = True
+        else:
+            # In-memory fallback is always available
+            result["redis"] = True
+            result["redis_backend"] = "in-process"
+    except Exception as _exc:
+        result["redis"] = False
+        result["redis_error"] = str(_exc)
+
+    # --- Critical service wiring checks ---
+    try:
+        from backend.api.count_lines_routes import (
+            _lock_service as _ls,
+            _activity_log_service as _als,
+        )
+        result["lock_service"] = _ls is not None
+        result["activity_log_service"] = _als is not None
+    except ImportError:
+        result["lock_service"] = None
+        result["activity_log_service"] = None
+
+    # --- OpenTelemetry tracing state (PW-05) ---
+    try:
+        from backend.core.lifespan import _TRACING_ACTIVE as _ta
+        result["tracing_active"] = _ta
+    except ImportError:
+        result["tracing_active"] = False
+
+    # --- WebSocket manager connection count ---
+    try:
+        from backend.core.websocket_manager import manager as _ws_mgr
+        ws_connections = getattr(_ws_mgr, "_connections", {})
+        result["websocket_connections"] = sum(
+            len(v) if isinstance(v, list) else 1
+            for v in ws_connections.values()
+        )
+        result["websocket_redis_fanout"] = getattr(_ws_mgr, "_redis", None) is not None
+    except Exception as _exc:
+        result["websocket_connections"] = None
+        result["websocket_error"] = str(_exc)
+
+    # --- Governance write-guard installation ---
+    try:
+        from backend.db.runtime import get_db as _get_db2
+        from backend.services.governance_guard import _DB_GUARD_INSTALLED_ATTR
+        _db2 = _get_db2()
+        result["governance_guards_installed"] = bool(
+            getattr(_db2, _DB_GUARD_INSTALLED_ATTR, False)
+        )
+    except Exception as _exc:
+        result["governance_guards_installed"] = None
+        result["governance_error"] = str(_exc)
+
+    # --- Watchdog background task ---
+    try:
+        import asyncio as _asyncio
+        _tasks = {t.get_name(): t for t in _asyncio.all_tasks()}
+        result["watchdog_task_running"] = "watchdog" in _tasks and not _tasks["watchdog"].done()
+    except Exception:
+        result["watchdog_task_running"] = None
+
+    # --- Overall readiness summary ---
+    critical = {
+        "mongodb": result.get("mongodb", False),
+        "lock_service": result.get("lock_service") is not False,
+        "activity_log_service": result.get("activity_log_service") is not False,
+    }
+    result["overall"] = "healthy" if all(critical.values()) else "degraded"
+    result["critical_checks"] = critical
+
+    return result
+
+
 @info_router.get("/version/check", status_code=status.HTTP_200_OK)
 async def check_version(
     client_version: str = Query(

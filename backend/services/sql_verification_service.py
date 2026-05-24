@@ -6,7 +6,9 @@ Implements business logic requirement: Item selection triggers SQL qty read + Mo
 import asyncio
 import logging
 import math
+import os
 import time
+import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
@@ -96,6 +98,29 @@ class SQLVerificationService:
                 "message": error_info.get("message"),
                 "context": error_info.get("context"),
             }
+        ledger_id = str(uuid.uuid4())
+        ledger_payload: Dict[str, Any] = {
+            "_id": ledger_id,
+            "ledger_id": ledger_id,
+            "event_type": "SQL_VERIFICATION",
+            "operation": "verify_item_quantity",
+            "session_id": "erp-verification",
+            "item_id": item_code,
+            "actor_id": "system",
+            "status": status,
+            "metadata": event,
+            "recorded_at": event["timestamp"],
+            "source_collection": "governance_events",
+            "immutable": True,
+        }
+        ledger_required = os.getenv("GOVERNANCE_LEDGER_REQUIRED", "true").lower() == "true"
+        try:
+            await db.governance_ledger.insert_one(ledger_payload)
+        except Exception as e:
+            logger.error(f"Governance ledger insert failed for {item_code}: {str(e)}")
+            if ledger_required:
+                raise
+
         try:
             await db.governance_events.insert_one(event)
         except Exception as e:

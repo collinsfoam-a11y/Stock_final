@@ -13,6 +13,7 @@ project_root = Path(__file__).parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
+import asyncio  # noqa: E402
 import io  # noqa: E402
 import logging  # noqa: E402
 from backend.utils.api_utils import sanitize_for_logging
@@ -20,6 +21,16 @@ import os  # noqa: E402
 from collections.abc import Callable, Iterable
 from datetime import datetime, timedelta  # noqa: E402
 from typing import Any, Optional, TypedDict  # noqa: E402, Optional
+
+# M-09: pandas is optional (heavy dependency).  Import once at module load so
+# that the per-request handler is not responsible for import side-effects and
+# so the missing-dependency error surfaces at startup rather than mid-request.
+try:
+    import pandas as pd  # noqa: E402
+    _PANDAS_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    pd = None  # type: ignore[assignment]
+    _PANDAS_AVAILABLE = False
 
 import psutil  # noqa: E402
 from fastapi import APIRouter, Depends, HTTPException, status  # noqa: E402
@@ -427,25 +438,23 @@ def _find_running_backend_process() -> Optional[dict[str, Any]]:
 
 @admin_control_router.post("/services/backend/start")
 async def start_backend(current_user: dict = Depends(require_admin)):
-    """Start backend server"""
-    try:
-        # Check if already running
-        existing_backend = _find_running_backend_process()
-        if existing_backend:
-            return existing_backend
+    """Start backend server.
 
-        # Start backend (this would typically be done via script)
-        return {
-            "success": True,
-            "message": "Backend start command issued. Check status for updates.",
-            "note": "Backend should be started using scripts/start_backend.sh or scripts/start_backend.ps1",
-        }
-    except Exception as e:
-        logger.error("Error starting backend: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to start backend: {str(e)}",
-        )
+    M-07: The API process cannot spawn itself.  This endpoint reports current
+    status when the backend is already running, and returns 405 with
+    instructions when it is not — preventing a silent no-op success response.
+    """
+    existing_backend = _find_running_backend_process()
+    if existing_backend:
+        return existing_backend
+    raise HTTPException(
+        status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+        detail=(
+            "The backend cannot start itself via the API. "
+            "Use the OS-level startup script: "
+            "scripts/start_backend.sh (Linux/macOS) or scripts/start_backend.ps1 (Windows)."
+        ),
+    )
 
 
 def _create_stop_response(killed: int) -> dict[str, Any]:
@@ -478,37 +487,36 @@ async def stop_backend(current_user: dict = Depends(require_admin)):
 
 @admin_control_router.post("/services/frontend/start")
 async def start_frontend(current_user: dict = Depends(require_admin)):
-    """Start frontend server"""
-    try:
-        # Check if already running
-        for port in _get_frontend_ports():
-            if ServiceManager.is_port_in_use(port):
-                pid = ServiceManager.get_process_using_port(port)
-                if pid:
-                    try:
-                        process = psutil.Process(pid)
-                        cmdline = " ".join(process.cmdline())
-                        if "expo" in cmdline.lower() or "metro" in cmdline.lower():
-                            return {
-                                "success": True,
-                                "message": "Frontend is already running",
-                                "port": port,
-                                "pid": pid,
-                            }
-                    except Exception:
-                        pass
+    """Start frontend server.
 
-        return {
-            "success": True,
-            "message": "Frontend start command issued. Check status for updates.",
-            "note": "Frontend should be started using scripts/start_frontend.sh or scripts/start_frontend.ps1",
-        }
-    except Exception as e:
-        logger.error("Error starting frontend: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to start frontend: {str(e)}",
-        )
+    M-07: Returns current status when the frontend is already detected on a
+    known port, and 405 with script instructions otherwise — preventing a
+    silent no-op success response.
+    """
+    for port in _get_frontend_ports():
+        if ServiceManager.is_port_in_use(port):
+            pid = ServiceManager.get_process_using_port(port)
+            if pid:
+                try:
+                    process = psutil.Process(pid)
+                    cmdline = " ".join(process.cmdline())
+                    if "expo" in cmdline.lower() or "metro" in cmdline.lower():
+                        return {
+                            "success": True,
+                            "message": "Frontend is already running",
+                            "port": port,
+                            "pid": pid,
+                        }
+                except Exception:
+                    pass
+    raise HTTPException(
+        status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+        detail=(
+            "The frontend cannot be started via the API. "
+            "Use the OS-level startup script: "
+            "scripts/start_frontend.sh (Linux/macOS) or scripts/start_frontend.ps1 (Windows)."
+        ),
+    )
 
 
 @admin_control_router.post("/services/frontend/stop")
@@ -600,7 +608,13 @@ async def get_login_devices(current_user: dict = Depends(require_admin)):
         seen_devices = set()
 
         for session in sessions:
-            device_key = f"{session.get('ip_address', 'unknown')}-{session.get('device_info', {}).get('platform', 'unknown')}"
+            # L-01: include username so that two different users on the same
+            # IP/platform are NOT collapsed into a single device entry.
+            device_key = (
+                f"{session.get('user', 'unknown')}"
+                f"-{session.get('ip_address', 'unknown')}"
+                f"-{session.get('device_info', {}).get('platform', 'unknown')}"
+            )
             if device_key not in seen_devices:
                 seen_devices.add(device_key)
                 devices.append(
@@ -705,8 +719,11 @@ async def generate_report(
             )
         elif format == "excel":
             if not data:
-                import pandas as pd
-
+                if not _PANDAS_AVAILABLE:
+                    raise HTTPException(
+                        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                        detail="Excel export requires the 'pandas' package which is not installed.",
+                    )
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
                     pd.DataFrame([{"message": "No data"}]).to_excel(writer, index=False)
@@ -746,7 +763,12 @@ def _parse_log_line(line: str) -> Optional[dict[str, Optional[str]]]:
 def _read_log_file(
     log_path: Path, lines: int, level: Optional[str], service: str
 ) -> list[dict[str, Any]]:
-    """Read and parse log file"""
+    """Read and parse log file (synchronous — call via asyncio.to_thread from async handlers).
+
+    M-08: This function performs blocking I/O (open + readlines).  It must NOT
+    be called directly from an async request handler; use the async wrapper
+    ``_read_log_file_async`` instead so the event loop is not blocked.
+    """
     logs: list[dict[str, Any]] = []
     if not log_path.exists():
         return logs
@@ -781,6 +803,13 @@ def _read_log_file(
     return logs
 
 
+async def _read_log_file_async(
+    log_path: Path, lines: int, level: Optional[str], service: str
+) -> list[dict[str, Any]]:
+    """Async wrapper: runs _read_log_file in a thread pool to avoid blocking the event loop."""
+    return await asyncio.to_thread(_read_log_file, log_path, lines, level, service)
+
+
 @admin_control_router.get("/logs/{service}")
 async def get_service_logs(
     service: str,
@@ -796,7 +825,7 @@ async def get_service_logs(
             # Read backend logs from file
             log_file = settings.LOG_FILE or "app.log"
             log_path = Path(log_file)
-            logs = _read_log_file(log_path, lines, level, service)
+            logs = await _read_log_file_async(log_path, lines, level, service)
 
         if not logs and service == "frontend":
             frontend_status = _get_frontend_status()
@@ -1016,28 +1045,4 @@ async def get_system_stats(current_user: dict = Depends(require_admin)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get system stats: {str(e)}",
-        )
-
-
-@admin_control_router.post("/watchdog/run")
-async def run_watchdog_checks(current_user: dict = Depends(require_admin)):
-    """
-    Manually trigger system watchdog checks.
-    Scans for velocity anomalies, brute force attacks, and system health issues.
-    """
-    try:
-        db = get_db()
-        watchdog = WatchdogService(db)
-        await watchdog.run_all_checks()
-
-        return {
-            "success": True,
-            "message": "Watchdog checks completed. Check audit logs for any alerts.",
-            "timestamp": datetime.now().isoformat(),
-        }
-    except Exception as e:
-        logger.error("Error running watchdog: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Watchdog execution failed: {str(e)}",
         )

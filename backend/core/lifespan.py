@@ -65,6 +65,7 @@ from backend.services.sync_conflicts_service import SyncConflictsService
 from backend.services.lock_service import LockService
 from backend.services.variant_service import VariantService
 from backend.services.governance_guard import install_db_write_guards
+from backend.services.watchdog_service import WatchdogService
 from backend.sql_server_connector import SQLServerConnector
 from backend.utils.port_detector import PortDetector, save_backend_info
 
@@ -112,8 +113,10 @@ logger = setup_logging(
 # Initialize tracing (optional, env-gated). This only configures the
 # tracer provider and exporter; FastAPI is instrumented later once the
 # app instance is created.
+# PW-05: capture the return value so lifespan() can expose it on app.state.
+_TRACING_ACTIVE: bool = False
 try:
-    init_tracing()
+    _TRACING_ACTIVE = bool(init_tracing())
 except Exception:
     # Never break startup due to tracing
     pass
@@ -184,7 +187,10 @@ client: AsyncIOMotorClient = AsyncIOMotorClient(
 )
 # Use DB_NAME from settings (database name should not be in URL for this setup)
 db = client[settings.DB_NAME]
-install_db_write_guards(db)
+# M-11: install_db_write_guards is called inside lifespan() after the MongoDB
+# ping succeeds, not here at module level.  Calling it here fires before the
+# db_optimizer may replace the Motor client, and runs unconditionally on every
+# import (including test collection) before any connection is established.
 
 # Database optimizer
 if not RUNNING_UNDER_PYTEST:
@@ -306,19 +312,11 @@ if getattr(settings, "CHANGE_DETECTION_ENABLED", True):
     except Exception as e:
         logger.warning("Change detection sync service initialization failed: %s", str(e))
 
-# Auto-sync manager - automatically syncs when SQL Server becomes available
+# auto_sync_manager is created inside lifespan() after SQL connectivity is confirmed.
+# Do NOT instantiate here — this module-level call is always superseded (and the
+# resulting instance silently discarded) by the lifespan() instantiation below,
+# causing two AutoSyncManager instances with duplicate background tasks (M-02).
 auto_sync_manager = None
-if getattr(settings, "AUTO_SYNC_ENABLED", True):
-    try:
-        auto_sync_manager = AutoSyncManager(
-            sql_connector=sql_connector,
-            mongo_db=db,
-            sync_interval=getattr(settings, "AUTO_SYNC_INTERVAL", 3600),
-            enabled=True,
-        )
-        set_auto_sync_manager(auto_sync_manager)
-    except Exception as e:
-        logger.warning("Auto-sync manager initialization failed: %s", str(e))
 
 # Migration manager
 migration_manager = MigrationManager(db)
@@ -341,11 +339,20 @@ async def lifespan(app: FastAPI):  # noqa: C901
     # Startup
     logger.info("🚀 Starting StockVerify application...")
 
+    # PW-05: Expose OTel tracing status on app.state so health checks and
+    # diagnostics can report it without importing OTel internals.
+    app.state.tracing_active = _TRACING_ACTIVE
+    logger.info("Tracing active: %s", _TRACING_ACTIVE)
+
     # Initialize runtime globals
     set_client(client)
     set_db(db)
     set_cache_service(cache_service)
     set_refresh_token_service(refresh_token_service)
+
+    from backend.core.websocket_manager import manager as _ws_manager
+
+    _ws_manager.attach_replay_store(db)
 
     # Phase 1: Initialize Redis and related services
     redis_service = None
@@ -362,6 +369,16 @@ async def lifespan(app: FastAPI):  # noqa: C901
         # Initialize lock manager (will be used by APIs)
         get_lock_manager(redis_service)
         logger.info("✓ Lock manager initialized")
+
+        # Attach Redis fan-out to the WebSocket manager so broadcasts reach
+        # clients on every worker process, not just the one handling the event.
+        await _ws_manager.attach_redis(redis_service)
+        logger.info("✓ WebSocket Redis fan-out enabled")
+
+        # Upgrade rate limiter to Redis-backed sliding-window enforcement so
+        # limits are shared across all worker processes (H-07).
+        rate_limiter.attach_redis(redis_service)
+        logger.info("✓ Rate limiter: Redis backend attached")
 
     except Exception as e:
         logger.warning("⚠️ Redis services not available: %s", str(e))
@@ -492,10 +509,36 @@ async def lifespan(app: FastAPI):  # noqa: C901
 
         asyncio.create_task(_init_connection_pool())
 
+    # PW-08: task handle — set after MongoDB confirmed; cancelled during shutdown
+    _watchdog_task: Optional[asyncio.Task] = None
+
     # CRITICAL: Verify MongoDB is available (required)
     try:
         await db.command("ping")
         logger.info("✅ MongoDB connection verified - MongoDB is required and available")
+        # M-11: Install governance write guards now that db is fully initialised
+        # (Motor client connected, db_optimizer already applied if configured).
+        install_db_write_guards(db)
+        logger.info("✓ DB write guards installed")
+
+        # PW-08: Start the periodic watchdog loop now that the db is confirmed live.
+        # The loop sleeps *first* so it does not fire during the startup burst.
+        _watchdog_interval = int(os.getenv("WATCHDOG_INTERVAL_SECONDS", "60"))
+        _watchdog_svc = WatchdogService(db)
+
+        async def _watchdog_loop():
+            while True:
+                try:
+                    await asyncio.sleep(_watchdog_interval)
+                    await _watchdog_svc.run_all_checks()
+                except asyncio.CancelledError:
+                    break
+                except Exception as _wdg_exc:
+                    logger.warning("Watchdog check iteration failed: %s", _wdg_exc)
+
+        _watchdog_task = asyncio.create_task(_watchdog_loop(), name="watchdog")
+        logger.info("✓ Watchdog background task started (interval=%ds)", _watchdog_interval)
+
     except Exception as e:
         # MongoDB connection failed - check if we're in development mode
         error_type = type(e).__name__
@@ -635,9 +678,12 @@ async def lifespan(app: FastAPI):  # noqa: C901
         logger.info("✓ Lock service initialized")
     except Exception as e:
         logger.error("Failed to initialize lock service: %s", str(e))
-        # We might want to raise here if strict locking is critical,
-        # but for now log error.
-        lock_service = None  # fallback? Or just fail.
+        logger.warning(
+            "⚠️  OPERATOR ACTION REQUIRED: LockService failed to initialize. "
+            "Concurrent write operations (count-line submit, approve, reject) are NOT "
+            "protected against race conditions. Fix the underlying error and restart."
+        )
+        lock_service = None
 
     # Initialize Variant Service (Rule 5)
     try:
@@ -671,6 +717,18 @@ async def lifespan(app: FastAPI):  # noqa: C901
             sql_connector,
         )
         logger.info("✓ CountLines API initialized with dependencies (including VariantService)")
+
+        # PW-01: Verify the critical dependency was wired in.  activity_log_service
+        # is not Optional inside count_lines_routes — if it is None here, every
+        # activity-log call will silently no-op, losing audit trail permanently.
+        from backend.api.count_lines_routes import _activity_log_service as _als_check
+        if _als_check is None:
+            logger.error(
+                "CRITICAL: _activity_log_service is None after init_count_lines_api(). "
+                "All count-line audit logging is disabled. Check ActivityLogService init."
+            )
+        else:
+            logger.info("✓ CountLines API: _activity_log_service wired correctly")
     except Exception as e:
         logger.error("Failed to initialize CountLines API: %s", str(e))
     try:
@@ -978,12 +1036,20 @@ async def lifespan(app: FastAPI):  # noqa: C901
     # Phase 1: Stop Pub/Sub and Redis services
     async def stop_redis_services():
         try:
+            # Detach Redis from WebSocket manager before closing the connection
+            from backend.core.websocket_manager import manager as _ws_manager
+            await _ws_manager.detach_redis()
+            _ws_manager.detach_replay_store()
+            logger.info("\u2713 WebSocket Redis fan-out detached")
+
+            rate_limiter.detach_redis()
+
             if pubsub_service:
                 await pubsub_service.stop()
-                logger.info("✓ Pub/Sub service stopped")
+                logger.info("\u2713 Pub/Sub service stopped")
 
             await close_redis()
-            logger.info("✓ Redis connection closed")
+            logger.info("\u2713 Redis connection closed")
         except Exception as e:
             logger.error("Error stopping Redis services: %s", str(e))
 
@@ -996,32 +1062,22 @@ async def lifespan(app: FastAPI):  # noqa: C901
             timeout=shutdown_timeout,
         )
     except TimeoutError:
-        logger.warning("⚠️  Shutdown timeout after %ss, forcing shutdown...", shutdown_timeout)
-    except Exception as e:
-        logger.error("Error during shutdown: %s", str(e))
+        logger.warning("\u26a0\ufe0f  Shutdown timeout exceeded; some services may not have shut down cleanly.")
 
-    # Close connection pool (blocking operation)
-    if connection_pool:
+    # PW-08: Cancel watchdog background task before closing MongoDB so the
+    # final in-flight check does not hit a closed connection.
+    if _watchdog_task is not None and not _watchdog_task.done():
+        _watchdog_task.cancel()
         try:
-            connection_pool.close_all()
-            logger.info("✓ Connection pool closed")
-        except Exception as e:
-            logger.error("Error closing connection pool: %s", str(e))
+            await _watchdog_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("\u2713 Watchdog background task stopped")
 
     # Close MongoDB connection
     try:
         if "client" in globals() and client:
             client.close()
-            logger.info("✓ MongoDB connection closed")
+            logger.info("MongoDB connection closed")
     except Exception as e:
         logger.error("Error closing MongoDB connection: %s", str(e))
-
-    # Stop mDNS service
-    try:
-        await stop_mdns()
-        logger.info("✓ mDNS service stopped")
-    except Exception as e:
-        logger.error("Error stopping mDNS service: %s", str(e))
-
-    shutdown_duration = time.time() - shutdown_start
-    logger.info("✓ Application shutdown complete (took %.2fs)", shutdown_duration)

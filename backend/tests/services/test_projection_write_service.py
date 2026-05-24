@@ -133,7 +133,11 @@ async def test_projection_write_service_rebuilds_all_projection_collections():
     assert financial_projection["overage_value"] == 10.0
     assert financial_projection["shortage_value"] == 14.0
 
-    assert await db.event_log.count_documents({"session_id": session_id}) == 1
+    assert await db.event_log.count_documents({"session_id": session_id}) == 0
+    marker = await db.projection_operations_log.find_one({"session_id": session_id})
+    assert marker is not None
+    assert marker["operation_type"] == "projection_write_sync"
+    assert marker["trigger"] == "test.sync"
 
 
 @pytest.mark.asyncio

@@ -76,9 +76,12 @@ jest.mock("../api/api.misc", () => ({
 
 // Mock offline storage before importing syncService
 jest.mock("../offline/offlineStorage", () => ({
+  acquireOfflineQueueLeases: jest.fn(),
   getOfflineQueue: jest.fn(),
   getCacheStats: jest.fn(),
+  releaseOfflineQueueLeases: jest.fn(),
   removeManyFromOfflineQueue: jest.fn(),
+  renewOfflineQueueLeases: jest.fn(),
   removeSessionFromCache: jest.fn(),
   updateOfflineQueueItem: jest.fn(),
   updateQueueItemRetries: jest.fn(),
@@ -98,7 +101,7 @@ import * as offlineStorage from "../offline/offlineStorage";
 // eslint-disable-next-line import/first
 import { useNetworkStore } from "../../store/networkStore";
 
-const flushAsyncWork = async (iterations = 5) => {
+const flushAsyncWork = async (iterations = 20) => {
   for (let index = 0; index < iterations; index += 1) {
     await Promise.resolve();
   }
@@ -142,6 +145,18 @@ describe("syncOfflineQueue", () => {
     (offlineStorage.getOfflineQueue as jest.Mock).mockResolvedValue(
       mockQueueItems,
     );
+    (offlineStorage.acquireOfflineQueueLeases as jest.Mock).mockImplementation(
+      async (ids: string[]) => {
+        const queue = await (offlineStorage.getOfflineQueue as jest.Mock)();
+        return queue.filter((item: { id: string }) => ids.includes(item.id));
+      },
+    );
+    (offlineStorage.renewOfflineQueueLeases as jest.Mock).mockResolvedValue([
+      "count_line:op_1",
+    ]);
+    (offlineStorage.releaseOfflineQueueLeases as jest.Mock).mockResolvedValue([
+      "count_line:op_1",
+    ]);
     (offlineStorage.getCacheStats as jest.Mock).mockResolvedValue({
       queuedOperations: 1,
     });
@@ -181,7 +196,7 @@ describe("syncOfflineQueue", () => {
           verified_qty: 10,
           damaged_qty: 0,
           serial_numbers: ["SN-1"],
-          status: "finalized",
+          status: "partial",
         }),
       ],
       expect.stringMatching(/^offline-/),
@@ -190,9 +205,18 @@ describe("syncOfflineQueue", () => {
     // Verify success handling
     expect(result.success).toBe(1);
     expect(result.failed).toBe(0);
-    expect(offlineStorage.removeManyFromOfflineQueue).toHaveBeenCalledWith([
-      "count_line:op_1",
-    ]);
+    expect(offlineStorage.acquireOfflineQueueLeases).toHaveBeenCalledWith(
+      ["count_line:op_1"],
+      expect.objectContaining({ owner: expect.any(String), token: expect.any(String) }),
+    );
+    expect(offlineStorage.renewOfflineQueueLeases).toHaveBeenCalledWith(
+      ["count_line:op_1"],
+      expect.objectContaining({ owner: expect.any(String), token: expect.any(String) }),
+    );
+    expect(offlineStorage.removeManyFromOfflineQueue).toHaveBeenCalledWith(
+      ["count_line:op_1"],
+      expect.objectContaining({ owner: expect.any(String), token: expect.any(String) }),
+    );
   });
 
   it("should handle an empty queue", async () => {
@@ -226,6 +250,7 @@ describe("syncOfflineQueue", () => {
         status: "failed_manual_review",
         last_error: expect.stringContaining("Unsupported offline item type"),
       }),
+      expect.objectContaining({ owner: expect.any(String), token: expect.any(String) }),
     );
     expect(offlineStorage.removeManyFromOfflineQueue).not.toHaveBeenCalled();
   });
@@ -254,6 +279,11 @@ describe("syncOfflineQueue", () => {
         error: "Duplicate record",
         status: "blocked_conflict",
       }),
+      expect.objectContaining({ owner: expect.any(String), token: expect.any(String) }),
+    );
+    expect(offlineStorage.releaseOfflineQueueLeases).toHaveBeenCalledWith(
+      ["count_line:op_1"],
+      expect.objectContaining({ owner: expect.any(String), token: expect.any(String) }),
     );
   });
 
@@ -278,6 +308,7 @@ describe("syncOfflineQueue", () => {
         error: "Server timeout",
         status: "failed_manual_review",
       }),
+      expect.objectContaining({ owner: expect.any(String), token: expect.any(String) }),
     );
     expect(offlineStorage.removeManyFromOfflineQueue).not.toHaveBeenCalled();
   });
@@ -301,6 +332,7 @@ describe("syncOfflineQueue", () => {
         status: "pending_retry",
         last_error: "Unauthorized",
       }),
+      expect.objectContaining({ owner: expect.any(String), token: expect.any(String) }),
     );
     expect(offlineStorage.removeManyFromOfflineQueue).not.toHaveBeenCalled();
   });

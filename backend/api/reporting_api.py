@@ -20,6 +20,30 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/reports", tags=["Reporting"])
 
+# Collections that are safe to expose via the reporting preview endpoint.
+# Sensitive collections (users, refresh_tokens, pin_authentication, etc.) are
+# intentionally excluded.  Any attempt to query a collection not in this set
+# returns HTTP 403 regardless of the caller's role.
+REPORT_ALLOWED_COLLECTIONS: frozenset[str] = frozenset(
+    {
+        "count_lines",
+        "sessions",
+        "verification_sessions",
+        "erp_items",
+        "activity_logs",
+        "audit_logs",
+        "sync_logs",
+        "notifications",
+        "session_snapshots",
+        "sync_conflicts",
+        "conflict_forks",
+        "variance_logs",
+        "recount_requests",
+        "approvals",
+        "rack_registry",
+    }
+)
+
 
 # Models
 
@@ -68,6 +92,19 @@ async def preview_query(
     """
     Preview query results without saving
     """
+    # Guard: only allow pre-approved collections to be queried.
+    if query_spec.collection not in REPORT_ALLOWED_COLLECTIONS:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "COLLECTION_NOT_ALLOWED",
+                "message": (
+                    f"Collection '{query_spec.collection}' is not available for reporting. "
+                    "Contact an administrator if you believe this is incorrect."
+                ),
+            },
+        )
+
     db = get_db()
 
     query_builder = QueryBuilder()

@@ -330,6 +330,7 @@ async def list_users(
         "asc",
         description="Sort order (asc/desc)",
     ),
+    include_deleted: bool = Query(False, description="Include soft-deleted users"),
     current_user: dict = Depends(require_admin),
 ):
     """
@@ -340,6 +341,8 @@ async def list_users(
 
     # Build filter query
     query: dict[str, Any] = {}
+    if not include_deleted:
+        query["deleted"] = {"$ne": True}
 
     if search:
         query["$or"] = [
@@ -450,7 +453,7 @@ async def get_user(
             },
         )
 
-    user = await db.users.find_one({"_id": oid})
+    user = await db.users.find_one({"_id": oid, "deleted": {"$ne": True}})
 
     if not user:
         raise HTTPException(
@@ -660,10 +663,33 @@ async def delete_user(
             },
         )
 
-    await db.users.delete_one({"_id": oid})
+    now = datetime.now(timezone.utc)
+    await db.users.update_one(
+        {"_id": oid},
+        {
+            "$set": {
+                "is_active": False,
+                "deleted": True,
+                "deleted_at": now,
+                "deleted_by": current_user.get("username"),
+                "updated_at": now,
+            }
+        },
+    )
+    await db.activity_logs.insert_one(
+        {
+            "timestamp": now,
+            "user": current_user.get("username"),
+            "action": "soft_delete_user",
+            "entity_type": "user",
+            "entity_id": str(oid),
+            "details": {"username": existing.get("username")},
+            "status": "success",
+        }
+    )
 
     logger.info(
-        "User deleted: %s by %s",
+        "User soft-deleted: %s by %s",
         sanitize_for_logging(existing["username"]),
         current_user.get("username"),
     )
@@ -711,7 +737,30 @@ async def bulk_user_action(
                     {"$set": {"is_active": False}},
                 )
             elif request.action == "delete":
-                await db.users.delete_one({"_id": oid})
+                now = datetime.now(timezone.utc)
+                await db.users.update_one(
+                    {"_id": oid},
+                    {
+                        "$set": {
+                            "is_active": False,
+                            "deleted": True,
+                            "deleted_at": now,
+                            "deleted_by": current_user.get("username"),
+                            "updated_at": now,
+                        }
+                    },
+                )
+                await db.activity_logs.insert_one(
+                    {
+                        "timestamp": now,
+                        "user": current_user.get("username"),
+                        "action": "soft_delete_user",
+                        "entity_type": "user",
+                        "entity_id": str(oid),
+                        "details": {"username": user.get("username"), "bulk": True},
+                        "status": "success",
+                    }
+                )
             elif request.action == "change_role":
                 if request.role:
                     await db.users.update_one(

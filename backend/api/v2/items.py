@@ -145,7 +145,7 @@ async def _lookup_identified_items(
     if not candidates:
         return [], matched_terms
 
-    reranked = ai_search_service.search_rerank(primary_query, candidates, top_k=limit)
+    reranked = await ai_search_service.search_rerank(primary_query, candidates, top_k=limit)
     return reranked, matched_terms
 
 
@@ -291,9 +291,8 @@ async def search_items_semantic(
                 message="No items available for semantic search",
             )
 
-        # 2. Perform Semantic Reranking
-        # The service will encode the query and candidates, then sort by similarity
-        results = ai_search_service.search_rerank(query, candidates, top_k=limit)
+        # 2. Perform Semantic Reranking (async — encoding runs in thread pool)
+        results = await ai_search_service.search_rerank(query, candidates, top_k=limit)
 
         # 3. Convert to Response
         item_responses = [

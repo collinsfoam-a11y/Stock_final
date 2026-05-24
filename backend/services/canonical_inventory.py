@@ -330,3 +330,67 @@ async def recompute_session_totals(
 
     await lifecycle_service.update_session_totals(session_id, session_update)
     return session_update
+
+
+# ---------------------------------------------------------------------------
+# LU-01: Normalised session fetch
+# ---------------------------------------------------------------------------
+
+async def find_session_normalized(db: Any, session_id: str) -> Optional[dict[str, Any]]:
+    """Fetch a session document and normalise its ``status`` field in-place.
+
+    Using this helper instead of bare ``find_session`` ensures that all
+    downstream status comparisons work against the canonical values defined in
+    ``normalize_session_status``, regardless of how the raw document was stored
+    (e.g., ``"open"`` vs ``"OPEN"`` vs ``"IN_PROGRESS"``).
+    """
+    session = await find_session(db, session_id)
+    if session is None:
+        return None
+    session["status"] = normalize_session_status(
+        session.get("status"),
+        reconciled_at=session.get("reconciled_at"),
+    )
+    return session
+
+
+# ---------------------------------------------------------------------------
+# LU-04: DB-side session finalization readiness check
+# ---------------------------------------------------------------------------
+
+async def session_has_blocking_lines(db: Any, session_id: str) -> bool:
+    """Return ``True`` if the session has any count lines that still block finalization.
+
+    This performs the readiness check entirely in MongoDB rather than streaming
+    all count lines into Python and running ``is_blocking_finalization`` in a
+    cursor loop.  It depends on the ``effective_reviewed`` materialized field
+    (written by H-02) for the ``effective_reviewed = False`` branch; the other
+    conditions use native MongoDB operators.
+
+    The query mirrors the logic in ``is_blocking_finalization``:
+    - superseded/locked lines are excluded (they never block)
+    - rejected lines always block
+    - lines with an active recount assignment block
+    - lines whose approval_status is NEEDS_REVIEW or REJECTED block
+    - lines where effective_reviewed is False and variance != 0 block
+      (requires H-02 effective_reviewed field to be populated)
+    """
+    count = await db.count_lines.count_documents({
+        "session_id": session_id,
+        # Exclude statuses that never block
+        "status": {"$nin": ["superseded", "locked"]},
+        "$or": [
+            # Explicitly rejected
+            {"status": "rejected"},
+            # Active recount assignment
+            {
+                "assigned_to": {"$ne": None, "$exists": True},
+                "recount_requested_at": {"$ne": None, "$exists": True},
+            },
+            # Supervisor review required and not yet approved
+            {"approval_status": {"$in": ["NEEDS_REVIEW", "REJECTED"]}},
+            # Variance exists but not yet signed off (requires effective_reviewed field)
+            {"effective_reviewed": False, "variance": {"$ne": 0}},
+        ],
+    })
+    return count > 0

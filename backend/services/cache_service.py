@@ -54,6 +54,11 @@ class CacheService:
         self.socket_timeout = socket_timeout
         self._memory_cache: dict[str, tuple] = {}
         self._lock = asyncio.Lock()  # Use asyncio.Lock for async safety
+        # Per-key locks for stampede protection in get_or_set.
+        # When multiple coroutines miss the cache simultaneously, only the
+        # first acquires the per-key lock and calls factory(); the rest wait
+        # and then read the value that was set by the winner.
+        self._inflight: dict[str, asyncio.Lock] = {}
 
         # Try Redis connection
         if REDIS_AVAILABLE and redis_url:
@@ -256,24 +261,52 @@ class CacheService:
         factory: Callable[[], Any],
         ttl: Optional[int] = None,
     ) -> Any:
+        """Get from cache or compute with factory, with stampede protection.
+
+        Fast path: cache hit — return immediately without acquiring any lock.
+
+        Slow path: on a cache miss, acquire a per-key asyncio.Lock so that
+        only one coroutine calls ``factory()``.  All other coroutines that
+        arrive during the factory call wait, then re-check the cache and
+        return the value that was set by the winner — avoiding the thundering
+        herd where N concurrent callers all invoke the expensive factory.
+
+        The lock entry is removed after the value is cached to prevent
+        unbounded growth of ``_inflight`` for keys that are never requested
+        again.
         """
-        Get from cache or set using factory function
-        """
+        cache_key = self._get_key(prefix, key)
+
+        # Fast path — avoids lock acquisition on a hot cache
         value = await self.get(prefix, key)
         if value is not None:
             return value
 
-        # Not in cache, compute value
-        try:
-            if asyncio.iscoroutinefunction(factory):
-                value = await factory()
-            else:
-                value = factory()
-            await self.set(prefix, key, value, ttl)
-            return value
-        except Exception as e:
-            logger.error(f"Factory error: {str(e)}")
-            raise
+        # Slow path — get or create a per-key lock
+        if cache_key not in self._inflight:
+            self._inflight[cache_key] = asyncio.Lock()
+        per_key_lock = self._inflight[cache_key]
+
+        async with per_key_lock:
+            # Double-check: another waiter may have populated the cache while
+            # we were blocked on the lock.
+            value = await self.get(prefix, key)
+            if value is not None:
+                return value
+
+            try:
+                if asyncio.iscoroutinefunction(factory):
+                    value = await factory()
+                else:
+                    value = factory()
+                await self.set(prefix, key, value, ttl)
+                return value
+            except Exception as e:
+                logger.error("Cache factory error for key '%s': %s", cache_key, str(e))
+                raise
+            finally:
+                # Clean up lock entry; next miss will create a fresh lock.
+                self._inflight.pop(cache_key, None)
 
     async def get_stats(self) -> dict[str, Any]:
         """Get cache status for health check (alias for backward compatibility)"""

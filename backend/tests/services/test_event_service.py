@@ -5,6 +5,11 @@ from backend.services.projection_service import PROJECTION_VERSION
 from backend.tests.utils.in_memory_db import InMemoryDatabase
 
 
+class FailingProjectionService:
+    async def apply_event(self, *_args, **_kwargs):
+        raise RuntimeError("projection failed")
+
+
 @pytest.mark.asyncio
 async def test_append_scan_event_projects_inventory_snapshots():
     db = InMemoryDatabase()
@@ -46,6 +51,7 @@ async def test_append_scan_event_projects_inventory_snapshots():
             "delta": {"counted_qty": 4.5, "damaged_qty": 1.0, "serial_count": 2},
         },
         metadata={"event_idempotency_key": "scan-1"},
+        expected_version=0,
     )
 
     snapshot = await db.items_snapshot.find_one({"session_id": "sess-1", "item_code": "ITEM-1"})
@@ -57,6 +63,12 @@ async def test_append_scan_event_projects_inventory_snapshots():
     event_applied = await db.event_applied.find_one({"event_id": event["_id"]})
 
     assert event["event_type"] == "SCAN_ADDED"
+    assert event["event_id"] == event["_id"]
+    assert event["schema_version"] == "event.v1"
+    assert event["global_sequence"] == 1
+    assert event["aggregate_sequence"] == 1
+    assert event["aggregate_version"] == 1
+    assert event["recorded_at"] == event["timestamp"]
     assert snapshot["counted_qty"] == pytest.approx(4.5)
     assert snapshot["damaged_qty"] == pytest.approx(1.0)
     assert batch["counted_qty"] == pytest.approx(4.5)
@@ -98,6 +110,7 @@ async def test_append_event_is_idempotent_for_duplicate_retry():
         event_type="SCAN_ADDED",
         payload=payload,
         metadata={"event_idempotency_key": "retry-1"},
+        expected_version=0,
     )
     second = await service.append_event(
         aggregate_id="ITEM-1",
@@ -110,8 +123,118 @@ async def test_append_event_is_idempotent_for_duplicate_retry():
     events = await db.event_log.find({}).to_list(length=10)
 
     assert first["_id"] == second["_id"]
+    assert first["global_sequence"] == second["global_sequence"]
+    assert first["aggregate_sequence"] == second["aggregate_sequence"]
     assert len(events) == 1
     assert snapshot["counted_qty"] == pytest.approx(2.0)
+
+
+@pytest.mark.asyncio
+async def test_append_event_rejects_stale_expected_version():
+    db = InMemoryDatabase()
+    service = EventService(db)
+
+    payload = {
+        "session_id": "sess-1",
+        "item_id": "ITEM-1",
+        "count_line": {
+            "id": "line-1",
+            "session_id": "sess-1",
+            "item_code": "ITEM-1",
+            "counted_qty": 1.0,
+        },
+        "after": {
+            "id": "line-1",
+            "session_id": "sess-1",
+            "item_code": "ITEM-1",
+            "counted_qty": 1.0,
+        },
+        "delta": {"counted_qty": 1.0, "damaged_qty": 0.0, "serial_count": 0},
+    }
+
+    await service.append_event(
+        aggregate_id="ITEM-1",
+        event_type="SCAN_ADDED",
+        payload=payload,
+        metadata={"event_idempotency_key": "versioned-1"},
+        expected_version=0,
+    )
+
+    with pytest.raises(Exception, match="Aggregate version conflict"):
+        await service.append_event(
+            aggregate_id="ITEM-1",
+            event_type="SCAN_ADDED",
+            payload=payload,
+            metadata={"event_idempotency_key": "versioned-2"},
+            expected_version=0,
+        )
+
+
+@pytest.mark.asyncio
+async def test_append_event_requires_expected_version_for_new_aggregate_event():
+    db = InMemoryDatabase()
+    service = EventService(db)
+
+    with pytest.raises(Exception, match="Expected aggregate version is required"):
+        await service.append_event(
+            aggregate_id="ITEM-1",
+            event_type="SCAN_ADDED",
+            payload={
+                "session_id": "sess-1",
+                "item_id": "ITEM-1",
+                "count_line": {
+                    "id": "line-1",
+                    "session_id": "sess-1",
+                    "item_code": "ITEM-1",
+                    "counted_qty": 1.0,
+                },
+                "after": {
+                    "id": "line-1",
+                    "session_id": "sess-1",
+                    "item_code": "ITEM-1",
+                    "counted_qty": 1.0,
+                },
+                "delta": {"counted_qty": 1.0, "damaged_qty": 0.0, "serial_count": 0},
+            },
+            metadata={"event_idempotency_key": "missing-version-1"},
+        )
+
+    assert await db.event_log.count_documents({}) == 0
+    assert await db.event_sequences.count_documents({}) == 0
+
+
+@pytest.mark.asyncio
+async def test_append_event_rolls_back_sequence_and_event_when_projection_fails():
+    db = InMemoryDatabase()
+    service = EventService(db, projection_service=FailingProjectionService())
+
+    with pytest.raises(RuntimeError, match="projection failed"):
+        await service.append_event(
+            aggregate_id="ITEM-ROLLBACK",
+            event_type="SCAN_ADDED",
+            payload={
+                "session_id": "sess-rollback",
+                "item_id": "ITEM-ROLLBACK",
+                "count_line": {
+                    "id": "line-rollback",
+                    "session_id": "sess-rollback",
+                    "item_code": "ITEM-ROLLBACK",
+                    "counted_qty": 1.0,
+                },
+                "after": {
+                    "id": "line-rollback",
+                    "session_id": "sess-rollback",
+                    "item_code": "ITEM-ROLLBACK",
+                    "counted_qty": 1.0,
+                },
+                "delta": {"counted_qty": 1.0, "damaged_qty": 0.0, "serial_count": 0},
+            },
+            metadata={"event_idempotency_key": "rollback-1"},
+            expected_version=0,
+        )
+
+    assert await db.event_log.count_documents({}) == 0
+    assert await db.event_sequences.count_documents({}) == 0
 
 
 @pytest.mark.asyncio
@@ -132,6 +255,7 @@ async def test_append_event_omits_nullable_sparse_index_fields():
             },
         },
         metadata={"event_idempotency_key": "variance-1", "scan_fingerprint": None},
+        expected_version=0,
     )
 
     stored = await db.event_log.find_one({"_id": event["_id"]})
@@ -178,6 +302,7 @@ async def test_append_scan_event_projects_batch_array_totals():
             "delta": {"counted_qty": 5.0, "damaged_qty": 0.0, "serial_count": 0},
         },
         metadata={"event_idempotency_key": "scan-batches-1"},
+        expected_version=0,
     )
 
     batch_one = await db.batch_records.find_one(

@@ -65,7 +65,6 @@ class BatchNotificationRequest(BaseModel):
     message: str
     priority: str = "medium"
     action_url: Optional[str] = None
-    unread_count: int
 
 
 class NotificationDeviceRequest(BaseModel):

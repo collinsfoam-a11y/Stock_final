@@ -103,7 +103,15 @@ export async function createOfflineCountLine(
   }
 
   // Create audit metadata
-  const offlineId = countData.idempotency_key?.trim() || generateOfflineId();
+  // LU-09: Prefix freshly-generated idempotency keys with the device ID so
+  // that two offline devices that happen to generate the same base UUID never
+  // produce the same key (cross-device collision window).  Pre-supplied keys
+  // from the caller are kept as-is to avoid double-prefixing on retries.
+  const _isNewKey = !countData.idempotency_key?.trim();
+  const _baseId = _isNewKey ? generateOfflineId() : countData.idempotency_key!.trim();
+  const offlineId = _isNewKey && context.deviceId
+    ? `${context.deviceId}:${_baseId}`
+    : _baseId;
   const audit: OfflineAuditMetadata = {
     source: context.sourceScreen || "scan_screen",
     device_id: context.deviceId || null,

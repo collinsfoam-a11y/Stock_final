@@ -34,7 +34,7 @@ def _is_tracing_enabled() -> bool:
     return False
 
 
-def init_tracing(service_name: Optional[str] = None) -> None:
+def init_tracing(service_name: Optional[str] = None) -> bool:
     """Initialize OpenTelemetry tracing for the FastAPI app.
 
     This sets a global TracerProvider with an OTLP HTTP exporter pointing to
@@ -42,11 +42,16 @@ def init_tracing(service_name: Optional[str] = None) -> None:
 
     It is safe to call multiple times; subsequent calls will simply
     reconfigure the provider.
+
+    PW-05: Returns True if tracing was successfully initialised, False otherwise
+    (disabled by config, packages not installed, or init error).  Callers can
+    store this on ``app.state.tracing_active`` to expose tracing status via
+    health checks without coupling to OTel internals.
     """
 
     if not _is_tracing_enabled():
         logger.info("Tracing is disabled (set STOCK_VERIFY_TRACING_ENABLED=1 to enable)")
-        return
+        return False
 
     try:
         from opentelemetry import trace
@@ -59,10 +64,10 @@ def init_tracing(service_name: Optional[str] = None) -> None:
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
     except ModuleNotFoundError:
         logger.info("OpenTelemetry packages not installed; tracing disabled")
-        return
+        return False
     except Exception:
         logger.exception("Unexpected error importing OpenTelemetry; tracing disabled")
-        return
+        return False
 
     service: str = (
         service_name
@@ -98,6 +103,7 @@ def init_tracing(service_name: Optional[str] = None) -> None:
         endpoint,
         service,
     )
+    return True
 
 
 def instrument_fastapi_app(app) -> None:

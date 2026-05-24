@@ -6,6 +6,7 @@ and preserves backward compatibility with legacy offline payloads.
 
 import logging
 from backend.utils.api_utils import sanitize_for_logging
+import inspect
 import re
 import time
 import uuid
@@ -15,6 +16,7 @@ from typing import Any, Optional
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
+from pymongo.errors import DuplicateKeyError
 
 from backend.api.schemas import SessionType
 from backend.auth.dependencies import get_current_user_async as get_current_user
@@ -37,6 +39,11 @@ from backend.services.transaction_manager import mongo_transaction
 from backend.services.validation_service import ValidationService
 
 logger = logging.getLogger(__name__)
+
+IDEMPOTENCY_STATUS_PROCESSING = "PROCESSING"
+IDEMPOTENCY_STATUS_SUCCEEDED = "SUCCEEDED"
+IDEMPOTENCY_STATUS_FAILED = "FAILED"
+IDEMPOTENCY_STATUS_RESERVED = "RESERVED"
 
 
 class _SyncBatchRedisFallback:
@@ -109,7 +116,7 @@ class SyncRecord(BaseModel):
     subcategory: Optional[str] = Field(None, description="Subcategory")
     item_condition: Optional[str] = Field(None, description="Item condition")
     evidence_photos: list[str] = Field(default_factory=list, description="Photo URLs")
-    status: str = Field("finalized", description="Record status (partial/finalized)")
+    status: str = Field("partial", description="Record status (partial/finalized)")
     created_at: str = Field(..., description="Client creation timestamp")
     updated_at: str = Field(..., description="Client update timestamp")
 
@@ -263,6 +270,57 @@ async def validate_record(
     return None
 
 
+async def _reserve_idempotency_operation(
+    db: Any,
+    *,
+    operation_id: str,
+    batch_id: Optional[str],
+    user_id: str,
+) -> str:
+    existing = await db.idempotency_operations.find_one({"operation_id": operation_id})
+    if isinstance(existing, dict):
+        status = str(existing.get("status") or IDEMPOTENCY_STATUS_SUCCEEDED).upper()
+        return status
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    try:
+        await db.idempotency_operations.insert_one(
+            {
+                "operation_id": operation_id,
+                "status": IDEMPOTENCY_STATUS_PROCESSING,
+                "batch_id": batch_id,
+                "user_id": user_id,
+                "created_at": now,
+                "updated_at": now,
+            }
+        )
+        return IDEMPOTENCY_STATUS_RESERVED
+    except DuplicateKeyError:
+        existing = await db.idempotency_operations.find_one({"operation_id": operation_id})
+        if isinstance(existing, dict):
+            return str(existing.get("status") or IDEMPOTENCY_STATUS_SUCCEEDED).upper()
+        return IDEMPOTENCY_STATUS_PROCESSING
+
+
+async def _mark_idempotency_operation(
+    db: Any,
+    *,
+    operation_id: str,
+    status: str,
+    message: Optional[str] = None,
+) -> None:
+    update_doc: dict[str, Any] = {
+        "status": status,
+        "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
+    }
+    if message:
+        update_doc["message"] = sanitize_for_logging(message)
+    await db.idempotency_operations.update_one(
+        {"operation_id": operation_id},
+        {"$set": update_doc},
+    )
+
+
 async def sync_single_record(
     record: SyncRecord,
     db,
@@ -295,8 +353,11 @@ async def sync_single_record(
                 "CRITICAL: location_id, floor_id, and rack_id are required for sync writes",
             )
 
+        role_normalized = str(user_role or "").strip().lower()
         status_normalized = (record.status or "").strip().lower()
-        is_finalized = status_normalized == "finalized"
+        requested_finalization = status_normalized == "finalized"
+        can_finalize_from_sync = role_normalized in {"supervisor", "admin"}
+        is_finalized = requested_finalization and can_finalize_from_sync
         counted_at = datetime.fromisoformat(record.created_at.replace("Z", "+00:00")).replace(
             tzinfo=None
         )
@@ -325,6 +386,8 @@ async def sync_single_record(
             "subcategory": record.subcategory,
             "item_condition": record.item_condition,
             "evidence_photos": record.evidence_photos,
+            "client_requested_status": status_normalized or "partial",
+            "sync_approval_downgraded": requested_finalization and not can_finalize_from_sync,
             "status": "locked" if is_finalized else "pending",
             "approval_status": "APPROVED" if is_finalized else "PENDING",
             "verified": is_finalized,
@@ -375,7 +438,7 @@ async def sync_single_record(
         logger.error(
             "Error syncing record {record.client_record_id}: %s", sanitize_for_logging(str(e))
         )
-        return False, str(e)
+        return False, "Internal sync error"
 
 
 @router.post("/batch", response_model=BatchSyncResponse)
@@ -403,7 +466,10 @@ async def sync_batch(
         or current_user.get("id")
         or str(current_user.get("_id", "unknown"))
     )
-    is_allowed, rate_info = batch_rate_limiter.is_allowed(user_id)
+    limiter_result = batch_rate_limiter.is_allowed(user_id)
+    if inspect.isawaitable(limiter_result):
+        limiter_result = await limiter_result
+    is_allowed, rate_info = limiter_result
     if not is_allowed:
         raise HTTPException(
             status_code=429,
@@ -469,16 +535,43 @@ async def sync_batch(
         lifecycle_service = SessionLifecycleService(db)
         # Validate all records first
         for record in request.records:
-            # Check idempotency first using client_record_id as operation_id
-            existing_op = await db.idempotency_operations.find_one(
-                {"operation_id": record.client_record_id}
+            operation_id = record.client_record_id
+            existing_status = await _reserve_idempotency_operation(
+                db,
+                operation_id=operation_id,
+                batch_id=request.batch_id,
+                user_id=user_id,
             )
-            if existing_op:
+            if existing_status == IDEMPOTENCY_STATUS_SUCCEEDED:
                 ok_records.append(record.client_record_id)
+                continue
+            if existing_status == IDEMPOTENCY_STATUS_PROCESSING:
+                errors.append(
+                    SyncError(
+                        client_record_id=record.client_record_id,
+                        error_type="idempotency_error",
+                        message="Idempotency operation is already in progress",
+                    )
+                )
+                continue
+            if existing_status not in {IDEMPOTENCY_STATUS_RESERVED, IDEMPOTENCY_STATUS_FAILED}:
+                errors.append(
+                    SyncError(
+                        client_record_id=record.client_record_id,
+                        error_type="idempotency_error",
+                        message="Invalid idempotency operation state",
+                    )
+                )
                 continue
 
             conflict = await validate_record(record, db, lock_manager, sync_service, user_id)
             if conflict:
+                await _mark_idempotency_operation(
+                    db,
+                    operation_id=operation_id,
+                    status=IDEMPOTENCY_STATUS_FAILED,
+                    message=conflict.message,
+                )
                 conflicts.append(conflict)
             else:
                 # Sync valid record
@@ -492,15 +585,19 @@ async def sync_batch(
                 )
 
                 if success:
-                    # Record idempotency
-                    await db.idempotency_operations.insert_one(
-                        {
-                            "operation_id": record.client_record_id,
-                            "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                        }
+                    await _mark_idempotency_operation(
+                        db,
+                        operation_id=operation_id,
+                        status=IDEMPOTENCY_STATUS_SUCCEEDED,
                     )
                     ok_records.append(record.client_record_id)
                 else:
+                    await _mark_idempotency_operation(
+                        db,
+                        operation_id=operation_id,
+                        status=IDEMPOTENCY_STATUS_FAILED,
+                        message=error_msg,
+                    )
                     errors.append(
                         SyncError(
                             client_record_id=record.client_record_id,
@@ -516,7 +613,14 @@ async def sync_batch(
         # Record failure in circuit breaker
         await circuit_breaker.record_failure()
         logger.error("Batch sync failed: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=f"Batch sync failed: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Batch sync failed",
+                "code": "BATCH_SYNC_FAILED",
+                "retryable": True,
+            },
+        )
 
     processing_time = (time.time() - start_time) * 1000
 

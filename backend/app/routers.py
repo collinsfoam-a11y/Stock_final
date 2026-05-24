@@ -48,6 +48,7 @@ class RouterRegistry:
     report_generation_router: APIRouter
     error_reporting_router: APIRouter
     websocket_router: APIRouter
+    replay_governance_router: APIRouter
     sql_verification_router: APIRouter
     enhanced_item_router: APIRouter
     pi_router: APIRouter
@@ -146,6 +147,7 @@ def _register_core_router_set(app: FastAPI, registry: RouterRegistry) -> None:
         (registry.report_generation_router, "/api", None),
         (registry.error_reporting_router, None, None),
         (registry.websocket_router, None, None),
+        (registry.replay_governance_router, None, None),
         (registry.sql_verification_router, None, None),
         (registry.enhanced_item_router, None, None),
         (registry.pi_router, None, None),

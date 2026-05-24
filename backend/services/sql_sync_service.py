@@ -42,10 +42,12 @@ def _numeric_or_none(value: Any) -> Optional[float]:
         return None
 
 
-def _coerce_qty(value: Any, default: float = 0.0) -> float:
-    """Convert a SQL quantity to float, falling back for missing/invalid values."""
+def _coerce_qty(value: Any) -> float:
+    """Convert a SQL quantity to float; invalid SQL data must not become stock truth."""
     numeric_value = _numeric_or_none(value)
-    return numeric_value if numeric_value is not None else default
+    if numeric_value is None:
+        raise ValueError("Invalid SQL quantity value")
+    return numeric_value
 
 
 def _safe_optional_str(value: Any) -> Optional[str]:
@@ -856,15 +858,17 @@ class SQLSyncService:
         except Exception as e:
             logger.warning(f"Real-time SQL check failed for {item_code}: {e}")
 
-        # Fallback to MongoDB cache
+        # Fallback to MongoDB cache without pretending the cached value is live SQL.
         mongo_item = await self.mongo_db.erp_items.find_one({"item_code": item_code})
         if mongo_item:
             return {
                 "item_code": item_code,
                 "stock_qty": mongo_item.get("stock_qty"),
-                "sql_qty": mongo_item.get("stock_qty"),
+                "sql_qty": None,
+                "cached_qty": mongo_item.get("stock_qty"),
                 "updated": False,
                 "source": "mongodb_cache",
+                "stale_baseline": True,
                 "message": "Using cached value (SQL Server unavailable)",
                 "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
             }

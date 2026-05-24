@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -59,7 +60,10 @@ async def list_notes(
         base_query: dict[str, Any] = {"created_by": created_by}
         query: dict[str, Any] = base_query
         if q:
-            safe_q = sanitize_for_logging(q)
+            # re.escape prevents ReDoS: user input must not be used as a raw
+            # regex pattern.  sanitize_for_logging is for log safety, not regex
+            # safety — using it here was a bug.
+            safe_q = re.escape(q.strip())
             query = {
                 "$and": [
                     base_query,

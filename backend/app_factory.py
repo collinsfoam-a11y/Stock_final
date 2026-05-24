@@ -1,7 +1,6 @@
 import logging
 import os
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional, TypeVar
 
@@ -54,6 +53,7 @@ from backend.api.permissions_api import permissions_router  # noqa: E402
 from backend.api.preferences_api import router as preferences_router  # noqa: E402
 from backend.api.rack_api import router as rack_router  # noqa: E402
 from backend.api.realtime_dashboard_api import realtime_dashboard_router  # noqa: E402
+from backend.api.replay_governance_api import router as replay_governance_router  # noqa: E402
 from backend.api.report_generation_api import report_generation_router  # noqa: E402
 from backend.api.reporting_api import router as reporting_router  # noqa: E402
 from backend.api.schemas import ApiResponse, Session, TokenResponse  # noqa: E402
@@ -94,7 +94,6 @@ from backend.core.lifespan import (  # noqa: E402
 from backend.exceptions import AuthenticationError  # noqa: E402
 from backend.exceptions import ValidationError  # noqa: E402
 from backend.services.canonical_inventory import build_session_lookup  # noqa: E402
-from backend.services.count_line_write_service import CountLineWriteService  # noqa: E402
 
 # Utils
 from backend.utils.api_utils import result_to_response, sanitize_for_logging  # noqa: E402
@@ -197,31 +196,33 @@ ROOT_DIR = Path(__file__).parent
 
 # Removed redundant SECRET_KEY, ALGORITHM bindings
 
-# Initialize Sentry if DSN is provided
-sentry_dsn = getattr(settings, "SENTRY_DSN", None)
-if sentry_dsn:
-    try:
-        sentry_sdk.init(
-            dsn=sentry_dsn,
-            integrations=[
-                StarletteIntegration(transaction_style="endpoint"),
-                FastApiIntegration(transaction_style="endpoint"),
-            ],
-            traces_sample_rate=getattr(settings, "SENTRY_TRACES_SAMPLE_RATE", 0.1),
-            profiles_sample_rate=getattr(settings, "SENTRY_PROFILES_SAMPLE_RATE", 0.1),
-            environment=(
-                getattr(settings, "SENTRY_ENVIRONMENT", None)
-                or getattr(settings, "ENVIRONMENT", "development")
-            ),
-        )
-        logger.info("Sentry SDK initialized")
-    except Exception as e:
-        logger.warning(
-            "Failed to initialize Sentry SDK: %s",
-            sanitize_for_logging(str(e), 200),
-        )
-else:
-    logger.info("Sentry DSN not found, skipping Sentry initialization")
+# Initialize Sentry if DSN is provided (M-10: skip during pytest runs to avoid
+# polluting Sentry with test noise and to prevent import-time side effects in tests).
+if not RUNNING_UNDER_PYTEST:
+    sentry_dsn = getattr(settings, "SENTRY_DSN", None)
+    if sentry_dsn:
+        try:
+            sentry_sdk.init(
+                dsn=sentry_dsn,
+                integrations=[
+                    StarletteIntegration(transaction_style="endpoint"),
+                    FastApiIntegration(transaction_style="endpoint"),
+                ],
+                traces_sample_rate=getattr(settings, "SENTRY_TRACES_SAMPLE_RATE", 0.1),
+                profiles_sample_rate=getattr(settings, "SENTRY_PROFILES_SAMPLE_RATE", 0.1),
+                environment=(
+                    getattr(settings, "SENTRY_ENVIRONMENT", None)
+                    or getattr(settings, "ENVIRONMENT", "development")
+                ),
+            )
+            logger.info("Sentry SDK initialized")
+        except Exception as e:
+            logger.warning(
+                "Failed to initialize Sentry SDK: %s",
+                sanitize_for_logging(str(e), 200),
+            )
+    else:
+        logger.info("Sentry DSN not found, skipping Sentry initialization")
 
 
 def _api_docs_enabled() -> bool:
@@ -294,68 +295,9 @@ def _password_fields(password: str) -> dict[str, str]:
 
 
 
-
-
-# Initialize default users
-async def init_default_users():
-    """Create default users if they don't exist"""
-    try:
-        # Check for staff1
-        staff_exists = await db.users.find_one({"username": "staff1"})
-        if not staff_exists:
-            await db.users.insert_one(
-                {
-                    "username": "staff1",
-                    **_password_fields("staff123"),
-                    "full_name": "Staff Member",
-                    "role": "staff",
-                    "is_active": True,
-                    "permissions": [],
-                    "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                }
-            )
-            logger.info("Default user created: staff1")
-
-        # Check for supervisor
-        supervisor_exists = await db.users.find_one({"username": "supervisor"})
-        if not supervisor_exists:
-            await db.users.insert_one(
-                {
-                    "username": "supervisor",
-                    **_password_fields("super123"),
-                    "full_name": "Supervisor",
-                    "role": "supervisor",
-                    "is_active": True,
-                    "permissions": [],
-                    "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                }
-            )
-            logger.info("Default user created: supervisor")
-
-        # Check for admin
-        admin_exists = await db.users.find_one({"username": "admin"})
-        if not admin_exists:
-            await db.users.insert_one(
-                {
-                    "username": "admin",
-                    **_password_fields("admin123"),
-                    "full_name": "Administrator",
-                    "role": "admin",
-                    "is_active": True,
-                    "permissions": [],
-                    "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                }
-            )
-            logger.info("Default user created: admin")
-    except Exception as e:
-        logger.error(
-            "Error creating default users: %s",
-            sanitize_for_logging(str(e), 200),
-        )
-        raise
-
-
 # Routes
+# M-03: init_default_users removed — canonical copy lives in backend/core/lifespan.py
+#        and is called from the lifespan startup sequence.
 
 
 
@@ -621,129 +563,14 @@ def _require_supervisor(current_user: dict):
         raise HTTPException(status_code=403, detail="Supervisor access required")
 
 
-async def verify_stock(
-    line_id: str,
-    current_user: dict,
-    *,
-    request: Optional[Request] = None,
-    db_override=None,
-):
-    """Mark a count line as verified. Exposed for direct test usage."""
-    _require_supervisor(current_user)
-    db_client = _get_db_client(db_override)
-    count_line = await db_client.count_lines.find_one({"id": line_id})
-    if not count_line:
-        raise HTTPException(status_code=404, detail="Count line not found")
-    filter_query = {"_id": count_line["_id"]} if count_line.get("_id") else {"id": line_id}
-    write_service = CountLineWriteService(db_client)
-
-    update_result = await write_service.process_write(
-        {"operation": "update_one", "filter": filter_query, "update": {"$set": {}}},
-        context={
-            "transition": "verify",
-            "username": current_user["username"],
-            "session_id": str(count_line.get("session_id") or ""),
-            "governance_mode": "mutable_session",
-            "skip_session_totals_update": True,
-        },
-    )
-    if update_result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Count line not found")
-
-    if activity_log_service:
-        await activity_log_service.log_activity(
-            user=current_user["username"],
-            role=current_user.get("role", ""),
-            action="verify_stock",
-            entity_type="count_line",
-            entity_id=line_id,
-            ip_address=request.client.host if request and request.client else None,
-            user_agent=request.headers.get("user-agent") if request else None,
-        )
-
-    return {"message": "Stock verified", "verified": True}
-
-
-async def unverify_stock(
-    line_id: str,
-    current_user: dict,
-    *,
-    request: Optional[Request] = None,
-    db_override=None,
-):
-    """Remove verification metadata from a count line."""
-    _require_supervisor(current_user)
-    db_client = _get_db_client(db_override)
-    count_line = await db_client.count_lines.find_one({"id": line_id})
-    if not count_line:
-        raise HTTPException(status_code=404, detail="Count line not found")
-    filter_query = {"_id": count_line["_id"]} if count_line.get("_id") else {"id": line_id}
-    write_service = CountLineWriteService(db_client)
-
-    update_result = await write_service.process_write(
-        {"operation": "update_one", "filter": filter_query, "update": {"$set": {}}},
-        context={
-            "transition": "unverify",
-            "username": current_user["username"],
-            "session_id": str(count_line.get("session_id") or ""),
-            "governance_mode": "mutable_session",
-            "skip_session_totals_update": True,
-        },
-    )
-    if update_result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Count line not found")
-
-    if activity_log_service:
-        await activity_log_service.log_activity(
-            user=current_user["username"],
-            role=current_user.get("role", ""),
-            action="unverify_stock",
-            entity_type="count_line",
-            entity_id=line_id,
-            ip_address=request.client.host if request and request.client else None,
-            user_agent=request.headers.get("user-agent") if request else None,
-        )
-
-    return {"message": "Stock verification removed", "verified": False}
-
-
-async def get_count_lines(
-    session_id: str,
-    current_user: dict,
-    page: int = 1,
-    page_size: int = 50,
-    verified: Optional[bool] = None,
-    *,
-    db_override=None,
-):
-    """Get count lines with pagination. Shared between routes and tests."""
-    skip = (page - 1) * page_size
-    filter_query: dict[str, Any] = {"session_id": session_id}
-
-    if verified is not None:
-        filter_query["verified"] = verified
-
-    db_client = _get_db_client(db_override)
-    total = await db_client.count_lines.count_documents(filter_query)
-    lines_cursor = (
-        db_client.count_lines.find(filter_query, {"_id": 0})
-        .sort("counted_at", -1)
-        .skip(skip)
-        .limit(page_size)
-    )
-    lines = await lines_cursor.to_list(page_size)
-
-    return {
-        "items": lines,
-        "pagination": {
-            "page": page,
-            "page_size": page_size,
-            "total": total,
-            "total_pages": (total + page_size - 1) // page_size,
-            "has_next": skip + page_size < total,
-            "has_prev": page > 1,
-        },
-    }
+# M-04: verify_stock, unverify_stock, get_count_lines removed — canonical
+# implementations live in backend/api/count_lines_routes.py.
+# Re-exported here for backward compatibility with any existing test imports.
+from backend.api.count_lines_routes import (  # noqa: E402
+    verify_stock,
+    unverify_stock,
+    get_count_lines,
+)
 
 
 register_routers(
@@ -787,6 +614,7 @@ register_routers(
         report_generation_router=report_generation_router,
         error_reporting_router=error_reporting_router,
         websocket_router=websocket_router,
+        replay_governance_router=replay_governance_router,
         sql_verification_router=sql_verification_router,
         enhanced_item_router=enhanced_item_router,
         pi_router=pi_router,
@@ -808,18 +636,37 @@ register_routers(
     logger,
 )
 
+# PW-07: Enhanced route table logging — includes method list, dependency names,
+# and whether the route carries an auth dependency.  Useful for auditing auth
+# misconfigurations without needing a running server.
 if os.getenv("LOG_ROUTE_TABLE", "false").lower() == "true":
     for route in app.routes:
-        if hasattr(route, "path"):
-            logger.info("Route: %s", route.path)
+        if not hasattr(route, "path"):
+            continue
+        methods = sorted(getattr(route, "methods", None) or [])
+        # Extract dependency class/function names for readability
+        raw_deps = getattr(route, "dependencies", []) or []
+        dep_names: list[str] = []
+        for dep in raw_deps:
+            dep_callable = getattr(dep, "dependency", dep)
+            dep_names.append(
+                getattr(dep_callable, "__name__", None)
+                or getattr(dep_callable, "__class__", type(dep_callable)).__name__
+                or repr(dep_callable)
+            )
+        auth_flag = any(
+            n.lower() in {
+                "get_current_user", "require_admin", "require_supervisor",
+                "verify_token", "get_current_active_user",
+            }
+            for n in dep_names
+        )
+        logger.info(
+            "ROUTE  %-7s  %-60s  deps=%-40s  auth=%s",
+            "/".join(methods) if methods else "-",
+            route.path,
+            ",".join(dep_names) if dep_names else "none",
+            "YES" if auth_flag else "no",
+        )
 
 register_static_serving(app, ROOT_DIR.parent / "frontend" / "dist", logger)
-
-
-if __name__ == "__main__":
-    run_server_main(
-        app_import_path="backend.server:app",
-        settings=settings,
-        logger=logger,
-        project_root=Path(__file__).parent.parent,
-    )

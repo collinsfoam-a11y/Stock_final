@@ -31,6 +31,7 @@ class LockService:
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
         self.collection = db.locks
+        self.fencing_collection = db["lock_fencing_tokens"]
 
     async def initialize(self):
         """
@@ -39,7 +40,26 @@ class LockService:
         """
         # TTL index to automatically expire locks
         await self.collection.create_index("expires_at", expireAfterSeconds=0)
+        await self.collection.create_index("fencing_token", unique=True, sparse=True)
+        await self.collection.create_index([("_id", 1), ("owner", 1), ("lease_version", 1)])
+        await self.fencing_collection.create_index("value")
         logger.info("LockService initialized.")
+
+    async def _next_fencing_token(self, key: str) -> int:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        await self.fencing_collection.update_one(
+            {"_id": "global"},
+            {
+                "$inc": {"value": 1},
+                "$setOnInsert": {"created_at": now},
+                "$set": {"updated_at": now, "last_lock_key": key},
+            },
+            upsert=True,
+        )
+        doc = await self.fencing_collection.find_one({"_id": "global"})
+        if not isinstance(doc, dict) or not isinstance(doc.get("value"), int):
+            raise LockError("Failed to allocate lock fencing token")
+        return int(doc["value"])
 
     async def acquire_lock(self, key: str, owner: str, ttl_seconds: int = DEFAULT_LOCK_TTL) -> bool:
         """
@@ -49,6 +69,8 @@ class LockService:
         expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
             seconds=ttl_seconds
         )
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        fencing_token = await self._next_fencing_token(key)
 
         try:
             # Try to insert lock
@@ -57,8 +79,11 @@ class LockService:
                 {
                     "_id": key,
                     "owner": owner,
-                    "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                    "created_at": now,
                     "expires_at": expires_at,
+                    "fencing_token": fencing_token,
+                    "lease_version": 1,
+                    "renewed_at": now,
                 }
             )
             logger.debug(f"Lock acquired: {key} by {owner}")
@@ -72,18 +97,42 @@ class LockService:
 
             if existing_lock:
                 # Check for explicit expiration logic just in case
-                if existing_lock["expires_at"] < datetime.now(timezone.utc).replace(tzinfo=None):
-                    # It's stale, try to delete and re-acquire (optimistic concurrency)
-                    await self.collection.delete_one(
-                        {"_id": key, "expires_at": existing_lock["expires_at"]}
+                if existing_lock["expires_at"] < now:
+                    # Atomically claim the expired lock. This avoids the
+                    # delete-then-insert race where two workers can both see an
+                    # expired lock and both believe they acquired it.
+                    result = await self.collection.update_one(
+                        {
+                            "_id": key,
+                            "expires_at": existing_lock["expires_at"],
+                            "fencing_token": existing_lock.get("fencing_token"),
+                        },
+                        {
+                            "$set": {
+                                "owner": owner,
+                                "expires_at": expires_at,
+                                "renewed_at": now,
+                                "fencing_token": fencing_token,
+                            },
+                            "$inc": {"lease_version": 1},
+                        },
                     )
-                    # Recursive retry? Better to just fail and let caller retry or handle
-                    # But for now, let's just fail fast.
-                    pass
+                    if getattr(result, "matched_count", 0) > 0:
+                        logger.debug(f"Expired lock reacquired: {key} by {owner}")
+                        return True
 
                 if existing_lock.get("owner") == owner:
-                    # We already own it, extend lease?
-                    # For this use case, we treat it as valid.
+                    # Same owner renews the lease to protect long-running workflows.
+                    await self.collection.update_one(
+                        {"_id": key, "owner": owner},
+                        {
+                            "$set": {
+                                "expires_at": expires_at,
+                                "renewed_at": now,
+                            },
+                            "$inc": {"lease_version": 1},
+                        },
+                    )
                     return True
 
             logger.warning(
@@ -103,6 +152,28 @@ class LockService:
             logger.warning(
                 f"Attempted to release lock {key} owned by {owner}, but it was not found or owned by someone else."
             )
+
+    async def get_lock_state(self, key: str) -> dict | None:
+        return await self.collection.find_one({"_id": key})
+
+    async def validate_lock_owner(
+        self,
+        key: str,
+        owner: str,
+        *,
+        fencing_token: int | None = None,
+        lease_version: int | None = None,
+    ) -> bool:
+        query: dict = {
+            "_id": key,
+            "owner": owner,
+            "expires_at": {"$gt": datetime.now(timezone.utc).replace(tzinfo=None)},
+        }
+        if fencing_token is not None:
+            query["fencing_token"] = int(fencing_token)
+        if lease_version is not None:
+            query["lease_version"] = int(lease_version)
+        return await self.collection.find_one(query) is not None
 
     # ------------------------------------------------------------------
     # Item-level and approval-level convenience helpers

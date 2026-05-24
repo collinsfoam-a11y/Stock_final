@@ -151,10 +151,23 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
             [("item_code", 1), ("serial_numbers", 1)],
             {"name": "idx_count_line_item_serial", "sparse": True},
         ),
+        # H-02 fix: materialized effective_reviewed field allows DB-side filter
+        # instead of in-memory full scan when get_count_lines(verified=...) is called.
+        (
+            [("session_id", 1), ("effective_reviewed", 1)],
+            {"name": "idx_session_effective_reviewed"},
+        ),
     ],
     # Append-only event store
     "event_log": [
+        ([("event_id", 1)], {"unique": True, "sparse": True, "name": "idx_event_id"}),
+        ([("global_sequence", 1)], {"unique": True, "sparse": True, "name": "idx_event_global_sequence"}),
+        (
+            [("aggregate_id", 1), ("aggregate_sequence", 1)],
+            {"unique": True, "sparse": True, "name": "idx_event_aggregate_sequence"},
+        ),
         ([("aggregate_id", 1), ("timestamp", 1)], {"name": "idx_event_aggregate_time"}),
+        ([("aggregate_id", 1), ("global_sequence", 1)], {"name": "idx_event_aggregate_global"}),
         ([("event_type", 1), ("timestamp", -1)], {"name": "idx_event_type_time"}),
         (
             [("idempotency_key", 1)],
@@ -171,10 +184,97 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ),
         ([("payload.session_id", 1), ("timestamp", -1)], {"name": "idx_event_session_time"}),
     ],
+    "event_sequences": [
+        ([("_id", 1)], {"unique": True, "name": "idx_event_sequences_id"}),
+        ([("kind", 1), ("updated_at", -1)], {"name": "idx_event_sequences_kind_time"}),
+        ([("aggregate_id", 1)], {"name": "idx_event_sequences_aggregate", "sparse": True}),
+    ],
     "event_applied": [
         ([("event_id", 1)], {"unique": True, "name": "idx_event_applied_event_id"}),
         ([("session_id", 1), ("applied_at", -1)], {"name": "idx_event_applied_session_time"}),
         ([("item_id", 1), ("applied_at", -1)], {"name": "idx_event_applied_item_time"}),
+    ],
+    "erp_snapshot_history": [
+        ([("_id", 1)], {"unique": True, "name": "idx_erp_snapshot_history_id"}),
+        (
+            [("session_id", 1), ("item_code", 1), ("snapshot_version", 1)],
+            {"name": "idx_erp_snapshot_history_lineage"},
+        ),
+        ([("source_sync_id", 1)], {"name": "idx_erp_snapshot_history_sync", "sparse": True}),
+        ([("source_event_id", 1)], {"name": "idx_erp_snapshot_history_event", "sparse": True}),
+    ],
+    "projection_operations_log": [
+        ([("operation_id", 1), ("operation_type", 1)], {"unique": True, "name": "idx_projection_ops_id_type"}),
+        ([("session_id", 1), ("created_at", -1)], {"name": "idx_projection_ops_session_time"}),
+        ([("operation_type", 1), ("created_at", -1)], {"name": "idx_projection_ops_type_time"}),
+    ],
+    "projection_replay_checkpoints": [
+        ([("rebuild_id", 1), ("session_id", 1)], {"unique": True, "name": "idx_projection_replay_checkpoint_rebuild_session"}),
+        ([("resume_token", 1)], {"name": "idx_projection_replay_checkpoint_resume"}),
+        ([("status", 1), ("updated_at", -1)], {"name": "idx_projection_replay_checkpoint_status_time"}),
+    ],
+    "projection_rebuild_leases": [
+        ([("_id", 1)], {"unique": True, "name": "idx_projection_rebuild_lease_id"}),
+        ([("expires_at", 1)], {"expireAfterSeconds": 0, "name": "idx_projection_rebuild_lease_ttl"}),
+        ([("owner", 1), ("fencing_token", 1), ("lease_version", 1)], {"name": "idx_projection_rebuild_lease_owner_fence"}),
+    ],
+    "projection_rebuild_fencing_tokens": [
+        ([("_id", 1)], {"unique": True, "name": "idx_projection_rebuild_fencing_id"}),
+    ],
+    "replay_certification_reports": [
+        ([("_id", 1)], {"unique": True, "name": "idx_replay_certification_id"}),
+        ([("session_id", 1), ("created_at", -1)], {"name": "idx_replay_certification_session_time"}),
+        ([("status", 1), ("created_at", -1)], {"name": "idx_replay_certification_status_time"}),
+        ([("last_global_sequence", -1)], {"name": "idx_replay_certification_last_sequence"}),
+    ],
+    "websocket_replay_log": [
+        ([("ws_sequence", 1)], {"unique": True, "name": "idx_ws_replay_sequence"}),
+        ([("target", 1), ("ws_sequence", 1)], {"name": "idx_ws_replay_target_sequence"}),
+        (
+            [("session_id", 1), ("ws_sequence", 1)],
+            {"name": "idx_ws_replay_session_sequence", "sparse": True},
+        ),
+        (
+            [("user_id", 1), ("ws_sequence", 1)],
+            {"name": "idx_ws_replay_user_sequence", "sparse": True},
+        ),
+        ([("roles", 1), ("ws_sequence", 1)], {"name": "idx_ws_replay_roles_sequence"}),
+        ([("expires_at", 1)], {"expireAfterSeconds": 0, "name": "idx_ws_replay_ttl"}),
+    ],
+    "websocket_replay_sequences": [
+        ([("_id", 1)], {"unique": True, "name": "idx_ws_replay_sequences_id"}),
+    ],
+    "websocket_replay_cursors": [
+        ([("_id", 1)], {"unique": True, "name": "idx_ws_replay_cursor_id"}),
+        (
+            [("client_id", 1), ("aggregate_id", 1)],
+            {"unique": True, "name": "idx_ws_replay_cursor_client_aggregate"},
+        ),
+        ([("user_id", 1), ("updated_at", -1)], {"name": "idx_ws_replay_cursor_user_time"}),
+        (
+            [("session_id", 1), ("last_ack_sequence", -1)],
+            {"name": "idx_ws_replay_cursor_session_sequence", "sparse": True},
+        ),
+    ],
+    "websocket_socket_ownership": [
+        ([("_id", 1)], {"unique": True, "name": "idx_ws_socket_owner_id"}),
+        (
+            [("client_id", 1), ("aggregate_id", 1)],
+            {"unique": True, "name": "idx_ws_socket_owner_client_aggregate"},
+        ),
+        ([("worker_id", 1), ("updated_at", -1)], {"name": "idx_ws_socket_owner_worker_time"}),
+        ([("expires_at", 1)], {"expireAfterSeconds": 0, "name": "idx_ws_socket_owner_ttl"}),
+    ],
+    "websocket_socket_ownership_sequences": [
+        ([("_id", 1)], {"unique": True, "name": "idx_ws_socket_owner_seq_id"}),
+    ],
+    "websocket_replay_worker_leases": [
+        ([("_id", 1)], {"unique": True, "name": "idx_ws_replay_worker_lease_id"}),
+        ([("expires_at", 1)], {"expireAfterSeconds": 0, "name": "idx_ws_replay_worker_lease_ttl"}),
+        (
+            [("owner", 1), ("worker_id", 1), ("fencing_token", 1), ("lease_version", 1)],
+            {"name": "idx_ws_replay_worker_lease_fence"},
+        ),
     ],
     "items_snapshot": [
         (
@@ -315,6 +415,13 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("actor_username", 1), ("timestamp", -1)], {"name": "idx_audit_username_time"}),
         # Resource tracking
         ([("resource_id", 1), ("timestamp", -1)], {"name": "idx_audit_resource_time"}),
+    ],
+    "governance_ledger": [
+        ([("ledger_id", 1)], {"unique": True, "name": "idx_governance_ledger_id"}),
+        ([("event_type", 1), ("recorded_at", -1)], {"name": "idx_governance_ledger_event_time"}),
+        ([("actor_id", 1), ("recorded_at", -1)], {"name": "idx_governance_ledger_actor_time"}),
+        ([("session_id", 1), ("recorded_at", -1)], {"name": "idx_governance_ledger_session_time"}),
+        ([("idempotency_key", 1)], {"name": "idx_governance_ledger_idempotency", "sparse": True}),
     ],
     # Rate Limits Collection (MM7 fix: TTL cleanup for PIN rate limiting)
     "rate_limits": [

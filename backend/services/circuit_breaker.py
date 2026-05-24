@@ -70,17 +70,31 @@ class CircuitBreaker:
 
     @property
     def is_available(self) -> bool:
-        """Check if circuit is available for requests"""
-        if self._state == CircuitState.CLOSED:
+        """Non-authoritative hint for monitoring and health checks only.
+
+        .. warning::
+            Do **not** use this property to gate actual requests.  It reads
+            shared state without holding the internal lock, so the returned
+            value may be stale by the time the caller acts on it (TOCTOU).
+            Use ``await acquire()`` for all access-control decisions — it is
+            the single authoritative check and performs required state
+            transitions atomically under the lock.
+
+        The OPEN state always returns ``False`` here even when the recovery
+        timeout has elapsed.  The actual OPEN → HALF_OPEN transition is gated
+        inside ``acquire()``; returning ``True`` in that case would encourage
+        callers to skip ``acquire()``, bypassing the half-open call counter
+        and violating circuit-breaker invariants.
+        """
+        state = self._state  # single atomic attribute read on asyncio event loop
+        if state == CircuitState.CLOSED:
             return True
-        if self._state == CircuitState.OPEN:
-            # Check if timeout has passed
-            if self._last_failure_time:
-                elapsed = time.time() - self._last_failure_time
-                if elapsed >= self.config.timeout_seconds:
-                    return True  # Will transition to half-open
+        if state == CircuitState.OPEN:
             return False
-        if self._state == CircuitState.HALF_OPEN:
+        if state == CircuitState.HALF_OPEN:
+            # Reading _half_open_calls without the lock is safe in asyncio
+            # (no coroutine preemption within a synchronous property call).
+            # Treat as a hint; acquire() makes the authoritative decision.
             return self._half_open_calls < self.config.half_open_max_calls
         return False
 

@@ -81,11 +81,14 @@ async def get_error_logs(
     error_type: Optional[str] = None,
     endpoint: Optional[str] = None,
     resolved: Optional[bool] = None,
+    include_archived: bool = False,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     current_user: dict = Depends(require_permissions([Permission.ERROR_LOG_READ])),
 ):
     query: dict[str, Any] = {}
+    if not include_archived:
+        query["archived"] = {"$ne": True}
     if severity:
         query["severity"] = severity
     if error_type:
@@ -127,9 +130,39 @@ async def get_error_logs(
 async def delete_error_logs(
     current_user: dict = Depends(require_admin),  # Only admin can clear logs
 ):
-    """Clear all error logs."""
-    await auth_deps.db.error_logs.delete_many({})
-    return {"success": True, "message": "All error logs cleared"}
+    """Archive all error logs without destroying incident evidence."""
+    now = datetime.now(timezone.utc)
+    actor = current_user.get("username") or current_user.get("user_id") or "admin"
+    result = await auth_deps.db.error_logs.update_many(
+        {"archived": {"$ne": True}},
+        {
+            "$set": {
+                "archived": True,
+                "archived_at": now,
+                "archived_by": actor,
+                "resolved": True,
+                "resolved_at": now,
+                "resolved_by": actor,
+                "resolution_note": "Archived by admin clear-log action",
+            }
+        },
+    )
+    await auth_deps.db.activity_logs.insert_one(
+        {
+            "timestamp": now,
+            "user": actor,
+            "action": "archive_error_logs",
+            "entity_type": "error_log",
+            "entity_id": "bulk",
+            "details": {"archived_count": int(getattr(result, "modified_count", 0))},
+            "status": "success",
+        }
+    )
+    return {
+        "success": True,
+        "message": "Error logs archived",
+        "archived_count": int(getattr(result, "modified_count", 0)),
+    }
 
 
 @router.get("/error-logs/stats")

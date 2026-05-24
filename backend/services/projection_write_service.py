@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import inspect
 import logging
 import os
+import uuid
 from typing import Any, Optional
 
 from backend.services.concurrency import coerce_version
@@ -363,17 +364,28 @@ class ProjectionWriteService:
                 item_projection_scopes=item_projection_scopes,
             )
 
-        event_log = self._collection("event_log")
+        projection_operations_log = self._collection("projection_operations_log")
+        operation_id = str(uuid.uuid4())
         await self._resolve_result(
-            event_log.insert_one(
+            projection_operations_log.insert_one(
                 {
+                    "_id": operation_id,
+                    "operation_id": operation_id,
+                    "operation_type": "projection_write_sync",
                     "session_id": session_id,
-                    "event_type": trigger,
                     "actor": actor,
-                    "session_version": session_version,
+                    "trigger": trigger,
+                    "status": "completed",
+                    "line_count": len(active_lines),
                     "source_updated_at": source_updated_at,
                     "projection_updated_at": now_dt,
                     "projection_version": _PROJECTION_VERSION,
+                    "session_version": session_version,
+                    "metadata": {
+                        "source": "projection_write_service",
+                        "rebuild_item_projections": rebuild_item_projections,
+                        "item_projection_scopes": sorted(item_projection_scopes or []),
+                    },
                     "created_at": now_dt,
                 },
                 **kwargs,

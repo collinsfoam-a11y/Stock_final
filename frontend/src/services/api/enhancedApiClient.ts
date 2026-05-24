@@ -142,12 +142,17 @@ class EnhancedApiClient {
   }
 
   /**
-   * POST request with retry logic
+   * POST request — NOT retried by default.
+   *
+   * POST is not idempotent: automatic retries risk duplicate writes (duplicate
+   * count lines, double-approvals, etc.).  Pass retries > 0 only when the
+   * endpoint is explicitly designed with idempotency-key support AND you supply
+   * the same key on every attempt.
    */
   async post<T>(
     endpoint: string,
     data?: unknown,
-    retries: number = 3,
+    retries: number = 0,
   ): Promise<ApiResponse<T>> {
     try {
       const response = await retryWithBackoff(
@@ -164,12 +169,16 @@ class EnhancedApiClient {
   }
 
   /**
-   * PUT request with retry logic
+   * PUT request — NOT retried by default.
+   *
+   * While PUT is semantically idempotent, the backend may treat repeated PUTs
+   * as distinct mutations (version bumps, audit entries).  Retry only when the
+   * call site guarantees safe re-delivery.
    */
   async put<T>(
     endpoint: string,
     data?: unknown,
-    retries: number = 3,
+    retries: number = 0,
   ): Promise<ApiResponse<T>> {
     try {
       const response = await retryWithBackoff(
@@ -186,12 +195,15 @@ class EnhancedApiClient {
   }
 
   /**
-   * PATCH request with retry logic
+   * PATCH request — NOT retried by default.
+   *
+   * PATCH is not idempotent.  Automatic retries can corrupt partial-update
+   * fields (e.g. incrementing a counter twice).
    */
   async patch<T>(
     endpoint: string,
     data?: unknown,
-    retries: number = 3,
+    retries: number = 0,
   ): Promise<ApiResponse<T>> {
     try {
       const response = await retryWithBackoff(
@@ -208,11 +220,14 @@ class EnhancedApiClient {
   }
 
   /**
-   * DELETE request with retry logic
+   * DELETE request — NOT retried by default.
+   *
+   * DELETE is idempotent in HTTP semantics but the backend may emit multiple
+   * audit events.  Retry only after confirming 404 handling is correct.
    */
   async delete<T>(
     endpoint: string,
-    retries: number = 3,
+    retries: number = 0,
   ): Promise<ApiResponse<T>> {
     try {
       const response = await retryWithBackoff(

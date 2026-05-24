@@ -15,6 +15,7 @@ jest.mock("../../store/authStore", () => ({
 jest.mock("../../services/storage/secureStorage", () => ({
   secureStorage: {
     getItem: jest.fn(),
+    setItem: jest.fn(),
   },
 }));
 
@@ -47,7 +48,11 @@ class MockWebSocket {
     this.onclose?.({ code, reason });
   }
 
-  send(_data: string) {}
+  sentMessages: string[] = [];
+
+  send(data: string) {
+    this.sentMessages.push(data);
+  }
 
   emitOpen() {
     this.readyState = MockWebSocket.OPEN;
@@ -57,6 +62,10 @@ class MockWebSocket {
   emitClose(code: number, reason = "") {
     this.readyState = MockWebSocket.CLOSED;
     this.onclose?.({ code, reason });
+  }
+
+  emitMessage(data: unknown) {
+    this.onmessage?.({ data: JSON.stringify(data) });
   }
 }
 
@@ -70,7 +79,12 @@ describe("useWebSocket", () => {
     jest.spyOn(console, "log").mockImplementation(() => {});
     jest.spyOn(console, "error").mockImplementation(() => {});
     mockUseAuthStore.mockReturnValue({ isAuthenticated: true });
-    mockSecureStorage.getItem.mockResolvedValue("token-123");
+    mockSecureStorage.getItem.mockImplementation(async (key: string) => {
+      if (key === "auth_token") return "token-123";
+      if (key === "websocket_client_id") return "client-123";
+      return null;
+    });
+    mockSecureStorage.setItem.mockResolvedValue();
     (global as any).WebSocket = MockWebSocket;
   });
 
@@ -90,6 +104,60 @@ describe("useWebSocket", () => {
 
     expect(mockSockets[0]?.url).toContain("token=token-123");
     expect(mockSockets[0]?.url).toContain("session_id=sess-123");
+    expect(mockSockets[0]?.url).toContain("ws_client_id=client-123");
+  });
+
+  it("connects using the locally persisted durable replay cursor", async () => {
+    mockSecureStorage.getItem.mockImplementation(async (key: string) => {
+      if (key === "auth_token") return "token-123";
+      if (key === "websocket_client_id") return "client-123";
+      if (key === "websocket_replay_cursor:sess-123") return "42";
+      return null;
+    });
+
+    renderHook(() => useWebSocket("sess-123"));
+
+    await waitFor(() => {
+      expect(mockSockets).toHaveLength(1);
+    });
+
+    expect(mockSockets[0]?.url).toContain("last_ws_sequence=42");
+  });
+
+  it("persists replay cursor before sending replay ack", async () => {
+    renderHook(() => useWebSocket("sess-123"));
+
+    await waitFor(() => {
+      expect(mockSockets).toHaveLength(1);
+    });
+
+    await act(async () => {
+      mockSockets[0]?.emitOpen();
+      mockSockets[0]?.emitMessage({
+        type: "scan_created",
+        ws_sequence: 7,
+        replay: {
+          ws_sequence: 7,
+          replay_event_id: "replay-log-7",
+          replayed: true,
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(mockSecureStorage.setItem).toHaveBeenCalledWith(
+        "websocket_replay_cursor:sess-123",
+        "7",
+      );
+      expect(mockSockets[0]?.sentMessages).toHaveLength(1);
+    });
+
+    expect(JSON.parse(mockSockets[0]?.sentMessages[0] || "{}")).toEqual({
+      type: "websocket_replay_ack",
+      client_id: "client-123",
+      ws_sequence: 7,
+      replay_event_id: "replay-log-7",
+    });
   });
 
   it("stops reconnecting and triggers unauthorized handling on auth close", async () => {

@@ -175,13 +175,23 @@ async def _backfill(
 
         migrated_lines += 1
         if execute:
+            aggregate_versions: dict[str, int] = {}
             for spec in pending_specs:
+                aggregate_id = str(spec["aggregate_id"])
+                if aggregate_id not in aggregate_versions:
+                    aggregate_versions[aggregate_id] = (
+                        await event_service.current_aggregate_version(aggregate_id)
+                    )
                 await event_service.append_event(
-                    aggregate_id=spec["aggregate_id"],
+                    aggregate_id=aggregate_id,
                     event_type=spec["event_type"],
                     payload=spec["payload"],
                     metadata=spec["metadata"],
                     apply_projection=False,
+                    expected_version=aggregate_versions[aggregate_id],
+                )
+                aggregate_versions[aggregate_id] = await event_service.current_aggregate_version(
+                    aggregate_id
                 )
                 emitted_events += 1
         else:
