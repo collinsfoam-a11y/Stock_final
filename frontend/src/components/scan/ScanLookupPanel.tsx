@@ -6,6 +6,9 @@ import ModernCard from "@/components/ui/ModernCard";
 import ModernInput from "@/components/ui/ModernInput";
 import { getStockQty } from "@/utils/itemBatchUtils";
 import { borderRadius, colors, spacing, typography } from "@/theme/legacyCompat";
+import { haptics } from "@/services/haptics";
+import { FadeIn } from "@/components/ui/FadeIn";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
@@ -58,7 +61,7 @@ function EmptyState({
   const iconWash = uiTokens.mode === "dark" ? "rgba(88, 166, 255, 0.14)" : colors.primary[50];
 
   return (
-    <View
+    <FadeIn
       style={[
         styles.emptyState,
         {
@@ -68,13 +71,18 @@ function EmptyState({
       ]}
     >
       <View style={[styles.emptyIconContainer, { backgroundColor: iconWash }]}>
-        <Ionicons name={icon} size={48} color={uiTokens.colors.textMuted} />
+        <Ionicons
+          {...getDecorativeIconProps()}
+          name={icon}
+          size={48}
+          color={uiTokens.colors.textMuted}
+        />
       </View>
       <Text style={[styles.emptyTitle, { color: uiTokens.colors.textPrimary }]}>{title}</Text>
       <Text style={[styles.emptySubtitle, { color: uiTokens.colors.textSecondary }]}>
         {subtitle}
       </Text>
-    </View>
+    </FadeIn>
   );
 }
 
@@ -234,9 +242,18 @@ export function ScanLookupPanel({
               ],
             ]}
             testID="scan-search-submit"
-            onPress={searchQuery.trim() ? onSubmitSearch : onOpenScanner}
+            onPress={() => {
+              void haptics.light();
+              if (searchQuery.trim()) {
+                onSubmitSearch();
+              } else {
+                onOpenScanner();
+              }
+            }}
             disabled={loading}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={searchQuery.trim() ? "Search" : "Scan"}
           >
             <Ionicons
               name={searchQuery.trim() ? "arrow-forward" : "scan"}

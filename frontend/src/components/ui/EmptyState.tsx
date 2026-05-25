@@ -8,6 +8,8 @@ import { View, Text, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@/hooks/useTheme";
 import { ModernButton } from "./ModernButton";
+import { FadeIn } from "./FadeIn";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 interface EmptyStateProps {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -29,8 +31,14 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   const theme = useTheme();
 
   return (
-    <View style={[styles.container, style]}>
-      <Ionicons name={icon} size={64} color={theme.colors.textSecondary} style={styles.icon} />
+    <FadeIn style={[styles.container, style]}>
+      <Ionicons
+        {...getDecorativeIconProps()}
+        name={icon}
+        size={64}
+        color={theme.colors.textSecondary}
+        style={styles.icon}
+      />
       <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
       {message && (
         <Text style={[styles.message, { color: theme.colors.textSecondary }]}>{message}</Text>
@@ -45,7 +53,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           />
         </View>
       )}
-    </View>
+    </FadeIn>
   );
 };
 
