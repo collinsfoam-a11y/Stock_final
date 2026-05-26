@@ -17,3 +17,7 @@
 ## 2025-05-20 - Standardizing Feedback for Modals and Headers
 **Learning:** Significant UI actions like confirming a destructive operation, closing a modal, or navigating via header buttons benefit greatly from tactile feedback. Using `haptics.medium()` for high-stakes/danger actions and `haptics.light()` for routine ones creates a clear sensory hierarchy that aids the user in understanding the weight of their interactions.
 **Action:** Always implement haptic feedback in core container components (Modals, Headers) to ensure a consistent "premium" feel across all screens.
+
+## 2025-05-22 - Enhancing Accordion Accessibility and Feedback
+**Learning:** Interactive collapsible components like Accordions require both tactile feedback and explicit accessibility states (e.g., `expanded`) to be truly inclusive. Haptic feedback provides a satisfying physical confirmation of the toggle action, while `accessibilityState={{ expanded: isExpanded }}` ensures screen reader users are aware of the component's current state.
+**Action:** When implementing collapsible UI elements, always include `haptics.light()` on toggle and maintain accurate `accessibilityState` for expansion.

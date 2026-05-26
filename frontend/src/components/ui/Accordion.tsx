@@ -27,6 +27,7 @@ import {
   borderRadius,
   shadows,
 } from "@/theme/designTokens";
+import { haptics } from "@/services/haptics";
 
 // Enable LayoutAnimation on Android
 if (
@@ -61,6 +62,7 @@ export const Accordion: React.FC<AccordionProps> = ({
   );
 
   const toggleItem = (id: string) => {
+    void haptics.light();
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
 
     setExpandedItems((prev) => {
@@ -129,6 +131,8 @@ const AccordionItemComponent: React.FC<AccordionItemComponentProps> = ({
         style={styles.header}
         onPress={onToggle}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: isExpanded }}
       >
         {item.icon && (
           <Ionicons
