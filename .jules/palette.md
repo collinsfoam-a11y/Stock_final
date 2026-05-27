@@ -17,3 +17,7 @@
 ## 2025-05-20 - Standardizing Feedback for Modals and Headers
 **Learning:** Significant UI actions like confirming a destructive operation, closing a modal, or navigating via header buttons benefit greatly from tactile feedback. Using `haptics.medium()` for high-stakes/danger actions and `haptics.light()` for routine ones creates a clear sensory hierarchy that aids the user in understanding the weight of their interactions.
 **Action:** Always implement haptic feedback in core container components (Modals, Headers) to ensure a consistent "premium" feel across all screens.
+
+## 2025-05-21 - Standardizing Chip Accessibility and Tactile Feedback
+**Learning:** Interactive tags (Chips) often lack appropriate tactile and screen reader feedback. Providing haptic confirmation on both primary press and removal actions, along with descriptive ARIA labels for removal icons, significantly enhances the "premium" feel and accessibility of the component.
+**Action:** Always implement `haptics.light()`, `accessibilityRole="button"`, and specific `accessibilityLabel` for multi-action components like Chips to ensure clarity and responsiveness.
