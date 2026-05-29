@@ -17,3 +17,7 @@
 ## 2025-05-20 - Standardizing Feedback for Modals and Headers
 **Learning:** Significant UI actions like confirming a destructive operation, closing a modal, or navigating via header buttons benefit greatly from tactile feedback. Using `haptics.medium()` for high-stakes/danger actions and `haptics.light()` for routine ones creates a clear sensory hierarchy that aids the user in understanding the weight of their interactions.
 **Action:** Always implement haptic feedback in core container components (Modals, Headers) to ensure a consistent "premium" feel across all screens.
+
+## 2025-05-22 - Enhancing Empty States with Accessible Grouping and Animations
+**Learning:** Empty states benefit from entrance animations (like `FadeIn`) to feel less "stark." For accessibility, grouping the icon, title, and message into a single accessible unit with a descriptive `accessibilityLabel` provides a better experience for screen reader users. However, interactive elements (like action buttons) MUST remain outside this grouping to prevent them from becoming unreachable.
+**Action:** Wrap non-interactive empty state content in a single `accessible={true}` container, but keep action buttons as separate siblings to maintain accessibility tree depth.
