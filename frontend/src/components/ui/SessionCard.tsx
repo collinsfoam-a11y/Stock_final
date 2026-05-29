@@ -28,6 +28,9 @@ import {
 import { StatusBadge } from "./StatusBadge";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
+
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 type SessionStatus = "active" | "completed" | "paused" | "pending";
@@ -178,8 +181,17 @@ export const SessionCard: React.FC<SessionCardProps> = ({
           </View>
 
           {onResume && status !== "completed" && (
-            <TouchableOpacity style={styles.resumeButton} onPress={onResume}>
-              <Ionicons name="play" size={14} color={uiSemanticColors.text.inverse} />
+            <TouchableOpacity
+              style={styles.resumeButton}
+              onPress={() => {
+                void haptics.light();
+                onResume();
+              }}
+              {...getAccessibleButtonProps({
+                label: `Resume session ${name}`,
+              })}
+            >
+              <Ionicons {...getDecorativeIconProps()} name="play" size={14} color={uiSemanticColors.text.inverse} />
               <Text style={styles.resumeText}>Resume</Text>
             </TouchableOpacity>
           )}
