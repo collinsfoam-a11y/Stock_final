@@ -17,3 +17,7 @@
 ## 2025-05-20 - Standardizing Feedback for Modals and Headers
 **Learning:** Significant UI actions like confirming a destructive operation, closing a modal, or navigating via header buttons benefit greatly from tactile feedback. Using `haptics.medium()` for high-stakes/danger actions and `haptics.light()` for routine ones creates a clear sensory hierarchy that aids the user in understanding the weight of their interactions.
 **Action:** Always implement haptic feedback in core container components (Modals, Headers) to ensure a consistent "premium" feel across all screens.
+
+## 2025-05-22 - Enhancing Chip Component with Haptics and Accessibility
+**Learning:** For multi-action components like a Chip (which can have a main press action and a separate remove action), it's important to decouple their interactive states. The main chip body should only show interactive feedback (like opacity changes and haptics) if a main 'onPress' is provided, while the remove button should always provide its own feedback. Additionally, small touch targets like the remove icon must maintain an adequate hitSlop (e.g., 8px) to remain accessible.
+**Action:** Use '!!onPress' to determine if the main container should be a Touchable, and always apply 'getAccessibleButtonProps' with appropriate 'hitSlop' to secondary action icons.

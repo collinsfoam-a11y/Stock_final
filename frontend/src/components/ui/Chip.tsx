@@ -20,6 +20,8 @@ import {
   typography,
   borderRadius,
 } from "@/theme/designTokens";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
 
 export type ChipVariant = "filled" | "outlined";
 export type ChipSize = "sm" | "md" | "lg";
@@ -59,7 +61,7 @@ export const Chip: React.FC<ChipProps> = ({
   textStyle,
 }) => {
   const sizes = sizeStyles[size];
-  const isInteractive = !disabled && (onPress || onRemove);
+  const isInteractive = !!onPress;
 
   const getColors = () => {
     if (disabled) {
@@ -91,11 +93,42 @@ export const Chip: React.FC<ChipProps> = ({
 
   const Container = isInteractive ? TouchableOpacity : View;
 
+  const handlePress = () => {
+    if (onPress && !disabled) {
+      void haptics.light();
+      onPress();
+    }
+  };
+
+  const handleRemove = () => {
+    if (onRemove && !disabled) {
+      void haptics.light();
+      onRemove();
+    }
+  };
+
+  const accessibilityProps = isInteractive
+    ? getAccessibleButtonProps({
+        label: `${selected ? "Selected, " : ""}${label}`,
+        disabled,
+        selected,
+      })
+    : {};
+
   return (
     <Container
-      onPress={onPress}
+      {...(isInteractive && !disabled
+        ? {
+            onPress: handlePress,
+            activeOpacity: 0.7,
+            ...accessibilityProps,
+          }
+        : isInteractive && disabled
+        ? {
+            ...accessibilityProps,
+          }
+        : {})}
       disabled={disabled}
-      activeOpacity={0.7}
       style={[
         styles.chip,
         {
@@ -134,9 +167,13 @@ export const Chip: React.FC<ChipProps> = ({
 
       {onRemove && !disabled && (
         <TouchableOpacity
-          onPress={onRemove}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          onPress={handleRemove}
           style={styles.removeButton}
+          {...getAccessibleButtonProps({
+            label: `Remove ${label}`,
+            disabled,
+            hitSlop: { top: 8, bottom: 8, left: 8, right: 8 },
+          })}
         >
           <Ionicons
             name="close-circle"
