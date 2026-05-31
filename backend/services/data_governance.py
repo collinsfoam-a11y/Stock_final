@@ -71,7 +71,7 @@ class DataGovernanceService:
             description="Audit logs retained for 1 year for compliance",
         ),
         RetentionPolicy(
-            category=DataCategory.OPERATIONAL,
+            category=DataCategory.AUDIT,
             collection_name="activity_logs",
             retention_days=90,
             archive_before_delete=False,
@@ -152,6 +152,13 @@ class DataGovernanceService:
 
         async for policy_doc in self.policies_collection.find():
             policy = RetentionPolicy(**{k: v for k, v in policy_doc.items() if k != "_id"})
+            if policy.category == DataCategory.AUDIT:
+                results[policy.collection_name] = {
+                    "deleted": 0,
+                    "archived": 0,
+                    "skipped": True,
+                }
+                continue
 
             cutoff_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
                 days=policy.retention_days

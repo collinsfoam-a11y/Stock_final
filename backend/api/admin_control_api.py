@@ -843,23 +843,10 @@ async def clear_service_logs(
     service: str,
     current_user: dict = Depends(require_admin),
 ):
-    """Clear service logs"""
-    try:
-        if service == "backend" or service == "sql_server":
-            log_file = settings.LOG_FILE or "app.log"
-            log_path = Path(log_file)
-            if log_path.exists():
-                # Clear the file
-                with open(log_path, "w", encoding="utf-8") as f:
-                    f.write("")
-
-        return {"success": True, "message": f"Logs for {service} cleared successfully"}
-    except Exception as e:
-        logger.error("Error clearing logs: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear logs: {str(e)}",
-        )
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Log deletion is disabled by enterprise governance policy.",
+    )
 
 
 @admin_control_router.get("/sql-server/config")

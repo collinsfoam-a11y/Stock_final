@@ -1567,6 +1567,7 @@ async def approve_count_line(
         # Audit Log Approval
         try:
             from backend.services.audit_service import AuditService
+            from backend.utils.enterprise_audit_logger import log_enterprise_audit
 
             audit_service = AuditService(db)
             await audit_service.log_event(
@@ -1575,6 +1576,22 @@ async def approve_count_line(
                 actor_username=current_user["username"],
                 resource_id=line_id,
                 details={"action": "approve_count_line", "line_id": line_id},
+            )
+            await log_enterprise_audit(
+                http_request,
+                event_type=AuditEventType.DATA_UPDATE,
+                action="count_lines.approve",
+                current_user=current_user,
+                resource_type="count_line",
+                resource_id=str(line_id),
+                resource_name=count_line.get("item_name"),
+                session_id=str(count_line.get("session_id") or ""),
+                details={
+                    "item_code": count_line.get("item_code"),
+                    "barcode": count_line.get("barcode"),
+                    "approved_at": approved_at,
+                    "approval_note": request.notes if request else None,
+                },
             )
         except Exception as e:
             logger.error(
@@ -1692,6 +1709,32 @@ async def reject_count_line(
                 assigned_by=current_user["username"],
                 assigned_to=assigned_to,
                 **notification_kwargs,
+            )
+
+        try:
+            from backend.utils.enterprise_audit_logger import log_enterprise_audit
+
+            await log_enterprise_audit(
+                http_request,
+                event_type=AuditEventType.DATA_UPDATE,
+                action="count_lines.reject",
+                current_user=current_user,
+                resource_type="count_line",
+                resource_id=str(line_id),
+                resource_name=count_line.get("item_name"),
+                session_id=str(count_line.get("session_id") or ""),
+                details={
+                    "item_code": count_line.get("item_code"),
+                    "barcode": count_line.get("barcode"),
+                    "rejected_at": rejected_at,
+                    "rejection_reason": rejection_reason,
+                    "assigned_to": assigned_to,
+                },
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to write enterprise audit log: %s",
+                _safe_log_value(e, max_length=200),
             )
 
         return {
@@ -2168,6 +2211,29 @@ async def delete_count_line(
             count_line=count_line,
         )
         await _log_delete_activity(count_line, line_id, current_user, request)
+        try:
+            from backend.utils.enterprise_audit_logger import log_enterprise_audit
+
+            await log_enterprise_audit(
+                request,
+                event_type=AuditEventType.DATA_DELETE,
+                action="count_lines.delete",
+                current_user=current_user,
+                resource_type="count_line",
+                resource_id=str(line_id),
+                resource_name=count_line.get("item_name"),
+                session_id=str(count_line.get("session_id") or ""),
+                details={
+                    "item_code": count_line.get("item_code"),
+                    "barcode": count_line.get("barcode"),
+                    "counted_qty": count_line.get("counted_qty"),
+                },
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to write enterprise audit log: %s",
+                _safe_log_value(e, max_length=200),
+            )
 
         return {"success": True, "message": "Count line deleted successfully"}
 

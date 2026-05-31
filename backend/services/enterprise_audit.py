@@ -7,7 +7,7 @@ Immutable audit trail with tamper detection
 import hashlib
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 
@@ -446,18 +446,4 @@ class EnterpriseAuditService:
         }
 
     async def apply_retention_policy(self) -> dict[str, int]:
-        """Delete audit logs older than retention period"""
-        cutoff_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
-            days=self.retention_days
-        )
-
-        # Archive before deletion (optional)
-        # ... archival logic here ...
-
-        result = await self.collection.delete_many({"timestamp": {"$lt": cutoff_date}})
-
-        logger.info(
-            f"Audit retention: deleted {result.deleted_count} entries older than {self.retention_days} days"
-        )
-
-        return {"deleted_count": result.deleted_count}
+        return {"deleted_count": 0}

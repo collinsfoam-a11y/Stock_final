@@ -30,6 +30,11 @@ AUTHORIZED_WRITE_AUTHORITIES: dict[str, frozenset[str]] = {
         }
     ),
     "UnknownItemService": frozenset({"unknown_items"}),
+    "EnterpriseAuditService": frozenset({"enterprise_audit_logs"}),
+    "GovernanceAuditService": frozenset({"governance_events"}),
+    "EventService": frozenset({"event_log"}),
+    "AuditService": frozenset({"audit_logs"}),
+    "ActivityLogService": frozenset({"activity_logs"}),
 }
 _GUARD_TARGET_COLLECTIONS: tuple[str, ...] = (
     "count_lines",
@@ -38,6 +43,11 @@ _GUARD_TARGET_COLLECTIONS: tuple[str, ...] = (
     "recount_requests",
     "session_snapshots",
     "unknown_items",
+    "enterprise_audit_logs",
+    "governance_events",
+    "event_log",
+    "audit_logs",
+    "activity_logs",
 )
 _GUARD_WRITE_METHODS: tuple[str, ...] = (
     "insert_one",
@@ -56,6 +66,17 @@ _DB_GUARD_INSTALLED_ATTR = "__governance_write_guard_installed__"
 _DB_GUARD_PROXIES_ATTR = "__governance_collection_proxies__"
 _DB_GUARD_GETITEM_PATCHED_ATTR = "__governance_getitem_patched__"
 _DB_GUARD_GETCOLLECTION_PATCHED_ATTR = "__governance_get_collection_patched__"
+
+_IMMUTABLE_COLLECTIONS: frozenset[str] = frozenset(
+    {
+        "enterprise_audit_logs",
+        "governance_events",
+        "event_log",
+        "audit_logs",
+        "activity_logs",
+    }
+)
+_IMMUTABLE_ALLOWED_METHODS: frozenset[str] = frozenset({"insert_one", "insert_many"})
 
 
 LEGACY_TO_CANONICAL_STATUS = {
@@ -209,11 +230,16 @@ def _require_write_authority(operation: str) -> None:
             f"CRITICAL: Direct DB write forbidden ({operation}). Use domain service."
         )
     collection_name = str(operation or "").split(".", 1)[0].strip()
+    method_name = (
+        str(operation or "").split(".", 1)[1].strip() if "." in str(operation or "") else ""
+    )
     if collection_name and collection_name not in AUTHORIZED_WRITE_AUTHORITIES[authority]:
         raise GovernanceViolation(
             "CRITICAL: "
             f"{authority} cannot mutate {collection_name}. Use the collection's canonical domain service."
         )
+    if collection_name in _IMMUTABLE_COLLECTIONS and method_name not in _IMMUTABLE_ALLOWED_METHODS:
+        raise GovernanceViolation(f"CRITICAL: {collection_name} is immutable. Mutation blocked.")
 
 
 def _wrap_collection_method(

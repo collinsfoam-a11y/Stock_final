@@ -223,30 +223,7 @@ async def clear_logs(
     service: str = Query(..., pattern="^(backend|frontend|mongodb|system|all)$"),
     current_user: dict = Depends(require_admin),
 ):
-    """Clear logs for a service"""
-    try:
-        cleared = []
-
-        if service in ["backend", "all"]:
-            log_file = Path(__file__).parent.parent.parent / "logs" / "backend.log"
-            if log_file.exists():
-                log_file.unlink()
-                cleared.append("backend")
-
-        if service in ["system", "all"]:
-            log_file = Path(__file__).parent.parent.parent / "logs" / "app.log"
-            if log_file.exists():
-                log_file.unlink()
-                cleared.append("system")
-
-        return {
-            "success": True,
-            "message": f"Cleared logs for: {', '.join(cleared) if cleared else 'no log files found'}",
-            "cleared": cleared,
-        }
-    except Exception as e:
-        logger.error("Error clearing logs: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear logs: {str(e)}",
-        )
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Log deletion is disabled by enterprise governance policy.",
+    )

@@ -127,9 +127,10 @@ async def get_error_logs(
 async def delete_error_logs(
     current_user: dict = Depends(require_admin),  # Only admin can clear logs
 ):
-    """Clear all error logs."""
-    await auth_deps.db.error_logs.delete_many({})
-    return {"success": True, "message": "All error logs cleared"}
+    raise HTTPException(
+        status_code=403,
+        detail="Log deletion is disabled by enterprise governance policy.",
+    )
 
 
 @router.get("/error-logs/stats")
