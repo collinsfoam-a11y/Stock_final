@@ -17,3 +17,7 @@
 ## 2025-05-20 - Standardizing Feedback for Modals and Headers
 **Learning:** Significant UI actions like confirming a destructive operation, closing a modal, or navigating via header buttons benefit greatly from tactile feedback. Using `haptics.medium()` for high-stakes/danger actions and `haptics.light()` for routine ones creates a clear sensory hierarchy that aids the user in understanding the weight of their interactions.
 **Action:** Always implement haptic feedback in core container components (Modals, Headers) to ensure a consistent "premium" feel across all screens.
+
+## 2026-05-31 - Standardizing Chip Accessibility and Interaction
+**Learning:** For interactive tags (Chips), it is essential to distinguish between static and interactive states to provide correct screen reader cues. Ensuring that the component correctly reports `accessibilityRole="button"` and `accessibilityState={{ disabled }}` even when disabled allows users of assistive technology to understand that an element *could* be interactive. Additionally, providing separate, labeled touch targets for complex chips (like those with remove buttons) is critical for accessibility.
+**Action:** Use `getAccessibleButtonProps` to standardize roles and labels for all interactive elements in a component. Ensure `isInteractive` checks include the `disabled` state when determining roles to maintain a consistent accessibility tree.

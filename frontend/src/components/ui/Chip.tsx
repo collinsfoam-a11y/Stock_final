@@ -20,6 +20,11 @@ import {
   typography,
   borderRadius,
 } from "@/theme/designTokens";
+import { haptics } from "@/services/haptics";
+import {
+  getAccessibleButtonProps,
+  getDecorativeIconProps,
+} from "@/utils/accessibility";
 
 export type ChipVariant = "filled" | "outlined";
 export type ChipSize = "sm" | "md" | "lg";
@@ -59,7 +64,7 @@ export const Chip: React.FC<ChipProps> = ({
   textStyle,
 }) => {
   const sizes = sizeStyles[size];
-  const isInteractive = !disabled && (onPress || onRemove);
+  const isInteractive = !!onPress || !!onRemove;
 
   const getColors = () => {
     if (disabled) {
@@ -89,13 +94,36 @@ export const Chip: React.FC<ChipProps> = ({
 
   const colors = getColors();
 
+  const handlePress = () => {
+    if (onPress && !disabled) {
+      void haptics.light();
+      onPress();
+    }
+  };
+
+  const handleRemove = () => {
+    if (onRemove && !disabled) {
+      void haptics.light();
+      onRemove();
+    }
+  };
+
   const Container = isInteractive ? TouchableOpacity : View;
+
+  const decorativeIconProps = getDecorativeIconProps();
 
   return (
     <Container
-      onPress={onPress}
+      onPress={handlePress}
       disabled={disabled}
       activeOpacity={0.7}
+      {...(isInteractive
+        ? getAccessibleButtonProps({
+            label: label,
+            disabled: disabled,
+            selected: selected,
+          })
+        : {})}
       style={[
         styles.chip,
         {
@@ -111,6 +139,7 @@ export const Chip: React.FC<ChipProps> = ({
     >
       {icon && (
         <Ionicons
+          {...decorativeIconProps}
           name={icon}
           size={sizes.iconSize}
           color={colors.text}
@@ -134,11 +163,15 @@ export const Chip: React.FC<ChipProps> = ({
 
       {onRemove && !disabled && (
         <TouchableOpacity
-          onPress={onRemove}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          onPress={handleRemove}
+          {...getAccessibleButtonProps({
+            label: `Remove ${label}`,
+            disabled: disabled,
+          })}
           style={styles.removeButton}
         >
           <Ionicons
+            {...decorativeIconProps}
             name="close-circle"
             size={sizes.iconSize}
             color={colors.text}
