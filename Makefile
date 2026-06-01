@@ -139,6 +139,11 @@ node-e2e-recount-smoke:
 	@echo "Running recount assignment smoke against backend on http://127.0.0.1:8001..."
 	cd frontend && E2E_BACKEND_URL=http://127.0.0.1:8001 corepack pnpm run e2e:recount-smoke
 
+.PHONY: smoke-integration
+
+smoke-integration:
+	@bash ./scripts/smoke_integration.sh
+
 # =============================================================================
 # 🔄 COMBINED TARGETS
 # =============================================================================
