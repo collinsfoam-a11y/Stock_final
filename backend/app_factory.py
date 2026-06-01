@@ -94,6 +94,7 @@ from backend.exceptions import AuthenticationError  # noqa: E402
 from backend.exceptions import ValidationError  # noqa: E402
 from backend.services.canonical_inventory import build_session_lookup  # noqa: E402
 from backend.services.count_line_write_service import CountLineWriteService  # noqa: E402
+from backend.services.device_integrity_service import enforce_device_integrity  # noqa: E402
 
 # Utils
 from backend.utils.api_utils import result_to_response, sanitize_for_logging  # noqa: E402
@@ -467,6 +468,7 @@ async def refresh_token(
     Request body should contain: {"refresh_token": "uuid-string"}
     """
     try:
+        enforce_device_integrity(request)
         try:
             body = await request.json()
         except Exception:
@@ -508,6 +510,7 @@ async def logout(
     Request body should contain: {"refresh_token": "uuid-string"}
     """
     try:
+        enforce_device_integrity(request)
         try:
             body = await request.json()
         except Exception:

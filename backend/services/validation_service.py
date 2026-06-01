@@ -481,6 +481,13 @@ class ValidationService:
             if not session.get("archived_by"):
                 errors.append("Archived session missing actor")
 
+        workflow_status = str(session.get("workflow_status") or "").strip().upper()
+        if workflow_status == "SCHEDULED":
+            if not session.get("scheduled_for"):
+                errors.append("Scheduled session missing scheduled_for")
+            if not session.get("scheduled_by"):
+                errors.append("Scheduled session missing scheduled_by")
+
         await self._handle_errors(
             entity="session",
             doc=session,

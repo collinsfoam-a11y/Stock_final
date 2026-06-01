@@ -5,6 +5,7 @@ import { createLogger } from "./logging";
 import { secureStorage } from "./storage/secureStorage";
 import { handleUnauthorized } from "./authUnauthorizedHandler";
 import { getDeviceId } from "./deviceId";
+import { getDeviceIntegrityHeaderValue } from "./deviceIntegrity";
 import { useNetworkStore } from "../store/networkStore";
 import ConnectionManager, { ConnectionInfo } from "./connectionManager";
 import { isPublicHealthRequestUrl, stripHealthRequestHeaders } from "./healthRequest";
@@ -141,6 +142,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
   const refreshUrl = toFullUrl(baseURL, "/api/auth/refresh");
   const refreshPayload = refreshToken ? { refresh_token: refreshToken } : {};
   const deviceId = await getDeviceId();
+  const integrityHeader = await getDeviceIntegrityHeaderValue();
 
   try {
     const response = await axios.post(refreshUrl, refreshPayload, {
@@ -148,6 +150,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
       headers: {
         "Content-Type": "application/json",
         ...(deviceId ? { "X-Device-ID": deviceId } : {}),
+        ...(integrityHeader ? { "X-Device-Integrity": integrityHeader } : {}),
       },
       withCredentials: true,
     });
@@ -209,6 +212,17 @@ const attachDeviceIdHeader = async (config: any): Promise<void> => {
   }
 };
 
+const attachDeviceIntegrityHeader = async (config: any): Promise<void> => {
+  try {
+    const headerValue = await getDeviceIntegrityHeaderValue();
+    if (headerValue) {
+      ensureHeadersObject(config)["X-Device-Integrity"] = headerValue;
+    }
+  } catch (err) {
+    log.warn("Failed to attach device integrity header", { error: String(err) });
+  }
+};
+
 const injectAuthTokenIfMissing = async (config: any, isHealthRequest: boolean): Promise<void> => {
   const headers = ensureHeadersObject(config);
   if (isHealthRequest || headers["Authorization"] || headers.common?.["Authorization"]) {
@@ -259,6 +273,7 @@ apiClient.interceptors.request.use(
       stripHealthRequestHeaders(ensureHeadersObject(config));
     } else {
       await attachDeviceIdHeader(config);
+      await attachDeviceIntegrityHeader(config);
     }
 
     await injectAuthTokenIfMissing(config, isHealthRequest);

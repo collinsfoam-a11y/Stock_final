@@ -193,6 +193,13 @@ async def assert_valid_write(context: dict[str, Any]) -> dict[str, Any]:
         if not allow_finalized_mutation or authority != "SessionLifecycleService":
             raise GovernanceViolation("Session is finalized. Mutation blocked.")
 
+    workflow_status = str(session.get("workflow_status") or "").strip().upper()
+    if workflow_status in {"APPROVED", "CLOSED", "ARCHIVED"}:
+        allow_finalized_mutation = bool(context.get("allow_finalized_mutation"))
+        authority = _WRITE_AUTHORITY.get()
+        if not allow_finalized_mutation or authority != "SessionLifecycleService":
+            raise GovernanceViolation("Session is finalized. Mutation blocked.")
+
     if context.get("require_active_session", True) and canonical_status != "ACTIVE":
         raise GovernanceViolation(
             f"CRITICAL: Session must be ACTIVE for count-line writes (found {canonical_status})"

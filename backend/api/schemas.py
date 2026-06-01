@@ -323,6 +323,10 @@ class Session(BaseModel):
     assigned_users: list[str] = Field(default_factory=list)
     status: str = "OPEN"  # OPEN, ACTIVE, CLOSED
     workflow_status: Optional[str] = None
+    workflow_reason_code: Optional[str] = None
+    workflow_reason: Optional[str] = None
+    scheduled_for: Optional[datetime] = None
+    scheduled_by: Optional[str] = None
     type: str = "STANDARD"  # STANDARD, BLIND, STRICT
     started_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
@@ -370,6 +374,7 @@ class Session(BaseModel):
         "finalized_at",
         "submitted_at",
         "approved_at",
+        "scheduled_for",
         mode="before",
     )
     @classmethod

@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 
@@ -25,6 +25,8 @@ from backend.services.notification_service import (
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.transaction_manager import mongo_transaction
 from backend.utils.api_utils import sanitize_for_logging
+from backend.services.enterprise_audit import AuditEventType, AuditSeverity
+from backend.utils.enterprise_audit_logger import log_enterprise_audit
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/recount", tags=["Recount"])
@@ -60,6 +62,21 @@ class RecountCreateRequest(BaseModel):
     due_date: Optional[str] = None
     notes: Optional[str] = None
     allow_self_assignment: bool = False
+
+
+class RecountScope(str, Enum):
+    PARTIAL = "partial"
+    FULL = "full"
+
+
+class SessionRecountRequest(BaseModel):
+    session_id: str
+    scope: RecountScope = RecountScope.FULL
+    reason: str
+    priority: RecountPriority = RecountPriority.MEDIUM
+    assign_to: Optional[str] = None
+    count_line_ids: Optional[list[str]] = None
+    notes: Optional[str] = None
 
 
 class RecountAssignRequest(BaseModel):
@@ -187,6 +204,98 @@ async def create_recount_request(
         raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
         logger.error("Error creating recount request: %s", sanitize_for_logging(str(e)))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/session-request")
+async def create_session_recount_request(
+    request: SessionRecountRequest,
+    http_request: Request,
+    current_user: dict = require_permission(Permission.COUNT_LINE_APPROVE),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    try:
+        session_id = str(request.session_id or "").strip()
+        if not session_id:
+            raise HTTPException(status_code=400, detail="session_id is required")
+
+        scope = request.scope.value
+        count_line_ids: list[str] = []
+        if request.count_line_ids is not None:
+            if not isinstance(request.count_line_ids, list):
+                raise HTTPException(status_code=400, detail="count_line_ids must be a list")
+            count_line_ids = [
+                str(value).strip() for value in request.count_line_ids if str(value).strip()
+            ]
+
+        if scope == RecountScope.PARTIAL.value and not count_line_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="Partial recount requires count_line_ids",
+            )
+
+        now_dt = datetime.now(timezone.utc).replace(tzinfo=None)
+        recount_doc = {
+            "session_id": session_id,
+            "scope": scope,
+            "count_line_ids": count_line_ids,
+            "reason": request.reason,
+            "priority": request.priority.value,
+            "status": RecountStatus.PENDING.value,
+            "created_by": current_user["username"],
+            "assigned_to": request.assign_to,
+            "notes": request.notes,
+            "created_at": now_dt,
+            "updated_at": now_dt,
+            "recount_requested_at": now_dt,
+            "recount_requested_by": current_user["username"],
+        }
+
+        lifecycle_service = SessionLifecycleService(db)
+        created = await lifecycle_service.create_recount_request(
+            recount_doc=recount_doc,
+            actor=current_user["username"],
+        )
+        created_id = str(created.get("_id") or created.get("id") or "")
+
+        notification_service = NotificationService(db)
+        if request.assign_to:
+            await notification_service.notify_recount_assigned(
+                user_id=request.assign_to,
+                count_line_id="",
+                item_name="Session Recount",
+                reason=request.reason,
+                assigned_by=current_user["username"],
+                session_id=session_id,
+                item_code=None,
+                barcode=None,
+                assigned_to=request.assign_to,
+            )
+
+        await log_enterprise_audit(
+            http_request,
+            event_type=AuditEventType.DATA_CREATE,
+            action="recount.session_request.create",
+            current_user=current_user,
+            resource_type="recount_request",
+            resource_id=created_id,
+            severity=AuditSeverity.WARNING,
+            details={
+                "session_id": session_id,
+                "scope": scope,
+                "assigned_to": request.assign_to,
+                "count_line_count": len(count_line_ids),
+            },
+            session_id=session_id,
+        )
+
+        return {"success": True, "id": created_id, "recount": created}
+    except HTTPException:
+        raise
+    except GovernanceViolation as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    except Exception as e:
+        logger.error("Error creating session recount request: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail=str(e))
 
 

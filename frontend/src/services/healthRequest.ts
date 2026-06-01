@@ -59,6 +59,7 @@ export const stripHealthRequestHeaders = (
     "Content-Type",
     "User-Agent",
     "X-Device-ID",
+    "X-Device-Integrity",
     "X-Requested-With",
   ];
 

@@ -139,6 +139,9 @@ class SessionLifecycleService:
     ) -> dict[str, Any]:
         session = await self.ensure_session_exists(session_id, db_session=db_session)
         canonical = normalize_session_status(session.get("status"))
+        workflow_status = _infer_workflow_status(session)
+        if workflow_status in {"APPROVED", "CLOSED", "ARCHIVED"}:
+            raise GovernanceViolation("Session is finalized. Mutation blocked.")
         if session.get("finalized_at") or canonical == "FINALIZED":
             raise GovernanceViolation("Session is finalized. Mutation blocked.")
         return session
@@ -673,6 +676,7 @@ class SessionLifecycleService:
         actor: str,
         reason_code: Optional[str] = None,
         reason: Optional[str] = None,
+        fields: Optional[dict[str, Any]] = None,
         db_session: Optional[Any] = None,
         expected_version: Optional[int] = None,
     ) -> dict[str, Any]:
@@ -684,16 +688,33 @@ class SessionLifecycleService:
                     actor=actor,
                     reason_code=reason_code,
                     reason=reason,
+                    fields=fields,
                     db_session=tx,
                     expected_version=expected_version,
                 )
 
         session = await self.ensure_session_exists(session_id, db_session=db_session)
+        canonical = normalize_session_status(session.get("status"))
+        if session.get("finalized_at") or canonical in {"FINALIZED", "ARCHIVED"}:
+            raise GovernanceViolation("Session is finalized. Mutation blocked.")
         current = _infer_workflow_status(session)
         target = _normalize_workflow_status(target_status)
         if not target:
             raise GovernanceViolation("CRITICAL: workflow_status is required")
         _assert_workflow_transition(current, target)
+
+        with write_authority("SessionLifecycleService"):
+            await assert_valid_write(
+                {
+                    "db": self.db,
+                    "session": session,
+                    "session_id": session_id,
+                    "db_session": db_session,
+                    "require_active_session": False,
+                    "require_full_context": False,
+                    "allow_finalized_mutation": True,
+                }
+            )
 
         now_dt = _utc_now()
         update_doc: dict[str, Any] = {
@@ -708,12 +729,16 @@ class SessionLifecycleService:
             "updated_by": actor,
             "last_heartbeat": now_dt,
         }
+        if isinstance(fields, dict) and fields:
+            update_doc.update(fields)
         if target == "SUBMITTED":
             update_doc.setdefault("submitted_at", now_dt)
             update_doc.setdefault("submitted_by", actor)
         if target == "APPROVED":
             update_doc.setdefault("approved_at", now_dt)
             update_doc.setdefault("approved_by", actor)
+        if target == "SCHEDULED":
+            update_doc.setdefault("scheduled_by", actor)
 
         prospective = dict(session)
         prospective.update(update_doc)
@@ -929,18 +954,20 @@ class SessionLifecycleService:
             raise GovernanceViolation("CRITICAL: Session must be in REVIEW before FINALIZED")
 
         assert_valid_transition(current, "FINALIZED")
-        await assert_valid_write(
-            {
-                "db": self.db,
-                "session": session,
-                "session_id": session_id,
-                "db_session": db_session,
-                "require_active_session": False,
-                "require_full_context": False,
-                "from_state": current,
-                "to_state": "FINALIZED",
-            }
-        )
+        with write_authority("SessionLifecycleService"):
+            await assert_valid_write(
+                {
+                    "db": self.db,
+                    "session": session,
+                    "session_id": session_id,
+                    "db_session": db_session,
+                    "require_active_session": False,
+                    "require_full_context": False,
+                    "from_state": current,
+                    "to_state": "FINALIZED",
+                    "allow_finalized_mutation": True,
+                }
+            )
 
         lines = await self.db.count_lines.find({"session_id": session_id}, **kwargs).to_list(
             length=50000

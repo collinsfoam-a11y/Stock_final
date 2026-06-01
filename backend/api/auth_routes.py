@@ -30,6 +30,7 @@ from backend.exceptions import (
     RateLimitError,
 )
 from backend.models.audit import AuditEventType, AuditLogStatus
+from backend.services.device_integrity_service import enforce_device_integrity
 from backend.services.otp_service import OTPService
 from backend.services.runtime import get_cache_service, get_refresh_token_service
 from backend.services.whatsapp_service import WhatsAppDeliveryError, WhatsAppService
@@ -577,6 +578,7 @@ async def login(
     )
 
     try:
+        enforce_device_integrity(request)
         # Check rate limiting
         rate_limit_fail = await _check_login_rate_limit(client_ip)
         if rate_limit_fail:
@@ -804,6 +806,7 @@ async def login_with_pin(
         return validation_fail
 
     try:
+        enforce_device_integrity(request)
         # Check rate limiting
         rate_limit_fail = await _check_login_rate_limit(client_ip)
         if rate_limit_fail:

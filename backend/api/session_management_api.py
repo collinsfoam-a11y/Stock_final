@@ -147,6 +147,17 @@ class SessionForceCloseRequest(BaseModel):
     note: Optional[str] = None
 
 
+class SessionWorkflowTransitionRequest(BaseModel):
+    reason_code: Optional[str] = None
+    reason: Optional[str] = None
+
+
+class SessionScheduleRequest(BaseModel):
+    scheduled_for: datetime
+    reason_code: Optional[str] = None
+    reason: Optional[str] = None
+
+
 class CanonicalSessionStatus(str, Enum):
     OPEN = "OPEN"
     ACTIVE = "ACTIVE"
@@ -1702,6 +1713,185 @@ async def update_session_assignments(
         "supervisor_username": updated.get("supervisor_username"),
         "assigned_users": updated.get("assigned_users") or [],
     }
+
+
+@router.post("/{session_id}/workflow/schedule")
+async def schedule_session_workflow(
+    session_id: str,
+    payload: SessionScheduleRequest,
+    http_request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_role("supervisor", "admin")),
+) -> dict[str, Any]:
+    lifecycle_service = SessionLifecycleService(db)
+    try:
+        updated = await lifecycle_service.transition_workflow_status(
+            session_id=session_id,
+            target_status="SCHEDULED",
+            actor=current_user["username"],
+            reason_code=payload.reason_code,
+            reason=payload.reason,
+            fields={
+                "scheduled_for": payload.scheduled_for,
+                "scheduled_by": current_user["username"],
+            },
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    await log_enterprise_audit(
+        http_request,
+        event_type=AuditEventType.DATA_UPDATE,
+        action="sessions.workflow.schedule",
+        current_user=current_user,
+        resource_type="session",
+        resource_id=str(updated.get("id") or updated.get("session_id") or session_id),
+        details={"workflow_status": updated.get("workflow_status")},
+        session_id=str(updated.get("id") or updated.get("session_id") or session_id),
+    )
+    return {"success": True, "id": session_id, "workflow_status": updated.get("workflow_status")}
+
+
+@router.post("/{session_id}/workflow/submit")
+async def submit_session_workflow(
+    session_id: str,
+    payload: SessionWorkflowTransitionRequest,
+    http_request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    session = await find_session(db, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if (
+        current_user["role"] not in {"supervisor", "admin"}
+        and _session_owner(session) != current_user["username"]
+    ):
+        raise HTTPException(status_code=403, detail="Not your session")
+
+    lifecycle_service = SessionLifecycleService(db)
+    try:
+        updated = await lifecycle_service.transition_session(
+            session_id=session_id,
+            target_status="REVIEW",
+            actor=current_user["username"],
+            note=payload.reason or "Submitted for review",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    await log_enterprise_audit(
+        http_request,
+        event_type=AuditEventType.DATA_UPDATE,
+        action="sessions.workflow.submit",
+        current_user=current_user,
+        resource_type="session",
+        resource_id=str(updated.get("id") or updated.get("session_id") or session_id),
+        details={"workflow_status": updated.get("workflow_status")},
+        session_id=str(updated.get("id") or updated.get("session_id") or session_id),
+    )
+    return {"success": True, "id": session_id, "workflow_status": updated.get("workflow_status")}
+
+
+@router.post("/{session_id}/workflow/start-review")
+async def start_review_session_workflow(
+    session_id: str,
+    payload: SessionWorkflowTransitionRequest,
+    http_request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_role("supervisor", "admin")),
+) -> dict[str, Any]:
+    lifecycle_service = SessionLifecycleService(db)
+    try:
+        updated = await lifecycle_service.transition_workflow_status(
+            session_id=session_id,
+            target_status="REVIEW",
+            actor=current_user["username"],
+            reason_code=payload.reason_code,
+            reason=payload.reason,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    await log_enterprise_audit(
+        http_request,
+        event_type=AuditEventType.DATA_UPDATE,
+        action="sessions.workflow.start_review",
+        current_user=current_user,
+        resource_type="session",
+        resource_id=str(updated.get("id") or updated.get("session_id") or session_id),
+        details={"workflow_status": updated.get("workflow_status")},
+        session_id=str(updated.get("id") or updated.get("session_id") or session_id),
+    )
+    return {"success": True, "id": session_id, "workflow_status": updated.get("workflow_status")}
+
+
+@router.post("/{session_id}/workflow/approve")
+async def approve_session_workflow(
+    session_id: str,
+    payload: SessionWorkflowTransitionRequest,
+    http_request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_role("supervisor", "admin")),
+) -> dict[str, Any]:
+    lifecycle_service = SessionLifecycleService(db)
+    try:
+        updated = await lifecycle_service.transition_workflow_status(
+            session_id=session_id,
+            target_status="APPROVED",
+            actor=current_user["username"],
+            reason_code=payload.reason_code,
+            reason=payload.reason,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    await log_enterprise_audit(
+        http_request,
+        event_type=AuditEventType.DATA_UPDATE,
+        action="sessions.workflow.approve",
+        current_user=current_user,
+        resource_type="session",
+        resource_id=str(updated.get("id") or updated.get("session_id") or session_id),
+        severity=AuditSeverity.CRITICAL,
+        details={"workflow_status": updated.get("workflow_status")},
+        session_id=str(updated.get("id") or updated.get("session_id") or session_id),
+    )
+    return {"success": True, "id": session_id, "workflow_status": updated.get("workflow_status")}
+
+
+@router.post("/{session_id}/workflow/close")
+async def close_session_workflow(
+    session_id: str,
+    payload: SessionWorkflowTransitionRequest,
+    http_request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_role("supervisor", "admin")),
+) -> dict[str, Any]:
+    lifecycle_service = SessionLifecycleService(db)
+    try:
+        updated = await lifecycle_service.transition_workflow_status(
+            session_id=session_id,
+            target_status="CLOSED",
+            actor=current_user["username"],
+            reason_code=payload.reason_code,
+            reason=payload.reason,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    await log_enterprise_audit(
+        http_request,
+        event_type=AuditEventType.DATA_UPDATE,
+        action="sessions.workflow.close",
+        current_user=current_user,
+        resource_type="session",
+        resource_id=str(updated.get("id") or updated.get("session_id") or session_id),
+        severity=AuditSeverity.CRITICAL,
+        details={"workflow_status": updated.get("workflow_status")},
+        session_id=str(updated.get("id") or updated.get("session_id") or session_id),
+    )
+    return {"success": True, "id": session_id, "workflow_status": updated.get("workflow_status")}
 
 
 async def _finalize_session_canonical(

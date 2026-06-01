@@ -61,6 +61,25 @@ async def test_recount_create_and_transition_flow():
 
 
 @pytest.mark.asyncio
+async def test_recount_create_supports_session_level_scopes():
+    db = InMemoryDatabase()
+    await _seed_session(db, "sess-recount-scope")
+    service = SessionLifecycleService(db)
+
+    created = await service.create_recount_request(
+        recount_doc={
+            "session_id": "sess-recount-scope",
+            "scope": "full",
+            "count_line_ids": [],
+            "reason": "cycle count discrepancy",
+            "created_by": "supervisor1",
+        },
+        actor="supervisor1",
+    )
+    assert created["status"] == "pending"
+
+
+@pytest.mark.asyncio
 async def test_recount_transition_rejects_terminal_state_mutation():
     db = InMemoryDatabase()
     await _seed_session(db, "sess-recount-terminal")

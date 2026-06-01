@@ -164,3 +164,50 @@ async def test_force_close_allows_blocking_lines_with_reason():
     )
     assert result["session"]["status"] == "FINALIZED"
     assert result["session"].get("finalization_status") == "FORCE_CLOSED"
+
+
+@pytest.mark.asyncio
+async def test_workflow_transitions_lock_session_on_approval():
+    db = InMemoryDatabase()
+    now = _utc_now()
+    await db.sessions.insert_one(
+        {
+            "id": "sess-workflow",
+            "session_id": "sess-workflow",
+            "warehouse": "WH-1",
+            "staff_user": "staff1",
+            "staff_name": "Staff One",
+            "status": "ACTIVE",
+            "workflow_status": "SUBMITTED",
+            "version": 0,
+            "started_at": now,
+            "last_heartbeat": now,
+        }
+    )
+    service = SessionLifecycleService(db)
+
+    updated = await service.transition_workflow_status(
+        session_id="sess-workflow",
+        target_status="REVIEW",
+        actor="supervisor1",
+    )
+    assert updated.get("workflow_status") == "REVIEW"
+
+    updated = await service.transition_workflow_status(
+        session_id="sess-workflow",
+        target_status="APPROVED",
+        actor="supervisor1",
+        reason_code="VARIANCE_APPROVAL",
+        reason="Approved after review",
+    )
+    assert updated.get("workflow_status") == "APPROVED"
+
+    with pytest.raises(Exception, match="finalized"):
+        await service.ensure_session_not_finalized("sess-workflow")
+
+    updated = await service.transition_workflow_status(
+        session_id="sess-workflow",
+        target_status="CLOSED",
+        actor="supervisor1",
+    )
+    assert updated.get("workflow_status") == "CLOSED"

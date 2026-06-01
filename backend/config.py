@@ -269,6 +269,9 @@ class Settings(PydanticBaseSettings):
     SESSION_TIMEOUT_MINUTES: int = Field(480, ge=1)  # 8 hours
     AUTO_LOGOUT_ENABLED: bool = True
     AUTH_SINGLE_SESSION: bool = True
+    DEVICE_INTEGRITY_REQUIRED: bool = False
+    DEVICE_INTEGRITY_BLOCK_UNTRUSTED: bool = False
+    DEVICE_INTEGRITY_HEADER_MAX_BYTES: int = Field(2048, ge=256, le=8192)
 
     @field_validator("JWT_SECRET", mode="before")
     @classmethod
@@ -583,6 +586,15 @@ except Exception as e:
             self.ERP_SYNC_ENABLED = os.getenv("ERP_SYNC_ENABLED", "true").lower() == "true"
             self.ERP_SYNC_INTERVAL = int(os.getenv("ERP_SYNC_INTERVAL", 3600))
             self.AUTH_SINGLE_SESSION = os.getenv("AUTH_SINGLE_SESSION", "true").lower() == "true"
+            self.DEVICE_INTEGRITY_REQUIRED = (
+                os.getenv("DEVICE_INTEGRITY_REQUIRED", "false").lower() == "true"
+            )
+            self.DEVICE_INTEGRITY_BLOCK_UNTRUSTED = (
+                os.getenv("DEVICE_INTEGRITY_BLOCK_UNTRUSTED", "false").lower() == "true"
+            )
+            self.DEVICE_INTEGRITY_HEADER_MAX_BYTES = int(
+                os.getenv("DEVICE_INTEGRITY_HEADER_MAX_BYTES", 2048)
+            )
             self.CHANGE_DETECTION_SYNC_ENABLED = (
                 os.getenv("CHANGE_DETECTION_SYNC_ENABLED", "true").lower() == "true"
             )

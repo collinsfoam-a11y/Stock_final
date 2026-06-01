@@ -77,6 +77,7 @@ describe("health request helpers", () => {
       "Content-Type": "application/json",
       "User-Agent": "StockVerifyApp/1.0",
       "X-Device-ID": "device-1",
+      "X-Device-Integrity": "{\"status\":\"UNKNOWN\"}",
       common: {
         Authorization: "Bearer token",
         "content-type": "application/json",
@@ -89,6 +90,7 @@ describe("health request helpers", () => {
     expect(headers["Content-Type"]).toBeUndefined();
     expect(headers["User-Agent"]).toBeUndefined();
     expect(headers["X-Device-ID"]).toBeUndefined();
+    expect(headers["X-Device-Integrity"]).toBeUndefined();
     expect(headers.common.Authorization).toBeUndefined();
     expect(headers.common["content-type"]).toBeUndefined();
   });
