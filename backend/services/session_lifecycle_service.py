@@ -604,12 +604,14 @@ class SessionLifecycleService:
         update_doc: dict[str, Any] = {
             "updated_at": now_dt,
             "updated_by": actor,
-            "assignment_reason_code": str(reason_code).strip()
-            if isinstance(reason_code, str) and reason_code.strip()
-            else None,
-            "assignment_reason": str(reason).strip()
-            if isinstance(reason, str) and reason.strip()
-            else None,
+            "assignment_reason_code": (
+                str(reason_code).strip()
+                if isinstance(reason_code, str) and reason_code.strip()
+                else None
+            ),
+            "assignment_reason": (
+                str(reason).strip() if isinstance(reason, str) and reason.strip() else None
+            ),
         }
         if supervisor_username is not None:
             update_doc["supervisor_username"] = normalized_supervisor
@@ -719,12 +721,14 @@ class SessionLifecycleService:
         now_dt = _utc_now()
         update_doc: dict[str, Any] = {
             "workflow_status": target,
-            "workflow_reason_code": str(reason_code).strip()
-            if isinstance(reason_code, str) and reason_code.strip()
-            else None,
-            "workflow_reason": str(reason).strip()
-            if isinstance(reason, str) and reason.strip()
-            else None,
+            "workflow_reason_code": (
+                str(reason_code).strip()
+                if isinstance(reason_code, str) and reason_code.strip()
+                else None
+            ),
+            "workflow_reason": (
+                str(reason).strip() if isinstance(reason, str) and reason.strip() else None
+            ),
             "updated_at": now_dt,
             "updated_by": actor,
             "last_heartbeat": now_dt,
@@ -1190,9 +1194,9 @@ class SessionLifecycleService:
             "archived_at": now_dt,
             "archived_by": actor,
             "archive_reason_code": str(reason_code).strip(),
-            "archive_reason": str(reason).strip()
-            if isinstance(reason, str) and reason.strip()
-            else None,
+            "archive_reason": (
+                str(reason).strip() if isinstance(reason, str) and reason.strip() else None
+            ),
             "updated_at": now_dt,
             "updated_by": actor,
             "last_heartbeat": now_dt,

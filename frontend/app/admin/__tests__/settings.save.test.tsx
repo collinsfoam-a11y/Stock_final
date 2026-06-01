@@ -74,7 +74,12 @@ jest.mock("../../../src/components/ui/ModernCard", () => {
   const React = require("react");
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require("react-native");
-  return ({ children }: { children: React.ReactNode }) => <View>{children}</View>;
+
+  function ModernCardMock({ children }: { children: React.ReactNode }) {
+    return <View>{children}</View>;
+  }
+
+  return ModernCardMock;
 });
 
 jest.mock("../../../src/components/settings", () => {

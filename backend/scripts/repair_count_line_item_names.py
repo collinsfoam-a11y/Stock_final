@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.errors import ServerSelectionTimeoutError
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -312,7 +313,12 @@ def _print_summary(stats: dict[str, Any], execute: bool) -> None:
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
     args = _build_parser().parse_args()
-    stats = asyncio.run(_run(args))
+    try:
+        stats = asyncio.run(_run(args))
+    except ServerSelectionTimeoutError as exc:
+        print("MongoDB is not reachable for this audit run.")
+        print("Start MongoDB and retry, or set MONGO_URL/DB_NAME to a reachable instance.")
+        raise SystemExit(2) from exc
     _print_summary(stats, args.execute)
 
 

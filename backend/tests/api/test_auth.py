@@ -119,6 +119,7 @@ async def test_generate_auth_tokens_success(
         result = await generate_auth_tokens(user, "127.0.0.1", request)
 
         assert result.is_ok
+        assert mock_create_token.call_args.args[0]["org_id"] == "org_default"
         value = result.unwrap()
         assert value["access_token"] == "access_token"
         assert value["refresh_token"] == "refresh_token"
