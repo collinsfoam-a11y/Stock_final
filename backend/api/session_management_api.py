@@ -13,9 +13,9 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.api.response_models import PaginatedResponse
 from backend.api.schemas import Session, SessionCreate
@@ -35,10 +35,12 @@ from backend.services.canonical_inventory import (
     normalize_session_status as normalize_canonical_session_status,
 )
 from backend.services.count_line_write_service import CountLineWriteService
+from backend.services.enterprise_audit import AuditEventType
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.redis_service import get_redis
 from backend.services.runtime import get_refresh_token_service
 from backend.utils.api_utils import sanitize_for_logging
+from backend.utils.enterprise_audit_logger import log_enterprise_audit
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +122,23 @@ class SessionFinalizeRequest(BaseModel):
     """Optional metadata supplied when finalizing a session."""
 
     note: Optional[str] = None
+
+
+class SessionArchiveRequest(BaseModel):
+    reason_code: str = Field(..., min_length=1)
+    reason: Optional[str] = None
+
+
+class SessionReopenRequest(BaseModel):
+    reason_code: str = Field(..., min_length=1)
+    reason: str = Field(..., min_length=1)
+
+
+class SessionAssignmentsRequest(BaseModel):
+    supervisor_username: Optional[str] = None
+    assigned_users: Optional[list[str]] = None
+    reason_code: Optional[str] = None
+    reason: Optional[str] = None
 
 
 class CanonicalSessionStatus(str, Enum):
@@ -804,6 +823,16 @@ def _build_new_session(
     rack_no: Optional[str],
 ) -> Session:
     now = datetime.now(timezone.utc)
+    assigned_users: list[str] = []
+    if isinstance(session_data.assigned_users, list):
+        assigned_users = [
+            str(user).strip() for user in session_data.assigned_users if str(user).strip()
+        ]
+    if not assigned_users:
+        assigned_users = [current_user["username"]]
+    if current_user["username"] not in assigned_users:
+        assigned_users.append(current_user["username"])
+
     return Session(
         id=str(uuid.uuid4()),
         warehouse=warehouse,
@@ -812,8 +841,16 @@ def _build_new_session(
         rack_no=rack_no,
         staff_user=current_user["username"],
         staff_name=current_user.get("full_name", current_user["username"]),
+        supervisor_username=(
+            str(session_data.supervisor_username).strip()
+            if isinstance(session_data.supervisor_username, str)
+            and session_data.supervisor_username.strip()
+            else None
+        ),
+        assigned_users=assigned_users,
         type=session_data.type or "STANDARD",
         status="OPEN",
+        workflow_status="DRAFT",
         started_at=now,
         last_heartbeat=now,
     )
@@ -883,6 +920,7 @@ async def _insert_session_documents(
 def _active_workflow_session_query() -> dict[str, Any]:
     return {
         "status": {"$in": ACTIVE_SESSION_STATUSES},
+        "archived": {"$ne": True},
         "$and": [
             {"$or": [{"closed_at": {"$exists": False}}, {"closed_at": {"$in": [None, ""]}}]},
             {
@@ -1167,7 +1205,7 @@ async def get_sessions(
     Get all sessions with pagination
     """
     # Build query
-    query = {}
+    query: dict[str, Any] = {"archived": {"$ne": True}}
     if status:
         query["status"] = status
 
@@ -1285,6 +1323,7 @@ async def get_active_sessions(
     # Build canonical session query
     query: dict[str, Any] = {
         "status": {"$in": ACTIVE_SESSION_STATUSES},
+        "archived": {"$ne": True},
         "$and": [
             {"$or": [{"finalized_at": {"$exists": False}}, {"finalized_at": {"$in": [None, ""]}}]},
             {"$or": [{"closed_at": {"$exists": False}}, {"closed_at": {"$in": [None, ""]}}]},
@@ -1616,6 +1655,49 @@ async def update_session_status(
     return {"success": True, "id": session_id, "status": requested_canonical}
 
 
+@router.post("/{session_id}/assignments")
+async def update_session_assignments(
+    session_id: str,
+    payload: SessionAssignmentsRequest,
+    http_request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_role("supervisor", "admin")),
+) -> dict[str, Any]:
+    lifecycle_service = SessionLifecycleService(db)
+    try:
+        updated = await lifecycle_service.update_session_assignments(
+            session_id=session_id,
+            actor=current_user["username"],
+            supervisor_username=payload.supervisor_username,
+            assigned_users=payload.assigned_users,
+            reason_code=payload.reason_code,
+            reason=payload.reason,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    await log_enterprise_audit(
+        http_request,
+        event_type=AuditEventType.DATA_UPDATE,
+        action="sessions.assignments_update",
+        current_user=current_user,
+        resource_type="session",
+        resource_id=str(updated.get("id") or updated.get("session_id") or session_id),
+        details={
+            "supervisor_username": updated.get("supervisor_username"),
+            "assigned_users": updated.get("assigned_users"),
+            "assignment_reason_code": updated.get("assignment_reason_code"),
+        },
+        session_id=str(updated.get("id") or updated.get("session_id") or session_id),
+    )
+    return {
+        "success": True,
+        "id": str(updated.get("id") or updated.get("session_id") or session_id),
+        "supervisor_username": updated.get("supervisor_username"),
+        "assigned_users": updated.get("assigned_users") or [],
+    }
+
+
 async def _finalize_session_canonical(
     session_id: str,
     db: AsyncIOMotorDatabase,
@@ -1732,6 +1814,94 @@ async def finalize_session(
     )
 
 
+@router.post("/{session_id}/archive")
+async def archive_session(
+    session_id: str,
+    payload: SessionArchiveRequest,
+    http_request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_role("supervisor", "admin")),
+) -> dict[str, Any]:
+    lifecycle_service = SessionLifecycleService(db)
+    try:
+        updated = await lifecycle_service.archive_session(
+            session_id=session_id,
+            actor=current_user["username"],
+            reason_code=payload.reason_code,
+            reason=payload.reason,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    await log_enterprise_audit(
+        http_request,
+        event_type=AuditEventType.DATA_UPDATE,
+        action="sessions.archive",
+        current_user=current_user,
+        resource_type="session",
+        resource_id=str(updated.get("id") or updated.get("session_id") or session_id),
+        details={
+            "status": updated.get("status"),
+            "archive_reason_code": updated.get("archive_reason_code"),
+        },
+        session_id=str(updated.get("id") or updated.get("session_id") or session_id),
+    )
+    return {
+        "success": True,
+        "id": str(updated.get("id") or updated.get("session_id") or session_id),
+        "status": str(updated.get("status") or ""),
+        "archived_at": (
+            updated.get("archived_at").isoformat()
+            if isinstance(updated.get("archived_at"), datetime)
+            else None
+        ),
+    }
+
+
+@router.post("/{session_id}/reopen")
+async def reopen_session(
+    session_id: str,
+    payload: SessionReopenRequest,
+    http_request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_role("supervisor", "admin")),
+) -> dict[str, Any]:
+    lifecycle_service = SessionLifecycleService(db)
+    try:
+        updated = await lifecycle_service.reopen_session(
+            session_id=session_id,
+            actor=current_user["username"],
+            reason_code=payload.reason_code,
+            reason=payload.reason,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    await log_enterprise_audit(
+        http_request,
+        event_type=AuditEventType.DATA_UPDATE,
+        action="sessions.reopen",
+        current_user=current_user,
+        resource_type="session",
+        resource_id=str(updated.get("id") or updated.get("session_id") or session_id),
+        details={
+            "status": updated.get("status"),
+            "reopen_reason_code": updated.get("reopen_reason_code"),
+        },
+        session_id=str(updated.get("id") or updated.get("session_id") or session_id),
+    )
+    return {
+        "success": True,
+        "id": str(updated.get("id") or updated.get("session_id") or session_id),
+        "status": str(updated.get("status") or ""),
+        "reopened_at": (
+            updated.get("reopened_at").isoformat()
+            if isinstance(updated.get("reopened_at"), datetime)
+            else None
+        ),
+    }
+
+
 @router.post("/{session_id}/complete")
 async def complete_session(
     session_id: str,
@@ -1758,7 +1928,12 @@ async def get_user_session_history(
     user_id = current_user["username"]
 
     sessions_cursor = (
-        db.sessions.find({"staff_user": user_id, "status": {"$in": ["COMPLETED", "CLOSED"]}})
+        db.sessions.find(
+            {
+                "staff_user": user_id,
+                "status": {"$in": ["COMPLETED", "CLOSED", "FINALIZED", "ARCHIVED"]},
+            }
+        )
         .sort("completed_at", -1)
         .limit(limit)
     )

@@ -91,6 +91,7 @@ LEGACY_TO_CANONICAL_STATUS = {
     "CLOSED": "FINALIZED",
     "CANCELLED": "FINALIZED",
     "FINALIZED": "FINALIZED",
+    "ARCHIVED": "ARCHIVED",
     "CREATED": "CREATED",
     "REVIEW": "REVIEW",
 }
@@ -99,7 +100,8 @@ SESSION_TRANSITIONS: dict[str, set[str]] = {
     "CREATED": {"ACTIVE"},
     "ACTIVE": {"REVIEW"},
     "REVIEW": {"FINALIZED"},
-    "FINALIZED": set(),
+    "FINALIZED": {"REVIEW", "ARCHIVED"},
+    "ARCHIVED": set(),
 }
 
 
@@ -186,7 +188,10 @@ async def assert_valid_write(context: dict[str, Any]) -> dict[str, Any]:
 
     canonical_status = normalize_session_status(session.get("status"))
     if session.get("finalized_at") or canonical_status == "FINALIZED":
-        raise GovernanceViolation("Session is finalized. Mutation blocked.")
+        allow_finalized_mutation = bool(context.get("allow_finalized_mutation"))
+        authority = _WRITE_AUTHORITY.get()
+        if not allow_finalized_mutation or authority != "SessionLifecycleService":
+            raise GovernanceViolation("Session is finalized. Mutation blocked.")
 
     if context.get("require_active_session", True) and canonical_status != "ACTIVE":
         raise GovernanceViolation(

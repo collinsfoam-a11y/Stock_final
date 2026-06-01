@@ -475,6 +475,11 @@ class ValidationService:
         status = str(session.get("status") or "").strip().upper()
         if status == "FINALIZED" and not session.get("finalized_at"):
             errors.append("Finalized session missing timestamp")
+        if status == "ARCHIVED":
+            if not session.get("archived_at"):
+                errors.append("Archived session missing timestamp")
+            if not session.get("archived_by"):
+                errors.append("Archived session missing actor")
 
         await self._handle_errors(
             entity="session",

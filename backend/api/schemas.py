@@ -319,7 +319,10 @@ class Session(BaseModel):
     rack_no: Optional[str] = None
     staff_user: str
     staff_name: str
+    supervisor_username: Optional[str] = None
+    assigned_users: list[str] = Field(default_factory=list)
     status: str = "OPEN"  # OPEN, ACTIVE, CLOSED
+    workflow_status: Optional[str] = None
     type: str = "STANDARD"  # STANDARD, BLIND, STRICT
     started_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
@@ -331,6 +334,10 @@ class Session(BaseModel):
     finalized_at: Optional[datetime] = None
     finalized_by: Optional[str] = None
     finalization_status: Optional[str] = None
+    submitted_at: Optional[datetime] = None
+    submitted_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    approved_by: Optional[str] = None
     total_items: int = 0
     total_variance: float = 0
     verified_items: int = 0
@@ -344,6 +351,16 @@ class Session(BaseModel):
     snapshot_hash: Optional[str] = None
     # Reference to external storage if too large
     snapshot_items_ref: Optional[str] = None
+    archived: Optional[bool] = None
+    archived_at: Optional[datetime] = None
+    archived_by: Optional[str] = None
+    archive_reason_code: Optional[str] = None
+    archive_reason: Optional[str] = None
+    reopened_at: Optional[datetime] = None
+    reopened_by: Optional[str] = None
+    reopen_reason_code: Optional[str] = None
+    reopen_reason: Optional[str] = None
+    reopen_count: Optional[int] = None
 
     @field_validator(
         "last_heartbeat",
@@ -351,6 +368,8 @@ class Session(BaseModel):
         "completed_at",
         "reconciled_at",
         "finalized_at",
+        "submitted_at",
+        "approved_at",
         mode="before",
     )
     @classmethod
@@ -388,6 +407,8 @@ class SessionCreate(BaseModel):
     location_type: Optional[str] = None
     location_name: Optional[str] = None
     rack_no: Optional[str] = None
+    supervisor_username: Optional[str] = None
+    assigned_users: Optional[list[str]] = None
 
 
 class UnknownItem(BaseModel):

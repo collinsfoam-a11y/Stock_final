@@ -268,6 +268,7 @@ class SessionLifecycleService:
         now_dt = _utc_now()
         created_doc = dict(session_doc)
         created_doc["status"] = "CREATED"
+        created_doc.setdefault("workflow_status", "DRAFT")
         created_doc.setdefault("id", created_doc.get("session_id"))
         if not created_doc.get("id"):
             raise GovernanceViolation("Session document must include 'id' or 'session_id'")
@@ -359,6 +360,11 @@ class SessionLifecycleService:
         }
         if target == "REVIEW":
             update_doc["review_started_at"] = now_dt
+            update_doc.setdefault("workflow_status", "REVIEW")
+            update_doc.setdefault("submitted_at", now_dt)
+            update_doc.setdefault("submitted_by", actor)
+        if target == "ACTIVE":
+            update_doc.setdefault("workflow_status", "ACTIVE")
         if target == "FINALIZED":
             update_doc["finalized_at"] = now_dt
             update_doc["finalized_by"] = actor
@@ -494,6 +500,108 @@ class SessionLifecycleService:
             actor=actor,
             db_session=db_session,
         )
+
+    async def update_session_assignments(
+        self,
+        *,
+        session_id: str,
+        actor: str,
+        supervisor_username: Optional[str] = None,
+        assigned_users: Optional[list[str]] = None,
+        reason_code: Optional[str] = None,
+        reason: Optional[str] = None,
+        db_session: Optional[Any] = None,
+        expected_version: Optional[int] = None,
+    ) -> dict[str, Any]:
+        if db_session is None:
+            async with mongo_transaction(self.db.client) as tx:
+                return await self.update_session_assignments(
+                    session_id=session_id,
+                    actor=actor,
+                    supervisor_username=supervisor_username,
+                    assigned_users=assigned_users,
+                    reason_code=reason_code,
+                    reason=reason,
+                    db_session=tx,
+                    expected_version=expected_version,
+                )
+
+        session = await self.ensure_session_not_finalized(session_id, db_session=db_session)
+        await assert_valid_write(
+            {
+                "db": self.db,
+                "session": session,
+                "session_id": session_id,
+                "db_session": db_session,
+                "require_active_session": False,
+                "require_full_context": False,
+            }
+        )
+
+        normalized_assigned: Optional[list[str]] = None
+        if assigned_users is not None:
+            normalized_assigned = [
+                str(user).strip() for user in assigned_users if str(user).strip()
+            ]
+            normalized_assigned = list(dict.fromkeys(normalized_assigned))
+            if not normalized_assigned:
+                normalized_assigned = None
+
+        normalized_supervisor = (
+            str(supervisor_username).strip()
+            if isinstance(supervisor_username, str) and supervisor_username.strip()
+            else None
+        )
+
+        now_dt = _utc_now()
+        update_doc: dict[str, Any] = {
+            "updated_at": now_dt,
+            "updated_by": actor,
+            "assignment_reason_code": str(reason_code).strip()
+            if isinstance(reason_code, str) and reason_code.strip()
+            else None,
+            "assignment_reason": str(reason).strip()
+            if isinstance(reason, str) and reason.strip()
+            else None,
+        }
+        if supervisor_username is not None:
+            update_doc["supervisor_username"] = normalized_supervisor
+        if assigned_users is not None:
+            update_doc["assigned_users"] = normalized_assigned or []
+
+        prospective = dict(session)
+        prospective.update(update_doc)
+        await self.validation_service.validate_session(prospective)
+
+        current_version = coerce_version(session.get("version"))
+        effective_expected = current_version if expected_version is None else int(expected_version)
+        await self._update_session_with_occ(
+            session_id=session_id,
+            set_doc=update_doc,
+            expected_version=effective_expected,
+            db_session=db_session,
+        )
+
+        await self.audit_service.log_write_event(
+            event="SESSION_WRITE",
+            operation="ASSIGNMENTS_UPDATE",
+            session_id=session_id,
+            actor_id=actor,
+            version=effective_expected + 1,
+            metadata={
+                "supervisor_username": update_doc.get("supervisor_username"),
+                "assigned_users": update_doc.get("assigned_users"),
+                "reason_code": update_doc.get("assignment_reason_code"),
+            },
+            db_session=db_session,
+        )
+        await self._sync_session_projection(
+            session_id=session_id,
+            trigger="session.assignments_update",
+            actor=actor,
+            db_session=db_session,
+        )
+        return await self.ensure_session_exists(session_id, db_session=db_session)
 
     async def persist_logic_pin(
         self,
@@ -736,6 +844,9 @@ class SessionLifecycleService:
         session_update: dict[str, Any] = {
             "status": "FINALIZED",
             "finalization_status": "FINALIZED",
+            "workflow_status": "CLOSED",
+            "approved_at": finalized_at,
+            "approved_by": actor,
             "completed_at": finalized_at,
             "closed_at": finalized_at,
             "last_heartbeat": finalized_at,
@@ -817,3 +928,214 @@ class SessionLifecycleService:
                 note=note,
                 db_session=tx,
             )
+
+    async def archive_session(
+        self,
+        *,
+        session_id: str,
+        actor: str,
+        reason_code: str,
+        reason: Optional[str] = None,
+        db_session: Optional[Any] = None,
+    ) -> dict[str, Any]:
+        if db_session is None:
+            async with mongo_transaction(self.db.client) as tx:
+                return await self.archive_session(
+                    session_id=session_id,
+                    actor=actor,
+                    reason_code=reason_code,
+                    reason=reason,
+                    db_session=tx,
+                )
+
+        session = await self.ensure_session_exists(session_id, db_session=db_session)
+        current = normalize_session_status(session.get("status"))
+        if current != "FINALIZED":
+            raise GovernanceViolation("CRITICAL: Session must be FINALIZED before archiving")
+
+        assert_valid_transition(current, "ARCHIVED")
+        with write_authority("SessionLifecycleService"):
+            await assert_valid_write(
+                {
+                    "db": self.db,
+                    "session": session,
+                    "session_id": session_id,
+                    "db_session": db_session,
+                    "require_active_session": False,
+                    "require_full_context": False,
+                    "from_state": current,
+                    "to_state": "ARCHIVED",
+                    "allow_finalized_mutation": True,
+                }
+            )
+
+        now_dt = _utc_now()
+        update_doc = {
+            "status": "ARCHIVED",
+            "workflow_status": "ARCHIVED",
+            "archived": True,
+            "archived_at": now_dt,
+            "archived_by": actor,
+            "archive_reason_code": str(reason_code).strip(),
+            "archive_reason": str(reason).strip()
+            if isinstance(reason, str) and reason.strip()
+            else None,
+            "updated_at": now_dt,
+            "updated_by": actor,
+            "last_heartbeat": now_dt,
+        }
+
+        prospective = dict(session)
+        prospective.update(update_doc)
+        await self.validation_service.validate_session(prospective)
+
+        expected_version = coerce_version(session.get("version"))
+        await self._update_session_with_occ(
+            session_id=session_id,
+            set_doc=update_doc,
+            expected_version=expected_version,
+            db_session=db_session,
+        )
+
+        kwargs = self._kwargs(db_session)
+        await self._execute_authorized_write(
+            lambda: self.db.verification_sessions.update_one(
+                {"session_id": session_id},
+                {"$set": {"status": "ARCHIVED", "last_heartbeat": now_dt}},
+                **kwargs,
+            )
+        )
+
+        await self.audit_service.log_write_event(
+            event="SESSION_WRITE",
+            operation="ARCHIVE",
+            session_id=session_id,
+            actor_id=actor,
+            version=expected_version + 1,
+            metadata={
+                "reason_code": update_doc.get("archive_reason_code"),
+                "reason": update_doc.get("archive_reason"),
+            },
+            db_session=db_session,
+        )
+        await self._sync_session_projection(
+            session_id=session_id,
+            trigger="session.archive",
+            actor=actor,
+            db_session=db_session,
+        )
+        return await self.ensure_session_exists(session_id, db_session=db_session)
+
+    async def reopen_session(
+        self,
+        *,
+        session_id: str,
+        actor: str,
+        reason_code: str,
+        reason: str,
+        db_session: Optional[Any] = None,
+    ) -> dict[str, Any]:
+        if db_session is None:
+            async with mongo_transaction(self.db.client) as tx:
+                return await self.reopen_session(
+                    session_id=session_id,
+                    actor=actor,
+                    reason_code=reason_code,
+                    reason=reason,
+                    db_session=tx,
+                )
+
+        session = await self.ensure_session_exists(session_id, db_session=db_session)
+        current = normalize_session_status(session.get("status"))
+        if current != "FINALIZED":
+            raise GovernanceViolation("CRITICAL: Only FINALIZED sessions can be reopened")
+        if bool(session.get("archived")) or current == "ARCHIVED":
+            raise GovernanceViolation("CRITICAL: Archived sessions cannot be reopened")
+
+        assert_valid_transition(current, "REVIEW")
+        with write_authority("SessionLifecycleService"):
+            await assert_valid_write(
+                {
+                    "db": self.db,
+                    "session": session,
+                    "session_id": session_id,
+                    "db_session": db_session,
+                    "require_active_session": False,
+                    "require_full_context": False,
+                    "from_state": current,
+                    "to_state": "REVIEW",
+                    "allow_finalized_mutation": True,
+                }
+            )
+
+        normalized_reason_code = str(reason_code or "").strip()
+        normalized_reason = str(reason or "").strip()
+        if not normalized_reason_code:
+            raise GovernanceViolation("CRITICAL: reason_code is required to reopen a session")
+        if not normalized_reason:
+            raise GovernanceViolation("CRITICAL: reason is required to reopen a session")
+
+        now_dt = _utc_now()
+        update_doc = {
+            "status": "REVIEW",
+            "workflow_status": "REVIEW",
+            "finalization_status": "REOPENED",
+            "reopened_at": now_dt,
+            "reopened_by": actor,
+            "reopen_reason_code": normalized_reason_code,
+            "reopen_reason": normalized_reason,
+            "last_finalized_at": session.get("finalized_at"),
+            "last_finalized_by": session.get("finalized_by"),
+            "finalized_at": None,
+            "finalized_by": None,
+            "closed_at": None,
+            "completed_at": None,
+            "review_started_at": now_dt,
+            "updated_at": now_dt,
+            "updated_by": actor,
+            "last_heartbeat": now_dt,
+            "reopen_count": int(session.get("reopen_count") or 0) + 1,
+        }
+
+        prospective = dict(session)
+        prospective.update(update_doc)
+        await self.validation_service.validate_session(prospective)
+
+        expected_version = coerce_version(session.get("version"))
+        await self._update_session_with_occ(
+            session_id=session_id,
+            set_doc=update_doc,
+            expected_version=expected_version,
+            db_session=db_session,
+        )
+
+        kwargs = self._kwargs(db_session)
+        await self._execute_authorized_write(
+            lambda: self.db.verification_sessions.update_one(
+                {"session_id": session_id},
+                {"$set": {"status": "REVIEW", "last_heartbeat": now_dt}},
+                **kwargs,
+            )
+        )
+
+        await self.audit_service.log_write_event(
+            event="SESSION_WRITE",
+            operation="REOPEN",
+            session_id=session_id,
+            actor_id=actor,
+            version=expected_version + 1,
+            metadata={
+                "reason_code": normalized_reason_code,
+                "reason": normalized_reason,
+                "last_finalized_at": str(session.get("finalized_at") or ""),
+                "last_finalized_by": str(session.get("finalized_by") or ""),
+            },
+            db_session=db_session,
+        )
+        await self._sync_session_projection(
+            session_id=session_id,
+            trigger="session.reopen",
+            actor=actor,
+            db_session=db_session,
+        )
+        return await self.ensure_session_exists(session_id, db_session=db_session)
