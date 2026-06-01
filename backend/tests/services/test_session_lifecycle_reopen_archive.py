@@ -48,6 +48,7 @@ async def _seed_active_session(db: InMemoryDatabase, session_id: str) -> None:
             "staff_user": "staff1",
             "staff_name": "Staff One",
             "status": "ACTIVE",
+            "workflow_status": "ACTIVE",
             "version": 0,
             "started_at": now,
             "last_heartbeat": now,
@@ -113,3 +114,53 @@ async def test_update_session_assignments_sets_supervisor_and_assigned_users():
     )
     assert updated.get("supervisor_username") == "supervisor1"
     assert updated.get("assigned_users") == ["staff1", "staff2"]
+
+
+@pytest.mark.asyncio
+async def test_force_close_allows_blocking_lines_with_reason():
+    db = InMemoryDatabase()
+    now = _utc_now()
+    await db.sessions.insert_one(
+        {
+            "id": "sess-force",
+            "session_id": "sess-force",
+            "warehouse": "WH-1",
+            "staff_user": "staff1",
+            "staff_name": "Staff One",
+            "status": "REVIEW",
+            "workflow_status": "REVIEW",
+            "version": 0,
+            "started_at": now,
+            "last_heartbeat": now,
+        }
+    )
+    await db.verification_sessions.insert_one(
+        {
+            "session_id": "sess-force",
+            "user_id": "staff1",
+            "status": "REVIEW",
+            "started_at": now,
+            "last_heartbeat": now,
+        }
+    )
+    await db.count_lines.insert_one(
+        {
+            "id": "line-block",
+            "session_id": "sess-force",
+            "approval_status": "NEEDS_REVIEW",
+            "status": "pending",
+            "counted_qty": 1,
+            "variance": 0.0,
+        }
+    )
+    service = SessionLifecycleService(db)
+
+    result = await service.force_close_session(
+        session_id="sess-force",
+        actor="supervisor1",
+        reason_code="TIMEBOX",
+        reason="Warehouse shutdown window",
+        note="Force close during shutdown",
+    )
+    assert result["session"]["status"] == "FINALIZED"
+    assert result["session"].get("finalization_status") == "FORCE_CLOSED"

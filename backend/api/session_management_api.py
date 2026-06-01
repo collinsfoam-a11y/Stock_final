@@ -35,7 +35,7 @@ from backend.services.canonical_inventory import (
     normalize_session_status as normalize_canonical_session_status,
 )
 from backend.services.count_line_write_service import CountLineWriteService
-from backend.services.enterprise_audit import AuditEventType
+from backend.services.enterprise_audit import AuditEventType, AuditSeverity
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.redis_service import get_redis
 from backend.services.runtime import get_refresh_token_service
@@ -139,6 +139,12 @@ class SessionAssignmentsRequest(BaseModel):
     assigned_users: Optional[list[str]] = None
     reason_code: Optional[str] = None
     reason: Optional[str] = None
+
+
+class SessionForceCloseRequest(BaseModel):
+    reason_code: str = Field(..., min_length=1)
+    reason: str = Field(..., min_length=1)
+    note: Optional[str] = None
 
 
 class CanonicalSessionStatus(str, Enum):
@@ -1812,6 +1818,62 @@ async def finalize_session(
         lock_manager,
         note=request.note if request else None,
     )
+
+
+@router.post("/{session_id}/force-close")
+async def force_close_session(
+    session_id: str,
+    payload: SessionForceCloseRequest,
+    http_request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_role("supervisor", "admin")),
+) -> dict[str, Any]:
+    count_line_write_service = CountLineWriteService(db)
+    lifecycle_service = SessionLifecycleService(
+        db,
+        count_line_finalizer=count_line_write_service.finalize_session_count_lines,
+    )
+    try:
+        result = await lifecycle_service.force_close_session(
+            session_id=session_id,
+            actor=current_user["username"],
+            reason_code=payload.reason_code,
+            reason=payload.reason,
+            note=payload.note,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    finalized_at = result["finalized_at"]
+    updated_session = result["session"]
+
+    await log_enterprise_audit(
+        http_request,
+        event_type=AuditEventType.DATA_UPDATE,
+        action="sessions.force_close",
+        current_user=current_user,
+        resource_type="session",
+        resource_id=str(
+            updated_session.get("id") or updated_session.get("session_id") or session_id
+        ),
+        session_id=str(
+            updated_session.get("id") or updated_session.get("session_id") or session_id
+        ),
+        severity=AuditSeverity.CRITICAL,
+        details={
+            "finalization_status": updated_session.get("finalization_status"),
+            "reason_code": payload.reason_code,
+        },
+    )
+
+    return {
+        "success": True,
+        "id": str(updated_session.get("id") or updated_session.get("session_id") or session_id),
+        "status": str(updated_session.get("status") or ""),
+        "finalized_at": finalized_at.isoformat() if isinstance(finalized_at, datetime) else None,
+        "finalized_by": current_user["username"],
+        "message": "Session force-closed successfully",
+    }
 
 
 @router.post("/{session_id}/archive")

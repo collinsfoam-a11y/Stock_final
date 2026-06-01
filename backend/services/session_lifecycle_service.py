@@ -25,6 +25,50 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+WORKFLOW_ALLOWED_TRANSITIONS: dict[str, set[str]] = {
+    "DRAFT": {"SCHEDULED", "ACTIVE"},
+    "SCHEDULED": {"ACTIVE"},
+    "ACTIVE": {"SUBMITTED"},
+    "SUBMITTED": {"REVIEW", "ACTIVE"},
+    "REVIEW": {"APPROVED"},
+    "APPROVED": {"CLOSED"},
+    "CLOSED": {"ARCHIVED", "REVIEW"},
+    "ARCHIVED": set(),
+}
+
+
+def _normalize_workflow_status(value: Any) -> str:
+    if not isinstance(value, str):
+        return ""
+    return value.strip().upper()
+
+
+def _infer_workflow_status(session: dict[str, Any]) -> str:
+    explicit = _normalize_workflow_status(session.get("workflow_status"))
+    if explicit:
+        return explicit
+    status = normalize_session_status(session.get("status"))
+    if status == "FINALIZED":
+        return "CLOSED"
+    if status == "REVIEW":
+        return "SUBMITTED"
+    if status == "ACTIVE":
+        return "ACTIVE"
+    return "DRAFT"
+
+
+def _assert_workflow_transition(current: str, target: str) -> None:
+    normalized_current = _normalize_workflow_status(current)
+    normalized_target = _normalize_workflow_status(target)
+    allowed = WORKFLOW_ALLOWED_TRANSITIONS.get(normalized_current)
+    if allowed is None:
+        raise GovernanceViolation(f"CRITICAL: Unknown workflow_status '{normalized_current}'")
+    if normalized_target not in allowed and normalized_target != normalized_current:
+        raise GovernanceViolation(
+            f"CRITICAL: Invalid workflow transition {normalized_current} -> {normalized_target}"
+        )
+
+
 RECOUNT_ALLOWED_TRANSITIONS: dict[str, set[str]] = {
     "pending": {"assigned", "in_progress", "completed", "cancelled", "expired"},
     "assigned": {"in_progress", "completed", "cancelled", "expired"},
@@ -360,7 +404,7 @@ class SessionLifecycleService:
         }
         if target == "REVIEW":
             update_doc["review_started_at"] = now_dt
-            update_doc.setdefault("workflow_status", "REVIEW")
+            update_doc.setdefault("workflow_status", "SUBMITTED")
             update_doc.setdefault("submitted_at", now_dt)
             update_doc.setdefault("submitted_by", actor)
         if target == "ACTIVE":
@@ -621,6 +665,90 @@ class SessionLifecycleService:
             actor=actor,
         )
 
+    async def transition_workflow_status(
+        self,
+        *,
+        session_id: str,
+        target_status: str,
+        actor: str,
+        reason_code: Optional[str] = None,
+        reason: Optional[str] = None,
+        db_session: Optional[Any] = None,
+        expected_version: Optional[int] = None,
+    ) -> dict[str, Any]:
+        if db_session is None:
+            async with mongo_transaction(self.db.client) as tx:
+                return await self.transition_workflow_status(
+                    session_id=session_id,
+                    target_status=target_status,
+                    actor=actor,
+                    reason_code=reason_code,
+                    reason=reason,
+                    db_session=tx,
+                    expected_version=expected_version,
+                )
+
+        session = await self.ensure_session_exists(session_id, db_session=db_session)
+        current = _infer_workflow_status(session)
+        target = _normalize_workflow_status(target_status)
+        if not target:
+            raise GovernanceViolation("CRITICAL: workflow_status is required")
+        _assert_workflow_transition(current, target)
+
+        now_dt = _utc_now()
+        update_doc: dict[str, Any] = {
+            "workflow_status": target,
+            "workflow_reason_code": str(reason_code).strip()
+            if isinstance(reason_code, str) and reason_code.strip()
+            else None,
+            "workflow_reason": str(reason).strip()
+            if isinstance(reason, str) and reason.strip()
+            else None,
+            "updated_at": now_dt,
+            "updated_by": actor,
+            "last_heartbeat": now_dt,
+        }
+        if target == "SUBMITTED":
+            update_doc.setdefault("submitted_at", now_dt)
+            update_doc.setdefault("submitted_by", actor)
+        if target == "APPROVED":
+            update_doc.setdefault("approved_at", now_dt)
+            update_doc.setdefault("approved_by", actor)
+
+        prospective = dict(session)
+        prospective.update(update_doc)
+        await self.validation_service.validate_session(prospective)
+
+        current_version = coerce_version(session.get("version"))
+        effective_expected = current_version if expected_version is None else int(expected_version)
+        await self._update_session_with_occ(
+            session_id=session_id,
+            set_doc=update_doc,
+            expected_version=effective_expected,
+            db_session=db_session,
+        )
+
+        await self.audit_service.log_write_event(
+            event="SESSION_WRITE",
+            operation="WORKFLOW_TRANSITION",
+            session_id=session_id,
+            actor_id=actor,
+            version=effective_expected + 1,
+            metadata={
+                "from": current,
+                "to": target,
+                "reason_code": update_doc.get("workflow_reason_code"),
+            },
+            db_session=db_session,
+        )
+        await self._sync_session_projection(
+            session_id=session_id,
+            trigger="session.workflow_transition",
+            actor=actor,
+            db_session=db_session,
+        )
+        return await self.ensure_session_exists(session_id, db_session=db_session)
+
     @staticmethod
     def _recount_lookup(recount_id: str) -> dict[str, Any]:
         if ObjectId.is_valid(str(recount_id)):
@@ -781,6 +909,9 @@ class SessionLifecycleService:
         session_id: str,
         actor: str,
         note: Optional[str],
+        force_close: bool = False,
+        force_reason_code: Optional[str] = None,
+        force_reason: Optional[str] = None,
         db_session: Optional[Any],
     ) -> dict[str, Any]:
         from backend.services.canonical_inventory import is_blocking_finalization
@@ -816,9 +947,10 @@ class SessionLifecycleService:
         )
         blocking_lines = [line for line in lines if is_blocking_finalization(line)]
         if blocking_lines:
-            raise GovernanceViolation(
-                "CRITICAL: Session has unresolved count lines and cannot be finalized"
-            )
+            if not force_close:
+                raise GovernanceViolation(
+                    "CRITICAL: Session has unresolved count lines and cannot be finalized"
+                )
 
         finalized_at = _utc_now()
         count_lines_to_finalize = [
@@ -843,7 +975,7 @@ class SessionLifecycleService:
         totals = await self._compute_session_totals(session_id, db_session=db_session)
         session_update: dict[str, Any] = {
             "status": "FINALIZED",
-            "finalization_status": "FINALIZED",
+            "finalization_status": "FORCE_CLOSED" if force_close else "FINALIZED",
             "workflow_status": "CLOSED",
             "approved_at": finalized_at,
             "approved_by": actor,
@@ -858,6 +990,26 @@ class SessionLifecycleService:
         }
         if note:
             session_update["finalization_note"] = note
+        if force_close:
+            normalized_reason_code = (
+                str(force_reason_code).strip()
+                if isinstance(force_reason_code, str) and force_reason_code.strip()
+                else None
+            )
+            normalized_reason = (
+                str(force_reason).strip()
+                if isinstance(force_reason, str) and force_reason.strip()
+                else None
+            )
+            if not normalized_reason_code or not normalized_reason:
+                raise GovernanceViolation("CRITICAL: Force-close requires reason_code and reason")
+            session_update["force_closed_at"] = finalized_at
+            session_update["force_closed_by"] = actor
+            session_update["force_close_reason_code"] = normalized_reason_code
+            session_update["force_close_reason"] = normalized_reason
+            session_update["force_close_blocking_lines"] = [
+                str(line.get("id") or line.get("_id") or "") for line in blocking_lines
+            ]
 
         expected_version = coerce_version(session.get("version"))
         await self._update_session_with_occ(
@@ -918,6 +1070,7 @@ class SessionLifecycleService:
                 session_id=session_id,
                 actor=actor,
                 note=note,
+                force_close=False,
                 db_session=db_session,
             )
 
@@ -926,6 +1079,39 @@ class SessionLifecycleService:
                 session_id=session_id,
                 actor=actor,
                 note=note,
+                force_close=False,
+                db_session=tx,
+            )
+
+    async def force_close_session(
+        self,
+        *,
+        session_id: str,
+        actor: str,
+        reason_code: str,
+        reason: str,
+        note: Optional[str] = None,
+        db_session: Optional[Any] = None,
+    ) -> dict[str, Any]:
+        if db_session is not None:
+            return await self._finalize_session_canonical_core(
+                session_id=session_id,
+                actor=actor,
+                note=note,
+                force_close=True,
+                force_reason_code=reason_code,
+                force_reason=reason,
+                db_session=db_session,
+            )
+
+        async with mongo_transaction(self.db.client) as tx:
+            return await self._finalize_session_canonical_core(
+                session_id=session_id,
+                actor=actor,
+                note=note,
+                force_close=True,
+                force_reason_code=reason_code,
+                force_reason=reason,
                 db_session=tx,
             )
 
