@@ -17,3 +17,7 @@
 ## 2025-05-20 - Standardizing Feedback for Modals and Headers
 **Learning:** Significant UI actions like confirming a destructive operation, closing a modal, or navigating via header buttons benefit greatly from tactile feedback. Using `haptics.medium()` for high-stakes/danger actions and `haptics.light()` for routine ones creates a clear sensory hierarchy that aids the user in understanding the weight of their interactions.
 **Action:** Always implement haptic feedback in core container components (Modals, Headers) to ensure a consistent "premium" feel across all screens.
+
+## 2026-05-22 - Preserving Touch Targets during Accessibility Refactors
+**Learning:** Adding accessibility labels and roles to small interactive elements like a Chip's remove button is vital, but it must not come at the cost of usability. Accidentally removing `hitSlop` during a refactor significantly degrades the experience for mobile users.
+**Action:** When wrapping or modifying existing interactive components, always audit for and preserve `hitSlop` or `minHeight`/`minWidth` properties to maintain WCAG-compliant target sizes.
