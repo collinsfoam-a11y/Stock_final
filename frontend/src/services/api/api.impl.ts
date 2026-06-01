@@ -353,9 +353,11 @@ export const verifyPin = async (data: {
   supervisor_username: string;
   pin: string;
   action: string;
+  reason_code: string;
   reason: string;
   staff_username: string;
   entity_id?: string;
+  entity_type?: string;
 }) => {
   try {
     const response = await api.post("/api/supervisor/verify-pin", data);

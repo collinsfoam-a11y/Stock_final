@@ -66,6 +66,26 @@ def _raise_count_lines_internal_error(detail: str, exc: Exception) -> NoReturn:
     raise HTTPException(status_code=500, detail=detail) from exc
 
 
+def _enforce_approval_segregation_of_duties(
+    count_line: dict[str, Any],
+    *,
+    current_user: dict[str, Any],
+) -> None:
+    actor_username = current_user.get("username")
+    if not actor_username:
+        return
+    prohibited = {
+        count_line.get("created_by"),
+        count_line.get("counted_by"),
+        count_line.get("recount_completed_by"),
+    }
+    if actor_username in prohibited:
+        raise HTTPException(
+            status_code=403,
+            detail="Segregation of duties violation: approver must differ from creator/counter.",
+        )
+
+
 class CountLineApprovalRequest(BaseModel):
     """Optional metadata for approving a count line."""
 
@@ -1515,6 +1535,7 @@ async def approve_count_line(
             current_user=current_user,
             operation_name="approve_count_line",
         )
+        _enforce_approval_segregation_of_duties(count_line, current_user=current_user)
 
         approved_at = _current_timestamp()
 
@@ -1567,6 +1588,7 @@ async def approve_count_line(
         # Audit Log Approval
         try:
             from backend.services.audit_service import AuditService
+            from backend.services.enterprise_audit import AuditEventType as EnterpriseAuditEventType
             from backend.utils.enterprise_audit_logger import log_enterprise_audit
 
             audit_service = AuditService(db)
@@ -1579,7 +1601,7 @@ async def approve_count_line(
             )
             await log_enterprise_audit(
                 http_request,
-                event_type=AuditEventType.DATA_UPDATE,
+                event_type=EnterpriseAuditEventType.DATA_UPDATE,
                 action="count_lines.approve",
                 current_user=current_user,
                 resource_type="count_line",
@@ -1713,10 +1735,11 @@ async def reject_count_line(
 
         try:
             from backend.utils.enterprise_audit_logger import log_enterprise_audit
+            from backend.services.enterprise_audit import AuditEventType as EnterpriseAuditEventType
 
             await log_enterprise_audit(
                 http_request,
-                event_type=AuditEventType.DATA_UPDATE,
+                event_type=EnterpriseAuditEventType.DATA_UPDATE,
                 action="count_lines.reject",
                 current_user=current_user,
                 resource_type="count_line",
@@ -2213,10 +2236,11 @@ async def delete_count_line(
         await _log_delete_activity(count_line, line_id, current_user, request)
         try:
             from backend.utils.enterprise_audit_logger import log_enterprise_audit
+            from backend.services.enterprise_audit import AuditEventType as EnterpriseAuditEventType
 
             await log_enterprise_audit(
                 request,
-                event_type=AuditEventType.DATA_DELETE,
+                event_type=EnterpriseAuditEventType.DATA_DELETE,
                 action="count_lines.delete",
                 current_user=current_user,
                 resource_type="count_line",
@@ -2373,12 +2397,14 @@ async def bulk_approve_count_lines(
                 current_user=current_user,
                 operation_name="bulk_approve_count_lines",
             )
+            _enforce_approval_segregation_of_duties(candidate, current_user=current_user)
 
         session_ids = {
             str(candidate.get("session_id"))
             for candidate in candidate_lines
             if candidate.get("session_id")
         }
+        approved_at = datetime.now(timezone.utc).replace(tzinfo=None)
         write_service = _get_count_line_write_service(db)
         result = await write_service.process_write(
             {
@@ -2389,10 +2415,10 @@ async def bulk_approve_count_lines(
                         "status": "approved",
                         "approval_status": "APPROVED",
                         "approved_by": current_user["username"],
-                        "approved_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                        "approved_at": approved_at,
                         "verified": True,
                         "verified_by": current_user["username"],
-                        "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                        "verified_at": approved_at,
                         "approval_note": update_data.notes,
                     }
                 },
@@ -2410,6 +2436,35 @@ async def bulk_approve_count_lines(
             await _broadcast_dashboard_refresh(
                 "count_lines_bulk_approved",
                 session_ids=session_ids,
+            )
+
+        try:
+            from backend.services.enterprise_audit import AuditEventType as EnterpriseAuditEventType
+            from backend.utils.enterprise_audit_logger import log_enterprise_audit
+
+            for candidate in candidate_lines:
+                candidate_id = str(candidate.get("id") or candidate.get("_id") or "")
+                await log_enterprise_audit(
+                    request,
+                    event_type=EnterpriseAuditEventType.DATA_UPDATE,
+                    action="count_lines.bulk_approve",
+                    current_user=current_user,
+                    resource_type="count_line",
+                    resource_id=candidate_id,
+                    resource_name=candidate.get("item_name"),
+                    session_id=str(candidate.get("session_id") or ""),
+                    details={
+                        "item_code": candidate.get("item_code"),
+                        "barcode": candidate.get("barcode"),
+                        "approved_at": approved_at,
+                        "approval_note": update_data.notes,
+                        "bulk_count": len(candidate_lines),
+                    },
+                )
+        except Exception as e:
+            logger.error(
+                "Failed to write enterprise audit log: %s",
+                _safe_log_value(e, max_length=200),
             )
 
         return {
@@ -2526,6 +2581,7 @@ async def bulk_reject_count_lines(
             for candidate in candidate_lines
             if candidate.get("session_id")
         }
+        rejected_at = datetime.now(timezone.utc).replace(tzinfo=None)
         write_service = _get_count_line_write_service(db)
         result = await write_service.process_write(
             {
@@ -2536,7 +2592,7 @@ async def bulk_reject_count_lines(
                         "status": "rejected",
                         "approval_status": "REJECTED",
                         "rejected_by": current_user["username"],
-                        "rejected_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                        "rejected_at": rejected_at,
                         "verified": False,
                         "rejection_reason": update_data.notes,
                     }
@@ -2555,6 +2611,35 @@ async def bulk_reject_count_lines(
             await _broadcast_dashboard_refresh(
                 "count_lines_bulk_rejected",
                 session_ids=session_ids,
+            )
+
+        try:
+            from backend.services.enterprise_audit import AuditEventType as EnterpriseAuditEventType
+            from backend.utils.enterprise_audit_logger import log_enterprise_audit
+
+            for candidate in candidate_lines:
+                candidate_id = str(candidate.get("id") or candidate.get("_id") or "")
+                await log_enterprise_audit(
+                    request,
+                    event_type=EnterpriseAuditEventType.DATA_UPDATE,
+                    action="count_lines.bulk_reject",
+                    current_user=current_user,
+                    resource_type="count_line",
+                    resource_id=candidate_id,
+                    resource_name=candidate.get("item_name"),
+                    session_id=str(candidate.get("session_id") or ""),
+                    details={
+                        "item_code": candidate.get("item_code"),
+                        "barcode": candidate.get("barcode"),
+                        "rejected_at": rejected_at,
+                        "rejection_reason": update_data.notes,
+                        "bulk_count": len(candidate_lines),
+                    },
+                )
+        except Exception as e:
+            logger.error(
+                "Failed to write enterprise audit log: %s",
+                _safe_log_value(e, max_length=200),
             )
 
         return {

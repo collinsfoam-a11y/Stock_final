@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from backend.auth.dependencies import get_current_user
@@ -22,6 +22,7 @@ class PinVerificationRequest(BaseModel):
     supervisor_username: str
     pin: str
     action: str
+    reason_code: str
     reason: str
     staff_username: str
     entity_id: Optional[str] = None
@@ -30,7 +31,9 @@ class PinVerificationRequest(BaseModel):
 
 @router.post("/supervisor/verify-pin")
 async def verify_supervisor_pin(
-    request: PinVerificationRequest, current_user: dict = Depends(get_current_user)
+    http_request: Request,
+    payload: PinVerificationRequest,
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Verify supervisor PIN and log the override action.
@@ -40,7 +43,7 @@ async def verify_supervisor_pin(
     # H7 fix: Rate limit PIN attempts per supervisor (max 5 attempts per 5 minutes)
     from datetime import datetime as dt, timezone as tz
 
-    rate_key = f"pin_attempts:{request.supervisor_username}"
+    rate_key = f"pin_attempts:{payload.supervisor_username}"
     attempts_doc = await db.rate_limits.find_one({"_id": rate_key})
     now = dt.now(tz.utc)
     window_seconds = 300  # 5 minutes
@@ -66,7 +69,7 @@ async def verify_supervisor_pin(
             attempts_doc = None
 
     # 1. Fetch the supervisor user
-    supervisor = await db.users.find_one({"username": request.supervisor_username})
+    supervisor = await db.users.find_one({"username": payload.supervisor_username})
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found")
 
@@ -82,10 +85,10 @@ async def verify_supervisor_pin(
             detail="Supervisor PIN not set. Please contact administrator.",
         )
 
-    if not verify_pin_hash(request.pin, stored_pin_hash):
+    if not verify_pin_hash(payload.pin, stored_pin_hash):
         logger.warning(
             "Failed PIN attempt for supervisor %s",
-            _safe_log_value(request.supervisor_username),
+            _safe_log_value(payload.supervisor_username),
         )
         # Record failed attempt (MM7 fix: use datetime for TTL compatibility)
         await db.rate_limits.update_one(
@@ -110,17 +113,47 @@ async def verify_supervisor_pin(
     # 4. Log the Activity
     log_service = ActivityLogService(db)
     await log_service.log_activity(
-        user=request.supervisor_username,
+        user=payload.supervisor_username,
         role=supervisor.get("role"),
-        action=f"override_{request.action}",
-        entity_type=request.entity_type or "override",
-        entity_id=request.entity_id,
+        action=f"override_{payload.action}",
+        entity_type=payload.entity_type or "override",
+        entity_id=payload.entity_id,
         details={
-            "reason": request.reason,
-            "staff_user": request.staff_username,
+            "reason_code": payload.reason_code,
+            "reason": payload.reason,
+            "staff_user": payload.staff_username,
             "requested_by": current_user["username"],
         },
         status="success",
     )
+
+    try:
+        from backend.services.enterprise_audit import AuditEventType as EnterpriseAuditEventType
+        from backend.services.enterprise_audit import AuditSeverity
+        from backend.utils.enterprise_audit_logger import log_enterprise_audit
+
+        await log_enterprise_audit(
+            http_request,
+            event_type=EnterpriseAuditEventType.AUTHZ_ACCESS_GRANTED,
+            action="supervisor.verify_pin",
+            current_user=current_user,
+            resource_type=payload.entity_type or "override",
+            resource_id=payload.entity_id,
+            outcome="success",
+            severity=AuditSeverity.WARNING,
+            details={
+                "supervisor_username": payload.supervisor_username,
+                "staff_username": payload.staff_username,
+                "requested_by": current_user.get("username"),
+                "override_action": payload.action,
+                "reason_code": payload.reason_code,
+                "reason": payload.reason,
+            },
+        )
+    except Exception as e:
+        logger.error(
+            "Failed to write enterprise audit log: %s",
+            _safe_log_value(e, max_length=200),
+        )
 
     return {"success": True, "message": "Override authorized"}

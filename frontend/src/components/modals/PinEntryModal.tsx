@@ -19,6 +19,7 @@ interface PinEntryModalProps {
   action: string; // e.g., "delete_scan"
   staffUsername: string;
   entityId?: string;
+  entityType?: string;
 }
 
 export const PinEntryModal: React.FC<PinEntryModalProps> = ({
@@ -28,15 +29,17 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
   action,
   staffUsername,
   entityId,
+  entityType,
 }) => {
   const [supervisorUsername, setSupervisorUsername] = useState("");
   const [pin, setPin] = useState("");
+  const [reasonCode, setReasonCode] = useState("");
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
-    if (!supervisorUsername || !pin || !reason) {
+    if (!supervisorUsername || !pin || !reasonCode || !reason) {
       setError("All fields are required");
       return;
     }
@@ -49,9 +52,11 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
         supervisor_username: supervisorUsername,
         pin,
         action,
+        reason_code: reasonCode,
         reason,
         staff_username: staffUsername,
         entity_id: entityId,
+        entity_type: entityType,
       });
 
       if (result.success) {
@@ -77,6 +82,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
   const handleClose = () => {
     setSupervisorUsername("");
     setPin("");
+    setReasonCode("");
     setReason("");
     setError(null);
     onClose();
@@ -112,6 +118,19 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
             placeholderTextColor={modernColors.text.secondary}
             secureTextEntry
             keyboardType="numeric"
+            autoCorrect={false}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Reason Code</Text>
+          <TextInput
+            style={styles.input}
+            value={reasonCode}
+            onChangeText={setReasonCode}
+            placeholder="e.g. DAMAGE, EXCEPTION, ADJUSTMENT"
+            placeholderTextColor={modernColors.text.secondary}
+            autoCapitalize="characters"
             autoCorrect={false}
           />
         </View>

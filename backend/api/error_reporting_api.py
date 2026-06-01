@@ -339,14 +339,10 @@ async def delete_error(
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
 
-    try:
-        error_store["errors"] = [e for e in error_store["errors"] if e["id"] != error_id]
-
-        return JSONResponse({"success": True, "message": "Error deleted successfully"})
-
-    except Exception as e:
-        logger.error("Failed to delete error: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail="Failed to delete error")
+    raise HTTPException(
+        status_code=403,
+        detail="Log deletion is disabled by enterprise governance policy.",
+    )
 
 
 @router.get("/errors/stats/summary")

@@ -632,10 +632,8 @@ async def create_synthetic_item_variance(
         "session_id": payload.session_id,
         "count_line_id": variance_doc["count_line_id"],
     }
-    await db.item_variances.delete_many(filter_query)
-    await db.verification_logs.delete_many(filter_query)
-    await db.item_variances.insert_one(dict(variance_doc))
-    await db.verification_logs.insert_one(dict(variance_doc))
+    await db.item_variances.update_one(filter_query, {"$set": dict(variance_doc)}, upsert=True)
+    await db.verification_logs.update_one(filter_query, {"$set": dict(variance_doc)}, upsert=True)
 
     return {"success": True, "variance": _serialize_document(variance_doc)}
 
