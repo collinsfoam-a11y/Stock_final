@@ -160,7 +160,6 @@ export const Chip: React.FC<ChipProps> = ({
       {onRemove && !disabled && (
         <TouchableOpacity
           onPress={handleRemove}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={styles.removeButton}
           {...getAccessibleButtonProps({
             label: `Remove ${label}`,
