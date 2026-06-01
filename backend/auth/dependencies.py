@@ -12,6 +12,8 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from backend.utils.api_utils import sanitize_for_logging
 
+from backend.tenancy.constants import DEFAULT_ORG_ID
+
 from .cookies import get_access_token_cookie
 from .jwt_provider import jwt
 
@@ -213,6 +215,16 @@ async def get_current_user(
                     "category": "authorization",
                 },
             )
+
+        if not user.get("org_id"):
+            try:
+                await auth_deps.db.users.update_one(
+                    {"_id": user.get("_id")},
+                    {"$set": {"org_id": DEFAULT_ORG_ID}},
+                )
+            except Exception:
+                pass
+            user["org_id"] = DEFAULT_ORG_ID
 
         logger.debug("Authentication successful for user: %s", sanitize_for_logging(username))
         return user

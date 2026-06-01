@@ -129,6 +129,7 @@ async def test_generate_auth_tokens_success(
             ip_address="127.0.0.1",
             user_agent="pytest-agent",
             device_id="device-1",
+            org_id="org_default",
         )
 
 

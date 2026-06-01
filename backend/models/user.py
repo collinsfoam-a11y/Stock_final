@@ -46,6 +46,7 @@ class UserBase(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     phone_number: Optional[str] = Field(None, pattern=r"^\+?[1-9]\d{1,14}$")
+    org_id: Optional[str] = None
     role: str = "staff"
     is_active: bool = True
 

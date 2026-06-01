@@ -34,6 +34,7 @@ from backend.services.device_integrity_service import enforce_device_integrity
 from backend.services.otp_service import OTPService
 from backend.services.runtime import get_cache_service, get_refresh_token_service
 from backend.services.whatsapp_service import WhatsAppDeliveryError, WhatsAppService
+from backend.tenancy.constants import DEFAULT_ORG_ID
 from backend.utils.api_utils import result_to_response, sanitize_for_logging
 from backend.utils.auth_utils import (
     create_access_token,
@@ -157,15 +158,20 @@ async def generate_auth_tokens(
         access_token_expires = timedelta(
             minutes=getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 15)
         )
+        org_id = user.get("org_id") or DEFAULT_ORG_ID
         access_token = create_access_token(
-            {"sub": user["username"], "role": user.get("role", "staff")},
+            {"sub": user["username"], "role": user.get("role", "staff"), "org_id": org_id},
             secret_key=auth_deps.secret_key,
             algorithm=auth_deps.algorithm,
             expires_delta=access_token_expires,
         )
 
         # Generate refresh token using service
-        refresh_payload = {"sub": user["username"], "role": user.get("role", "staff")}
+        refresh_payload = {
+            "sub": user["username"],
+            "role": user.get("role", "staff"),
+            "org_id": org_id,
+        }
         refresh_token = refresh_token_service.create_refresh_token(refresh_payload)
         refresh_token_expires = datetime.now(timezone.utc) + timedelta(
             days=getattr(settings, "REFRESH_TOKEN_EXPIRE_DAYS", 30)
@@ -179,6 +185,7 @@ async def generate_auth_tokens(
             ip_address=ip_address,
             user_agent=_get_request_user_agent(request),
             device_id=_get_request_device_id(request),
+            org_id=org_id,
         )
 
         return Ok(

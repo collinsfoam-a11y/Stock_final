@@ -83,6 +83,7 @@ class RefreshTokenService:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
         device_id: Optional[str] = None,
+        org_id: Optional[str] = None,
     ):
         """Store refresh token in database (public method)"""
         await self._store_refresh_token(
@@ -92,6 +93,7 @@ class RefreshTokenService:
             ip_address=ip_address,
             user_agent=user_agent,
             device_id=device_id,
+            org_id=org_id,
         )
 
     async def _store_refresh_token(
@@ -103,6 +105,7 @@ class RefreshTokenService:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
         device_id: Optional[str] = None,
+        org_id: Optional[str] = None,
     ):
         """Store refresh token in database"""
         try:
@@ -127,6 +130,8 @@ class RefreshTokenService:
                 document["user_agent"] = user_agent
             if device_id:
                 document["device_id"] = device_id
+            if org_id:
+                document["org_id"] = org_id
 
             await self.db.refresh_tokens.insert_one(document)
 
