@@ -994,7 +994,7 @@ class TestActiveSessionsEndpoint:
         mock_db.count_lines = MagicMock()
 
         def _find_count_lines(query):
-            assert query == {"session_id": "sess_reconcile_only"}
+            assert query == {"session_id": "sess_reconcile_only", "archived": {"$ne": True}}
             return _AsyncCursor(
                 [
                     {

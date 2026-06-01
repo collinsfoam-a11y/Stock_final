@@ -3,8 +3,8 @@ Reconciliation API - Handles session-wide aggregation of counts to calculate tru
 """
 
 import logging
-from datetime import datetime
-from typing import Any
+from datetime import datetime, timezone
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -17,6 +17,18 @@ from backend.utils.api_utils import sanitize_for_logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v2/reconciliation", tags=["Reconciliation"])
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _normalize_datetime(value: Any) -> Optional[datetime]:
+    if not isinstance(value, datetime):
+        return None
+    if value.tzinfo is not None:
+        return value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value
 
 
 def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
@@ -62,12 +74,72 @@ async def get_session_reconciliation_summary(
         if not _user_can_view_session(session, current_user):
             raise HTTPException(status_code=403, detail="Not authorized to view this session")
 
+        warehouse = str(session.get("warehouse") or "").strip()
+        if not warehouse:
+            raise HTTPException(status_code=409, detail="Session warehouse is missing")
+
+        started_at = _normalize_datetime(session.get("started_at"))
+        if started_at is None:
+            raise HTTPException(status_code=409, detail="Session started_at is missing")
+        end_at = _normalize_datetime(
+            session.get("finalized_at")
+            or session.get("closed_at")
+            or session.get("completed_at")
+            or session.get("reconciled_at")
+        )
+        if end_at is None:
+            end_at = _utc_now()
+
+        snapshot = await db.session_snapshots.find_one({"session_id": session_id}, {"_id": 0})
+        if not snapshot:
+            raise HTTPException(status_code=503, detail="Session snapshot not available")
+
+        opening_qty_by_item: dict[str, float] = {}
+        snapshot_items = snapshot.get("items")
+        if isinstance(snapshot_items, list):
+            for item in snapshot_items:
+                if not isinstance(item, dict):
+                    continue
+                item_code = item.get("item_code")
+                if not item_code:
+                    continue
+                try:
+                    opening_qty_by_item[str(item_code)] = float(item.get("stock_qty") or 0.0)
+                except (TypeError, ValueError):
+                    opening_qty_by_item[str(item_code)] = 0.0
+
+        movement_qty_by_item: dict[str, float] = {}
+        try:
+            movement_pipeline: list[dict[str, Any]] = [
+                {
+                    "$match": {
+                        "warehouse": warehouse,
+                        "occurred_at": {"$gte": started_at, "$lte": end_at},
+                    }
+                },
+                {"$group": {"_id": "$item_code", "movement_qty": {"$sum": "$quantity"}}},
+            ]
+            movement_rows = await db.inventory_movements.aggregate(movement_pipeline).to_list(
+                length=None
+            )
+            for row in movement_rows:
+                item_code = row.get("_id")
+                if not item_code:
+                    continue
+                try:
+                    movement_qty_by_item[str(item_code)] = float(row.get("movement_qty") or 0.0)
+                except (TypeError, ValueError):
+                    movement_qty_by_item[str(item_code)] = 0.0
+        except Exception:
+            movement_qty_by_item = {}
+
         # 2. Aggregation Pipeline
         pipeline: list[dict[str, Any]] = [
             # Match active (non-superseded) counts for this session
             {
                 "$match": {
                     "session_id": session_id,
+                    "archived": {"$ne": True},
                     "status": {"$nin": ["SUPERSEDED", "superseded"]},
                     "$or": [
                         {"superseded_by_version_id": {"$exists": False}},
@@ -134,8 +206,6 @@ async def get_session_reconciliation_summary(
                 }
             },
             {"$addFields": {"abs_count_variance": {"$abs": "$count_variance"}}},
-            # Sort by count variance severity (largest discrepancy first)
-            {"$sort": {"abs_count_variance": -1, "item_code": 1}},
         ]
 
         results = await db.count_lines.aggregate(pipeline).to_list(length=None)
@@ -148,18 +218,34 @@ async def get_session_reconciliation_summary(
             "total_variance_qty": 0.0,
             "total_erp_drift_qty": 0.0,
             "total_final_gap_qty": 0.0,
+            "items_with_true_variance": 0,
+            "total_true_variance_qty": 0.0,
             "items_with_baseline_conflict": 0,
         }
 
         formatted_results = []
 
         for item in results:
-            count_variance = float(item.get("count_variance") or 0.0)
-            erp_drift = float(item.get("erp_drift") or 0.0)
-            final_gap = float(item.get("final_gap") or 0.0)
+            item_code = str(item.get("item_code") or "").strip()
+            total_counted = float(item.get("total_counted") or 0.0)
+            opening_qty = float(opening_qty_by_item.get(item_code, 0.0))
+            movement_qty = float(movement_qty_by_item.get(item_code, 0.0))
+            expected_qty = opening_qty + movement_qty
+
+            count_variance = float(total_counted - opening_qty)
+            system_stock = float(item.get("system_stock") or 0.0)
+            erp_drift = float(system_stock - opening_qty)
+            final_gap = float(total_counted - system_stock)
+            true_variance = float(expected_qty - total_counted)
+
             item["count_variance"] = count_variance
             item["erp_drift"] = erp_drift
             item["final_gap"] = final_gap
+            item["opening_qty"] = opening_qty
+            item["movement_qty"] = movement_qty
+            item["expected_qty"] = expected_qty
+            item["true_variance"] = true_variance
+            item["baseline_qty"] = opening_qty
             # Backward compatibility for callers expecting `variance`.
             item["variance"] = count_variance
 
@@ -170,6 +256,14 @@ async def get_session_reconciliation_summary(
                 status = "MISSING"
 
             item["status"] = status
+
+            true_status = "MATCH"
+            if true_variance > 0:
+                true_status = "MISSING"
+            elif true_variance < 0:
+                true_status = "SURPLUS"
+            item["true_status"] = true_status
+            item["abs_true_variance"] = abs(true_variance)
 
             # Formate date
             if isinstance(item.get("last_counted_at"), datetime):
@@ -183,14 +277,29 @@ async def get_session_reconciliation_summary(
                 summary_stats["items_matched"] += 1
             summary_stats["total_erp_drift_qty"] += erp_drift
             summary_stats["total_final_gap_qty"] += final_gap
+            if true_variance != 0:
+                summary_stats["items_with_true_variance"] += 1
+                summary_stats["total_true_variance_qty"] += true_variance
             if bool(item.get("baseline_conflict")):
                 summary_stats["items_with_baseline_conflict"] += 1
 
             formatted_results.append(item)
 
+        formatted_results.sort(
+            key=lambda row: (
+                -float(row.get("abs_true_variance") or 0.0),
+                str(row.get("item_code") or ""),
+            )
+        )
+
         return {
             "success": True,
             "session_id": session_id,
+            "warehouse": warehouse,
+            "window": {
+                "start": started_at.isoformat(),
+                "end": end_at.isoformat(),
+            },
             "stats": summary_stats,
             "items": formatted_results,
         }

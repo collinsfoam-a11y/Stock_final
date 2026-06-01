@@ -229,7 +229,7 @@ class ScheduledExportService:
 
     async def _export_count_lines(self, filters: dict[str, Any]) -> list[dict]:
         """Export count lines data"""
-        query = {}
+        query = {"archived": {"$ne": True}}
 
         if "session_id" in filters:
             query["session_id"] = filters["session_id"]
@@ -263,7 +263,7 @@ class ScheduledExportService:
         """Export variance summary report"""
         # Aggregate variance data
         pipeline: list[dict[str, Any]] = [
-            {"$match": {"variance": {"$ne": 0}}},
+            {"$match": {"variance": {"$ne": 0}, "archived": {"$ne": True}}},
             {
                 "$group": {
                     "_id": "$item_code",

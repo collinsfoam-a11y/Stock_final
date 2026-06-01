@@ -140,11 +140,15 @@ const refreshAccessToken = async (): Promise<string | null> => {
   const baseURL = apiClient.defaults.baseURL || API_BASE_URL;
   const refreshUrl = toFullUrl(baseURL, "/api/auth/refresh");
   const refreshPayload = refreshToken ? { refresh_token: refreshToken } : {};
+  const deviceId = await getDeviceId();
 
   try {
     const response = await axios.post(refreshUrl, refreshPayload, {
       timeout: 20000,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(deviceId ? { "X-Device-ID": deviceId } : {}),
+      },
       withCredentials: true,
     });
 

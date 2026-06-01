@@ -178,7 +178,7 @@ class VarianceService:
             config = await self.db.variance_threshold_configs.find_one(
                 {
                     "apply_to_categories": category,
-                    "apply_to_locations": None,
+                    "apply_to_locations": {"$in": [None, []]},
                 }
             )
             if config:
@@ -189,7 +189,7 @@ class VarianceService:
         if location:
             config = await self.db.variance_threshold_configs.find_one(
                 {
-                    "apply_to_categories": None,
+                    "apply_to_categories": {"$in": [None, []]},
                     "apply_to_locations": location,
                 }
             )

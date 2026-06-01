@@ -158,7 +158,9 @@ class SessionLifecycleService:
         last_activity: Optional[datetime] = None
         kwargs = self._kwargs(db_session)
 
-        cursor = self.db.count_lines.find({"session_id": session_id}, **kwargs)
+        cursor = self.db.count_lines.find(
+            {"session_id": session_id, "archived": {"$ne": True}}, **kwargs
+        )
         async for line in cursor:
             if is_superseded_count_line(line):
                 continue

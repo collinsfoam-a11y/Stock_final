@@ -192,7 +192,7 @@ async def find_duplicate_count_line(
     exclude_id: Optional[str] = None,
 ) -> Optional[dict[str, Any]]:
     duplicate_filter = build_count_line_duplicate_filter(line_data)
-    cursor = db.count_lines.find(duplicate_filter)
+    cursor = db.count_lines.find({**duplicate_filter, "archived": {"$ne": True}})
     async for existing in cursor:
         existing_id = extract_document_id(existing)
         if exclude_id and existing_id == exclude_id:
@@ -250,7 +250,7 @@ async def get_session_count_lines(
     *,
     include_superseded: bool = False,
 ) -> list[dict[str, Any]]:
-    cursor = db.count_lines.find({"session_id": session_id})
+    cursor = db.count_lines.find({"session_id": session_id, "archived": {"$ne": True}})
     lines: list[dict[str, Any]] = []
     async for line in cursor:
         if not include_superseded and is_superseded_count_line(line):

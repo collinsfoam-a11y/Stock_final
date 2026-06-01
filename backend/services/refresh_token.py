@@ -158,9 +158,18 @@ class RefreshTokenService:
         except Exception as e:
             logger.error("Error cleaning up tokens: %s", e)
 
-    async def verify_refresh_token(self, token: str) -> Optional[dict[str, Optional[Any]]]:
+    async def verify_refresh_token(
+        self,
+        token: str,
+        *,
+        expected_device_id: Optional[str] = None,
+    ) -> Optional[dict[str, Optional[Any]]]:
         """Verify and return refresh token payload"""
         try:
+            if not expected_device_id:
+                logger.warning("Missing device id for refresh token verification")
+                return None
+
             payload = jwt.decode(
                 token,
                 self.refresh_secret_key,
@@ -195,6 +204,14 @@ class RefreshTokenService:
 
             if not stored_token:
                 logger.warning("Refresh token not found or revoked")
+                return None
+
+            stored_device_id = stored_token.get("device_id")
+            if not stored_device_id:
+                logger.warning("Refresh token missing bound device id")
+                return None
+            if stored_device_id != expected_device_id:
+                logger.warning("Refresh token device mismatch")
                 return None
 
             # Opportunistic migration: replace raw token storage with hash.
@@ -251,9 +268,17 @@ class RefreshTokenService:
                 ) from e
             return 0
 
-    async def refresh_access_token(self, refresh_token: str) -> Optional[dict[str, Optional[Any]]]:
+    async def refresh_access_token(
+        self,
+        refresh_token: str,
+        *,
+        expected_device_id: Optional[str] = None,
+    ) -> Optional[dict[str, Optional[Any]]]:
         """Generate new access token from refresh token"""
-        payload = await self.verify_refresh_token(refresh_token)
+        payload = await self.verify_refresh_token(
+            refresh_token,
+            expected_device_id=expected_device_id,
+        )
 
         if not payload:
             return None

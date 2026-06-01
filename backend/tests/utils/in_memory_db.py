@@ -22,11 +22,14 @@ def _normalize_value(val: Any) -> Any:
     """Normalize values for comparison (e.g. ObjectId -> str)."""
     if hasattr(val, "__class__") and val.__class__.__name__ == "ObjectId":
         return str(val)
+    if isinstance(val, datetime) and val.tzinfo is not None:
+        return val.astimezone(timezone.utc).replace(tzinfo=None)
     return val
 
 
 def _match_condition(value: Any, condition: dict[str, Any]) -> bool:
     """Evaluate comparison operators."""
+    value = _normalize_value(value)
     # Handle regex with options if present
     if "$regex" in condition:
         import re
@@ -453,6 +456,8 @@ class InMemoryDatabase:
         self.stock_snapshots = InMemoryCollection()
         self.conflict_forks = InMemoryCollection()
         self.governance_events = InMemoryCollection()
+        self.inventory_movements = InMemoryCollection()
+        self.enterprise_audit_logs = InMemoryCollection()
 
     async def command(self, *_args, **_kwargs):
         """Simulate db.command('ping')."""

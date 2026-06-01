@@ -30,6 +30,7 @@ AUTHORIZED_WRITE_AUTHORITIES: dict[str, frozenset[str]] = {
         }
     ),
     "UnknownItemService": frozenset({"unknown_items"}),
+    "MovementService": frozenset({"inventory_movements"}),
     "EnterpriseAuditService": frozenset({"enterprise_audit_logs"}),
     "GovernanceAuditService": frozenset({"governance_events"}),
     "EventService": frozenset({"event_log"}),
@@ -43,6 +44,7 @@ _GUARD_TARGET_COLLECTIONS: tuple[str, ...] = (
     "recount_requests",
     "session_snapshots",
     "unknown_items",
+    "inventory_movements",
     "enterprise_audit_logs",
     "governance_events",
     "event_log",
@@ -74,6 +76,7 @@ _IMMUTABLE_COLLECTIONS: frozenset[str] = frozenset(
         "event_log",
         "audit_logs",
         "activity_logs",
+        "inventory_movements",
     }
 )
 _IMMUTABLE_ALLOWED_METHODS: frozenset[str] = frozenset({"insert_one", "insert_many"})

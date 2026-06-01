@@ -19,9 +19,11 @@ def client(monkeypatch):
 
 
 def test_login_sets_http_only_auth_cookies(client: TestClient):
+    headers = {"X-Device-ID": "test-device-1"}
     response = client.post(
         "/api/auth/login",
         json={"username": "staff1", "password": "staff123"},
+        headers=headers,
     )
 
     assert response.status_code == 200
@@ -32,9 +34,11 @@ def test_login_sets_http_only_auth_cookies(client: TestClient):
 
 
 def test_auth_me_accepts_cookie_only_session(client: TestClient):
+    headers = {"X-Device-ID": "test-device-1"}
     login_response = client.post(
         "/api/auth/login",
         json={"username": "staff1", "password": "staff123"},
+        headers=headers,
     )
     assert login_response.status_code == 200
 
@@ -48,9 +52,11 @@ def test_auth_me_accepts_cookie_only_session(client: TestClient):
 
 
 def test_refresh_accepts_cookie_without_request_body_token(client: TestClient, monkeypatch):
+    headers = {"X-Device-ID": "test-device-1"}
     login_response = client.post(
         "/api/auth/login",
         json={"username": "staff1", "password": "staff123"},
+        headers=headers,
     )
     assert login_response.status_code == 200
 
@@ -85,12 +91,12 @@ def test_refresh_accepts_cookie_without_request_body_token(client: TestClient, m
         )(),
     )
 
-    refresh_response = client.post("/api/auth/refresh", json={})
+    refresh_response = client.post("/api/auth/refresh", json={}, headers=headers)
 
     assert refresh_response.status_code == 200
     payload = refresh_response.json()
     assert payload["success"] is True
-    refresh_mock.assert_awaited_once_with(refresh_token)
+    refresh_mock.assert_awaited_once_with(refresh_token, expected_device_id="test-device-1")
     assert payload["data"]["access_token"] == "new-access-token"
     assert refresh_response.cookies.get("sv_access_token") == "new-access-token"
     assert refresh_response.cookies.get("sv_refresh_token") == "new-refresh-token"

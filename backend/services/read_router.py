@@ -438,7 +438,9 @@ class InventoryReadRouter:
         session_id: str,
         item_code: str,
     ) -> list[dict[str, Any]]:
-        cursor = self.db.count_lines.find({"session_id": session_id, "item_code": item_code})
+        cursor = self.db.count_lines.find(
+            {"session_id": session_id, "item_code": item_code, "archived": {"$ne": True}}
+        )
         count_lines = await cursor.to_list(None)
         return [line for line in count_lines if not is_superseded_count_line(line)]
 

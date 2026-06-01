@@ -626,6 +626,15 @@ class TestCreateCountLine:
         """Test count line creation with high-risk flags"""
         # Create scenario with high variance
         line_data.counted_qty = 200  # Large variance
+        from backend.api.schemas import PhotoProof
+
+        line_data.photo_proofs = [
+            PhotoProof(
+                id="photo-1",
+                url="https://example.com/photo-1.jpg",
+                timestamp="2024-01-01T10:00:00Z",
+            )
+        ]
         erp_item["stock_qty"] = 50
         erp_item["mrp"] = 500  # High value item
         mock_db.sessions.find_one.return_value = {

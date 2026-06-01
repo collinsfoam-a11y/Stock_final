@@ -153,6 +153,14 @@ try:
 except ImportError:
     pass
 
+movement_router: Optional[APIRouter] = None
+try:
+    from backend.api.movement_api import router as mov_router
+
+    movement_router = mov_router
+except ImportError:
+    pass
+
 pin_auth_router: Optional[APIRouter] = None
 try:
     from backend.api.pin_auth_api import router as pa_router  # noqa: E402
@@ -468,8 +476,12 @@ async def refresh_token(
         if not refresh_token_value:
             return Fail(ValidationError("Refresh token is required"))
 
+        expected_device_id = request.headers.get("x-device-id")
         token_service = get_refresh_token_service()
-        refreshed = await token_service.refresh_access_token(refresh_token_value)
+        refreshed = await token_service.refresh_access_token(
+            refresh_token_value,
+            expected_device_id=expected_device_id,
+        )
         if not refreshed:
             return Fail(AuthenticationError("Invalid or expired refresh token"))
 
@@ -504,7 +516,10 @@ async def logout(
 
         if refresh_token_value:
             token_service = get_refresh_token_service()
-            payload = await token_service.verify_refresh_token(refresh_token_value)
+            payload = await token_service.verify_refresh_token(
+                refresh_token_value,
+                expected_device_id=request.headers.get("x-device-id"),
+            )
             # M11 fix: Always revoke the token if it's valid, regardless of sub match.
             # The user is already authenticated via get_current_user, so the logout
             # intent is clear. Skipping revocation on sub mismatch leaves tokens active.
@@ -886,6 +901,7 @@ register_routers(
         v2_router=v2_router,
         pin_auth_router=pin_auth_router,
         reconciliation_router=reconciliation_router,
+        movement_router=movement_router,
         recount_router=recount_router,
         enterprise_available=ENTERPRISE_AVAILABLE,
     ),

@@ -62,6 +62,7 @@ class RouterRegistry:
     v2_router: Optional[APIRouter] = None
     pin_auth_router: Optional[APIRouter] = None
     reconciliation_router: Optional[APIRouter] = None
+    movement_router: Optional[APIRouter] = None
     recount_router: Optional[APIRouter] = None
     enterprise_available: bool = False
 
@@ -195,6 +196,12 @@ def _register_optional_router_set(app: FastAPI, registry: RouterRegistry, logger
         registry.reconciliation_router,
         logger,
         failure_log="Reconciliation router registration failed",
+    )
+    _include_optional_router(
+        app,
+        registry.movement_router,
+        logger,
+        failure_log="Movement router registration failed",
     )
     _include_optional_router(
         app,

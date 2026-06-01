@@ -376,11 +376,12 @@ async def log_successful_login(user: dict[str, Any], ip_address: str, request: R
         logger.error("Failed to write audit log: %s", sanitize_for_logging(str(e)))
 
 
-@router.post("/auth/register", response_model=TokenResponse, status_code=201)
 async def register(
     user: UserRegister,
     response: Response,
-    current_user: Optional[dict] = Depends(optional_get_current_user),
+    current_user: Optional[dict] = None,
+    *,
+    request: Request | None = None,
 ):
     """
     Register a new user.
@@ -457,7 +458,12 @@ async def register(
 
         # Store refresh token in database
         expires_at = datetime.now(timezone.utc) + timedelta(days=30)
-        await refresh_token_service.store_refresh_token(refresh_token, user.username, expires_at)
+        await refresh_token_service.store_refresh_token(
+            refresh_token,
+            user.username,
+            expires_at,
+            device_id=request.headers.get("x-device-id") if request else None,
+        )
         set_auth_cookies(response, access_token, refresh_token)
 
         return {
@@ -491,6 +497,16 @@ async def register(
                 "category": error["category"],
             },
         )
+
+
+@router.post("/auth/register", response_model=TokenResponse, status_code=201)
+async def register_route(
+    user: UserRegister,
+    request: Request,
+    response: Response,
+    current_user: Optional[dict] = Depends(optional_get_current_user),
+):
+    return await register(user, response, current_user, request=request)
 
 
 async def _check_login_rate_limit(client_ip: str) -> Optional[Result[Any, Exception]]:

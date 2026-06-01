@@ -94,10 +94,12 @@ class TestAuthEndpoints:
     @pytest.mark.asyncio
     async def test_refresh_token(self, async_client: AsyncClient):
         """Test token refresh with valid refresh token."""
+        headers = {"X-Device-ID": "test-device-1"}
         # First login
         login_response = await async_client.post(
             "/api/auth/login",
             json={"username": "admin", "password": "admin123"},
+            headers=headers,
         )
         if login_response.status_code not in (200, 201):
             pytest.skip("Login failed, skipping refresh test")
@@ -111,6 +113,7 @@ class TestAuthEndpoints:
         response = await async_client.post(
             "/api/auth/refresh",
             json={"refresh_token": refresh_token},
+            headers=headers,
         )
         assert response.status_code == 200
         data = response.json()

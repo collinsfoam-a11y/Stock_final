@@ -406,7 +406,9 @@ class CountLineWriteService:
         damage_items = 0
         last_activity: Optional[datetime] = None
         kwargs = {"session": db_session} if db_session is not None else {}
-        cursor = self.db.count_lines.find({"session_id": session_id}, **kwargs)
+        cursor = self.db.count_lines.find(
+            {"session_id": session_id, "archived": {"$ne": True}}, **kwargs
+        )
         async for line in cursor:
             if _is_superseded_count_line(line):
                 continue
@@ -1471,7 +1473,8 @@ class CountLineWriteService:
 
         photo_required = (
             abs(variance) > 100
-            or variance_percent > 50
+            or (expected_qty >= 10 and variance_percent > 50)
+            or (expected_qty == 0 and counted_qty > 100)
             or abs(mrp_change_percent) > 20
             or mrp_erp > 10000
         )
@@ -1560,7 +1563,7 @@ class CountLineWriteService:
         target["mrp_erp"] = mrp_erp
         target["mrp_counted"] = mrp_counted
         target["financial_impact"] = (mrp_counted * counted_qty) - (mrp_erp * expected_qty)
-        target["risk_flags"] = self._collect_risk_flags(
+        risk_flags = self._collect_risk_flags(
             document=target,
             erp_item=erp_item,
             governance=governance,
@@ -1570,6 +1573,12 @@ class CountLineWriteService:
             mrp_erp=mrp_erp,
             mrp_counted=mrp_counted,
         )
+        if "PHOTO_PROOF_REQUIRED" in risk_flags:
+            raise HTTPException(
+                status_code=400,
+                detail="Photo proof is required for critical variance counts",
+            )
+        target["risk_flags"] = risk_flags
         set_status = bool(context.get("set_status_from_governance", True))
         self._apply_review_reset_fields(target)
         target["variance"] = governance.variance

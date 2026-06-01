@@ -94,7 +94,9 @@ async def test_scheduled_count_line_export_uses_counted_at_and_erp_qty():
 
     rows = await service._export_count_lines({"session_id": "session-1"})
 
-    db.count_lines.find.assert_called_once_with({"session_id": "session-1"})
+    db.count_lines.find.assert_called_once_with(
+        {"archived": {"$ne": True}, "session_id": "session-1"}
+    )
     db.count_lines.find.return_value.sort.assert_called_once_with("counted_at", -1)
     assert rows == [
         {

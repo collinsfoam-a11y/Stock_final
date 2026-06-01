@@ -1390,11 +1390,12 @@ async def get_count_lines(
 ):
     """Get count lines with pagination. Shared between routes and tests."""
     db_client = _get_db_client(db_override)
+    base_query: dict[str, Any] = {"session_id": session_id, "archived": {"$ne": True}}
     if verified is None:
         skip = (page - 1) * page_size
-        total = await db_client.count_lines.count_documents({"session_id": session_id})
+        total = await db_client.count_lines.count_documents(base_query)
         lines_cursor = (
-            db_client.count_lines.find({"session_id": session_id}, {"_id": 0})
+            db_client.count_lines.find(base_query, {"_id": 0})
             .sort("counted_at", -1)
             .skip(skip)
             .limit(page_size)
@@ -1413,9 +1414,7 @@ async def get_count_lines(
             },
         }
 
-    lines_cursor = db_client.count_lines.find({"session_id": session_id}, {"_id": 0}).sort(
-        "counted_at", -1
-    )
+    lines_cursor = db_client.count_lines.find(base_query, {"_id": 0}).sort("counted_at", -1)
 
     total = 0
     skip = (page - 1) * page_size
@@ -1452,7 +1451,7 @@ async def list_count_lines(
     limit: Optional[int] = Query(None, ge=1, le=200),
 ):
     db_client = _get_db_client()
-    filter_query: dict[str, Any] = {}
+    filter_query: dict[str, Any] = {"archived": {"$ne": True}}
     if session_id:
         filter_query["session_id"] = session_id
     if item_code:
@@ -1827,7 +1826,9 @@ async def check_item_counted(
         }
 
         # Find all count lines for this item in this session
-        cursor = db.count_lines.find({"session_id": session_id, "item_code": item_code})
+        cursor = db.count_lines.find(
+            {"session_id": session_id, "item_code": item_code, "archived": {"$ne": True}}
+        )
         count_lines = await cursor.to_list(length=None)
 
         # Convert ObjectId to string
@@ -1914,7 +1915,7 @@ async def check_serial_uniqueness(
         "rack_no": 1,
         "status": 1,
     }
-    base_query: dict[str, Any] = {"session_id": session_id}
+    base_query: dict[str, Any] = {"session_id": session_id, "archived": {"$ne": True}}
     if item_code:
         base_query["item_code"] = item_code
 
@@ -2216,15 +2217,27 @@ async def delete_count_line(
             operation_name="delete_count_line",
         )
 
+        voided_at = _current_timestamp()
         write_service = _get_count_line_write_service(db)
         result = await write_service.process_write(
-            {"operation": "delete_one", "filter": {"_id": count_line["_id"]}},
+            {
+                "operation": "update_one",
+                "filter": {"_id": count_line["_id"]},
+                "update": {
+                    "$set": {
+                        "archived": True,
+                        "archived_at": voided_at,
+                        "archived_by": current_user.get("username"),
+                        "archive_reason": "voided_via_api_delete",
+                    }
+                },
+            },
             context={
                 "session_id": str(count_line.get("session_id") or ""),
                 "governance_mode": "mutable_session",
             },
         )
-        if result.deleted_count == 0:
+        if result.modified_count == 0:
             raise HTTPException(status_code=404, detail="Count line not found")
 
         await _recalculate_session_stats(db, count_line["session_id"])
@@ -2240,8 +2253,8 @@ async def delete_count_line(
 
             await log_enterprise_audit(
                 request,
-                event_type=EnterpriseAuditEventType.DATA_DELETE,
-                action="count_lines.delete",
+                event_type=EnterpriseAuditEventType.DATA_UPDATE,
+                action="count_lines.void",
                 current_user=current_user,
                 resource_type="count_line",
                 resource_id=str(line_id),
@@ -2251,6 +2264,7 @@ async def delete_count_line(
                     "item_code": count_line.get("item_code"),
                     "barcode": count_line.get("barcode"),
                     "counted_qty": count_line.get("counted_qty"),
+                    "voided_at": voided_at,
                 },
             )
         except Exception as e:
@@ -2259,7 +2273,7 @@ async def delete_count_line(
                 _safe_log_value(e, max_length=200),
             )
 
-        return {"success": True, "message": "Count line deleted successfully"}
+        return {"success": True, "message": "Count line voided successfully"}
 
     except HTTPException:
         raise
