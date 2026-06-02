@@ -38,8 +38,10 @@ class AuditLog(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     event_type: AuditEventType
+    org_id: Optional[str] = None
     actor_id: Optional[str] = None
     actor_username: Optional[str] = None
+    actor_role: Optional[str] = None
     ip_address: Optional[str] = None
     resource_id: Optional[str] = None
     details: Dict[str, Any] = Field(default_factory=dict)

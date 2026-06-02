@@ -321,6 +321,9 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         # TTL index: auto-delete rate limit records after 10 minutes
         ([("window_start", 1)], {"expireAfterSeconds": 600, "name": "idx_rate_limit_ttl"}),
     ],
+    "override_tokens": [
+        ([("expires_at", 1)], {"expireAfterSeconds": 0, "name": "idx_override_token_ttl"}),
+    ],
     # Users Collection
     "users": [
         # Unique username

@@ -14,6 +14,10 @@ from typing import Any, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 
+from backend.services.governance_guard import write_authority
+from backend.tenancy.org_context import get_current_org_id
+from backend.tenancy.scoping import org_scoped_filter
+
 logger = logging.getLogger(__name__)
 
 
@@ -180,7 +184,7 @@ class EnterpriseAuditService:
         self.collection = mongo_db.enterprise_audit_logs
         self.retention_days = retention_days
         self.enable_hash_chain = enable_hash_chain
-        self._last_hash: Optional[str] = None
+        self._last_hash_by_org: dict[str, str] = {}
 
     async def initialize(self):
         """Initialize indexes and load last hash"""
@@ -188,15 +192,21 @@ class EnterpriseAuditService:
         await self.collection.create_index("timestamp")
         await self.collection.create_index("event_type")
         await self.collection.create_index("actor_username")
+        await self.collection.create_index("org_id")
         await self.collection.create_index("resource_type")
         await self.collection.create_index("correlation_id")
         await self.collection.create_index([("timestamp", -1), ("_id", -1)])
 
         # Load last hash for chain continuity
         if self.enable_hash_chain:
-            last_entry = await self.collection.find_one(sort=[("timestamp", -1), ("_id", -1)])
+            last_entry = await self.collection.find_one(
+                org_scoped_filter(None, {}),
+                sort=[("timestamp", -1), ("_id", -1)],
+            )
             if last_entry:
-                self._last_hash = last_entry.get("entry_hash")
+                last_hash = str(last_entry.get("entry_hash") or "").strip()
+                if last_hash:
+                    self._last_hash_by_org[get_current_org_id()] = last_hash
 
         logger.info("Enterprise audit service initialized")
 
@@ -211,6 +221,8 @@ class EnterpriseAuditService:
             "details": json.dumps(entry.get("details", {}), sort_keys=True),
             "previous_hash": previous_hash or "",
         }
+        if "org_id" in entry:
+            data["org_id"] = entry.get("org_id")
         content = json.dumps(data, sort_keys=True)
         return hashlib.sha256(content.encode()).hexdigest()
 
@@ -242,10 +254,24 @@ class EnterpriseAuditService:
             Audit entry ID
         """
         try:
+            org_id = get_current_org_id()
+            previous_hash: Optional[str] = None
+            if self.enable_hash_chain:
+                previous_hash = self._last_hash_by_org.get(org_id)
+                if previous_hash is None:
+                    last_entry = await self.collection.find_one(
+                        org_scoped_filter(org_id, {}),
+                        sort=[("timestamp", -1), ("_id", -1)],
+                    )
+                    if last_entry:
+                        previous_hash = str(last_entry.get("entry_hash") or "").strip() or None
+                        if previous_hash:
+                            self._last_hash_by_org[org_id] = previous_hash
             entry = {
                 "timestamp": datetime.now(timezone.utc).replace(tzinfo=None),
                 "event_type": event_type.value,
                 "severity": severity.value,
+                "org_id": org_id,
                 "actor_id": actor_id,
                 "actor_username": actor_username,
                 "actor_role": actor_role,
@@ -266,11 +292,14 @@ class EnterpriseAuditService:
 
             # Add hash chain for tamper detection
             if self.enable_hash_chain:
-                entry["previous_hash"] = self._last_hash
-                entry["entry_hash"] = self._compute_hash(entry, self._last_hash)
-                self._last_hash = str(entry["entry_hash"])
+                entry["previous_hash"] = previous_hash
+                entry["entry_hash"] = self._compute_hash(entry, previous_hash)
+                next_hash = str(entry.get("entry_hash") or "").strip()
+                if next_hash:
+                    self._last_hash_by_org[org_id] = next_hash
 
-            result = await self.collection.insert_one(entry)
+            with write_authority("EnterpriseAuditService"):
+                result = await self.collection.insert_one(entry)
 
             # Log security-critical events
             if severity in [AuditSeverity.ERROR, AuditSeverity.CRITICAL]:
@@ -313,8 +342,11 @@ class EnterpriseAuditService:
             correlation_id,
         )
 
-        total = await self.collection.count_documents(query)
-        cursor = self.collection.find(query).sort([("timestamp", -1)]).skip(skip).limit(limit)
+        scoped_query = org_scoped_filter(None, query)
+        total = await self.collection.count_documents(scoped_query)
+        cursor = (
+            self.collection.find(scoped_query).sort([("timestamp", -1)]).skip(skip).limit(limit)
+        )
 
         entries = []
         async for doc in cursor:
@@ -337,8 +369,8 @@ class EnterpriseAuditService:
                 query["timestamp"]["$gte"] = start_date
             if end_date:
                 query["timestamp"]["$lte"] = end_date
-
-        cursor = self.collection.find(query).sort([("timestamp", 1), ("_id", 1)])
+        scoped_query = org_scoped_filter(None, query)
+        cursor = self.collection.find(scoped_query).sort([("timestamp", 1), ("_id", 1)])
 
         previous_hash = None
         valid_count = 0

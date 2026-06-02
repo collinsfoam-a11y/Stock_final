@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, NoReturn, Optional
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel
 
@@ -40,6 +40,7 @@ from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.transaction_manager import mongo_transaction
 from backend.services.variant_service import VariantService
 from backend.tenancy.scoping import org_id_from_user, org_scoped_filter
+from backend.utils.auth_utils import decode_supervisor_override_token
 from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
@@ -2223,18 +2224,72 @@ async def _log_delete_activity(
 async def delete_count_line(
     line_id: str,
     request: Request,
+    override_token: Optional[str] = Header(None, alias="X-Supervisor-Override"),
     current_user: dict = Depends(get_current_user),
 ):
     """Delete a count line (requires supervisor override)."""
     if current_user["role"] not in ["supervisor", "admin"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
+    if not override_token:
+        raise HTTPException(status_code=403, detail="Supervisor override required")
 
     db = _get_db_client()
 
     try:
+        org_id = org_id_from_user(current_user)
+        try:
+            claims = decode_supervisor_override_token(str(override_token))
+        except Exception as exc:
+            logger.warning(
+                "Supervisor override token rejected: %s",
+                _safe_log_value(exc, max_length=120),
+            )
+            raise HTTPException(status_code=403, detail="Invalid supervisor override token")
+        if str(claims.get("type") or "") != "supervisor_override":
+            raise HTTPException(status_code=403, detail="Invalid supervisor override token")
+        if str(claims.get("org_id") or "") != org_id:
+            raise HTTPException(status_code=403, detail="Invalid supervisor override token")
+        if str(claims.get("staff_username") or "") != current_user.get("username"):
+            raise HTTPException(status_code=403, detail="Invalid supervisor override token")
+        if str(claims.get("requested_by") or "") != current_user.get("username"):
+            raise HTTPException(status_code=403, detail="Invalid supervisor override token")
+        if str(claims.get("override_action") or "") != "count_line.delete":
+            raise HTTPException(status_code=403, detail="Invalid supervisor override token")
+
         count_line = await _find_count_line(db, line_id)
         if not count_line:
             raise HTTPException(status_code=404, detail="Count line not found")
+
+        token_entity_id = str(claims.get("entity_id") or "").strip()
+        if token_entity_id not in {
+            str(line_id),
+            str(count_line.get("id") or ""),
+            str(count_line.get("_id") or ""),
+        }:
+            raise HTTPException(status_code=403, detail="Invalid supervisor override token")
+
+        jti = str(claims.get("jti") or "").strip()
+        if not jti:
+            raise HTTPException(status_code=403, detail="Invalid supervisor override token")
+        exp_value = claims.get("exp")
+        try:
+            exp_dt = (
+                exp_value
+                if isinstance(exp_value, datetime)
+                else datetime.fromtimestamp(float(exp_value), tz=timezone.utc)
+            ).replace(tzinfo=None)
+        except Exception:
+            exp_dt = datetime.now(timezone.utc).replace(tzinfo=None)
+
+        overrides = getattr(db, "override_tokens", None)
+        if overrides is None and hasattr(db, "__getitem__"):
+            overrides = db["override_tokens"]
+        if overrides is not None:
+            try:
+                await overrides.insert_one({"_id": jti, "org_id": org_id, "expires_at": exp_dt})
+            except DuplicateKeyError:
+                raise HTTPException(status_code=409, detail="Override token already used")
+
         await _ensure_count_line_mutable(db, count_line)
         await _enforce_count_line_logic_from_line(
             db=db,

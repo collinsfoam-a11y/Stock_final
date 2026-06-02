@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from backend.models.audit import AuditEventType, AuditLog, AuditLogStatus
+from backend.services.governance_guard import write_authority
+from backend.tenancy.org_context import get_current_org_id
 
 
 class AuditService:
@@ -17,6 +19,7 @@ class AuditService:
         status: AuditLogStatus = AuditLogStatus.SUCCESS,
         actor_id: Optional[str] = None,
         actor_username: Optional[str] = None,
+        actor_role: Optional[str] = None,
         ip_address: Optional[str] = None,
         resource_id: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
@@ -27,17 +30,20 @@ class AuditService:
         log_entry = AuditLog(
             event_type=event_type,
             status=status,
+            org_id=get_current_org_id(),
             actor_id=actor_id,
             actor_username=actor_username,
+            actor_role=actor_role,
             ip_address=ip_address,
             resource_id=resource_id,
             details=details or {},
             timestamp=datetime.now(timezone.utc),
         )
 
-        result = await self.collection.insert_one(
-            log_entry.model_dump(by_alias=True, exclude={"id"})
-        )
+        with write_authority("AuditService"):
+            result = await self.collection.insert_one(
+                log_entry.model_dump(by_alias=True, exclude={"id"})
+            )
         return str(result.inserted_id)
 
     async def get_logs(

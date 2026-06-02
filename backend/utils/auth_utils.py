@@ -1,6 +1,7 @@
 import logging
 import os
 import secrets
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -251,3 +252,46 @@ def create_access_token(
         }
     )
     return str(jwt.encode(to_encode, key, algorithm=algo))
+
+
+def create_supervisor_override_token(
+    data: dict[str, Any],
+    secret_key: Optional[str] = None,
+    algorithm: Optional[str] = None,
+    expires_delta: Optional[timedelta] = None,
+) -> str:
+    key = secret_key if secret_key else str(settings.JWT_SECRET)
+    algo = algorithm if algorithm else str(settings.JWT_ALGORITHM)
+
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=5)
+
+    to_encode.update(
+        {
+            "exp": expire,
+            "type": "supervisor_override",
+            "iss": "stk-verify-api",
+            "aud": "stk-verify-client",
+            "jti": str(to_encode.get("jti") or uuid.uuid4()),
+        }
+    )
+    return str(jwt.encode(to_encode, key, algorithm=algo))
+
+
+def decode_supervisor_override_token(
+    token: str,
+    secret_key: Optional[str] = None,
+    algorithm: Optional[str] = None,
+) -> dict[str, Any]:
+    key = secret_key if secret_key else str(settings.JWT_SECRET)
+    algo = algorithm if algorithm else str(settings.JWT_ALGORITHM)
+    return jwt.decode(
+        token,
+        key,
+        algorithms=[algo],
+        issuer="stk-verify-api",
+        audience="stk-verify-client",
+    )

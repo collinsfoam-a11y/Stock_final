@@ -10,6 +10,10 @@ from typing import Any, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 
+from backend.services.governance_guard import write_authority
+from backend.tenancy.org_context import get_current_org_id
+from backend.tenancy.scoping import org_scoped_filter
+
 logger = logging.getLogger(__name__)
 
 
@@ -50,6 +54,7 @@ class ActivityLog(BaseModel):
     """Activity log entry model"""
 
     id: Optional[str] = None
+    org_id: Optional[str] = None
     timestamp: datetime
     user: str
     role: str
@@ -103,6 +108,7 @@ class ActivityLogService:
         """
         try:
             log_entry = {
+                "org_id": get_current_org_id(),
                 "timestamp": datetime.now(timezone.utc).replace(tzinfo=None),
                 "user": user,
                 "role": role,
@@ -116,7 +122,8 @@ class ActivityLogService:
                 "error_message": error_message,
             }
 
-            result = await self.collection.insert_one(log_entry)
+            with write_authority("ActivityLogService"):
+                result = await self.collection.insert_one(log_entry)
             log_entry["id"] = str(result.inserted_id)
 
             logger.debug(f"Activity logged: {user} - {action} - {status}")
@@ -159,12 +166,13 @@ class ActivityLogService:
             filter_query = _build_activity_filter(
                 user, role, action, entity_type, status, start_date, end_date
             )
+            scoped_query = org_scoped_filter(None, filter_query)
 
-            total = await self.collection.count_documents(filter_query)
+            total = await self.collection.count_documents(scoped_query)
             skip = (page - 1) * page_size
 
             cursor = (
-                self.collection.find(filter_query).sort("timestamp", -1).skip(skip).limit(page_size)
+                self.collection.find(scoped_query).sort("timestamp", -1).skip(skip).limit(page_size)
             )
             activities = await cursor.to_list(page_size)
 
@@ -190,7 +198,11 @@ class ActivityLogService:
     async def get_user_activities(self, username: str, limit: int = 100) -> list[dict[str, Any]]:
         """Get recent activities for a specific user"""
         try:
-            cursor = self.collection.find({"user": username}).sort("timestamp", -1).limit(limit)
+            cursor = (
+                self.collection.find(org_scoped_filter(None, {"user": username}))
+                .sort("timestamp", -1)
+                .limit(limit)
+            )
             activities = await cursor.to_list(limit)
 
             for activity in activities:

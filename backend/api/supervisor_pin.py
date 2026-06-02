@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from backend.auth.dependencies import get_current_user
 from backend.db.runtime import get_db
 from backend.services.activity_log import ActivityLogService
-from backend.utils.auth_utils import verify_pin_hash
+from backend.tenancy.scoping import org_id_from_user, org_scoped_filter
+from backend.utils.auth_utils import create_supervisor_override_token, verify_pin_hash
 from backend.utils.api_utils import sanitize_for_logging
 
 router = APIRouter()
@@ -43,7 +44,8 @@ async def verify_supervisor_pin(
     # H7 fix: Rate limit PIN attempts per supervisor (max 5 attempts per 5 minutes)
     from datetime import datetime as dt, timezone as tz
 
-    rate_key = f"pin_attempts:{payload.supervisor_username}"
+    org_id = org_id_from_user(current_user)
+    rate_key = f"pin_attempts:{org_id}:{payload.supervisor_username}"
     attempts_doc = await db.rate_limits.find_one({"_id": rate_key})
     now = dt.now(tz.utc)
     window_seconds = 300  # 5 minutes
@@ -69,7 +71,25 @@ async def verify_supervisor_pin(
             attempts_doc = None
 
     # 1. Fetch the supervisor user
-    supervisor = await db.users.find_one({"username": payload.supervisor_username})
+    if payload.staff_username != current_user.get("username"):
+        raise HTTPException(status_code=403, detail="Invalid staff_username")
+
+    normalized_action = str(payload.action or "").strip().lower()
+    action_map = {
+        "delete_count_line": "count_line.delete",
+        "count_lines.delete": "count_line.delete",
+        "count_line.delete": "count_line.delete",
+    }
+    canonical_action = action_map.get(normalized_action)
+    if not canonical_action:
+        raise HTTPException(status_code=400, detail="Unsupported override action")
+
+    if canonical_action == "count_line.delete" and not payload.entity_id:
+        raise HTTPException(status_code=400, detail="entity_id is required for override action")
+
+    supervisor = await db.users.find_one(
+        org_scoped_filter(org_id, {"username": payload.supervisor_username})
+    )
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found")
 
@@ -115,7 +135,7 @@ async def verify_supervisor_pin(
     await log_service.log_activity(
         user=payload.supervisor_username,
         role=supervisor.get("role"),
-        action=f"override_{payload.action}",
+        action=f"override_{canonical_action}",
         entity_type=payload.entity_type or "override",
         entity_id=payload.entity_id,
         details={
@@ -145,7 +165,7 @@ async def verify_supervisor_pin(
                 "supervisor_username": payload.supervisor_username,
                 "staff_username": payload.staff_username,
                 "requested_by": current_user.get("username"),
-                "override_action": payload.action,
+                "override_action": canonical_action,
                 "reason_code": payload.reason_code,
                 "reason": payload.reason,
             },
@@ -156,4 +176,24 @@ async def verify_supervisor_pin(
             _safe_log_value(e, max_length=200),
         )
 
-    return {"success": True, "message": "Override authorized"}
+    token = create_supervisor_override_token(
+        {
+            "org_id": org_id,
+            "override_action": canonical_action,
+            "entity_id": payload.entity_id,
+            "entity_type": payload.entity_type or "override",
+            "requested_by": current_user.get("username"),
+            "staff_username": payload.staff_username,
+            "supervisor_username": payload.supervisor_username,
+            "supervisor_user_id": str(supervisor.get("_id") or "") or None,
+            "reason_code": payload.reason_code,
+            "reason": payload.reason,
+        }
+    )
+
+    return {
+        "success": True,
+        "message": "Override authorized",
+        "override_token": token,
+        "expires_in": 300,
+    }
