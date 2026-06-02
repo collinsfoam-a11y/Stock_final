@@ -341,7 +341,12 @@ async def release_rack(
     released = await lock_manager.release_rack_lock(rack_id, user_id)
 
     if not released:
-        logger.warning("Failed to release Redis lock for rack %s", _safe_log_value(rack_id))
+        current_owner = await lock_manager.get_rack_lock_owner(rack_id)
+        if current_owner:
+            if current_owner == user_id:
+                raise HTTPException(status_code=503, detail="Lock service unavailable")
+            raise HTTPException(status_code=409, detail=f"Rack {rack_id} is locked by {current_owner}")
+        logger.info("Rack lock already expired for rack %s", _safe_log_value(rack_id))
 
     # Update rack status
     await update_rack_status(db, rack_id, status="available")
