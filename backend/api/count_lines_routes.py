@@ -78,6 +78,12 @@ class CountLineRejectRequest(BaseModel):
     assign_to: Optional[str] = None
 
 
+class CountLineDeleteRequest(BaseModel):
+    """Mandatory reason for supervisor-initiated count line deletion."""
+
+    reason: str
+
+
 class AddQuantityRequest(BaseModel):
     """Payload for incrementing quantity on an existing count line."""
 
@@ -1506,6 +1512,15 @@ async def approve_count_line(
         count_line = await _find_count_line(db, line_id)
         if not count_line:
             raise HTTPException(status_code=404, detail="Count line not found")
+
+        # NNG-006 Segregation of Duties: creator cannot approve their own count line.
+        creator = count_line.get("counted_by") or count_line.get("created_by")
+        if creator and creator == current_user["username"]:
+            raise HTTPException(
+                status_code=403,
+                detail="Segregation of duties violation: you cannot approve a count line you created",
+            )
+
         await _ensure_count_line_mutable(db, count_line)
         await _enforce_count_line_logic_from_line(
             db=db,
@@ -2082,7 +2097,7 @@ async def _recalculate_session_stats(db, session_id: str) -> None:
 
 
 async def _log_delete_activity(
-    count_line: dict, line_id: str, current_user: dict, request: Request
+    count_line: dict, line_id: str, current_user: dict, request: Request, reason: str = ""
 ) -> None:
     """Log the delete activity if activity log service is available."""
     if not _activity_log_service:
@@ -2097,6 +2112,7 @@ async def _log_delete_activity(
             "item_code": count_line.get("item_code"),
             "session_id": count_line.get("session_id"),
             "counted_qty": count_line.get("counted_qty"),
+            "deletion_reason": reason,
         },
         ip_address=request.client.host if request and request.client else None,
         user_agent=request.headers.get("user-agent") if request else None,
@@ -2107,6 +2123,7 @@ async def _log_delete_activity(
 async def delete_count_line(
     line_id: str,
     request: Request,
+    body: CountLineDeleteRequest,
     current_user: dict = Depends(get_current_user),
 ):
     """Delete a count line (requires supervisor override)."""
@@ -2145,7 +2162,7 @@ async def delete_count_line(
             session_id=str(count_line.get("session_id") or ""),
             count_line=count_line,
         )
-        await _log_delete_activity(count_line, line_id, current_user, request)
+        await _log_delete_activity(count_line, line_id, current_user, request, reason=body.reason)
 
         return {"success": True, "message": "Count line deleted successfully"}
 

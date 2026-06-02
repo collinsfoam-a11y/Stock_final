@@ -222,7 +222,7 @@ class VarianceService:
                         "operator": "gte",
                         "value": 1.0,
                         "require_supervisor": True,
-                        "require_reason": False,
+                        "require_reason": True,
                         "enabled": True,
                     },
                     {

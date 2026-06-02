@@ -30,6 +30,8 @@ AUTHORIZED_WRITE_AUTHORITIES: dict[str, frozenset[str]] = {
         }
     ),
     "UnknownItemService": frozenset({"unknown_items"}),
+    "AdjustmentLedgerService": frozenset({"adjustment_ledger"}),
+    "AuditService": frozenset({"audit_logs"}),
 }
 _GUARD_TARGET_COLLECTIONS: tuple[str, ...] = (
     "count_lines",
@@ -38,6 +40,8 @@ _GUARD_TARGET_COLLECTIONS: tuple[str, ...] = (
     "recount_requests",
     "session_snapshots",
     "unknown_items",
+    "adjustment_ledger",
+    "audit_logs",
 )
 _GUARD_WRITE_METHODS: tuple[str, ...] = (
     "insert_one",

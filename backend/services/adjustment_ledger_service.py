@@ -19,6 +19,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from backend.services.governance_guard import write_authority
+
 logger = logging.getLogger(__name__)
 
 _LEDGER_VERSION = "adjustment_ledger.v1"
@@ -134,7 +136,8 @@ class AdjustmentLedgerService:
         entry["checksum"] = _checksum(entry)
 
         try:
-            await self.db.adjustment_ledger.insert_one(entry)
+            with write_authority("AdjustmentLedgerService"):
+                await self.db.adjustment_ledger.insert_one(entry)
         except Exception:
             logger.exception(
                 "Failed to post adjustment ledger entry for count_line_id=%s",

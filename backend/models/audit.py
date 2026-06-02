@@ -45,6 +45,8 @@ class AuditLog(BaseModel):
     actor_id: Optional[str] = None
     actor_username: Optional[str] = None
     ip_address: Optional[str] = None
+    device_id: Optional[str] = None
+    user_agent: Optional[str] = None
     resource_id: Optional[str] = None
     details: Dict[str, Any] = Field(default_factory=dict)
     status: AuditLogStatus = Field(default=AuditLogStatus.SUCCESS)

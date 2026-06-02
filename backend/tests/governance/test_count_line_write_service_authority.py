@@ -21,6 +21,8 @@ BACKEND_ROOT = Path(__file__).resolve().parents[2]
 COUNT_LINE_WRITE_SERVICE = BACKEND_ROOT / "services" / "count_line_write_service.py"
 SESSION_LIFECYCLE_SERVICE = BACKEND_ROOT / "services" / "session_lifecycle_service.py"
 UNKNOWN_ITEM_SERVICE = BACKEND_ROOT / "services" / "unknown_item_service.py"
+ADJUSTMENT_LEDGER_SERVICE = BACKEND_ROOT / "services" / "adjustment_ledger_service.py"
+AUDIT_SERVICE = BACKEND_ROOT / "services" / "audit_service.py"
 
 COLLECTION_CONTRACTS: dict[str, set[Path]] = {
     "count_lines": {COUNT_LINE_WRITE_SERVICE},
@@ -29,6 +31,8 @@ COLLECTION_CONTRACTS: dict[str, set[Path]] = {
     "recount_requests": {SESSION_LIFECYCLE_SERVICE},
     "session_snapshots": {SESSION_LIFECYCLE_SERVICE},
     "unknown_items": {UNKNOWN_ITEM_SERVICE},
+    "adjustment_ledger": {ADJUSTMENT_LEDGER_SERVICE},
+    "audit_logs": {AUDIT_SERVICE},
 }
 
 
