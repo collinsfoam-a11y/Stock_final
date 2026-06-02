@@ -15,24 +15,13 @@ import {
   UIManager,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-} from "react-native-reanimated";
-import {
-  colorPalette,
-  spacing,
-  typography,
-  borderRadius,
-  shadows,
-} from "@/theme/designTokens";
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
+import { colorPalette, spacing, typography, borderRadius, shadows } from "@/theme/designTokens";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
 
 // Enable LayoutAnimation on Android
-if (
-  Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
@@ -56,12 +45,11 @@ export const Accordion: React.FC<AccordionProps> = ({
   defaultExpanded = [],
   onItemToggle,
 }) => {
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(
-    new Set(defaultExpanded),
-  );
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(defaultExpanded));
 
   const toggleItem = (id: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    void haptics.light();
 
     setExpandedItems((prev) => {
       const newSet = new Set(prev);
@@ -129,6 +117,10 @@ const AccordionItemComponent: React.FC<AccordionItemComponentProps> = ({
         style={styles.header}
         onPress={onToggle}
         activeOpacity={0.7}
+        {...getAccessibleButtonProps({
+          label: item.title,
+          expanded: isExpanded,
+        })}
       >
         {item.icon && (
           <Ionicons
@@ -142,11 +134,7 @@ const AccordionItemComponent: React.FC<AccordionItemComponentProps> = ({
         <Text style={styles.title}>{item.title}</Text>
 
         <Animated.View style={iconStyle}>
-          <Ionicons
-            name="chevron-down"
-            size={20}
-            color={colorPalette.neutral[600]}
-          />
+          <Ionicons name="chevron-down" size={20} color={colorPalette.neutral[600]} />
         </Animated.View>
       </TouchableOpacity>
 

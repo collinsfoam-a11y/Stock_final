@@ -8,6 +8,8 @@ import { View, Text, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@/hooks/useTheme";
 import { ModernButton } from "./ModernButton";
+import { getDecorativeIconProps } from "@/utils/accessibility";
+import { FadeIn } from "./FadeIn";
 
 interface EmptyStateProps {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -16,6 +18,7 @@ interface EmptyStateProps {
   actionLabel?: string;
   onAction?: () => void;
   style?: object;
+  accessibilityLabel?: string;
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
@@ -25,16 +28,31 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   actionLabel,
   onAction,
   style,
+  accessibilityLabel,
 }) => {
   const theme = useTheme();
 
   return (
-    <View style={[styles.container, style]}>
-      <Ionicons name={icon} size={64} color={theme.colors.textSecondary} style={styles.icon} />
-      <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
-      {message && (
-        <Text style={[styles.message, { color: theme.colors.textSecondary }]}>{message}</Text>
-      )}
+    <FadeIn style={[styles.container, style]}>
+      <View
+        accessible={true}
+        accessibilityLabel={accessibilityLabel || `${title}. ${message || ""}`}
+      >
+        <Ionicons
+          name={icon}
+          size={64}
+          color={theme.colors.textSecondary}
+          style={styles.icon}
+          {...getDecorativeIconProps()}
+        />
+        <Text accessibilityRole="header" style={[styles.title, { color: theme.colors.text }]}>
+          {title}
+        </Text>
+        {message && (
+          <Text style={[styles.message, { color: theme.colors.textSecondary }]}>{message}</Text>
+        )}
+      </View>
+
       {actionLabel && onAction && (
         <View style={styles.actionContainer}>
           <ModernButton
@@ -45,7 +63,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           />
         </View>
       )}
-    </View>
+    </FadeIn>
   );
 };
 

@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import {
   Dimensions,
-  FlatList,
   Platform,
   StyleSheet,
   Text,
@@ -22,6 +21,7 @@ import {
   User,
   userTextStyles,
 } from "@/components/admin/users/userManagementShared";
+import { VirtualList } from "@/components/common/VirtualList";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
@@ -206,8 +206,9 @@ export function UsersTable({
       </View>
     ) : null;
 
+  // ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to improve scrolling performance, reduce memory usage, and prevent frame drops for potentially long lists of users.
   return (
-    <FlatList
+    <VirtualList
       contentContainerStyle={styles.listContent}
       data={users}
       keyExtractor={(user) => user.id}
@@ -216,6 +217,7 @@ export function UsersTable({
       ListHeaderComponent={renderHeader}
       refreshControl={refreshControl}
       renderItem={renderUser}
+      estimatedItemSize={showTableLayout ? 53 : 139}
     />
   );
 }
