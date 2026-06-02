@@ -6,12 +6,16 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 
 import { semanticColors as uiSemanticColors, shadows as uiShadows } from "@/theme/legacyCompat";
 interface HeaderProps {
   title: string;
   leftIcon?: keyof typeof Ionicons.glyphMap;
+  leftIconAccessibilityLabel?: string;
   rightIcon?: keyof typeof Ionicons.glyphMap;
+  rightIconAccessibilityLabel?: string;
   onLeftPress?: () => void;
   onRightPress?: () => void;
   subtitle?: string;
@@ -21,13 +25,25 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   title,
   leftIcon,
+  leftIconAccessibilityLabel,
   rightIcon,
+  rightIconAccessibilityLabel,
   onLeftPress,
   onRightPress,
   subtitle,
   showBack = false,
 }) => {
   const theme = useTheme();
+
+  const handleLeftPress = () => {
+    void haptics.light();
+    onLeftPress?.();
+  };
+
+  const handleRightPress = () => {
+    void haptics.light();
+    onRightPress?.();
+  };
 
   return (
     <>
@@ -38,8 +54,17 @@ export const Header: React.FC<HeaderProps> = ({
       <View style={[styles.container, { backgroundColor: theme.colors.primary }]}>
         <View style={styles.leftContainer}>
           {(leftIcon || showBack) && (
-            <TouchableOpacity style={styles.iconButton} onPress={onLeftPress} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={handleLeftPress}
+              activeOpacity={0.7}
+              {...getAccessibleButtonProps({
+                label: leftIconAccessibilityLabel || (leftIcon === "menu" ? "Menu" : "Go back"),
+                hint: leftIcon === "menu" ? "Opens the main menu" : "Returns to the previous screen",
+              })}
+            >
               <Ionicons
+                {...getDecorativeIconProps()}
                 name={leftIcon || "arrow-back"}
                 size={24}
                 color={uiSemanticColors.text.inverse}
@@ -55,8 +80,21 @@ export const Header: React.FC<HeaderProps> = ({
 
         <View style={styles.rightContainer}>
           {rightIcon && (
-            <TouchableOpacity style={styles.iconButton} onPress={onRightPress} activeOpacity={0.7}>
-              <Ionicons name={rightIcon} size={24} color={uiSemanticColors.text.inverse} />
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={handleRightPress}
+              activeOpacity={0.7}
+              {...getAccessibleButtonProps({
+                label: rightIconAccessibilityLabel || "Header action",
+                hint: "Performs the primary action for this screen",
+              })}
+            >
+              <Ionicons
+                {...getDecorativeIconProps()}
+                name={rightIcon}
+                size={24}
+                color={uiSemanticColors.text.inverse}
+              />
             </TouchableOpacity>
           )}
         </View>
