@@ -215,7 +215,11 @@ class SyncConflictsService:
             raise ValueError(f"Conflict {conflict_id} not found")
 
         if conflict["status"] != ConflictStatus.PENDING.value:
-            raise ValueError(f"Conflict {conflict_id} already resolved")
+            return {
+                "conflict_id": conflict_id,
+                "resolution": str(conflict.get("resolution") or "already_resolved"),
+                "resolved_data": conflict.get("resolved_data"),
+            }
 
         # Determine resolved data based on resolution strategy
         if resolution == ConflictResolution.ACCEPT_SERVER:
@@ -252,11 +256,21 @@ class SyncConflictsService:
             entity_id = str(conflict.get("entity_id") or "")
             async with mongo_transaction(self.db.client) as tx:
                 kwargs = {"session": tx} if tx is not None else {}
-                await self.db.sync_conflicts.update_one(
-                    {"_id": ObjectId(conflict_id)},
+                update_result = await self.db.sync_conflicts.update_one(
+                    {"_id": ObjectId(conflict_id), "status": ConflictStatus.PENDING.value},
                     resolution_update,
                     **kwargs,
                 )
+                if int(getattr(update_result, "matched_count", 0) or 0) == 0:
+                    latest = await self.db.sync_conflicts.find_one(
+                        {"_id": ObjectId(conflict_id)},
+                        **kwargs,
+                    )
+                    return {
+                        "conflict_id": conflict_id,
+                        "resolution": str(latest.get("resolution") if latest else "already_resolved"),
+                        "resolved_data": (latest.get("resolved_data") if latest else None),
+                    }
 
                 # --- Rule 7 & G-04: Conflict Forking ---
                 # If the entity is already APPROVED, we must FORK instead of OVERWRITING.
@@ -291,10 +305,17 @@ class SyncConflictsService:
                         db_session=tx,
                     )
         else:
-            await self.db.sync_conflicts.update_one(
-                {"_id": ObjectId(conflict_id)},
+            update_result = await self.db.sync_conflicts.update_one(
+                {"_id": ObjectId(conflict_id), "status": ConflictStatus.PENDING.value},
                 resolution_update,
             )
+            if int(getattr(update_result, "matched_count", 0) or 0) == 0:
+                latest = await self.db.sync_conflicts.find_one({"_id": ObjectId(conflict_id)})
+                return {
+                    "conflict_id": conflict_id,
+                    "resolution": str(latest.get("resolution") if latest else "already_resolved"),
+                    "resolved_data": (latest.get("resolved_data") if latest else None),
+                }
 
         logger.info(f"Conflict {conflict_id} resolved with {resolution.value} by {resolved_by}")
 
@@ -465,12 +486,9 @@ class SyncConflictsService:
                         merged_batches = [*existing_batches, *additive_batches]
                         fields["batches"] = merged_batches
 
-                delta_qty = incoming_qty if incoming_qty != current_qty else 0.0
                 fields["updated_at"] = datetime.now(UTC)
                 fields["conflict_resolved"] = True
-                update_doc: dict[str, Any] = {"$set": fields}
-                if delta_qty != 0.0:
-                    update_doc["$inc"] = {"counted_qty": delta_qty}
+                update_doc: dict[str, Any] = {"$set": {**fields, "counted_qty": incoming_qty}}
                 await self.count_line_write_service.process_write(
                     {
                         "operation": "update_one",
@@ -491,8 +509,7 @@ class SyncConflictsService:
                     strategy=strategy,
                     details={
                         "entity_id": entity_id,
-                        "merged_qty": current_qty + delta_qty,
-                        "delta_qty": delta_qty,
+                        "merged_qty": incoming_qty,
                         "incoming_qty": incoming_qty,
                         "current_qty": current_qty,
                         "merged_batches": merged_batches,

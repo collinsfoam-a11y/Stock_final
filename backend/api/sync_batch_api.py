@@ -172,6 +172,19 @@ async def validate_record(
     """
     normalized_serials = _normalize_serial_numbers(record.serial_numbers)
 
+    if normalized_serials:
+        verified_qty = record.verified_qty
+        if verified_qty is None or abs(float(verified_qty) - float(len(normalized_serials))) > 1e-9:
+            return SyncConflict(
+                client_record_id=record.client_record_id,
+                conflict_type="invalid_quantity",
+                message="Verified quantity must match serial count",
+                details={
+                    "verified_qty": record.verified_qty,
+                    "serial_count": len(normalized_serials),
+                },
+            )
+
     # Check for duplicate serial numbers
     if normalized_serials:
         validation_service = ValidationService(db)
@@ -228,11 +241,11 @@ async def validate_record(
     # Check rack lock (if rack_id provided)
     if record.rack_id:
         owner = await lock_manager.get_rack_lock_owner(record.rack_id)
-        if owner and owner != record.session_id:
+        if owner and (not user_id or owner != user_id):
             return SyncConflict(
                 client_record_id=record.client_record_id,
                 conflict_type="rack_locked",
-                message=f"Rack {record.rack_id} is locked by another session",
+                message=f"Rack {record.rack_id} is locked by another user",
                 details={"rack_id": record.rack_id, "owner": owner},
             )
 
@@ -280,13 +293,7 @@ async def sync_single_record(
             tzinfo=None
         )
         serial_numbers = _normalize_serial_numbers(record.serial_numbers)
-        counted_qty = record.verified_qty
-        if (
-            serial_numbers
-            and counted_qty is not None
-            and abs(float(counted_qty) - float(len(serial_numbers))) < 1e-9
-        ):
-            counted_qty = float(counted_qty) * 5.0
+        counted_qty = float(len(serial_numbers)) if serial_numbers else record.verified_qty
         doc = {
             "id": str(uuid.uuid4()),
             "client_record_id": record.client_record_id,
@@ -371,7 +378,7 @@ async def sync_batch(
     Batch sync endpoint - sync multiple records in one request
 
     Features:
-    - Rate limiting: 10 requests per minute per user
+    - Rate limiting: configurable requests per minute per user
     - Validates all records before syncing
     - Detects conflicts (duplicate serials, invalid data, etc.)
     - Uses circuit breaker for resilience
@@ -393,7 +400,7 @@ async def sync_batch(
             detail={
                 "message": "Rate limit exceeded for batch sync",
                 "retry_after": rate_info.get("retry_after", 60),
-                "limit": rate_info.get("limit", 10),
+                "limit": rate_info.get("limit", 120),
             },
             headers={"Retry-After": str(rate_info.get("retry_after", 60))},
         )
@@ -556,7 +563,7 @@ async def session_heartbeat(
     # Renew rack lock if provided
     rack_renewed = False
     if rack_id:
-        rack_renewed = await lock_manager.renew_rack_lock(rack_id, session_id, ttl=60)
+        rack_renewed = await lock_manager.renew_rack_lock(rack_id, user_id, ttl=60)
 
     return {
         "success": True,

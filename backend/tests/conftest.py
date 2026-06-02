@@ -28,6 +28,8 @@ os.environ.update(
         # 'SQL_SERVER_HOST': 'localhost',  # Disabled to prevent connection pool hang
         # 'SQL_SERVER_DATABASE': 'stockdb_test',
         "RATE_LIMIT_PER_MINUTE": "1000",  # Higher limits for testing
+        "RATE_LIMIT_BURST": "5000",
+        "BATCH_SYNC_RATE_LIMIT_PER_MINUTE": "5000",
         "LOG_LEVEL": "DEBUG",
         "AUTH_SINGLE_SESSION": "false",
     }
@@ -196,3 +198,12 @@ def clean_overrides():
 
     yield
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def reset_batch_sync_rate_limiter():
+    from backend.middleware.security import batch_rate_limiter
+
+    batch_rate_limiter.reset()
+    yield
+    batch_rate_limiter.reset()

@@ -4,6 +4,7 @@ Includes input sanitization, rate limiting helpers, and filter validation
 """
 
 import logging
+import os
 import re
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -204,12 +205,20 @@ class LoginRateLimiter:
 class BatchRateLimiter:
     """
     Rate limiter for batch sync operations.
-    Limits: 10 requests per minute per user.
+    Limits: configurable requests per minute per user.
     """
 
-    def __init__(self, max_requests: int = 10, window_seconds: int = 60):
-        self.max_requests = max_requests
-        self.window = timedelta(seconds=window_seconds)
+    def __init__(self, max_requests: Optional[int] = None, window_seconds: Optional[int] = None):
+        resolved_max_requests = max_requests
+        if resolved_max_requests is None:
+            resolved_max_requests = int(os.getenv("BATCH_SYNC_RATE_LIMIT_PER_MINUTE", "120"))
+
+        resolved_window_seconds = window_seconds
+        if resolved_window_seconds is None:
+            resolved_window_seconds = int(os.getenv("BATCH_SYNC_RATE_LIMIT_WINDOW_SECONDS", "60"))
+
+        self.max_requests = resolved_max_requests
+        self.window = timedelta(seconds=resolved_window_seconds)
         self.requests: dict[str, list] = defaultdict(list)
 
     def is_allowed(self, user_id: str) -> tuple[bool, dict[str, Any]]:
@@ -240,6 +249,9 @@ class BatchRateLimiter:
             "limit": self.max_requests,
             "remaining": self.max_requests - current_count - 1,
         }
+
+    def reset(self) -> None:
+        self.requests.clear()
 
 
 # Global instances

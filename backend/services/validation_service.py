@@ -307,6 +307,7 @@ class ValidationService:
             _normalize_uom(doc.get("input_uom"))
             or _normalize_uom(doc.get("uom_code"))
             or _normalize_uom(doc.get("uom_name"))
+            or _normalize_uom(doc.get("uom"))
             or _normalize_uom(item.get("uom_code"))
             or _normalize_uom(item.get("uom_name"))
             or _normalize_uom(item.get("uom"))
@@ -345,6 +346,9 @@ class ValidationService:
         serial_numbers = _normalize_serials(doc)
         item_serialized = item.get("is_serialized")
         is_serial_item = _as_bool(item_serialized, default=False) or bool(serial_numbers)
+
+        if is_serial_item:
+            conversion_factor = Decimal("1")
 
         if not allow_fraction and qty != qty.to_integral_value():
             raise GovernanceViolation("FRACTION_NOT_ALLOWED")

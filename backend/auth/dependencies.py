@@ -13,6 +13,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from backend.utils.api_utils import sanitize_for_logging
 
 from backend.tenancy.constants import DEFAULT_ORG_ID
+from backend.tenancy.org_context import set_current_org_id
 
 from .cookies import get_access_token_cookie
 from .jwt_provider import jwt
@@ -225,6 +226,8 @@ async def get_current_user(
             except Exception:
                 pass
             user["org_id"] = DEFAULT_ORG_ID
+
+        set_current_org_id(str(user.get("org_id") or DEFAULT_ORG_ID))
 
         logger.debug("Authentication successful for user: %s", sanitize_for_logging(username))
         return user

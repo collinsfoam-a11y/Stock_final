@@ -238,3 +238,49 @@ async def test_validate_record_blocks_same_serial_for_same_item():
     assert conflict is not None
     assert conflict.conflict_type == "duplicate_serial"
     assert conflict.message == "Serial already exists for this item."
+
+
+@pytest.mark.asyncio
+async def test_validate_record_blocks_serial_qty_mismatch():
+    db = InMemoryDatabase()
+    record = SyncRecord(
+        client_record_id="offline-line-qty",
+        session_id="session-a",
+        location_id="showroom",
+        floor_id="1",
+        rack_id="A1",
+        item_code="ITEM-1",
+        verified_qty=2,
+        serial_numbers=["SER-1", "SER-2", "SER-3"],
+        created_at=datetime.now(timezone.utc).isoformat(),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    lock_manager = SimpleNamespace(get_rack_lock_owner=AsyncMock(return_value=None))
+
+    conflict = await validate_record(record, db, lock_manager, user_id="staff1")
+
+    assert conflict is not None
+    assert conflict.conflict_type == "invalid_quantity"
+    assert conflict.message == "Verified quantity must match serial count"
+
+
+@pytest.mark.asyncio
+async def test_validate_record_blocks_when_rack_locked_by_other_user():
+    db = InMemoryDatabase()
+    record = SyncRecord(
+        client_record_id="offline-line-lock",
+        session_id="session-a",
+        location_id="showroom",
+        floor_id="1",
+        rack_id="A1",
+        item_code="ITEM-1",
+        verified_qty=1,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    lock_manager = SimpleNamespace(get_rack_lock_owner=AsyncMock(return_value="other-user"))
+
+    conflict = await validate_record(record, db, lock_manager, user_id="staff1")
+
+    assert conflict is not None
+    assert conflict.conflict_type == "rack_locked"

@@ -14,6 +14,7 @@ from httpx import ASGITransport, AsyncClient
 from backend.api.session_management_api import _collect_snapshot_items
 from backend.api.schemas import SessionCreate
 from backend.server import app
+from backend.tenancy.scoping import org_scoped_filter
 from backend.tests.utils.in_memory_db import InMemoryDatabase
 
 
@@ -173,17 +174,28 @@ class TestCreateSessionEndpoint:
         inserted_session: dict[str, object] = {}
         mock_db.sessions = AsyncMock()
 
+        def _extract_lookup_id(query: object) -> object:
+            if not isinstance(query, dict):
+                return None
+            direct = query.get("id") or query.get("session_id")
+            if direct is not None:
+                return direct
+            if isinstance(query.get("$or"), list):
+                for clause in query["$or"]:
+                    found = _extract_lookup_id(clause)
+                    if found is not None:
+                        return found
+            if isinstance(query.get("$and"), list):
+                for clause in query["$and"]:
+                    found = _extract_lookup_id(clause)
+                    if found is not None:
+                        return found
+            return None
+
         async def _sessions_find_one(query, *args, **kwargs):
             if "staff_user" in query:
                 return None
-            lookup_id = query.get("id") or query.get("session_id")
-            if lookup_id is None and isinstance(query.get("$or"), list):
-                for clause in query["$or"]:
-                    if not isinstance(clause, dict):
-                        continue
-                    lookup_id = clause.get("id") or clause.get("session_id")
-                    if lookup_id is not None:
-                        break
+            lookup_id = _extract_lookup_id(query)
             if inserted_session and lookup_id in {
                 inserted_session.get("id"),
                 inserted_session.get("session_id"),
@@ -1102,12 +1114,15 @@ class TestSessionIdentifierFallbacks:
         filter_query = mock_db.sessions.update_one.await_args.args[0]
         assert filter_query == {
             "$and": [
-                {
-                    "$or": [
-                        {"id": "sess_heartbeat_only"},
-                        {"session_id": "sess_heartbeat_only"},
-                    ]
-                },
+                org_scoped_filter(
+                    None,
+                    {
+                        "$or": [
+                            {"id": "sess_heartbeat_only"},
+                            {"session_id": "sess_heartbeat_only"},
+                        ]
+                    },
+                ),
                 {
                     "$or": [
                         {"version": 0},

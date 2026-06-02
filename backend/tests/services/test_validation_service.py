@@ -113,3 +113,57 @@ async def test_enforce_count_line_business_rules_rejects_global_duplicate_serial
                 "serial_numbers": ["sn-dup-1"],
             }
         )
+
+
+@pytest.mark.asyncio
+async def test_enforce_count_line_business_rules_serial_ignores_uom_conversion_factor():
+    db = InMemoryDatabase()
+    service = ValidationService(db, strict_mode=False, write_logs=False)
+    await db.erp_items.insert_one(
+        {
+            "item_code": "ITEM-SERIAL-CONV",
+            "uom_code": "NOS",
+            "allow_fraction": False,
+            "is_serialized": True,
+        }
+    )
+
+    result = await service.enforce_count_line_business_rules(
+        {
+            "session_id": "sess-1",
+            "item_code": "ITEM-SERIAL-CONV",
+            "counted_qty": 2,
+            "conversion_factor": 5,
+            "serial_numbers": ["SN-1", "SN-2"],
+        }
+    )
+
+    assert result["document"]["counted_qty"] == 2.0
+    assert result["document"]["conversion_factor"] == 1.0
+
+
+@pytest.mark.asyncio
+async def test_enforce_count_line_business_rules_non_serial_applies_uom_conversion_factor():
+    db = InMemoryDatabase()
+    service = ValidationService(db, strict_mode=False, write_logs=False)
+    await db.erp_items.insert_one(
+        {
+            "item_code": "ITEM-NON-SERIAL-CONV",
+            "uom_code": "NOS",
+            "allow_fraction": False,
+            "is_serialized": False,
+        }
+    )
+
+    result = await service.enforce_count_line_business_rules(
+        {
+            "session_id": "sess-1",
+            "item_code": "ITEM-NON-SERIAL-CONV",
+            "counted_qty": 2,
+            "conversion_factor": 5,
+        }
+    )
+
+    assert result["document"]["counted_qty"] == 10.0
+    assert result["document"]["input_qty"] == 2.0
+    assert result["document"]["conversion_factor"] == 5.0

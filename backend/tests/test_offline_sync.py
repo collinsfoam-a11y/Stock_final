@@ -70,13 +70,48 @@ async def test_modern_batch_sync_success(async_client: AsyncClient, authenticate
     assert line["floor_id"] == "F1"
     assert line["rack_id"] == "R1"
     assert line["item_code"] == "ITEM-100"
-    assert line["counted_qty"] == 10.0
+    assert line["counted_qty"] == 2.0
     assert line["idempotency_key"] == client_record_id
 
     replay = await async_client.post("/api/sync/batch", json=payload, headers=authenticated_headers)
     assert replay.status_code == 200
     assert client_record_id in replay.json()["ok"]
     assert await test_db.count_lines.count_documents({"client_record_id": client_record_id}) == 1
+
+
+@pytest.mark.asyncio
+async def test_modern_batch_sync_serial_qty_matches_count(async_client: AsyncClient, authenticated_headers, test_db):
+    session_id = str(uuid.uuid4())
+    client_record_id = "rec_" + str(uuid.uuid4())
+    await _seed_active_session_with_snapshot(test_db, session_id=session_id, item_code="ITEM-200")
+
+    serials = [f"SN-200-{i}" for i in range(10)]
+    payload = {
+        "records": [
+            {
+                "client_record_id": client_record_id,
+                "session_id": session_id,
+                "location_id": "LOC-1",
+                "floor_id": "F1",
+                "rack_id": "R1",
+                "item_code": "ITEM-200",
+                "verified_qty": 10.0,
+                "serial_numbers": serials,
+                "created_at": "2024-01-01T10:00:00Z",
+                "updated_at": "2024-01-01T10:05:00Z",
+            }
+        ],
+        "batch_id": "batch-serial-10",
+    }
+
+    response = await async_client.post(
+        "/api/sync/batch", json=payload, headers=authenticated_headers
+    )
+    assert response.status_code == 200
+
+    line = await test_db.count_lines.find_one({"client_record_id": client_record_id})
+    assert line is not None
+    assert line["counted_qty"] == 10.0
 
 
 @pytest.mark.asyncio

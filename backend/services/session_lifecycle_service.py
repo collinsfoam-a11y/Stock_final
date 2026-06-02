@@ -19,6 +19,8 @@ from backend.services.governance_guard import (
 from backend.services.projection_write_service import ProjectionWriteService
 from backend.services.transaction_manager import mongo_transaction
 from backend.services.validation_service import ValidationService
+from backend.tenancy.org_context import get_current_org_id
+from backend.tenancy.scoping import org_scoped_filter
 
 
 def _utc_now() -> datetime:
@@ -118,7 +120,10 @@ class SessionLifecycleService:
         *,
         db_session: Optional[Any] = None,
     ) -> Optional[dict[str, Any]]:
-        return await self.db.sessions.find_one(self._lookup(session_id), **self._kwargs(db_session))
+        return await self.db.sessions.find_one(
+            org_scoped_filter(None, self._lookup(session_id)),
+            **self._kwargs(db_session),
+        )
 
     async def ensure_session_exists(
         self,
@@ -170,7 +175,7 @@ class SessionLifecycleService:
     ) -> None:
         filter_doc = {
             "$and": [
-                self._lookup(session_id),
+                org_scoped_filter(None, self._lookup(session_id)),
                 build_version_filter(expected_version),
             ]
         }
@@ -268,7 +273,10 @@ class SessionLifecycleService:
             raise GovernanceViolation("CRITICAL: snapshot_doc is required")
 
         kwargs = self._kwargs(db_session)
-        existing = await self.db.session_snapshots.find_one({"session_id": session_id}, **kwargs)
+        existing = await self.db.session_snapshots.find_one(
+            org_scoped_filter(None, {"session_id": session_id}),
+            **kwargs,
+        )
         if isinstance(existing, dict):
             raise GovernanceViolation("CRITICAL: Baseline snapshot already exists and is immutable")
 
@@ -280,6 +288,7 @@ class SessionLifecycleService:
 
         snapshot_to_insert = dict(snapshot_doc)
         snapshot_to_insert["session_id"] = session_id
+        snapshot_to_insert["org_id"] = get_current_org_id()
         await self._execute_authorized_write(
             lambda: self.db.session_snapshots.insert_one(snapshot_to_insert, **kwargs)
         )
@@ -314,6 +323,7 @@ class SessionLifecycleService:
 
         now_dt = _utc_now()
         created_doc = dict(session_doc)
+        created_doc["org_id"] = get_current_org_id()
         created_doc["status"] = "CREATED"
         created_doc.setdefault("workflow_status", "DRAFT")
         created_doc.setdefault("id", created_doc.get("session_id"))
@@ -332,6 +342,7 @@ class SessionLifecycleService:
 
         mirror_doc = {
             "session_id": created_doc["id"],
+            "org_id": created_doc["org_id"],
             "user_id": username,
             "status": "CREATED",
             "started_at": now_dt,
@@ -434,7 +445,7 @@ class SessionLifecycleService:
         kwargs = self._kwargs(db_session)
         await self._execute_authorized_write(
             lambda: self.db.verification_sessions.update_one(
-                {"session_id": session_id},
+                org_scoped_filter(None, {"session_id": session_id}),
                 {"$set": {"status": target, "last_heartbeat": now_dt}},
                 **kwargs,
             )
@@ -798,7 +809,7 @@ class SessionLifecycleService:
         db_session: Optional[Any] = None,
     ) -> Optional[dict[str, Any]]:
         return await self.db.recount_requests.find_one(
-            self._recount_lookup(recount_id),
+            org_scoped_filter(None, self._recount_lookup(recount_id)),
             **self._kwargs(db_session),
         )
 
@@ -826,6 +837,7 @@ class SessionLifecycleService:
 
         now_dt = _utc_now()
         created_doc = dict(recount_doc)
+        created_doc["org_id"] = get_current_org_id()
         created_doc.setdefault("status", "pending")
         created_doc.setdefault("created_at", now_dt)
         created_doc.setdefault("updated_at", now_dt)
@@ -906,7 +918,7 @@ class SessionLifecycleService:
 
         await self._execute_authorized_write(
             lambda: self.db.recount_requests.update_one(
-                lookup,
+                org_scoped_filter(None, lookup),
                 {"$set": update_fields},
                 **kwargs,
             )
@@ -1052,7 +1064,7 @@ class SessionLifecycleService:
 
         await self._execute_authorized_write(
             lambda: self.db.verification_sessions.update_one(
-                {"session_id": session_id},
+                org_scoped_filter(None, {"session_id": session_id}),
                 {
                     "$set": {
                         "status": "FINALIZED",
@@ -1217,7 +1229,7 @@ class SessionLifecycleService:
         kwargs = self._kwargs(db_session)
         await self._execute_authorized_write(
             lambda: self.db.verification_sessions.update_one(
-                {"session_id": session_id},
+                org_scoped_filter(None, {"session_id": session_id}),
                 {"$set": {"status": "ARCHIVED", "last_heartbeat": now_dt}},
                 **kwargs,
             )
@@ -1329,7 +1341,7 @@ class SessionLifecycleService:
         kwargs = self._kwargs(db_session)
         await self._execute_authorized_write(
             lambda: self.db.verification_sessions.update_one(
-                {"session_id": session_id},
+                org_scoped_filter(None, {"session_id": session_id}),
                 {"$set": {"status": "REVIEW", "last_heartbeat": now_dt}},
                 **kwargs,
             )

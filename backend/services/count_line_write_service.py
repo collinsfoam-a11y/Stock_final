@@ -24,6 +24,8 @@ from backend.services.snapshot_service import SnapshotService
 from backend.services.transaction_manager import mongo_transaction
 from backend.services.validation_service import ValidationService
 from backend.services.variance_service import VarianceService
+from backend.tenancy.org_context import get_current_org_id
+from backend.tenancy.scoping import org_scoped_filter
 
 logger = logging.getLogger(__name__)
 
@@ -235,6 +237,18 @@ class CountLineWriteService:
             type(value).__name__,
         )
         return resolved
+
+    def _apply_tenant_scope(self, payload: dict[str, Any]) -> None:
+        operation = str(payload.get("operation") or "").strip().lower()
+        org_id = get_current_org_id()
+        if operation == "insert_one":
+            document = payload.get("document")
+            if isinstance(document, dict):
+                document["org_id"] = org_id
+        if operation in {"update_one", "update_many", "delete_one", "delete_many"}:
+            filter_query = payload.get("filter")
+            if isinstance(filter_query, dict):
+                payload["filter"] = org_scoped_filter(None, filter_query)
 
     async def _execute_authorized_write(self, write_call: Any) -> Any:
         with write_authority("CountLineWriteService"):
@@ -618,6 +632,7 @@ class CountLineWriteService:
 
         ctx = dict(context)
         ctx["db_session"] = db_session
+        self._apply_tenant_scope(payload)
 
         await self._assert_snapshot_integrity_for_write(payload, ctx)
         await self._assert_mandatory_write_invariants(payload, ctx)
@@ -725,7 +740,7 @@ class CountLineWriteService:
             upserted_id = getattr(resolved_result, "upserted_id", None)
             if upserted_id is not None:
                 updated = await self._resolve_awaitable(
-                    self.db.count_lines.find_one({"_id": upserted_id}, **kwargs)
+                    self.db.count_lines.find_one(org_scoped_filter(None, {"_id": upserted_id}), **kwargs)
                 )
             elif isinstance(filter_query, dict):
                 updated = await self._resolve_awaitable(
@@ -764,10 +779,13 @@ class CountLineWriteService:
             if session_id and idempotency_key:
                 existing = await self._resolve_awaitable(
                     self.db.count_lines.find_one(
-                        {
-                            "session_id": session_id,
-                            "idempotency_key": idempotency_key,
-                        },
+                        org_scoped_filter(
+                            None,
+                            {
+                                "session_id": session_id,
+                                "idempotency_key": idempotency_key,
+                            },
+                        ),
                         **kwargs,
                     )
                 )
@@ -787,7 +805,7 @@ class CountLineWriteService:
                         ]
                     }
                 previous_doc = await self._resolve_awaitable(
-                    self.db.count_lines.find_one(previous_filter, **kwargs)
+                    self.db.count_lines.find_one(org_scoped_filter(None, previous_filter), **kwargs)
                 )
                 if not isinstance(previous_doc, dict):
                     raise GovernanceViolation(
@@ -803,7 +821,10 @@ class CountLineWriteService:
             semantic_hash = document.get("semantic_hash") or _build_semantic_hash(document)
             document["semantic_hash"] = semantic_hash
             existing_semantic = await self._resolve_awaitable(
-                self.db.count_lines.find_one({"semantic_hash": semantic_hash}, **kwargs)
+                self.db.count_lines.find_one(
+                    org_scoped_filter(None, {"semantic_hash": semantic_hash}),
+                    **kwargs,
+                )
             )
             if isinstance(existing_semantic, dict):
                 raise GovernanceViolation(
@@ -846,7 +867,10 @@ class CountLineWriteService:
                     if isinstance(set_doc, dict):
                         set_doc["semantic_hash"] = semantic_hash
                     existing_collision = await self._resolve_awaitable(
-                        self.db.count_lines.find_one({"semantic_hash": semantic_hash}, **kwargs)
+                        self.db.count_lines.find_one(
+                            org_scoped_filter(None, {"semantic_hash": semantic_hash}),
+                            **kwargs,
+                        )
                     )
                     existing_collision_id = (
                         str(existing_collision.get("id") or existing_collision.get("_id"))

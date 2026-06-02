@@ -28,6 +28,7 @@ from backend.api.count_lines_routes import (
 )
 from backend.tests.utils.in_memory_db import InMemoryDatabase
 from backend.api.schemas import CountLineCreate
+from backend.tenancy.scoping import org_scoped_filter
 
 
 class AsyncIter:
@@ -712,10 +713,26 @@ class TestCreateCountLine:
             "version": 2,
         }
 
+        def _extract_identity(query: object) -> tuple[object, object]:
+            if not isinstance(query, dict):
+                return None, None
+            if query.get("id") is not None or query.get("_id") is not None:
+                return query.get("id"), query.get("_id")
+            if isinstance(query.get("$and"), list):
+                for clause in query["$and"]:
+                    found_id, found__id = _extract_identity(clause)
+                    if found_id is not None or found__id is not None:
+                        return found_id, found__id
+            if isinstance(query.get("$or"), list):
+                for clause in query["$or"]:
+                    found_id, found__id = _extract_identity(clause)
+                    if found_id is not None or found__id is not None:
+                        return found_id, found__id
+            return None, None
+
         async def _find_one_count_line(filter_query, *args, **kwargs):
-            if filter_query == {"id": "line-existing"}:
-                return dict(rejected_line)
-            if filter_query == {"_id": "mongo-line-1"}:
+            found_id, found__id = _extract_identity(filter_query)
+            if found_id == "line-existing" or found__id == "mongo-line-1":
                 return dict(rejected_line)
             return None
 
@@ -1382,7 +1399,11 @@ class TestCountLinesAPIEdgeCases:
         filter_query = mock_db.sessions.update_one.await_args_list[-1].args[0]
         assert "$and" in filter_query
         assert any(
-            part == {"$or": [{"id": "session123"}, {"session_id": "session123"}]}
+            part
+            == org_scoped_filter(
+                None,
+                {"$or": [{"id": "session123"}, {"session_id": "session123"}]},
+            )
             for part in filter_query["$and"]
         )
         assert any(

@@ -10,6 +10,7 @@ from backend.services.concurrency import ConcurrencyError
 from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.governance_guard import GovernanceViolation
 from backend.services.session_lifecycle_service import SessionLifecycleService
+from backend.tenancy.scoping import org_scoped_filter
 from backend.tests.utils.in_memory_db import InMemoryDatabase
 
 
@@ -300,7 +301,10 @@ async def test_session_lifecycle_occ_update_scopes_filter_by_session_and_version
     filter_doc = db.sessions.update_one.await_args.args[0]
     assert filter_doc == {
         "$and": [
-            {"$or": [{"id": "sess-occ-filter"}, {"session_id": "sess-occ-filter"}]},
+            org_scoped_filter(
+                None,
+                {"$or": [{"id": "sess-occ-filter"}, {"session_id": "sess-occ-filter"}]},
+            ),
             {"$or": [{"version": 0}, {"version": {"$exists": False}}]},
         ]
     }
