@@ -1,6 +1,7 @@
 import React from "react";
-import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { VirtualList } from "@/components/common/VirtualList";
 
 import {
   Column,
@@ -153,21 +154,14 @@ export function RealtimeDashboardTable({
               })}
             </View>
 
-            <FlatList
+            {/* ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to improve rendering performance and reduce memory usage for potentially long realtime dashboard item lists. */}
+            <VirtualList
               data={data}
               keyExtractor={(item) => String(item.id)}
               renderItem={renderRow}
               extraData={visibleColumns}
               nestedScrollEnabled
-              removeClippedSubviews
-              initialNumToRender={12}
-              maxToRenderPerBatch={12}
-              windowSize={7}
-              getItemLayout={(_, index) => ({
-                length: ROW_HEIGHT,
-                offset: ROW_HEIGHT * index,
-                index,
-              })}
+              estimatedItemSize={ROW_HEIGHT}
               ListEmptyComponent={
                 <View style={styles.emptyState}>
                   <Ionicons
