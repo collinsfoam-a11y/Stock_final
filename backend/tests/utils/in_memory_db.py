@@ -447,6 +447,9 @@ class InMemoryDatabase:
         self.conflict_forks = InMemoryCollection()
         self.governance_events = InMemoryCollection()
 
+        # Adjustment Ledger (immutable)
+        self.adjustment_ledger = InMemoryCollection()
+
     async def command(self, *_args, **_kwargs):
         """Simulate db.command('ping')."""
         return {"ok": 1}

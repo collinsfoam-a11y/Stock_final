@@ -399,10 +399,12 @@ class ProjectionWriteService:
         db_session: Optional[Any],
     ) -> list[dict[str, Any]]:
         kwargs = self._kwargs(db_session)
-        cursor = self.db.count_lines.find(
+        find_result = self.db.count_lines.find(
             {"session_id": session_id, "archived": {"$ne": True}},
             **kwargs,
         )
+        # find() is sync in Motor/InMemoryDB but may be async in test mocks; resolve if needed
+        cursor = await find_result if inspect.isawaitable(find_result) else find_result
         lines: list[dict[str, Any]] = []
         if hasattr(cursor, "__aiter__"):
             try:

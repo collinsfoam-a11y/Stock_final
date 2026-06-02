@@ -1563,17 +1563,39 @@ async def approve_count_line(
                 barcode=count_line.get("barcode"),
             )
 
+        # Post to immutable adjustment ledger
+        ledger_entry_id: str | None = None
+        try:
+            from backend.services.adjustment_ledger_service import AdjustmentLedgerService
+
+            ledger_service = AdjustmentLedgerService(db)
+            ledger_entry_id = await ledger_service.post_approved_adjustment(
+                count_line=count_line,
+                approved_by=current_user["username"],
+                approval_note=request.notes if request else None,
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to post adjustment ledger entry for count_line %s: %s",
+                _safe_log_value(line_id),
+                _safe_log_value(e, max_length=200),
+            )
+
         # Audit Log Approval
         try:
             from backend.services.audit_service import AuditService
 
             audit_service = AuditService(db)
             await audit_service.log_event(
-                event_type=AuditEventType.STOCK_COUNT_SUBMITTED,  # Using closest type or add generic stock event
+                event_type=AuditEventType.ADJUSTMENT_POSTED,
                 status=AuditLogStatus.SUCCESS,
                 actor_username=current_user["username"],
                 resource_id=line_id,
-                details={"action": "approve_count_line", "line_id": line_id},
+                details={
+                    "action": "approve_count_line",
+                    "line_id": line_id,
+                    "ledger_entry_id": ledger_entry_id,
+                },
             )
         except Exception as e:
             logger.error(
@@ -1581,7 +1603,7 @@ async def approve_count_line(
                 _safe_log_value(e, max_length=200),
             )
 
-        return {"success": True, "message": "Count line approved"}
+        return {"success": True, "message": "Count line approved", "ledger_entry_id": ledger_entry_id}
     except HTTPException:
         raise
     except Exception as e:
