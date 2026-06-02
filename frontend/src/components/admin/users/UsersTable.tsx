@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import {
   Dimensions,
-  FlatList,
   Platform,
   StyleSheet,
   Text,
@@ -25,6 +24,7 @@ import {
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
+import { VirtualList } from "@/components/common/VirtualList";
 
 const { width } = Dimensions.get("window");
 const isWeb = Platform.OS === "web";
@@ -207,16 +207,20 @@ export function UsersTable({
     ) : null;
 
   return (
-    <FlatList
-      contentContainerStyle={styles.listContent}
-      data={users}
-      keyExtractor={(user) => user.id}
-      ListEmptyComponent={() => <EmptyUsersState styles={styles} uiTokens={uiTokens} />}
-      ListFooterComponent={renderFooter}
-      ListHeaderComponent={renderHeader}
-      refreshControl={refreshControl}
-      renderItem={renderUser}
-    />
+    <>
+      {/* ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to significantly improve rendering performance and reduce memory usage for potentially long lists of users. */}
+      <VirtualList
+        estimatedItemSize={showTableLayout ? 60 : 140}
+        contentContainerStyle={styles.listContent}
+        data={users}
+        keyExtractor={(user) => user.id}
+        ListEmptyComponent={() => <EmptyUsersState styles={styles} uiTokens={uiTokens} />}
+        ListFooterComponent={renderFooter}
+        ListHeaderComponent={renderHeader}
+        refreshControl={refreshControl}
+        renderItem={renderUser}
+      />
+    </>
   );
 }
 
