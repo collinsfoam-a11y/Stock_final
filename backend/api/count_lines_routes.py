@@ -37,6 +37,7 @@ from backend.services.notification_service import NotificationService
 from backend.services.snapshot_service import SnapshotService
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.transaction_manager import mongo_transaction
+from backend.services.read_router import InventoryReadRouter, ProjectionReadError
 from backend.services.variant_service import VariantService
 from backend.utils.api_utils import sanitize_for_logging
 
@@ -1758,7 +1759,28 @@ async def check_item_counted(
             # Frontend expects a stable `line_id` field for follow-up actions (add qty, etc).
             line.setdefault("line_id", line.get("id") or line["_id"])
 
-        return {"already_counted": len(count_lines) > 0, "count_lines": count_lines}
+        read_router = InventoryReadRouter(db)
+        try:
+            totals = await read_router.get_session_item_totals(
+                session_id=session_id,
+                item_code=item_code,
+                endpoint="count-lines/check",
+            )
+        except ProjectionReadError as exc:
+            raise HTTPException(status_code=503, detail=str(exc))
+
+        return {
+            "already_counted": len(count_lines) > 0,
+            "count_lines": count_lines,
+            "aggregate_source": totals["source"],
+            "item_totals": {
+                "total_qty": totals["total_qty"],
+                "source": totals["source"],
+            },
+            "batch_totals": totals["batch_totals"],
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(
             "Error checking item count: %s",
@@ -1771,6 +1793,7 @@ async def check_item_counted(
 async def check_serial_uniqueness(
     session_id: str,
     serial_number: str,
+    item_code: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -1795,10 +1818,14 @@ async def check_serial_uniqueness(
         "status": 1,
     }
 
+    item_code_value = item_code if isinstance(item_code, str) and item_code.strip() else None
+    scope = "item" if item_code_value else "global"
+
     for candidate in candidates:
         existing = await db.count_lines.find_one(
             {
                 "session_id": session_id,
+                **({"item_code": item_code_value} if item_code_value else {}),
                 "$or": [
                     {"serial_numbers": candidate},
                     {"serial_entries.serial_number": candidate},
@@ -1807,9 +1834,9 @@ async def check_serial_uniqueness(
             projection,
         )
         if existing:
-            return {"exists": True, **existing}
+            return {"exists": True, "scope": scope, **existing}
 
-    return {"exists": False}
+    return {"exists": False, "scope": scope}
 
 
 @router.get("/count-lines/session/{session_id}")
@@ -2120,29 +2147,15 @@ async def check_item_scan_status(
     """Check if item has been scanned in this session and where"""
     db = _get_db_client()
 
-    # Find all count lines for this item in this session
-    cursor = db.count_lines.find({"session_id": session_id, "item_code": item_code})
-
-    count_lines = await cursor.to_list(None)
-
-    if not count_lines:
-        return {"scanned": False, "total_qty": 0, "locations": []}
-
-    total_qty = sum(line.get("counted_qty", 0) for line in count_lines)
-
-    locations = []
-    for line in count_lines:
-        locations.append(
-            {
-                "floor_no": line.get("floor_no"),
-                "rack_no": line.get("rack_no"),
-                "counted_qty": line.get("counted_qty"),
-                "counted_by": line.get("counted_by"),
-                "counted_at": line.get("counted_at"),
-            }
+    read_router = InventoryReadRouter(db)
+    try:
+        return await read_router.get_session_item_scan_status(
+            session_id=session_id,
+            item_code=item_code,
+            endpoint="scan-status",
         )
-
-    return {"scanned": True, "total_qty": total_qty, "locations": locations}
+    except ProjectionReadError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
 
 
 @router.post("/count-lines/bulk/approve")

@@ -242,10 +242,16 @@ class ValidationService:
         # Compatibility fallback during phased migration. This should only matter
         # for legacy rows that have not yet been backfilled into serial_registry.
         count_line_query: dict[str, Any]
+        serial_clause: dict[str, Any] = {
+            "$or": [
+                {"serial_numbers": normalized},
+                {"serial_entries.serial_number": normalized},
+            ]
+        }
         if normalized_item_code:
             count_line_query = {
                 "$and": [
-                    {"serial_numbers": normalized},
+                    serial_clause,
                     {
                         "$or": [
                             {"item_id": normalized_item_code},
@@ -255,7 +261,7 @@ class ValidationService:
                 ]
             }
         else:
-            count_line_query = {"serial_numbers": normalized}
+            count_line_query = serial_clause
 
         count_line_match = await self.db.count_lines.find_one(count_line_query, **kwargs)
         if isinstance(count_line_match, dict):

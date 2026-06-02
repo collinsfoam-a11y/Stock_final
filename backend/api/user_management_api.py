@@ -135,6 +135,14 @@ class BulkActionResult(BaseModel):
     message: str
 
 
+class ResetPasswordRequest(BaseModel):
+    new_password: str = Field(..., min_length=6, max_length=128)
+
+
+class ResetPinRequest(BaseModel):
+    new_pin: str = Field(..., pattern=r"^\d{4}$")
+
+
 # ============================================================================
 # Helper Functions
 # ============================================================================
@@ -782,13 +790,18 @@ async def get_available_roles(
 @user_management_router.post("/{user_id}/reset-password")
 async def reset_user_password(
     user_id: str,
-    new_password: str = Query(..., min_length=6, max_length=128),
+    payload: Optional[ResetPasswordRequest] = None,
+    new_password: Optional[str] = Query(None, min_length=6, max_length=128),
     current_user: dict = Depends(require_admin),
 ):
     """
     Reset a user's password.
     Requires admin role.
     """
+    password_value = payload.new_password if payload else new_password
+    if not password_value:
+        raise HTTPException(status_code=422, detail="new_password is required")
+
     db = get_db()
     oid, user = await _resolve_user_or_raise(db, user_id)
 
@@ -796,7 +809,7 @@ async def reset_user_password(
         {"_id": oid},
         {
             "$set": {
-                "hashed_password": get_password_hash(new_password),
+                "hashed_password": get_password_hash(password_value),
                 "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
             }
         },
@@ -814,13 +827,18 @@ async def reset_user_password(
 @user_management_router.post("/{user_id}/reset-pin")
 async def reset_user_pin(
     user_id: str,
-    new_pin: str = Query(..., pattern=r"^\d{4}$"),
+    payload: Optional[ResetPinRequest] = None,
+    new_pin: Optional[str] = Query(None, pattern=r"^\d{4}$"),
     current_user: dict = Depends(require_admin),
 ):
     """
     Reset a user's PIN.
     Requires admin role.
     """
+    pin_value = payload.new_pin if payload else new_pin
+    if not pin_value:
+        raise HTTPException(status_code=422, detail="new_pin is required")
+
     db = get_db()
     oid, user = await _resolve_user_or_raise(db, user_id)
 
@@ -828,8 +846,8 @@ async def reset_user_pin(
         {"_id": oid},
         {
             "$set": {
-                "pin_hash": get_pin_hash(new_pin),
-                "pin_lookup_hash": get_pin_lookup_hash(new_pin),
+                "pin_hash": get_pin_hash(pin_value),
+                "pin_lookup_hash": get_pin_lookup_hash(pin_value),
                 "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
             }
         },

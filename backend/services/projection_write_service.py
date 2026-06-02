@@ -403,24 +403,22 @@ class ProjectionWriteService:
             {"session_id": session_id, "archived": {"$ne": True}},
             **kwargs,
         )
+        cursor = await self._resolve_result(cursor)
         lines: list[dict[str, Any]] = []
-        if hasattr(cursor, "__aiter__"):
-            try:
-                async for line in cursor:
-                    if not isinstance(line, dict):
-                        continue
-                    if is_superseded_count_line(line):
-                        continue
-                    lines.append(line)
-                return lines
-            except TypeError:
-                lines = []
         if hasattr(cursor, "to_list"):
             try:
                 raw_lines = await self._resolve_result(cursor.to_list(length=10000))
             except Exception:
                 raw_lines = []
             for line in raw_lines or []:
+                if not isinstance(line, dict):
+                    continue
+                if is_superseded_count_line(line):
+                    continue
+                lines.append(line)
+            return lines
+        if hasattr(cursor, "__aiter__"):
+            async for line in cursor:
                 if not isinstance(line, dict):
                     continue
                 if is_superseded_count_line(line):
