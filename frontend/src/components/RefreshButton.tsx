@@ -3,6 +3,9 @@ import { TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { colors as uiColors } from "@/theme/legacyCompat";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+
 interface RefreshButtonProps {
   onRefresh: () => void;
   loading?: boolean;
@@ -16,17 +19,28 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({
   size = 24,
   color = uiColors.success[500],
 }) => {
+  const handlePress = () => {
+    void haptics.light();
+    onRefresh();
+  };
+
   return (
     <TouchableOpacity
       style={[styles.button, { opacity: loading ? 0.6 : 1 }]}
-      onPress={onRefresh}
+      onPress={handlePress}
       disabled={loading}
       activeOpacity={0.7}
+      {...getAccessibleButtonProps({
+        label: "Refresh",
+        hint: "Refreshes the current view or data",
+        busy: loading,
+        disabled: loading,
+      })}
     >
       {loading ? (
         <ActivityIndicator size="small" color={color} />
       ) : (
-        <Ionicons name="refresh-outline" size={size} color={color} />
+        <Ionicons name="refresh-outline" size={size} color={color} {...getDecorativeIconProps()} />
       )}
     </TouchableOpacity>
   );
