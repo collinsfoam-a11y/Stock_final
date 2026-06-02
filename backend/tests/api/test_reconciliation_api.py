@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from datetime import datetime
 
 from backend.api import reconciliation_api
+from backend.tenancy.scoping import org_scoped_filter
 
 
 @pytest.mark.asyncio
@@ -23,7 +24,7 @@ async def test_get_session_reconciliation_summary_uses_canonical_session_lookup(
         )
 
     mock_db.sessions.find_one.assert_awaited_once_with(
-        {"$or": [{"id": "session-123"}, {"session_id": "session-123"}]}
+        org_scoped_filter(None, {"$or": [{"id": "session-123"}, {"session_id": "session-123"}]})
     )
     assert exc.value.status_code == 404
 

@@ -16,6 +16,7 @@ from backend.services.enterprise_audit import AuditEventType
 from backend.services.movement_service import MovementService
 from backend.utils.api_utils import sanitize_for_logging
 from backend.utils.enterprise_audit_logger import log_enterprise_audit
+from backend.tenancy.scoping import org_id_from_user, org_scoped_filter
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +169,8 @@ async def list_session_movements(
     current_user: dict = Depends(get_current_user),
 ):
     db = _get_db()
-    session = await db.sessions.find_one(build_session_lookup(session_id))
+    org_id = org_id_from_user(current_user)
+    session = await db.sessions.find_one(org_scoped_filter(org_id, build_session_lookup(session_id)))
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     if not _user_can_view_session(session, current_user):
@@ -190,7 +192,7 @@ async def list_session_movements(
         match["occurred_at"]["$lte"] = end_at
 
     movements = (
-        await db.inventory_movements.find(match, {"_id": 0})
+        await db.inventory_movements.find(org_scoped_filter(org_id, match), {"_id": 0})
         .sort("occurred_at", 1)
         .to_list(length=5000)
     )

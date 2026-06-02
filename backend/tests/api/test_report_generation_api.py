@@ -9,6 +9,7 @@ from backend.api.report_generation_api import (
     generate_stock_summary,
     generate_variance_report,
 )
+from backend.tenancy.scoping import org_scoped_filter
 
 
 class _AsyncCursor:
@@ -100,7 +101,7 @@ async def test_generate_session_history_report_fetches_count_lines_in_one_query(
     )
 
     def _find_count_lines(query, projection=None):
-        assert query == {"session_id": {"$in": ["sess-1", "sess-2"]}}
+        assert query == org_scoped_filter(None, {"session_id": {"$in": ["sess-1", "sess-2"]}})
         assert projection == {"_id": 0, "session_id": 1, "verified": 1, "status": 1}
         return _AsyncCursor(
             [

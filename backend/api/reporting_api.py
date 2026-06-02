@@ -15,6 +15,7 @@ from backend.services.reporting.compare_engine import CompareEngine
 from backend.services.reporting.export_engine import ExportEngine
 from backend.services.reporting.query_builder import QueryBuilder
 from backend.services.reporting.snapshot_engine import SnapshotEngine
+from backend.tenancy.scoping import org_id_from_user, org_scoped_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,8 @@ async def preview_query(
     db = get_db()
 
     query_builder = QueryBuilder()
+    if query_spec.collection not in query_builder.COLLECTIONS:
+        raise HTTPException(status_code=400, detail="Invalid collection")
 
     # Build pipeline
     pipeline = query_builder.build_pipeline(
@@ -83,11 +86,14 @@ async def preview_query(
     )
 
     # Execute query
-    cursor = db[query_spec.collection].aggregate(pipeline)
+    mongo_collection = query_builder.COLLECTIONS[query_spec.collection]
+    org_id = org_id_from_user(current_user)
+    cursor = db[mongo_collection].aggregate(org_scoped_pipeline(org_id, pipeline))
     results = await cursor.to_list(length=query_spec.limit or 100)
 
     return {
         "collection": query_spec.collection,
+        "mongo_collection": mongo_collection,
         "row_count": len(results),
         "rows": results,
         "pipeline": pipeline,  # For debugging

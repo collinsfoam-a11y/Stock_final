@@ -13,6 +13,7 @@ from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
 from backend.services.canonical_inventory import build_session_lookup
 from backend.utils.api_utils import sanitize_for_logging
+from backend.tenancy.scoping import org_id_from_user, org_scoped_filter
 
 logger = logging.getLogger(__name__)
 
@@ -65,10 +66,13 @@ async def get_session_reconciliation_summary(
     - final_gap = physical - current_sql
     """
     db = _get_db()
+    org_id = org_id_from_user(current_user)
 
     try:
         # 1. Validation: Check if session exists
-        session = await db.sessions.find_one(build_session_lookup(session_id))
+        session = await db.sessions.find_one(
+            org_scoped_filter(org_id, build_session_lookup(session_id))
+        )
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         if not _user_can_view_session(session, current_user):
@@ -90,7 +94,10 @@ async def get_session_reconciliation_summary(
         if end_at is None:
             end_at = _utc_now()
 
-        snapshot = await db.session_snapshots.find_one({"session_id": session_id}, {"_id": 0})
+        snapshot = await db.session_snapshots.find_one(
+            org_scoped_filter(org_id, {"session_id": session_id}),
+            {"_id": 0},
+        )
         if not snapshot:
             raise HTTPException(status_code=503, detail="Session snapshot not available")
 
@@ -112,10 +119,13 @@ async def get_session_reconciliation_summary(
         try:
             movement_pipeline: list[dict[str, Any]] = [
                 {
-                    "$match": {
-                        "warehouse": warehouse,
-                        "occurred_at": {"$gte": started_at, "$lte": end_at},
-                    }
+                    "$match": org_scoped_filter(
+                        org_id,
+                        {
+                            "warehouse": warehouse,
+                            "occurred_at": {"$gte": started_at, "$lte": end_at},
+                        },
+                    )
                 },
                 {"$group": {"_id": "$item_code", "movement_qty": {"$sum": "$quantity"}}},
             ]
@@ -130,22 +140,26 @@ async def get_session_reconciliation_summary(
                     movement_qty_by_item[str(item_code)] = float(row.get("movement_qty") or 0.0)
                 except (TypeError, ValueError):
                     movement_qty_by_item[str(item_code)] = 0.0
-        except Exception:
-            movement_qty_by_item = {}
+        except Exception as exc:
+            logger.error("Movement aggregation failed: %s", _safe_log_value(exc, max_length=200))
+            raise HTTPException(status_code=503, detail="Movement ledger not available")
 
         # 2. Aggregation Pipeline
         pipeline: list[dict[str, Any]] = [
             # Match active (non-superseded) counts for this session
             {
-                "$match": {
-                    "session_id": session_id,
-                    "archived": {"$ne": True},
-                    "status": {"$nin": ["SUPERSEDED", "superseded"]},
-                    "$or": [
-                        {"superseded_by_version_id": {"$exists": False}},
-                        {"superseded_by_version_id": {"$in": [None, ""]}},
-                    ],
-                }
+                "$match": org_scoped_filter(
+                    org_id,
+                    {
+                        "session_id": session_id,
+                        "archived": {"$ne": True},
+                        "status": {"$nin": ["SUPERSEDED", "superseded"]},
+                        "$or": [
+                            {"superseded_by_version_id": {"$exists": False}},
+                            {"superseded_by_version_id": {"$in": [None, ""]}},
+                        ],
+                    },
+                )
             },
             # Group by item_code to aggregate total counted qty
             {

@@ -8,6 +8,8 @@ import time
 from typing import Any, Optional, cast
 
 from backend.services.reporting.query_builder import QueryBuilder
+from backend.tenancy.org_context import get_current_org_id
+from backend.tenancy.scoping import org_scoped_filter, org_scoped_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +65,10 @@ class SnapshotEngine:
 
         # Execute query
         start_time = time.time()
-        cursor = self.db[collection].aggregate(pipeline)
+        mongo_collection = self.query_builder.COLLECTIONS[str(collection)]
+        cursor = self.db[mongo_collection].aggregate(
+            org_scoped_pipeline(get_current_org_id(), pipeline)
+        )
         results = await cursor.to_list(length=10000)
         execution_time = (time.time() - start_time) * 1000
 
@@ -77,12 +82,14 @@ class SnapshotEngine:
         # Create snapshot document
         snapshot = {
             "snapshot_id": snapshot_id,
+            "org_id": get_current_org_id(),
             "name": name,
             "description": description,
             "snapshot_type": snapshot_type,
             "query_spec": query_spec,
             "query_hash": query_hash,
             "collection": collection,
+            "mongo_collection": mongo_collection,
             "summary": summary,
             "row_count": len(results),
             "row_data": results,
@@ -107,7 +114,9 @@ class SnapshotEngine:
 
     async def get_snapshot(self, snapshot_id: str) -> dict[str, Optional[Any]]:
         """Get snapshot by ID"""
-        snapshot = await self.db.report_snapshots.find_one({"snapshot_id": snapshot_id})
+        snapshot = await self.db.report_snapshots.find_one(
+            org_scoped_filter(None, {"snapshot_id": snapshot_id})
+        )
         return snapshot
 
     async def list_snapshots(
@@ -140,7 +149,7 @@ class SnapshotEngine:
         # Get snapshots (without row_data for performance)
         cursor = (
             self.db.report_snapshots.find(
-                query,
+                org_scoped_filter(None, query),
                 {"row_data": 0},  # Exclude large row data
             )
             .sort("created_at", -1)
@@ -163,7 +172,9 @@ class SnapshotEngine:
         if snapshot["created_by"] != user_id:
             raise PermissionError("Only snapshot creator can delete")
 
-        result = await self.db.report_snapshots.delete_one({"snapshot_id": snapshot_id})
+        result = await self.db.report_snapshots.delete_one(
+            org_scoped_filter(None, {"snapshot_id": snapshot_id})
+        )
 
         if result.deleted_count > 0:
             logger.info(f"✓ Snapshot deleted: {snapshot_id}")
@@ -177,7 +188,9 @@ class SnapshotEngine:
         """
         Get snapshot data with pagination
         """
-        snapshot = await self.db.report_snapshots.find_one({"snapshot_id": snapshot_id})
+        snapshot = await self.db.report_snapshots.find_one(
+            org_scoped_filter(None, {"snapshot_id": snapshot_id})
+        )
 
         if not snapshot:
             return None

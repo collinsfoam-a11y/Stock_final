@@ -7,6 +7,7 @@ from typing import Any, Optional
 from fastapi import HTTPException
 
 from backend.services.governance_guard import write_authority
+from backend.tenancy.org_context import get_current_org_id
 
 
 def _utc_now() -> datetime:
@@ -87,6 +88,7 @@ class MovementService:
         now = _utc_now()
         doc = {
             "id": str(uuid.uuid4()),
+            "org_id": get_current_org_id(),
             "source": "MANUAL",
             "session_id": _normalize_str(session_id) if session_id else None,
             "warehouse": normalized_warehouse,
@@ -152,6 +154,7 @@ class MovementService:
             docs.append(
                 {
                     "id": str(raw.get("id") or uuid.uuid4()),
+                    "org_id": get_current_org_id(),
                     "source": "ERP",
                     "source_system": normalized_source,
                     "external_ref": _normalize_str(raw.get("external_ref")),

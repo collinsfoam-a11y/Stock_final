@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from backend.auth.dependencies import get_current_user, require_role
 from backend.db.runtime import get_db
 from backend.services.projection_read_service import ProjectionReadService
+from backend.tenancy.scoping import org_scoped_filter
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +169,7 @@ async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
         line_query["counted_at"] = date_filter
 
     line_summary: dict[str, dict[str, Any]] = {}
-    lines_cursor = db.count_lines.find(line_query)
+    lines_cursor = db.count_lines.find(org_scoped_filter(None, line_query))
     async for line in lines_cursor:
         item_code = line.get("item_code")
         if not item_code:
@@ -258,7 +259,7 @@ async def generate_variance_report(db, filters: ReportFilter) -> list[dict]:
         return []
 
     results: list[dict[str, Any]] = []
-    lines_cursor = db.count_lines.find(line_query)
+    lines_cursor = db.count_lines.find(org_scoped_filter(None, line_query))
     async for line in lines_cursor:
         item_info = item_docs.get(line.get("item_code")) or {}
         if filters.warehouse and item_info.get("warehouse") != filters.warehouse:
@@ -315,7 +316,7 @@ async def generate_user_activity_report(db, filters: ReportFilter) -> list[dict]
         query["timestamp"] = date_filter
 
     pipeline = [
-        {"$match": query},
+        {"$match": org_scoped_filter(None, query)},
         {
             "$group": {
                 "_id": "$user_id",
@@ -330,8 +331,11 @@ async def generate_user_activity_report(db, filters: ReportFilter) -> list[dict]
         {
             "$lookup": {
                 "from": "users",
-                "localField": "_id",
-                "foreignField": "_id",
+                "let": {"user_id": "$_id"},
+                "pipeline": [
+                    {"$match": {"$expr": {"$eq": ["$_id", "$$user_id"]}}},
+                    {"$match": org_scoped_filter(None, {})},
+                ],
                 "as": "user_info",
             }
         },
@@ -375,7 +379,10 @@ async def generate_session_history_report(db, filters: ReportFilter) -> list[dic
         query["started_at"] = date_filter
 
     sessions = [
-        session async for session in db.sessions.find(query).sort("started_at", -1).limit(5000)
+        session
+        async for session in db.sessions.find(org_scoped_filter(None, query))
+        .sort("started_at", -1)
+        .limit(5000)
     ]
     session_ids = [
         str(session.get("id") or session.get("session_id"))
@@ -387,7 +394,7 @@ async def generate_session_history_report(db, filters: ReportFilter) -> list[dic
     }
     if session_ids:
         async for line in db.count_lines.find(
-            {"session_id": {"$in": session_ids}},
+            org_scoped_filter(None, {"session_id": {"$in": session_ids}}),
             {"_id": 0, "session_id": 1, "verified": 1, "status": 1},
         ):
             session_id = str(line.get("session_id") or "")
@@ -446,12 +453,15 @@ async def generate_audit_trail_report(db, filters: ReportFilter) -> list[dict]:
         query["timestamp"] = date_filter
 
     pipeline = [
-        {"$match": query},
+        {"$match": org_scoped_filter(None, query)},
         {
             "$lookup": {
                 "from": "users",
-                "localField": "user_id",
-                "foreignField": "_id",
+                "let": {"user_id": "$user_id"},
+                "pipeline": [
+                    {"$match": {"$expr": {"$eq": ["$_id", "$$user_id"]}}},
+                    {"$match": org_scoped_filter(None, {})},
+                ],
                 "as": "user_info",
             }
         },
@@ -695,14 +705,23 @@ async def get_report_filter_options(
         warehouses = await db.erp_items.distinct("warehouse")
         floors = await db.erp_items.distinct("floor")
         categories = await db.erp_items.distinct("category")
-        count_line_statuses = await db.count_lines.distinct("status")
-        session_statuses = await db.sessions.distinct("status")
+        try:
+            count_line_statuses = await db.count_lines.distinct("status", org_scoped_filter(None, {}))
+        except TypeError:
+            count_line_statuses = await db.count_lines.distinct("status")
+        try:
+            session_statuses = await db.sessions.distinct("status", org_scoped_filter(None, {}))
+        except TypeError:
+            session_statuses = await db.sessions.distinct("status")
         statuses = sorted(set(count_line_statuses) | set(session_statuses))
 
         # Get user list for admin/supervisor
         users = []
         if current_user.get("role") in ["admin", "supervisor"]:
-            user_cursor = db.users.find({}, {"_id": 1, "username": 1, "role": 1})
+            user_cursor = db.users.find(
+                org_scoped_filter(None, {}),
+                {"_id": 1, "username": 1, "role": 1},
+            )
             users = [
                 {
                     "id": str(u["_id"]),

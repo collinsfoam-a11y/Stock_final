@@ -15,6 +15,8 @@ from backend.services.governance_audit_service import GovernanceAuditService
 from backend.services.governance_guard import write_authority
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.transaction_manager import mongo_transaction
+from backend.tenancy.org_context import get_current_org_id
+from backend.tenancy.scoping import org_scoped_filter
 
 
 class UnknownItemService:
@@ -114,12 +116,13 @@ class UnknownItemService:
         )
 
         expected_version = coerce_version(unknown.get("version"))
+        update_filter = org_scoped_filter(
+            None,
+            {"$and": [self._resolve_filter(item_id), build_version_filter(expected_version)]},
+        )
         result = await self._execute_authorized_write(
             lambda: self.db.unknown_items.update_one(
-                {
-                    **self._resolve_filter(item_id),
-                    **build_version_filter(expected_version),
-                },
+                update_filter,
                 {
                     "$set": {
                         "status": "RESOLVED",
@@ -186,6 +189,7 @@ class UnknownItemService:
 
         now = self._utc_now()
         doc = dict(payload)
+        doc["org_id"] = get_current_org_id()
         doc["id"] = str(doc.get("id") or uuid.uuid4())
         doc["session_id"] = session_id
         doc["location_id"] = location_id
@@ -233,18 +237,22 @@ class UnknownItemService:
         async with mongo_transaction(self.db.client) as tx:
             await self.lifecycle_service.ensure_session_active(session_id, db_session=tx)
             kwargs = self._kwargs(tx)
-            existing = await self.db.unknown_items.find_one(self._resolve_filter(item_id), **kwargs)
+            existing = await self.db.unknown_items.find_one(
+                org_scoped_filter(None, self._resolve_filter(item_id)),
+                **kwargs,
+            )
             if not existing:
                 raise HTTPException(status_code=404, detail="Unknown item report not found")
 
             now = self._utc_now()
             expected_version = coerce_version(existing.get("version"))
+            update_filter = org_scoped_filter(
+                None,
+                {"$and": [self._resolve_filter(item_id), build_version_filter(expected_version)]},
+            )
             result = await self._execute_authorized_write(
                 lambda: self.db.unknown_items.update_one(
-                    {
-                        **self._resolve_filter(item_id),
-                        **build_version_filter(expected_version),
-                    },
+                    update_filter,
                     {
                         "$set": {
                             "session_id": session_id,
@@ -267,7 +275,8 @@ class UnknownItemService:
                 )
 
             refreshed = await self.db.unknown_items.find_one(
-                self._resolve_filter(item_id), **kwargs
+                org_scoped_filter(None, self._resolve_filter(item_id)),
+                **kwargs,
             )
             await self.audit_service.log_write_event(
                 event="UNKNOWN_ITEM_WRITE",
@@ -291,7 +300,10 @@ class UnknownItemService:
     ) -> dict[str, Any]:
         async with mongo_transaction(self.db.client) as tx:
             kwargs = self._kwargs(tx)
-            existing = await self.db.unknown_items.find_one(self._resolve_filter(item_id), **kwargs)
+            existing = await self.db.unknown_items.find_one(
+                org_scoped_filter(None, self._resolve_filter(item_id)),
+                **kwargs,
+            )
             if not existing:
                 raise HTTPException(status_code=404, detail="Unknown item report not found")
 
@@ -304,12 +316,13 @@ class UnknownItemService:
 
             now = self._utc_now()
             expected_version = coerce_version(existing.get("version"))
+            update_filter = org_scoped_filter(
+                None,
+                {"$and": [self._resolve_filter(item_id), build_version_filter(expected_version)]},
+            )
             result = await self._execute_authorized_write(
                 lambda: self.db.unknown_items.update_one(
-                    {
-                        **self._resolve_filter(item_id),
-                        **build_version_filter(expected_version),
-                    },
+                    update_filter,
                     {
                         "$set": {
                             "status": "ESCALATED",
@@ -330,7 +343,8 @@ class UnknownItemService:
                 )
 
             refreshed = await self.db.unknown_items.find_one(
-                self._resolve_filter(item_id), **kwargs
+                org_scoped_filter(None, self._resolve_filter(item_id)),
+                **kwargs,
             )
             await self.audit_service.log_write_event(
                 event="UNKNOWN_ITEM_WRITE",
@@ -355,7 +369,10 @@ class UnknownItemService:
     ) -> dict[str, Any]:
         async with mongo_transaction(self.db.client) as tx:
             kwargs = self._kwargs(tx)
-            unknown = await self.db.unknown_items.find_one(self._resolve_filter(item_id), **kwargs)
+            unknown = await self.db.unknown_items.find_one(
+                org_scoped_filter(None, self._resolve_filter(item_id)),
+                **kwargs,
+            )
             if not unknown:
                 raise HTTPException(status_code=404, detail="Unknown item report not found")
 
@@ -387,7 +404,10 @@ class UnknownItemService:
     ) -> dict[str, Any]:
         async with mongo_transaction(self.db.client) as tx:
             kwargs = self._kwargs(tx)
-            unknown = await self.db.unknown_items.find_one(self._resolve_filter(item_id), **kwargs)
+            unknown = await self.db.unknown_items.find_one(
+                org_scoped_filter(None, self._resolve_filter(item_id)),
+                **kwargs,
+            )
             if not unknown:
                 raise HTTPException(status_code=404, detail="Unknown item report not found")
 
@@ -429,7 +449,10 @@ class UnknownItemService:
     ) -> dict[str, Any]:
         async with mongo_transaction(self.db.client) as tx:
             kwargs = self._kwargs(tx)
-            existing = await self.db.unknown_items.find_one(self._resolve_filter(item_id), **kwargs)
+            existing = await self.db.unknown_items.find_one(
+                org_scoped_filter(None, self._resolve_filter(item_id)),
+                **kwargs,
+            )
             if not existing:
                 raise HTTPException(status_code=404, detail="Unknown item report not found")
 
@@ -449,12 +472,13 @@ class UnknownItemService:
             if reason:
                 update_fields["dismiss_reason"] = reason
 
+            update_filter = org_scoped_filter(
+                None,
+                {"$and": [self._resolve_filter(item_id), build_version_filter(expected_version)]},
+            )
             result = await self._execute_authorized_write(
                 lambda: self.db.unknown_items.update_one(
-                    {
-                        **self._resolve_filter(item_id),
-                        **build_version_filter(expected_version),
-                    },
+                    update_filter,
                     {"$set": update_fields, "$inc": {"version": 1}},
                     **kwargs,
                 )
@@ -465,7 +489,8 @@ class UnknownItemService:
                 )
 
             refreshed = await self.db.unknown_items.find_one(
-                self._resolve_filter(item_id), **kwargs
+                org_scoped_filter(None, self._resolve_filter(item_id)),
+                **kwargs,
             )
             resolved_doc = refreshed or {
                 **existing,

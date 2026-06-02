@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
 from backend.services.unknown_item_service import UnknownItemService
+from backend.tenancy.scoping import org_id_from_user, org_scoped_filter
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +99,13 @@ async def list_unknown_items(
     if not include_dismissed:
         query["status"] = {"$ne": "DISMISSED"}
 
-    cursor = db.unknown_items.find(query).sort("reported_at", -1).skip(skip).limit(limit)
+    org_id = org_id_from_user(current_user)
+    cursor = (
+        db.unknown_items.find(org_scoped_filter(org_id, query))
+        .sort("reported_at", -1)
+        .skip(skip)
+        .limit(limit)
+    )
     items = await cursor.to_list(length=limit)
 
     # Simple conversion of ObjectId to string if any (though schemas.py uses UUID strings)
@@ -106,7 +113,7 @@ async def list_unknown_items(
         if "_id" in item:
             item["_id"] = str(item["_id"])
 
-    total = await db.unknown_items.count_documents(query)
+    total = await db.unknown_items.count_documents(org_scoped_filter(org_id, query))
 
     return {
         "success": True,

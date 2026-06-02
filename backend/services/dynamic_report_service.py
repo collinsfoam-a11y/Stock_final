@@ -12,6 +12,9 @@ from typing import Any, Optional
 import pandas as pd
 from bson import ObjectId
 
+from backend.tenancy.org_context import get_current_org_id
+from backend.tenancy.scoping import org_scoped_filter
+
 logger = logging.getLogger(__name__)
 
 
@@ -58,6 +61,7 @@ class DynamicReportService:
         """
         try:
             template = {
+                "org_id": get_current_org_id(),
                 "name": name,
                 "description": description,
                 "report_type": report_type,
@@ -91,7 +95,7 @@ class DynamicReportService:
             if report_type:
                 query["report_type"] = report_type
 
-            cursor = self.report_templates.find(query).sort("name", 1)
+            cursor = self.report_templates.find(org_scoped_filter(None, query)).sort("name", 1)
             templates = await cursor.to_list(length=None)
 
             return templates
@@ -122,7 +126,9 @@ class DynamicReportService:
         try:
             # Get template
             if template_id:
-                template = await self.report_templates.find_one({"_id": ObjectId(template_id)})
+                template = await self.report_templates.find_one(
+                    org_scoped_filter(None, {"_id": ObjectId(template_id)})
+                )
                 if not template:
                     raise ValueError(f"Template not found: {template_id}")
             elif template_data:
@@ -158,6 +164,7 @@ class DynamicReportService:
 
             # Save report record
             report_record = {
+                "org_id": get_current_org_id(),
                 "template_id": template_id if template_id else None,
                 "template_name": template.get("name", "Custom Report"),
                 "report_type": template["report_type"],
@@ -179,6 +186,7 @@ class DynamicReportService:
             await self.db.report_files.insert_one(
                 {
                     "report_id": report_id,
+                    "org_id": get_current_org_id(),
                     "file_data": file_data,
                     "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
                 }
@@ -187,7 +195,8 @@ class DynamicReportService:
             # Update template usage count
             if template_id:
                 await self.report_templates.update_one(
-                    {"_id": ObjectId(template_id)}, {"$inc": {"usage_count": 1}}
+                    org_scoped_filter(None, {"_id": ObjectId(template_id)}),
+                    {"$inc": {"usage_count": 1}},
                 )
 
             report_record["_id"] = report_id
@@ -282,7 +291,7 @@ class DynamicReportService:
         try:
             query = self._build_mongo_query(filters)
 
-            cursor = self.db.sessions.find(query)
+            cursor = self.db.sessions.find(org_scoped_filter(None, query))
 
             if sorting:
                 for sort_field in sorting:
@@ -317,7 +326,7 @@ class DynamicReportService:
         try:
             # Aggregate variance from sessions and items
             pipeline = [
-                {"$match": self._build_mongo_query(filters)},
+                {"$match": org_scoped_filter(None, self._build_mongo_query(filters))},
                 {
                     "$lookup": {
                         "from": "session_items",
@@ -374,7 +383,7 @@ class DynamicReportService:
         try:
             query = self._build_mongo_query(filters)
 
-            cursor = self.db.activity_logs.find(query)
+            cursor = self.db.activity_logs.find(org_scoped_filter(None, query))
 
             if sorting:
                 for sort_field in sorting:
@@ -652,7 +661,11 @@ class DynamicReportService:
             if generated_by:
                 query["generated_by"] = generated_by
 
-            cursor = self.generated_reports.find(query).sort("generated_at", -1).limit(limit)
+            cursor = (
+                self.generated_reports.find(org_scoped_filter(None, query))
+                .sort("generated_at", -1)
+                .limit(limit)
+            )
             reports = await cursor.to_list(length=None)
 
             return reports
@@ -664,17 +677,22 @@ class DynamicReportService:
     async def get_report_file(self, report_id: str) -> tuple:
         """Get report file data for download"""
         try:
-            report = await self.generated_reports.find_one({"_id": ObjectId(report_id)})
+            report = await self.generated_reports.find_one(
+                org_scoped_filter(None, {"_id": ObjectId(report_id)})
+            )
             if not report:
                 raise ValueError(f"Report not found: {report_id}")
 
-            file_record = await self.db.report_files.find_one({"report_id": ObjectId(report_id)})
+            file_record = await self.db.report_files.find_one(
+                org_scoped_filter(None, {"report_id": ObjectId(report_id)})
+            )
             if not file_record:
                 raise ValueError(f"Report file not found: {report_id}")
 
             # Increment download count
             await self.generated_reports.update_one(
-                {"_id": ObjectId(report_id)}, {"$inc": {"download_count": 1}}
+                org_scoped_filter(None, {"_id": ObjectId(report_id)}),
+                {"$inc": {"download_count": 1}},
             )
 
             return file_record["file_data"], report["file_name"], report["mime_type"]
