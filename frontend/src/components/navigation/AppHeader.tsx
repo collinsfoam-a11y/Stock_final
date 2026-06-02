@@ -13,6 +13,8 @@ import { layout, spacing, typography } from "../../styles/globalStyles";
 import { useAuthStore } from "../../store/authStore";
 import { safeBackNavigation } from "../../utils/navigation";
 import type { UserRole } from "../../utils/roleNavigation";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface HeaderAction {
@@ -48,8 +50,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const { user } = useAuthStore();
 
   const handleBack = () => {
+    void haptics.light();
     safeBackNavigation(router, { userRole: user?.role as UserRole | null });
   };
+
+  const decorativeIconProps = getDecorativeIconProps();
 
   // Calculate header height including safe area
   const headerHeight = layout.headerHeight + (Platform.OS === "ios" ? insets.top : 0);
@@ -76,11 +81,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               style={styles.backButton}
               onPress={handleBack}
               activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-              accessibilityHint="Navigates to the previous screen"
+              {...getAccessibleButtonProps({
+                label: "Go back",
+                hint: "Navigates to the previous screen",
+              })}
             >
-              <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+              <Ionicons name="arrow-back" size={24} color={theme.colors.text} {...decorativeIconProps} />
             </TouchableOpacity>
           )}
           <View>
@@ -103,25 +109,33 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           {onSearchPress && (
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={onSearchPress}
+              onPress={() => {
+                void haptics.light();
+                onSearchPress();
+              }}
               activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Search"
-              accessibilityHint="Opens search"
+              {...getAccessibleButtonProps({
+                label: "Search",
+                hint: "Opens search",
+              })}
             >
-              <Ionicons name="search" size={22} color={theme.colors.text} />
+              <Ionicons name="search" size={22} color={theme.colors.text} {...decorativeIconProps} />
             </TouchableOpacity>
           )}
           {actions.map((action, index) => (
             <TouchableOpacity
               key={index}
               style={styles.actionButton}
-              onPress={action.onPress}
+              onPress={() => {
+                void haptics.light();
+                action.onPress();
+              }}
               activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel={action.label}
+              {...getAccessibleButtonProps({
+                label: action.label,
+              })}
             >
-              <Ionicons name={action.icon} size={22} color={action.color || theme.colors.text} />
+              <Ionicons name={action.icon} size={22} color={action.color || theme.colors.text} {...decorativeIconProps} />
               {action.badge !== undefined && action.badge > 0 && (
                 <View style={[styles.badge, { backgroundColor: theme.colors.error }]}>
                   <Text style={styles.badgeText}>{action.badge > 99 ? "99+" : action.badge}</Text>

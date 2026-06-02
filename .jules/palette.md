@@ -13,3 +13,7 @@
 ## 2025-05-18 - Standardizing Tactile Feedback across Design System Components
 **Learning:** For a consistent mobile "feel," all interactive primitive components (Switch, Checkbox, Radio, etc.) should provide subtle haptic feedback on state change. Centralizing this logic in a `haptics` service that respects feature flags and platform constraints (e.g., disabling on web) ensures a robust and unified user experience.
 **Action:** Use `haptics.light()` from the centralized haptics service for all primary toggle/selection interactions in new UI components.
+
+## 2025-05-20 - Standardizing Feedback for Modals and Headers
+**Learning:** Significant UI actions like confirming a destructive operation, closing a modal, or navigating via header buttons benefit greatly from tactile feedback. Using `haptics.medium()` for high-stakes/danger actions and `haptics.light()` for routine ones creates a clear sensory hierarchy that aids the user in understanding the weight of their interactions.
+**Action:** Always implement haptic feedback in core container components (Modals, Headers) to ensure a consistent "premium" feel across all screens.

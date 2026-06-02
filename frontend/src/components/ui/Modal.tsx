@@ -27,6 +27,7 @@ import Animated, {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
 import { BlurView } from "expo-blur";
+import { haptics } from "@/services/haptics";
 
 import { shadows as uiShadows } from "@/theme/legacyCompat";
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -173,9 +174,14 @@ export const Modal: React.FC<ModalProps> = ({
                   )}
                   {showCloseButton && (
                     <TouchableOpacity
-                      onPress={onClose}
+                      onPress={() => {
+                        void haptics.light();
+                        onClose();
+                      }}
                       style={styles.closeButton}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Close"
                     >
                       <Ionicons name="close" size={24} color={theme.colors.textSecondary} />
                     </TouchableOpacity>
