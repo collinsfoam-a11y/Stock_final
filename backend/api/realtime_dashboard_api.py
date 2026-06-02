@@ -15,6 +15,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.auth.dependencies import get_current_user, require_role
+from backend.api.websocket_api import _extract_jwt_from_websocket
+from backend.auth.jwt_provider import decode
+from backend.config import settings
 from backend.db.runtime import get_db
 from backend.services.advanced_report_service import (
     AdvancedReportService,
@@ -575,8 +578,30 @@ async def _ws_process_message(
 
 @realtime_dashboard_router.websocket("/ws/{token}")
 async def websocket_endpoint(websocket: WebSocket, token: str):
-    """WebSocket endpoint for bidirectional real-time communication."""
-    user_id = token
+    """WebSocket endpoint for bidirectional real-time communication (legacy path)."""
+    jwt_token, _accept_subprotocol = _extract_jwt_from_websocket(websocket, token)
+
+    if not jwt_token:
+        await websocket.accept()
+        await websocket.close(code=1008)
+        return
+
+    try:
+        if not settings.JWT_SECRET:
+            raise ValueError("JWT_SECRET not set")
+        payload = decode(jwt_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        user_id = payload.get("sub")
+        role = str(payload.get("role") or "").lower()
+        if not user_id:
+            raise ValueError("No user_id in token")
+        if role not in {"admin", "supervisor"}:
+            raise ValueError("Insufficient role")
+    except Exception as e:
+        logger.warning("Dashboard WebSocket auth failed: %s", sanitize_for_logging(str(e)))
+        await websocket.accept()
+        await websocket.close(code=1008)
+        return
+
     await manager.connect(websocket, user_id)
 
     try:
@@ -590,6 +615,59 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
         await manager.send_personal_message({"type": "initial_data", "payload": result}, user_id)
 
         # Listen for client messages
+        while True:
+            try:
+                data = await asyncio.wait_for(
+                    websocket.receive_json(), timeout=config.refresh_interval_seconds
+                )
+                config = await _ws_process_message(data, user_id, service, config, db)
+            except asyncio.TimeoutError:
+                await _ws_handle_auto_refresh(user_id, service, config)
+
+    except WebSocketDisconnect:
+        manager.disconnect(user_id)
+    except Exception as e:
+        logger.error("WebSocket error for {user_id}: %s", sanitize_for_logging(str(e)))
+        manager.disconnect(user_id)
+
+
+@realtime_dashboard_router.websocket("/ws")
+async def websocket_endpoint_no_path_token(websocket: WebSocket, token: Optional[str] = Query(None)):
+    """WebSocket endpoint for bidirectional real-time communication."""
+    jwt_token, _accept_subprotocol = _extract_jwt_from_websocket(websocket, token)
+
+    if not jwt_token:
+        await websocket.accept()
+        await websocket.close(code=1008)
+        return
+
+    try:
+        if not settings.JWT_SECRET:
+            raise ValueError("JWT_SECRET not set")
+        payload = decode(jwt_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        user_id = payload.get("sub")
+        role = str(payload.get("role") or "").lower()
+        if not user_id:
+            raise ValueError("No user_id in token")
+        if role not in {"admin", "supervisor"}:
+            raise ValueError("Insufficient role")
+    except Exception as e:
+        logger.warning("Dashboard WebSocket auth failed: %s", sanitize_for_logging(str(e)))
+        await websocket.accept()
+        await websocket.close(code=1008)
+        return
+
+    await manager.connect(websocket, user_id)
+
+    try:
+        db = get_db()
+        service = AdvancedReportService(db)
+        config = DashboardConfig()
+        manager.set_config(user_id, config)
+
+        result = await _ws_get_report(service, config)
+        await manager.send_personal_message({"type": "initial_data", "payload": result}, user_id)
+
         while True:
             try:
                 data = await asyncio.wait_for(

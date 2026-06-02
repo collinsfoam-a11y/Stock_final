@@ -26,7 +26,7 @@ import {
   textStyles,
   touchTargets,
   hitSlop,
-} from "@/theme/unified";
+} from "@/theme/legacyCompat";
 
 export interface Tab {
   key: string;

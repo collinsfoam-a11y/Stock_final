@@ -20,7 +20,7 @@ import {
   textStyles,
   touchTargets,
   hitSlop,
-} from "@/theme/unified";
+} from "@/theme/legacyCompat";
 import { haptics } from "@/services/haptics";
 
 interface CheckboxProps {

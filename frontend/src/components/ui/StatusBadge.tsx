@@ -18,11 +18,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import {
-  borderRadius,
-  colors,
-  semanticColors,
-} from "../../theme/unified";
+import { borderRadius, colors, semanticColors } from "@/theme/legacyCompat";
 
 type BadgeVariant =
   | "success"
