@@ -225,15 +225,16 @@ async def validate_record(
             },
         )
 
-    # Check rack lock (if rack_id provided)
+    # Check rack lock (if rack_id provided).
+    # FIX GROUP 3: Lock ownership is keyed by username, never session_id.
     if record.rack_id:
         owner = await lock_manager.get_rack_lock_owner(record.rack_id)
-        if owner and owner != record.session_id:
+        if owner and owner != user_id:
             return SyncConflict(
                 client_record_id=record.client_record_id,
                 conflict_type="rack_locked",
-                message=f"Rack {record.rack_id} is locked by another session",
-                details={"rack_id": record.rack_id, "owner": owner},
+                message=f"Rack {record.rack_id} is locked by another user",
+                details={"rack_id": record.rack_id},
             )
 
     return None
@@ -280,6 +281,12 @@ async def sync_single_record(
             tzinfo=None
         )
         serial_numbers = _normalize_serial_numbers(record.serial_numbers)
+        # FIX GROUP 1: For serial-tracked items quantity must equal actual serial count.
+        # Override client-supplied verified_qty to prevent client-side inflation.
+        if serial_numbers:
+            counted_qty = float(len(serial_numbers))
+        else:
+            counted_qty = float(record.verified_qty)
         doc = {
             "id": str(uuid.uuid4()),
             "client_record_id": record.client_record_id,
@@ -291,7 +298,7 @@ async def sync_single_record(
             "floor_no": floor_id,
             "rack_no": rack_id,
             "item_code": record.item_code,
-            "counted_qty": record.verified_qty,
+            "counted_qty": counted_qty,
             "damaged_qty": record.damaged_qty,
             "serial_numbers": serial_numbers,
             "manufacturing_date": record.mfg_date,
@@ -546,10 +553,10 @@ async def session_heartbeat(
     # Update user heartbeat
     await lock_manager.update_user_heartbeat(user_id, ttl=90)
 
-    # Renew rack lock if provided
+    # FIX GROUP 3: Renew rack lock using username (consistent with acquire).
     rack_renewed = False
     if rack_id:
-        rack_renewed = await lock_manager.renew_rack_lock(rack_id, session_id, ttl=60)
+        rack_renewed = await lock_manager.renew_rack_lock(rack_id, user_id, ttl=60)
 
     return {
         "success": True,

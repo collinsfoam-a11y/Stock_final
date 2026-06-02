@@ -447,6 +447,16 @@ class InMemoryDatabase:
         self.conflict_forks = InMemoryCollection()
         self.governance_events = InMemoryCollection()
 
+        # Remediation Collections (FIX GROUPS 7, 11)
+        self.supervisor_override_tokens = InMemoryCollection()
+        self.inventory_adjustments = InMemoryCollection()
+        self.inventory_ledger = InMemoryCollection()
+        self.inventory_movements = InMemoryCollection()
+        self.reconciliation_records = InMemoryCollection()
+        self.reports = InMemoryCollection()
+        self.serial_records = InMemoryCollection()
+        self.serial_registry = InMemoryCollection()
+
     async def command(self, *_args, **_kwargs):
         """Simulate db.command('ping')."""
         return {"ok": 1}
