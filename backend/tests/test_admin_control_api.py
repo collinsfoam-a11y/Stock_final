@@ -158,14 +158,10 @@ def test_test_sql_server_connection(mock_sql_connector):
 
 
 def test_start_backend(mock_service_manager, mock_psutil):
-    # Mock backend not running
-    mock_service_manager.is_port_in_use.return_value = False
-
+    # We changed this to return 501 Not Implemented
     response = client.post("/api/admin/control/services/backend/start")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert "start command issued" in data["message"]
+    assert response.status_code == 501
+    assert "detail" in response.json()
 
 
 def test_stop_backend(mock_service_manager, mock_psutil):
@@ -185,14 +181,10 @@ def test_stop_backend(mock_service_manager, mock_psutil):
 
 
 def test_start_frontend(mock_service_manager, mock_psutil):
-    # Mock frontend not running
-    mock_service_manager.is_port_in_use.return_value = False
-
+    # We changed this to return 501 Not Implemented
     response = client.post("/api/admin/control/services/frontend/start")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert "start command issued" in data["message"]
+    assert response.status_code == 501
+    assert "detail" in response.json()
 
 
 def test_stop_frontend(mock_service_manager, mock_psutil):

@@ -14,6 +14,7 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 import io  # noqa: E402
+import asyncio  # noqa: E402
 import logging  # noqa: E402
 from backend.utils.api_utils import sanitize_for_logging
 import os  # noqa: E402
@@ -137,7 +138,9 @@ def _safe_int(value: Any) -> Optional[int]:
 def require_admin(current_user: dict = Depends(get_current_user)):
     """Require admin role"""
     if current_user.get("role") != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
     return current_user
 
 
@@ -434,12 +437,12 @@ async def start_backend(current_user: dict = Depends(require_admin)):
         if existing_backend:
             return existing_backend
 
-        # Start backend (this would typically be done via script)
-        return {
-            "success": True,
-            "message": "Backend start command issued. Check status for updates.",
-            "note": "Backend should be started using scripts/start_backend.sh or scripts/start_backend.ps1",
-        }
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Service management via API is not supported. Please use the CLI 'make backend' or 'make start' command.",
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Error starting backend: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
@@ -498,11 +501,12 @@ async def start_frontend(current_user: dict = Depends(require_admin)):
                     except Exception:
                         pass
 
-        return {
-            "success": True,
-            "message": "Frontend start command issued. Check status for updates.",
-            "note": "Frontend should be started using scripts/start_frontend.sh or scripts/start_frontend.ps1",
-        }
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Service management via API is not supported. Please use the CLI 'make frontend' or 'make start' command.",
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Error starting frontend: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
@@ -705,12 +709,20 @@ async def generate_report(
             )
         elif format == "excel":
             if not data:
-                import pandas as pd
+                try:
+                    import pandas as pd
 
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                    pd.DataFrame([{"message": "No data"}]).to_excel(writer, index=False)
-                data = output.getvalue()
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+                        pd.DataFrame([{"message": "No data"}]).to_excel(
+                            writer, index=False
+                        )
+                    data = output.getvalue()
+                except ImportError:
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Pandas or xlsxwriter is not installed. Excel export is disabled.",
+                    )
             return StreamingResponse(
                 io.BytesIO(data),
                 media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -796,7 +808,9 @@ async def get_service_logs(
             # Read backend logs from file
             log_file = settings.LOG_FILE or "app.log"
             log_path = Path(log_file)
-            logs = _read_log_file(log_path, lines, level, service)
+            logs = await asyncio.to_thread(
+                _read_log_file, log_path, lines, level, service
+            )
 
         if not logs and service == "frontend":
             frontend_status = _get_frontend_status()
