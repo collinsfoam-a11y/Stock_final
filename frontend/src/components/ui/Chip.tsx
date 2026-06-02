@@ -20,6 +20,7 @@ import {
   typography,
   borderRadius,
 } from "@/theme/designTokens";
+import { getAccessibilityState } from "@/utils/accessibility";
 
 export type ChipVariant = "filled" | "outlined";
 export type ChipSize = "sm" | "md" | "lg";
@@ -39,11 +40,11 @@ interface ChipProps {
 
 const sizeStyles: Record<
   ChipSize,
-  { padding: number; fontSize: number; iconSize: number }
+  { padding: number; fontSize: number; iconSize: number; removeHitSlop: number }
 > = {
-  sm: { padding: spacing.xs, fontSize: typography.fontSize.xs, iconSize: 14 },
-  md: { padding: spacing.sm, fontSize: typography.fontSize.sm, iconSize: 16 },
-  lg: { padding: spacing.md, fontSize: typography.fontSize.base, iconSize: 18 },
+  sm: { padding: spacing.xs, fontSize: typography.fontSize.xs, iconSize: 14, removeHitSlop: 15 },
+  md: { padding: spacing.sm, fontSize: typography.fontSize.sm, iconSize: 16, removeHitSlop: 14 },
+  lg: { padding: spacing.md, fontSize: typography.fontSize.base, iconSize: 18, removeHitSlop: 13 },
 };
 
 export const Chip: React.FC<ChipProps> = ({
@@ -59,7 +60,7 @@ export const Chip: React.FC<ChipProps> = ({
   textStyle,
 }) => {
   const sizes = sizeStyles[size];
-  const isInteractive = !disabled && (onPress || onRemove);
+  const isInteractive = !disabled && !!onPress;
 
   const getColors = () => {
     if (disabled) {
@@ -96,6 +97,9 @@ export const Chip: React.FC<ChipProps> = ({
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.7}
+      accessibilityRole={isInteractive ? "button" : undefined}
+      accessibilityLabel={isInteractive ? label : undefined}
+      accessibilityState={isInteractive ? getAccessibilityState({ disabled }) : undefined}
       style={[
         styles.chip,
         {
@@ -135,8 +139,15 @@ export const Chip: React.FC<ChipProps> = ({
       {onRemove && !disabled && (
         <TouchableOpacity
           onPress={onRemove}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          hitSlop={{
+            top: sizes.removeHitSlop,
+            bottom: sizes.removeHitSlop,
+            left: sizes.removeHitSlop,
+            right: sizes.removeHitSlop,
+          }}
           style={styles.removeButton}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${label}`}
         >
           <Ionicons
             name="close-circle"

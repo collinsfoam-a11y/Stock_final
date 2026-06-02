@@ -3,6 +3,7 @@ import { TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { colors as uiColors } from "@/theme/legacyCompat";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
 interface RefreshButtonProps {
   onRefresh: () => void;
   loading?: boolean;
@@ -22,6 +23,7 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({
       onPress={onRefresh}
       disabled={loading}
       activeOpacity={0.7}
+      {...getAccessibleButtonProps({ label: "Refresh", busy: loading, disabled: loading })}
     >
       {loading ? (
         <ActivityIndicator size="small" color={color} />
@@ -38,5 +40,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
+    minWidth: 44,
+    minHeight: 44,
   },
 });
