@@ -70,7 +70,9 @@ async def test_modern_batch_sync_success(async_client: AsyncClient, authenticate
     assert line["floor_id"] == "F1"
     assert line["rack_id"] == "R1"
     assert line["item_code"] == "ITEM-100"
-    assert line["counted_qty"] == 10.0
+    # FIX GROUP 1: counted_qty for serial items must equal len(serial_numbers), not verified_qty.
+    # Payload has 2 serials → qty must be 2.0, not the inflated 10.0 previously asserted.
+    assert line["counted_qty"] == 2.0
     assert line["idempotency_key"] == client_record_id
 
     replay = await async_client.post(

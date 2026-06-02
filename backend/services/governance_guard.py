@@ -30,7 +30,21 @@ AUTHORIZED_WRITE_AUTHORITIES: dict[str, frozenset[str]] = {
         }
     ),
     "UnknownItemService": frozenset({"unknown_items"}),
+    # FIX GROUP 6: Expanded governance coverage for inventory/reconciliation paths.
+    "InventoryAdjustmentService": frozenset(
+        {
+            "inventory_adjustments",
+            "inventory_ledger",
+            "inventory_movements",
+        }
+    ),
+    "ReconciliationService": frozenset(
+        {
+            "reconciliation_records",
+        }
+    ),
 }
+# FIX GROUP 6: All collections that carry immutable business state must be guarded.
 _GUARD_TARGET_COLLECTIONS: tuple[str, ...] = (
     "count_lines",
     "sessions",
@@ -38,6 +52,10 @@ _GUARD_TARGET_COLLECTIONS: tuple[str, ...] = (
     "recount_requests",
     "session_snapshots",
     "unknown_items",
+    "inventory_adjustments",
+    "inventory_ledger",
+    "inventory_movements",
+    "reconciliation_records",
 )
 _GUARD_WRITE_METHODS: tuple[str, ...] = (
     "insert_one",

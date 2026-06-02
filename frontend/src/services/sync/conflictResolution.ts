@@ -24,18 +24,25 @@ export const clientWinsStrategy: ConflictStrategy = {
 
 /**
  * Merge Strategy (for numeric quantities)
- * Uses additive delta semantics when the client sends an explicit delta.
- * If there is no delta, we fall back to server data rather than guessing.
+ *
+ * FIX GROUP 2 (frontend counterpart): Quantities are absolute values, not deltas.
+ * The authoritative value from the server always wins for inventory counts.
+ * Use clientData.quantity directly when no server quantity is present.
+ *
+ * If callers genuinely need delta semantics they must compute the delta
+ * themselves before calling this resolver.
  */
 export const mergeQuantityStrategy: ConflictStrategy = {
   resolve: (clientData: any, serverData: any) => {
-    if (typeof clientData.delta === "number" && typeof serverData.quantity === "number") {
-      return {
-        ...serverData,
-        quantity: serverData.quantity + clientData.delta,
-      };
+    // Server quantity is the authoritative absolute value.
+    if (typeof serverData.quantity === "number") {
+      return { ...serverData };
     }
-    return serverData; // Fallback to server wins
+    // No server quantity: accept client value as-is (offline-first safety net).
+    if (typeof clientData.quantity === "number") {
+      return { ...serverData, quantity: clientData.quantity };
+    }
+    return serverData;
   },
 };
 

@@ -77,9 +77,13 @@ class SyncConflictsService:
         for batch in data.get("batches") or []:
             if not isinstance(batch, dict):
                 continue
-            batch_id = (
-                str(batch.get("batch_id") or batch.get("batch_no") or "").strip() or "NO_BATCH"
-            )
+            # FIX GROUP 8: Never collapse missing batch_id into "NO_BATCH".
+            # Batch-controlled items must carry an explicit batch_id.
+            batch_id = str(batch.get("batch_id") or batch.get("batch_no") or "").strip()
+            if not batch_id:
+                raise ValueError(
+                    "BATCH_ID_REQUIRED: batch-controlled items must supply an explicit batch_id"
+                )
             if batch_id in seen:
                 continue
             seen.add(batch_id)
@@ -465,12 +469,13 @@ class SyncConflictsService:
                         merged_batches = [*existing_batches, *additive_batches]
                         fields["batches"] = merged_batches
 
-                delta_qty = incoming_qty if incoming_qty != current_qty else 0.0
+                # FIX GROUP 2: Use absolute replacement, never additive $inc.
+                # current=10, incoming=12 → result must be 12, NOT 22.
+                if incoming_qty != current_qty:
+                    fields["counted_qty"] = incoming_qty
                 fields["updated_at"] = datetime.now(UTC)
                 fields["conflict_resolved"] = True
                 update_doc: dict[str, Any] = {"$set": fields}
-                if delta_qty != 0.0:
-                    update_doc["$inc"] = {"counted_qty": delta_qty}
                 await self.count_line_write_service.process_write(
                     {
                         "operation": "update_one",
@@ -491,8 +496,6 @@ class SyncConflictsService:
                     strategy=strategy,
                     details={
                         "entity_id": entity_id,
-                        "merged_qty": current_qty + delta_qty,
-                        "delta_qty": delta_qty,
                         "incoming_qty": incoming_qty,
                         "current_qty": current_qty,
                         "merged_batches": merged_batches,
