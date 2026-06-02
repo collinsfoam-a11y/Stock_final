@@ -13,7 +13,6 @@ from backend.services.governance_guard import (
     GovernedCollection,
     AUTHORIZED_WRITE_AUTHORITIES,
     _GUARD_TARGET_COLLECTIONS,
-    _require_write_authority,
     write_authority,
 )
 

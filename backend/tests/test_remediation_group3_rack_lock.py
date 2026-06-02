@@ -8,8 +8,7 @@ Validates:
   - Heartbeat uses username for renewal
 """
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from backend.services.lock_manager import LockManager

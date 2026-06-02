@@ -9,7 +9,6 @@ Validates:
   - Reuse of consumed token → fail
 """
 
-import asyncio
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 

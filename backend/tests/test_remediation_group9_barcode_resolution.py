@@ -2,8 +2,7 @@
 FIX GROUP 9 — Regression tests: Alternate barcode fields must all resolve the correct SKU.
 """
 
-import uuid
-from unittest.mock import AsyncMock, MagicMock, call
+from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from backend.services.count_line_write_service import CountLineWriteService
@@ -56,9 +55,6 @@ async def test_barcode_field_included_in_query(barcode_field: str):
     # Call _evaluate_governance_for_document to trigger barcode lookup.
     # We patch resolve_baseline to avoid snapshot lookup.
     service.resolve_baseline = AsyncMock(return_value=(10.0, "hash-abc"))
-
-    db_session = None
-    kwargs = {}
 
     # Trigger the barcode lookup path
     try:
