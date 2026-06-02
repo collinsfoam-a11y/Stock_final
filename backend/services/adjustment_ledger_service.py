@@ -142,19 +142,6 @@ class AdjustmentLedgerService:
             )
             raise
 
-        # Link the ledger entry id back to the count line (best-effort; non-fatal)
-        try:
-            await self.db.count_lines.update_one(
-                {"$or": [{"id": entry["count_line_id"]}, {"_id": count_line.get("_id")}]},
-                {"$set": {"ledger_entry_id": ledger_entry_id, "ledger_posted_at": posted_at}},
-            )
-        except Exception:
-            logger.warning(
-                "Could not link ledger_entry_id=%s back to count_line_id=%s",
-                ledger_entry_id,
-                entry["count_line_id"],
-            )
-
         logger.info(
             "adjustment_ledger.posted ledger_entry_id=%s count_line_id=%s "
             "item_code=%s variance=%s posted_by=%s org_id=%s",

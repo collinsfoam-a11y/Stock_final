@@ -11,7 +11,6 @@ tests are fast, deterministic, and require no external services.
 from __future__ import annotations
 
 import asyncio
-import copy
 from datetime import datetime, timezone
 from typing import Any
 
@@ -124,8 +123,8 @@ async def test_two_concurrent_users_no_inflation():
     async for doc in db.count_lines.find({"session_id": session_id}):
         lines.append(doc)
 
-    item_lines = [l for l in lines if l.get("item_code") == "ITEM-CONC"]
-    total_counted = sum(l.get("counted_qty", 0) for l in item_lines)
+    item_lines = [line for line in lines if line.get("item_code") == "ITEM-CONC"]
+    total_counted = sum(line.get("counted_qty", 0) for line in item_lines)
 
     # Must be exactly 4 + 6 = 10 (no double-counting)
     assert total_counted == pytest.approx(10.0), (
@@ -185,12 +184,12 @@ async def test_five_concurrent_users_no_inflation():
         lines.append(doc)
 
     expected_total = sum(float(i + 1) for i in range(5))  # 1+2+3+4+5 = 15
-    actual_total = sum(l.get("counted_qty", 0) for l in lines if l.get("item_code") == "ITEM-CONC")
+    actual_total = sum(line.get("counted_qty", 0) for line in lines if line.get("item_code") == "ITEM-CONC")
     assert actual_total == pytest.approx(expected_total), (
         f"Inflation detected: expected {expected_total}, got {actual_total}"
     )
 
-    line_ids = {l.get("id") for l in lines}
+    line_ids = {line.get("id") for line in lines}
     assert len(line_ids) == 5, f"Expected 5 distinct lines, got {len(line_ids)}: {line_ids}"
 
 
@@ -305,7 +304,7 @@ async def test_ten_concurrent_users_no_duplication_or_inflation():
         lines.append(doc)
 
     for i in range(10):
-        item_lines = [l for l in lines if l.get("item_code") == f"ITEM-10-{i}"]
+        item_lines = [line for line in lines if line.get("item_code") == f"ITEM-10-{i}"]
         assert len(item_lines) == 1, f"ITEM-10-{i} has {len(item_lines)} lines, expected 1"
         assert item_lines[0]["counted_qty"] == pytest.approx(float(i + 1))
 

@@ -1581,6 +1581,33 @@ async def approve_count_line(
                 _safe_log_value(e, max_length=200),
             )
 
+        # Back-link ledger entry to count line via governed write path (best-effort)
+        if ledger_entry_id:
+            try:
+                await write_service.process_write(
+                    {
+                        "operation": "update_one",
+                        "filter": {"_id": count_line["_id"]},
+                        "update": {
+                            "$set": {
+                                "ledger_entry_id": ledger_entry_id,
+                                "ledger_posted_at": _current_timestamp(),
+                            }
+                        },
+                    },
+                    context={
+                        "session_id": str(count_line.get("session_id") or ""),
+                        "governance_mode": "mutable_session",
+                    },
+                )
+            except Exception as e:
+                logger.warning(
+                    "Could not link ledger_entry_id=%s back to count_line %s: %s",
+                    ledger_entry_id,
+                    _safe_log_value(line_id),
+                    _safe_log_value(e, max_length=200),
+                )
+
         # Audit Log Approval
         try:
             from backend.services.audit_service import AuditService
