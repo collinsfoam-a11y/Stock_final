@@ -463,7 +463,14 @@ class CountLineWriteService:
     ) -> None:
         operation = str(payload.get("operation") or "").strip().lower()
         document = payload.get("document") if isinstance(payload.get("document"), dict) else {}
-        actor = str(context.get("username") or context.get("actor") or "system")
+        # FIX GROUP 5: Build full actor attribution from context.
+        actor_username = str(context.get("username") or context.get("actor") or "system")
+        actor: dict[str, Any] = {
+            "user_id": str(context.get("user_id") or actor_username),
+            "username": actor_username,
+            "role": str(context.get("role") or ""),
+            "org_id": str(context.get("org_id") or ""),
+        }
         audit_operation = "COUNT"
         if operation == "insert_one" and document.get("previous_version_id"):
             audit_operation = "RECOUNT"
@@ -475,16 +482,16 @@ class CountLineWriteService:
         version = int(document.get("version", 1) or 1)
 
         for session_id in session_ids:
-            await self.audit_service.log_write_event(
+            await self.audit_service.log_governance_event(
                 event="COUNT_LINE_WRITE",
                 operation=audit_operation,
                 session_id=session_id,
+                actor=actor,
                 item_id=item_id or None,
                 location_id=location_id or None,
                 version=version,
                 idempotency_key=str(idempotency_key) if idempotency_key else None,
                 semantic_hash=str(semantic_hash) if semantic_hash else None,
-                actor_id=actor,
                 db_session=db_session,
             )
 
@@ -1349,8 +1356,21 @@ class CountLineWriteService:
         if erp_item is None:
             barcode = str(document.get("barcode") or "").strip()
             if barcode:
+                # FIX GROUP 9: Check all barcode fields, not just the primary one.
                 erp_item = await self._resolve_awaitable(
-                    self.db.erp_items.find_one({"barcode": barcode}, **kwargs)
+                    self.db.erp_items.find_one(
+                        {
+                            "$or": [
+                                {"barcode": barcode},
+                                {"manual_barcode": barcode},
+                                {"carton_barcode": barcode},
+                                {"pack_barcode": barcode},
+                                {"unit_barcode": barcode},
+                                {"alternate_barcodes": barcode},
+                            ]
+                        },
+                        **kwargs,
+                    )
                 )
             if erp_item is None:
                 erp_item = await self._resolve_awaitable(

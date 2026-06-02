@@ -350,6 +350,10 @@ class SessionLifecycleService:
             }
         )
 
+        # FIX GROUP 10: Pre-finalization governance checks (server-side only).
+        if target == "FINALIZED":
+            await self._assert_session_ready_to_finalize(session_id, db_session=db_session)
+
         now_dt = _utc_now()
         update_doc: dict[str, Any] = {
             "status": target,
@@ -448,6 +452,55 @@ class SessionLifecycleService:
                 trigger="session.update_totals",
                 actor=actor,
                 db_session=db_session,
+            )
+
+    async def _assert_session_ready_to_finalize(
+        self,
+        session_id: str,
+        *,
+        db_session: Optional[Any] = None,
+    ) -> None:
+        """
+        FIX GROUP 10: Server-side pre-finalization gate.
+        A session may NOT be finalized if any of these blockers exist.
+        """
+        kwargs = self._kwargs(db_session)
+        blockers: list[str] = []
+
+        # 1. Unresolved unknown items
+        unknown_count = await self.db.unknown_items.count_documents(
+            {"session_id": session_id, "status": {"$nin": ["RESOLVED", "DISMISSED"]}},
+            **kwargs,
+        )
+        if unknown_count > 0:
+            blockers.append(f"{unknown_count} unresolved unknown item(s)")
+
+        # 2. Pending recount requests
+        recount_count = await self.db.recount_requests.count_documents(
+            {
+                "session_id": session_id,
+                "status": {"$nin": ["completed", "cancelled", "expired"]},
+            },
+            **kwargs,
+        )
+        if recount_count > 0:
+            blockers.append(f"{recount_count} pending recount request(s)")
+
+        # 3. Count lines requiring approval
+        needs_review_count = await self.db.count_lines.count_documents(
+            {
+                "session_id": session_id,
+                "approval_status": {"$in": ["NEEDS_REVIEW", "PENDING"]},
+                "status": {"$nin": ["SUPERSEDED", "superseded"]},
+            },
+            **kwargs,
+        )
+        if needs_review_count > 0:
+            blockers.append(f"{needs_review_count} count line(s) pending approval")
+
+        if blockers:
+            raise GovernanceViolation(
+                "CRITICAL: Session cannot be finalized — blockers: " + "; ".join(blockers)
             )
 
     async def update_session_fields(

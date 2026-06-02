@@ -41,7 +41,11 @@ async def test_resolve_conflict_handles_non_object_id_entity_ids():
 
 
 @pytest.mark.asyncio
-async def test_resolve_conflict_merges_count_line_quantity_additively():
+async def test_resolve_conflict_replaces_count_line_quantity():
+    """
+    FIX GROUP 2: Conflict resolution must REPLACE counted_qty, not ADD to it.
+    current=3, incoming=2 → result must be 2, NOT 5.
+    """
     db = MagicMock()
     db.client = None
     db.sync_conflicts.update_one = AsyncMock(return_value=None)
@@ -77,7 +81,9 @@ async def test_resolve_conflict_merges_count_line_quantity_additively():
     )
 
     update_doc = service.count_line_write_service.process_write.await_args.args[0]["update"]
-    assert update_doc["$inc"]["counted_qty"] == pytest.approx(2.0)
+    # Must use $set for absolute replacement, never $inc.
+    assert "$inc" not in update_doc, "REGRESSION: $inc must not be used for quantity replacement"
+    assert update_doc.get("$set", {}).get("counted_qty") == pytest.approx(2.0)
 
 
 @pytest.mark.asyncio
