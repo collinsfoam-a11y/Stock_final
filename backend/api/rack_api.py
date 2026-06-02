@@ -381,6 +381,7 @@ async def release_rack(
 async def pause_rack(
     rack_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
+    redis_service=Depends(get_redis),
     pubsub_service=Depends(get_pubsub_service),
 ) -> dict[str, Any]:
     """
@@ -389,6 +390,7 @@ async def pause_rack(
     db = get_db()
 
     user_id = current_user["username"]
+    lock_manager = get_lock_manager(redis_service)
 
     # Get rack
     rack = await db.rack_registry.find_one({"rack_id": rack_id})
@@ -398,6 +400,12 @@ async def pause_rack(
     # Verify ownership
     if rack["claimed_by"] != user_id:
         raise HTTPException(status_code=403, detail=f"Rack {rack_id} is not claimed by you")
+
+    if not await lock_manager.is_rack_lock_owned_by(rack_id, user_id):
+        current_owner = await lock_manager.get_rack_lock_owner(rack_id)
+        if current_owner:
+            raise HTTPException(status_code=409, detail=f"Rack {rack_id} is locked by {current_owner}")
+        raise HTTPException(status_code=409, detail=f"Rack {rack_id} lock expired")
 
     # Update status
     await update_rack_status(
@@ -431,6 +439,7 @@ async def pause_rack(
 async def resume_rack(
     rack_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
+    redis_service=Depends(get_redis),
     pubsub_service=Depends(get_pubsub_service),
 ) -> dict[str, Any]:
     """
@@ -439,6 +448,7 @@ async def resume_rack(
     db = get_db()
 
     user_id = current_user["username"]
+    lock_manager = get_lock_manager(redis_service)
 
     # Get rack
     rack = await db.rack_registry.find_one({"rack_id": rack_id})
@@ -448,6 +458,12 @@ async def resume_rack(
     # Verify ownership
     if rack["claimed_by"] != user_id:
         raise HTTPException(status_code=403, detail=f"Rack {rack_id} is not claimed by you")
+
+    if not await lock_manager.is_rack_lock_owned_by(rack_id, user_id):
+        current_owner = await lock_manager.get_rack_lock_owner(rack_id)
+        if current_owner:
+            raise HTTPException(status_code=409, detail=f"Rack {rack_id} is locked by {current_owner}")
+        raise HTTPException(status_code=409, detail=f"Rack {rack_id} lock expired")
 
     # Verify paused
     if rack["status"] != "paused":

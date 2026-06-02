@@ -147,6 +147,11 @@ class LockManager:
         lock_key = f"rack:lock:{rack_id}"
         return await self.redis.ttl(lock_key)
 
+    async def is_rack_lock_owned_by(self, rack_id: str, user_id: str) -> bool:
+        lock_key = f"rack:lock:{rack_id}"
+        owner = await self.redis.get(lock_key)
+        return bool(owner) and owner == user_id
+
     async def is_rack_locked(self, rack_id: str) -> bool:
         """Check if rack is currently locked"""
         lock_key = f"rack:lock:{rack_id}"
@@ -314,9 +319,8 @@ class LockManager:
             cursor, batch = await self.redis.client.scan(cursor, match=lock_pattern, count=100)
 
             for lock_key in batch:
-                owner = await self.redis.get(lock_key)
-                if owner == user_id:
-                    await self.redis.delete(lock_key)
+                result = await self.redis.eval(self._RELEASE_SCRIPT, 1, lock_key, user_id)
+                if result:
                     released += 1
                     logger.warning(f"Force released lock: {lock_key} owned by {user_id}")
 

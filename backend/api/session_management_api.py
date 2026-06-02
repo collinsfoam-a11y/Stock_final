@@ -1558,6 +1558,13 @@ async def session_heartbeat(
 
         if rack_lock_renewed:
             lock_ttl_remaining = await lock_manager.get_rack_lock_ttl(rack_id)
+            try:
+                await db.rack_registry.update_one(
+                    {"rack_id": rack_id, "claimed_by": user_id},
+                    {"$set": {"lock_expires_at": time.time() + float(lock_ttl_remaining or 0)}},
+                )
+            except Exception:
+                pass
 
     # Update session last_heartbeat
     heartbeat_at = _current_utc_naive()
