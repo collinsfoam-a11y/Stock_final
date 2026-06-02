@@ -20,6 +20,11 @@ import {
   typography,
   borderRadius,
 } from "@/theme/designTokens";
+import { haptics } from "@/services/haptics";
+import {
+  getAccessibleButtonProps,
+  getDecorativeIconProps,
+} from "@/utils/accessibility";
 
 export type ChipVariant = "filled" | "outlined";
 export type ChipSize = "sm" | "md" | "lg";
@@ -91,9 +96,15 @@ export const Chip: React.FC<ChipProps> = ({
 
   const Container = isInteractive ? TouchableOpacity : View;
 
+  const handlePress = () => {
+    if (disabled) return;
+    void haptics.light();
+    onPress?.();
+  };
+
   return (
     <Container
-      onPress={onPress}
+      onPress={handlePress}
       disabled={disabled}
       activeOpacity={0.7}
       style={[
@@ -108,9 +119,17 @@ export const Chip: React.FC<ChipProps> = ({
         },
         style,
       ]}
+      {...(isInteractive
+        ? getAccessibleButtonProps({
+            label: label,
+            selected: selected,
+            disabled: disabled,
+          })
+        : {})}
     >
       {icon && (
         <Ionicons
+          {...getDecorativeIconProps()}
           name={icon}
           size={sizes.iconSize}
           color={colors.text}
@@ -134,11 +153,18 @@ export const Chip: React.FC<ChipProps> = ({
 
       {onRemove && !disabled && (
         <TouchableOpacity
-          onPress={onRemove}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          onPress={() => {
+            void haptics.light();
+            onRemove();
+          }}
           style={styles.removeButton}
+          {...getAccessibleButtonProps({
+            label: `Remove ${label}`,
+            hitSlop: { top: 8, bottom: 8, left: 8, right: 8 },
+          })}
         >
           <Ionicons
+            {...getDecorativeIconProps()}
             name="close-circle"
             size={sizes.iconSize}
             color={colors.text}
