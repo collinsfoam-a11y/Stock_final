@@ -351,11 +351,37 @@ async def _resolve_item_name_for_draft(db: Any, line_data: CountLineCreate) -> O
 
     erp_item = None
     if line_data.barcode:
-        result = db.erp_items.find_one({"barcode": line_data.barcode})
+        result = db.erp_items.find_one(
+            org_scoped_filter(
+                None,
+                {
+                    "$or": [
+                        {"barcode": line_data.barcode},
+                        {"manual_barcode": line_data.barcode},
+                        {"autobarcode": line_data.barcode},
+                        {"auto_barcode": line_data.barcode},
+                        {"item_code": line_data.barcode},
+                    ]
+                },
+            )
+        )
         erp_item = await result if inspect.isawaitable(result) else result
 
     if not erp_item and line_data.item_code:
-        result = db.erp_items.find_one({"item_code": line_data.item_code})
+        result = db.erp_items.find_one(
+            org_scoped_filter(
+                None,
+                {
+                    "$or": [
+                        {"item_code": line_data.item_code},
+                        {"barcode": line_data.item_code},
+                        {"manual_barcode": line_data.item_code},
+                        {"autobarcode": line_data.item_code},
+                        {"auto_barcode": line_data.item_code},
+                    ]
+                },
+            )
+        )
         erp_item = await result if inspect.isawaitable(result) else result
 
     item_name = erp_item.get("item_name") if erp_item else None
@@ -1039,6 +1065,7 @@ async def save_count_line_draft(
         )
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     username = current_user["username"]
+    org_id = org_id_from_user(current_user)
     draft_line_id = _build_draft_line_id(line_data)
     draft_filter = _build_count_line_draft_filter(line_data, username)
     legacy_draft_filter = _build_legacy_count_line_draft_filter(line_data, username)
@@ -1050,11 +1077,12 @@ async def save_count_line_draft(
         "counted_by": username,
         "user_id": username,
         "line_id": draft_line_id,
+        "org_id": org_id,
         "status": "draft",
         "updated_at": now,
     }
 
-    existing_draft_result = db.count_line_drafts.find_one(draft_filter)
+    existing_draft_result = db.count_line_drafts.find_one(org_scoped_filter(org_id, draft_filter))
     existing_draft = (
         await existing_draft_result
         if inspect.isawaitable(existing_draft_result)
@@ -1062,7 +1090,9 @@ async def save_count_line_draft(
     )
     if not existing_draft:
         # Backward compatibility: upgrade older draft identity to indexed identity.
-        legacy_draft_result = db.count_line_drafts.find_one(legacy_draft_filter)
+        legacy_draft_result = db.count_line_drafts.find_one(
+            org_scoped_filter(org_id, legacy_draft_filter)
+        )
         existing_draft = (
             await legacy_draft_result
             if inspect.isawaitable(legacy_draft_result)
@@ -1071,7 +1101,7 @@ async def save_count_line_draft(
 
     if existing_draft:
         update_result = db.count_line_drafts.update_one(
-            {"_id": existing_draft["_id"]},
+            org_scoped_filter(org_id, {"_id": existing_draft["_id"]}),
             {"$set": draft_payload},
         )
         if inspect.isawaitable(update_result):
@@ -1085,14 +1115,18 @@ async def save_count_line_draft(
             draft_id = str(result.inserted_id)
         except DuplicateKeyError:
             # Recover from concurrent insert/legacy key collision.
-            conflicting_draft_result = db.count_line_drafts.find_one(draft_filter)
+            conflicting_draft_result = db.count_line_drafts.find_one(
+                org_scoped_filter(org_id, draft_filter)
+            )
             conflicting_draft = (
                 await conflicting_draft_result
                 if inspect.isawaitable(conflicting_draft_result)
                 else conflicting_draft_result
             )
             if not conflicting_draft:
-                legacy_conflicting_result = db.count_line_drafts.find_one(legacy_draft_filter)
+                legacy_conflicting_result = db.count_line_drafts.find_one(
+                    org_scoped_filter(org_id, legacy_draft_filter)
+                )
                 conflicting_draft = (
                     await legacy_conflicting_result
                     if inspect.isawaitable(legacy_conflicting_result)
@@ -1102,7 +1136,7 @@ async def save_count_line_draft(
                 raise HTTPException(status_code=409, detail="Draft conflict detected")
 
             update_result = db.count_line_drafts.update_one(
-                {"_id": conflicting_draft["_id"]},
+                org_scoped_filter(org_id, {"_id": conflicting_draft["_id"]}),
                 {"$set": draft_payload},
             )
             if inspect.isawaitable(update_result):

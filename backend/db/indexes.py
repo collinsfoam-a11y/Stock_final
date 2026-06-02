@@ -152,6 +152,10 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
             {"name": "idx_count_line_item_serial", "sparse": True},
         ),
     ],
+    "count_line_drafts": [
+        ([("org_id", 1), ("session_id", 1), ("user_id", 1), ("line_id", 1)], {"name": "idx_draft_identity"}),
+        ([("updated_at", -1)], {"name": "idx_draft_updated_at"}),
+    ],
     # Append-only event store
     "event_log": [
         ([("aggregate_id", 1), ("timestamp", 1)], {"name": "idx_event_aggregate_time"}),

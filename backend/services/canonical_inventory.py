@@ -11,6 +11,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from bson import ObjectId
+
+from backend.tenancy.scoping import org_scoped_filter
+
 ACTIVE_SESSION_STATUSES = {"OPEN", "ACTIVE", "PAUSED", "RECONCILE"}
 FINALIZED_SESSION_STATUSES = {"COMPLETED", "CLOSED", "CANCELLED", "ARCHIVED"}
 LOCKED_COUNT_LINE_STATUSES = {"locked"}
@@ -118,11 +122,14 @@ def materialize_count_line_review_state(count_line: dict[str, Any]) -> dict[str,
 
 
 def build_session_lookup(session_id: str) -> dict[str, Any]:
-    return {"$or": [{"id": session_id}, {"session_id": session_id}]}
+    lookup: dict[str, Any] = {"$or": [{"id": session_id}, {"session_id": session_id}]}
+    if ObjectId.is_valid(str(session_id)):
+        lookup["$or"].append({"_id": ObjectId(str(session_id))})
+    return lookup
 
 
 async def find_session(db: Any, session_id: str) -> Optional[dict[str, Any]]:
-    return await db.sessions.find_one(build_session_lookup(session_id))
+    return await db.sessions.find_one(org_scoped_filter(None, build_session_lookup(session_id)))
 
 
 def extract_document_id(document: dict[str, Any]) -> Optional[str]:
