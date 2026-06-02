@@ -73,6 +73,24 @@ def _match_condition(value: Any, condition: dict[str, Any]) -> bool:
     return True
 
 
+def _extract_dot_values(document: Any, parts: list[str]) -> list[Any]:
+    if not parts:
+        if isinstance(document, list):
+            return list(document)
+        return [document]
+    if isinstance(document, list):
+        values: list[Any] = []
+        for item in document:
+            values.extend(_extract_dot_values(item, parts))
+        return values
+    if not isinstance(document, dict):
+        return []
+    head, *tail = parts
+    if head not in document:
+        return []
+    return _extract_dot_values(document.get(head), tail)
+
+
 def _matches_exists_logic(document: dict[str, Any], key: str, value: dict[str, Any]) -> bool:
     """Helper to handle $exists operator logic."""
     should_exist = value["$exists"]
@@ -116,13 +134,19 @@ def _match_filter(document: dict[str, Any], filter_query: dict[str, Optional[Any
                 return False
             continue
 
-        doc_value = document.get(key)
+        if "." in key:
+            doc_values = _extract_dot_values(document, key.split("."))
+        else:
+            doc_values = [document.get(key)]
+            if len(doc_values) == 1 and isinstance(doc_values[0], list):
+                doc_values = list(doc_values[0])
+
         if isinstance(value, dict):
-            if not _match_condition(doc_value, value):
+            if not any(_match_condition(doc_value, value) for doc_value in doc_values):
                 return False
         else:
-            value = _normalize_value(value)
-            if doc_value != value:
+            expected = _normalize_value(value)
+            if not any(_normalize_value(doc_value) == expected for doc_value in doc_values):
                 return False
     return True
 
@@ -491,13 +515,19 @@ class InMemoryDatabase:
 
     def __getitem__(self, name: str) -> InMemoryCollection:
         """Allow accessing collections via db['name']."""
-        if hasattr(self, name):
-            return getattr(self, name)
+        existing = self.__dict__.get(name)
+        if isinstance(existing, InMemoryCollection):
+            return existing
 
         # Create dynamically if not exists (mimics Mongo behavior)
         collection = InMemoryCollection()
         setattr(self, name, collection)
         return collection
+
+    def __getattr__(self, name: str) -> InMemoryCollection:
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return self.__getitem__(name)
 
 
 class InMemoryClientSession:

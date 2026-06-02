@@ -171,6 +171,7 @@ async def validate_record(
         SyncConflict if validation fails, None if valid
     """
     normalized_serials = _normalize_serial_numbers(record.serial_numbers)
+    record.serial_numbers = normalized_serials
 
     # Check for duplicate serial numbers
     if normalized_serials:
