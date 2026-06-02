@@ -61,6 +61,7 @@ class TestCheckSerialUniqueness:
     @pytest.fixture
     def mock_db(self):
         db = AsyncMock()
+        db.sessions.find_one = AsyncMock(return_value={"_id": "sess_1"})
         db.serial_registry.find_one = AsyncMock(return_value=None)
         db.item_serials.find_one = AsyncMock(return_value=None)
         db.count_lines.find_one = AsyncMock(return_value=None)
@@ -122,6 +123,7 @@ class TestProjectionReadRouting:
     @pytest.mark.asyncio
     async def test_scan_status_route_reads_projection_when_flag_enabled(self, monkeypatch):
         db = InMemoryDatabase()
+        await db.sessions.insert_one({"id": "sess-1", "session_id": "sess-1"})
         await db.items_snapshot.insert_one(
             {
                 "session_id": "sess-1",
@@ -162,6 +164,7 @@ class TestProjectionReadRouting:
         self, monkeypatch
     ):
         db = InMemoryDatabase()
+        await db.sessions.insert_one({"id": "sess-1", "session_id": "sess-1"})
         await db.count_lines.insert_one(
             {
                 "_id": "mongo-line-1",
@@ -215,6 +218,7 @@ class TestProjectionReadRouting:
     @pytest.mark.asyncio
     async def test_check_item_counted_returns_503_in_projection_strict_mode(self, monkeypatch):
         db = InMemoryDatabase()
+        await db.sessions.insert_one({"id": "sess-1", "session_id": "sess-1"})
         await db.count_lines.insert_one(
             {
                 "_id": "mongo-line-1",

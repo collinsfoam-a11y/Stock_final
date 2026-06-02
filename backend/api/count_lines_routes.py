@@ -39,6 +39,7 @@ from backend.services.snapshot_service import SnapshotService
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.transaction_manager import mongo_transaction
 from backend.services.variant_service import VariantService
+from backend.tenancy.scoping import org_id_from_user, org_scoped_filter
 from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
@@ -1825,9 +1826,22 @@ async def check_item_counted(
             "yes",
         }
 
+        org_id = org_id_from_user(current_user)
+        session_lookup: dict[str, Any] = {
+            "$or": [{"id": session_id}, {"session_id": session_id}],
+        }
+        if ObjectId.is_valid(str(session_id)):
+            session_lookup["$or"].append({"_id": ObjectId(str(session_id))})
+        session = await db.sessions.find_one(org_scoped_filter(org_id, session_lookup), {"_id": 1})
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
         # Find all count lines for this item in this session
         cursor = db.count_lines.find(
-            {"session_id": session_id, "item_code": item_code, "archived": {"$ne": True}}
+            org_scoped_filter(
+                org_id,
+                {"session_id": session_id, "item_code": item_code, "archived": {"$ne": True}},
+            )
         )
         count_lines = await cursor.to_list(length=None)
 
@@ -1846,7 +1860,7 @@ async def check_item_counted(
 
         if projection_reads_enabled:
             snapshot = await db.items_snapshot.find_one(
-                {"session_id": session_id, "item_code": item_code},
+                org_scoped_filter(org_id, {"session_id": session_id, "item_code": item_code}),
                 {"_id": 0, "counted_qty": 1},
             )
             if not snapshot:
@@ -1862,7 +1876,7 @@ async def check_item_counted(
                     "source": "projection",
                 }
                 batch_totals = await db.batch_records.find(
-                    {"session_id": session_id, "item_code": item_code},
+                    org_scoped_filter(org_id, {"session_id": session_id, "item_code": item_code}),
                     {"_id": 0, "batch_id": 1, "batch_no": 1, "counted_qty": 1, "damaged_qty": 1},
                 ).to_list(length=None)
 
@@ -1919,29 +1933,42 @@ async def check_serial_uniqueness(
     if item_code:
         base_query["item_code"] = item_code
 
+    org_id = org_id_from_user(current_user)
+    session_lookup: dict[str, Any] = {
+        "$or": [{"id": session_id}, {"session_id": session_id}],
+    }
+    if ObjectId.is_valid(str(session_id)):
+        session_lookup["$or"].append({"_id": ObjectId(str(session_id))})
+    session = await db.sessions.find_one(org_scoped_filter(org_id, session_lookup), {"_id": 1})
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
     for candidate in candidates:
         registry = await db.serial_registry.find_one(
-            {**base_query, "serial_no": candidate},
+            org_scoped_filter(org_id, {**base_query, "serial_no": candidate}),
             projection,
         )
         if registry:
             return {"exists": True, "scope": scope, **registry}
 
         item_serial = await db.item_serials.find_one(
-            {**base_query, "serial_number": candidate},
+            org_scoped_filter(org_id, {**base_query, "serial_number": candidate}),
             projection,
         )
         if item_serial:
             return {"exists": True, "scope": scope, **item_serial}
 
         existing = await db.count_lines.find_one(
-            {
-                **base_query,
-                "$or": [
-                    {"serial_numbers": candidate},
-                    {"serial_entries.serial_number": candidate},
-                ],
-            },
+            org_scoped_filter(
+                org_id,
+                {
+                    **base_query,
+                    "$or": [
+                        {"serial_numbers": candidate},
+                        {"serial_entries.serial_number": candidate},
+                    ],
+                },
+            ),
             projection,
         )
         if existing:
@@ -2306,9 +2333,19 @@ async def check_item_scan_status(
         "yes",
     }
 
+    org_id = org_id_from_user(current_user)
+    session_lookup: dict[str, Any] = {
+        "$or": [{"id": session_id}, {"session_id": session_id}],
+    }
+    if ObjectId.is_valid(str(session_id)):
+        session_lookup["$or"].append({"_id": ObjectId(str(session_id))})
+    session = await db.sessions.find_one(org_scoped_filter(org_id, session_lookup), {"_id": 1})
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
     if projection_reads_enabled:
         snapshot = await db.items_snapshot.find_one(
-            {"session_id": session_id, "item_code": item_code},
+            org_scoped_filter(org_id, {"session_id": session_id, "item_code": item_code}),
             {
                 "_id": 0,
                 "counted_qty": 1,
@@ -2321,7 +2358,7 @@ async def check_item_scan_status(
         if snapshot:
             total_qty = float(snapshot.get("counted_qty") or 0.0)
             batch_totals = await db.batch_records.find(
-                {"session_id": session_id, "item_code": item_code},
+                org_scoped_filter(org_id, {"session_id": session_id, "item_code": item_code}),
                 {"_id": 0, "batch_id": 1, "batch_no": 1, "counted_qty": 1, "damaged_qty": 1},
             ).to_list(None)
 
@@ -2347,7 +2384,11 @@ async def check_item_scan_status(
             )
 
     # Find all count lines for this item in this session
-    cursor = db.count_lines.find({"session_id": session_id, "item_code": item_code})
+    cursor = db.count_lines.find(
+        org_scoped_filter(
+            org_id, {"session_id": session_id, "item_code": item_code, "archived": {"$ne": True}}
+        )
+    )
 
     count_lines = await cursor.to_list(None)
 

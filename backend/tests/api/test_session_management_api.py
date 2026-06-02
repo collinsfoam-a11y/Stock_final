@@ -999,7 +999,8 @@ class TestActiveSessionsEndpoint:
         mock_db.sessions = MagicMock()
 
         def _find_sessions(query):
-            assert query["status"]["$in"] == ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]
+            base = query["$and"][0] if "$and" in query else query
+            assert base["status"]["$in"] == ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]
             return _AsyncCursor(active_sessions)
 
         mock_db.sessions.find = MagicMock(side_effect=_find_sessions)

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
+from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
@@ -25,6 +26,7 @@ from backend.services.notification_service import (
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.transaction_manager import mongo_transaction
 from backend.utils.api_utils import sanitize_for_logging
+from backend.tenancy.scoping import org_id_from_user, org_scoped_filter
 from backend.services.enterprise_audit import AuditEventType, AuditSeverity
 from backend.utils.enterprise_audit_logger import log_enterprise_audit
 
@@ -123,7 +125,10 @@ async def create_recount_request(
 ):
     """Create a new recount request from a rejected count line."""
     try:
-        count_line = await db.count_lines.find_one({"id": request.count_line_id})
+        org_id = org_id_from_user(current_user)
+        count_line = await db.count_lines.find_one(
+            org_scoped_filter(org_id, {"id": request.count_line_id})
+        )
         if not count_line:
             raise HTTPException(status_code=404, detail="Count line not found")
 
@@ -218,6 +223,14 @@ async def create_session_recount_request(
         session_id = str(request.session_id or "").strip()
         if not session_id:
             raise HTTPException(status_code=400, detail="session_id is required")
+
+        org_id = org_id_from_user(current_user)
+        session_lookup: dict = {"$or": [{"id": session_id}, {"session_id": session_id}]}
+        if ObjectId.is_valid(session_id):
+            session_lookup["$or"].append({"_id": ObjectId(session_id)})
+        session = await db.sessions.find_one(org_scoped_filter(org_id, session_lookup), {"_id": 1})
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
 
         scope = request.scope.value
         count_line_ids: list[str] = []
@@ -318,8 +331,16 @@ async def list_recount_requests(
     if priority:
         query["priority"] = priority
 
-    total = await db.recount_requests.count_documents(query)
-    cursor = db.recount_requests.find(query).sort("created_at", -1).skip(offset).limit(limit)
+    org_id = org_id_from_user(current_user)
+    scoped_query = org_scoped_filter(org_id, query)
+
+    total = await db.recount_requests.count_documents(scoped_query)
+    cursor = (
+        db.recount_requests.find(scoped_query)
+        .sort("created_at", -1)
+        .skip(offset)
+        .limit(limit)
+    )
     requests = await cursor.to_list(length=limit)
 
     for req in requests:
@@ -342,10 +363,17 @@ async def get_recount_request(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Get single recount request details."""
+    org_id = org_id_from_user(current_user)
     lifecycle_service = SessionLifecycleService(db)
     recount = await lifecycle_service.get_recount_request(recount_id)
     if not recount:
         raise HTTPException(status_code=404, detail="Recount request not found")
+
+    lookup = {"_id": recount.get("_id")} if recount.get("_id") is not None else {"id": recount_id}
+    scoped = await db.recount_requests.find_one(org_scoped_filter(org_id, lookup))
+    if not scoped:
+        raise HTTPException(status_code=404, detail="Recount request not found")
+    recount = scoped
 
     recount["id"] = str(recount.get("_id") or recount.get("id") or recount_id)
 
@@ -378,12 +406,13 @@ async def assign_recount_request(
 ):
     """Assign recount request to a staff member."""
     try:
+        org_id = org_id_from_user(current_user)
         lifecycle_service = SessionLifecycleService(db)
         recount = await lifecycle_service.get_recount_request(request.recount_id)
         if not recount:
             raise HTTPException(status_code=404, detail="Recount request not found")
 
-        user = await db.users.find_one({"username": request.assign_to})
+        user = await db.users.find_one(org_scoped_filter(org_id, {"username": request.assign_to}))
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 

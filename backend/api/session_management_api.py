@@ -39,6 +39,7 @@ from backend.services.enterprise_audit import AuditEventType, AuditSeverity
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.redis_service import get_redis
 from backend.services.runtime import get_refresh_token_service
+from backend.tenancy.scoping import org_id_from_user, org_scoped_filter
 from backend.utils.api_utils import sanitize_for_logging
 from backend.utils.enterprise_audit_logger import log_enterprise_audit
 
@@ -1238,23 +1239,29 @@ async def get_sessions(
         # Regular users only see their own sessions
         query["staff_user"] = current_user["username"]
 
+    org_id = org_id_from_user(current_user)
+    scoped_query = org_scoped_filter(org_id, query)
+
     # Get total count
-    total = await db.sessions.count_documents(query)
+    total = await db.sessions.count_documents(scoped_query)
 
     # Get paginated sessions
     skip = (page - 1) * page_size
-    sessions_cursor = db.sessions.find(query).sort("started_at", -1).skip(skip).limit(page_size)
+    sessions_cursor = (
+        db.sessions.find(scoped_query).sort("started_at", -1).skip(skip).limit(page_size)
+    )
     sessions = await sessions_cursor.to_list(length=page_size)
 
     logger.debug(
         "Fetched sessions page",
         extra={
-            "query": query,
+            "query": scoped_query,
             "returned_count": len(sessions),
             "total_count": total,
             "page": page,
             "page_size": page_size,
             "viewer": current_user["username"],
+            "org_id": org_id,
         },
     )
 
@@ -1356,8 +1363,11 @@ async def get_active_sessions(
     if rack_id:
         query["rack_no"] = rack_id
 
+    org_id = org_id_from_user(current_user)
+    scoped_query = org_scoped_filter(org_id, query)
+
     # Get sessions
-    sessions_cursor = db.sessions.find(query).sort("started_at", -1)
+    sessions_cursor = db.sessions.find(scoped_query).sort("started_at", -1)
     sessions = await sessions_cursor.to_list(length=100)
 
     result = []
@@ -2179,13 +2189,17 @@ async def get_user_session_history(
     """Get user's session history (completed sessions)"""
     user_id = current_user["username"]
 
+    org_id = org_id_from_user(current_user)
+    scoped_query = org_scoped_filter(
+        org_id,
+        {
+            "staff_user": user_id,
+            "status": {"$in": ["COMPLETED", "CLOSED", "FINALIZED", "ARCHIVED"]},
+        },
+    )
+
     sessions_cursor = (
-        db.sessions.find(
-            {
-                "staff_user": user_id,
-                "status": {"$in": ["COMPLETED", "CLOSED", "FINALIZED", "ARCHIVED"]},
-            }
-        )
+        db.sessions.find(scoped_query)
         .sort("completed_at", -1)
         .limit(limit)
     )
