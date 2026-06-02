@@ -447,7 +447,15 @@ async def get_item_details(
 
         # Get item from MongoDB (search by item_code OR barcode)
         item = await db.erp_items.find_one(
-            {"$or": [{"item_code": item_code}, {"barcode": item_code}]}
+            {
+                "$or": [
+                    {"item_code": item_code},
+                    {"barcode": item_code},
+                    {"manual_barcode": item_code},
+                    {"autobarcode": item_code},
+                    {"auto_barcode": item_code},
+                ]
+            }
         )
         if not item:
             return ApiResponse.error_response(

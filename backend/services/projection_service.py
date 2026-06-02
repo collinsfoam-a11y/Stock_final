@@ -860,6 +860,8 @@ class ProjectionService:
         if event.get("event_type") == "SCAN_ADDED" and not after_batches:
             after_batches = _normalize_batches(after or line)
         batch_ids = sorted(set(before_batches.keys()) | set(after_batches.keys()))
+        if batch_id == "NO_BATCH" and len(after_batches) == 1:
+            batch_id = next(iter(after_batches.keys()))
 
         snapshot_query = {"session_id": session_id, "item_code": item_code}
         snapshot_update = {

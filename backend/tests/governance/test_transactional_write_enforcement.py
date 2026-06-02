@@ -69,6 +69,63 @@ async def _seed_session_snapshot(
     )
 
 
+@pytest.mark.asyncio
+async def test_count_line_write_infers_batch_id_from_single_batch_entry():
+    db = InMemoryDatabase()
+    await _seed_active_session(db, "sess-batch-1")
+    await _seed_session_snapshot(db, "sess-batch-1", item_code="ITEM-BATCH", stock_qty=1.0)
+    service = CountLineWriteService(db)
+
+    line = _build_line(
+        line_id="line-batch-1",
+        session_id="sess-batch-1",
+        item_code="ITEM-BATCH",
+        counted_qty=1.0,
+        idempotency_key="idem-batch-1",
+    )
+    line.pop("recount_of_id", None)
+    line["batches"] = [{"batch_no": "B1", "counted_qty": 1.0, "damaged_qty": 0.0}]
+
+    await service.process_write(
+        {"operation": "insert_one", "document": line},
+        context={"username": "tester", "enforce_snapshot": False},
+    )
+
+    stored = await db.count_lines.find_one(org_scoped_filter(None, {"id": "line-batch-1"}))
+    assert stored is not None
+    assert stored.get("batch_id") == "B1"
+    assert stored.get("batches") == [
+        {"batch_id": "B1", "batch_no": "B1", "counted_qty": 1.0, "damaged_qty": 0.0}
+    ]
+
+
+@pytest.mark.asyncio
+async def test_count_line_write_rejects_serials_with_multiple_batches():
+    db = InMemoryDatabase()
+    await _seed_active_session(db, "sess-batch-2")
+    await _seed_session_snapshot(db, "sess-batch-2", item_code="ITEM-BATCH", stock_qty=2.0)
+    service = CountLineWriteService(db)
+
+    line = _build_line(
+        line_id="line-batch-2",
+        session_id="sess-batch-2",
+        item_code="ITEM-BATCH",
+        counted_qty=2.0,
+        idempotency_key="idem-batch-2",
+    )
+    line["serial_numbers"] = ["S1", "S2"]
+    line["batches"] = [
+        {"batch_no": "B1", "counted_qty": 1.0},
+        {"batch_no": "B2", "counted_qty": 1.0},
+    ]
+
+    with pytest.raises(GovernanceViolation, match="Multi-batch serial counting"):
+        await service.process_write(
+            {"operation": "insert_one", "document": line},
+            context={"username": "tester", "enforce_snapshot": False},
+        )
+
+
 def _build_line(
     *,
     line_id: str,

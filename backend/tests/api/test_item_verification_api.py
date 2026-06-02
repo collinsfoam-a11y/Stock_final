@@ -124,7 +124,7 @@ def test_build_item_filter_query():
     assert query["category"] == {"$regex": "Cat1", "$options": "i"}
     assert query["verified"] is True
     assert "$or" in query
-    assert len(query["$or"]) == 3
+    assert len(query["$or"]) == 6
 
     # Test empty filters
     query = build_item_filter_query()

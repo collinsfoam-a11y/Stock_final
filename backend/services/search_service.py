@@ -20,6 +20,8 @@ from typing import Any, Optional, Union
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from rapidfuzz import fuzz
 
+from backend.tenancy.scoping import org_scoped_filter
+
 logger = logging.getLogger(__name__)
 
 
@@ -175,13 +177,27 @@ class SearchService:
         """Build MongoDB query for candidate fetching"""
 
         fields = search_fields or ["barcode", "item_code", "item_name"]
+        barcode_fields = [
+            "barcode",
+            "manual_barcode",
+            "autobarcode",
+            "auto_barcode",
+            "unit2_barcode",
+            "unit_m_barcode",
+        ]
 
         if is_barcode:
-            # Prioritize exact and prefix barcode matches, but include name search
+            barcode_conditions: list[dict[str, Any]] = []
+            for field in barcode_fields:
+                barcode_conditions.extend(
+                    [
+                        {field: query},
+                        {field: {"$regex": f"^{query}"}},
+                    ]
+                )
             return {
                 "$or": [
-                    {"barcode": query},  # Exact match
-                    {"barcode": {"$regex": f"^{query}"}},  # Prefix match
+                    *barcode_conditions,
                     {"item_code": query},  # Exact code match
                     {
                         "item_name": {"$regex": query, "$options": "i"}
@@ -193,7 +209,8 @@ class SearchService:
         or_conditions = []
 
         if "barcode" in fields:
-            or_conditions.append({"barcode": {"$regex": query, "$options": "i"}})
+            for field in barcode_fields:
+                or_conditions.append({field: {"$regex": query, "$options": "i"}})
 
         if "item_code" in fields:
             or_conditions.append({"item_code": {"$regex": query, "$options": "i"}})
@@ -210,7 +227,7 @@ class SearchService:
             return []
 
         try:
-            cursor = self.db.erp_items.find(query).limit(self.MAX_CANDIDATES)
+            cursor = self.db.erp_items.find(org_scoped_filter(None, query)).limit(self.MAX_CANDIDATES)
             candidates = await cursor.to_list(length=self.MAX_CANDIDATES)
             return candidates
         except Exception as e:
@@ -288,23 +305,40 @@ class SearchService:
         Returns:
             Tuple of (score, match_type)
         """
-        barcode = str(item.get("barcode", ""))
+        barcode_candidates = [
+            str(item.get(field) or "")
+            for field in (
+                "barcode",
+                "manual_barcode",
+                "autobarcode",
+                "auto_barcode",
+                "unit2_barcode",
+                "unit_m_barcode",
+            )
+            if str(item.get(field) or "").strip()
+        ]
         item_code = str(item.get("item_code", ""))
         item_name = item.get("item_name", "")
         name_lower = item_name.lower()
 
         # Priority 1: Exact barcode match
-        if barcode == query:
+        if any(candidate == query for candidate in barcode_candidates):
             return (self.EXACT_BARCODE_SCORE, "exact_barcode")
 
         # Priority 2: Partial barcode match (prefix)
-        if barcode.startswith(query):
-            similarity = len(query) / len(barcode) * 100
+        prefix_candidate = next(
+            (candidate for candidate in barcode_candidates if candidate.startswith(query)), None
+        )
+        if prefix_candidate:
+            similarity = len(query) / len(prefix_candidate) * 100
             return (self.PARTIAL_BARCODE_SCORE + similarity, "partial_barcode")
 
         # Priority 3: Barcode contains query (for scanning partial reads)
-        if is_barcode and query in barcode:
-            similarity = len(query) / len(barcode) * 100
+        contains_candidate = next(
+            (candidate for candidate in barcode_candidates if query in candidate), None
+        )
+        if is_barcode and contains_candidate:
+            similarity = len(query) / len(contains_candidate) * 100
             return (self.PARTIAL_BARCODE_SCORE + similarity * 0.5, "partial_barcode")
 
         # Priority 4: Exact item_code match

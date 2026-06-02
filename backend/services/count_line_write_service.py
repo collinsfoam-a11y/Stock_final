@@ -96,6 +96,37 @@ def _normalize_update_array_values(value: Any) -> list[Any]:
     return [value]
 
 
+def _normalize_string(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def _normalize_batch_entries(raw_batches: Any) -> dict[str, dict[str, Any]]:
+    if not isinstance(raw_batches, list):
+        return {}
+    normalized: dict[str, dict[str, Any]] = {}
+    for entry in raw_batches:
+        if not isinstance(entry, dict):
+            continue
+        batch_id = _normalize_string(entry.get("batch_id") or entry.get("batch_no"))
+        if not batch_id:
+            continue
+        existing = normalized.setdefault(batch_id, {"batch_id": batch_id, "batch_no": entry.get("batch_no")})
+        if not existing.get("batch_no"):
+            existing["batch_no"] = entry.get("batch_no") or batch_id
+        existing.setdefault("counted_qty", 0.0)
+        existing.setdefault("damaged_qty", 0.0)
+        existing["counted_qty"] = float(existing.get("counted_qty") or 0.0) + _as_float(
+            entry.get("counted_qty") or entry.get("quantity") or entry.get("qty")
+        )
+        existing["damaged_qty"] = float(existing.get("damaged_qty") or 0.0) + _as_float(
+            entry.get("damaged_qty")
+        )
+    return normalized
+
+
 def _apply_update_document_to_merged(
     merged_document: dict[str, Any],
     update_doc: dict[str, Any],
@@ -249,6 +280,66 @@ class CountLineWriteService:
             filter_query = payload.get("filter")
             if isinstance(filter_query, dict):
                 payload["filter"] = org_scoped_filter(None, filter_query)
+
+    def _apply_batch_consistency(self, payload: dict[str, Any]) -> None:
+        operation = str(payload.get("operation") or "").strip().lower()
+        if operation == "insert_one":
+            document = payload.get("document")
+            if not isinstance(document, dict):
+                return
+            raw_batches = document.get("batches")
+            normalized_batches = _normalize_batch_entries(raw_batches)
+            if raw_batches is not None and not normalized_batches:
+                raise GovernanceViolation("CRITICAL: batches must include batch_id or batch_no")
+            batch_id = _normalize_string(document.get("batch_id"))
+            if normalized_batches:
+                batch_ids = sorted(normalized_batches.keys())
+                if batch_id is None and len(batch_ids) == 1:
+                    document["batch_id"] = batch_ids[0]
+                    batch_id = batch_ids[0]
+                document["batches"] = [normalized_batches[bid] for bid in batch_ids]
+            if batch_id and not normalized_batches and document.get("batches") is None:
+                document["batches"] = [
+                    {
+                        "batch_id": batch_id,
+                        "batch_no": document.get("batch_no") or batch_id,
+                        "counted_qty": _as_float(document.get("counted_qty")),
+                        "damaged_qty": _as_float(document.get("damaged_qty")),
+                    }
+                ]
+            serials = document.get("serial_numbers") or document.get("serial_entries")
+            if serials and normalized_batches and len(normalized_batches) > 1:
+                raise GovernanceViolation(
+                    "CRITICAL: Multi-batch serial counting requires per-serial batch attribution"
+                )
+            return
+
+        if operation == "update_one":
+            update_doc = payload.get("update")
+            if not isinstance(update_doc, dict):
+                return
+            update_is_operator = any(str(key).startswith("$") for key in update_doc)
+            target = update_doc.get("$set") if update_is_operator else update_doc
+            if not isinstance(target, dict):
+                return
+            raw_batches = target.get("batches")
+            if raw_batches is None:
+                return
+            normalized_batches = _normalize_batch_entries(raw_batches)
+            if raw_batches is not None and not normalized_batches:
+                raise GovernanceViolation("CRITICAL: batches must include batch_id or batch_no")
+            batch_ids = sorted(normalized_batches.keys())
+            target["batches"] = [normalized_batches[bid] for bid in batch_ids]
+            batch_id = _normalize_string(target.get("batch_id"))
+            if batch_id is None and len(batch_ids) == 1:
+                target["batch_id"] = batch_ids[0]
+            serials = target.get("serial_numbers") or target.get("serial_entries")
+            if serials and len(batch_ids) > 1:
+                raise GovernanceViolation(
+                    "CRITICAL: Multi-batch serial counting requires per-serial batch attribution"
+                )
+            if update_is_operator:
+                update_doc["$set"] = target
 
     async def _execute_authorized_write(self, write_call: Any) -> Any:
         with write_authority("CountLineWriteService"):
@@ -633,6 +724,7 @@ class CountLineWriteService:
         ctx = dict(context)
         ctx["db_session"] = db_session
         self._apply_tenant_scope(payload)
+        self._apply_batch_consistency(payload)
 
         await self._assert_snapshot_integrity_for_write(payload, ctx)
         await self._assert_mandatory_write_invariants(payload, ctx)

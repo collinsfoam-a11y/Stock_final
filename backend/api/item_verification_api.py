@@ -17,6 +17,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
+from backend.tenancy.scoping import org_scoped_filter
 from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
@@ -96,6 +97,9 @@ def build_item_filter_query(
             {"item_name": {"$regex": search, "$options": "i"}},
             {"item_code": {"$regex": search, "$options": "i"}},
             {"barcode": {"$regex": search, "$options": "i"}},
+            {"manual_barcode": {"$regex": search, "$options": "i"}},
+            {"autobarcode": {"$regex": search, "$options": "i"}},
+            {"auto_barcode": {"$regex": search, "$options": "i"}},
         ]
 
     return filter_query
@@ -283,11 +287,20 @@ def _not_found_error(barcode: str) -> HTTPException:
 
 
 async def _find_item_by_barcode_or_code(barcode: str) -> dict[str, Any]:
-    item = await db.erp_items.find_one({"barcode": barcode})
-    if item:
-        return item
-
-    item = await db.erp_items.find_one({"item_code": barcode})
+    item = await db.erp_items.find_one(
+        org_scoped_filter(
+            None,
+            {
+                "$or": [
+                    {"barcode": barcode},
+                    {"manual_barcode": barcode},
+                    {"autobarcode": barcode},
+                    {"auto_barcode": barcode},
+                    {"item_code": barcode},
+                ]
+            },
+        )
+    )
     if item:
         return item
 
