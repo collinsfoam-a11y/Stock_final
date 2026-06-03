@@ -43,7 +43,7 @@ class AdjustmentState(str, Enum):
 
 # Allowed state transitions — plain string values so lookup is Python-version-safe.
 _TRANSITIONS: dict[str, set[str]] = {
-    "DRAFT": {"PROPOSED"},
+    "DRAFT": {"PENDING_AUTHORIZATION"},
     "PROPOSED": {"PENDING_AUTHORIZATION", "VOIDED"},
     "PENDING_AUTHORIZATION": {"AUTHORIZED", "VOIDED"},
     "AUTHORIZED": {"POSTED", "VOIDED"},
@@ -154,7 +154,7 @@ class InventoryAdjustmentService:
         """Stage 2: Submit a draft proposal for supervisor review."""
         return await self._transition(
             adjustment_id,
-            AdjustmentState.PROPOSED,
+            AdjustmentState.PENDING_AUTHORIZATION,
             actor,
             "SUBMIT_FOR_REVIEW",
         )

@@ -71,10 +71,10 @@ def inject_org_filter(
     """
     effective_org = org_id or get_request_org_id()
     if not effective_org:
-        logger.warning(
-            "inject_org_filter called without org_id context — query will not be scoped"
+        raise RuntimeError(
+            "CRITICAL: inject_org_filter called without org_id context. "
+            "Tenant-scoped query blocked to prevent data leakage."
         )
-        return query
     return {**query, "org_id": effective_org}
 
 
@@ -90,7 +90,10 @@ class TenantScopedQuery:
 
     def _scoped(self, query: dict[str, Any]) -> dict[str, Any]:
         if not self._org_id:
-            return query
+            raise RuntimeError(
+                "CRITICAL: TenantScopedQuery used without org_id context. "
+                "Tenant-scoped query blocked to prevent data leakage."
+            )
         return {**query, "org_id": self._org_id}
 
     def find(self, query: dict[str, Any] = None, *args: Any, **kwargs: Any) -> Any:
@@ -103,9 +106,13 @@ class TenantScopedQuery:
         return await self._collection.count_documents(self._scoped(query or {}), **kwargs)
 
     def aggregate(self, pipeline: list, **kwargs: Any) -> Any:
-        match_stage = {"$match": {"org_id": self._org_id}} if self._org_id else None
-        scoped_pipeline = [match_stage, *pipeline] if match_stage else pipeline
-        return self._collection.aggregate(scoped_pipeline, **kwargs)
+        if not self._org_id:
+            raise RuntimeError(
+                "CRITICAL: TenantScopedQuery.aggregate used without org_id context. "
+                "Tenant-scoped query blocked to prevent data leakage."
+            )
+        match_stage = {"$match": {"org_id": self._org_id}}
+        return self._collection.aggregate([match_stage, *pipeline], **kwargs)
 
     def __getattr__(self, item: str) -> Any:
         return getattr(self._collection, item)

@@ -83,9 +83,21 @@ async def test_release_only_by_owner():
     owner_released = await lm.release_rack_lock("RACK-4", "user_a")
     assert owner_released is True
 
+    # Verify the Lua call used the correct owner identity "user_a"
+    first_call_args = redis.eval.call_args_list[0].args
+    assert "user_a" in first_call_args, (
+        "release_rack_lock must pass owner identity 'user_a' to the Lua script"
+    )
+
     # Non-owner cannot release
     non_owner_released = await lm.release_rack_lock("RACK-4", "user_b")
     assert non_owner_released is False
+
+    # Verify the second Lua call used "user_b" (which should fail due to ownership mismatch)
+    second_call_args = redis.eval.call_args_list[1].args
+    assert "user_b" in second_call_args, (
+        "release_rack_lock must pass caller identity 'user_b' to the Lua script"
+    )
 
 
 @pytest.mark.asyncio
@@ -128,8 +140,10 @@ async def test_validate_record_uses_username_not_session_id():
 @pytest.mark.asyncio
 async def test_heartbeat_renews_with_username_not_session_id():
     """
-    Heartbeat endpoint must pass user_id (username) to renew_rack_lock,
-    not session_id.
+    LockManager.renew_rack_lock must pass the user identity (username) to the
+    Lua renewal script — never the session_id.  This verifies the contract that
+    heartbeat callers supply a username, not a session_id, when calling
+    renew_rack_lock directly.
     """
     redis = _make_redis()
     redis.eval = AsyncMock(return_value=1)
@@ -138,7 +152,7 @@ async def test_heartbeat_renews_with_username_not_session_id():
     username = "user_heartbeat"
     session_id = "session-heartbeat-xyz"
 
-    # Simulate heartbeat renewal
+    # Call renew_rack_lock with the username (as heartbeat callers are required to do).
     renewed = await lm.renew_rack_lock("RACK-HB", username, ttl=60)
     assert renewed is True
 

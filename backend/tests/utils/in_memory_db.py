@@ -174,6 +174,19 @@ def _apply_update(document: dict[str, Any], update: dict[str, Any]) -> bool:
             document[key] = next_value
             modified = True
 
+    if "$push" in update:
+        for field, value in update["$push"].items():
+            parts = field.split(".")
+            target = document
+            for part in parts[:-1]:
+                target = target.setdefault(part, {})
+            arr = target.get(parts[-1])
+            if not isinstance(arr, list):
+                arr = []
+                target[parts[-1]] = arr
+            arr.append(value)
+        modified = True
+
     return modified
 
 

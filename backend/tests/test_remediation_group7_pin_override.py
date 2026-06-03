@@ -21,6 +21,12 @@ from backend.services.pin_auth_service import (
 )
 
 
+@pytest.fixture(autouse=True)
+def override_token_secret(monkeypatch):
+    """Ensure OVERRIDE_TOKEN_SECRET is set for all tests in this module."""
+    monkeypatch.setenv("OVERRIDE_TOKEN_SECRET", "test-secret-do-not-use-in-production")
+
+
 def _make_db() -> MagicMock:
     db = MagicMock()
     db.pin_authentication = MagicMock()
@@ -36,7 +42,7 @@ def _make_db() -> MagicMock:
     db.pin_authentication.update_one = AsyncMock(return_value=None)
     db.supervisor_override_tokens.insert_one = AsyncMock(return_value=None)
     db.supervisor_override_tokens.find_one = AsyncMock(return_value=None)
-    db.supervisor_override_tokens.update_one = AsyncMock(return_value=None)
+    db.supervisor_override_tokens.update_one = AsyncMock(return_value=MagicMock(modified_count=0))
     return db
 
 
@@ -149,20 +155,15 @@ async def test_valid_token_passes_and_is_consumed():
     sig = _sign_token(f"{raw}:supervisor1:approve")
     token = f"{raw}.{sig}"
 
-    db.supervisor_override_tokens.find_one = AsyncMock(
-        return_value={
-            "token": token,
-            "user_id": "supervisor1",
-            "action": "approve",
-            "expires_at": datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=5),
-            "used": False,
-        }
+    # Atomic update_one succeeds for a valid token
+    db.supervisor_override_tokens.update_one = AsyncMock(
+        return_value=MagicMock(modified_count=1)
     )
 
     result = await service.validate_override_token(token, "supervisor1", "approve")
     assert result is True
 
-    # Token must have been consumed
+    # Token must have been atomically consumed
     update_call = db.supervisor_override_tokens.update_one.call_args
     assert update_call.args[1]["$set"]["used"] is True
 

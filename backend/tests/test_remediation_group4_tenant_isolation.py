@@ -83,10 +83,16 @@ def test_all_sensitive_collections_are_tenant_scoped():
         "sessions",
         "count_lines",
         "inventory_adjustments",
+        "inventory_ledger",
         "inventory_movements",
         "reconciliation_records",
         "unknown_items",
         "recount_requests",
+        "verification_sessions",
+        "session_snapshots",
+        "reports",
+        "governance_events",
+        "sync_conflicts",
     }
     missing = required - TENANT_SCOPED_COLLECTIONS
     assert not missing, f"These collections are not tenant-scoped: {missing}"
