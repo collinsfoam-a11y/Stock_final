@@ -59,8 +59,10 @@ async def test_barcode_field_included_in_query(barcode_field: str):
     # Trigger the barcode lookup path
     try:
         await service._evaluate_governance_for_document(document, context)
+    except (AssertionError, KeyError):
+        raise
     except Exception:
-        pass  # We only care about what query was issued to find_one.
+        pass  # Governance/variance errors are expected — only care about query construction.
 
     # Check that find_one was called with a $or query containing the correct field.
     find_one_calls = db.erp_items.find_one.call_args_list

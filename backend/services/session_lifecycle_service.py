@@ -756,6 +756,8 @@ class SessionLifecycleService:
             }
         )
 
+        await self._assert_session_ready_to_finalize(session_id, db_session=db_session)
+
         lines = await self.db.count_lines.find({"session_id": session_id}, **kwargs).to_list(
             length=50000
         )

@@ -288,6 +288,11 @@ async def sync_single_record(
             counted_qty = float(len(serial_numbers))
         else:
             counted_qty = float(record.verified_qty)
+        if record.damaged_qty > counted_qty:
+            return (
+                False,
+                f"damaged_qty ({record.damaged_qty}) exceeds counted_qty ({counted_qty})",
+            )
         doc = {
             "id": str(uuid.uuid4()),
             "client_record_id": record.client_record_id,

@@ -36,7 +36,16 @@ _OVERRIDE_TOKEN_TTL_SECONDS = 300  # 5 minutes
 
 def _derive_signing_key() -> bytes:
     """Derive a per-deployment signing key from the environment secret."""
-    secret = os.environ.get("OVERRIDE_TOKEN_SECRET", "dev-insecure-secret")
+    secret = os.environ.get("OVERRIDE_TOKEN_SECRET")
+    if not secret:
+        logger.critical(
+            "OVERRIDE_TOKEN_SECRET is not set — override token signing is disabled. "
+            "Set this environment variable before starting the service."
+        )
+        raise RuntimeError(
+            "OVERRIDE_TOKEN_SECRET environment variable is not set. "
+            "Refusing to sign override tokens with an insecure default."
+        )
     return hashlib.sha256(secret.encode()).digest()
 
 
@@ -249,27 +258,31 @@ class PINAuthService:
         if not hmac.compare_digest(provided_sig, expected_sig):
             raise PermissionError("Override token signature invalid")
 
-        record = await self.override_collection.find_one({"token": token})
-        if not record:
-            raise PermissionError("Override token not found")
-
         now = datetime.now(timezone.utc).replace(tzinfo=None)
-        if record.get("expires_at") and now >= record["expires_at"]:
-            raise PermissionError("Override token has expired")
 
-        if record.get("used"):
-            raise PermissionError("Override token has already been used")
-
-        if record.get("user_id") != user_id:
-            raise PermissionError("Override token belongs to a different user")
-
-        if record.get("action") != action:
-            raise PermissionError("Override token was issued for a different action")
-
-        # Consume token — single-use only.
-        await self.override_collection.update_one(
-            {"token": token}, {"$set": {"used": True, "used_at": now}}
+        # Atomic consume: the filter ensures token is unused, belongs to the right
+        # user/action, and has not expired — all in a single round-trip.
+        result = await self.override_collection.update_one(
+            {
+                "token": token,
+                "user_id": user_id,
+                "action": action,
+                "used": False,
+                "expires_at": {"$gt": now},
+            },
+            {"$set": {"used": True, "used_at": now}},
         )
+
+        if not getattr(result, "modified_count", 0):
+            # Determine why it failed — give a useful error without leaking info.
+            existing = await self.override_collection.find_one({"token": token})
+            if not existing:
+                raise PermissionError("Override token not found")
+            if existing.get("used"):
+                raise PermissionError("Override token has already been used")
+            if existing.get("expires_at") and now >= existing["expires_at"]:
+                raise PermissionError("Override token has expired")
+            raise PermissionError("Override token is invalid for this user or action")
 
         logger.info("Override token validated: user=%s action=%s", user_id, action)
         return True

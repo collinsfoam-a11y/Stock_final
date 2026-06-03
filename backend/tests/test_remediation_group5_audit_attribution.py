@@ -96,19 +96,22 @@ async def test_legacy_log_write_event_is_backwards_compatible():
 
 
 @pytest.mark.asyncio
-async def test_system_actor_emits_warning_for_non_automated_operations(caplog):
+async def test_system_actor_emits_warning_for_non_automated_operations():
     """
-    When a non-automated operation is attributed to 'system',
-    a warning must be logged.
+    When a non-automated operation is performed by an actor with no real identity,
+    a warning must be logged.  Only explicitly whitelisted automated actors
+    (conflict_resolver, system_auto_resolve, sync) may omit real actor context.
     """
-    import logging
+    from unittest.mock import patch
 
     db = _make_db()
     service = GovernanceAuditService(db)
 
-    actor = {"user_id": "unknown_actor", "username": "unknown_actor"}
+    # Actor with no user_id, username, or id — resolves to empty actor_id,
+    # which is NOT in the automated-actor whitelist, so a warning must fire.
+    actor = {"role": "system"}
 
-    with caplog.at_level(logging.WARNING):
+    with patch("backend.services.governance_audit_service.logger") as mock_logger:
         await service.log_governance_event(
             event="APPROVE",
             operation="approve",
@@ -116,5 +119,14 @@ async def test_system_actor_emits_warning_for_non_automated_operations(caplog):
             actor=actor,
         )
 
-    # No warning for regular actors.
-    assert not any("system" in r.message for r in caplog.records)
+    # A warning must have been emitted because the actor identity is missing.
+    assert mock_logger.warning.called, (
+        "Expected logger.warning() to be called when actor identity is missing "
+        "for a non-automated operation"
+    )
+    # The first warning call must mention the governance event or missing actor.
+    warning_args = mock_logger.warning.call_args_list[0].args
+    assert any(
+        "Governance event" in str(a) or "without real actor" in str(a)
+        for a in warning_args
+    ), f"Warning message did not mention the missing actor; got: {warning_args}"

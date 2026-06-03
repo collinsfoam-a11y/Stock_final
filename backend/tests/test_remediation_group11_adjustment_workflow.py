@@ -2,7 +2,7 @@
 FIX GROUP 11 — Regression tests: Inventory adjustment workflow.
 
 Validates:
-  - Complete workflow: Draft → Proposed → Authorized → Posted → Finalized
+  - Complete workflow: Draft → PendingAuthorization → Authorized → Posted → Finalized
   - Immutable ledger (original never mutated)
   - Actor attribution on every stage
   - Invalid transitions are rejected
@@ -66,12 +66,16 @@ async def test_create_proposal_produces_draft():
 
 
 @pytest.mark.asyncio
-async def test_submit_for_review_transitions_to_proposed():
+async def test_submit_for_review_transitions_to_pending_authorization():
+    """
+    submit_for_review must transition DRAFT → PENDING_AUTHORIZATION so that
+    authorize() (which requires PENDING_AUTHORIZATION state) is reachable.
+    """
     db = _make_db(state=AdjustmentState.DRAFT)
     service = InventoryAdjustmentService(db)
 
     result = await service.submit_for_review("adj-1", _REAL_ACTOR)
-    assert result["state"] == AdjustmentState.PROPOSED
+    assert result["state"] == AdjustmentState.PENDING_AUTHORIZATION
     db.inventory_adjustments.update_one.assert_awaited_once()
 
 
