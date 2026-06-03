@@ -929,17 +929,17 @@ async def lifespan(app: FastAPI):  # noqa: C901
     shutdown_tasks = []
 
     # Stop sync services
-    # if erp_sync_service is not None:
-    #     erp_sync = erp_sync_service  # Type narrowing for Pyright
+    if erp_sync_service is not None:
+        erp_sync = erp_sync_service  # Type narrowing for Pyright
 
-    #     async def stop_erp_sync():
-    #         try:
-    #             erp_sync.stop()
-    #             logger.info("✓ ERP sync service stopped")
-    #         except Exception as e:
-    #             logger.error("Error stopping ERP sync service: %s", str(e))
+        async def stop_erp_sync():
+            try:
+                await erp_sync.stop()
+                logger.info("✓ ERP sync service stopped")
+            except Exception as e:
+                logger.error("Error stopping ERP sync service: %s", str(e))
 
-    #     shutdown_tasks.append(stop_erp_sync())
+        shutdown_tasks.append(stop_erp_sync())
 
     # Stop scheduled export service
     if scheduled_export_service:

@@ -29,6 +29,7 @@ import ModernButton from "../src/components/ui/ModernButton";
 import ModernCard from "../src/components/ui/ModernCard";
 import ModernInput from "../src/components/ui/ModernInput";
 import ModernHeader from "../src/components/ui/ModernHeader";
+import { useAppVersion } from "../src/hooks/useAppVersion";
 import { BrandLogo } from "../src/components/branding/BrandLogo";
 import {
   colors as unifiedColors,
@@ -120,6 +121,7 @@ const getLoginErrorAlert = (
 export default function LoginScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const { version } = useAppVersion();
   const { login, loginWithPin, authenticateWithBiometrics, isLoading, lastLoggedUser } =
     useAuthStore();
   const biometricAuthEnabled = useSettingsStore((state) => state.settings.biometricAuth);
@@ -517,7 +519,7 @@ export default function LoginScreen() {
               entering={FadeInDown.delay(200).duration(800).springify()}
               style={styles.footer}
             >
-              <Text style={styles.versionText}>Version 3.0.0</Text>
+              <Text style={styles.versionText}>Version {version}</Text>
               <Text style={styles.footerText}>Secure • Reliable • Fast</Text>
             </Animated.View>
           </View>

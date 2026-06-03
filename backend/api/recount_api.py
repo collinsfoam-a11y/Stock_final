@@ -570,10 +570,16 @@ async def get_recount_summary(
     priority_counts = await priority_cursor.to_list(length=10)
 
     total = await db.recount_requests.count_documents({})
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
     overdue = await db.recount_requests.count_documents(
         {
             "status": {"$nin": [RecountStatus.COMPLETED.value, RecountStatus.CANCELLED.value]},
-            "due_date": {"$lt": datetime.now(timezone.utc).replace(tzinfo=None).isoformat()},
+            "$or": [
+                # Stored as datetime (preferred path)
+                {"due_date": {"$lt": now_utc, "$type": "date"}},
+                # Stored as ISO string (legacy path) — string ordering is valid for ISO-8601
+                {"due_date": {"$lt": now_utc.isoformat(), "$type": "string"}},
+            ],
         }
     )
 
