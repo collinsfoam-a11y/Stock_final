@@ -17,6 +17,7 @@ except ImportError:
     pass
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response  # noqa: E402
+from pydantic import BaseModel  # noqa: E402
 from starlette.requests import Request  # noqa: E402
 
 import sentry_sdk  # noqa: E402
@@ -528,19 +529,29 @@ async def logout(
 # NOTE: /sessions/bulk/close is handled by session_management_api.py (canonical)
 
 
+class BulkExportRequest(BaseModel):
+    session_ids: list[str]
+    format: str = "json"
+
+
 @api_router.post("/sessions/bulk/export")
 async def bulk_export_sessions(
-    session_ids: list[str],
-    format: str = "excel",
+    body: BulkExportRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    """Bulk export sessions (supervisor only)"""
+    """Bulk export sessions as JSON (supervisor only). CSV/Excel not yet implemented."""
     if current_user["role"] not in ["supervisor", "admin"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
+    if body.format not in ("json", ""):
+        raise HTTPException(
+            status_code=501,
+            detail=f"Export format '{body.format}' is not yet implemented. Use format='json'.",
+        )
+
     try:
         sessions = []
-        for session_id in session_ids:
+        for session_id in body.session_ids:
             session = await db.sessions.find_one(
                 {"$or": [{"id": session_id}, {"session_id": session_id}]}
             )
@@ -557,7 +568,7 @@ async def bulk_export_sessions(
             details={
                 "operation": "bulk_export",
                 "count": len(sessions),
-                "format": format,
+                "format": body.format,
             },
             ip_address=None,
             user_agent=None,
@@ -566,9 +577,9 @@ async def bulk_export_sessions(
         return {
             "success": True,
             "exported_count": len(sessions),
-            "total": len(session_ids),
+            "total": len(body.session_ids),
             "data": sessions,
-            "format": format,
+            "format": body.format,
         }
     except Exception as e:
         logger.error(

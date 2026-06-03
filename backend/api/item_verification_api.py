@@ -751,13 +751,16 @@ async def get_filtered_items(
         )
         total_count_task = db.erp_items.count_documents(filter_query)
         verified_count_task = db.erp_items.count_documents(verified_filter)
+        total_qty_task = db.erp_items.aggregate(
+            [{"$match": filter_query}, {"$group": {"_id": None, "total": {"$sum": "$stock_qty"}}}]
+        ).to_list(length=1)
 
-        items, total_count, verified_count = await asyncio.gather(
-            items_task, total_count_task, verified_count_task
+        items, total_count, verified_count, total_qty_result = await asyncio.gather(
+            items_task, total_count_task, verified_count_task, total_qty_task
         )
 
         items = [serialize_item_document(item) for item in items]
-        total_qty = sum(item.get("stock_qty", 0.0) for item in items)
+        total_qty = total_qty_result[0]["total"] if total_qty_result else 0.0
 
         return {
             "success": True,
@@ -1015,28 +1018,21 @@ async def get_variances(
         if warehouse:
             filter_query["warehouse"] = {"$regex": warehouse, "$options": "i"}
 
-        # Only get variances (non-zero)
+        # Only get variances (non-zero) — use item_variances, same source as exports
         filter_query["variance"] = {"$ne": 0}
-        # Optionally, filter for only approved/active count lines if required by logic
-        # filter_query["status"] = {"$in": ["approved", "pending"]}
 
         # Get total count
-        total_count = await db.count_lines.count_documents(filter_query)
+        total_count = await db.item_variances.count_documents(filter_query)
 
         # Get variances
-        cursor = db.count_lines.find(filter_query).sort("counted_at", -1).skip(skip).limit(limit)
+        cursor = db.item_variances.find(filter_query).sort("verified_at", -1).skip(skip).limit(limit)
         variances = await cursor.to_list(length=limit)
 
-        # Convert ObjectId to string
+        # Convert ObjectId and datetime fields to strings
         for variance in variances:
             variance["_id"] = str(variance["_id"])
-            if "counted_at" in variance and isinstance(variance.get("counted_at"), datetime):
-                variance["counted_at"] = variance["counted_at"].isoformat()
-            # Compatibility map: frontend expects verified_at
             if "verified_at" in variance and isinstance(variance.get("verified_at"), datetime):
                 variance["verified_at"] = variance["verified_at"].isoformat()
-            elif "counted_at" in variance:
-                variance["verified_at"] = variance["counted_at"]
 
         return {
             "success": True,
