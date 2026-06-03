@@ -13,11 +13,7 @@ import {
   ScrollView,
   LayoutChangeEvent,
 } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import {
   colors,
   semanticColors,
@@ -27,6 +23,8 @@ import {
   touchTargets,
   hitSlop,
 } from "@/theme/legacyCompat";
+import { haptics } from "@/services/haptics";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 export interface Tab {
   key: string;
@@ -50,9 +48,7 @@ export const Tabs: React.FC<TabsProps> = ({
   variant = "default",
   scrollable = false,
 }) => {
-  const [tabLayouts, setTabLayouts] = useState<Record<string, { x: number; width: number }>>(
-    {},
-  );
+  const [tabLayouts, setTabLayouts] = useState<Record<string, { x: number; width: number }>>({});
   const indicatorPosition = useSharedValue(0);
   const indicatorWidth = useSharedValue(0);
 
@@ -75,10 +71,7 @@ export const Tabs: React.FC<TabsProps> = ({
     width: indicatorWidth.value,
   }));
 
-  const handleTabLayout = (
-    key: string,
-    event: LayoutChangeEvent,
-  ) => {
+  const handleTabLayout = (key: string, event: LayoutChangeEvent) => {
     const { x, width } = event.nativeEvent.layout;
     setTabLayouts((prev) => ({
       ...prev,
@@ -89,10 +82,15 @@ export const Tabs: React.FC<TabsProps> = ({
   const renderTab = (tab: Tab) => {
     const isActive = tab.key === activeTab;
 
+    const handlePress = () => {
+      void haptics.light();
+      onTabChange(tab.key);
+    };
+
     return (
       <TouchableOpacity
         key={tab.key}
-        onPress={() => onTabChange(tab.key)}
+        onPress={handlePress}
         onLayout={(event) => handleTabLayout(tab.key, event)}
         style={[
           styles.tab,
@@ -105,7 +103,11 @@ export const Tabs: React.FC<TabsProps> = ({
         accessibilityRole="tab"
         accessibilityState={{ selected: isActive }}
       >
-        {tab.icon ? <View style={styles.tabIcon}>{tab.icon}</View> : null}
+        {tab.icon ? (
+          <View style={styles.tabIcon} {...getDecorativeIconProps()}>
+            {tab.icon}
+          </View>
+        ) : null}
 
         <Text
           style={[
@@ -119,9 +121,7 @@ export const Tabs: React.FC<TabsProps> = ({
 
         {tab.badge !== undefined && tab.badge > 0 ? (
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>
-              {tab.badge > 99 ? "99+" : tab.badge}
-            </Text>
+            <Text style={styles.badgeText}>{tab.badge > 99 ? "99+" : tab.badge}</Text>
           </View>
         ) : null}
       </TouchableOpacity>
