@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-05-21T14:46:05.935Z",
+  "generatedAt": "2026-06-03T02:22:03.628Z",
   "baseline": {
     "path": "reports/web-bundle-baseline.json",
     "updatedAt": "2026-05-21T14:40:52.776Z"
   },
-  "status": "pass",
+  "status": "fail",
   "metrics": {
-    "generatedAt": "2026-05-21T14:46:05.935Z",
+    "generatedAt": "2026-06-03T02:22:03.627Z",
     "bundleCount": 67,
-    "totalJsKb": 4086.703125,
-    "mainBundleKb": 1969.0185546875,
-    "commonBundleKb": 1566.7607421875,
+    "totalJsKb": 4086.7705078125,
+    "mainBundleKb": 1969.041015625,
+    "commonBundleKb": 1566.8056640625,
     "routeChunkCount": 58,
     "routeChunkTotalKb": 374.6171875,
     "largestRouteChunkKb": 27.62890625,
@@ -88,26 +88,26 @@
     {
       "id": "total-js-kb",
       "label": "Total JS size",
-      "current": 4086.7,
+      "current": 4086.77,
       "limit": 4086.7,
       "unit": "kB",
-      "status": "pass"
+      "status": "fail"
     },
     {
       "id": "main-bundle-kb",
       "label": "Main bundle size",
-      "current": 1969.02,
+      "current": 1969.04,
       "limit": 1969.02,
       "unit": "kB",
-      "status": "pass"
+      "status": "fail"
     },
     {
       "id": "common-bundle-kb",
       "label": "Common bundle size",
-      "current": 1566.76,
+      "current": 1566.81,
       "limit": 1566.76,
       "unit": "kB",
-      "status": "pass"
+      "status": "fail"
     },
     {
       "id": "route-total-kb",
