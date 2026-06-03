@@ -83,7 +83,7 @@ async def chat_with_pi(request: Request, current_user: Dict[str, Any] = Depends(
                 json=body,
                 headers={
                     "Content-Type": "application/json",
-                    "Authorization": "Bearer sk-antigravity",
+                    "Authorization": f"Bearer {settings.PI_SERVER_API_KEY}",
                 },
             )
 

@@ -17,6 +17,7 @@ except ImportError:
     pass
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response  # noqa: E402
+from pydantic import BaseModel  # noqa: E402
 from starlette.requests import Request  # noqa: E402
 
 import sentry_sdk  # noqa: E402
@@ -528,19 +529,29 @@ async def logout(
 # NOTE: /sessions/bulk/close is handled by session_management_api.py (canonical)
 
 
+class BulkExportRequest(BaseModel):
+    session_ids: list[str]
+    format: str = "json"
+
+
 @api_router.post("/sessions/bulk/export")
 async def bulk_export_sessions(
-    session_ids: list[str],
-    format: str = "excel",
+    body: BulkExportRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    """Bulk export sessions (supervisor only)"""
+    """Bulk export sessions as JSON (supervisor only). CSV/Excel not yet implemented."""
     if current_user["role"] not in ["supervisor", "admin"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
+    if body.format not in ("json", ""):
+        raise HTTPException(
+            status_code=501,
+            detail=f"Export format '{body.format}' is not yet implemented. Use format='json'.",
+        )
+
     try:
         sessions = []
-        for session_id in session_ids:
+        for session_id in body.session_ids:
             session = await db.sessions.find_one(
                 {"$or": [{"id": session_id}, {"session_id": session_id}]}
             )
@@ -557,7 +568,7 @@ async def bulk_export_sessions(
             details={
                 "operation": "bulk_export",
                 "count": len(sessions),
-                "format": format,
+                "format": body.format,
             },
             ip_address=None,
             user_agent=None,
@@ -566,9 +577,9 @@ async def bulk_export_sessions(
         return {
             "success": True,
             "exported_count": len(sessions),
-            "total": len(session_ids),
+            "total": len(body.session_ids),
             "data": sessions,
-            "format": format,
+            "format": body.format,
         }
     except Exception as e:
         logger.error(
@@ -594,16 +605,26 @@ async def get_sessions_analytics(current_user: dict = Depends(get_current_user))
                     "total_items": {"$sum": "$total_items"},
                     "total_variance": {"$sum": "$total_variance"},
                     "avg_variance": {"$avg": "$total_variance"},
-                    "sessions_by_status": {"$push": {"status": "$status", "count": 1}},
                 }
             }
         ]
 
-        # Sessions by date
+        # Sessions by status (separate pipeline to produce a {status: count} map)
+        status_pipeline = [
+            {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+        ]
+
+        # Sessions by date — use $dateToString for BSON datetime fields
         date_pipeline = [
             {
                 "$project": {
-                    "date": {"$substr": ["$started_at", 0, 10]},
+                    "date": {
+                        "$dateToString": {
+                            "format": "%Y-%m-%d",
+                            "date": "$started_at",
+                            "onNull": "unknown",
+                        }
+                    },
                     "warehouse": 1,
                     "staff_name": 1,
                     "total_items": 1,
@@ -639,22 +660,28 @@ async def get_sessions_analytics(current_user: dict = Depends(get_current_user))
         # Execute aggregations
         overall = await db.sessions.aggregate(pipeline).to_list(1)
         by_date = await db.sessions.aggregate(date_pipeline).to_list(None)  # type: ignore
+        by_status = await db.sessions.aggregate(status_pipeline).to_list(None)
         by_warehouse = await db.sessions.aggregate(warehouse_pipeline).to_list(None)
         by_staff = await db.sessions.aggregate(staff_pipeline).to_list(None)
 
         # Transform results
         sessions_by_date = {item["_id"]: item["count"] for item in by_date}
+        sessions_by_status = {item["_id"]: item["count"] for item in by_status}
         variance_by_warehouse = {item["_id"]: item["total_variance"] for item in by_warehouse}
         items_by_staff = {item["_id"]: item["total_items"] for item in by_staff}
+
+        overall_doc = overall[0] if overall else {}
+        overall_doc["sessions_by_status"] = sessions_by_status
 
         return {
             "success": True,
             "data": {
-                "overall": overall[0] if overall else {},
+                "overall": overall_doc,
                 "sessions_by_date": sessions_by_date,
+                "sessions_by_status": sessions_by_status,
                 "variance_by_warehouse": variance_by_warehouse,
                 "items_by_staff": items_by_staff,
-                "total_sessions": overall[0]["total_sessions"] if overall else 0,
+                "total_sessions": overall_doc.get("total_sessions", 0),
             },
         }
     except Exception as e:

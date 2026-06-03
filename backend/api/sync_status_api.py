@@ -35,7 +35,10 @@ async def get_sync_status() -> dict[str, Any]:
     Returns: Connection status, sync progress, statistics
     """
     if _auto_sync_manager is None:
-        return {"success": False, "error": "Auto-sync manager not available"}
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Auto-sync manager not available",
+        )
 
     try:
         status_data = _auto_sync_manager.get_status()
@@ -52,7 +55,10 @@ async def get_sync_stats() -> dict[str, Any]:
     Returns: Historical sync statistics
     """
     if _auto_sync_manager is None:
-        return {"success": False, "error": "Auto-sync manager not available"}
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Auto-sync manager not available",
+        )
 
     try:
         stats = _auto_sync_manager.get_stats()
@@ -69,7 +75,10 @@ async def trigger_manual_sync() -> dict[str, Any]:
     Returns: Success status
     """
     if _auto_sync_manager is None:
-        return {"success": False, "error": "Auto-sync manager not available"}
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Auto-sync manager not available",
+        )
 
     try:
         result = await _auto_sync_manager.trigger_manual_sync()
