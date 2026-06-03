@@ -632,7 +632,9 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
 
 
 @realtime_dashboard_router.websocket("/ws")
-async def websocket_endpoint_no_path_token(websocket: WebSocket, token: Optional[str] = Query(None)):
+async def websocket_endpoint_no_path_token(
+    websocket: WebSocket, token: Optional[str] = Query(None)
+):
     """WebSocket endpoint for bidirectional real-time communication."""
     jwt_token, _accept_subprotocol = _extract_jwt_from_websocket(websocket, token)
 

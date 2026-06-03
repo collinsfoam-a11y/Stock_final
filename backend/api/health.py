@@ -413,7 +413,7 @@ async def detailed_health_check() -> dict[str, Any]:
         db_health = {"status": "unknown", "error": "Health service not initialized"}
 
     # Build Redis health info
-    redis_health = {"status": "unknown"}
+    redis_health: dict[str, Any] = {"status": "unknown"}
     if cache_service:
         try:
             if hasattr(cache_service, "redis_client") and cache_service.redis_client:
@@ -433,7 +433,7 @@ async def detailed_health_check() -> dict[str, Any]:
             redis_health = {"status": "unhealthy", "error": str(exc)}
 
     # Build WebSocket health info
-    ws_health = {"status": "unknown", "active_connections": 0}
+    ws_health: dict[str, Any] = {"status": "unknown", "active_connections": 0}
     if websocket_manager:
         try:
             ws_connections = getattr(websocket_manager, "active_connections", {})
@@ -446,7 +446,7 @@ async def detailed_health_check() -> dict[str, Any]:
             ws_health = {"status": "degraded", "error": str(exc)}
 
     # Build SQL Server connection status
-    sql_health = {"status": "unknown", "is_connected": False}
+    sql_health: dict[str, Any] = {"status": "unknown", "is_connected": False}
     try:
         from backend.core.globals import sql_server_pool
 

@@ -72,12 +72,15 @@ async def test_scenario_a_one_serial_yields_qty_one():
 
     from backend.services.session_lifecycle_service import SessionLifecycleService
 
-    with patch(
-        "backend.api.sync_batch_api.CountLineWriteService",
-        return_value=CapturingWriteService(),
-    ), patch(
-        "backend.api.sync_batch_api.SessionLifecycleService",
-        return_value=SessionLifecycleService.__new__(SessionLifecycleService),
+    with (
+        patch(
+            "backend.api.sync_batch_api.CountLineWriteService",
+            return_value=CapturingWriteService(),
+        ),
+        patch(
+            "backend.api.sync_batch_api.SessionLifecycleService",
+            return_value=SessionLifecycleService.__new__(SessionLifecycleService),
+        ),
     ):
         from backend.services.session_lifecycle_service import SessionLifecycleService as SLS
 

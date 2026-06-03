@@ -66,17 +66,20 @@ async def test_write_with_wrong_authority_raises():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("method_name", [
-    "update_one",
-    "update_many",
-    "replace_one",
-    "delete_one",
-    "delete_many",
-    "bulk_write",
-    "find_one_and_update",
-    "find_one_and_replace",
-    "find_one_and_delete",
-])
+@pytest.mark.parametrize(
+    "method_name",
+    [
+        "update_one",
+        "update_many",
+        "replace_one",
+        "delete_one",
+        "delete_many",
+        "bulk_write",
+        "find_one_and_update",
+        "find_one_and_replace",
+        "find_one_and_delete",
+    ],
+)
 async def test_all_write_methods_are_guarded(method_name: str):
     collection = MagicMock()
     governed = GovernedCollection("sessions", collection)

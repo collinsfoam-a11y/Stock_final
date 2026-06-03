@@ -45,9 +45,7 @@ class SessionLifecycleService:
         validation_service: Optional[ValidationService] = None,
         audit_service: Optional[GovernanceAuditService] = None,
         projection_service: Optional[ProjectionWriteService] = None,
-        count_line_finalizer: Optional[
-            Callable[..., Awaitable[int]]
-        ] = None,
+        count_line_finalizer: Optional[Callable[..., Awaitable[int]]] = None,
     ) -> None:
         self.db = db
         self.validation_service = validation_service or ValidationService(db)
@@ -496,7 +494,7 @@ class SessionLifecycleService:
             **kwargs,
         )
         if needs_review_count > 0:
-            blockers.append(f"{needs_review_count} count line(s) pending approval")
+            blockers.append(f"{needs_review_count} unresolved count lines pending approval")
 
         if blockers:
             raise GovernanceViolation(

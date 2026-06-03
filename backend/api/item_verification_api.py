@@ -1025,7 +1025,9 @@ async def get_variances(
         total_count = await db.item_variances.count_documents(filter_query)
 
         # Get variances
-        cursor = db.item_variances.find(filter_query).sort("verified_at", -1).skip(skip).limit(limit)
+        cursor = (
+            db.item_variances.find(filter_query).sort("verified_at", -1).skip(skip).limit(limit)
+        )
         variances = await cursor.to_list(length=limit)
 
         # Convert ObjectId and datetime fields to strings

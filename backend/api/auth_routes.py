@@ -838,14 +838,10 @@ async def pin_setup(
     try:
         # Reject if the user already has a PIN — they must use /auth/change-pin instead,
         # which requires verifying the current credential before overwriting.
-        existing_user = await db.users.find_one(
-            {"username": username}, {"pin_hash": 1}
-        )
+        existing_user = await db.users.find_one({"username": username}, {"pin_hash": 1})
         if existing_user and existing_user.get("pin_hash"):
             return Fail(
-                AuthorizationError(
-                    "A PIN is already set. Use /auth/change-pin to update it."
-                )
+                AuthorizationError("A PIN is already set. Use /auth/change-pin to update it.")
             )
 
         # Securely hash the PIN

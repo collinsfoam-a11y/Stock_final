@@ -36,9 +36,7 @@ def connect() -> pymssql.Connection:
         Connection object if successful, None if connection fails
     """
     if not PASSWORD:
-        logger.error(
-            "❌ Security Error: SQL_SERVER_PASSWORD is required but not set or empty."
-        )
+        logger.error("❌ Security Error: SQL_SERVER_PASSWORD is required but not set or empty.")
         return None
 
     try:
@@ -189,9 +187,7 @@ _SEARCH_TERMS = [
 ]
 
 
-def _discover_tables_by_terms(
-    conn: pymssql.Connection, search_terms: list[str]
-) -> dict[str, dict]:
+def _discover_tables_by_terms(conn: pymssql.Connection, search_terms: list[str]) -> dict[str, dict]:
     """Search for tables matching domain-specific terms."""
     discovered_tables: dict[str, dict] = {}
 
@@ -234,9 +230,7 @@ def _analyze_priority_tables(
     return priority_tables
 
 
-def _print_table_analysis(
-    conn: pymssql.Connection, table_name: str, info: dict
-) -> None:
+def _print_table_analysis(conn: pymssql.Connection, table_name: str, info: dict) -> None:
     """Print detailed analysis for a single table."""
     schema = info["schema"]
     print(f"\n\n📊 Table: [{schema}].[{table_name}]")

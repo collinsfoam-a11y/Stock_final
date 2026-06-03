@@ -71,9 +71,7 @@ class PINAuthService:
             await self.collection.create_index("last_used")
             await self.collection.create_index("locked_until")
             await self.override_collection.create_index("token", unique=True)
-            await self.override_collection.create_index(
-                "expires_at", expireAfterSeconds=0
-            )
+            await self.override_collection.create_index("expires_at", expireAfterSeconds=0)
             logger.info("PIN authentication indexes created")
         except Exception as e:
             logger.error(f"Error creating PIN indexes: {e}")

@@ -300,7 +300,9 @@ class ProjectionReadService:
             "damage_items": int(row.get("damage_items") or 0),
             "pending_items": pending_items,
             "duration_seconds": duration_seconds,
-            "items_per_minute": (scanned_items / (duration_seconds / 60.0)) if duration_seconds > 0 else 0,
+            "items_per_minute": (
+                (scanned_items / (duration_seconds / 60.0)) if duration_seconds > 0 else 0
+            ),
             "scanned_items": scanned_items,
             "remaining_items": max(int(row.get("total_items") or 0) - scanned_items, 0),
             "completion_percent": _as_float(row.get("completion_percent")),
@@ -464,7 +466,9 @@ class ProjectionReadService:
         positive_variance = sum(max(_as_float(row.get("variance")), 0.0) for row in rows)
         negative_variance = sum(min(_as_float(row.get("variance")), 0.0) for row in rows)
         verified_count = sum(1 for row in rows if _line_verified(row))
-        total_value = sum(_as_float(row.get("counted_qty")) * _as_float(row.get("mrp")) for row in rows)
+        total_value = sum(
+            _as_float(row.get("counted_qty")) * _as_float(row.get("mrp")) for row in rows
+        )
         variance_value = sum(
             _as_float(row.get("variance")) * _as_float(row.get("mrp")) for row in rows
         )
@@ -510,7 +514,9 @@ class ProjectionReadService:
                 "aggregations": {
                     "total_items": filtered_records,
                     "total_variance": total_variance,
-                    "avg_variance": (total_variance / filtered_records) if filtered_records else 0.0,
+                    "avg_variance": (
+                        (total_variance / filtered_records) if filtered_records else 0.0
+                    ),
                     "total_value": total_value,
                     "variance_value": variance_value,
                     "verified_count": verified_count,
@@ -530,9 +536,11 @@ class ProjectionReadService:
             "pagination": {
                 "page": int(config.page),
                 "page_size": int(config.page_size),
-                "total_pages": (filtered_records + int(config.page_size) - 1) // int(config.page_size)
-                if int(config.page_size) > 0
-                else 1,
+                "total_pages": (
+                    (filtered_records + int(config.page_size) - 1) // int(config.page_size)
+                    if int(config.page_size) > 0
+                    else 1
+                ),
                 "has_next": skip + int(config.page_size) < filtered_records,
                 "has_prev": int(config.page) > 1,
             },
@@ -593,12 +601,33 @@ class ProjectionReadService:
     async def get_dashboard_filter_options(self) -> dict[str, Any]:
         rows = await self._filtered_verified_items(None)
         await self._record_hit("dashboard/filter-options")
+        warehouses_set: set[str] = set()
+        floors_set: set[str] = set()
+        categories_set: set[str] = set()
+        statuses_set: set[str] = set()
+        users_set: set[str] = set()
+        for row in rows:
+            warehouse = _normalize_string(row.get("warehouse"))
+            if warehouse:
+                warehouses_set.add(warehouse)
+            floor = _normalize_string(row.get("floor"))
+            if floor:
+                floors_set.add(floor)
+            category = _normalize_string(row.get("category"))
+            if category:
+                categories_set.add(category)
+            status = _normalize_string(row.get("status"))
+            if status:
+                statuses_set.add(status)
+            counted_by = _normalize_string(row.get("counted_by"))
+            if counted_by:
+                users_set.add(counted_by)
         options = {
-            "warehouses": sorted({row.get("warehouse") for row in rows if row.get("warehouse")}),
-            "floors": sorted({row.get("floor") for row in rows if row.get("floor")}),
-            "categories": sorted({row.get("category") for row in rows if row.get("category")}),
-            "statuses": sorted({row.get("status") for row in rows if row.get("status")}),
-            "users": sorted({row.get("counted_by") for row in rows if row.get("counted_by")}),
+            "warehouses": sorted(warehouses_set),
+            "floors": sorted(floors_set),
+            "categories": sorted(categories_set),
+            "statuses": sorted(statuses_set),
+            "users": sorted(users_set),
             "verified": [True, False],
         }
         return {"success": True, "options": options}
@@ -606,21 +635,21 @@ class ProjectionReadService:
     async def get_report_filter_options(self) -> dict[str, Any]:
         dashboard_options = await self.get_dashboard_filter_options()
         session_rows = await self._get_session_projection_docs(current_user={"role": "admin"})
-        users = sorted(
-            {
-                _normalize_string(row.get("staff_user"))
-                for row in session_rows
-                if _normalize_string(row.get("staff_user"))
-            }
-        )
-        statuses = sorted(
-            {
-                str(row.get("status") or "").strip()
-                for row in session_rows
-                if str(row.get("status") or "").strip()
-            }
-            | set(dashboard_options["options"].get("statuses", []))
-        )
+        users_set: set[str] = set()
+        statuses_set: set[str] = set()
+        for row in session_rows:
+            staff_user = _normalize_string(row.get("staff_user"))
+            if staff_user:
+                users_set.add(staff_user)
+            status = str(row.get("status") or "").strip()
+            if status:
+                statuses_set.add(status)
+        for status in dashboard_options["options"].get("statuses", []):
+            normalized = str(status or "").strip()
+            if normalized:
+                statuses_set.add(normalized)
+        users = sorted(users_set)
+        statuses = sorted(statuses_set)
         await self._record_hit("reports/filter-options")
         return {
             "warehouses": dashboard_options["options"].get("warehouses", []),
@@ -684,7 +713,8 @@ class ProjectionReadService:
         active_sessions = sum(
             1
             for row in rows
-            if str(row.get("status") or "").strip().upper() in {"OPEN", "ACTIVE", "PAUSED", "RECONCILE"}
+            if str(row.get("status") or "").strip().upper()
+            in {"OPEN", "ACTIVE", "PAUSED", "RECONCILE"}
         )
         return {
             "total_sessions": total_sessions,
@@ -746,9 +776,10 @@ class ProjectionReadService:
             variance = _as_float(row.get("variance"))
             if abs(variance) <= 1e-9:
                 continue
-            if getattr(filters, "status", None) and str(row.get("status") or "").lower() != str(
-                filters.status
-            ).lower():
+            if (
+                getattr(filters, "status", None)
+                and str(row.get("status") or "").lower() != str(filters.status).lower()
+            ):
                 continue
             if getattr(filters, "user_id", None) and row.get("counted_by") != filters.user_id:
                 continue
@@ -865,7 +896,8 @@ class ProjectionReadService:
         legacy_variance_total = sum(_as_float(row.get("variance")) for row in legacy_lines)
         projection_variance_total = sum(_as_float(row.get("variance")) for row in variance_rows)
         legacy_financial_total = sum(
-            _as_float(row.get("counted_qty")) * _as_float(row.get("mrp_counted") or row.get("mrp_erp"))
+            _as_float(row.get("counted_qty"))
+            * _as_float(row.get("mrp_counted") or row.get("mrp_erp"))
             for row in legacy_lines
         )
         projection_financial_total = sum(

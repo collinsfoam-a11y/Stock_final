@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from pymongo.errors import DuplicateKeyError
 
@@ -248,7 +248,10 @@ class ProjectionService:
         if not event_id:
             raise ValueError("Projection event is missing an event identifier")
 
-        payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+        raw_payload = event.get("payload")
+        payload: dict[str, Any] = (
+            cast(dict[str, Any], raw_payload) if isinstance(raw_payload, dict) else {}
+        )
         if not await self._begin_event_apply(
             event_id=event_id, event=event, payload=payload, db_session=db_session
         ):
@@ -442,7 +445,10 @@ class ProjectionService:
             "rack_no": payload.get("rack_no", current.get("rack_no")),
             "staff_user": payload.get("staff_user", current.get("staff_user")),
             "staff_name": payload.get("staff_name", current.get("staff_name")),
-            "status": payload.get("status") or payload.get("to_status") or current.get("status") or "OPEN",
+            "status": payload.get("status")
+            or payload.get("to_status")
+            or current.get("status")
+            or "OPEN",
             "type": payload.get("type", current.get("type") or "STANDARD"),
             "started_at": current.get("started_at"),
             "last_heartbeat": payload.get("last_heartbeat", current.get("last_heartbeat")),
@@ -456,7 +462,9 @@ class ProjectionService:
             ),
             "notes": payload.get("note", current.get("notes")),
             "snapshot_hash": payload.get("snapshot_hash", current.get("snapshot_hash")),
-            "snapshot_item_count": int(payload.get("item_count") or current.get("snapshot_item_count") or 0),
+            "snapshot_item_count": int(
+                payload.get("item_count") or current.get("snapshot_item_count") or 0
+            ),
             "version": int(payload.get("version") or current.get("version") or 0),
             "updated_at": payload.get("updated_at") or event.get("timestamp") or now_dt,
             "last_event_id": event.get("_id") or event.get("id"),
@@ -466,24 +474,36 @@ class ProjectionService:
 
         if event_type == "SESSION_CREATED":
             next_doc["started_at"] = payload.get("updated_at") or event.get("timestamp") or now_dt
-            next_doc["last_heartbeat"] = payload.get("updated_at") or event.get("timestamp") or now_dt
+            next_doc["last_heartbeat"] = (
+                payload.get("updated_at") or event.get("timestamp") or now_dt
+            )
         elif event_type == "SESSION_TRANSITIONED":
             target_status = payload.get("to_status") or next_doc["status"]
             next_doc["status"] = target_status
             if target_status == "RECONCILE":
-                next_doc["reconciled_at"] = payload.get("updated_at") or event.get("timestamp") or now_dt
+                next_doc["reconciled_at"] = (
+                    payload.get("updated_at") or event.get("timestamp") or now_dt
+                )
             if target_status == "CLOSED":
-                next_doc["closed_at"] = payload.get("updated_at") or event.get("timestamp") or now_dt
+                next_doc["closed_at"] = (
+                    payload.get("updated_at") or event.get("timestamp") or now_dt
+                )
             if target_status == "FINALIZED":
-                next_doc["finalized_at"] = payload.get("updated_at") or event.get("timestamp") or now_dt
+                next_doc["finalized_at"] = (
+                    payload.get("updated_at") or event.get("timestamp") or now_dt
+                )
         elif event_type == "SESSION_HEARTBEAT":
-            next_doc["last_heartbeat"] = payload.get("updated_at") or event.get("timestamp") or now_dt
+            next_doc["last_heartbeat"] = (
+                payload.get("updated_at") or event.get("timestamp") or now_dt
+            )
         elif event_type == "SESSION_FINALIZED":
             next_doc["status"] = "FINALIZED"
             next_doc["finalized_at"] = payload.get("updated_at") or event.get("timestamp") or now_dt
             next_doc["completed_at"] = payload.get("updated_at") or event.get("timestamp") or now_dt
             next_doc["closed_at"] = payload.get("updated_at") or event.get("timestamp") or now_dt
-            next_doc["finalized_by"] = payload.get("finalized_by") or payload.get("actor") or current.get("finalized_by")
+            next_doc["finalized_by"] = (
+                payload.get("finalized_by") or payload.get("actor") or current.get("finalized_by")
+            )
 
         for field_name in (
             "total_items",
@@ -516,7 +536,9 @@ class ProjectionService:
         db_session: Optional[Any],
     ) -> None:
         kwargs = self._kwargs(db_session)
-        session_doc = await self.db.session_dashboard_projection.find_one({"session_id": session_id}, **kwargs)
+        session_doc = await self.db.session_dashboard_projection.find_one(
+            {"session_id": session_id}, **kwargs
+        )
         if not isinstance(session_doc, dict):
             return
 
@@ -528,7 +550,9 @@ class ProjectionService:
         negative_variance = 0.0
         latest_counted_at: Optional[datetime] = None
 
-        async for row in self.db.verified_items_projection.find({"session_id": session_id}, **kwargs):
+        async for row in self.db.verified_items_projection.find(
+            {"session_id": session_id}, **kwargs
+        ):
             if not isinstance(row, dict) or not _line_active(row):
                 continue
             total_items += 1
@@ -547,7 +571,9 @@ class ProjectionService:
 
         pending_approvals = 0
         approved_count = 0
-        async for row in self.db.variance_summary_projection.find({"session_id": session_id}, **kwargs):
+        async for row in self.db.variance_summary_projection.find(
+            {"session_id": session_id}, **kwargs
+        ):
             if not isinstance(row, dict):
                 continue
             if _variance_pending(row):
@@ -615,7 +641,9 @@ class ProjectionService:
                 {"session_id": session_id, "item_code": item_code},
                 **kwargs,
             )
-            unit_value = _as_float((line_row or {}).get("unit_value") or (line_row or {}).get("mrp"))
+            unit_value = _as_float(
+                (line_row or {}).get("unit_value") or (line_row or {}).get("mrp")
+            )
             variance = counted_qty - stock_qty
 
             total_counted_qty += counted_qty
@@ -633,9 +661,9 @@ class ProjectionService:
                     "session_id": session_id,
                     "total_counted_qty": total_counted_qty,
                     "total_stock_qty": total_stock_qty,
-                    "complete_percent": (total_counted_qty / total_stock_qty * 100.0)
-                    if total_stock_qty
-                    else 0.0,
+                    "complete_percent": (
+                        (total_counted_qty / total_stock_qty * 100.0) if total_stock_qty else 0.0
+                    ),
                     "total_counted_value": total_counted_value,
                     "total_stock_value": total_stock_value,
                     "shortage_value": shortage_value,
@@ -669,9 +697,10 @@ class ProjectionService:
             return
 
         event_type = str(event.get("event_type") or "").strip().upper()
-        inactive = event_type in {"COUNT_LINE_REMOVED", "COUNT_LINE_SUPERSEDED"} or _line_status_is_inactive(
-            line.get("status")
-        )
+        inactive = event_type in {
+            "COUNT_LINE_REMOVED",
+            "COUNT_LINE_SUPERSEDED",
+        } or _line_status_is_inactive(line.get("status"))
         if inactive:
             await self.db.verified_items_projection.delete_one(
                 {"count_line_id": line_id},
@@ -681,7 +710,9 @@ class ProjectionService:
                 {"count_line_id": line_id},
                 **self._kwargs(db_session),
             )
-            await self._refresh_session_dashboard_projection(session_id=session_id, db_session=db_session)
+            await self._refresh_session_dashboard_projection(
+                session_id=session_id, db_session=db_session
+            )
             await self._refresh_financial_projection(session_id=session_id, db_session=db_session)
             return
 
@@ -702,7 +733,9 @@ class ProjectionService:
         if "variance" not in line or line.get("variance") in (None, ""):
             variance = counted_qty - stock_qty
         unit_value = _resolve_unit_value(line)
-        variance_percentage = (variance / abs(stock_qty) * 100.0) if stock_qty else (100.0 if variance else 0.0)
+        variance_percentage = (
+            (variance / abs(stock_qty) * 100.0) if stock_qty else (100.0 if variance else 0.0)
+        )
         session_projection = await self.db.session_dashboard_projection.find_one(
             {"session_id": session_id},
             **self._kwargs(db_session),
@@ -718,7 +751,9 @@ class ProjectionService:
             "barcode": line.get("barcode"),
             "category": line.get("category"),
             "warehouse": line.get("warehouse") or (session_projection or {}).get("warehouse"),
-            "floor": line.get("floor_no") or line.get("floor_id") or (session_projection or {}).get("location_name"),
+            "floor": line.get("floor_no")
+            or line.get("floor_id")
+            or (session_projection or {}).get("location_name"),
             "rack_id": line.get("rack_id") or line.get("rack_no"),
             "rack_no": line.get("rack_no") or line.get("rack_id"),
             "batch_id": batch_id,
@@ -729,7 +764,8 @@ class ProjectionService:
             "variance_percentage": variance_percentage,
             "mrp": unit_value,
             "unit_value": unit_value,
-            "verified": bool(line.get("verified")) or str(line.get("approval_status") or "").upper() == "APPROVED",
+            "verified": bool(line.get("verified"))
+            or str(line.get("approval_status") or "").upper() == "APPROVED",
             "verified_by": line.get("verified_by") or line.get("approved_by"),
             "verified_at": line.get("verified_at") or line.get("approved_at"),
             "counted_by": line.get("counted_by") or line.get("created_by"),
@@ -755,7 +791,11 @@ class ProjectionService:
             **self._kwargs(db_session),
         )
 
-        if abs(variance) > 1e-9 or verified_doc["approval_status"] or verified_doc["blind_recount_required"]:
+        if (
+            abs(variance) > 1e-9
+            or verified_doc["approval_status"]
+            or verified_doc["blind_recount_required"]
+        ):
             await self.db.variance_summary_projection.update_one(
                 {"count_line_id": line_id},
                 {
@@ -765,7 +805,8 @@ class ProjectionService:
                         "approved_by": line.get("approved_by"),
                         "approved_at": line.get("approved_at"),
                         "assigned_to": line.get("assigned_to"),
-                        "rejection_reason": line.get("rejection_reason") or line.get("variance_reason"),
+                        "rejection_reason": line.get("rejection_reason")
+                        or line.get("variance_reason"),
                         "projection_version": PROJECTION_VERSION,
                     }
                 },
@@ -778,7 +819,9 @@ class ProjectionService:
                 **self._kwargs(db_session),
             )
 
-        await self._refresh_session_dashboard_projection(session_id=session_id, db_session=db_session)
+        await self._refresh_session_dashboard_projection(
+            session_id=session_id, db_session=db_session
+        )
         await self._refresh_financial_projection(session_id=session_id, db_session=db_session)
 
     async def _project_inventory_event(

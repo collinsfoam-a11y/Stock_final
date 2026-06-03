@@ -349,6 +349,7 @@ class SQLVerificationService:
             if mongo_qty_error:
                 error_info = mongo_qty_error
                 return mongo_qty_error
+            assert mongo_qty is not None
 
             current_seq = int(mongo_item.get("sql_verification_seq", 0) or 0)
             variance = sql_qty - mongo_qty

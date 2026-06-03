@@ -9,6 +9,7 @@ from typing import Any, Optional
 
 try:
     import pyodbc
+
     _PYODBC_AVAILABLE = True
 except ImportError:
     pyodbc = unittest.mock.MagicMock()

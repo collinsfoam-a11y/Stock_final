@@ -22,6 +22,7 @@ from backend.services.concurrency import ConcurrencyError, coerce_version, build
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_redis_with_state() -> MagicMock:
     """Simulates atomic Redis state."""
     state: dict[str, str] = {}
@@ -64,6 +65,7 @@ def _make_redis_with_state() -> MagicMock:
 # Lock contention tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_two_users_cannot_acquire_same_rack_lock():
     redis = _make_redis_with_state()
@@ -104,6 +106,7 @@ async def test_ten_concurrent_lock_attempts_only_one_wins():
 # ---------------------------------------------------------------------------
 # OCC version guard
 # ---------------------------------------------------------------------------
+
 
 def test_coerce_version_handles_none():
     assert coerce_version(None) == 0
@@ -175,6 +178,7 @@ async def test_session_version_mismatch_raises_concurrency_error():
 # ---------------------------------------------------------------------------
 # Idempotency: no duplicate counts
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_parallel_sync_of_same_record_is_idempotent():

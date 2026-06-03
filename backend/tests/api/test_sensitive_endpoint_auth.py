@@ -31,7 +31,9 @@ async def test_sensitive_endpoints_reject_anonymous_users(async_client, method, 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(("method", "path"), SENSITIVE_ENDPOINTS)
-async def test_sensitive_endpoints_reject_staff_users(async_client, make_auth_headers, method, path):
+async def test_sensitive_endpoints_reject_staff_users(
+    async_client, make_auth_headers, method, path
+):
     response = await _request(
         async_client,
         method,

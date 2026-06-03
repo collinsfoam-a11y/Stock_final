@@ -100,9 +100,8 @@ async def test_get_item_batches_sql_path_includes_mrp_and_sorts(
     sql_connector.get_item_batches.return_value = sql_batches
 
     from backend.api.erp_api import _cache_service, _db, init_erp_api
+
     init_erp_api(_db, _cache_service, sql_connector)
-
-
 
     try:
         response = await async_client.get(
@@ -110,9 +109,6 @@ async def test_get_item_batches_sql_path_includes_mrp_and_sorts(
         )
     finally:
         init_erp_api(_db, _cache_service, None)
-
-
-
 
     assert response.status_code == 200, f"Response: {response.text}"
     data = response.json()

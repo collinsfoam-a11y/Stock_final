@@ -138,9 +138,7 @@ def _safe_int(value: Any) -> Optional[int]:
 def require_admin(current_user: dict = Depends(get_current_user)):
     """Require admin role"""
     if current_user.get("role") != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user
 
 
@@ -714,9 +712,7 @@ async def generate_report(
 
                     output = io.BytesIO()
                     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                        pd.DataFrame([{"message": "No data"}]).to_excel(
-                            writer, index=False
-                        )
+                        pd.DataFrame([{"message": "No data"}]).to_excel(writer, index=False)
                     data = output.getvalue()
                 except ImportError:
                     raise HTTPException(
@@ -808,9 +804,7 @@ async def get_service_logs(
             # Read backend logs from file
             log_file = settings.LOG_FILE or "app.log"
             log_path = Path(log_file)
-            logs = await asyncio.to_thread(
-                _read_log_file, log_path, lines, level, service
-            )
+            logs = await asyncio.to_thread(_read_log_file, log_path, lines, level, service)
 
         if not logs and service == "frontend":
             frontend_status = _get_frontend_status()

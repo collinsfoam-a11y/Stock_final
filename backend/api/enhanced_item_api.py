@@ -306,9 +306,10 @@ async def get_item_by_barcode_enhanced(
         item_data, source = await _resolve_item_data_source(normalized_barcode, force_source)
         response_time = (time.time() - start_time) * 1000
 
-        if not item_data or source == "not_found":
+        if item_data is None or source == "not_found":
             _raise_item_not_found(normalized_barcode, response_time)
 
+        item_data = cast(dict[str, Any], item_data)
         logger.info(
             "Enhanced barcode lookup: %s from %s in %.2fms",
             normalized_barcode,

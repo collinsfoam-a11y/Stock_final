@@ -84,7 +84,9 @@ def _parse_session_ids(args: argparse.Namespace) -> list[str]:
         values.extend(str(raw or "").split(","))
     if args.session_ids:
         values.extend(str(args.session_ids).split(","))
-    return sorted({_normalize_session_id(value) for value in values if _normalize_session_id(value)})
+    return sorted(
+        {_normalize_session_id(value) for value in values if _normalize_session_id(value)}
+    )
 
 
 def _write_report(path: str | None, report: dict[str, Any]) -> None:
@@ -127,8 +129,7 @@ def _line_totals(lines: list[dict[str, Any]]) -> dict[str, Any]:
         totals["financial_value_delta"] += (counted_qty - erp_qty) * unit_value
         totals["damage_value"] += damaged_qty * unit_value
     return {
-        key: round(value, 4) if isinstance(value, float) else value
-        for key, value in totals.items()
+        key: round(value, 4) if isinstance(value, float) else value for key, value in totals.items()
     }
 
 

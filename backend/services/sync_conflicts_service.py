@@ -6,7 +6,7 @@ Detect and resolve synchronization conflicts between local and server data
 import logging
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -435,9 +435,10 @@ class SyncConflictsService:
                 raw_data = dict(data)
                 fields = self._sanitize_count_line_resolution_fields(dict(data))
                 current_qty = float(count_line.get("counted_qty") or 0.0)
+                raw_incoming_qty = raw_data.get("counted_qty")
                 incoming_qty = (
-                    float(raw_data.get("counted_qty"))
-                    if raw_data.get("counted_qty") is not None
+                    float(cast(float | int | str, raw_incoming_qty))
+                    if raw_incoming_qty is not None
                     else current_qty
                 )
                 current_serials = set(self._normalize_serials(count_line))

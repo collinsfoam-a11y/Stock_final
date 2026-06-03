@@ -225,10 +225,15 @@ class CountLineWriteService:
         for i in range(10):
             if not inspect.isawaitable(resolved):
                 if i > 1:
-                    logger.warning("CountLineWriteService._resolve_awaitable took %s iterations to resolve", i)
+                    logger.warning(
+                        "CountLineWriteService._resolve_awaitable took %s iterations to resolve", i
+                    )
                 return resolved
             resolved = await resolved
-        logger.warning("CountLineWriteService._resolve_awaitable hit iteration limit (10) for %s", type(value).__name__)
+        logger.warning(
+            "CountLineWriteService._resolve_awaitable hit iteration limit (10) for %s",
+            type(value).__name__,
+        )
         return resolved
 
     async def _execute_authorized_write(self, write_call: Any) -> Any:
@@ -462,7 +467,8 @@ class CountLineWriteService:
         db_session: Optional[Any],
     ) -> None:
         operation = str(payload.get("operation") or "").strip().lower()
-        document = payload.get("document") if isinstance(payload.get("document"), dict) else {}
+        raw_document = payload.get("document")
+        document: dict[str, Any] = raw_document if isinstance(raw_document, dict) else {}
         # FIX GROUP 5: Build full actor attribution from context.
         actor_username = str(context.get("username") or context.get("actor") or "system")
         actor: dict[str, Any] = {

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """
 Shared database connection utilities to eliminate duplicate connection logic
 """
@@ -9,6 +10,7 @@ from typing import Optional
 
 try:
     import pyodbc
+
     _PYODBC_AVAILABLE = True
 except ImportError:
     pyodbc = unittest.mock.MagicMock()
