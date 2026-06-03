@@ -496,7 +496,7 @@ class SessionLifecycleService:
             **kwargs,
         )
         if needs_review_count > 0:
-            blockers.append(f"{needs_review_count} count line(s) pending approval")
+            blockers.append(f"{needs_review_count} unresolved count lines pending approval")
 
         if blockers:
             raise GovernanceViolation(
