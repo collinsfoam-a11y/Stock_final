@@ -54,8 +54,8 @@ describe("Tabs", () => {
 
     const tab = getByRole("tab", { name: "Tab 1" });
     // The tab is the TouchableOpacity. We need to find the icon container among its children.
-    const iconContainer = tab.children.find(
-      (child) =>
+    const iconContainer: any = tab.children.find(
+      (child: any) =>
         child &&
         typeof child === "object" &&
         "props" in child &&
