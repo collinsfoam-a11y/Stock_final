@@ -38,6 +38,10 @@ def _derive_signing_key() -> bytes:
     """Derive a per-deployment signing key from the environment secret."""
     secret = os.environ.get("OVERRIDE_TOKEN_SECRET")
     if not secret:
+        logger.critical(
+            "OVERRIDE_TOKEN_SECRET is not set — override token signing is disabled. "
+            "Set this environment variable before starting the service."
+        )
         raise RuntimeError(
             "OVERRIDE_TOKEN_SECRET environment variable is not set. "
             "Refusing to sign override tokens with an insecure default."

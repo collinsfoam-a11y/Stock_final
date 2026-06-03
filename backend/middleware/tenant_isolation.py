@@ -87,6 +87,11 @@ class TenantScopedQuery:
     def __init__(self, collection: Any, org_id: Optional[str] = None) -> None:
         self._collection = collection
         self._org_id = org_id or get_request_org_id()
+        if not self._org_id:
+            raise RuntimeError(
+                "CRITICAL: TenantScopedQuery constructed without org_id context. "
+                "Tenant-scoped queries require an explicit org_id or an active request context."
+            )
 
     def _scoped(self, query: dict[str, Any]) -> dict[str, Any]:
         if not self._org_id:
