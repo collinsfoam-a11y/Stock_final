@@ -6,6 +6,7 @@ from pathlib import Path
 # Need to fake import backend.db.runtime etc., or we just test the class logic
 from backend.middleware.projection_consistency_guard import ProjectionConsistencyGuardMiddleware
 
+
 def test_resolve_script_command():
     app = MagicMock()
     middleware = ProjectionConsistencyGuardMiddleware(app)
@@ -22,7 +23,8 @@ def test_resolve_script_command():
     with pytest.raises(ValueError, match="Invalid script name"):
         middleware._resolve_script_command("backfill; ls")
 
-@patch('subprocess.run')
+
+@patch("subprocess.run")
 def test_run_projection_repair_cycle_validation(mock_run):
     app = MagicMock()
     middleware = ProjectionConsistencyGuardMiddleware(app)
@@ -35,5 +37,7 @@ def test_run_projection_repair_cycle_validation(mock_run):
         cmd_args, cmd_kwargs = call
         cmd = cmd_args[0]
         assert cmd[0] == sys.executable
-        assert str(Path(cmd[1]).resolve()).startswith(str((middleware.root / "backend" / "scripts").resolve()))
+        assert str(Path(cmd[1]).resolve()).startswith(
+            str((middleware.root / "backend" / "scripts").resolve())
+        )
         assert cmd_kwargs.get("shell") is False

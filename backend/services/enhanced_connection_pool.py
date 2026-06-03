@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """
 Enhanced Connection Pool Service
 Upgraded SQL Server connection pooling with retry logic, health monitoring, and metrics
@@ -16,6 +17,7 @@ from typing import Any, Optional
 
 try:
     import pyodbc
+
     _PYODBC_AVAILABLE = True
 except ImportError:
     pyodbc = unittest.mock.MagicMock()

@@ -258,9 +258,7 @@ class ProjectionWriteService:
                 )
                 return True
             except ResourceLockedError:
-                elapsed_ms = int(
-                    (datetime.now(timezone.utc) - started).total_seconds() * 1000.0
-                )
+                elapsed_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000.0)
                 if elapsed_ms >= self.lock_wait_timeout_ms:
                     raise
                 await asyncio.sleep(self.lock_retry_delay_ms / 1000.0)
@@ -460,7 +458,9 @@ class ProjectionWriteService:
                     last_activity = candidate
 
         pending_items = max(total_items - verified_items, 0)
-        completion_percent = round((verified_items / total_items) * 100.0, 2) if total_items else 0.0
+        completion_percent = (
+            round((verified_items / total_items) * 100.0, 2) if total_items else 0.0
+        )
         return {
             "total_items": total_items,
             "verified_items": verified_items,
@@ -567,9 +567,11 @@ class ProjectionWriteService:
                 "last_event_id": None,
                 "last_event_type": "write_sync",
                 "last_event_ts": now_dt,
-                "mrp": line.get("mrp_counted")
-                if line.get("mrp_counted") not in (None, "")
-                else line.get("mrp_erp"),
+                "mrp": (
+                    line.get("mrp_counted")
+                    if line.get("mrp_counted") not in (None, "")
+                    else line.get("mrp_erp")
+                ),
                 "mrp_erp": line.get("mrp_erp"),
                 "notes": line.get("notes") or line.get("remark") or line.get("variance_note"),
                 "original_count_hidden": bool(line.get("original_count_hidden", False)),
@@ -613,7 +615,9 @@ class ProjectionWriteService:
         if variance_docs and "variance" in scopes:
             await self._resolve_result(variance_projection.insert_many(variance_docs, **kwargs))
 
-        complete_percent = round((reviewed_count / len(active_lines)) * 100.0, 2) if active_lines else 0.0
+        complete_percent = (
+            round((reviewed_count / len(active_lines)) * 100.0, 2) if active_lines else 0.0
+        )
         financial_doc = {
             "session_id": session_id,
             "complete_percent": complete_percent,

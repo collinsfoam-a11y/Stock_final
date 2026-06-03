@@ -20,14 +20,17 @@ def _make_db_with_item(item: dict) -> MagicMock:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("barcode_field", [
-    "barcode",
-    "manual_barcode",
-    "carton_barcode",
-    "pack_barcode",
-    "unit_barcode",
-    "alternate_barcodes",
-])
+@pytest.mark.parametrize(
+    "barcode_field",
+    [
+        "barcode",
+        "manual_barcode",
+        "carton_barcode",
+        "pack_barcode",
+        "unit_barcode",
+        "alternate_barcodes",
+    ],
+)
 async def test_barcode_field_included_in_query(barcode_field: str):
     """
     Every barcode field variant must be included in the $or query

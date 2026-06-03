@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 # ruff: noqa: E402
 import asyncio
 import logging
@@ -11,6 +12,7 @@ from typing import Any, Optional, Sequence
 
 try:
     import pyodbc
+
     _PYODBC_AVAILABLE = True
 except ImportError:
     pyodbc = unittest.mock.MagicMock()

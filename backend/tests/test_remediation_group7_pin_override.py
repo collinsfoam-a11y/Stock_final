@@ -156,9 +156,7 @@ async def test_valid_token_passes_and_is_consumed():
     token = f"{raw}.{sig}"
 
     # Atomic update_one succeeds for a valid token
-    db.supervisor_override_tokens.update_one = AsyncMock(
-        return_value=MagicMock(modified_count=1)
-    )
+    db.supervisor_override_tokens.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
 
     result = await service.validate_override_token(token, "supervisor1", "approve")
     assert result is True
@@ -181,6 +179,13 @@ async def test_unknown_action_raises():
 
 
 def test_all_required_actions_are_defined():
-    required = {"approve", "reject", "force_close", "variance_override", "recount_approve", "inventory_adjust"}
+    required = {
+        "approve",
+        "reject",
+        "force_close",
+        "variance_override",
+        "recount_approve",
+        "inventory_adjust",
+    }
     missing = required - OVERRIDE_REQUIRED_ACTIONS
     assert not missing, f"Actions missing from OVERRIDE_REQUIRED_ACTIONS: {missing}"

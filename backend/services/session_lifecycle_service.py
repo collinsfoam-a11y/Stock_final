@@ -45,9 +45,7 @@ class SessionLifecycleService:
         validation_service: Optional[ValidationService] = None,
         audit_service: Optional[GovernanceAuditService] = None,
         projection_service: Optional[ProjectionWriteService] = None,
-        count_line_finalizer: Optional[
-            Callable[..., Awaitable[int]]
-        ] = None,
+        count_line_finalizer: Optional[Callable[..., Awaitable[int]]] = None,
     ) -> None:
         self.db = db
         self.validation_service = validation_service or ValidationService(db)

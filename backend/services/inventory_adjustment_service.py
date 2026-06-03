@@ -68,8 +68,7 @@ def _assert_transition(from_state: Any, to_state: Any) -> None:
     allowed = _TRANSITIONS.get(fs, set())
     if ts not in allowed:
         raise GovernanceViolation(
-            f"Invalid adjustment transition: {fs} → {ts}. "
-            f"Allowed: {sorted(allowed) or 'none'}"
+            f"Invalid adjustment transition: {fs} → {ts}. Allowed: {sorted(allowed) or 'none'}"
         )
 
 
@@ -88,6 +87,7 @@ class InventoryAdjustmentService:
     async def _execute_authorized_write(self, write_call: Any) -> Any:
         with write_authority("InventoryAdjustmentService"):
             import inspect
+
             result = write_call()
             if inspect.isawaitable(result):
                 return await result
@@ -197,9 +197,7 @@ class InventoryAdjustmentService:
         Writes a ledger entry — the original record is never mutated.
         """
         self._require_real_actor(actor)
-        adjustment = await self._load_and_assert_state(
-            adjustment_id, AdjustmentState.AUTHORIZED
-        )
+        adjustment = await self._load_and_assert_state(adjustment_id, AdjustmentState.AUTHORIZED)
         now = _utc_now()
         ledger_entry: dict[str, Any] = {
             "id": str(uuid.uuid4()),
@@ -269,9 +267,7 @@ class InventoryAdjustmentService:
         The original ledger entry is never deleted.
         """
         self._require_real_actor(actor)
-        adjustment = await self._load_and_assert_state(
-            adjustment_id, AdjustmentState.POSTED
-        )
+        adjustment = await self._load_and_assert_state(adjustment_id, AdjustmentState.POSTED)
         now = _utc_now()
         reversal: dict[str, Any] = {
             "id": str(uuid.uuid4()),
@@ -284,9 +280,7 @@ class InventoryAdjustmentService:
             "reversed_by": actor.get("username"),
             "reversed_at": now,
         }
-        await self._execute_authorized_write(
-            lambda: self.db.inventory_ledger.insert_one(reversal)
-        )
+        await self._execute_authorized_write(lambda: self.db.inventory_ledger.insert_one(reversal))
         return await self._transition(
             adjustment_id,
             AdjustmentState.ROLLED_BACK,

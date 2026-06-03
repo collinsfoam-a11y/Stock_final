@@ -225,10 +225,15 @@ class CountLineWriteService:
         for i in range(10):
             if not inspect.isawaitable(resolved):
                 if i > 1:
-                    logger.warning("CountLineWriteService._resolve_awaitable took %s iterations to resolve", i)
+                    logger.warning(
+                        "CountLineWriteService._resolve_awaitable took %s iterations to resolve", i
+                    )
                 return resolved
             resolved = await resolved
-        logger.warning("CountLineWriteService._resolve_awaitable hit iteration limit (10) for %s", type(value).__name__)
+        logger.warning(
+            "CountLineWriteService._resolve_awaitable hit iteration limit (10) for %s",
+            type(value).__name__,
+        )
         return resolved
 
     async def _execute_authorized_write(self, write_call: Any) -> Any:

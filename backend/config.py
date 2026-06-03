@@ -466,7 +466,8 @@ class Settings(PydanticBaseSettings):
         default="http://localhost:8045/v1", description="URL for the pi-server sidecar"
     )
     PI_SERVER_API_KEY: str = Field(
-        default="", description="Bearer token for the pi-server sidecar (set via PI_SERVER_API_KEY env var)"
+        default="",
+        description="Bearer token for the pi-server sidecar (set via PI_SERVER_API_KEY env var)",
     )
 
     @field_validator("PORT")

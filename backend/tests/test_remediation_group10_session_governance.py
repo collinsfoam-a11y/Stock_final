@@ -84,12 +84,14 @@ async def test_finalize_transition_calls_readiness_check():
     """Calling transition_session to FINALIZED must invoke the readiness check."""
     db = _make_db(unknown_count=1)
     db.sessions = MagicMock()
-    db.sessions.find_one = AsyncMock(return_value={
-        "id": "sess-1",
-        "session_id": "sess-1",
-        "status": "REVIEW",
-        "version": 1,
-    })
+    db.sessions.find_one = AsyncMock(
+        return_value={
+            "id": "sess-1",
+            "session_id": "sess-1",
+            "status": "REVIEW",
+            "version": 1,
+        }
+    )
     db.sessions.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
     db.verification_sessions = MagicMock()
     db.verification_sessions.update_one = AsyncMock(return_value=None)

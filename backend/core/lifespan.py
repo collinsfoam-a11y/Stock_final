@@ -616,7 +616,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
     try:
         await cache_service.initialize()
         cache_stats = await cache_service.get_stats()
-        logger.info("OK: Cache service initialized: %s", cache_stats.get('backend', 'unknown'))
+        logger.info("OK: Cache service initialized: %s", cache_stats.get("backend", "unknown"))
     except Exception as e:
         logger.warning("Cache service error: %s", str(e))
 
@@ -801,7 +801,9 @@ async def lifespan(app: FastAPI):  # noqa: C901
     # Verify Cache
     try:
         cache_stats = await cache_service.get_stats()
-        logger.info("✓ Startup Check: Cache initialized (%s)", cache_stats.get('backend', 'unknown'))
+        logger.info(
+            "✓ Startup Check: Cache initialized (%s)", cache_stats.get("backend", "unknown")
+        )
     except Exception as e:
         logger.warning("⚠️ Startup Check: Cache service warning: %s", str(e))
 
@@ -840,7 +842,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
         logger.info("✅ Startup Checklist: All critical services OK")
     else:
         failed = [svc for svc in critical_services if not startup_checklist[svc]]
-        logger.warning("⚠️  Startup Checklist: Critical services failed - %s", ', '.join(failed))
+        logger.warning("⚠️  Startup Checklist: Critical services failed - %s", ", ".join(failed))
 
     # Initialize search service
     try:

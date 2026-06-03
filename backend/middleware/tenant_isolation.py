@@ -55,8 +55,7 @@ def require_org_id() -> str:
     org_id = get_request_org_id()
     if not org_id:
         raise RuntimeError(
-            "CRITICAL: org_id is missing from request context. "
-            "Tenant-scoped query blocked."
+            "CRITICAL: org_id is missing from request context. Tenant-scoped query blocked."
         )
     return org_id
 

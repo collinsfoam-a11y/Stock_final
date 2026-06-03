@@ -50,7 +50,9 @@ async def test_log_governance_event_captures_full_actor():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("operation", ["approve", "reject", "void", "recount", "finalize", "reopen"])
+@pytest.mark.parametrize(
+    "operation", ["approve", "reject", "void", "recount", "finalize", "reopen"]
+)
 async def test_all_governance_operations_include_actor(operation: str):
     """Every governed operation must have a real actor, not 'system'."""
     db = _make_db()
@@ -127,6 +129,5 @@ async def test_system_actor_emits_warning_for_non_automated_operations():
     # The first warning call must mention the governance event or missing actor.
     warning_args = mock_logger.warning.call_args_list[0].args
     assert any(
-        "Governance event" in str(a) or "without real actor" in str(a)
-        for a in warning_args
+        "Governance event" in str(a) or "without real actor" in str(a) for a in warning_args
     ), f"Warning message did not mention the missing actor; got: {warning_args}"
