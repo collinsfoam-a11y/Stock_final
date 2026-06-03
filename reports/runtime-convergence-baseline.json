@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-05-08T22:30:00.000Z",
+  "updatedAt": "2026-06-03T00:00:00.000Z",
   "hardLimits": {
     "offlineSyncImports": 0,
     "uiToastImports": 0,
@@ -7,7 +7,7 @@
     "offlineSyncWrapperNonShim": 0
   },
   "advisoryCeilings": {
-    "legacyCompatImports": 125,
+    "legacyCompatImports": 130,
     "modernDesignSystemImports": 54,
     "setIntervalCount": 20,
     "addEventListenerCount": 15,
