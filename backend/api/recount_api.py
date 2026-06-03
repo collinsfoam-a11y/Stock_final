@@ -255,7 +255,9 @@ async def get_recount_request(
         updated_at=recount["updated_at"].isoformat() if recount.get("updated_at") else "",
         due_date=recount.get("due_date"),
         completed_at=(
-            recount.get("completed_at").isoformat() if recount.get("completed_at") else None
+            recount["completed_at"].isoformat()
+            if isinstance(recount.get("completed_at"), datetime)
+            else None
         ),
         result_qty=recount.get("result_qty"),
     )

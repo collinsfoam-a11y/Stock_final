@@ -601,12 +601,33 @@ class ProjectionReadService:
     async def get_dashboard_filter_options(self) -> dict[str, Any]:
         rows = await self._filtered_verified_items(None)
         await self._record_hit("dashboard/filter-options")
+        warehouses_set: set[str] = set()
+        floors_set: set[str] = set()
+        categories_set: set[str] = set()
+        statuses_set: set[str] = set()
+        users_set: set[str] = set()
+        for row in rows:
+            warehouse = _normalize_string(row.get("warehouse"))
+            if warehouse:
+                warehouses_set.add(warehouse)
+            floor = _normalize_string(row.get("floor"))
+            if floor:
+                floors_set.add(floor)
+            category = _normalize_string(row.get("category"))
+            if category:
+                categories_set.add(category)
+            status = _normalize_string(row.get("status"))
+            if status:
+                statuses_set.add(status)
+            counted_by = _normalize_string(row.get("counted_by"))
+            if counted_by:
+                users_set.add(counted_by)
         options = {
-            "warehouses": sorted({row.get("warehouse") for row in rows if row.get("warehouse")}),
-            "floors": sorted({row.get("floor") for row in rows if row.get("floor")}),
-            "categories": sorted({row.get("category") for row in rows if row.get("category")}),
-            "statuses": sorted({row.get("status") for row in rows if row.get("status")}),
-            "users": sorted({row.get("counted_by") for row in rows if row.get("counted_by")}),
+            "warehouses": sorted(warehouses_set),
+            "floors": sorted(floors_set),
+            "categories": sorted(categories_set),
+            "statuses": sorted(statuses_set),
+            "users": sorted(users_set),
             "verified": [True, False],
         }
         return {"success": True, "options": options}
@@ -614,21 +635,21 @@ class ProjectionReadService:
     async def get_report_filter_options(self) -> dict[str, Any]:
         dashboard_options = await self.get_dashboard_filter_options()
         session_rows = await self._get_session_projection_docs(current_user={"role": "admin"})
-        users = sorted(
-            {
-                _normalize_string(row.get("staff_user"))
-                for row in session_rows
-                if _normalize_string(row.get("staff_user"))
-            }
-        )
-        statuses = sorted(
-            {
-                str(row.get("status") or "").strip()
-                for row in session_rows
-                if str(row.get("status") or "").strip()
-            }
-            | set(dashboard_options["options"].get("statuses", []))
-        )
+        users_set: set[str] = set()
+        statuses_set: set[str] = set()
+        for row in session_rows:
+            staff_user = _normalize_string(row.get("staff_user"))
+            if staff_user:
+                users_set.add(staff_user)
+            status = str(row.get("status") or "").strip()
+            if status:
+                statuses_set.add(status)
+        for status in dashboard_options["options"].get("statuses", []):
+            normalized = str(status or "").strip()
+            if normalized:
+                statuses_set.add(normalized)
+        users = sorted(users_set)
+        statuses = sorted(statuses_set)
         await self._record_hit("reports/filter-options")
         return {
             "warehouses": dashboard_options["options"].get("warehouses", []),

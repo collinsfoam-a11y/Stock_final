@@ -26,6 +26,8 @@ error_log_service: Optional[Any] = None
 refresh_token_service: Optional[Any] = None
 batch_operations: Optional[Any] = None
 migration_manager: Optional[Any] = None
+websocket_manager: Optional[Any] = None
+sql_server_pool: Optional[Any] = None
 
 # Enterprise Services (previously app.state)
 enterprise_audit_service: Optional[Any] = None

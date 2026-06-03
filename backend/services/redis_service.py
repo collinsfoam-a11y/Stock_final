@@ -5,7 +5,7 @@ Provides connection pooling, health checks, and utility methods
 
 import asyncio
 import logging
-from typing import Optional, Set, Union
+from typing import Any, Optional, Set, Union
 
 from redis.asyncio import Redis
 from redis.asyncio.connection import ConnectionPool
@@ -209,6 +209,9 @@ class RedisService:
     async def publish(self, channel: str, message: str) -> int:
         """Publish message to channel"""
         return await self.client.publish(channel, message)  # type: ignore
+
+    async def eval(self, script: str, numkeys: int, *keys_and_args: str) -> Any:
+        return await self.client.eval(script, numkeys, *keys_and_args)  # type: ignore
 
     async def pipeline(self):
         """Create pipeline for batch operations"""

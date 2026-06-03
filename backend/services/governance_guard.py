@@ -8,7 +8,7 @@ import inspect
 from contextlib import contextmanager
 from contextvars import ContextVar
 from functools import wraps
-from typing import Any, Callable, Optional
+from typing import Any, Callable, NoReturn, Optional
 
 
 class GovernanceViolation(RuntimeError):
@@ -418,7 +418,7 @@ def install_db_write_guards(db: Any) -> Any:
     return db
 
 
-def raise_forbidden_direct_write(operation: str) -> None:
+def raise_forbidden_direct_write(operation: str) -> NoReturn:
     raise GovernanceViolation(
         f"CRITICAL: Direct DB write forbidden ({operation}). Use domain service."
     )

@@ -667,7 +667,6 @@ async def lifespan(app: FastAPI):  # noqa: C901
             lock_service,
             snapshot_service,
             variant_service,
-            sql_connector,
         )
         logger.info("✓ CountLines API initialized with dependencies (including VariantService)")
     except Exception as e:

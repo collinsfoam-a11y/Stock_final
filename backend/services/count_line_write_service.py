@@ -467,7 +467,8 @@ class CountLineWriteService:
         db_session: Optional[Any],
     ) -> None:
         operation = str(payload.get("operation") or "").strip().lower()
-        document = payload.get("document") if isinstance(payload.get("document"), dict) else {}
+        raw_document = payload.get("document")
+        document: dict[str, Any] = raw_document if isinstance(raw_document, dict) else {}
         # FIX GROUP 5: Build full actor attribution from context.
         actor_username = str(context.get("username") or context.get("actor") or "system")
         actor: dict[str, Any] = {

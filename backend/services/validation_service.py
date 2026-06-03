@@ -92,6 +92,8 @@ def _normalize_serials(doc: dict[str, Any]) -> list[str]:
 def _decimal_places(value: Decimal) -> int:
     normalized = value.normalize() if value != 0 else Decimal("0")
     exponent = normalized.as_tuple().exponent
+    if not isinstance(exponent, int):
+        return 0
     return abs(exponent) if exponent < 0 else 0
 
 
