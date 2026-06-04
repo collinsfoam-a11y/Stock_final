@@ -353,14 +353,12 @@ jobs:
         env:
           E2E_BACKEND_URL: http://127.0.0.1:8001
         run: |
-          # WebKit (Safari/iPad) is not provisioned on the runner and the
-          # "supervisor can assign recount" flow is a known-flaky auth path.
-          # Restrict to installed Chromium projects and tolerate flakiness so
-          # the smoke job reports signal without blocking unrelated PRs.
+          # CI provisions only Chromium browsers, so restrict to the Chromium
+          # projects. Known-broken specs are marked test.fixme() at the
+          # framework level rather than skipped here, so this step fails hard
+          # on any genuine regression (no soft-pass shortcuts).
           npx playwright test e2e/recount-assignment-ui.spec.ts \
-            --project='Desktop Chrome' --project='Mobile Chrome' \
-            --grep-invert "supervisor can assign recount" \
-            || echo "E2E smoke test partially skipped"
+            --project='Desktop Chrome' --project='Mobile Chrome'
 
       - name: Collect backend log
         if: always()
