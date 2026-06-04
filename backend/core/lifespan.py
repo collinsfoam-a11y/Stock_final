@@ -381,7 +381,6 @@ async def lifespan(app: FastAPI):  # noqa: C901
     # MigrationManager.ensure_indexes() now calls create_indexes internally
 
     # Initialize SQL Server connection if credentials are available
-    sql_connected = False
     sql_credentials_ready = False
     try:
         sql_host = getattr(settings, "SQL_SERVER_HOST", None)
@@ -429,7 +428,6 @@ async def lifespan(app: FastAPI):  # noqa: C901
                     ),
                     timeout=startup_sql_timeout,
                 )
-                sql_connected = True
                 logger.info("OK: SQL Server connection established")
             except (ConnectionError, OSError) as e:
                 logger.warning("SQL Server connection failed (network/system error): %s", str(e))
