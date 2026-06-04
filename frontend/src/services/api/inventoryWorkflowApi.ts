@@ -104,6 +104,7 @@ const resolveInventoryDataSource = (responseData: any): DataSource => {
 
 const resolveDisplayName = (itemData: any) => {
   if (itemData.item_name) return itemData.item_name;
+  if (itemData.name) return itemData.name;
   if (itemData.category) return itemData.category;
   return `Item ${itemData.item_code}`;
 };
@@ -283,6 +284,33 @@ const fetchInventoryItemFromApi = async (
   return normalizeApiInventoryItem(itemData, response.data);
 };
 
+const fetchInventoryItemByIdentifierFromApi = async (
+  identifier: string,
+  retryCount: number
+) => {
+  const response = await retryWithBackoff(
+    () => api.get(`/api/v2/items/${encodeURIComponent(identifier)}`),
+    {
+      retries: retryCount,
+      backoffMs: 1000,
+      shouldRetry: shouldRetryInventoryLookup,
+    }
+  );
+
+  const itemData = response.data.data || response.data.item || response.data;
+  if (!response.data.success || !itemData?.item_code) {
+    throw new AppError({
+      code: "ITEM_NOT_FOUND",
+      severity: "USER",
+      message: `Item not found: '${identifier}' not in database`,
+      userMessage: `No item found for ${identifier}`,
+      context: { identifier },
+    });
+  }
+
+  return normalizeApiInventoryItem(itemData, response.data);
+};
+
 const tryCacheResolvedItem = async (item: InventoryItemResult) => {
   try {
     await cacheResolvedInventoryItem(item);
@@ -361,6 +389,68 @@ export const getItemByBarcode = async (
     return normalizedItem;
   } catch (apiError: any) {
     return await handleBarcodeLookupFailure(trimmedBarcode, apiError);
+  }
+};
+
+/**
+ * Resolves an item detail by item code, barcode, or Mongo item id.
+ *
+ * This is intentionally broader than scanner lookup. The detail screen can be
+ * opened from typed search results, where the selected row may carry an item
+ * code rather than the exact product barcode that was scanned.
+ */
+export const getItemByIdentifier = async (
+  identifier: string,
+  retryCount: number = 3
+): Promise<InventoryItemResult> => {
+  const trimmedIdentifier = String(identifier || "").trim();
+  if (!trimmedIdentifier) {
+    throw new AppError({
+      code: "INVALID_BARCODE",
+      severity: "USER",
+      message: "Item identifier cannot be empty",
+      userMessage: "Select an item or enter a barcode before continuing.",
+      context: { identifier },
+    });
+  }
+
+  if (!shouldAttemptReadApi()) {
+    log.debug("Offline mode - searching cache by item identifier");
+    return await getCachedBarcodeItem(trimmedIdentifier, {
+      code: "ITEM_CACHE_MISS",
+      message: `Item not found in offline cache: ${trimmedIdentifier}`,
+      userMessage:
+        "This item is not available offline yet. Connect to the network and try again.",
+    });
+  }
+
+  try {
+    const normalizedItem = await fetchInventoryItemByIdentifierFromApi(
+      trimmedIdentifier,
+      retryCount
+    );
+    await tryCacheResolvedItem(normalizedItem);
+    return normalizedItem;
+  } catch (apiError: any) {
+    try {
+      return {
+        ...(await getCachedBarcodeItem(trimmedIdentifier, {
+          code: "ITEM_NOT_FOUND",
+          message: "Item not found in cache",
+          userMessage: `Item ${trimmedIdentifier} not found. Please try again when online.`,
+        })),
+        _source: "cache" as DataSource,
+        _degraded: true,
+      };
+    } catch (cacheError: any) {
+      if (cacheError instanceof AppError) {
+        throw AppError.fromApiError(apiError, {
+          identifier: trimmedIdentifier,
+          fallbackAttempted: true,
+        });
+      }
+      throw cacheError;
+    }
   }
 };
 

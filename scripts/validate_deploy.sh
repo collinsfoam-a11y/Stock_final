@@ -23,8 +23,10 @@ read_env_value() {
   local key="$1"
   local value
   value="$(grep -E "^${key}=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- || true)"
+  value="${value%$'\r'}"
   value="${value%\"}"
   value="${value#\"}"
+  value="${value%$'\r'}"
   printf '%s' "$value"
 }
 

@@ -134,6 +134,9 @@ const ScanScreen = React.memo(function ScanScreen() {
   const cornerOpacity = useSharedValue(1);
 
   const scanBufferRef = useRef<{ code: string; count: number; timestamp: number }[]>([]);
+  // Synchronous in-flight guard for item selection — prevents a double-tap from
+  // entering handleSelectLookupItem twice before the async `loading` state lands.
+  const selectInFlightRef = useRef(false);
 
   const loadRecentItems = useCallback(async () => {
     try {
@@ -263,10 +266,14 @@ const ScanScreen = React.memo(function ScanScreen() {
   useFocusEffect(
     useCallback(() => {
       setIsScreenFocused(true);
+      // Release the selection guard when returning to this screen (e.g. back
+      // from item-detail) so the next item can be opened.
+      selectInFlightRef.current = false;
+      safeSetState(setLoading, false);
       return () => {
         setIsScreenFocused(false);
       };
-    }, [])
+    }, [safeSetState])
   );
 
   // Canonical startup path: initial load + periodic stat refresh
@@ -473,6 +480,61 @@ const ScanScreen = React.memo(function ScanScreen() {
     } as any);
   };
 
+  const getLookupItemIdentifier = (item: any): string | null => {
+    const candidates = [
+      item?.barcode,
+      item?.manual_barcode,
+      item?.unit2_barcode,
+      item?.unit_m_barcode,
+      item?.item_code,
+      item?.id,
+      item?._id,
+    ];
+
+    for (const candidate of candidates) {
+      const value = String(candidate ?? "").trim();
+      if (value) return value;
+    }
+
+    return null;
+  };
+
+  const handleSelectLookupItem = async (item: any) => {
+    // Atomic guard: the ref is set synchronously before any await, so a rapid
+    // second tap is rejected even before the `loading` state update lands.
+    if (loading || selectInFlightRef.current) return;
+
+    const identifier = getLookupItemIdentifier(item);
+    if (!identifier) {
+      safeSetState(setLookupNotice, {
+        message: "This search result is missing an item code or barcode. Try searching again.",
+        title: "Item cannot be opened",
+        type: "warning",
+      });
+      return;
+    }
+
+    selectInFlightRef.current = true;
+    safeSetState(setLoading, true);
+    safeSetState(setLookupNotice, null);
+    safeSetState(setSearchResults, []);
+    safeSetState(setSearchQuery, "");
+
+    try {
+      if (item?.item_code) {
+        await safeAsync(() => RecentItemsService.addRecent(item.item_code, item));
+        await loadRecentItems();
+      }
+      // Navigate while the guard is still held so the tap area never re-enables
+      // between clearing `loading` and pushing the detail screen.
+      navigateToDetail(identifier);
+    } catch {
+      // Recent items are best-effort; release the guard so the user can retry.
+      selectInFlightRef.current = false;
+      safeSetState(setLoading, false);
+    }
+  };
+
   const handleFinishRack = async () => {
     if (!sessionId) return;
     safeSetState(setIsFinishing, true);
@@ -651,10 +713,7 @@ const ScanScreen = React.memo(function ScanScreen() {
             safeSetState(setIsScanning, true);
           }}
           onPressItem={(item) => {
-            const code = item.barcode || item.item_code;
-            if (code) {
-              handleLookup(code);
-            }
+            void handleSelectLookupItem(item);
           }}
           onSubmitSearch={() => {
             if (!searchQuery.trim()) return;

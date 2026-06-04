@@ -128,3 +128,23 @@ def test_get_item_quantity_template_is_parameterized():
     template = SQL_TEMPLATES["get_item_quantity"]
     assert "?" in template
     assert "{barcode}" not in template
+
+
+def test_dynamic_optional_metadata_does_not_duplicate_static_erp_aliases(monkeypatch):
+    connector = SQLServerConnector()
+
+    monkeypatch.setattr(
+        connector,
+        "_build_brand_metadata",
+        lambda: (" LEFT JOIN dbo.Brands B ON P.BrandID = B.BrandID", ", B.BrandName AS BrandName"),
+    )
+    monkeypatch.setattr(connector, "_build_sales_metadata", lambda: ", S.SalePrice AS SalesPrice")
+    monkeypatch.setattr(connector, "_build_purchase_metadata", lambda: ", PUR.Rate AS PurchaseRate")
+
+    connector._build_optional_selects_and_joins()
+    query = connector._get_formatted_query("get_all_items")
+
+    assert connector._optional_selects == ""
+    assert connector._optional_joins == ""
+    assert query.upper().count("JOIN DBO.BRANDS B") == 1
+    assert "{optional_" not in query

@@ -254,13 +254,15 @@ class SessionLifecycleService:
         session_doc: dict[str, Any],
         username: str,
         db_session: Optional[Any] = None,
+        _transaction_started: bool = False,
     ) -> dict[str, Any]:
-        if db_session is None:
+        if db_session is None and not _transaction_started:
             async with mongo_transaction(self.db.client) as tx:
                 return await self.create_session(
                     session_doc=session_doc,
                     username=username,
                     db_session=tx,
+                    _transaction_started=True,
                 )
 
         now_dt = _utc_now()
@@ -319,8 +321,9 @@ class SessionLifecycleService:
         note: Optional[str] = None,
         db_session: Optional[Any] = None,
         expected_version: Optional[int] = None,
+        _transaction_started: bool = False,
     ) -> dict[str, Any]:
-        if db_session is None:
+        if db_session is None and not _transaction_started:
             async with mongo_transaction(self.db.client) as tx:
                 return await self.transition_session(
                     session_id=session_id,
@@ -329,6 +332,7 @@ class SessionLifecycleService:
                     note=note,
                     db_session=tx,
                     expected_version=expected_version,
+                    _transaction_started=True,
                 )
 
         session = await self.ensure_session_exists(session_id, db_session=db_session)
@@ -594,13 +598,15 @@ class SessionLifecycleService:
         recount_doc: dict[str, Any],
         actor: str,
         db_session: Optional[Any] = None,
+        _transaction_started: bool = False,
     ) -> dict[str, Any]:
-        if db_session is None:
+        if db_session is None and not _transaction_started:
             async with mongo_transaction(self.db.client) as tx:
                 return await self.create_recount_request(
                     recount_doc=recount_doc,
                     actor=actor,
                     db_session=tx,
+                    _transaction_started=True,
                 )
 
         if not isinstance(recount_doc, dict) or not recount_doc:
@@ -656,8 +662,9 @@ class SessionLifecycleService:
         actor: str,
         fields: Optional[dict[str, Any]] = None,
         db_session: Optional[Any] = None,
+        _transaction_started: bool = False,
     ) -> dict[str, Any]:
-        if db_session is None:
+        if db_session is None and not _transaction_started:
             async with mongo_transaction(self.db.client) as tx:
                 return await self.transition_recount_request(
                     recount_id=recount_id,
@@ -665,6 +672,7 @@ class SessionLifecycleService:
                     actor=actor,
                     fields=fields,
                     db_session=tx,
+                    _transaction_started=True,
                 )
 
         recount = await self.get_recount_request(recount_id, db_session=db_session)

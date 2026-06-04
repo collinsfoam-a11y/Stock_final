@@ -25,6 +25,18 @@ jest.mock("../control-plane/sessionControlPlane", () => ({
   updateSessionStatusCommand: jest.fn(),
 }));
 
+jest.mock("react-native", () => ({
+  Platform: {
+    OS: "web",
+  },
+}));
+
+jest.mock("../../core/config/controlPlaneFlags", () => ({
+  controlPlaneFlags: {
+    enableProjectionReads: true,
+  },
+}));
+
 jest.mock("../../utils/network", () => ({
   getNetworkStatus: jest.fn(),
 }));
@@ -287,5 +299,54 @@ describe("sessionManagementApi.getSession", () => {
     const result = await getSessions(1, 20);
 
     expect(result.items.map((item: any) => item.id)).toEqual(["session-api", "session-cache"]);
+  });
+
+  it("does not load local projections for web API session lists", async () => {
+    let httpClient: any;
+    let offlineStorage: any;
+    let network: any;
+    let controlPlane: any;
+    let getSessions: any;
+
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      httpClient = require("../httpClient").default;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      offlineStorage = require("../offline/offlineStorage");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      network = require("../../utils/network");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      controlPlane = require("../control-plane/sessionControlPlane");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ({ getSessions } = require("../api/sessionManagementApi"));
+    });
+
+    network.getNetworkStatus.mockReturnValue({
+      status: "ONLINE",
+      isOnline: true,
+      isInternetReachable: true,
+      connectionType: "wifi",
+      shouldAttemptApi: true,
+    });
+    httpClient.get.mockResolvedValue({
+      data: {
+        items: [{ id: "session-api", staff_user: "staff1", status: "OPEN" }],
+        pagination: {
+          page: 1,
+          page_size: 20,
+          total: 1,
+          total_pages: 1,
+          has_next: false,
+          has_prev: false,
+        },
+      },
+    });
+    offlineStorage.getSessionsCache.mockResolvedValue({});
+    offlineStorage.cacheSessions.mockResolvedValue(undefined);
+
+    const result = await getSessions(1, 20);
+
+    expect(result.items).toEqual([{ id: "session-api", staff_user: "staff1", status: "OPEN" }]);
+    expect(controlPlane.getProjectedSessionsRead).not.toHaveBeenCalled();
   });
 });

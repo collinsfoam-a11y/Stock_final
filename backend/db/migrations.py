@@ -21,57 +21,185 @@ class MigrationManager:
         self.db = db
         self.migrations_collection = "migrations"
 
+    # backend/db/indexes.py is the single source of truth for indexes.
+    # migrations.py only handles: (1) data cleanups that must precede unique
+    # indexes, (2) dropping obsolete indexes from older schema versions, and
+    # (3) converging the live DB to the authoritative catalog by removing
+    # legacy duplicate indexes left behind by previous index systems.
+
     async def ensure_indexes(self):
-        """Create database indexes for performance"""
+        """Apply the authoritative index catalog and clean up legacy duplicates."""
         logger.info("Creating database indexes...")
 
         try:
-            # First create optimized indexes from indexes.py
-            logger.info("Applying optimized index definitions...")
+            # 0. Pre-clean data that would block unique indexes.
+            await self._cleanup_duplicate_usernames()
+
+            # 1. Drop obsolete indexes from prior schema versions (serial uniqueness).
+            await self._drop_obsolete_serial_indexes()
+
+            # 2. Drop catalog-named indexes whose key/options drifted, so the
+            #    catalog can recreate them (create skips on IndexOptionsConflict).
+            await self._drop_mismatched_catalog_indexes()
+
+            # 3. Apply the single source of truth (backend/db/indexes.py).
+            logger.info("Applying authoritative index definitions...")
             await create_optimized_indexes(self.db)
 
-            # Then ensure standard migration indexes (safely)
-            await self._ensure_users_indexes()
-            await self._ensure_refresh_tokens_indexes()
-            await self._ensure_sessions_indexes()
-            await self._ensure_count_lines_indexes()
-            await self._ensure_item_serials_indexes()
-            await self._ensure_event_sourcing_indexes()
-            await self._ensure_erp_items_indexes()
-            await self._ensure_misc_indexes()
-            await self._ensure_products_indexes()
+            # 4. Remove legacy duplicate indexes superseded by the catalog.
+            await self._drop_legacy_duplicate_indexes()
+
             logger.info("All database indexes created successfully")
         except Exception as e:
             logger.error(f"Error creating indexes: {str(e)}")
             raise
 
-    async def _ensure_products_indexes(self) -> None:
-        """Create indexes for products collection (used for change detection)."""
-        # Note: These are also covered by indexes.py, but ensured here for consistency
-        await self._create_index_safe(
-            self.db.products, "barcode", unique=True, name="products.barcode"
-        )
-        await self._create_index_safe(
-            self.db.products, [("last_updated", -1)], name="products.updated"
-        )
-        logger.info("✓ Products indexes created")
+    # ── Authoritative collections owned entirely by backend/db/indexes.py ──────
+    # Any index on these collections that is not in the catalog (and not _id_)
+    # is a legacy duplicate and will be dropped to converge the live DB.
+    _CATALOG_OWNED_COLLECTIONS = (
+        "count_lines",
+        "sessions",
+        "erp_items",
+        "refresh_tokens",
+        "item_variances",
+        "products",
+        "activity_logs",
+        "users",
+    )
 
-    async def _ensure_users_indexes(self) -> None:
-        """Create indexes for users collection."""
-        # Check for duplicate usernames first
-        pipeline: List[Dict[str, Any]] = [
-            {"$group": {"_id": "$username", "count": {"$sum": 1}}},
-            {"$match": {"count": {"$gt": 1}}},
-        ]
-        duplicates = await self.db.users.aggregate(pipeline).to_list(None)
-        if duplicates:
-            logger.warning(f"Found {len(duplicates)} duplicate usernames, cleaning up...")
-            for dup in duplicates:
-                await self._cleanup_duplicate_users(dup["_id"])
+    async def _authoritative_index_names(self, collection_name: str) -> set[str]:
+        """Index names defined for a collection in the authoritative catalog."""
+        from backend.db.indexes import INDEXES
 
-        await self._create_index_safe(self.db.users, "username", unique=True, name="users.username")
-        await self._create_index_safe(self.db.users, "role", name="users.role")
-        logger.info("✓ Users indexes created")
+        names: set[str] = {"_id_"}
+        for _spec, options in INDEXES.get(collection_name, []):
+            name = options.get("name")
+            if name:
+                names.add(str(name))
+        return names
+
+    @staticmethod
+    def _index_spec_matches(existing: dict, key_spec: Any, options: dict) -> bool:
+        """True when a live index already matches the catalog key + key options."""
+        want_key = [(field, direction) for field, direction in key_spec]
+        have_key = [(field, direction) for field, direction in (existing.get("key") or {}).items()]
+        if want_key != have_key:
+            return False
+        # Compare the options that change index semantics.
+        for opt in ("unique", "sparse"):
+            if bool(existing.get(opt, False)) != bool(options.get(opt, False)):
+                return False
+        if "expireAfterSeconds" in options or "expireAfterSeconds" in existing:
+            if existing.get("expireAfterSeconds") != options.get("expireAfterSeconds"):
+                return False
+        return True
+
+    async def _drop_mismatched_catalog_indexes(self) -> None:
+        """Drop catalog-named indexes whose key/options no longer match the catalog.
+
+        ``create_indexes`` silently skips on IndexOptionsConflict, so without this
+        a same-named index created under an older definition would never converge.
+        """
+        from backend.db.indexes import INDEXES
+
+        for collection_name in self._CATALOG_OWNED_COLLECTIONS:
+            specs = {
+                str(options["name"]): (key_spec, options)
+                for key_spec, options in INDEXES.get(collection_name, [])
+                if options.get("name")
+            }
+            if not specs:
+                continue
+            try:
+                collection = self.db[collection_name]
+                existing = await collection.list_indexes().to_list(length=200)
+                for index in existing:
+                    name = index.get("name")
+                    if not name or name == "_id_" or name not in specs:
+                        continue
+                    key_spec, options = specs[name]
+                    if self._index_spec_matches(index, key_spec, options):
+                        continue
+                    try:
+                        await collection.drop_index(name)
+                        logger.info(
+                            "Dropped drifted catalog index %s.%s for recreation",
+                            collection_name,
+                            name,
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to drop drifted index %s.%s: %s",
+                            collection_name,
+                            name,
+                            str(exc),
+                        )
+            except Exception as exc:
+                logger.warning(
+                    "Catalog drift cleanup skipped for %s: %s", collection_name, str(exc)
+                )
+
+    async def _drop_legacy_duplicate_indexes(self) -> None:
+        """Drop indexes on catalog-owned collections that the catalog doesn't define."""
+        for collection_name in self._CATALOG_OWNED_COLLECTIONS:
+            try:
+                collection = self.db[collection_name]
+                keep = await self._authoritative_index_names(collection_name)
+                existing = await collection.list_indexes().to_list(length=200)
+                for index in existing:
+                    name = index.get("name")
+                    # Never touch _id_, text indexes, or catalog-defined indexes.
+                    if not name or name in keep or name == "_id_":
+                        continue
+                    # Preserve any text index (key contains _fts) defensively.
+                    if "_fts" in (index.get("key") or {}):
+                        continue
+                    try:
+                        await collection.drop_index(name)
+                        logger.info(
+                            "Dropped legacy duplicate index %s.%s", collection_name, name
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to drop legacy index %s.%s: %s",
+                            collection_name,
+                            name,
+                            str(exc),
+                        )
+            except Exception as exc:
+                logger.warning(
+                    "Legacy index cleanup skipped for %s: %s", collection_name, str(exc)
+                )
+
+    async def _cleanup_duplicate_usernames(self) -> None:
+        """Remove duplicate users before the unique username index is applied."""
+        try:
+            pipeline: List[Dict[str, Any]] = [
+                {"$group": {"_id": "$username", "count": {"$sum": 1}}},
+                {"$match": {"count": {"$gt": 1}}},
+            ]
+            duplicates = await self.db.users.aggregate(pipeline).to_list(None)
+            if duplicates:
+                logger.warning(
+                    f"Found {len(duplicates)} duplicate usernames, cleaning up..."
+                )
+                for dup in duplicates:
+                    await self._cleanup_duplicate_users(dup["_id"])
+        except Exception as exc:
+            logger.warning("Username duplicate cleanup skipped: %s", str(exc))
+
+    async def _drop_obsolete_serial_indexes(self) -> None:
+        """Drop pre-item_id global serial-uniqueness indexes (replaced by item_id keys)."""
+        for coll in (self.db.item_serials, self.db.serial_records, self.db.serial_registry):
+            await self._drop_index_if_matching(coll, key=[("serial_number", 1)], unique=True)
+            await self._drop_index_if_matching(
+                coll, key=[("item_code", 1), ("serial_number", 1)], unique=True
+            )
+            await self._drop_index_if_matching(coll, key=[("serial_no", 1)], unique=True)
+            await self._drop_index_if_matching(
+                coll, key=[("item_code", 1), ("serial_no", 1)], unique=True
+            )
 
     async def _cleanup_duplicate_users(self, username: str) -> None:
         """Remove duplicate users, keeping the oldest one."""
@@ -82,414 +210,6 @@ class MigrationManager:
             for user in to_remove:
                 await self.db.users.delete_one({"_id": user["_id"]})
             logger.info(f"Removed {len(to_remove)} duplicate user(s) for username: {username}")
-
-    async def _ensure_refresh_tokens_indexes(self) -> None:
-        """Create indexes for refresh_tokens collection."""
-        # Refresh tokens are stored as a one-way hash to reduce blast radius if DB is leaked.
-        # Use a sparse unique index so older records without token_hash don't block migrations.
-        await self._create_index_safe(
-            self.db.refresh_tokens,
-            "token_hash",
-            unique=True,
-            sparse=True,
-            name="refresh_tokens.token_hash",
-        )
-        await self._create_index_safe(self.db.refresh_tokens, "username")
-        await self._create_index_safe(self.db.refresh_tokens, "expires_at")
-        await self._create_index_safe(self.db.refresh_tokens, [("username", 1), ("revoked", 1)])
-        logger.info("✓ Refresh tokens indexes created")
-
-    async def _ensure_sessions_indexes(self) -> None:
-        """Create indexes for sessions collection."""
-        await self._create_index_safe(self.db.sessions, "id", unique=True, name="sessions.id")
-        simple_indexes = ["warehouse", "staff_user", "status"]
-        for field in simple_indexes:
-            await self._create_index_safe(self.db.sessions, field, name=f"sessions.{field}")
-
-        compound_indexes = [
-            [("started_at", -1)],
-            [("warehouse", 1), ("status", 1)],
-            [("staff_user", 1), ("status", 1)],
-            [("status", 1), ("started_at", -1)],
-            [("created_at", -1)],
-            [("status", 1), ("created_at", -1)],
-        ]
-        for idx in compound_indexes:
-            await self._create_index_safe(self.db.sessions, idx)
-        await self._create_index_safe(
-            self.db.sessions,
-            [("location_key", 1)],
-            unique=True,
-            name="sessions.active_location_key",
-            partialFilterExpression={
-                "status": {"$in": ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]},
-                "location_key": {"$exists": True, "$gt": ""},
-            },
-        )
-        logger.info("✓ Sessions indexes created")
-
-    async def _ensure_count_lines_indexes(self) -> None:
-        """Create indexes for count_lines collection."""
-        await self._create_index_safe(self.db.count_lines, "id", unique=True, name="count_lines.id")
-        await self._create_index_safe(
-            self.db.count_lines,
-            "idempotency_key",
-            unique=True,
-            sparse=True,
-            name="count_lines.idempotency_key",
-        )
-        await self._create_index_safe(
-            self.db.count_lines,
-            "semantic_hash",
-            unique=True,
-            sparse=True,
-            name="count_lines.semantic_hash",
-        )
-        simple_indexes = ["session_id", "item_code", "counted_by", "status", "verified"]
-        for field in simple_indexes:
-            await self._create_index_safe(self.db.count_lines, field, name=f"count_lines.{field}")
-
-        compound_indexes = [
-            [("session_id", 1), ("item_code", 1)],
-            [("session_id", 1), ("counted_at", -1)],
-            [("session_id", 1), ("status", 1)],
-            [("item_code", 1), ("counted_at", -1)],
-            [("counted_at", -1)],
-            [("item_code", 1), ("verified", 1)],
-            [("verified", 1), ("counted_at", -1)],
-            [("item_code", 1), ("serial_numbers", 1)],
-        ]
-        for idx in compound_indexes:
-            await self._create_index_safe(self.db.count_lines, idx)
-        logger.info("✓ Count lines indexes created")
-
-    async def _ensure_item_serials_indexes(self) -> None:
-        """Create per-item serial indexes and remove obsolete global serial uniqueness."""
-        await self._drop_index_if_matching(
-            self.db.item_serials,
-            key=[("serial_number", 1)],
-            unique=True,
-        )
-        await self._drop_index_if_matching(
-            self.db.item_serials,
-            key=[("item_code", 1), ("serial_number", 1)],
-            unique=True,
-        )
-        await self._create_index_safe(
-            self.db.item_serials,
-            [("item_id", 1), ("serial_number", 1)],
-            unique=True,
-            sparse=True,
-            name="item_serials.item_serial",
-        )
-        await self._create_index_safe(
-            self.db.item_serials,
-            "serial_number",
-            name="item_serials.serial_lookup",
-        )
-        await self._create_index_safe(
-            self.db.item_serials,
-            "item_code",
-            name="item_serials.item_code",
-        )
-        await self._create_index_safe(
-            self.db.item_serials,
-            "item_id",
-            name="item_serials.item_id",
-        )
-        logger.info("✓ Item serial indexes created")
-
-    async def _ensure_event_sourcing_indexes(self) -> None:
-        """Create indexes for append-only event sourcing collections."""
-        await self._create_index_safe(
-            self.db.event_log,
-            "idempotency_key",
-            unique=True,
-            sparse=True,
-            name="event_log.idempotency_key",
-        )
-        await self._create_index_safe(
-            self.db.event_log,
-            [("metadata.idempotency_key", 1)],
-            unique=True,
-            sparse=True,
-            name="event_log.metadata.idempotency_key",
-        )
-        await self._create_index_safe(
-            self.db.event_log,
-            [("metadata.request_idempotency_key", 1)],
-            name="event_log.metadata.request_idempotency_key",
-        )
-        await self._create_index_safe(
-            self.db.event_log,
-            "scan_fingerprint",
-            unique=True,
-            sparse=True,
-            name="event_log.scan_fingerprint",
-        )
-        await self._create_index_safe(
-            self.db.event_log,
-            [("aggregate_id", 1), ("timestamp", 1)],
-            name="event_log.aggregate_time",
-        )
-        await self._create_index_safe(
-            self.db.items_snapshot,
-            [("session_id", 1), ("item_code", 1)],
-            unique=True,
-            name="items_snapshot.session_item",
-        )
-        await self._create_index_safe(
-            self.db.batch_records,
-            [("session_id", 1), ("item_code", 1), ("batch_id", 1)],
-            unique=True,
-            name="batch_records.session_item_batch",
-        )
-        await self._create_index_safe(
-            self.db.event_applied,
-            [("event_id", 1)],
-            unique=True,
-            name="event_applied.event_id",
-        )
-        await self._create_index_safe(
-            self.db.event_applied,
-            [("session_id", 1), ("applied_at", -1)],
-            name="event_applied.session_time",
-        )
-        await self._drop_index_if_matching(
-            self.db.serial_records,
-            key=[("serial_no", 1)],
-            unique=True,
-        )
-        await self._drop_index_if_matching(
-            self.db.serial_records,
-            key=[("item_code", 1), ("serial_no", 1)],
-            unique=True,
-        )
-        await self._create_index_safe(
-            self.db.serial_records,
-            [("item_id", 1), ("serial_no", 1)],
-            unique=True,
-            sparse=True,
-            name="serial_records.item_serial",
-        )
-        await self._create_index_safe(
-            self.db.serial_records,
-            "serial_no",
-            name="serial_records.serial_lookup",
-        )
-        await self._create_index_safe(
-            self.db.serial_records,
-            [("session_id", 1), ("item_code", 1), ("batch_id", 1), ("serial_no", 1)],
-            unique=True,
-            name="serial_records.composite",
-        )
-        await self._drop_index_if_matching(
-            self.db.serial_registry,
-            key=[("serial_no", 1)],
-            unique=True,
-        )
-        await self._drop_index_if_matching(
-            self.db.serial_registry,
-            key=[("item_code", 1), ("serial_no", 1)],
-            unique=True,
-        )
-        await self._create_index_safe(
-            self.db.serial_registry,
-            [("item_id", 1), ("serial_no", 1)],
-            unique=True,
-            sparse=True,
-            name="serial_registry.item_serial",
-        )
-        await self._create_index_safe(
-            self.db.serial_registry,
-            "serial_no",
-            name="serial_registry.serial_lookup",
-        )
-        await self._create_index_safe(
-            self.db.serial_registry,
-            "item_id",
-            name="serial_registry.item_id",
-        )
-        await self._create_index_safe(
-            self.db.damage_logs,
-            "event_id",
-            unique=True,
-            name="damage_logs.event_id",
-        )
-        await self._create_index_safe(
-            self.db.variance_logs,
-            "event_id",
-            unique=True,
-            name="variance_logs.event_id",
-        )
-        await self._create_index_safe(
-            self.db.approvals,
-            "approval_id",
-            unique=True,
-            name="approvals.approval_id",
-        )
-        await self._create_index_safe(
-            self.db.sync_queue,
-            "queue_id",
-            unique=True,
-            name="sync_queue.queue_id",
-        )
-        await self._create_index_safe(
-            self.db.erp_snapshot,
-            [("session_id", 1), ("item_code", 1)],
-            unique=True,
-            name="erp_snapshot.session_item",
-        )
-        logger.info("✓ Event sourcing indexes created")
-
-    async def _ensure_erp_items_indexes(self) -> None:
-        """Create indexes for erp_items collection."""
-        # NOTE: item_code index is handled by backend/db/indexes.py as 'idx_item_code'
-        # await self._create_index_safe(
-        #     self.db.erp_items, "item_code", unique=True, name="erp_items.item_code"
-        # )
-
-        simple_indexes = [
-            # "barcode",  # Handled by backend/db/indexes.py as 'idx_barcode'
-            "warehouse",
-            # "category",  # Handled by backend/db/indexes.py as part of compound idx_category
-            # "subcategory",  # Handled by backend/db/indexes.py as part of compound idx_category
-            "floor",
-            "rack",
-            "uom_code",
-            "verified",
-            "verified_by",
-            "data_complete",
-        ]
-        for field in simple_indexes:
-            await self._create_index_safe(self.db.erp_items, field, name=f"erp_items.{field}")
-
-        compound_indexes = [
-            [("verified_at", -1)],
-            [("last_scanned_at", -1)],
-            [("synced_at", -1)],
-            [("last_synced", -1)],
-            [("warehouse", 1), ("category", 1)],
-            [("barcode", 1), ("warehouse", 1)],
-            # [("floor", 1), ("rack", 1)],  # Handled by backend/db/indexes.py as 'idx_location'
-            [("verified", 1), ("verified_at", -1)],
-            # [("category", 1), ("subcategory", 1)],  # Handled by backend/db/indexes.py as 'idx_category'
-            [("warehouse", 1), ("data_complete", 1)],
-            [("category", 1), ("data_complete", 1)],
-        ]
-        for idx in compound_indexes:
-            await self._create_index_safe(self.db.erp_items, idx)
-
-        await self._ensure_text_index()
-        logger.info("✓ ERP items indexes created")
-
-    async def _ensure_text_index(self) -> None:
-        """Create text index on item_name if not exists."""
-        try:
-            existing_indexes = await self.db.erp_items.list_indexes().to_list(length=100)
-            has_text_index = any(
-                idx.get("key", {}).get("_fts") is not None for idx in existing_indexes
-            )
-            if not has_text_index:
-                await self.db.erp_items.create_index([("item_name", "text")])
-                logger.info("✓ Text index created on item_name")
-            else:
-                logger.info("✓ Text index already exists, skipping")
-        except Exception as e:
-            logger.warning(f"Text index check/creation failed: {str(e)}")
-
-    async def _ensure_misc_indexes(self) -> None:
-        """Create indexes for miscellaneous collections."""
-        # Item variances
-        await self._create_index_safe(self.db.item_variances, "item_code")
-        await self._create_index_safe(self.db.item_variances, "verified_by")
-        await self._create_index_safe(self.db.item_variances, [("verified_at", -1)])
-        await self._create_index_safe(self.db.item_variances, [("category", 1), ("floor", 1)])
-        await self._create_index_safe(
-            self.db.item_variances, [("warehouse", 1), ("verified_at", -1)]
-        )
-        logger.info("✓ Item variances indexes created")
-
-        # ERP config and sync metadata - skip _id index creation (automatically managed by MongoDB)
-        logger.info("✓ ERP config and Sync metadata indexes verified")
-
-        # Activity logs
-        await self._create_index_safe(self.db.activity_logs, [("created_at", -1)])
-        await self._create_index_safe(self.db.activity_logs, "user_id")
-        await self._create_index_safe(self.db.activity_logs, [("user_id", 1), ("created_at", -1)])
-        await self._create_index_safe(self.db.activity_logs, "action")
-        logger.info("✓ Activity logs indexes created")
-
-    async def _create_index_safe(
-        self,
-        collection: Any,
-        key: Union[str, list[tuple[str, int]]],
-        unique: bool = False,
-        name: str = "",
-        sparse: bool = False,
-        **extra_options: Any,
-    ) -> None:
-        """Create an index with safe error handling for duplicates."""
-        # Skip _id index creation (automatically managed by MongoDB)
-        if (
-            key == "_id"
-            or key == [("_id", 1)]
-            or (isinstance(key, list) and len(key) == 1 and key[0][0] == "_id")
-        ):
-            logger.debug("Skipping _id index creation as it is managed by MongoDB")
-            return
-
-        requested_key = self._normalize_index_key(key)
-        index_name = name or str(key)
-
-        try:
-            existing_indexes = await collection.list_indexes().to_list(length=100)
-            for existing in existing_indexes:
-                if self._normalize_index_key(existing.get("key", {})) != requested_key:
-                    continue
-
-                existing_unique = bool(existing.get("unique", False))
-                existing_sparse = bool(existing.get("sparse", False))
-                if existing_unique == unique and existing_sparse == sparse:
-                    logger.debug(
-                        "Index %s already exists with compatible options (existing name: %s)",
-                        index_name,
-                        existing.get("name", "<unnamed>"),
-                    )
-                    return
-
-                logger.warning(
-                    "Index %s already exists with different options; keeping existing index %s",
-                    index_name,
-                    existing.get("name", "<unnamed>"),
-                )
-                return
-
-            create_options: dict[str, Any] = {"unique": unique}
-            if name:
-                create_options["name"] = name
-            if sparse:
-                create_options["sparse"] = True
-            create_options.update(extra_options)
-
-            await collection.create_index(key, **create_options)
-        except Exception as e:
-            err_str = str(e)
-            if "IndexOptionsConflict" in err_str or "already exists" in err_str:
-                logger.debug(f"{index_name} index already exists, skipping")
-            elif "E11000" in err_str or "duplicate key" in err_str:
-                logger.warning(
-                    f"Cannot create unique index on {index_name}, duplicates exist: {err_str}"
-                )
-            elif "InvalidIndexSpecificationOption" in err_str and "unique" in err_str:
-                # Handle cases where unique=True is passed for _id or other restricted fields
-                logger.debug(f"Retrying index {index_name} without unique option")
-                try:
-                    await collection.create_index(key, unique=False)
-                except Exception as e2:
-                    logger.warning(f"Error creating {index_name} index (second attempt): {str(e2)}")
-            else:
-                logger.warning(f"Error creating {index_name} index: {err_str}")
 
     async def _drop_index_if_matching(
         self,

@@ -24,7 +24,7 @@ import {
   UserSettingsSections,
 } from "../../src/components/settings";
 import { AppearanceSettings } from "../../src/components/ui/AppearanceSettings";
-import { spacing, typography, borderRadius } from "@/theme/legacyCompat";
+import { font, radius, touch, gap } from "@/theme/staffUiScale";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha, getTokenShadowStyle } from "@/theme/themeTokens";
@@ -105,26 +105,47 @@ export default function StaffSettingsScreen() {
               flags.uiVisualSystemV2 ? getTokenShadowStyle(uiTokens, "md") : null,
             ]}
           >
+            {/* Initials avatar */}
             <View
               style={[
                 styles.userAvatar,
                 {
                   backgroundColor: colorWithAlpha(
                     uiTokens.colors.accent,
-                    uiTokens.mode === "dark" ? 0.18 : 0.1
+                    uiTokens.mode === "dark" ? 0.22 : 0.12
                   ),
                 },
               ]}
             >
-              <Ionicons name="person" size={28} color={uiTokens.colors.accent} />
+              {user?.full_name || user?.username ? (
+                <Text style={[styles.userAvatarText, { color: uiTokens.colors.accent }]}>
+                  {(user.full_name || user.username || "S")
+                    .split(" ")
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((w: string) => w[0]?.toUpperCase() ?? "")
+                    .join("")}
+                </Text>
+              ) : (
+                <Ionicons name="person" size={28} color={uiTokens.colors.accent} />
+              )}
             </View>
             <View style={styles.userInfo}>
               <Text style={[styles.userName, { color: uiTokens.colors.textPrimary }]}>
-                {user?.username || "Staff"}
+                {user?.full_name || user?.username || "Staff"}
               </Text>
               <Text style={[styles.userRole, { color: uiTokens.colors.textSecondary }]}>
-                Staff Member
+                {user?.username ? `@${user.username}` : "Staff Member"}
               </Text>
+              {user?.employee_id ? (
+                <Text style={[styles.userEmpId, { color: uiTokens.colors.textMuted }]}>
+                  ID: {user.employee_id}
+                </Text>
+              ) : null}
+            </View>
+            {/* Role badge */}
+            <View style={[styles.roleBadge, { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.1), borderColor: colorWithAlpha(uiTokens.colors.accent, 0.25) }]}>
+              <Text style={[styles.roleBadgeText, { color: uiTokens.colors.accent }]}>Staff</Text>
             </View>
           </ModernCard>
         </Animated.View>
@@ -208,56 +229,28 @@ export default function StaffSettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  container:     { flex: 1 },
+  scrollView:    { flex: 1 },
+  scrollContent: { paddingHorizontal: gap.lg, paddingBottom: gap["2xl"] },
+
+  // User card
+  userCard:       { flexDirection: "row", alignItems: "center", padding: gap.lg, marginTop: gap.md },
+  userAvatar:     { width: 56, height: 56, borderRadius: radius.full, justifyContent: "center", alignItems: "center" },
+  userAvatarText: { fontSize: font.size.display, fontWeight: font.weight.extrabold, letterSpacing: font.tracking.tight },
+  userInfo:       { marginLeft: gap.md, flex: 1 },
+  userName:       { fontSize: font.size.lg, fontWeight: font.weight.semibold },
+  userRole:       { fontSize: font.size.base, marginTop: 2 },
+  userEmpId:      { fontSize: font.size.caption, marginTop: 2, fontVariant: ["tabular-nums"] },
+
+  // Role badge
+  roleBadge:     { paddingHorizontal: gap.sm, paddingVertical: 4, borderRadius: radius.sm, borderWidth: 1 },
+  roleBadgeText: {
+    fontSize: font.size.label, fontWeight: font.weight.bold,
+    textTransform: "uppercase", letterSpacing: font.tracking.wide,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing["2xl"],
-  },
-  userCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: spacing.lg,
-    marginTop: spacing.md,
-  },
-  userAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: borderRadius.full,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  userInfo: {
-    marginLeft: spacing.md,
-    flex: 1,
-  },
-  userName: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  userRole: {
-    fontSize: typography.fontSize.sm,
-    marginTop: spacing.xs,
-  },
-  settingsCard: {
-    padding: 0,
-    overflow: "hidden",
-  },
-  versionContainer: {
-    alignItems: "center",
-    marginTop: spacing.xl,
-    paddingBottom: spacing.lg,
-  },
-  versionText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-  },
-  versionSubtext: {
-    fontSize: typography.fontSize.xs,
-    marginTop: spacing.xs,
-  },
+
+  settingsCard:     { padding: 0, overflow: "hidden" },
+  versionContainer: { alignItems: "center", marginTop: gap.xl, paddingBottom: gap.lg },
+  versionText:      { fontSize: font.size.base, fontWeight: font.weight.medium },
+  versionSubtext:   { fontSize: font.size.caption, marginTop: gap.xs },
 });

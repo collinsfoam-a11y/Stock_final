@@ -6,9 +6,9 @@
  * Optimized for scan-first workflow recovery.
  */
 
-import React, { useMemo } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Platform } from "react-native";
+import { useGlobalSearchParams, usePathname, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
@@ -20,14 +20,156 @@ interface StaffCrashScreenProps {
   resetError: () => void;
 }
 
+const staleReactQueryRecoveryKey = "stock-verify:stale-react-query-recovery-at";
+
+type RouteSearchParams = Record<string, unknown>;
+
+type StaffCrashRecoveryTarget = {
+  accessibilityLabel: string;
+  href: string;
+  label: string;
+};
+
+const getSingleSearchParam = (value: unknown): string | null => {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  const normalized = String(candidate ?? "").trim();
+  return normalized ? normalized : null;
+};
+
+const buildQueryString = (params: RouteSearchParams): string => {
+  const query = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null) continue;
+    const values = Array.isArray(value) ? value : [value];
+    for (const entry of values) {
+      if (entry === undefined || entry === null) continue;
+      query.append(key, String(entry));
+    }
+  }
+
+  const serialized = query.toString();
+  return serialized ? `?${serialized}` : "";
+};
+
+export const resolveStaffCrashRecoveryTarget = (
+  pathname: string | null | undefined,
+  searchParams: RouteSearchParams
+): StaffCrashRecoveryTarget => {
+  const sessionId = getSingleSearchParam(searchParams.sessionId);
+
+  if (sessionId && pathname === "/staff/scan") {
+    return {
+      accessibilityLabel: "Return to current scan session",
+      href: `/staff/scan${buildQueryString(searchParams)}`,
+      label: "Back to Scan",
+    };
+  }
+
+  if (sessionId) {
+    return {
+      accessibilityLabel: "Return to current scan session",
+      href: `/staff/scan?sessionId=${encodeURIComponent(sessionId)}`,
+      label: "Back to Scan",
+    };
+  }
+
+  return {
+    accessibilityLabel: "Return to staff home",
+    href: "/staff/home",
+    label: "Staff Home",
+  };
+};
+
+export const isStaleReactQueryBundleError = (error: Error): boolean => {
+  const details = `${error?.message ?? ""}\n${error?.stack ?? ""}`;
+  // Stale web bundles surface as "<hook> is not a function" for hooks whose
+  // module/context shifted between chunks (useQueryClient, useReducedMotion, …).
+  return (
+    /(useQueryClient|useReducedMotion)/i.test(details) &&
+    /(not a function|undefined)/i.test(details)
+  );
+};
+
+export const recoverFromStaleWebBundle = async (): Promise<boolean> => {
+  if (Platform.OS !== "web" || typeof window === "undefined") {
+    return false;
+  }
+
+  const now = Date.now();
+  const lastRecovery = Number(window.sessionStorage.getItem(staleReactQueryRecoveryKey) ?? "0");
+  if (Number.isFinite(lastRecovery) && now - lastRecovery < 60_000) {
+    return false;
+  }
+
+  window.sessionStorage.setItem(staleReactQueryRecoveryKey, String(now));
+
+  if ("caches" in window) {
+    const cacheNames = await window.caches.keys();
+    await Promise.all(cacheNames.map((cacheName) => window.caches.delete(cacheName)));
+  }
+
+  window.location.reload();
+  return true;
+};
+
 export const StaffCrashScreen: React.FC<StaffCrashScreenProps> = ({ error, resetError }) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useGlobalSearchParams();
   const uiTokens = useUiTokens();
   const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
+  const staleBundleError = useMemo(() => isStaleReactQueryBundleError(error), [error]);
+  const recoveryTarget = useMemo(
+    () => resolveStaffCrashRecoveryTarget(pathname, searchParams as RouteSearchParams),
+    [pathname, searchParams]
+  );
+  const [isRecovering, setIsRecovering] = useState(false);
+
+  const handleRetry = useCallback(() => {
+    if (staleBundleError && Platform.OS === "web") {
+      setIsRecovering(true);
+      void recoverFromStaleWebBundle()
+        .then((didReload) => {
+          if (!didReload) {
+            setIsRecovering(false);
+            resetError();
+          }
+        })
+        .catch(() => {
+          setIsRecovering(false);
+          resetError();
+        });
+      return;
+    }
+
+    resetError();
+  }, [resetError, staleBundleError]);
+
+  useEffect(() => {
+    if (!staleBundleError || Platform.OS !== "web") {
+      return;
+    }
+
+    setIsRecovering(true);
+    const recoveryTimer = setTimeout(() => {
+      void recoverFromStaleWebBundle()
+        .then((didReload) => {
+          if (!didReload) {
+            setIsRecovering(false);
+          }
+        })
+        .catch(() => {
+          setIsRecovering(false);
+        });
+    }, 250);
+
+    return () => clearTimeout(recoveryTimer);
+  }, [staleBundleError]);
 
   const handleGoToScan = () => {
     resetError();
-    router.replace("/staff/scan");
+    router.replace(recoveryTarget.href as any);
   };
 
   const handleLogout = () => {
@@ -44,7 +186,9 @@ export const StaffCrashScreen: React.FC<StaffCrashScreenProps> = ({ error, reset
 
         <Text style={styles.title}>Scan Workflow Recovery Required</Text>
         <Text style={styles.subtitle}>
-          The scanning interface stopped before the current workflow could finish rendering.
+          {isRecovering
+            ? "Refreshing app files so the scan workflow can continue."
+            : "The scanning interface stopped before the current workflow could finish rendering."}
         </Text>
 
         <View style={styles.errorBox}>
@@ -66,19 +210,22 @@ export const StaffCrashScreen: React.FC<StaffCrashScreenProps> = ({ error, reset
           <TouchableOpacity
             {...getAccessibleButtonProps({ label: "Retry loading scan workflow" })}
             style={[styles.button, styles.primaryButton]}
-            onPress={resetError}
+            onPress={handleRetry}
+            disabled={isRecovering}
           >
             <Ionicons name="refresh" size={20} color={uiTokens.colors.surface} />
-            <Text style={styles.primaryButtonText}>Try Again</Text>
+            <Text style={styles.primaryButtonText}>
+              {isRecovering ? "Refreshing..." : staleBundleError ? "Refresh App" : "Try Again"}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            {...getAccessibleButtonProps({ label: "Return to staff scan screen" })}
+            {...getAccessibleButtonProps({ label: recoveryTarget.accessibilityLabel })}
             style={[styles.button, styles.secondaryButton]}
             onPress={handleGoToScan}
           >
             <Ionicons name="scan-outline" size={20} color={uiTokens.colors.accent} />
-            <Text style={styles.secondaryButtonText}>Back to Scan</Text>
+            <Text style={styles.secondaryButtonText}>{recoveryTarget.label}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

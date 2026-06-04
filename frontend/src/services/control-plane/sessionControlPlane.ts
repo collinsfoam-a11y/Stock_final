@@ -47,6 +47,7 @@ const readErrorMessage = (error: unknown, fallback: string): string =>
   (error instanceof Error ? error.message : fallback);
 
 const isMutationSafeOnline = () => getNetworkStatus().status === "ONLINE";
+const shouldAttemptSessionApi = () => getNetworkStatus().shouldAttemptApi;
 
 const getCurrentActor = () => {
   const user = useAuthStore.getState().user;
@@ -212,9 +213,52 @@ const rollbackFailedStartEvent = async (event: SessionEvent): Promise<void> => {
   }
 };
 
-const createServerSession = async (event: Extract<SessionEvent, { type: "SESSION_STARTED" }>) => {
+type SessionCreatePayload = {
+  warehouse?: string;
+  type?: string;
+  location_type?: string;
+  location_name?: string;
+  rack_no?: string;
+};
+
+const postSessionToServer = async (
+  payload: SessionCreatePayload,
+  idempotencyKey: string
+): Promise<any> => {
   const response = await api.post(
     "/api/sessions",
+    {
+      warehouse: payload.warehouse,
+      type: payload.type,
+      location_type: payload.location_type,
+      location_name: payload.location_name,
+      rack_no: payload.rack_no,
+    },
+    {
+      timeout: 3000,
+      skipOfflineQueue: true,
+      headers: {
+        "X-Idempotency-Key": idempotencyKey,
+      },
+    } as any
+  );
+  return response.data;
+};
+
+const createDirectServerSession = async (params: CreateSessionParams): Promise<any> =>
+  postSessionToServer(
+    {
+      warehouse: params.warehouse,
+      type: params.type,
+      location_type: params.location_type,
+      location_name: params.location_name,
+      rack_no: params.rack_no,
+    },
+    generateUUID()
+  );
+
+const createServerSession = async (event: Extract<SessionEvent, { type: "SESSION_STARTED" }>) => {
+  const responseData = await postSessionToServer(
     {
       warehouse: event.payload.warehouse,
       type: event.payload.type,
@@ -222,17 +266,11 @@ const createServerSession = async (event: Extract<SessionEvent, { type: "SESSION
       location_name: event.payload.location_name,
       rack_no: event.payload.rack_no,
     },
-    {
-      timeout: 3000,
-      skipOfflineQueue: true,
-      headers: {
-        "X-Idempotency-Key": event.meta.idempotencyKey,
-      },
-    } as any
+    event.meta.idempotencyKey
   );
-  await bindServerSessionId(event.aggregateId, response.data);
+  await bindServerSessionId(event.aggregateId, responseData);
   await markSessionEventSynced(event.id);
-  return response.data;
+  return responseData;
 };
 
 const pushSessionStatusToServer = async (
@@ -326,6 +364,23 @@ export const createSessionCommand = async (params: CreateSessionParams): Promise
       .then((response) => response.data);
   }
 
+  const canAttemptApi = shouldAttemptSessionApi();
+  let directCreateError: unknown = null;
+
+  if (canAttemptApi) {
+    try {
+      return await createDirectServerSession(params);
+    } catch (error) {
+      if (isServerValidationError(error)) {
+        throw new SessionControlPlaneError(
+          "SESSION_CREATE_REJECTED",
+          readErrorMessage(error, "Session creation failed")
+        );
+      }
+      directCreateError = error;
+    }
+  }
+
   const locationKey = buildSessionLocationKey({
     warehouse: params.warehouse || null,
     locationType: params.location_type || null,
@@ -351,11 +406,31 @@ export const createSessionCommand = async (params: CreateSessionParams): Promise
   const projected = await getProjectedSessionRead(event.aggregateId);
   await cacheProjectedSession(projected);
 
-  if (!isMutationSafeOnline()) {
+  if (!canAttemptApi) {
     return {
       ...projected,
       _offline: true,
       _source: "local",
+      _controlPlane: true,
+      _createdOffline: true,
+    };
+  }
+
+  if (directCreateError) {
+    await markSessionEventRetry(event.id, readErrorMessage(directCreateError, "Network error"));
+    incrementControlPlaneMetric("sync_retry_count");
+    controlPlaneEventBus.publish("session.changed", {
+      sessionId: event.aggregateId,
+      localSessionId: event.aggregateId,
+      reason: "retry",
+    });
+    const retryView = await getProjectedSessionRead(event.aggregateId);
+    await cacheProjectedSession(retryView);
+    return {
+      ...retryView,
+      _offline: true,
+      _source: "local",
+      _degraded: true,
       _controlPlane: true,
       _createdOffline: true,
     };

@@ -215,27 +215,11 @@ class SQLServerConnector:
         return ""
 
     def _build_optional_selects_and_joins(self):
-        selects = []
-        joins = []
-
-        # Sales info
-        sales_sel = self._build_sales_metadata()
-        if sales_sel:
-            selects.append(sales_sel)
-
-        # Brand info
-        brand_join, brand_sel = self._build_brand_metadata()
-        if brand_join:
-            joins.append(brand_join)
-            selects.append(brand_sel)
-
-        # Purchase info
-        pur_sel = self._build_purchase_metadata()
-        if pur_sel:
-            selects.append(pur_sel)
-
-        self._optional_selects = "".join(selects)
-        self._optional_joins = "".join(joins)
+        # The current ERP templates already declare the required joins and
+        # aliases. Adding schema-discovered fragments here can collide with
+        # those aliases (for example Brands as B) and break read-only sync.
+        self._optional_selects = ""
+        self._optional_joins = ""
 
     def _apply_optional_sections(self, template: str) -> str:
         """Apply dynamic SQL fragments to the query template."""

@@ -294,7 +294,7 @@ if getattr(settings, "ERP_SYNC_ENABLED", True):
 
 # Change detection sync service (syncs item_name, manual_barcode, MRP changes)
 change_detection_sync = None
-if getattr(settings, "CHANGE_DETECTION_ENABLED", True):
+if getattr(settings, "CHANGE_DETECTION_SYNC_ENABLED", True):
     try:
         change_detection_sync = ChangeDetectionSyncService(
             sql_connector=sql_connector,
@@ -308,7 +308,7 @@ if getattr(settings, "CHANGE_DETECTION_ENABLED", True):
 
 # Auto-sync manager - automatically syncs when SQL Server becomes available
 auto_sync_manager = None
-if getattr(settings, "AUTO_SYNC_ENABLED", True):
+if getattr(settings, "AUTO_SYNC_ENABLED", False):
     try:
         auto_sync_manager = AutoSyncManager(
             sql_connector=sql_connector,
@@ -381,7 +381,6 @@ async def lifespan(app: FastAPI):  # noqa: C901
     # MigrationManager.ensure_indexes() now calls create_indexes internally
 
     # Initialize SQL Server connection if credentials are available
-    sql_connected = False
     sql_credentials_ready = False
     try:
         sql_host = getattr(settings, "SQL_SERVER_HOST", None)
@@ -429,7 +428,6 @@ async def lifespan(app: FastAPI):  # noqa: C901
                     ),
                     timeout=startup_sql_timeout,
                 )
-                sql_connected = True
                 logger.info("OK: SQL Server connection established")
             except (ConnectionError, OSError) as e:
                 logger.warning("SQL Server connection failed (network/system error): %s", str(e))
@@ -548,16 +546,21 @@ async def lifespan(app: FastAPI):  # noqa: C901
     # Initialize auto-sync manager (monitors SQL Server and auto-syncs when available)
     global auto_sync_manager
     try:
-        sql_configured = sql_connected
+        # Gate the auto-sync manager on the feature flag ONLY — not on whether
+        # SQL happened to be reachable at boot. The manager runs its own
+        # connection monitor (check_interval) and recovers when SQL comes back,
+        # so tying it to startup connectivity would permanently disable
+        # auto-recovery after a transient ERP outage during deploy.
+        auto_sync_enabled = bool(getattr(settings, "AUTO_SYNC_ENABLED", False))
         auto_sync_manager = AutoSyncManager(
             sql_connector=sql_connector,
             mongo_db=db,
-            sync_interval=getattr(settings, "ERP_SYNC_INTERVAL", 3600),
+            sync_interval=getattr(settings, "AUTO_SYNC_INTERVAL", 3600),
             check_interval=30,  # Check connection every 30 seconds
-            enabled=sql_configured,
+            enabled=auto_sync_enabled,
         )
 
-        if sql_configured:
+        if auto_sync_enabled:
             # Set callbacks for admin notifications
             async def on_connection_restored():
                 logger.info("📢 SQL Server connection restored - sync will start automatically")
@@ -580,7 +583,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
             asyncio.create_task(auto_sync_manager.start())
             logger.info("✅ Auto-sync manager starting (background)")
         else:
-            logger.info("Auto-sync manager disabled: SQL Server not configured")
+            logger.info("Auto-sync manager disabled")
 
         # Register with API router
         set_auto_sync_manager(auto_sync_manager)

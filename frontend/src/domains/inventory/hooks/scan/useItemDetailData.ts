@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native";
 
 import {
   checkItemCounted,
   checkItemScanStatus,
-  getItemByBarcode,
+  getItemByIdentifier,
   searchItems,
 } from "@/services/api/api";
 import { localDb } from "@/db/localDb";
@@ -124,14 +124,28 @@ export const useItemDetailData = ({
 
     setLoading(true);
     try {
-      const itemData = offlineMode
-        ? ((await localDb.getItemByBarcode(barcode)) as ItemDetailItem | null)
-        : ((await getItemByBarcode(
-            barcode,
-            3,
-            sessionId || undefined,
-            currentRack || undefined
-          )) as ItemDetailItem | null);
+      let itemData: ItemDetailItem | null = null;
+      if (offlineMode) {
+        itemData = (await localDb.getItemByBarcode(barcode)) as ItemDetailItem | null;
+      } else {
+        // On native only: try local SQLite cache first for instant response.
+        // Skipped on web — expo-sqlite uses WebAssembly which can block
+        // indefinitely on first initialisation in a mobile browser.
+        if (Platform.OS !== "web") {
+          try {
+            const cached = await localDb.getItemByBarcode(barcode);
+            if (cached?.barcode) {
+              itemData = cached as ItemDetailItem;
+            }
+          } catch {
+            // Fall through to API
+          }
+        }
+        if (!itemData) {
+          // 1 retry keeps max wait to ~31 s instead of ~93 s with 3 retries.
+          itemData = (await getItemByIdentifier(barcode, 1)) as ItemDetailItem | null;
+        }
+      }
 
       if (!itemData) {
         Alert.alert(
@@ -224,8 +238,8 @@ export const useItemDetailData = ({
 
     setIsRefreshing(true);
     try {
-      const targetBarcode = item?.barcode || barcode;
-      const response = await apiClient.get(`/api/v2/items/${targetBarcode}?verify_sql=true`);
+      const targetIdentifier = item?.item_code || item?.barcode || barcode;
+      const response = await apiClient.get(`/api/v2/items/${targetIdentifier}?verify_sql=true`);
 
       if (response.data.success && response.data.data) {
         setItem((previous) => ({

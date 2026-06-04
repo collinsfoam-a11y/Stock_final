@@ -1,4 +1,4 @@
-import { getItemByBarcode } from "../inventoryWorkflowApi";
+import { getItemByBarcode, getItemByIdentifier } from "../inventoryWorkflowApi";
 import * as sessionManagementApi from "../sessionManagementApi";
 import * as offlineStorage from "../../offline/offlineStorage";
 import httpClient from "../../httpClient";
@@ -92,6 +92,41 @@ describe("getItemByBarcode", () => {
         item_name: "Soap Bar",
         _source: "cache",
         _degraded: true,
+      }),
+    );
+  });
+
+  it("loads item details by item code for typed search result selections", async () => {
+    jest.spyOn(sessionManagementApi, "isOnline").mockReturnValue(true);
+    jest.spyOn(offlineStorage, "cacheItem").mockResolvedValue(undefined as any);
+    (retryWithBackoff as jest.Mock).mockImplementation(async (operation: () => Promise<any>) => {
+      return await operation();
+    });
+    (httpClient.get as jest.Mock).mockResolvedValue({
+      data: {
+        success: true,
+        data: {
+          id: "mongo-id",
+          item_code: "5089",
+          barcode: "515090",
+          name: "SAMAVER MEDIUM",
+          stock_qty: 4,
+          mrp: 2750,
+          uom_name: "PCs",
+        },
+      },
+    });
+
+    const result = await getItemByIdentifier("5089");
+
+    expect(httpClient.get).toHaveBeenCalledWith("/api/v2/items/5089");
+    expect(result).toEqual(
+      expect.objectContaining({
+        item_code: "5089",
+        barcode: "515090",
+        item_name: "SAMAVER MEDIUM",
+        current_stock: 4,
+        _source: "api",
       }),
     );
   });

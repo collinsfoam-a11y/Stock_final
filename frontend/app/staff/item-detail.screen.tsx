@@ -13,6 +13,7 @@ import {
   Platform,
   ScrollView,
   KeyboardAvoidingView,
+  TouchableOpacity,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -32,7 +33,7 @@ import { ItemDateFieldsSection } from "@/components/scan/ItemDateFieldsSection";
 import { ItemDetailModals } from "@/components/scan/ItemDetailModals";
 import { ItemMrpSection } from "@/components/scan/ItemMrpSection";
 import { ItemSubmitBar } from "@/components/scan/ItemSubmitBar";
-import { ItemSummarySection } from "@/components/scan/ItemSummarySection";
+// ItemSummarySection removed — hero card is now the single source of item identity
 import { SerializedItemSection } from "@/components/scan/SerializedItemSection";
 import { PhotoCaptureModal } from "@/components/modals/PhotoCaptureModal";
 import { useDeferredItemSubmission } from "@/domains/inventory/hooks/scan/useDeferredItemSubmission";
@@ -68,6 +69,28 @@ const formatPriceMetric = (value: number | undefined | null, visible: boolean): 
   const formattedValue = formatMetricNumber(value);
   return formattedValue === "---" ? formattedValue : `₹${formattedValue}`;
 };
+
+// Reusable section heading — consistent icon + label pattern, avoids 7× repetition
+function SectionHeading({
+  icon,
+  label,
+  uiTokens,
+  decorativeIconProps,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  label: string;
+  uiTokens: ReturnType<typeof import("@/hooks/useUiTokens").useUiTokens>;
+  decorativeIconProps: Record<string, unknown>;
+}) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8, marginBottom: 4, paddingHorizontal: 2 }}>
+      <Ionicons {...(decorativeIconProps as any)} name={icon} size={14} color={uiTokens.colors.textMuted} />
+      <Text style={{ fontSize: 11, fontWeight: "700", color: uiTokens.colors.textMuted, textTransform: "uppercase", letterSpacing: 0.8 }}>
+        {label}
+      </Text>
+    </View>
+  );
+}
 
 export default function ItemDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -316,6 +339,21 @@ export default function ItemDetailScreen() {
       submitSpacer: {
         height: Math.max(96, insets.bottom + 88),
       },
+      recountBanner: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: uiTokens.spacing.xs,
+        marginTop: uiTokens.spacing.sm,
+        padding: uiTokens.spacing.sm,
+        borderRadius: uiTokens.radius.sm,
+        borderWidth: 1,
+      },
+      recountBannerText: {
+        flex: 1,
+        fontSize: 12,
+        fontWeight: "600",
+        lineHeight: 17,
+      },
     });
   }, [insets.bottom, uiTokens]);
 
@@ -331,6 +369,7 @@ export default function ItemDetailScreen() {
   const {
     batchError,
     batchLoading,
+    blindRecountRequired,
     handleRefreshStock,
     handleSelectMrpVariant,
     isRefreshing,
@@ -338,6 +377,8 @@ export default function ItemDetailScreen() {
     loading,
     mrpVariants,
     rawVariantsCount,
+    recountBlockedReason,
+    recountTargetId,
     sameNameVariants,
     selectedMrpVariant,
     setShowZeroStock,
@@ -486,6 +527,11 @@ export default function ItemDetailScreen() {
       hasExpiryDate,
       itemExpiryDate,
       itemExpiryDateFormat,
+      // Recount controls — enforce blocking/blind-recount in the submit guard,
+      // not just the visual banner.
+      recountTargetId,
+      blindRecountRequired,
+      recountBlockedReason,
       onSuccess: handleBackPress,
     });
   useItemDraftAutosave({
@@ -545,42 +591,30 @@ export default function ItemDetailScreen() {
   const itemCode = item.item_code || displayBarcode || "N/A";
   const itemStock = item.current_stock ?? item.stock_qty;
   const itemUnit = item.uom_name || item.uom_code || item.uom || uomInfo.unit;
+
+  // Source indicator — single source of truth (shown once in hero)
   const sourceStatus =
     item._source === "cache"
-      ? {
-          label: "Cached",
-          icon: "cloud-offline-outline" as const,
-          color: uiTokens.colors.warning,
-        }
+      ? { label: "Cached",   icon: "cloud-offline-outline" as const,  color: uiTokens.colors.warning }
       : item._source === "sql"
-        ? {
-            label: "ERP live",
-            icon: "checkmark-circle-outline" as const,
-            color: uiTokens.colors.success,
-          }
-        : {
-            label: "Ready",
-            icon: "shield-checkmark-outline" as const,
-            color: uiTokens.colors.info,
-          };
+        ? { label: "ERP live", icon: "checkmark-circle-outline" as const, color: uiTokens.colors.success }
+        : { label: "Live",     icon: "shield-checkmark-outline" as const, color: uiTokens.colors.info };
+
   const heroStockValue = formatStockMetric(itemStock, itemUnit, settings.showItemStock);
-  const heroMrpValue = formatPriceMetric(
-    item.mrp,
-    settings.showItemPrices && settings.columnVisibility.mrp
-  );
-  const heroSessionValue = normalizedSessionId
-    ? normalizedSessionId.slice(-8).toUpperCase()
-    : "N/A";
+  const heroMrpValue   = formatPriceMetric(item.mrp, settings.showItemPrices && settings.columnVisibility.mrp);
   const parsedQuantity = Number.parseFloat(quantity);
-  const canSubmit = Number.isFinite(parsedQuantity) && parsedQuantity > 0;
+  const canSubmit      = Number.isFinite(parsedQuantity) && parsedQuantity > 0;
   const shouldShowBatchVariants =
     batchLoading || Boolean(batchError) || rawVariantsCount > 0 || sameNameVariants.length > 0;
+
+  // Location context — compact string for subtitle
+  const locationLabel = [currentFloor, currentRack].filter(Boolean).join(" › ") || "No location";
 
   return (
     <ThemedScreen showPattern={false} variant="solid" dismissKeyboardOnTap>
       <ModernHeader
-        title="Verify Item"
-        subtitle={item.item_name || item.name}
+        title={itemName}
+        subtitle={locationLabel}
         showBackButton
         onBackPress={handleBackPress}
       />
@@ -598,19 +632,19 @@ export default function ItemDetailScreen() {
           alwaysBounceVertical
           removeClippedSubviews={settings.lazyLoading}
         >
+          {/* ── Hero Card ─── single source of truth for item identity ─── */}
           <ModernCard style={styles.heroCard}>
             <View style={styles.heroTop}>
               <View style={styles.heroIcon}>
                 <Ionicons
                   {...decorativeIconProps}
-                  name="cube-outline"
+                  name="scan-circle-outline"
                   size={28}
                   color={uiTokens.colors.accentStrong}
                 />
               </View>
 
               <View style={styles.heroCopy}>
-                <Text style={styles.heroEyebrow}>Item verification</Text>
                 <Text
                   style={styles.heroTitle}
                   numberOfLines={2}
@@ -621,237 +655,171 @@ export default function ItemDetailScreen() {
                 </Text>
 
                 <View style={styles.heroCodeRow}>
+                  {/* Barcode */}
                   <View style={[styles.heroPill, styles.heroPillStrong]}>
-                    <Ionicons
-                      {...decorativeIconProps}
-                      name="barcode-outline"
-                      size={13}
-                      color={uiTokens.colors.accentStrong}
-                    />
-                    <Text
-                      style={[styles.heroPillText, styles.heroPillTextStrong]}
-                      numberOfLines={1}
-                    >
-                      {displayBarcode || "N/A"}
+                    <Ionicons {...decorativeIconProps} name="barcode-outline" size={13} color={uiTokens.colors.accentStrong} />
+                    <Text style={[styles.heroPillText, styles.heroPillTextStrong]} numberOfLines={1}>
+                      {displayBarcode || itemCode}
                     </Text>
                   </View>
 
-                  <View style={styles.heroPill}>
-                    <Ionicons
-                      {...decorativeIconProps}
-                      name="pricetag-outline"
-                      size={13}
-                      color={uiTokens.colors.textSecondary}
-                    />
-                    <Text style={styles.heroPillText} numberOfLines={1}>
-                      {itemCode}
-                    </Text>
-                  </View>
+                  {/* Item code (only if different from barcode) */}
+                  {itemCode !== displayBarcode && (
+                    <View style={styles.heroPill}>
+                      <Ionicons {...decorativeIconProps} name="pricetag-outline" size={13} color={uiTokens.colors.textSecondary} />
+                      <Text style={styles.heroPillText} numberOfLines={1}>{itemCode}</Text>
+                    </View>
+                  )}
 
-                  <View
-                    style={[
-                      styles.sourcePill,
-                      {
-                        backgroundColor: colorWithAlpha(
-                          sourceStatus.color,
-                          uiTokens.mode === "dark" ? 0.2 : 0.1
-                        ),
-                        borderColor: colorWithAlpha(sourceStatus.color, 0.36),
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      {...decorativeIconProps}
-                      name={sourceStatus.icon}
-                      size={13}
-                      color={sourceStatus.color}
-                    />
-                    <Text style={[styles.sourcePillText, { color: sourceStatus.color }]}>
-                      {sourceStatus.label}
-                    </Text>
+                  {/* Data source */}
+                  <View style={[styles.sourcePill, { backgroundColor: colorWithAlpha(sourceStatus.color, uiTokens.mode === "dark" ? 0.2 : 0.1), borderColor: colorWithAlpha(sourceStatus.color, 0.36) }]}>
+                    <Ionicons {...decorativeIconProps} name={sourceStatus.icon} size={13} color={sourceStatus.color} />
+                    <Text style={[styles.sourcePillText, { color: sourceStatus.color }]}>{sourceStatus.label}</Text>
                   </View>
                 </View>
               </View>
             </View>
 
+            {/* Metrics row — stock, MRP, unit + refresh action */}
             <View style={styles.heroMetrics}>
               <View style={styles.heroMetricTile}>
                 <Text style={styles.heroMetricLabel}>System stock</Text>
-                <Text
-                  style={styles.heroMetricValue}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.68}
-                >
+                <Text style={styles.heroMetricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.68}>
                   {heroStockValue}
                 </Text>
               </View>
-
               <View style={styles.heroMetricTile}>
                 <Text style={styles.heroMetricLabel}>MRP</Text>
-                <Text
-                  style={styles.heroMetricValue}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.68}
-                >
+                <Text style={styles.heroMetricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.68}>
                   {heroMrpValue}
                 </Text>
               </View>
-
               <View style={styles.heroMetricTile}>
                 <Text style={styles.heroMetricLabel}>Unit</Text>
-                <Text
-                  style={styles.heroMetricValue}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.68}
-                >
+                <Text style={styles.heroMetricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.68}>
                   {itemUnit || "Each"}
                 </Text>
               </View>
-            </View>
-
-            <View style={styles.heroContextChips}>
-              <View style={styles.heroContextChip}>
+              {/* Refresh stock from ERP/SQL */}
+              <TouchableOpacity
+                style={[
+                  styles.heroMetricTile,
+                  {
+                    borderColor: colorWithAlpha(uiTokens.colors.accent, 0.3),
+                    borderWidth: 1,
+                    minHeight: 44,
+                    justifyContent: "center",
+                  },
+                ]}
+                onPress={handleRefreshStock}
+                disabled={isRefreshing}
+                accessibilityRole="button"
+                accessibilityLabel="Refresh stock from ERP"
+              >
                 <Ionicons
                   {...decorativeIconProps}
-                  name="file-tray-stacked-outline"
-                  size={13}
-                  color={uiTokens.colors.textSecondary}
+                  name={isRefreshing ? "hourglass-outline" : "refresh-outline"}
+                  size={18}
+                  color={uiTokens.colors.accent}
                 />
-                <Text style={styles.heroContextChipText}>Session {heroSessionValue}</Text>
-              </View>
-              <View style={styles.heroContextChip}>
-                <Ionicons
-                  {...decorativeIconProps}
-                  name="layers-outline"
-                  size={13}
-                  color={uiTokens.colors.textSecondary}
-                />
-                <Text style={styles.heroContextChipText}>Floor {currentFloor || "N/A"}</Text>
-              </View>
-              <View style={styles.heroContextChip}>
-                <Ionicons
-                  {...decorativeIconProps}
-                  name="cube-outline"
-                  size={13}
-                  color={uiTokens.colors.textSecondary}
-                />
-                <Text style={styles.heroContextChipText}>Rack {currentRack || "N/A"}</Text>
-              </View>
+                <Text style={[styles.heroMetricLabel, { color: uiTokens.colors.accent }]}>
+                  {isRefreshing ? "Syncing…" : "Refresh"}
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.workflowStrip} accessibilityLabel="Item verification workflow">
-              <View style={styles.workflowStep}>
-                <View style={styles.workflowStepIcon}>
-                  <Ionicons
-                    {...decorativeIconProps}
-                    name="scan-outline"
-                    size={14}
-                    color={uiTokens.colors.accentStrong}
-                  />
-                </View>
-                <Text style={styles.workflowStepText}>Identify</Text>
-                <Text style={styles.workflowStepMeta}>Locked item</Text>
+            {/* Blind recount warning — shown when previous count must stay hidden */}
+            {blindRecountRequired && (
+              <View style={[
+                styles.recountBanner,
+                {
+                  backgroundColor: colorWithAlpha(uiTokens.colors.warning, 0.12),
+                  borderColor: colorWithAlpha(uiTokens.colors.warning, 0.35),
+                },
+              ]}>
+                <Ionicons {...decorativeIconProps} name="eye-off-outline" size={16} color={uiTokens.colors.warning} />
+                <Text style={[styles.recountBannerText, { color: uiTokens.colors.warning }]}>
+                  {recountBlockedReason
+                    ? `Recount blocked: ${recountBlockedReason}`
+                    : "Blind recount active — previous count is hidden."}
+                </Text>
               </View>
-
-              <View style={styles.workflowStep}>
-                <View style={styles.workflowStepIcon}>
-                  <Ionicons
-                    {...decorativeIconProps}
-                    name="calculator-outline"
-                    size={14}
-                    color={uiTokens.colors.accentStrong}
-                  />
-                </View>
-                <Text style={styles.workflowStepText}>Count</Text>
-                <Text style={styles.workflowStepMeta}>Enter qty</Text>
-              </View>
-
-              <View style={styles.workflowStep}>
-                <View style={styles.workflowStepIcon}>
-                  <Ionicons
-                    {...decorativeIconProps}
-                    name="checkmark-done-outline"
-                    size={14}
-                    color={uiTokens.colors.accentStrong}
-                  />
-                </View>
-                <Text style={styles.workflowStepText}>Save</Text>
-                <Text style={styles.workflowStepMeta}>Audit line</Text>
-              </View>
-            </View>
+            )}
           </ModernCard>
 
+          {/* ── Count Quantity (primary action — first after item identity) ── */}
           {isInteractionsComplete && (
             <>
-              <View style={styles.sectionHeading}>
-                <Ionicons
-                  {...decorativeIconProps}
-                  name="calculator-outline"
-                  size={16}
-                  color={uiTokens.colors.textSecondary}
-                />
-                <Text style={styles.sectionHeadingText}>Count Quantity</Text>
-              </View>
-              <View>
-                <CountQuantitySection
-                  isSplitMode={isSplitMode}
-                  isWeightBasedUOM={isWeightBasedUOM}
-                  quantity={quantity}
-                  splitCounts={splitCounts}
-                  uomLabel={uomInfo.label}
-                  uomUnit={uomInfo.unit}
-                  onAddSplitCount={handleAddSplitCount}
-                  onClearSplitCounts={handleClearSplitCounts}
-                  onDecrement={handleDecrement}
-                  onIncrement={handleIncrement}
-                  onQuantityBlur={handleQuantityBlur}
-                  onQuantityChange={handleQuantityChange}
-                  onRemoveSplitCount={handleRemoveSplitCount}
-                  onSplitCountBlur={handleSplitCountBlur}
-                  onSplitCountChange={handleSplitCountChange}
-                  onToggleSplitMode={handleToggleSplitMode}
-                />
-              </View>
-            </>
-          )}
+              <SectionHeading icon="calculator-outline" label="Count Quantity" uiTokens={uiTokens} decorativeIconProps={decorativeIconProps} />
+              <CountQuantitySection
+                isSplitMode={isSplitMode}
+                isWeightBasedUOM={isWeightBasedUOM}
+                quantity={quantity}
+                splitCounts={splitCounts}
+                uomLabel={uomInfo.label}
+                uomUnit={uomInfo.unit}
+                onAddSplitCount={handleAddSplitCount}
+                onClearSplitCounts={handleClearSplitCounts}
+                onDecrement={handleDecrement}
+                onIncrement={handleIncrement}
+                onQuantityBlur={handleQuantityBlur}
+                onQuantityChange={handleQuantityChange}
+                onRemoveSplitCount={handleRemoveSplitCount}
+                onSplitCountBlur={handleSplitCountBlur}
+                onSplitCountChange={handleSplitCountChange}
+                onToggleSplitMode={handleToggleSplitMode}
+              />
 
-          <View style={styles.sectionHeading}>
-            <Ionicons
-              {...decorativeIconProps}
-              name="cube-outline"
-              size={16}
-              color={uiTokens.colors.textSecondary}
-            />
-            <Text style={styles.sectionHeadingText}>Item Summary</Text>
-          </View>
-          <ItemSummarySection
-            barcode={displayBarcode}
-            isRefreshing={isRefreshing}
-            item={item}
-            onRefreshStock={handleRefreshStock}
-            showBarcodeDetails={false}
-            showDetails={isInteractionsComplete}
-            showItemImages={settings.showItemImages}
-            showItemPrices={settings.showItemPrices}
-            showItemStock={settings.showItemStock}
-          />
+              {/* ── MRP Validation (affects count line, so near count) ── */}
+              <SectionHeading icon="cash-outline" label="Price Validation" uiTokens={uiTokens} decorativeIconProps={decorativeIconProps} />
+              <ItemMrpSection
+                mrp={mrp}
+                mrpEditable={mrpEditable}
+                mrpVariants={mrpVariants}
+                onMrpChange={setMrp}
+                onSelectMrpVariant={handleSelectMrpVariant}
+                onToggleMrpEditable={setMrpEditable}
+                selectedMrpVariant={selectedMrpVariant}
+                showMrp={settings.columnVisibility.mrp}
+                systemMrp={item.mrp}
+              />
 
-          {isInteractionsComplete && (
-            <>
-              {shouldShowBatchVariants ? (
+              {/* ── Dates ── */}
+              <SectionHeading icon="calendar-clear-outline" label="Date Fields" uiTokens={uiTokens} decorativeIconProps={decorativeIconProps} />
+              <ItemDateFieldsSection
+                expiryDateField={expiryDateField}
+                hasExpiryDate={hasExpiryDate}
+                hasMfgDate={hasMfgDate}
+                itemExpiryDate={itemExpiryDate}
+                itemExpiryDateFormat={itemExpiryDateFormat}
+                itemMfgDate={itemMfgDate}
+                itemMfgDateFormat={itemMfgDateFormat}
+                mfgDateField={mfgDateField}
+                showExpiryDate={settings.columnVisibility.expiryDate}
+                showMfgDate={settings.columnVisibility.mfgDate}
+                toggleExpiryDateEnabled={toggleExpiryDateEnabled}
+                toggleMfgDateEnabled={toggleMfgDateEnabled}
+              />
+
+              {/* ── Serial Tracking ── */}
+              <SectionHeading icon="qr-code-outline" label="Serial Tracking" uiTokens={uiTokens} decorativeIconProps={decorativeIconProps} />
+              <SerializedItemSection
+                enabled={settings.columnVisibility.serialNumber}
+                isSerializedItem={isSerializedItem}
+                serialEntries={serialEntries}
+                serialValidationErrors={serialValidationErrors}
+                serialValidationMessages={serialValidationMessages}
+                onAddSerial={handleAddSerial}
+                onOpenScanner={() => setShowSerialScanner(true)}
+                onRemoveSerial={handleRemoveSerial}
+                onSerialChange={(index, text) => handleSerialChange(index, "serial_number", text)}
+                onSerializedChange={setIsSerializedItem}
+              />
+
+              {/* ── Batch Variants (optional) ── */}
+              {shouldShowBatchVariants && (
                 <>
-                  <View style={styles.sectionHeading}>
-                    <Ionicons
-                      {...decorativeIconProps}
-                      name="layers-outline"
-                      size={16}
-                      color={uiTokens.colors.textSecondary}
-                    />
-                    <Text style={styles.sectionHeadingText}>Batch Variants</Text>
-                  </View>
+                  <SectionHeading icon="layers-outline" label="Batch Variants" uiTokens={uiTokens} decorativeIconProps={decorativeIconProps} />
                   <BatchVariantsSection
                     variants={sameNameVariants}
                     rawVariantsCount={rawVariantsCount}
@@ -869,84 +837,10 @@ export default function ItemDetailScreen() {
                     }}
                   />
                 </>
-              ) : null}
+              )}
 
-              <View style={styles.sectionHeading}>
-                <Ionicons
-                  {...decorativeIconProps}
-                  name="calendar-clear-outline"
-                  size={16}
-                  color={uiTokens.colors.textSecondary}
-                />
-                <Text style={styles.sectionHeadingText}>Date Fields</Text>
-              </View>
-              <ItemDateFieldsSection
-                expiryDateField={expiryDateField}
-                hasExpiryDate={hasExpiryDate}
-                hasMfgDate={hasMfgDate}
-                itemExpiryDate={itemExpiryDate}
-                itemExpiryDateFormat={itemExpiryDateFormat}
-                itemMfgDate={itemMfgDate}
-                itemMfgDateFormat={itemMfgDateFormat}
-                mfgDateField={mfgDateField}
-                showExpiryDate={settings.columnVisibility.expiryDate}
-                showMfgDate={settings.columnVisibility.mfgDate}
-                toggleExpiryDateEnabled={toggleExpiryDateEnabled}
-                toggleMfgDateEnabled={toggleMfgDateEnabled}
-              />
-
-              <View style={styles.sectionHeading}>
-                <Ionicons
-                  {...decorativeIconProps}
-                  name="barcode-outline"
-                  size={16}
-                  color={uiTokens.colors.textSecondary}
-                />
-                <Text style={styles.sectionHeadingText}>Serial Tracking</Text>
-              </View>
-              <SerializedItemSection
-                enabled={settings.columnVisibility.serialNumber}
-                isSerializedItem={isSerializedItem}
-                serialEntries={serialEntries}
-                serialValidationErrors={serialValidationErrors}
-                serialValidationMessages={serialValidationMessages}
-                onAddSerial={handleAddSerial}
-                onOpenScanner={() => setShowSerialScanner(true)}
-                onRemoveSerial={handleRemoveSerial}
-                onSerialChange={(index, text) => handleSerialChange(index, "serial_number", text)}
-                onSerializedChange={setIsSerializedItem}
-              />
-
-              <View style={styles.sectionHeading}>
-                <Ionicons
-                  {...decorativeIconProps}
-                  name="cash-outline"
-                  size={16}
-                  color={uiTokens.colors.textSecondary}
-                />
-                <Text style={styles.sectionHeadingText}>Price Validation</Text>
-              </View>
-              <ItemMrpSection
-                mrp={mrp}
-                mrpEditable={mrpEditable}
-                mrpVariants={mrpVariants}
-                onMrpChange={setMrp}
-                onSelectMrpVariant={handleSelectMrpVariant}
-                onToggleMrpEditable={setMrpEditable}
-                selectedMrpVariant={selectedMrpVariant}
-                showMrp={settings.columnVisibility.mrp}
-                systemMrp={item.mrp}
-              />
-
-              <View style={styles.sectionHeading}>
-                <Ionicons
-                  {...decorativeIconProps}
-                  name="document-text-outline"
-                  size={16}
-                  color={uiTokens.colors.textSecondary}
-                />
-                <Text style={styles.sectionHeadingText}>Evidence & Notes</Text>
-              </View>
+              {/* ── Evidence & Notes (last before submit) ── */}
+              <SectionHeading icon="document-text-outline" label="Evidence & Notes" uiTokens={uiTokens} decorativeIconProps={decorativeIconProps} />
               <EvidenceNotesSection
                 damagePhoto={damagePhoto}
                 damageQty={damageQty}

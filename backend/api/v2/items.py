@@ -52,6 +52,36 @@ class ItemResponse(BaseModel):
     sql_verification_status: Optional[str] = None
 
 
+async def _resolve_item_document(db: Any, item_identifier: str) -> Optional[dict[str, Any]]:
+    """Resolve an ERP item deterministically.
+
+    Business identifiers take priority over the legacy Mongo ``_id`` fallback so
+    a 24-char-hex value that also matches a different document's ``_id`` can never
+    shadow the intended item_code/barcode match. Order: item_code, then barcode,
+    then (only if still unmatched) a valid ObjectId ``_id``.
+    """
+    # 1. Canonical business identifier.
+    item = await db.erp_items.find_one({"item_code": item_identifier})
+    if item:
+        return item
+
+    # 2. Barcode (non-unique, but business-scoped — still preferred over _id).
+    item = await db.erp_items.find_one({"barcode": item_identifier})
+    if item:
+        return item
+
+    # 3. Legacy Mongo object id fallback, only when nothing else matched.
+    try:
+        from bson import ObjectId
+
+        if ObjectId.is_valid(item_identifier):
+            return await db.erp_items.find_one({"_id": ObjectId(item_identifier)})
+    except Exception:
+        pass
+
+    return None
+
+
 def _dedupe_preserve_order(values: list[str]) -> list[str]:
     seen: set[str] = set()
     result: list[str] = []
@@ -324,7 +354,7 @@ async def search_items_semantic(
         )
 
 
-@router.get("/{item_id}", response_model=ApiResponse[ItemResponse])
+@router.get("/id/{item_id}", response_model=ApiResponse[ItemResponse])
 async def get_item_v2(
     item_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
@@ -336,6 +366,12 @@ async def get_item_v2(
     try:
         db = get_db()
         from bson import ObjectId
+
+        if not ObjectId.is_valid(item_id):
+            return ApiResponse.error_response(
+                error_code="ITEM_NOT_FOUND",
+                error_message=f"Item with ID {item_id} not found",
+            )
 
         item = await db.erp_items.find_one({"_id": ObjectId(item_id)})
 
@@ -445,25 +481,31 @@ async def get_item_details(
     try:
         db = get_db()
 
-        # Get item from MongoDB (search by item_code OR barcode)
-        item = await db.erp_items.find_one(
-            {"$or": [{"item_code": item_code}, {"barcode": item_code}]}
-        )
+        # Deterministic resolution: item_code, then barcode, then legacy _id.
+        item = await _resolve_item_document(db, item_code)
         if not item:
             return ApiResponse.error_response(
                 error_code="ITEM_NOT_FOUND",
                 error_message=f"Item with code {item_code} not found",
             )
 
+        item_doc = cast(dict[str, Any], item)
+        canonical_item_code = str(item_doc.get("item_code") or item_code)
+
         # Trigger SQL verification if requested
         if verify_sql:
             try:
-                verification_result = await sql_verification_service.verify_item_quantity(item_code)
+                verification_result = await sql_verification_service.verify_item_quantity(
+                    canonical_item_code
+                )
                 if verification_result["success"]:
                     # Refresh item data after verification
-                    refreshed_item = await db.erp_items.find_one({"item_code": item_code})
+                    refreshed_item = await db.erp_items.find_one(
+                        {"item_code": canonical_item_code}
+                    )
                     if refreshed_item:
                         item = refreshed_item
+                        item_doc = cast(dict[str, Any], item)
             except Exception as e:
                 # Log error but don't fail the request
                 import logging
@@ -471,11 +513,12 @@ async def get_item_details(
 
                 logger = logging.getLogger(__name__)
                 logger.warning(
-                    f"SQL verification failed for {sanitize_for_logging(item_code)}: {sanitize_for_logging(str(e))}"
+                    f"SQL verification failed for {sanitize_for_logging(canonical_item_code)}: {sanitize_for_logging(str(e))}"
                 )
 
-        item_doc = cast(dict[str, Any], item)
         last_sql_verified_at = item_doc.get("last_sql_verified_at")
+        if last_sql_verified_at is not None and not hasattr(last_sql_verified_at, "isoformat"):
+            last_sql_verified_at = None
 
         # Convert to response
         item_response = ItemResponse(
