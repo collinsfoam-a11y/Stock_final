@@ -5,7 +5,6 @@ import openpyxl
 import pytest
 
 from backend.db.indexes import INDEXES
-from backend.db.migrations import MigrationManager
 from backend.services.advanced_report_service import (
     AdvancedReportService,
     ColumnConfig,
@@ -113,21 +112,16 @@ async def test_scheduled_count_line_export_uses_counted_at_and_erp_qty():
     ]
 
 
-@pytest.mark.asyncio
-async def test_migration_manager_adds_sparse_unique_idempotency_index():
-    db = MagicMock()
-    manager = MigrationManager(db)
-    manager._create_index_safe = AsyncMock()
+def test_catalog_defines_sparse_unique_idempotency_index():
+    """The authoritative catalog (indexes.py) owns the idempotency guard index."""
+    count_line_indexes = {
+        options["name"]: (fields, options) for fields, options in INDEXES["count_lines"]
+    }
 
-    await manager._ensure_count_lines_indexes()
-
-    manager._create_index_safe.assert_any_call(
-        db.count_lines,
-        "idempotency_key",
-        unique=True,
-        sparse=True,
-        name="count_lines.idempotency_key",
-    )
+    fields, options = count_line_indexes["idx_count_line_idempotency"]
+    assert fields == [("idempotency_key", 1)]
+    assert options["unique"] is True
+    assert options["sparse"] is True
 
 
 def test_optimized_count_line_indexes_match_runtime_fields():
