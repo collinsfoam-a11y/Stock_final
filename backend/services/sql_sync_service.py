@@ -1,3 +1,5 @@
+from typing import Optional
+
 """
 SQL Sync Service - Sync ONLY quantity changes from SQL Server to MongoDB
 CRITICAL: Preserves all enriched data (serial numbers, MRP, HSN codes, etc.)
@@ -6,7 +8,7 @@ CRITICAL: Preserves all enriched data (serial numbers, MRP, HSN codes, etc.)
 import asyncio
 import logging
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -130,7 +132,9 @@ def _apply_field_conversion(value: Any, converter: str) -> Any:
     return value
 
 
-def _build_new_item_dict(sql_item: dict[str, Any], sql_qty: float, now: datetime) -> dict[str, Any]:
+def _build_new_item_dict(
+    sql_item: dict[str, Any], sql_qty: float, now: datetime
+) -> dict[str, Any]:
     """Build a new ERP item document from SQL data."""
     item = {
         "item_code": sql_item.get("item_code", ""),
@@ -238,7 +242,9 @@ class SQLSyncService:
         self._last_sync: Optional[datetime] = None
         self._last_new_item_check: Optional[datetime] = None
         self._last_nightly_sync: Optional[datetime] = None
-        self._new_item_check_interval: int = 1800  # Check for new items every 30 minutes
+        self._new_item_check_interval: int = (
+            1800  # Check for new items every 30 minutes
+        )
         self._sync_lock = asyncio.Lock()  # Prevent concurrent sync operations
         self._sync_stats: dict[str, Any] = {
             "total_syncs": 0,
@@ -251,7 +257,9 @@ class SQLSyncService:
             "new_items_discovered": 0,
         }
 
-    async def sync_single_item_by_barcode(self, barcode: str) -> Optional[dict[str, Any]]:
+    async def sync_single_item_by_barcode(
+        self, barcode: str
+    ) -> Optional[dict[str, Any]]:
         """
         Sync a single item from SQL Server to MongoDB by barcode.
         Returns the updated item if found, None otherwise.
@@ -262,7 +270,9 @@ class SQLSyncService:
                 timeout=3,
             )
         except asyncio.TimeoutError:
-            logger.warning("SQL Server connection check timed out, skipping single item sync")
+            logger.warning(
+                "SQL Server connection check timed out, skipping single item sync"
+            )
             return None
 
         if not is_connected:
@@ -271,7 +281,9 @@ class SQLSyncService:
 
         try:
             # Run synchronous SQL query in thread pool
-            sql_item = await asyncio.to_thread(self.sql_connector.get_item_by_barcode, barcode)
+            sql_item = await asyncio.to_thread(
+                self.sql_connector.get_item_by_barcode, barcode
+            )
 
             if not sql_item:
                 return None
@@ -327,7 +339,9 @@ class SQLSyncService:
             logger.info("Starting variance-only sync from SQL Server...")
 
             # Step 1: Get all item codes from MongoDB (fast local query)
-            mongo_items_cursor = self.mongo_db.erp_items.find({}, {"item_code": 1, "stock_qty": 1})
+            mongo_items_cursor = self.mongo_db.erp_items.find(
+                {}, {"item_code": 1, "stock_qty": 1}
+            )
             mongo_items = {}
             async for item in mongo_items_cursor:
                 item_code = item.get("item_code")
@@ -453,7 +467,9 @@ class SQLSyncService:
                 logger.error(f"Error creating item {item_code}: {exc}")
                 stats["errors"] += 1
 
-    def _finish_discovery_stats(self, stats: dict[str, Any], start_time: datetime) -> None:
+    def _finish_discovery_stats(
+        self, stats: dict[str, Any], start_time: datetime
+    ) -> None:
         stats["duration"] = (
             datetime.now(timezone.utc).replace(tzinfo=None) - start_time
         ).total_seconds()
@@ -488,7 +504,9 @@ class SQLSyncService:
             # Step 1: Get all item codes from MongoDB
             mongo_item_codes = await self._collect_mongo_item_codes()
 
-            logger.debug(f"Found {len(mongo_item_codes)} existing item codes in MongoDB")
+            logger.debug(
+                f"Found {len(mongo_item_codes)} existing item codes in MongoDB"
+            )
 
             # Step 2: Fetch all items from SQL Server (this is the heavy query)
             # Only run this periodically
@@ -581,15 +599,17 @@ class SQLSyncService:
             # Fetch ALL items from SQL Server
             sql_items = await asyncio.to_thread(self.sql_connector.get_all_items)
             # stats["items_checked"] = len(sql_items) -- Removed to avoid double counting, incremented in _sync_single_item
-            logger.info(f"Retrieved {len(sql_items)} items from SQL Server for verification")
+            logger.info(
+                f"Retrieved {len(sql_items)} items from SQL Server for verification"
+            )
 
-            # Get all MongoDB item codes for comparison
-            mongo_items_cursor = self.mongo_db.erp_items.find({}, {"item_code": 1, "stock_qty": 1})
+            # Get all MongoDB items to cache
+            mongo_items_cursor = self.mongo_db.erp_items.find({})
             mongo_items = {}
             async for item in mongo_items_cursor:
                 item_code = item.get("item_code")
                 if item_code:
-                    mongo_items[item_code] = float(item.get("stock_qty", 0.0))
+                    mongo_items[item_code] = item
 
             # Process each SQL item
             batch_size = 100
@@ -598,9 +618,13 @@ class SQLSyncService:
 
                 for sql_item in batch:
                     try:
-                        await self._sync_single_item(sql_item, stats)
+                        await self._sync_single_item(
+                            sql_item, stats, mongo_items_cache=mongo_items
+                        )
                     except Exception as e:
-                        logger.error(f"Error syncing item {sql_item.get('item_code')}: {e}")
+                        logger.error(
+                            f"Error syncing item {sql_item.get('item_code')}: {e}"
+                        )
                         stats["errors"] += 1
 
             stats["duration"] = (
@@ -652,6 +676,14 @@ class SQLSyncService:
             logger.info("Starting SQL Server quantity sync...")
             sql_items = await asyncio.to_thread(self.sql_connector.get_all_items)
 
+            # Pre-fetch MongoDB items to cache (Avoids N+1 queries)
+            mongo_items_cursor = self.mongo_db.erp_items.find({})
+            mongo_items = {}
+            async for item in mongo_items_cursor:
+                item_code = item.get("item_code")
+                if item_code:
+                    mongo_items[item_code] = item
+
             # Batch process items
             batch_size = 100
             for i in range(0, len(sql_items), batch_size):
@@ -659,9 +691,13 @@ class SQLSyncService:
 
                 for sql_item in batch:
                     try:
-                        await self._sync_single_item(sql_item, stats)
+                        await self._sync_single_item(
+                            sql_item, stats, mongo_items_cache=mongo_items
+                        )
                     except Exception as e:
-                        logger.error(f"Error syncing item {sql_item.get('item_code')}: {str(e)}")
+                        logger.error(
+                            f"Error syncing item {sql_item.get('item_code')}: {str(e)}"
+                        )
                         stats["errors"] += 1
 
             stats["duration"] = (
@@ -685,14 +721,24 @@ class SQLSyncService:
             stats["errors"] = 1
             raise
 
-    async def _sync_single_item(self, sql_item: dict[str, Any], stats: dict[str, Any]) -> None:
+    async def _sync_single_item(
+        self,
+        sql_item: dict[str, Any],
+        stats: dict[str, Any],
+        mongo_items_cache: Optional[dict[str, dict[str, Any]]] = None,
+    ) -> None:
         """Process a single item from SQL Server for sync."""
         sql_qty = _coerce_qty(sql_item.get("stock_qty"))
         now = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # Get current MongoDB record
         item_code = sql_item.get("item_code", "")
-        mongo_item = await self.mongo_db.erp_items.find_one({"item_code": item_code})
+        if mongo_items_cache is not None:
+            mongo_item = mongo_items_cache.get(item_code)
+        else:
+            mongo_item = await self.mongo_db.erp_items.find_one(
+                {"item_code": item_code}
+            )
 
         if not mongo_item:
             # New item - create with basic data
@@ -702,7 +748,9 @@ class SQLSyncService:
             logger.debug(f"Created new item: {item_code}")
         else:
             # Existing item - update ONLY quantity if changed
-            await self._update_existing_item(item_code, sql_item, sql_qty, mongo_item, stats)
+            await self._update_existing_item(
+                item_code, sql_item, sql_qty, mongo_item, stats
+            )
 
         stats["items_checked"] += 1
 
@@ -791,7 +839,9 @@ class SQLSyncService:
                         "$set": {
                             "last_sync": self._last_sync,
                             "stats": stats,
-                            "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                            "updated_at": datetime.now(timezone.utc).replace(
+                                tzinfo=None
+                            ),
                         },
                         "$inc": {"total_syncs": 1},
                     },
@@ -816,13 +866,19 @@ class SQLSyncService:
         try:
             is_connected = await asyncio.to_thread(self.sql_connector.test_connection)
             if is_connected:
-                sql_item = await asyncio.to_thread(self.sql_connector.get_item_by_code, item_code)
+                sql_item = await asyncio.to_thread(
+                    self.sql_connector.get_item_by_code, item_code
+                )
                 if sql_item:
                     sql_qty = _coerce_qty(sql_item.get("stock_qty"))
 
                     # Get current MongoDB record
-                    mongo_item = await self.mongo_db.erp_items.find_one({"item_code": item_code})
-                    mongo_qty = float(mongo_item.get("stock_qty", 0.0)) if mongo_item else 0.0
+                    mongo_item = await self.mongo_db.erp_items.find_one(
+                        {"item_code": item_code}
+                    )
+                    mongo_qty = (
+                        float(mongo_item.get("stock_qty", 0.0)) if mongo_item else 0.0
+                    )
 
                     updated = False
                     if sql_qty != mongo_qty:
@@ -851,7 +907,9 @@ class SQLSyncService:
                         "delta": sql_qty - mongo_qty,
                         "updated": updated,
                         "source": "sql_server",
-                        "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+                        "timestamp": datetime.now(timezone.utc)
+                        .replace(tzinfo=None)
+                        .isoformat(),
                     }
         except Exception as e:
             logger.warning(f"Real-time SQL check failed for {item_code}: {e}")
@@ -866,7 +924,9 @@ class SQLSyncService:
                 "updated": False,
                 "source": "mongodb_cache",
                 "message": "Using cached value (SQL Server unavailable)",
-                "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+                "timestamp": datetime.now(timezone.utc)
+                .replace(tzinfo=None)
+                .isoformat(),
             }
         else:
             raise ValueError(f"Item {item_code} not found in SQL or Cache")
@@ -905,7 +965,9 @@ class SQLSyncService:
                             # Check for new items every 30 minutes
                             # This runs AFTER variance sync completes (sequential)
                             if self.should_check_new_items():
-                                logger.info("🔍 Running new item discovery (every 30 min)...")
+                                logger.info(
+                                    "🔍 Running new item discovery (every 30 min)..."
+                                )
                                 await self.discover_new_items(limit=200)
 
                 except Exception as e:
@@ -949,7 +1011,9 @@ class SQLSyncService:
 
         self._running = True
         self._task = asyncio.create_task(
-            self._run_sync_loop() if hasattr(self, "_run_sync_loop") else self._sync_loop()
+            self._run_sync_loop()
+            if hasattr(self, "_run_sync_loop")
+            else self._sync_loop()
         )
 
     async def stop(self):
