@@ -89,6 +89,7 @@ jobs:
           APP_ENV: test
           ENVIRONMENT: test
         run: |
+          set -o pipefail
           cd backend
           python -m pytest tests/ \
             --cov=. \
@@ -102,13 +103,6 @@ jobs:
             --ignore=tests/evaluation \
             --ignore=tests/performance \
             2>&1 | tee ../test-results.txt
-
-      - name: Check critical tests passed
-        run: |
-          if grep -q "FAILED" test-results.txt; then
-            echo "::warning::Some tests failed - review test-results.txt for details"
-            # CI passes but warns about test failures (test fixture issues, not code bugs)
-          fi
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
@@ -359,10 +353,7 @@ jobs:
         env:
           E2E_BACKEND_URL: http://127.0.0.1:8001
         run: |
-          # Skip flaky e2e tests with auth token issues
-          npx playwright test e2e/recount-assignment-ui.spec.ts \
-            --grep-invert "supervisor can assign recount" \
-            || echo "E2E smoke test partially skipped"
+          npx playwright test e2e/recount-assignment-ui.spec.ts
 
       - name: Collect backend log
         if: always()
@@ -397,9 +388,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-test, frontend-test, frontend-recount-smoke]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    
-    # Make docker build non-blocking - only required for production deployments
-    continue-on-error: true
     
     permissions:
       contents: read

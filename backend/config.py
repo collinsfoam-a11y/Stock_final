@@ -100,6 +100,7 @@ INSECURE_JWT_SECRET_VALUES = {
     "your-secret-key-here",
     "change-me-in-production",
     "GENERATE_SECURE_SECRET_HERE_MIN_32_CHARS",
+    "CHANGE_ME_TO_A_LONG_RANDOM_SECRET",
 }
 
 INSECURE_JWT_REFRESH_SECRET_VALUES = {
@@ -109,7 +110,25 @@ INSECURE_JWT_REFRESH_SECRET_VALUES = {
     "change-me-in-production",
     "GENERATE_SECURE_REFRESH_SECRET_HERE_MIN_32_CHARS",
     "GENERATE_DIFFERENT_SECURE_SECRET_HERE_MIN_32_CHARS",
+    "CHANGE_ME_TO_A_LONG_RANDOM_REFRESH_SECRET",
 }
+
+INSECURE_SECRET_MARKERS = (
+    "CHANGE_ME",
+    "GENERATE_",
+    "REPLACE_WITH",
+    "YOUR_SECRET",
+    "YOUR-SECRET",
+)
+
+
+def _is_insecure_secret(value: object, known_values: set[str]) -> bool:
+    """Reject exact insecure defaults and obvious template placeholders."""
+    if not value:
+        return True
+    normalized = str(value).strip()
+    upper = normalized.upper()
+    return normalized in known_values or any(marker in upper for marker in INSECURE_SECRET_MARKERS)
 
 
 class Settings(PydanticBaseSettings):
@@ -287,7 +306,7 @@ class Settings(PydanticBaseSettings):
         if len(v) < 32:
             raise ValueError("JWT_SECRET must be at least 32 characters long")
         # Check for known insecure defaults
-        if v in INSECURE_JWT_SECRET_VALUES:
+        if _is_insecure_secret(v, INSECURE_JWT_SECRET_VALUES):
             raise ValueError(
                 "SECURITY ERROR: JWT_SECRET contains a known insecure default value. "
                 "Generate a secure secret using: python scripts/generate_secrets.py"
@@ -312,7 +331,7 @@ class Settings(PydanticBaseSettings):
         if len(v) < 32:
             raise ValueError("JWT_REFRESH_SECRET must be at least 32 characters long")
         # Check for known insecure defaults
-        if v in INSECURE_JWT_REFRESH_SECRET_VALUES:
+        if _is_insecure_secret(v, INSECURE_JWT_REFRESH_SECRET_VALUES):
             raise ValueError(
                 "SECURITY ERROR: JWT_REFRESH_SECRET contains a known insecure default value. "
                 "Generate a secure secret using: python scripts/generate_secrets.py"
@@ -346,10 +365,12 @@ class Settings(PydanticBaseSettings):
     # Sync Services
     ERP_SYNC_ENABLED: bool = True
     ERP_SYNC_INTERVAL: int = Field(3600, ge=60)  # 1 hour
+    AUTO_SYNC_ENABLED: bool = False
+    AUTO_SYNC_INTERVAL: int = Field(3600, ge=60)  # 1 hour
     CHANGE_DETECTION_SYNC_ENABLED: bool = True
     CHANGE_DETECTION_INTERVAL: int = Field(300, ge=60)  # 5 minutes
 
-    @field_validator("ERP_SYNC_INTERVAL", "CHANGE_DETECTION_INTERVAL")
+    @field_validator("ERP_SYNC_INTERVAL", "AUTO_SYNC_INTERVAL", "CHANGE_DETECTION_INTERVAL")
     @classmethod
     def validate_sync_interval(cls, v: int) -> int:
         if v < 60:
@@ -557,14 +578,14 @@ except Exception as e:
             jwt_secret = _secret_env_first("JWT_SECRET")
             if not jwt_secret:
                 raise ValueError("JWT_SECRET environment variable is required")
-            if jwt_secret in INSECURE_JWT_SECRET_VALUES:
+            if _is_insecure_secret(jwt_secret, INSECURE_JWT_SECRET_VALUES):
                 raise ValueError("JWT_SECRET contains a known insecure default value")
             self.JWT_SECRET = jwt_secret
 
             jwt_refresh_secret = _secret_env_first("JWT_REFRESH_SECRET")
             if not jwt_refresh_secret:
                 raise ValueError("JWT_REFRESH_SECRET environment variable is required")
-            if jwt_refresh_secret in INSECURE_JWT_REFRESH_SECRET_VALUES:
+            if _is_insecure_secret(jwt_refresh_secret, INSECURE_JWT_REFRESH_SECRET_VALUES):
                 raise ValueError("JWT_REFRESH_SECRET contains a known insecure default value")
             self.JWT_REFRESH_SECRET = jwt_refresh_secret
             self.JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
@@ -586,6 +607,8 @@ except Exception as e:
             self.METRICS_HISTORY_SIZE = int(os.getenv("METRICS_HISTORY_SIZE", 1000))
             self.ERP_SYNC_ENABLED = os.getenv("ERP_SYNC_ENABLED", "true").lower() == "true"
             self.ERP_SYNC_INTERVAL = int(os.getenv("ERP_SYNC_INTERVAL", 3600))
+            self.AUTO_SYNC_ENABLED = os.getenv("AUTO_SYNC_ENABLED", "false").lower() == "true"
+            self.AUTO_SYNC_INTERVAL = int(os.getenv("AUTO_SYNC_INTERVAL", 3600))
             self.AUTH_SINGLE_SESSION = os.getenv("AUTH_SINGLE_SESSION", "true").lower() == "true"
             self.CHANGE_DETECTION_SYNC_ENABLED = (
                 os.getenv("CHANGE_DETECTION_SYNC_ENABLED", "true").lower() == "true"
@@ -630,7 +653,7 @@ except Exception as e:
 
 # SECURITY CHECKS (fail-fast in non-debug environments)
 def _validate_secret(secret_name, secret_value, placeholders, env_name):
-    if not secret_value or secret_value in placeholders:
+    if _is_insecure_secret(secret_value, placeholders):
         raise RuntimeError(
             f"SECURITY ERROR: Insecure {secret_name} in {env_name}! "
             f"Set ENVIRONMENT={env_name} and provide secure {secret_name} via environment variable. "

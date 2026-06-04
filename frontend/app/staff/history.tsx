@@ -15,8 +15,8 @@ import { SkeletonList } from "../../src/components/LoadingSkeleton";
 import { SwipeableRow } from "../../src/components/SwipeableRow";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ModernCard } from "../../src/components/ui/ModernCard";
-import { theme } from "../../src/styles/modernDesignSystem";
-import { colors as unifiedColors } from "@/theme/legacyCompat";
+import { font, radius, gap } from "@/theme/staffUiScale";
+// unifiedColors replaced by uiTokens semantic tokens throughout
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { ScreenContainer } from "../../src/components/ui";
@@ -186,7 +186,7 @@ export default function HistoryScreen() {
           ? uiTokens.colors.error
           : uiTokens.colors.warning;
     const statusTextColor =
-      normalizedStatus === "pending" ? uiTokens.colors.textPrimary : unifiedColors.white;
+      normalizedStatus === "pending" ? uiTokens.colors.textPrimary : uiTokens.colors.surfaceElevated;
 
     const CardContent = (
       <ModernCard
@@ -463,13 +463,13 @@ export default function HistoryScreen() {
           <Ionicons
             name="checkmark-done-outline"
             size={18}
-            color={showApprovedOnly ? unifiedColors.white : uiTokens.colors.textMuted}
+            color={showApprovedOnly ? uiTokens.colors.surfaceElevated : uiTokens.colors.textMuted}
           />
           <Text
             style={[
               styles.filterChipText,
               {
-                color: showApprovedOnly ? unifiedColors.white : uiTokens.colors.textSecondary,
+                color: showApprovedOnly ? uiTokens.colors.surfaceElevated : uiTokens.colors.textSecondary,
               },
             ]}
           >
@@ -501,247 +501,81 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
+    paddingHorizontal: gap.xl,
     paddingTop: Platform.OS === "ios" ? 60 : 40,
-    paddingBottom: 16,
+    paddingBottom: gap.lg,
     backgroundColor: "transparent",
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: theme.colors.text.primary,
-    letterSpacing: -0.3,
-  },
-  list: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  filterTitle: {
-    color: theme.colors.text.primary,
-    fontWeight: "700",
-    fontSize: 16,
-    marginBottom: 14,
-    letterSpacing: -0.2,
-  },
-  filterChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    width: 40, height: 40, borderRadius: radius.lg,
     backgroundColor: "rgba(255,255,255,0.05)",
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+  },
+  headerTitle: { fontSize: font.size.display, fontWeight: font.weight.bold, color: "rgba(255,255,255,0.95)", letterSpacing: font.tracking.tight },
+  list:        { paddingHorizontal: gap.lg, paddingTop: gap.sm },
+  filterTitle: { color: "rgba(255,255,255,0.95)", fontWeight: font.weight.bold, fontSize: font.size.lg, marginBottom: gap.md, letterSpacing: font.tracking.tight },
+  filterChip: {
+    flexDirection: "row", alignItems: "center", gap: gap.sm,
+    paddingHorizontal: gap.md, paddingVertical: gap.sm,
+    borderRadius: radius.lg, borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)", backgroundColor: "rgba(255,255,255,0.05)",
     alignSelf: "flex-start",
   },
-  filterChipActive: {
-    backgroundColor: unifiedColors.success[500],
-    borderColor: unifiedColors.success[500],
-  },
-  filterChipText: {
-    color: theme.colors.text.secondary,
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  filterChipTextActive: {
-    color: unifiedColors.white,
-  },
-  countCard: {
-    marginBottom: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  itemName: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: theme.colors.text.primary,
-    flex: 1,
-    letterSpacing: -0.2,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  statusText: {
-    color: unifiedColors.white,
-    fontSize: 10,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  itemCode: {
-    fontSize: 11,
-    color: theme.colors.text.secondary,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-  },
-  codeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 14,
-  },
+  filterChipText:   { color: "rgba(255,255,255,0.65)", fontWeight: font.weight.semibold, fontSize: font.size.base },
+  // ── Count line card ───────────────────────────────────────────────────────
+  countCard:  { marginBottom: gap.md, paddingVertical: gap.lg, paddingHorizontal: gap.lg, borderRadius: radius.xl },
+  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: gap.sm },
+  itemName:   { fontSize: font.size.md, fontWeight: font.weight.bold, flex: 1, letterSpacing: font.tracking.tight },
+  statusBadge:{ paddingHorizontal: gap.sm, paddingVertical: 5, borderRadius: radius.sm },
+  statusText: { fontSize: font.size.label, fontWeight: font.weight.bold, textTransform: "uppercase", letterSpacing: font.tracking.wide },
+
+  // Code row
+  itemCode: { fontSize: font.size.label, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" },
+  codeRow:  { flexDirection: "row", alignItems: "center", gap: gap.sm, marginBottom: gap.md },
   batchBadge: {
-    backgroundColor: "rgba(14, 165, 233, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "rgba(14, 165, 233, 0.2)",
+    backgroundColor: "rgba(14,165,233,0.1)", paddingHorizontal: gap.sm, paddingVertical: 3,
+    borderRadius: radius.xs, borderWidth: 1, borderColor: "rgba(14,165,233,0.2)",
   },
-  batchBadgeText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: unifiedColors.primary[400],
-    textTransform: "uppercase",
-    letterSpacing: 0.3,
-  },
-  qtyRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 14,
-    gap: 10,
-  },
-  qtyItem: {
-    flex: 1,
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  qtyLabel: {
-    fontSize: 11,
-    color: theme.colors.text.tertiary,
-    marginBottom: 4,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  qtyValue: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: theme.colors.text.primary,
-    letterSpacing: -0.3,
-  },
+  batchBadgeText: { fontSize: font.size.label, fontWeight: font.weight.bold, textTransform: "uppercase", letterSpacing: font.tracking.normal },
+
+  // Qty grid
+  qtyRow:   { flexDirection: "row", justifyContent: "space-between", marginBottom: gap.md, gap: gap.sm },
+  qtyItem:  { flex: 1, alignItems: "center", backgroundColor: "rgba(255,255,255,0.03)", paddingVertical: gap.sm, borderRadius: radius.md },
+  qtyLabel: { fontSize: font.size.label, marginBottom: 4, fontWeight: font.weight.semibold, textTransform: "uppercase", letterSpacing: font.tracking.wide },
+  qtyValue: { fontSize: font.size.xl, fontWeight: font.weight.bold, letterSpacing: font.tracking.tight },
+
+  // Reason / remark
   reasonBox: {
-    backgroundColor: "rgba(245, 158, 11, 0.08)",
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "rgba(245, 158, 11, 0.2)",
+    backgroundColor: "rgba(245,158,11,0.08)", borderRadius: radius.md,
+    paddingVertical: gap.sm, paddingHorizontal: gap.md,
+    marginBottom: gap.sm, borderWidth: 1, borderColor: "rgba(245,158,11,0.2)",
   },
-  reasonLabel: {
-    fontSize: 11,
-    color: theme.colors.text.secondary,
-    marginBottom: 4,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  reasonText: {
-    fontSize: 13,
-    color: unifiedColors.warning[500],
-    fontWeight: "700",
-  },
-  remark: {
-    fontSize: 13,
-    color: theme.colors.text.secondary,
-    fontStyle: "italic",
-    marginBottom: 8,
-    lineHeight: 18,
-  },
-  timestamp: {
-    fontSize: 11,
-    color: theme.colors.text.tertiary,
-    textAlign: "right",
-    fontWeight: "500",
-  },
-  emptyContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 64,
-  },
-  emptyText: {
-    color: theme.colors.text.secondary,
-    fontSize: 15,
-    marginTop: 16,
-    fontWeight: "500",
-  },
+  reasonLabel: { fontSize: font.size.label, marginBottom: 4, fontWeight: font.weight.semibold, textTransform: "uppercase", letterSpacing: font.tracking.wide },
+  reasonText:  { fontSize: font.size.sm, fontWeight: font.weight.bold },
+  remark:      { fontSize: font.size.sm, fontStyle: "italic", marginBottom: gap.sm, lineHeight: font.leading.snug },
+  timestamp:   { fontSize: font.size.label, textAlign: "right", fontWeight: font.weight.medium },
+
+  // Empty / error / warning
+  emptyContainer: { alignItems: "center", justifyContent: "center", paddingVertical: 64 },
+  emptyText:      { fontSize: font.size.md, marginTop: gap.lg, fontWeight: font.weight.medium },
   errorContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 48,
-    marginHorizontal: 16,
-    padding: 20,
-    borderRadius: 12,
-    borderWidth: 1,
+    alignItems: "center", justifyContent: "center",
+    marginTop: 48, marginHorizontal: gap.lg,
+    padding: gap.xl, borderRadius: radius.lg, borderWidth: 1,
   },
-  errorTitle: {
-    marginTop: 12,
-    fontSize: 16,
-    fontWeight: "700",
-    textAlign: "center",
+  errorTitle:     { marginTop: gap.md, fontSize: font.size.lg, fontWeight: font.weight.bold, textAlign: "center" },
+  errorBody:      { marginTop: gap.sm, fontSize: font.size.sm, lineHeight: font.leading.normal, textAlign: "center" },
+  retryButton:    {
+    minHeight: 44, marginTop: gap.lg, paddingHorizontal: gap.lg,
+    borderRadius: radius.md, borderWidth: 1,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: gap.sm,
   },
-  errorBody: {
-    marginTop: 8,
-    fontSize: 13,
-    lineHeight: 20,
-    textAlign: "center",
+  retryButtonText: { fontSize: font.size.base, fontWeight: font.weight.bold },
+  warningContainer:{
+    flexDirection: "row", alignItems: "center", gap: gap.sm,
+    marginBottom: gap.md, padding: gap.md, borderRadius: radius.lg, borderWidth: 1,
   },
-  retryButton: {
-    minHeight: 44,
-    marginTop: 16,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    borderWidth: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  retryButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  warningContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  warningText: {
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "500",
-  },
-  warningRetry: {
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 44,
-    minHeight: 44,
-  },
+  warningText:   { flex: 1, fontSize: font.size.caption, lineHeight: font.leading.snug, fontWeight: font.weight.medium },
+  warningRetry:  { alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44 },
 });

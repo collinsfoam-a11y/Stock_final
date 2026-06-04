@@ -10,7 +10,7 @@ RUN apt-get update \
 
 RUN npm install -g pnpm@10
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY . .
@@ -23,6 +23,7 @@ RUN addgroup -S app -g 10001 \
     && adduser -S -D -H -u 10001 -G app app \
     && apk add --no-cache libcap \
     && mkdir -p /var/cache/nginx /var/run /tmp \
+    && sed -i 's#pid        /run/nginx.pid;#pid        /tmp/nginx.pid;#' /etc/nginx/nginx.conf \
     && chown -R app:app /var/cache/nginx /var/run /tmp /usr/share/nginx/html /etc/nginx/conf.d \
     && setcap 'cap_net_bind_service=+ep' /usr/sbin/nginx
 

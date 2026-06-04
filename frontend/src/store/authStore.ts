@@ -13,6 +13,8 @@ interface User {
   full_name: string;
   role: "staff" | "supervisor" | "admin";
   email?: string;
+  employee_id?: string | null;
+  phone?: string | null;
   is_active: boolean;
   permissions: string[];
   has_pin?: boolean;

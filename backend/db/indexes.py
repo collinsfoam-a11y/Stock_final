@@ -332,6 +332,25 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         # Active users
         ([("is_active", 1), ("username", 1)], {"name": "idx_active_users"}),
     ],
+    # Refresh Tokens Collection
+    "refresh_tokens": [
+        # One-way hashed token (sparse unique so legacy rows without hash don't block)
+        (
+            [("token_hash", 1)],
+            {"unique": True, "sparse": True, "name": "idx_refresh_token_hash"},
+        ),
+        ([("username", 1)], {"name": "idx_refresh_username"}),
+        ([("expires_at", 1)], {"name": "idx_refresh_expires"}),
+        ([("username", 1), ("revoked", 1)], {"name": "idx_refresh_user_revoked"}),
+    ],
+    # Item Variances Collection (verification analytics)
+    "item_variances": [
+        ([("item_code", 1)], {"name": "idx_variance_item"}),
+        ([("verified_by", 1)], {"name": "idx_variance_verifier"}),
+        ([("verified_at", -1)], {"name": "idx_variance_time"}),
+        ([("category", 1), ("floor", 1)], {"name": "idx_variance_category_floor"}),
+        ([("warehouse", 1), ("verified_at", -1)], {"name": "idx_variance_warehouse_time"}),
+    ],
 }
 
 

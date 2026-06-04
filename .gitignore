@@ -120,3 +120,15 @@ frontend/dist-debug2/
 .dolt/
 *.db
 .beads-credential-key
+
+# TLS certificates and private keys (never commit)
+nginx/ssl/
+certbot/
+
+# Local-only Docker overrides and DB recovery artifacts
+docker-compose.override.yml
+.mongodata/
+.mongodump/
+
+# Test / tooling caches
+.hypothesis/

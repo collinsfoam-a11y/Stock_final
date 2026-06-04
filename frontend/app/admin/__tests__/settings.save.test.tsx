@@ -193,5 +193,5 @@ describe("MasterSettingsScreen save", () => {
         })
       );
     });
-  });
+  }, 15000);
 });

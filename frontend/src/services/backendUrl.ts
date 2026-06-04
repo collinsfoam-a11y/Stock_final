@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 import { isValidBackendHealthResponse } from "./healthRequest";
 
 const HEALTH_PATH = "/api/health";
+const DEFAULT_BACKEND_PORT = 8001;
 
 const parsePort = (value?: string | null): number | null => {
   if (!value) return null;
@@ -15,11 +16,7 @@ const parsePort = (value?: string | null): number | null => {
 
 const getCandidatePorts = (): number[] => {
   const envPort = parsePort(process.env.EXPO_PUBLIC_BACKEND_PORT);
-  const fallbackPorts = [8001, 8002, 8003, 8085];
-  if (envPort) {
-    return Array.from(new Set([envPort, ...fallbackPorts]));
-  }
-  return fallbackPorts;
+  return [envPort ?? DEFAULT_BACKEND_PORT];
 };
 
 const timeoutFetch = async (
@@ -61,17 +58,55 @@ const getCurrentOrigin = (): string | null => {
   }
 };
 
+const isLocalHostname = (hostname?: string | null): boolean => {
+  if (!hostname) return false;
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname === "[::1]"
+  );
+};
+
+const getConfiguredBackendPortUrl = (): string | null => {
+  const envPort = parsePort(process.env.EXPO_PUBLIC_BACKEND_PORT);
+  if (!envPort) return null;
+
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    const protocol = window.location.protocol === "https:" ? "https" : "http";
+    const hostname = window.location.hostname || "localhost";
+    return `${protocol}://${hostname}:${envPort}`;
+  }
+
+  if (Platform.OS === "android") return `http://10.0.2.2:${envPort}`;
+  return `http://localhost:${envPort}`;
+};
+
+const shouldPreferConfiguredPortUrl = (): boolean => {
+  if (Platform.OS !== "web" || typeof window === "undefined") {
+    return true;
+  }
+  return isLocalHostname(window.location.hostname);
+};
+
 const getInitialBackendUrl = (): string => {
   const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
   if (envUrl) return stripTrailingSlash(envUrl);
-
-  const currentOrigin = getCurrentOrigin();
-  if (currentOrigin) return currentOrigin;
 
   const configUrl = Constants.expoConfig?.extra?.backendUrl as
     | string
     | undefined;
   if (configUrl) return stripTrailingSlash(configUrl);
+
+  const configuredPortUrl = getConfiguredBackendPortUrl();
+  if (configuredPortUrl && shouldPreferConfiguredPortUrl()) {
+    return configuredPortUrl;
+  }
+
+  const currentOrigin = getCurrentOrigin();
+  if (currentOrigin) return currentOrigin;
+
+  if (configuredPortUrl) return configuredPortUrl;
 
   // Use Expo dev host when available (real devices on LAN).
   const hostUri = Constants.expoConfig?.hostUri;
@@ -79,9 +114,9 @@ const getInitialBackendUrl = (): string => {
   if (expoHost) return `http://${expoHost}:8001`;
 
   // Android emulator cannot reach host localhost directly.
-  if (Platform.OS === "android") return "http://10.0.2.2:8001";
+  if (Platform.OS === "android") return `http://10.0.2.2:${DEFAULT_BACKEND_PORT}`;
 
-  return "http://localhost:8001";
+  return `http://localhost:${DEFAULT_BACKEND_PORT}`;
 };
 
 const buildCandidates = (): string[] => {
@@ -99,9 +134,6 @@ const buildCandidates = (): string[] => {
     });
   };
 
-  const currentOrigin = getCurrentOrigin();
-  addCandidate(currentOrigin);
-
   // 1) Explicit env override
   addCandidate(process.env.EXPO_PUBLIC_BACKEND_URL);
 
@@ -110,6 +142,12 @@ const buildCandidates = (): string[] => {
     | string
     | undefined;
   addCandidate(configUrl);
+
+  // 2.5) Explicit backend port, used by the standalone local web container.
+  addCandidate(getConfiguredBackendPortUrl());
+
+  const currentOrigin = getCurrentOrigin();
+  addCandidate(currentOrigin);
 
   // 3) Expo host URI (dev server IP) - best for LAN access
   const hostUri = Constants.expoConfig?.hostUri;

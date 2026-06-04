@@ -177,6 +177,7 @@ def register_middleware(
             "X-Device-ID",
             "X-Requested-With",
             "X-Request-ID",
+            "X-Idempotency-Key",
         ],
     )
 

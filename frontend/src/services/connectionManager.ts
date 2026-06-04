@@ -24,6 +24,16 @@ interface ConnectionInfo {
 const STORAGE_KEY = "connection_info";
 const HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
 const CONNECTION_TIMEOUT = 5000; // 5 seconds
+const DEFAULT_BACKEND_PORT = 8001;
+
+const parseBackendPort = (value?: string | null): number | null => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const port = Number(trimmed);
+  if (port < 1 || port > 65535) return null;
+  return port;
+};
 
 class ConnectionManager {
   private static instance: ConnectionManager;
@@ -121,11 +131,14 @@ class ConnectionManager {
   > {
     const candidates: { url: string; priority: number }[] = [];
     const normalize = (url: string) => url.replace(/\/+$/, "");
+    const candidatePorts = this.getCandidatePorts();
+    const primaryPort = candidatePorts[0] ?? DEFAULT_BACKEND_PORT;
 
     // 1. Environment variable override
     const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+    const normalizedEnvUrl = envUrl ? normalize(envUrl) : null;
     if (envUrl) {
-      candidates.push({ url: normalize(envUrl), priority: 10 });
+      candidates.push({ url: normalizedEnvUrl!, priority: 10 });
     }
 
     const currentOrigin = this.getCurrentOrigin();
@@ -134,7 +147,14 @@ class ConnectionManager {
     }
 
     // 1.5 Current connection gets high priority for stability.
-    if (this.currentConnection?.backendUrl) {
+    if (
+      this.currentConnection?.backendUrl &&
+      this.shouldProbeStoredConnection(
+        normalize(this.currentConnection.backendUrl),
+        normalizedEnvUrl,
+        candidatePorts,
+      )
+    ) {
       candidates.push({
         url: normalize(this.currentConnection.backendUrl),
         priority: 9,
@@ -145,30 +165,31 @@ class ConnectionManager {
     const hostUri = Constants.expoConfig?.hostUri;
     const expoHost = hostUri?.split(":")[0];
     if (expoHost) {
-      candidates.push({ url: `http://${expoHost}:8001`, priority: 8 });
+      candidates.push({ url: `http://${expoHost}:${primaryPort}`, priority: 8 });
     }
 
     // 3. Platform-specific defaults
     if (Platform.OS === "android") {
       // Android emulator default
-      candidates.push({ url: "http://10.0.2.2:8001", priority: 5 });
+      candidates.push({ url: `http://10.0.2.2:${primaryPort}`, priority: 5 });
     }
 
-    // 4. Common development ports
-    const commonPorts = [8001, 8002, 8003, 8085];
+    // 4. Configured development port
     const detectedIp = this.getDeviceIp();
 
-    for (const port of commonPorts) {
+    for (const port of candidatePorts) {
       candidates.push({
         url: `http://${detectedIp}:${port}`,
-        priority: port === 8001 ? 7 : 6,
+        priority: port === primaryPort ? 7 : 6,
       });
     }
 
     // 5. Localhost fallback (safe for web/simulators; poor on real devices)
     if (Platform.OS === "web" || Platform.OS === "ios") {
-      candidates.push({ url: "http://localhost:8001", priority: 3 });
-      candidates.push({ url: "http://127.0.0.1:8001", priority: 2 });
+      for (const port of candidatePorts) {
+        candidates.push({ url: `http://localhost:${port}`, priority: 3 });
+        candidates.push({ url: `http://127.0.0.1:${port}`, priority: 2 });
+      }
     }
 
     // Remove duplicates and sort by priority
@@ -178,6 +199,27 @@ class ConnectionManager {
 
     log.debug("Built connection candidates", unique);
     return unique;
+  }
+
+  private getCandidatePorts(): number[] {
+    return [parseBackendPort(process.env.EXPO_PUBLIC_BACKEND_PORT) ?? DEFAULT_BACKEND_PORT];
+  }
+
+  private shouldProbeStoredConnection(
+    url: string,
+    normalizedEnvUrl: string | null,
+    candidatePorts: number[],
+  ): boolean {
+    if (normalizedEnvUrl) {
+      return url === normalizedEnvUrl;
+    }
+
+    try {
+      const parsed = new URL(url);
+      return candidatePorts.includes(this.getUrlPort(parsed));
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -263,8 +305,11 @@ class ConnectionManager {
    * Set fallback connection when no healthy backend is found
    */
   private setFallbackConnection(): void {
+    const fallbackPort = this.getCandidatePorts()[0] ?? DEFAULT_BACKEND_PORT;
     const defaultFallbackUrl =
-      Platform.OS === "android" ? "http://10.0.2.2:8001" : "http://localhost:8001";
+      Platform.OS === "android"
+        ? `http://10.0.2.2:${fallbackPort}`
+        : `http://localhost:${fallbackPort}`;
     const rawFallbackUrl =
       process.env.EXPO_PUBLIC_BACKEND_URL?.trim() || defaultFallbackUrl;
     const fallbackUrl = /^https?:\/\//i.test(rawFallbackUrl)
@@ -283,7 +328,7 @@ class ConnectionManager {
     }
 
     const normalizedUrl = parsedFallback.toString().replace(/\/+$/, "");
-    const defaultPort = parsedFallback.protocol === "https:" ? 443 : 8001;
+    const defaultPort = parsedFallback.protocol === "https:" ? 443 : fallbackPort;
     const fallback: ConnectionInfo = {
       backendUrl: normalizedUrl,
       backendPort: parseInt(parsedFallback.port, 10) || defaultPort,

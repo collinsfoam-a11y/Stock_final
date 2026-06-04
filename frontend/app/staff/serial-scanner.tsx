@@ -8,8 +8,8 @@ import {
 } from "@/services/device/expoCamera";
 import { useRouter } from "expo-router";
 
-import { semanticColors, colors } from "@/theme/legacyCompat";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { useUiTokens } from "@/hooks/useUiTokens";
 import { useScanGate } from "@/scanner/useScanGate";
 import { ScanMode, normalizeScanValue, scoreCandidate, decide } from "@/scanner/serialScanRules";
 import ModernHeader from "@/components/ui/ModernHeader";
@@ -21,6 +21,7 @@ function toast(msg: string) {
 
 export default function SerialScannerScreen() {
   const router = useRouter();
+  const uiTokens = useUiTokens();
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<ScanMode>("SERIAL");
   const [serials, setSerials] = useState<string[]>([]);
@@ -105,26 +106,25 @@ export default function SerialScannerScreen() {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: uiTokens.colors.background }]}>
       <ModernHeader
         title="Scan Serials"
         showBackButton
         onBackPress={() => safeBackNavigation(router, { userRole: "staff" })}
       />
 
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { backgroundColor: uiTokens.colors.surface, borderBottomColor: uiTokens.colors.border }]}>
         <View style={styles.modeRow}>
-          <ModeChip label="SERIAL" active={mode === "SERIAL"} onPress={() => setMode("SERIAL")} />
-          <ModeChip label="ITEM" active={mode === "ITEM"} onPress={() => setMode("ITEM")} />
-          <ModeChip label="AUTO" active={mode === "AUTO"} onPress={() => setMode("AUTO")} />
+          <ModeChip label="SERIAL" active={mode === "SERIAL"} onPress={() => setMode("SERIAL")} accentColor={uiTokens.colors.accent} borderColor={uiTokens.colors.border} activeTextColor={uiTokens.colors.surfaceElevated} />
+          <ModeChip label="ITEM"   active={mode === "ITEM"}   onPress={() => setMode("ITEM")}   accentColor={uiTokens.colors.accent} borderColor={uiTokens.colors.border} activeTextColor={uiTokens.colors.surfaceElevated} />
+          <ModeChip label="AUTO"   active={mode === "AUTO"}   onPress={() => setMode("AUTO")}   accentColor={uiTokens.colors.accent} borderColor={uiTokens.colors.border} activeTextColor={uiTokens.colors.surfaceElevated} />
         </View>
-
-        <Text style={styles.hint}>
+        <Text style={[styles.hint, { color: uiTokens.colors.textSecondary }]}>
           {mode === "SERIAL"
-            ? "Serial mode: alphanumeric only. EAN/UPC ignored."
+            ? "Scanning serial codes (alphanumeric). EAN/UPC codes are ignored."
             : mode === "ITEM"
-              ? "Item mode: digits only (EAN/UPC)."
-              : "Auto: detects best match."}
+              ? "Scanning item barcodes (EAN/UPC digits only)."
+              : "Auto mode: accepts both serial and item codes."}
         </Text>
       </View>
 
@@ -165,98 +165,105 @@ export default function SerialScannerScreen() {
 
       <View style={styles.bottomPanel}>
         <View style={styles.statsRow}>
-          <Text style={styles.count}>Scanned: {serials.length}</Text>
+          <View>
+            <Text style={[styles.count, { color: uiTokens.colors.surfaceElevated }]}>{serials.length}</Text>
+            <Text style={styles.countLabel}>codes scanned</Text>
+          </View>
           <ModernButton
             title="Done"
+            icon="checkmark-circle-outline"
             variant="primary"
-            style={{ height: 40, minWidth: 100 }}
-            onPress={() => {
-              safeBackNavigation(router, { userRole: "staff" });
-              // In a real app, you might do: router.push({ pathname: '..', params: { newSerials: serials }})
-              // or use a global store action.
-            }}
+            style={{ height: 44, minWidth: 110 }}
+            onPress={() => safeBackNavigation(router, { userRole: "staff" })}
           />
         </View>
-
-        <Text style={styles.list} numberOfLines={3}>
-          {serials.slice(-6).join(", ")}
-        </Text>
+        {serials.length > 0 && (
+          <Text style={styles.list} numberOfLines={2}>
+            Recent: {serials.slice(-6).join("  •  ")}
+          </Text>
+        )}
       </View>
     </View>
   );
 }
 
-function ModeChip(props: { label: ScanMode; active: boolean; onPress: () => void }) {
+function ModeChip(props: {
+  label: ScanMode;
+  active: boolean;
+  onPress: () => void;
+  accentColor: string;
+  borderColor: string;
+  activeTextColor: string;
+}) {
   return (
-    <Pressable onPress={props.onPress} style={[styles.chip, props.active && styles.chipActive]}>
-      <Text style={[styles.chipText, props.active && styles.chipTextActive]}>{props.label}</Text>
+    <Pressable
+      onPress={props.onPress}
+      style={[
+        styles.chip,
+        {
+          borderColor: props.active ? props.accentColor : props.borderColor,
+          backgroundColor: props.active ? props.accentColor : "transparent",
+        },
+      ]}
+      accessibilityRole="radio"
+      accessibilityState={{ selected: props.active }}
+    >
+      <Text style={[styles.chipText, { color: props.active ? props.activeTextColor : colorWithAlpha(props.accentColor, 0.8) }]}>
+        {props.label}
+      </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.neutral[950] },
+  container: { flex: 1 },
   topBar: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: colors.neutral[950],
+    paddingVertical: 12,
+    borderBottomWidth: 1,
   },
-  modeRow: { flexDirection: "row", gap: 8, marginTop: 10 },
-  hint: {
-    color: colorWithAlpha(semanticColors.text.inverse, 0.7),
-    marginTop: 8,
-    fontSize: 12,
-  },
+  modeRow: { flexDirection: "row", gap: 8 },
+  hint: { marginTop: 8, fontSize: 12, lineHeight: 17 },
   permissionContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: 24,
+    gap: 16,
   },
-  permissionText: {
-    color: semanticColors.text.inverse,
-    fontSize: 14,
-    textAlign: "center",
-  },
-
+  permissionText: { color: "rgba(255,255,255,0.8)", fontSize: 15, textAlign: "center", lineHeight: 22 },
   cameraWrap: { flex: 1, position: "relative" },
   frame: {
     position: "absolute",
-    left: 40,
-    right: 40,
-    top: "30%",
-    height: 200,
+    left: 32,
+    right: 32,
+    top: "28%",
+    height: 220,
     borderWidth: 2,
-    borderColor: colorWithAlpha(semanticColors.text.inverse, 0.6),
-    borderRadius: 12,
+    borderColor: "rgba(255,255,255,0.55)",
+    borderRadius: 16,
   },
-
   bottomPanel: {
-    padding: 16,
-    backgroundColor: colorWithAlpha(colors.neutral[950], 0.9),
-    paddingBottom: 32,
+    padding: 20,
+    paddingBottom: 36,
+    backgroundColor: "rgba(10,10,10,0.92)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.08)",
   },
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  count: { color: semanticColors.text.inverse, fontSize: 18, fontWeight: "700" },
-  list: { color: colorWithAlpha(semanticColors.text.inverse, 0.6), fontSize: 12 },
-
+  count: { fontSize: 28, fontWeight: "800" },
+  countLabel: { color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: "600", marginTop: 2 },
+  list: { color: "rgba(255,255,255,0.5)", fontSize: 12, lineHeight: 18 },
   chip: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colorWithAlpha(semanticColors.text.inverse, 0.2),
+    borderWidth: 1.5,
   },
-  chipActive: {
-    backgroundColor: colors.primary[500],
-    borderColor: colors.primary[500],
-  },
-  chipText: { color: semanticColors.text.inverse, fontSize: 12, fontWeight: "600" },
-  chipTextActive: { color: semanticColors.text.inverse },
+  chipText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
 });

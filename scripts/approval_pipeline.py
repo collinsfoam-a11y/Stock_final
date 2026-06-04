@@ -56,7 +56,8 @@ class CommandPolicy:
 @contextmanager
 def locked_log(log_path: Path) -> Iterator[None]:
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    with log_path.open("a+", encoding="utf-8") as handle:
+    lock_path = log_path.with_name(f"{log_path.name}.lock")
+    with lock_path.open("a+", encoding="utf-8") as handle:
         if fcntl is not None:
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         try:

@@ -1,4 +1,4 @@
-import * as SQLite from "expo-sqlite";
+import type * as SQLiteTypes from "expo-sqlite";
 import type { CreateCountLinePayload, Item } from "@/types/scan";
 import { ensureControlPlaneSchema } from "@/data/db/controlPlaneDb";
 
@@ -30,9 +30,22 @@ export interface PendingCountLine {
   created_at: string;
 }
 
-let cachedDb: SQLite.SQLiteDatabase | null = null;
+type SQLiteModule = typeof import("expo-sqlite");
 
-const ensureSchema = async (db: SQLite.SQLiteDatabase) => {
+let cachedDb: SQLiteTypes.SQLiteDatabase | null = null;
+let sqliteModulePromise: Promise<SQLiteModule> | null = null;
+
+const getSQLite = async (): Promise<SQLiteModule> => {
+  sqliteModulePromise ??= import("expo-sqlite");
+  return sqliteModulePromise;
+};
+
+const openDatabase = async (): Promise<SQLiteTypes.SQLiteDatabase> => {
+  const SQLite = await getSQLite();
+  return SQLite.openDatabaseAsync(DB_NAME);
+};
+
+const ensureSchema = async (db: SQLiteTypes.SQLiteDatabase) => {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS items (
       barcode TEXT PRIMARY KEY,
@@ -77,7 +90,7 @@ const ensureSchema = async (db: SQLite.SQLiteDatabase) => {
  * Initialize the local database and create tables if they don't exist.
  */
 export const initDb = async () => {
-  const db = await SQLite.openDatabaseAsync(DB_NAME);
+  const db = await openDatabase();
   await ensureSchema(db);
 
   __DEV__ && console.log("Local database initialized");
@@ -89,7 +102,7 @@ export const initDb = async () => {
  */
 export const getDb = async () => {
   if (cachedDb) return cachedDb;
-  const db = await SQLite.openDatabaseAsync(DB_NAME);
+  const db = await openDatabase();
   await ensureSchema(db);
   cachedDb = db;
   return db;

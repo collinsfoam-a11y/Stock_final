@@ -473,6 +473,58 @@ const ScanScreen = React.memo(function ScanScreen() {
     } as any);
   };
 
+  const getLookupItemIdentifier = (item: any): string | null => {
+    const candidates = [
+      item?.barcode,
+      item?.manual_barcode,
+      item?.unit2_barcode,
+      item?.unit_m_barcode,
+      item?.item_code,
+      item?.id,
+      item?._id,
+    ];
+
+    for (const candidate of candidates) {
+      const value = String(candidate ?? "").trim();
+      if (value) return value;
+    }
+
+    return null;
+  };
+
+  const handleSelectLookupItem = async (item: any) => {
+    if (loading) return;
+
+    const identifier = getLookupItemIdentifier(item);
+    if (!identifier) {
+      safeSetState(setLookupNotice, {
+        message: "This search result is missing an item code or barcode. Try searching again.",
+        title: "Item cannot be opened",
+        type: "warning",
+      });
+      return;
+    }
+
+    // Set loading to prevent double-tap racing to navigateToDetail twice.
+    safeSetState(setLoading, true);
+    safeSetState(setLookupNotice, null);
+    safeSetState(setSearchResults, []);
+    safeSetState(setSearchQuery, "");
+
+    try {
+      if (item?.item_code) {
+        await safeAsync(() => RecentItemsService.addRecent(item.item_code, item));
+        await loadRecentItems();
+      }
+    } catch {
+      // Recent items are best-effort and should not block opening details.
+    } finally {
+      safeSetState(setLoading, false);
+    }
+
+    navigateToDetail(identifier);
+  };
+
   const handleFinishRack = async () => {
     if (!sessionId) return;
     safeSetState(setIsFinishing, true);
@@ -651,10 +703,7 @@ const ScanScreen = React.memo(function ScanScreen() {
             safeSetState(setIsScanning, true);
           }}
           onPressItem={(item) => {
-            const code = item.barcode || item.item_code;
-            if (code) {
-              handleLookup(code);
-            }
+            void handleSelectLookupItem(item);
           }}
           onSubmitSearch={() => {
             if (!searchQuery.trim()) return;

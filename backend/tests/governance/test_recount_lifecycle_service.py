@@ -61,6 +61,35 @@ async def test_recount_create_and_transition_flow():
 
 
 @pytest.mark.asyncio
+async def test_session_create_uses_non_transaction_fallback_without_recursing():
+    db = InMemoryDatabase()
+    db.client = None
+    service = SessionLifecycleService(db)
+    now = _utc_now()
+
+    created = await service.create_session(
+        session_doc={
+            "id": "sess-create",
+            "session_id": "sess-create",
+            "warehouse": "Showroom - First Floor - F4",
+            "staff_user": "staff1",
+            "staff_name": "Staff One",
+            "type": "STANDARD",
+            "status": "OPEN",
+            "started_at": now,
+            "last_heartbeat": now,
+        },
+        username="staff1",
+    )
+
+    assert created["id"] == "sess-create"
+    assert created["status"] == "CREATED"
+    persisted = await service.get_session("sess-create")
+    assert persisted is not None
+    assert persisted["session_id"] == "sess-create"
+
+
+@pytest.mark.asyncio
 async def test_recount_transition_rejects_terminal_state_mutation():
     db = InMemoryDatabase()
     await _seed_session(db, "sess-recount-terminal")

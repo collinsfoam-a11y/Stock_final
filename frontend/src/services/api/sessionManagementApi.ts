@@ -1,4 +1,6 @@
 import { useAuthStore } from "../../store/authStore";
+import { Platform } from "react-native";
+import { controlPlaneFlags } from "../../core/config/controlPlaneFlags";
 import api from "../httpClient";
 import {
   cacheSession,
@@ -24,6 +26,9 @@ import {
 } from "../control-plane/sessionControlPlane";
 
 const log = createLogger("SessionManagementApi");
+
+const shouldReadLocalProjections = () =>
+  controlPlaneFlags.enableProjectionReads && Platform.OS !== "web";
 
 export interface CreateSessionParams {
   warehouse?: string;
@@ -93,9 +98,11 @@ const getOfflinePaginatedSessions = async (
   page: number,
   pageSize: number
 ): Promise<SessionPage> => {
-  const projectedSessions = (await getProjectedSessionsRead()) || [];
-  if (projectedSessions.length > 0) {
-    return paginateSessions(projectedSessions as Session[], page, pageSize);
+  if (shouldReadLocalProjections()) {
+    const projectedSessions = (await getProjectedSessionsRead()) || [];
+    if (projectedSessions.length > 0) {
+      return paginateSessions(projectedSessions as Session[], page, pageSize);
+    }
   }
 
   const cache = await getSessionsCache();
@@ -158,6 +165,10 @@ const mergeSessionsWithVisibleCache = async (sessions: Session[]): Promise<Sessi
 };
 
 const mergeProjectedSessions = async (sessions: Session[]): Promise<Session[]> => {
+  if (!shouldReadLocalProjections()) {
+    return sessions;
+  }
+
   const projectedSessions = (await getProjectedSessionsRead()) || [];
   if (projectedSessions.length === 0) {
     return sessions;
@@ -312,7 +323,9 @@ export const getSessions = async (page: number = 1, pageSize: number = 20) => {
  */
 export const getSession = async (sessionId: string) => {
   try {
-    const projectedSession = await getProjectedSessionRead(sessionId);
+    const projectedSession = shouldReadLocalProjections()
+      ? await getProjectedSessionRead(sessionId)
+      : null;
     if (!shouldAttemptReadApi()) {
       return projectedSession || (await getSessionFromCache(sessionId));
     }
@@ -333,14 +346,17 @@ export const getSession = async (sessionId: string) => {
     if (error?.response?.status === 404 && !sessionId.startsWith("offline_")) {
       log.warn(`Session ${sessionId} not found on server, removing from cache`);
       await removeSessionFromCache(sessionId);
-      return await getProjectedSessionRead(sessionId);
+      return shouldReadLocalProjections() ? await getProjectedSessionRead(sessionId) : null;
     }
 
     if (error?.response?.status !== 401) {
       log.warn("Error getting session:", error);
     }
 
-    return (await getProjectedSessionRead(sessionId)) || (await getSessionFromCache(sessionId));
+    return (
+      (shouldReadLocalProjections() ? await getProjectedSessionRead(sessionId) : null) ||
+      (await getSessionFromCache(sessionId))
+    );
   }
 };
 
@@ -349,7 +365,9 @@ export const getSession = async (sessionId: string) => {
  */
 export const getSessionStats = async (sessionId: string): Promise<SessionStatsResponse | null> => {
   try {
-    const projectedStats = await getProjectedSessionStatsRead(sessionId);
+    const projectedStats = shouldReadLocalProjections()
+      ? await getProjectedSessionStatsRead(sessionId)
+      : null;
     if (projectedStats && !shouldAttemptReadApi()) {
       return {
         id: sessionId,

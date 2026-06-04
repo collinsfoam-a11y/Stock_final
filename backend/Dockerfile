@@ -5,12 +5,21 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install system dependencies for pyodbc (SQL Server)
+# Install system dependencies and Microsoft ODBC Driver for SQL Server.
+# Debian package flow follows Microsoft's Linux ODBC driver install guidance.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     unixodbc \
     unixodbc-dev \
     curl \
     gnupg \
+    apt-transport-https \
+    && curl -fsSL -o /tmp/packages-microsoft-prod.deb \
+        "https://packages.microsoft.com/config/debian/$(. /etc/os-release && echo "$VERSION_ID" | cut -d. -f1)/packages-microsoft-prod.deb" \
+    && dpkg -i /tmp/packages-microsoft-prod.deb \
+    && rm /tmp/packages-microsoft-prod.deb \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.production.txt /app/requirements.txt
