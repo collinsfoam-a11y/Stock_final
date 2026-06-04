@@ -185,8 +185,10 @@ export default function HistoryScreen() {
         : normalizedStatus === "rejected"
           ? uiTokens.colors.error
           : uiTokens.colors.warning;
-    const statusTextColor =
-      normalizedStatus === "pending" ? uiTokens.colors.textPrimary : uiTokens.colors.surfaceElevated;
+    // All status badges sit on a solid semantic-color background; use the
+    // elevated-surface token for the label so the pending/warning pairing meets
+    // contrast (textPrimary on warning failed WCAG AA).
+    const statusTextColor = uiTokens.colors.surfaceElevated;
 
     const CardContent = (
       <ModernCard

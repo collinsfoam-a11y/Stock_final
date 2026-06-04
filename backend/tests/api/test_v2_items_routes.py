@@ -44,9 +44,9 @@ async def test_item_details_accepts_numeric_barcode_without_object_id_parsing(mo
     assert body["success"] is True
     assert body["data"]["item_code"] == "1"
     assert body["data"]["barcode"] == "510001"
-    fake_db.erp_items.find_one.assert_awaited_once_with(
-        {"$or": [{"item_code": "510001"}, {"barcode": "510001"}]}
-    )
+    # Deterministic staged lookup resolves on the item_code match first and never
+    # parses the numeric value as an ObjectId.
+    fake_db.erp_items.find_one.assert_awaited_once_with({"item_code": "510001"})
 
 
 @pytest.mark.asyncio

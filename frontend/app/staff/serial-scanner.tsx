@@ -130,7 +130,7 @@ export default function SerialScannerScreen() {
 
       {!permission?.granted ? (
         <View style={styles.permissionContainer}>
-          <Text style={styles.permissionText}>
+          <Text style={[styles.permissionText, { color: uiTokens.colors.textSecondary }]}>
             Camera permission is required for serial scanning.
           </Text>
           {permission?.canAskAgain !== false ? (

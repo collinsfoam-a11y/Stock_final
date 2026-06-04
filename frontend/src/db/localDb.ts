@@ -92,7 +92,8 @@ const ensureSchema = async (db: SQLiteTypes.SQLiteDatabase) => {
 export const initDb = async () => {
   const db = await openDatabase();
   await ensureSchema(db);
-
+  // Cache so a subsequent getDb() doesn't reopen and re-run schema setup.
+  cachedDb = db;
   __DEV__ && console.log("Local database initialized");
   return db;
 };

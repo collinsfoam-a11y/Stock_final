@@ -134,6 +134,9 @@ const ScanScreen = React.memo(function ScanScreen() {
   const cornerOpacity = useSharedValue(1);
 
   const scanBufferRef = useRef<{ code: string; count: number; timestamp: number }[]>([]);
+  // Synchronous in-flight guard for item selection — prevents a double-tap from
+  // entering handleSelectLookupItem twice before the async `loading` state lands.
+  const selectInFlightRef = useRef(false);
 
   const loadRecentItems = useCallback(async () => {
     try {
@@ -263,10 +266,14 @@ const ScanScreen = React.memo(function ScanScreen() {
   useFocusEffect(
     useCallback(() => {
       setIsScreenFocused(true);
+      // Release the selection guard when returning to this screen (e.g. back
+      // from item-detail) so the next item can be opened.
+      selectInFlightRef.current = false;
+      safeSetState(setLoading, false);
       return () => {
         setIsScreenFocused(false);
       };
-    }, [])
+    }, [safeSetState])
   );
 
   // Canonical startup path: initial load + periodic stat refresh
@@ -493,7 +500,9 @@ const ScanScreen = React.memo(function ScanScreen() {
   };
 
   const handleSelectLookupItem = async (item: any) => {
-    if (loading) return;
+    // Atomic guard: the ref is set synchronously before any await, so a rapid
+    // second tap is rejected even before the `loading` state update lands.
+    if (loading || selectInFlightRef.current) return;
 
     const identifier = getLookupItemIdentifier(item);
     if (!identifier) {
@@ -505,7 +514,7 @@ const ScanScreen = React.memo(function ScanScreen() {
       return;
     }
 
-    // Set loading to prevent double-tap racing to navigateToDetail twice.
+    selectInFlightRef.current = true;
     safeSetState(setLoading, true);
     safeSetState(setLookupNotice, null);
     safeSetState(setSearchResults, []);
@@ -516,13 +525,14 @@ const ScanScreen = React.memo(function ScanScreen() {
         await safeAsync(() => RecentItemsService.addRecent(item.item_code, item));
         await loadRecentItems();
       }
+      // Navigate while the guard is still held so the tap area never re-enables
+      // between clearing `loading` and pushing the detail screen.
+      navigateToDetail(identifier);
     } catch {
-      // Recent items are best-effort and should not block opening details.
-    } finally {
+      // Recent items are best-effort; release the guard so the user can retry.
+      selectInFlightRef.current = false;
       safeSetState(setLoading, false);
     }
-
-    navigateToDetail(identifier);
   };
 
   const handleFinishRack = async () => {

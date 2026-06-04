@@ -378,6 +378,7 @@ export default function ItemDetailScreen() {
     mrpVariants,
     rawVariantsCount,
     recountBlockedReason,
+    recountTargetId,
     sameNameVariants,
     selectedMrpVariant,
     setShowZeroStock,
@@ -526,6 +527,11 @@ export default function ItemDetailScreen() {
       hasExpiryDate,
       itemExpiryDate,
       itemExpiryDateFormat,
+      // Recount controls — enforce blocking/blind-recount in the submit guard,
+      // not just the visual banner.
+      recountTargetId,
+      blindRecountRequired,
+      recountBlockedReason,
       onSuccess: handleBackPress,
     });
   useItemDraftAutosave({
@@ -698,7 +704,12 @@ export default function ItemDetailScreen() {
               <TouchableOpacity
                 style={[
                   styles.heroMetricTile,
-                  { borderColor: colorWithAlpha(uiTokens.colors.accent, 0.3), borderWidth: 1 },
+                  {
+                    borderColor: colorWithAlpha(uiTokens.colors.accent, 0.3),
+                    borderWidth: 1,
+                    minHeight: 44,
+                    justifyContent: "center",
+                  },
                 ]}
                 onPress={handleRefreshStock}
                 disabled={isRefreshing}

@@ -38,11 +38,15 @@ class MigrationManager:
             # 1. Drop obsolete indexes from prior schema versions (serial uniqueness).
             await self._drop_obsolete_serial_indexes()
 
-            # 2. Apply the single source of truth (backend/db/indexes.py).
+            # 2. Drop catalog-named indexes whose key/options drifted, so the
+            #    catalog can recreate them (create skips on IndexOptionsConflict).
+            await self._drop_mismatched_catalog_indexes()
+
+            # 3. Apply the single source of truth (backend/db/indexes.py).
             logger.info("Applying authoritative index definitions...")
             await create_optimized_indexes(self.db)
 
-            # 3. Remove legacy duplicate indexes superseded by the catalog.
+            # 4. Remove legacy duplicate indexes superseded by the catalog.
             await self._drop_legacy_duplicate_indexes()
 
             logger.info("All database indexes created successfully")
@@ -74,6 +78,67 @@ class MigrationManager:
             if name:
                 names.add(str(name))
         return names
+
+    @staticmethod
+    def _index_spec_matches(existing: dict, key_spec: Any, options: dict) -> bool:
+        """True when a live index already matches the catalog key + key options."""
+        want_key = [(field, direction) for field, direction in key_spec]
+        have_key = [(field, direction) for field, direction in (existing.get("key") or {}).items()]
+        if want_key != have_key:
+            return False
+        # Compare the options that change index semantics.
+        for opt in ("unique", "sparse"):
+            if bool(existing.get(opt, False)) != bool(options.get(opt, False)):
+                return False
+        if "expireAfterSeconds" in options or "expireAfterSeconds" in existing:
+            if existing.get("expireAfterSeconds") != options.get("expireAfterSeconds"):
+                return False
+        return True
+
+    async def _drop_mismatched_catalog_indexes(self) -> None:
+        """Drop catalog-named indexes whose key/options no longer match the catalog.
+
+        ``create_indexes`` silently skips on IndexOptionsConflict, so without this
+        a same-named index created under an older definition would never converge.
+        """
+        from backend.db.indexes import INDEXES
+
+        for collection_name in self._CATALOG_OWNED_COLLECTIONS:
+            specs = {
+                str(options["name"]): (key_spec, options)
+                for key_spec, options in INDEXES.get(collection_name, [])
+                if options.get("name")
+            }
+            if not specs:
+                continue
+            try:
+                collection = self.db[collection_name]
+                existing = await collection.list_indexes().to_list(length=200)
+                for index in existing:
+                    name = index.get("name")
+                    if not name or name == "_id_" or name not in specs:
+                        continue
+                    key_spec, options = specs[name]
+                    if self._index_spec_matches(index, key_spec, options):
+                        continue
+                    try:
+                        await collection.drop_index(name)
+                        logger.info(
+                            "Dropped drifted catalog index %s.%s for recreation",
+                            collection_name,
+                            name,
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to drop drifted index %s.%s: %s",
+                            collection_name,
+                            name,
+                            str(exc),
+                        )
+            except Exception as exc:
+                logger.warning(
+                    "Catalog drift cleanup skipped for %s: %s", collection_name, str(exc)
+                )
 
     async def _drop_legacy_duplicate_indexes(self) -> None:
         """Drop indexes on catalog-owned collections that the catalog doesn't define."""

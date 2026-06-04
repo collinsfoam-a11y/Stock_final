@@ -607,8 +607,10 @@ except Exception as e:
             self.METRICS_HISTORY_SIZE = int(os.getenv("METRICS_HISTORY_SIZE", 1000))
             self.ERP_SYNC_ENABLED = os.getenv("ERP_SYNC_ENABLED", "true").lower() == "true"
             self.ERP_SYNC_INTERVAL = int(os.getenv("ERP_SYNC_INTERVAL", 3600))
-            self.AUTO_SYNC_ENABLED = os.getenv("AUTO_SYNC_ENABLED", "false").lower() == "true"
-            self.AUTO_SYNC_INTERVAL = int(os.getenv("AUTO_SYNC_INTERVAL", 3600))
+            self.AUTO_SYNC_ENABLED = _parse_bool(os.getenv("AUTO_SYNC_ENABLED"), default=False)
+            # Mirror the >=60s guard enforced by the primary Settings validator so
+            # a sub-minute value can't turn the sync loop into a busy-loop.
+            self.AUTO_SYNC_INTERVAL = max(60, int(os.getenv("AUTO_SYNC_INTERVAL", 3600)))
             self.AUTH_SINGLE_SESSION = os.getenv("AUTH_SINGLE_SESSION", "true").lower() == "true"
             self.CHANGE_DETECTION_SYNC_ENABLED = (
                 os.getenv("CHANGE_DETECTION_SYNC_ENABLED", "true").lower() == "true"

@@ -548,12 +548,16 @@ async def lifespan(app: FastAPI):  # noqa: C901
     # Initialize auto-sync manager (monitors SQL Server and auto-syncs when available)
     global auto_sync_manager
     try:
-        sql_configured = sql_connected
-        auto_sync_enabled = sql_configured and getattr(settings, "AUTO_SYNC_ENABLED", False)
+        # Gate the auto-sync manager on the feature flag ONLY — not on whether
+        # SQL happened to be reachable at boot. The manager runs its own
+        # connection monitor (check_interval) and recovers when SQL comes back,
+        # so tying it to startup connectivity would permanently disable
+        # auto-recovery after a transient ERP outage during deploy.
+        auto_sync_enabled = bool(getattr(settings, "AUTO_SYNC_ENABLED", False))
         auto_sync_manager = AutoSyncManager(
             sql_connector=sql_connector,
             mongo_db=db,
-            sync_interval=getattr(settings, "ERP_SYNC_INTERVAL", 3600),
+            sync_interval=getattr(settings, "AUTO_SYNC_INTERVAL", 3600),
             check_interval=30,  # Check connection every 30 seconds
             enabled=auto_sync_enabled,
         )

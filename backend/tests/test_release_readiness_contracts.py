@@ -27,6 +27,11 @@ def test_vulnerability_script_scans_pnpm_and_requires_backend_auditor():
     assert "frontend/pnpm-lock.yaml" in script
     assert "pnpm audit" in script
     assert "pip-audit is not installed" not in script
+    # Positively assert the backend auditor actually runs, so the contract fails
+    # if the pip-audit invocation is removed (absence-only checks could pass even
+    # with the whole backend scan deleted).
+    assert "pip_audit" in script
+    assert "backend/requirements.production.txt" in script
 
 
 def test_deploy_validator_normalizes_crlf_env_values():

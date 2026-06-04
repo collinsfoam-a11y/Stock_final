@@ -12,6 +12,14 @@ describe("isStaleReactQueryBundleError", () => {
     expect(isStaleReactQueryBundleError(error)).toBe(true);
   });
 
+  it("detects the stale useReducedMotion web bundle crash signature", () => {
+    const error = new TypeError(
+      "(0,L.useReducedMotion) is not a function. (In '(0,L.useReducedMotion)()', '(0,L.useReducedMotion)' is undefined)"
+    );
+
+    expect(isStaleReactQueryBundleError(error)).toBe(true);
+  });
+
   it("does not match unrelated render or provider errors", () => {
     expect(isStaleReactQueryBundleError(new Error("No QueryClient set"))).toBe(false);
     expect(isStaleReactQueryBundleError(new TypeError("foo is not a function"))).toBe(false);

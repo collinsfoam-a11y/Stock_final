@@ -52,22 +52,34 @@ class ItemResponse(BaseModel):
     sql_verification_status: Optional[str] = None
 
 
-def _build_item_identifier_query(item_identifier: str) -> dict[str, Any]:
-    """Match an ERP item by item code, barcode, or legacy Mongo object id."""
-    clauses: list[dict[str, Any]] = [
-        {"item_code": item_identifier},
-        {"barcode": item_identifier},
-    ]
+async def _resolve_item_document(db: Any, item_identifier: str) -> Optional[dict[str, Any]]:
+    """Resolve an ERP item deterministically.
 
+    Business identifiers take priority over the legacy Mongo ``_id`` fallback so
+    a 24-char-hex value that also matches a different document's ``_id`` can never
+    shadow the intended item_code/barcode match. Order: item_code, then barcode,
+    then (only if still unmatched) a valid ObjectId ``_id``.
+    """
+    # 1. Canonical business identifier.
+    item = await db.erp_items.find_one({"item_code": item_identifier})
+    if item:
+        return item
+
+    # 2. Barcode (non-unique, but business-scoped — still preferred over _id).
+    item = await db.erp_items.find_one({"barcode": item_identifier})
+    if item:
+        return item
+
+    # 3. Legacy Mongo object id fallback, only when nothing else matched.
     try:
         from bson import ObjectId
 
         if ObjectId.is_valid(item_identifier):
-            clauses.append({"_id": ObjectId(item_identifier)})
+            return await db.erp_items.find_one({"_id": ObjectId(item_identifier)})
     except Exception:
         pass
 
-    return {"$or": clauses}
+    return None
 
 
 def _dedupe_preserve_order(values: list[str]) -> list[str]:
@@ -469,8 +481,8 @@ async def get_item_details(
     try:
         db = get_db()
 
-        # Get item from MongoDB (search by item_code, barcode, or legacy object id)
-        item = await db.erp_items.find_one(_build_item_identifier_query(item_code))
+        # Deterministic resolution: item_code, then barcode, then legacy _id.
+        item = await _resolve_item_document(db, item_code)
         if not item:
             return ApiResponse.error_response(
                 error_code="ITEM_NOT_FOUND",

@@ -16,6 +16,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   BackHandler,
+  ActivityIndicator,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -112,6 +113,9 @@ const getScannedCount = (session: any): number => {
 const normalizeWarehouse = (value: unknown): string =>
   typeof value === "string" ? value.trim().replace(/\s+/g, " ").toLowerCase() : "";
 
+// Expands sub-44dp icon buttons to meet the 44x44 minimum touch target.
+const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
+
 const getInitials = (name: string | null | undefined): string => {
   if (!name) return "S";
   return name
@@ -176,7 +180,12 @@ const StaffHome = React.memo(function StaffHome() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
 
   // ── Queries ───────────────────────────────────────────────────────────────
-  const { data: sessionsData, refetch } = useSessionsQuery({ page: 1, pageSize: SESSION_PAGE_SIZE });
+  const {
+    data: sessionsData,
+    refetch,
+    isLoading: sessionsLoading,
+    isError: sessionsError,
+  } = useSessionsQuery({ page: 1, pageSize: SESSION_PAGE_SIZE });
 
   const sessions = useMemo(
     () => (Array.isArray(sessionsData?.items) ? sessionsData.items : []),
@@ -457,6 +466,7 @@ const StaffHome = React.memo(function StaffHome() {
             {/* Notifications */}
             <TouchableOpacity
               style={[s.iconBtn, { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.08) }]}
+              hitSlop={HIT_SLOP}
               onPress={() => router.push("/notifications" as any)}
               accessibilityRole="button"
               accessibilityLabel={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
@@ -476,6 +486,7 @@ const StaffHome = React.memo(function StaffHome() {
             {/* Settings */}
             <TouchableOpacity
               style={[s.iconBtn, { backgroundColor: colorWithAlpha(uiTokens.colors.textSecondary, 0.08) }]}
+              hitSlop={HIT_SLOP}
               onPress={() => router.push("/staff/settings" as any)}
               accessibilityRole="button"
               accessibilityLabel="Settings"
@@ -486,6 +497,7 @@ const StaffHome = React.memo(function StaffHome() {
             {/* Logout */}
             <TouchableOpacity
               style={[s.iconBtn, { backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.08) }]}
+              hitSlop={HIT_SLOP}
               onPress={handleLogout}
               accessibilityRole="button"
               accessibilityLabel="Sign out"
@@ -568,7 +580,27 @@ const StaffHome = React.memo(function StaffHome() {
         }
       >
         <Animated.View entering={prefersReducedMotion ? undefined : FadeInDown.duration(400)}>
-          {activeTab === "active" ? (
+          {/* Distinct loading / error states so an in-flight or failed fetch is
+              never mistaken for a genuinely empty list. */}
+          {sessions.length === 0 && sessionsLoading ? (
+            <View style={s.empty}>
+              <ActivityIndicator size="large" color={uiTokens.colors.accent} />
+              <Text style={[s.emptyBody, { color: uiTokens.colors.textSecondary }]}>
+                Loading sessions…
+              </Text>
+            </View>
+          ) : sessions.length === 0 && sessionsError ? (
+            <View style={s.empty}>
+              <View style={[s.emptyIconWrap, { backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.08) }]}>
+                <Ionicons name="cloud-offline-outline" size={36} color={uiTokens.colors.error} />
+              </View>
+              <Text style={[s.emptyTitle, { color: uiTokens.colors.textPrimary }]}>Couldn't load sessions</Text>
+              <Text style={[s.emptyBody, { color: uiTokens.colors.textSecondary }]}>
+                Check your connection and try again.
+              </Text>
+              <ModernButton title="Retry" icon="refresh-outline" onPress={() => void refetch()} style={s.ctaButton} />
+            </View>
+          ) : activeTab === "active" ? (
             <>
               <ModernButton
                 title="Start New Session"
@@ -626,6 +658,7 @@ const StaffHome = React.memo(function StaffHome() {
             <Text style={[s.modalTitle, { color: uiTokens.colors.textPrimary }]}>New Session</Text>
             <TouchableOpacity
               style={[s.modalClose, { backgroundColor: colorWithAlpha(uiTokens.colors.textSecondary, 0.08) }]}
+              hitSlop={HIT_SLOP}
               onPress={resetModal}
               accessibilityRole="button"
               accessibilityLabel="Close"

@@ -482,7 +482,8 @@ class ConnectionManager {
       const urlObj = new URL(url);
       const connection: ConnectionInfo = {
         backendUrl: url,
-        backendPort: parseInt(urlObj.port) || 8001,
+        backendPort:
+          parseInt(urlObj.port, 10) || this.getCandidatePorts()[0] || DEFAULT_BACKEND_PORT,
         backendIp: urlObj.hostname,
         lastChecked: new Date().toISOString(),
         isHealthy: await this.checkHealth(url),

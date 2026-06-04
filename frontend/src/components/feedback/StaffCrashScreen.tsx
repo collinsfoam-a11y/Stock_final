@@ -83,7 +83,12 @@ export const resolveStaffCrashRecoveryTarget = (
 
 export const isStaleReactQueryBundleError = (error: Error): boolean => {
   const details = `${error?.message ?? ""}\n${error?.stack ?? ""}`;
-  return /useQueryClient/i.test(details) && /(not a function|undefined)/i.test(details);
+  // Stale web bundles surface as "<hook> is not a function" for hooks whose
+  // module/context shifted between chunks (useQueryClient, useReducedMotion, …).
+  return (
+    /(useQueryClient|useReducedMotion)/i.test(details) &&
+    /(not a function|undefined)/i.test(details)
+  );
 };
 
 export const recoverFromStaleWebBundle = async (): Promise<boolean> => {
