@@ -69,6 +69,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
       activeOpacity={0.8}
       hitSlop={hitSlop.small}
       accessibilityRole="checkbox"
+      accessibilityLabel={label}
       accessibilityState={{
         checked: indeterminate ? "mixed" : checked,
         disabled,

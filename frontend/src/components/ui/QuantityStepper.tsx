@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useThemeContext } from "../../context/ThemeContext";
 import { haptics } from "../../services/haptics";
+import { getDecorativeIconProps } from "../../utils/accessibility";
 
 interface Props {
   value: number;
@@ -42,8 +43,10 @@ export function QuantityStepper({ value, onChange, min = 0, max, disabled, testI
         disabled={disabled || value <= min}
         style={[styles.button, buttonStyle, (disabled || value <= min) && styles.buttonDisabled]}
         accessibilityLabel="decrement"
+        accessibilityRole="button"
+        accessibilityState={{ disabled: disabled || value <= min }}
       >
-        <Ionicons name="remove" size={20} color={theme.colors.text} />
+        <Ionicons {...getDecorativeIconProps()} name="remove" size={20} color={theme.colors.text} />
       </TouchableOpacity>
 
       <View
@@ -67,8 +70,10 @@ export function QuantityStepper({ value, onChange, min = 0, max, disabled, testI
           (disabled || (typeof max === "number" && value >= max)) && styles.buttonDisabled,
         ]}
         accessibilityLabel="increment"
+        accessibilityRole="button"
+        accessibilityState={{ disabled: disabled || (typeof max === "number" && value >= max) }}
       >
-        <Ionicons name="add" size={20} color={theme.colors.text} />
+        <Ionicons {...getDecorativeIconProps()} name="add" size={20} color={theme.colors.text} />
       </TouchableOpacity>
     </View>
   );
