@@ -1,6 +1,5 @@
 export * from "./scanUtils";
 export * from "./validation";
-export * from "./errorHandler";
 export {
   BACKEND_URL,
   getBackendURL,

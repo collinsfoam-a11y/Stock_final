@@ -51,9 +51,7 @@ export { AnimatedCounter } from "./AnimatedCounter";
 export { Shimmer, ShimmerPlaceholder } from "./Shimmer";
 export { ParticleField } from "./ParticleField";
 export { RippleButton } from "./RippleButton";
-export { ScanFeedback } from "./ScanFeedback";
 export * from "./SyncStatusPill";
-export type { ScanFeedbackType } from "./ScanFeedback";
 export { EnhancedBottomSheet } from "./EnhancedBottomSheet";
 
 // Phase 4: Supervisor Dashboard Components
