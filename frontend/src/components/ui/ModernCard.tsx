@@ -36,6 +36,8 @@ import {
   textStyles,
 } from "@/theme/legacyCompat";
 import { useThemeContextSafe } from "../../context/ThemeContext";
+import { haptics } from "@/services/haptics";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 import { shadows as unifiedShadows } from "@/theme/legacyCompat";
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
@@ -131,6 +133,7 @@ export const ModernCard: React.FC<ModernCardProps> = ({
   // Press handlers
   const handlePressIn = () => {
     if (onPress) {
+      void haptics.light();
       scale.value = withSpring(0.98, {
         damping: modernAnimations.easing.spring.damping,
         stiffness: modernAnimations.easing.spring.stiffness,
@@ -224,7 +227,7 @@ export const ModernCard: React.FC<ModernCardProps> = ({
         {(title || subtitle || icon) && (
           <View style={dynamicStyles.header}>
             {icon && (
-              <View style={dynamicStyles.iconContainer}>
+              <View style={dynamicStyles.iconContainer} {...getDecorativeIconProps()}>
                 <Ionicons name={icon} size={24} color={accentColor} />
               </View>
             )}

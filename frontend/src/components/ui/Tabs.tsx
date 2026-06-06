@@ -27,8 +27,6 @@ import {
   touchTargets,
   hitSlop,
 } from "@/theme/legacyCompat";
-import { haptics } from "@/services/haptics";
-import { getDecorativeIconProps } from "@/utils/accessibility";
 
 export interface Tab {
   key: string;
@@ -94,10 +92,7 @@ export const Tabs: React.FC<TabsProps> = ({
     return (
       <TouchableOpacity
         key={tab.key}
-        onPress={() => {
-          void haptics.light();
-          onTabChange(tab.key);
-        }}
+        onPress={() => onTabChange(tab.key)}
         onLayout={(event) => handleTabLayout(tab.key, event)}
         style={[
           styles.tab,
@@ -110,11 +105,7 @@ export const Tabs: React.FC<TabsProps> = ({
         accessibilityRole="tab"
         accessibilityState={{ selected: isActive }}
       >
-        {tab.icon ? (
-          <View style={styles.tabIcon} {...getDecorativeIconProps()}>
-            {tab.icon}
-          </View>
-        ) : null}
+        {tab.icon ? <View style={styles.tabIcon}>{tab.icon}</View> : null}
 
         <Text
           style={[
