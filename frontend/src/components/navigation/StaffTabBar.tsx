@@ -9,6 +9,7 @@ import { useRouter, useSegments } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@/hooks/useTheme";
 import { layout, spacing, typography } from "../../styles/globalStyles";
+import { haptics } from "@/services/haptics";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface TabItem {
@@ -90,7 +91,10 @@ export const StaffTabBar: React.FC<StaffTabBarProps> = ({ style, testID }) => {
           <TouchableOpacity
             key={tab.key}
             style={styles.tab}
-            onPress={() => handleTabPress(tab)}
+            onPress={() => {
+              void haptics.light();
+              handleTabPress(tab);
+            }}
             activeOpacity={0.7}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
@@ -98,7 +102,7 @@ export const StaffTabBar: React.FC<StaffTabBarProps> = ({ style, testID }) => {
           >
             <View style={styles.tabContent}>
               <View style={styles.iconContainer}>
-                <Ionicons name={tab.icon} size={24} color={iconColor} />
+                <Ionicons name={tab.icon} size={24} color={iconColor} accessibilityElementsHidden={true} importantForAccessibility="no" aria-hidden={true} />
                 {tab.badge !== undefined && tab.badge > 0 && (
                   <View style={[styles.badge, { backgroundColor: theme.colors.error }]}>
                     <Text style={styles.badgeText}>{tab.badge > 99 ? "99+" : tab.badge}</Text>

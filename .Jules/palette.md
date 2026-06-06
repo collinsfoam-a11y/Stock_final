@@ -12,3 +12,6 @@
 ## 2026-06-03 - Adding Accessible Props to Icon-only Close Button
 **Learning:** The custom `getAccessibleButtonProps` utility from `@/utils/accessibility` was used to provide the missing `accessibilityRole` and `accessibilityLabel` properties to a `TouchableOpacity` component representing an icon-only close button. The icon itself (`Ionicons`) received `getDecorativeIconProps()` so that screen readers hide the decorative visual element.
 **Action:** Always verify custom utility imports using terminal commands before modifying files. Add screen reader labels to icon-only buttons to improve UI accessibility.
+## 2026-06-06 - Tab Bar Accessibility & Haptics
+**Learning:** Raw `<Ionicons>` components inside bottom tab bars are not automatically hidden from screen readers, causing redundant readout alongside the tab label.
+**Action:** Apply `accessibilityElementsHidden={true}`, `importantForAccessibility="no"`, and `aria-hidden={true}` directly to tab bar icons, and ensure `haptics.light()` is fired on tab selection for tactile feedback.
