@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Optional, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from pydantic import BaseModel, EmailStr, Field
 
 from backend.auth.dependencies import get_current_user, require_admin
@@ -782,7 +782,7 @@ async def get_available_roles(
 @user_management_router.post("/{user_id}/reset-password")
 async def reset_user_password(
     user_id: str,
-    new_password: str = Query(..., min_length=6, max_length=128),
+    new_password: str = Body(..., min_length=6, max_length=128, embed=True),
     current_user: dict = Depends(require_admin),
 ):
     """
@@ -814,7 +814,7 @@ async def reset_user_password(
 @user_management_router.post("/{user_id}/reset-pin")
 async def reset_user_pin(
     user_id: str,
-    new_pin: str = Query(..., pattern=r"^\d{4}$"),
+    new_pin: str = Body(..., pattern=r"^\d{4}$", embed=True),
     current_user: dict = Depends(require_admin),
 ):
     """

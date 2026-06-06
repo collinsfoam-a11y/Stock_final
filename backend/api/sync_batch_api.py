@@ -291,7 +291,7 @@ async def sync_single_record(
             "floor_no": floor_id,
             "rack_no": rack_id,
             "item_code": record.item_code,
-            "counted_qty": record.verified_qty,
+            "counted_qty": record.verified_qty + record.damaged_qty,
             "damaged_qty": record.damaged_qty,
             "serial_numbers": serial_numbers,
             "manufacturing_date": record.mfg_date,

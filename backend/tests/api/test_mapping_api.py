@@ -20,7 +20,8 @@ MOCK_SAMPLE_DATA = [(1, "test1"), (2, "test2")]
 
 @pytest.fixture
 def mock_pyodbc():
-    with patch("backend.api.mapping_api.pyodbc") as mock:
+    with patch("backend.api.mapping_api._PYODBC_AVAILABLE", True), \
+         patch("backend.api.mapping_api.pyodbc") as mock:
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
 

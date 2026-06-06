@@ -122,7 +122,11 @@ def _match_filter(document: dict[str, Any], filter_query: dict[str, Optional[Any
                 return False
         else:
             value = _normalize_value(value)
-            if doc_value != value:
+            # MongoDB: querying a scalar against an array field checks containment
+            if isinstance(doc_value, list):
+                if value not in doc_value:
+                    return False
+            elif doc_value != value:
                 return False
     return True
 
@@ -438,6 +442,24 @@ class InMemoryDatabase:
         self.system_events = InMemoryCollection()
         self.item_serials = InMemoryCollection()
         self.variance_threshold_configs = InMemoryCollection()
+        self.event_log = InMemoryCollection()
+        self.items_snapshot = InMemoryCollection()
+        self.serial_registry = InMemoryCollection()
+        self.serial_records = InMemoryCollection()
+        self.batch_records = InMemoryCollection()
+        self.event_applied = InMemoryCollection()
+        self.erp_snapshot = InMemoryCollection()
+        self.approvals = InMemoryCollection()
+        self.damage_logs = InMemoryCollection()
+        self.sync_queue = InMemoryCollection()
+        self.variance_logs = InMemoryCollection()
+
+        # Projection collections
+        self.session_dashboard_projection = InMemoryCollection()
+        self.variance_summary_projection = InMemoryCollection()
+        self.verified_items_projection = InMemoryCollection()
+        self.financial_projection = InMemoryCollection()
+        self.audit_projection_fallbacks = InMemoryCollection()
 
         # Governance Collections
         self.system_settings = InMemoryCollection()

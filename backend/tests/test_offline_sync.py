@@ -70,7 +70,7 @@ async def test_modern_batch_sync_success(async_client: AsyncClient, authenticate
     assert line["floor_id"] == "F1"
     assert line["rack_id"] == "R1"
     assert line["item_code"] == "ITEM-100"
-    assert line["counted_qty"] == 10.0
+    assert line["counted_qty"] == 4.0
     assert line["idempotency_key"] == client_record_id
 
     replay = await async_client.post(

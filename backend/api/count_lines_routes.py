@@ -1,5 +1,6 @@
 import inspect
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any, NoReturn, Optional
@@ -1747,6 +1748,8 @@ async def check_item_counted(
 ):
     """Check if an item has already been counted in the session"""
     db = _get_db_client()
+    use_projection = os.getenv("V3_PROJECTION_READS", "").lower() == "true"
+    strict_mode = os.getenv("V3_PROJECTION_STRICT_MODE", "").lower() == "true"
     try:
         # Find all count lines for this item in this session
         cursor = db.count_lines.find({"session_id": session_id, "item_code": item_code})
@@ -1758,7 +1761,43 @@ async def check_item_counted(
             # Frontend expects a stable `line_id` field for follow-up actions (add qty, etc).
             line.setdefault("line_id", line.get("id") or line["_id"])
 
+        if use_projection:
+            snapshot = await db.items_snapshot.find_one(
+                {"session_id": session_id, "item_code": item_code}
+            )
+            if strict_mode and not snapshot:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Projection state unavailable for authoritative read",
+                )
+            if snapshot:
+                batch_cursor = db.batch_records.find(
+                    {"session_id": session_id, "item_code": item_code}
+                )
+                batches = await batch_cursor.to_list(length=None)
+                batch_totals = [
+                    {
+                        "batch_id": b.get("batch_id"),
+                        "batch_no": b.get("batch_no"),
+                        "counted_qty": b.get("counted_qty"),
+                        "damaged_qty": b.get("damaged_qty"),
+                    }
+                    for b in batches
+                ]
+                return {
+                    "already_counted": len(count_lines) > 0,
+                    "aggregate_source": "projection",
+                    "item_totals": {
+                        "total_qty": snapshot.get("counted_qty", 0),
+                        "source": "projection",
+                    },
+                    "batch_totals": batch_totals,
+                    "count_lines": count_lines,
+                }
+
         return {"already_counted": len(count_lines) > 0, "count_lines": count_lines}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(
             "Error checking item count: %s",
@@ -1771,10 +1810,14 @@ async def check_item_counted(
 async def check_serial_uniqueness(
     session_id: str,
     serial_number: str,
+    item_code: Optional[str] = None,
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Check whether a serial number has already been counted within a session.
+
+    When item_code is provided, uniqueness is checked at item scope (a serial may
+    appear for different items). Without item_code, scope is global (session-wide).
 
     Returns a small payload that the UI can use to prevent duplicate serial entry.
     """
@@ -1784,6 +1827,7 @@ async def check_serial_uniqueness(
     if not normalized:
         raise HTTPException(status_code=400, detail="serial_number is required")
 
+    scope = "item" if item_code else "global"
     candidates = {normalized, normalized.upper()}
     projection = {
         "_id": 0,
@@ -1796,20 +1840,21 @@ async def check_serial_uniqueness(
     }
 
     for candidate in candidates:
-        existing = await db.count_lines.find_one(
-            {
-                "session_id": session_id,
-                "$or": [
-                    {"serial_numbers": candidate},
-                    {"serial_entries.serial_number": candidate},
-                ],
-            },
-            projection,
-        )
-        if existing:
-            return {"exists": True, **existing}
+        query: dict[str, Any] = {
+            "session_id": session_id,
+            "$or": [
+                {"serial_numbers": candidate},
+                {"serial_entries.serial_number": candidate},
+            ],
+        }
+        if item_code:
+            query["item_code"] = item_code
 
-    return {"exists": False}
+        existing = await db.count_lines.find_one(query, projection)
+        if existing:
+            return {"exists": True, "scope": scope, **existing}
+
+    return {"exists": False, "scope": scope}
 
 
 @router.get("/count-lines/session/{session_id}")
@@ -2119,6 +2164,31 @@ async def check_item_scan_status(
 ):
     """Check if item has been scanned in this session and where"""
     db = _get_db_client()
+    use_projection = os.getenv("V3_PROJECTION_READS", "").lower() == "true"
+
+    if use_projection:
+        snapshot = await db.items_snapshot.find_one(
+            {"session_id": session_id, "item_code": item_code}
+        )
+        if snapshot:
+            batch_cursor = db.batch_records.find(
+                {"session_id": session_id, "item_code": item_code}
+            )
+            batches = await batch_cursor.to_list(length=None)
+            batch_totals = [
+                {
+                    "batch_id": b.get("batch_id"),
+                    "batch_no": b.get("batch_no"),
+                    "counted_qty": b.get("counted_qty"),
+                    "damaged_qty": b.get("damaged_qty"),
+                }
+                for b in batches
+            ]
+            return {
+                "source": "projection",
+                "total_qty": snapshot.get("counted_qty", 0),
+                "batch_totals": batch_totals,
+            }
 
     # Find all count lines for this item in this session
     cursor = db.count_lines.find({"session_id": session_id, "item_code": item_code})
