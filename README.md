@@ -13,8 +13,16 @@ Tracked guides:
 
 ## Documentation
 
-This repository currently keeps a smaller tracked docs set. Keep this section aligned with the
-files that actually exist in git so a fresh clone does not point at missing documentation.
+This repository keeps a small, tracked docs set. Keep this section aligned with the files that
+actually exist in git so a fresh clone does not point at missing documentation.
+
+- `ARCHITECTURE.md` — system architecture overview
+- `DESIGN.md` — design notes and conventions
+- `USER_WORKFLOWS.md` — end-to-end user workflows
+- `backend/README.md` — backend governance constraints
+- `docs/TESTING_GUIDE.md` — verification commands
+- `docs/user-wise-running-workflow-diagram.md` — per-role running workflow
+- `docs/jenkins-deployment.md` — Jenkins deployment path
 
 ## Quick Start
 
@@ -157,5 +165,3 @@ Kill frontend (macOS/Linux):
 ```bash
 lsof -ti :8081,19000,19001,19002,19006 | xargs kill -9
 ```
-# Trigger CI
-# Trigger CI
