@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from authlib.jose import JsonWebToken
 from authlib.jose import jwt as _jwt
 from authlib.jose.errors import ExpiredTokenError, JoseError
 
@@ -61,11 +62,9 @@ def decode(
             raise InvalidTokenError(f"Unsupported algorithm(s): {invalid_algs}")
     try:
         # H9 fix: Pass algorithms to underlying library to enforce algorithm restriction
-        claims = _jwt.decode(token, key)
-        header_alg = claims.header.get("alg")
         allowed_algs = algorithms or SUPPORTED_ALGORITHMS
-        if header_alg not in allowed_algs:
-            raise InvalidTokenError(f"Unsupported algorithm: {header_alg}")
+        decoder = JsonWebToken(allowed_algs)
+        claims = decoder.decode(token, key)
 
         exp_ts = _ensure_timestamp(claims.get("exp"))
         if exp_ts is not None:
