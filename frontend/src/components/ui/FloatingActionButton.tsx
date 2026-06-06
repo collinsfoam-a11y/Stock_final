@@ -30,6 +30,9 @@ import {
 } from "../../styles/unifiedSystem";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { haptics } from "@/services/haptics";
+import { getDecorativeIconProps } from "@/utils/accessibility";
+
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 type FABSize = "mini" | "default" | "extended";
@@ -121,11 +124,16 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
   const defaultGradient: [string, string] = [modernColors.primary[500], modernColors.primary[600]];
   const colors = gradientColors || defaultGradient;
 
+  const handlePress = () => {
+    void haptics.light();
+    onPress();
+  };
+
   return (
     <View style={[styles.wrapper, getPositionStyle(), style]}>
       <Animated.View style={[animatedStyle]}>
         <AnimatedTouchableOpacity
-          onPress={onPress}
+          onPress={handlePress}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
           activeOpacity={1}
@@ -140,7 +148,12 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
             end={{ x: 1, y: 1 }}
             style={[styles.button, buttonStyle]}
           >
-            <Ionicons name={icon} size={config.iconSize} color={uiSemanticColors.text.inverse} />
+            <Ionicons
+              name={icon}
+              size={config.iconSize}
+              color={uiSemanticColors.text.inverse}
+              {...getDecorativeIconProps()}
+            />
             {size === "extended" && label && <Text style={styles.label}>{label}</Text>}
           </LinearGradient>
 
