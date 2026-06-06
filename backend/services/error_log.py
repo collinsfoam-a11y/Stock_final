@@ -352,77 +352,69 @@ class ErrorLogService:
                 if end_date:
                     filter_query["timestamp"]["$lte"] = end_date
 
-            # Total errors
-            total = await self.collection.count_documents(filter_query)
-
-            # By severity
-            critical_count = await self.collection.count_documents(
-                {**filter_query, "severity": "critical"}
-            )
-            error_count = await self.collection.count_documents(
-                {**filter_query, "severity": "error"}
-            )
-            warning_count = await self.collection.count_documents(
-                {**filter_query, "severity": "warning"}
-            )
-            info_count = await self.collection.count_documents({**filter_query, "severity": "info"})
-
-            # Unresolved errors
-            unresolved_count = await self.collection.count_documents(
-                {**filter_query, "resolved": False}
-            )
-
-            # By error type (top 10)
-            top_error_types_pipeline: list[dict[str, Any]] = [
-                {"$match": filter_query} if filter_query else {"$match": {}},
-                {"$group": {"_id": "$error_type", "count": {"$sum": 1}}},
-                {"$sort": {"count": -1}},
-                {"$limit": 10},
-            ]
-            top_error_types = await self.collection.aggregate(top_error_types_pipeline).to_list(10)
-
-            # By endpoint (top 10)
-            top_endpoints_pipeline: list[dict[str, Any]] = [
-                (
-                    {
-                        "$match": {
-                            **filter_query,
-                            "endpoint": {"$exists": True, "$ne": None},
-                        }
-                    }
-                    if filter_query
-                    else {"$match": {"endpoint": {"$exists": True, "$ne": None}}}
-                ),
-                {"$group": {"_id": "$endpoint", "count": {"$sum": 1}}},
-                {"$sort": {"count": -1}},
-                {"$limit": 10},
-            ]
-            top_endpoints = await self.collection.aggregate(top_endpoints_pipeline).to_list(10)
-
-            # Recent errors (last 24 hours)
+            # ⚡ Bolt: Consolidated multiple count_documents and aggregate queries into a single $facet aggregation.
+            # This reduces database round-trips from 9 to 1, significantly improving performance for error log statistics gathering.
             last_24h = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=24)
-            recent_filter = {**filter_query, "timestamp": {"$gte": last_24h}}
-            if filter_query.get("timestamp"):
-                recent_filter["timestamp"]["$gte"] = max(
-                    filter_query["timestamp"].get("$gte", last_24h), last_24h
-                )
-            recent_count = await self.collection.count_documents(recent_filter)
+
+            # Use max(existing_start_date, last_24h) if start date filter is provided
+            recent_timestamp_gte = last_24h
+            if filter_query.get("timestamp") and isinstance(filter_query["timestamp"], dict):
+                recent_timestamp_gte = max(filter_query["timestamp"].get("$gte", last_24h), last_24h)
+
+            pipeline: list[dict[str, Any]] = [
+                {"$match": filter_query} if filter_query else {"$match": {}},
+                {
+                    "$facet": {
+                        "total": [{"$count": "count"}],
+                        "by_severity": [{"$group": {"_id": "$severity", "count": {"$sum": 1}}}],
+                        "unresolved": [
+                            {"$match": {"resolved": False}},
+                            {"$count": "count"}
+                        ],
+                        "recent_24h": [
+                            {"$match": {"timestamp": {"$gte": recent_timestamp_gte}}},
+                            {"$count": "count"}
+                        ],
+                        "top_error_types": [
+                            {"$group": {"_id": "$error_type", "count": {"$sum": 1}}},
+                            {"$sort": {"count": -1}},
+                            {"$limit": 10},
+                        ],
+                        "top_endpoints": [
+                            {"$match": {"endpoint": {"$exists": True, "$ne": None}}},
+                            {"$group": {"_id": "$endpoint", "count": {"$sum": 1}}},
+                            {"$sort": {"count": -1}},
+                            {"$limit": 10},
+                        ],
+                    }
+                },
+            ]
+
+            result = await self.collection.aggregate(pipeline).to_list(1)
+            facet_data = result[0] if result else {}
+
+            total = facet_data.get("total", [{"count": 0}])[0]["count"] if facet_data.get("total") else 0
+
+            severity_counts = {item["_id"]: item["count"] for item in facet_data.get("by_severity", [])}
+
+            unresolved_count = facet_data.get("unresolved", [{"count": 0}])[0]["count"] if facet_data.get("unresolved") else 0
+            recent_count = facet_data.get("recent_24h", [{"count": 0}])[0]["count"] if facet_data.get("recent_24h") else 0
 
             return {
                 "total": total,
                 "by_severity": {
-                    "critical": critical_count,
-                    "error": error_count,
-                    "warning": warning_count,
-                    "info": info_count,
+                    "critical": severity_counts.get("critical", 0),
+                    "error": severity_counts.get("error", 0),
+                    "warning": severity_counts.get("warning", 0),
+                    "info": severity_counts.get("info", 0),
                 },
                 "unresolved": unresolved_count,
                 "recent_24h": recent_count,
                 "top_error_types": [
-                    {"type": item["_id"], "count": item["count"]} for item in top_error_types
+                    {"type": item["_id"], "count": item["count"]} for item in facet_data.get("top_error_types", [])
                 ],
                 "top_endpoints": [
-                    {"endpoint": item["_id"], "count": item["count"]} for item in top_endpoints
+                    {"endpoint": item["_id"], "count": item["count"]} for item in facet_data.get("top_endpoints", [])
                 ],
             }
         except Exception as e:

@@ -215,47 +215,46 @@ class ActivityLogService:
                 if end_date:
                     filter_query["timestamp"]["$lte"] = end_date
 
-            # Total activities
-            total = await self.collection.count_documents(filter_query)
-
-            # By status
-            success_count = await self.collection.count_documents(
-                {**filter_query, "status": "success"}
-            )
-            error_count = await self.collection.count_documents({**filter_query, "status": "error"})
-            warning_count = await self.collection.count_documents(
-                {**filter_query, "status": "warning"}
-            )
-
-            # By action (top 10)
-            top_actions_pipeline: list[dict[str, Any]] = [
+            # ⚡ Bolt: Consolidated multiple count_documents and aggregate queries into a single $facet aggregation.
+            # This reduces database round-trips from 6 to 1, significantly improving performance for statistics gathering.
+            pipeline: list[dict[str, Any]] = [
                 {"$match": filter_query} if filter_query else {"$match": {}},
-                {"$group": {"_id": "$action", "count": {"$sum": 1}}},
-                {"$sort": {"count": -1}},
-                {"$limit": 10},
+                {
+                    "$facet": {
+                        "total": [{"$count": "count"}],
+                        "by_status": [{"$group": {"_id": "$status", "count": {"$sum": 1}}}],
+                        "top_actions": [
+                            {"$group": {"_id": "$action", "count": {"$sum": 1}}},
+                            {"$sort": {"count": -1}},
+                            {"$limit": 10},
+                        ],
+                        "top_users": [
+                            {"$group": {"_id": "$user", "count": {"$sum": 1}}},
+                            {"$sort": {"count": -1}},
+                            {"$limit": 10},
+                        ],
+                    }
+                },
             ]
-            top_actions = await self.collection.aggregate(top_actions_pipeline).to_list(10)
 
-            # By user (top 10)
-            top_users_pipeline: list[dict[str, Any]] = [
-                {"$match": filter_query} if filter_query else {"$match": {}},
-                {"$group": {"_id": "$user", "count": {"$sum": 1}}},
-                {"$sort": {"count": -1}},
-                {"$limit": 10},
-            ]
-            top_users = await self.collection.aggregate(top_users_pipeline).to_list(10)
+            result = await self.collection.aggregate(pipeline).to_list(1)
+            facet_data = result[0] if result else {}
+
+            total = facet_data.get("total", [{"count": 0}])[0]["count"] if facet_data.get("total") else 0
+
+            status_counts = {item["_id"]: item["count"] for item in facet_data.get("by_status", [])}
 
             return {
                 "total": total,
                 "by_status": {
-                    "success": success_count,
-                    "error": error_count,
-                    "warning": warning_count,
+                    "success": status_counts.get("success", 0),
+                    "error": status_counts.get("error", 0),
+                    "warning": status_counts.get("warning", 0),
                 },
                 "top_actions": [
-                    {"action": item["_id"], "count": item["count"]} for item in top_actions
+                    {"action": item["_id"], "count": item["count"]} for item in facet_data.get("top_actions", [])
                 ],
-                "top_users": [{"user": item["_id"], "count": item["count"]} for item in top_users],
+                "top_users": [{"user": item["_id"], "count": item["count"]} for item in facet_data.get("top_users", [])],
             }
         except Exception as e:
             logger.error(f"Failed to get statistics: {str(e)}")
