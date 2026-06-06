@@ -1,8 +1,20 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
 import { ModernInput } from "../ModernInput";
+import { haptics } from "@/services/haptics";
+
+// Mock haptics service
+jest.mock("@/services/haptics", () => ({
+  haptics: {
+    light: jest.fn(),
+  },
+}));
 
 describe("ModernInput", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it("renders correctly with label", () => {
     const { getByText } = render(
       <ModernInput
@@ -51,5 +63,23 @@ describe("ModernInput", () => {
     );
 
     expect(getByTestId("modern-input").props.editable).toBe(false);
+  });
+
+  it("renders clear button when showClearButton is true and value is present", () => {
+    const onChangeText = jest.fn();
+    const { getByLabelText } = render(
+      <ModernInput
+        value="Some text"
+        onChangeText={onChangeText}
+        showClearButton={true}
+      />
+    );
+
+    const clearButton = getByLabelText("Clear input");
+    expect(clearButton).toBeTruthy();
+
+    fireEvent.press(clearButton);
+    expect(onChangeText).toHaveBeenCalledWith("");
+    expect(haptics.light).toHaveBeenCalled();
   });
 });
