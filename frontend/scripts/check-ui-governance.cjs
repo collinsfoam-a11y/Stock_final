@@ -396,7 +396,13 @@ function shouldScan(repoPath) {
 
 function getFiles(changedOnly) {
   if (changedOnly) {
-    return getChangedFiles().map(toRepoPath).filter(shouldScan).sort();
+    return getChangedFiles()
+      .map(toRepoPath)
+      .filter(shouldScan)
+      // Deleted files still appear in `git diff --name-only`; skip them so the
+      // scanner doesn't ENOENT trying to read a path that no longer exists.
+      .filter((repoPath) => fs.existsSync(path.join(repoRoot, repoPath)))
+      .sort();
   }
 
   return SCAN_ROOTS.flatMap((root) => walk(path.join(repoRoot, root)))
