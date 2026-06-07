@@ -77,6 +77,11 @@ describe("useDeferredItemSubmission", () => {
         expect.objectContaining({
           item_code: "ITEM001",
           item_name: "Batch Item Name",
+          location_id: "F1",
+          floor_id: "F1",
+          rack_id: "R1",
+          floor_no: "F1",
+          rack_no: "R1",
         })
       )
     );

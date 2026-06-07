@@ -79,6 +79,43 @@ describe("inventoryWorkflowApi control-plane integration", () => {
     expect(result._offline).toBe(true);
   });
 
+  it("normalizes legacy floor and rack fields into canonical context before online create", async () => {
+    jest.spyOn(sessionManagementApi, "isOnline").mockReturnValue(true);
+    jest.spyOn(offlineStorage, "cacheCountLine").mockResolvedValue(undefined as any);
+    (httpClient.post as jest.Mock).mockResolvedValue({
+      data: {
+        id: "line-1",
+        session_id: "session-1",
+        item_code: "ITEM001",
+        counted_qty: 3,
+      },
+    });
+
+    await createCountLine({
+      session_id: "session-1",
+      item_code: "ITEM001",
+      counted_qty: 3,
+      floor_no: "F1",
+      rack_no: "R1",
+    });
+
+    expect(httpClient.post).toHaveBeenCalledWith(
+      "/api/count-lines",
+      expect.objectContaining({
+        session_id: "session-1",
+        item_code: "ITEM001",
+        counted_qty: 3,
+        location_id: "F1",
+        floor_id: "F1",
+        rack_id: "R1",
+        floor_no: "F1",
+        rack_no: "R1",
+        idempotency_key: expect.any(String),
+      }),
+      expect.any(Object)
+    );
+  });
+
   it("does not merge paginated API count lines into the offline cache", async () => {
     jest.spyOn(sessionManagementApi, "isOnline").mockReturnValue(true);
     jest.spyOn(sessionManagementApi, "shouldAttemptReadApi").mockReturnValue(true);
