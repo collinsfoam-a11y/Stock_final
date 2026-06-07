@@ -27,6 +27,7 @@ from backend.services.canonical_inventory import (
     materialize_count_line_review_state,
     recompute_session_totals,
 )
+from backend.services.concurrency import ConcurrencyError, coerce_version
 from backend.services.count_line_write_service import (
     CountLineGovernanceDecision,
     CountLineWriteService,
@@ -748,6 +749,10 @@ async def _persist_count_line_document(
             "username": username,
             "db_session": tx,
             "skip_session_totals_update": True,
+            # OCC: enforce that the session has not been modified since it was
+            # loaded for this request. _capture_session_versions raises
+            # ConcurrencyError on mismatch (translated to HTTP 409 by callers).
+            "expected_session_version": coerce_version(session.get("version")),
         }
 
         await write_service.process_write(
@@ -1179,6 +1184,11 @@ async def create_count_line(
             write_service=write_service,
             session=session,
         )
+    except ConcurrencyError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="Session was modified concurrently; reload the session and retry.",
+        ) from exc
     finally:
         await _release_count_line_locks(lock_state, current_user["username"])
 
@@ -2613,6 +2623,10 @@ async def merge_count_lines(
                         "db_session": tx,
                         "governance_mode": "mutable_session",
                         "skip_session_totals_update": True,
+                        # OCC: detect concurrent session mutation during merge.
+                        "expected_session_version": coerce_version(
+                            target_session.get("version")
+                        ),
                     },
                 )
 
