@@ -87,6 +87,49 @@ async def test_resolve_conflict_replaces_count_line_quantity():
 
 
 @pytest.mark.asyncio
+async def test_get_conflicts_paginates_beyond_limit():
+    """SYNC-06: with >100 conflicts, callers can page past the per-request cap
+    (offset → skip) and learn the true total via count_conflicts."""
+
+    class _FakeCursor:
+        def __init__(self, docs):
+            self._docs = docs
+
+        def sort(self, *_args, **_kwargs):
+            return self
+
+        def skip(self, n):
+            self._docs = self._docs[n:]
+            return self
+
+        def limit(self, n):
+            self._docs = self._docs[:n]
+            return self
+
+        async def to_list(self, length=None):
+            return [dict(d) for d in self._docs[:length]]
+
+    all_conflicts = [{"_id": f"id{i}", "status": "pending"} for i in range(250)]
+
+    db = MagicMock()
+    db.sync_conflicts.find = MagicMock(side_effect=lambda *_a, **_k: _FakeCursor(list(all_conflicts)))
+    db.sync_conflicts.count_documents = AsyncMock(return_value=len(all_conflicts))
+
+    service = SyncConflictsService(db)
+
+    total = await service.count_conflicts()
+    page1 = await service.get_conflicts(limit=100, offset=0)
+    page2 = await service.get_conflicts(limit=100, offset=100)
+    page3 = await service.get_conflicts(limit=100, offset=200)
+
+    assert total == 250
+    assert len(page1) == 100 and len(page2) == 100 and len(page3) == 50
+    assert page1[0]["id"] == "id0"
+    assert page2[0]["id"] == "id100"
+    assert page3[0]["id"] == "id200"
+
+
+@pytest.mark.asyncio
 async def test_resolve_conflict_rejects_serial_merges():
     db = MagicMock()
     db.client = None
