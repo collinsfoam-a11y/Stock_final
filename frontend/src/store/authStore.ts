@@ -6,6 +6,7 @@ import { setUnauthorizedHandler } from "../services/authUnauthorizedHandler";
 import { createLogger } from "../services/logging";
 import { registerSyncAuthStateProvider } from "../services/syncService";
 import { setUserPreferenceScope } from "../services/userPreferenceScope";
+import { isTokenExpired } from "../utils/jwt";
 
 interface User {
   id: string;
@@ -20,69 +21,7 @@ interface User {
   has_pin?: boolean;
 }
 
-const BASE64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-const BASE64_LOOKUP: number[] = (() => {
-  const table = new Array<number>(256).fill(-1);
-  for (let i = 0; i < BASE64_ALPHABET.length; i++) {
-    table[BASE64_ALPHABET.charCodeAt(i)] = i;
-  }
-  return table;
-})();
-
-const normalizeBase64Url = (value: string): string => {
-  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padding = base64.length % 4;
-  return padding === 0 ? base64 : base64 + "=".repeat(4 - padding);
-};
-
-const decodeBase64 = (value: string): string => {
-  const atobFn = (globalThis as any).atob as ((input: string) => string) | undefined;
-  if (typeof atobFn === "function") {
-    return atobFn(value);
-  }
-
-  const BufferCtor = (globalThis as any).Buffer as
-    | { from: (input: string, encoding: "base64") => { toString: (enc: "utf8") => string } }
-    | undefined;
-  if (BufferCtor && typeof BufferCtor.from === "function") {
-    return BufferCtor.from(value, "base64").toString("utf8");
-  }
-
-  // Minimal base64 decoder polyfill (sufficient for JWT JSON payloads).
-  const cleaned = value.replace(/[^A-Za-z0-9+/=]/g, "");
-  let output = "";
-
-  for (let i = 0; i < cleaned.length; i += 4) {
-    const c1 = cleaned.charCodeAt(i);
-    const c2 = cleaned.charCodeAt(i + 1);
-    const c3 = cleaned.charAt(i + 2);
-    const c4 = cleaned.charAt(i + 3);
-
-    const e1 = BASE64_LOOKUP[c1] ?? -1;
-    const e2 = BASE64_LOOKUP[c2] ?? -1;
-    const e3 = c3 === "=" ? 64 : (BASE64_LOOKUP[c3.charCodeAt(0)] ?? -1);
-    const e4 = c4 === "=" ? 64 : (BASE64_LOOKUP[c4.charCodeAt(0)] ?? -1);
-
-    if (e1 < 0 || e2 < 0 || e3 < 0 || e4 < 0) {
-      throw new Error("Invalid base64 payload");
-    }
-
-    const triple = (e1 << 18) | (e2 << 12) | ((e3 & 63) << 6) | (e4 & 63);
-    output += String.fromCharCode((triple >> 16) & 255);
-    if (c3 !== "=") output += String.fromCharCode((triple >> 8) & 255);
-    if (c4 !== "=") output += String.fromCharCode(triple & 255);
-  }
-
-  return output;
-};
-
-const decodeJwtPayload = (token: string): { exp?: number } | null => {
-  const parts = token.split(".");
-  if (parts.length !== 3 || !parts[1]) return null;
-
-  const payloadJson = decodeBase64(normalizeBase64Url(parts[1]));
-  return JSON.parse(payloadJson);
-};
+// JWT decode/expiry helpers are provided by src/utils/jwt.ts (isTokenExpired imported above).
 
 type AuthResult = {
   success: boolean;
@@ -181,15 +120,29 @@ const getLocalAuthentication = async () => {
   return localAuthenticationPromise;
 };
 
+interface ApiErrorShape {
+  response?: {
+    status?: number;
+    data?: {
+      detail?: { error?: string; message?: string };
+      code?: string;
+      message?: string;
+    };
+  };
+  request?: unknown;
+  code?: string;
+}
+
 const parseAuthError = (
-  error: any,
+  error: unknown,
   fallbackMessage: string,
   invalidCredentialsMessage = "Incorrect username or password"
 ): AuthResult => {
-  const status = error?.response?.status;
-  const detail = error?.response?.data?.detail;
-  const code = detail?.error || error?.response?.data?.code;
-  const apiMessage = detail?.message || error?.response?.data?.message;
+  const apiError = error as ApiErrorShape;
+  const status = apiError?.response?.status;
+  const detail = apiError?.response?.data?.detail;
+  const code = detail?.error || apiError?.response?.data?.code;
+  const apiMessage = detail?.message || apiError?.response?.data?.message;
 
   if (status === 409) {
     return {
@@ -223,7 +176,7 @@ const parseAuthError = (
     };
   }
 
-  if (error?.code === "ECONNABORTED") {
+  if (apiError?.code === "ECONNABORTED") {
     return {
       success: false,
       code: "NETWORK_TIMEOUT",
@@ -231,7 +184,7 @@ const parseAuthError = (
     };
   }
 
-  if (error?.request && !error?.response) {
+  if (apiError?.request && !apiError?.response) {
     return {
       success: false,
       code: "NETWORK_CONNECTION_ERROR",
@@ -274,7 +227,9 @@ const normalizePendingRedirect = (path: string | null | undefined): string | nul
   if (trimmed.startsWith("//") || trimmed.includes("\\")) return null;
 
   try {
-    const baseUrl = "https://stock-verify.local";
+    const baseUrl = Platform.OS === "web" && typeof window !== "undefined"
+      ? window.location.origin
+      : process.env.EXPO_PUBLIC_API_URL || "https://stock-verify.local";
     const parsed = new URL(trimmed, baseUrl);
     if (parsed.origin !== baseUrl) return null;
 
@@ -777,19 +732,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Best-effort; never block logout.
     }
 
-    try {
-      const { clearAllCache } = IS_TEST_ENV
-        ? {
-            // Jest `doMock` setups need synchronous resolution after mocks are registered.
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
-            clearAllCache: require("../services/offline/offlineStorage")
-              .clearAllCache as (typeof import("../services/offline/offlineStorage"))["clearAllCache"],
-          }
-        : await import("../services/offline/offlineStorage");
-      await clearAllCache();
-    } catch {
-      // Best-effort; never block logout.
-    }
+    // SYNC-01 Fix: Removed clearAllCache() to prevent unsynced data deletion 
+    // on involuntary logouts (e.g., heartbeat failure).
   },
 
   logoutAll: async (_username?: string): Promise<AuthResult> => {
@@ -859,21 +803,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setLoading: (loading: boolean) => set({ isLoading: loading }),
 
-  // Helper function to check if JWT token is expired
-  checkTokenExpired: (token: string): boolean => {
-    try {
-      const payload = decodeJwtPayload(token);
-      // If we can't decode/parse, treat it as expired so we don't keep a broken
-      // auth session alive and end up in refresh/401 loops.
-      if (!payload || typeof payload.exp !== "number") return true;
-
-      const now = Math.floor(Date.now() / 1000);
-
-      return payload.exp <= now;
-    } catch {
-      return true;
-    }
-  },
+  // Helper function to check if JWT token is expired.
+  // Delegates to src/utils/jwt.ts — broken or undecodable tokens are treated as expired.
+  checkTokenExpired: (token: string): boolean => isTokenExpired(token),
 
   loadStoredAuth: async () => {
     if (get().isInitialized) return;
@@ -963,6 +895,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     heartbeatInterval = setInterval(async () => {
       if (!get().isAuthenticated) {
         get().stopHeartbeat();
+        return;
+      }
+
+      const { useNetworkStore } = IS_TEST_ENV
+        ? {
+            // Jest `doMock` setups need synchronous resolution after mocks are registered.
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            useNetworkStore: require("./networkStore")
+              .useNetworkStore as (typeof import("./networkStore"))["useNetworkStore"],
+          }
+        : await import("./networkStore");
+        
+      if (!useNetworkStore.getState().isOnline) {
+        // Skip heartbeat if offline to avoid accumulating failures
         return;
       }
 

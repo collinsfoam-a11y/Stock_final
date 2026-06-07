@@ -1,6 +1,8 @@
+﻿import { logger } from '@/services/logging';
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import { isValidBackendHealthResponse } from "./healthRequest";
+import { getApiBaseUrl as getConfiguredBaseUrl } from "../config/urls";
 
 const HEALTH_PATH = "/api/health";
 const DEFAULT_BACKEND_PORT = 8001;
@@ -37,7 +39,7 @@ const timeoutFetch = async (
     // Only log significant errors, not common probe failures
     if (error instanceof Error && error.name !== "AbortError") {
       // Use debug level logging for probes to avoid console clutter
-      // console.log(`[BackendURL] Probe failed for ${url}:`, error.message);
+      // logger.debug(`[BackendURL] Probe failed for ${url}:`, error.message);
     }
     return false;
   }
@@ -90,8 +92,9 @@ const shouldPreferConfiguredPortUrl = (): boolean => {
 };
 
 const getInitialBackendUrl = (): string => {
-  const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
-  if (envUrl) return stripTrailingSlash(envUrl);
+  // Prefer the explicit env override resolved by the centralized config.
+  const rawEnvUrl = process.env.EXPO_PUBLIC_BACKEND_URL?.trim();
+  if (rawEnvUrl) return getConfiguredBaseUrl();
 
   const configUrl = Constants.expoConfig?.extra?.backendUrl as
     | string
@@ -197,7 +200,7 @@ export const resolveBackendUrl = async (): Promise<string> => {
   if (currentOrigin) {
     const isCurrentOriginHealthy = await timeoutFetch(`${currentOrigin}${HEALTH_PATH}`, 1500);
     if (isCurrentOriginHealthy) {
-      console.log(`[BackendURL] Reusing healthy same-origin backend: ${currentOrigin}`);
+      logger.debug(`[BackendURL] Reusing healthy same-origin backend: ${currentOrigin}`);
       resolvedBackendUrl = currentOrigin;
       return currentOrigin;
     }
@@ -205,19 +208,19 @@ export const resolveBackendUrl = async (): Promise<string> => {
 
   const candidates = buildCandidates();
 
-  console.log("[BackendURL] Probing candidates:", candidates);
+  logger.debug("[BackendURL] Probing candidates:", candidates);
 
   for (const url of candidates) {
     const isHealthy = await timeoutFetch(`${url}${HEALTH_PATH}`, 3000);
     if (!isHealthy) continue;
 
-    console.log(`[BackendURL] Resolved healthy backend at: ${url}`);
+    logger.debug(`[BackendURL] Resolved healthy backend at: ${url}`);
     resolvedBackendUrl = url;
     return url;
   }
 
   // Fallback if nothing responds
-  console.warn(
+  logger.warn(
     "[BackendURL] No healthy backend found! Fallback to:",
     BACKEND_URL,
   );
@@ -227,7 +230,7 @@ export const resolveBackendUrl = async (): Promise<string> => {
 
 export const initializeBackendURL = async (): Promise<string> => {
   const url = await resolveBackendUrl();
-  console.log("[BackendURL] Initialized with:", url);
+  logger.debug("[BackendURL] Initialized with:", url);
   return url;
 };
 

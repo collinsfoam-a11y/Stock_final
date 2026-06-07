@@ -1,19 +1,29 @@
+﻿import { logger } from '@/services/logging';
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
 /**
  * Platform-independent secure storage wrapper
  * Uses expo-secure-store on native platforms
- * Note: On web, SecureStore is not available, so this would need a fallback
- * if we supported web for secure features. Ideally, we shouldn't store sensitive
- * tokens on web local storage without careful consideration, but for now
- * we'll focus on native mobile security.
+ * On web, auth tokens use sessionStorage (cleared on tab close) rather than
+ * localStorage to reduce the window of exposure for sensitive credentials.
+ * Non-sensitive keys still use localStorage for persistence across tabs/sessions.
  */
 
 // Configure SecureStore options
 const OPTIONS: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK, // iOS: Allow access when device is unlocked
 };
+
+// Keys that contain auth credentials — stored in sessionStorage on web so they
+// are automatically cleared when the browser tab is closed.
+const WEB_SESSION_STORAGE_KEYS = new Set([
+  "auth_token",
+  "refresh_token",
+  "access_token",
+  "auth_user",
+  "biometric_pin",
+]);
 
 const WEB_MEMORY_ONLY_KEYS = new Set([
   "auth_token",
@@ -25,6 +35,9 @@ const webMemoryStore = new Map<string, string>();
 
 const isWebMemoryOnlyKey = (key: string) =>
   Platform.OS === "web" && WEB_MEMORY_ONLY_KEYS.has(key);
+
+const isWebSessionKey = (key: string) =>
+  Platform.OS === "web" && WEB_SESSION_STORAGE_KEYS.has(key);
 
 class SecureStorage {
   /**
@@ -38,12 +51,17 @@ class SecureStorage {
           localStorage.removeItem(key);
           return;
         }
+        // Auth tokens go to sessionStorage (cleared on tab close) for security.
+        if (isWebSessionKey(key)) {
+          sessionStorage.setItem(key, value);
+          return;
+        }
         localStorage.setItem(key, value);
         return;
       }
       await SecureStore.setItemAsync(key, value, OPTIONS);
     } catch (error) {
-      console.error("SecureStorage setItem error:", error);
+      logger.error("SecureStorage setItem error:", error);
       throw error;
     }
   }
@@ -68,6 +86,20 @@ class SecureStorage {
           }
           return null;
         }
+        // Auth tokens are stored in sessionStorage on web — check there first,
+        // then migrate any legacy localStorage value if found.
+        if (isWebSessionKey(key)) {
+          const sessionVal = sessionStorage.getItem(key);
+          if (sessionVal != null) return sessionVal;
+          // Migrate old localStorage value on first read.
+          const legacyVal = localStorage.getItem(key);
+          if (legacyVal != null) {
+            sessionStorage.setItem(key, legacyVal);
+            localStorage.removeItem(key);
+            return legacyVal;
+          }
+          return null;
+        }
         return localStorage.getItem(key);
       }
 
@@ -81,7 +113,7 @@ class SecureStorage {
 
       return result;
     } catch (error) {
-      console.error("SecureStorage getItem error:", error);
+      logger.error("SecureStorage getItem error:", error);
       return null;
     }
   }
@@ -95,12 +127,15 @@ class SecureStorage {
         if (isWebMemoryOnlyKey(key)) {
           webMemoryStore.delete(key);
         }
+        if (isWebSessionKey(key)) {
+          sessionStorage.removeItem(key);
+        }
         localStorage.removeItem(key);
         return;
       }
       await SecureStore.deleteItemAsync(key, OPTIONS);
     } catch (error) {
-      console.error("SecureStorage removeItem error:", error);
+      logger.error("SecureStorage removeItem error:", error);
       // Don't throw on delete failure, just log
     }
   }
