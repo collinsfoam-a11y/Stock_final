@@ -1,0 +1,17 @@
+--- frontend/src/components/layout/SettingItem.tsx
++++ frontend/src/components/layout/SettingItem.tsx
+@@ -95,7 +95,13 @@
+             <Text style={[styles.value, { color: theme.colors.textSecondary }]}>
+               {options.find((opt) => opt.value === value)?.label || String(value)}
+             </Text>
+-            <Ionicons name="chevron-forward" size={20} color={theme.colors.placeholder} {...getDecorativeIconProps()} />
++            <Ionicons
++              name="chevron-forward"
++              size={20}
++              color={theme.colors.placeholder}
++              accessibilityElementsHidden={true}
++              importantForAccessibility="no"
++              aria-hidden={true}
++            />
+           </View>
+         )}

@@ -12,3 +12,7 @@
 ## 2026-06-03 - Adding Accessible Props to Icon-only Close Button
 **Learning:** The custom `getAccessibleButtonProps` utility from `@/utils/accessibility` was used to provide the missing `accessibilityRole` and `accessibilityLabel` properties to a `TouchableOpacity` component representing an icon-only close button. The icon itself (`Ionicons`) received `getDecorativeIconProps()` so that screen readers hide the decorative visual element.
 **Action:** Always verify custom utility imports using terminal commands before modifying files. Add screen reader labels to icon-only buttons to improve UI accessibility.
+
+## 2026-06-03 - SettingItem Accessibility Pattern
+**Learning:** Found that custom switch, select, and slider components encapsulated in `SettingItem.tsx` lacked proper accessibility props, making it unclear to screen reader users what the setting controlled. The right-side `<Ionicons>` chevron was also being read out redundantly.
+**Action:** Applied standard `accessibilityRole="button"`, `accessibilityLabel`, and `accessibilityHint` props dynamically based on the setting `label` to the `TouchableOpacity`. Applied `accessibilityElementsHidden={true}`, `importantForAccessibility="no"`, and `aria-hidden={true}` to the decorative right-side chevron. Ensure to use these explicit standard props rather than fabricating non-existent utilities when dealing with custom components.

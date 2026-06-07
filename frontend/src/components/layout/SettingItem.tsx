@@ -58,6 +58,11 @@ export const SettingItem: React.FC<SettingItemProps> = ({
       onPress={handlePress}
       disabled={disabled || type === "switch"}
       activeOpacity={0.7}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={`${label} setting`}
+      accessibilityHint={`Change ${label.toLowerCase()} setting`}
+      accessibilityState={{ disabled: disabled || type === "switch" }}
     >
       <View style={styles.leftContainer}>
         {icon && (
@@ -66,6 +71,9 @@ export const SettingItem: React.FC<SettingItemProps> = ({
             size={20}
             color={disabled ? theme.colors.disabled : theme.colors.primary}
             style={styles.icon}
+            accessibilityElementsHidden={true}
+            importantForAccessibility="no"
+            aria-hidden={true}
           />
         )}
         <Text
@@ -94,7 +102,9 @@ export const SettingItem: React.FC<SettingItemProps> = ({
             <Text style={[styles.value, { color: theme.colors.textSecondary }]}>
               {options.find((opt) => opt.value === value)?.label || String(value)}
             </Text>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.placeholder} />
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.placeholder} accessibilityElementsHidden={true}
+            importantForAccessibility="no"
+            aria-hidden={true} />
           </View>
         )}
 
