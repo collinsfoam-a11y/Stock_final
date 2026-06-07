@@ -1,16 +1,108 @@
 import React, { useEffect, useState, useRef } from "react";
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Animated } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useThemeContext } from "../../context/ThemeContext";
 import { useHapticFeedback } from "../../hooks/useHapticFeedback";
 import { RecentItemsService } from "../../services/enhancedFeatures";
-
+import { VirtualList } from "@/components/common/VirtualList";
 import { shadows as uiShadows } from "@/theme/legacyCompat";
+
 interface RecentScansProps {
   sessionId: string;
   onRefresh?: () => void;
 }
+
+const RenderItem = React.memo(function RenderItem({
+  item,
+  index,
+  colors,
+  handlePress,
+  handleLongPress,
+}: {
+  item: any;
+  index: number;
+  colors: any;
+  handlePress: (item: any) => void;
+  handleLongPress: (item: any) => void;
+}) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  // Animation for item appearance
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 300 + index * 50,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [index, opacityAnim, scaleAnim]);
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.98,
+      tension: 100,
+      friction: 10,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      tension: 50,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  return (
+    <Animated.View style={{ opacity: opacityAnim, transform: [{ scale: scaleAnim }] }}>
+      <TouchableOpacity
+        style={[
+          styles.itemContainer,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            ...uiShadows.md,
+            elevation: 3,
+          },
+        ]}
+        onPress={() => handlePress(item)}
+        onLongPress={() => handleLongPress(item)}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={0.8}
+        accessibilityLabel={`Item ${item.item_name || item.item_code}`}
+        accessibilityRole="button"
+        accessibilityHint="Tap to view item details"
+      >
+        <View style={[styles.iconContainer, { backgroundColor: `${colors.accent}20` }]}>
+          <Ionicons name="cube-outline" size={24} color={colors.accent} />
+        </View>
+        <View style={styles.textContainer}>
+          <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={1}>
+            {item.item_name || "Unknown Item"}
+          </Text>
+          <Text style={[styles.itemCode, { color: colors.textSecondary }]} numberOfLines={1}>
+            {item.item_code}
+          </Text>
+        </View>
+        <Animated.View style={{ transform: [{ rotate: "0deg" }] }}>
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        </Animated.View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+});
 
 export const RecentScans: React.FC<RecentScansProps> = ({ sessionId, onRefresh }) => {
   const { themeLegacy: theme } = useThemeContext();
@@ -51,87 +143,14 @@ export const RecentScans: React.FC<RecentScansProps> = ({ sessionId, onRefresh }
     // Could show item details or quick actions
   };
 
-  const RenderItem = React.memo(function RenderItem({ item, index }: { item: any; index: number }) {
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const opacityAnim = useRef(new Animated.Value(0)).current;
-
-    // Animation for item appearance
-    useEffect(() => {
-      Animated.parallel([
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 300 + index * 50,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 50,
-          friction: 8,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }, [index, opacityAnim, scaleAnim]);
-
-    const handlePressIn = () => {
-      Animated.spring(scaleAnim, {
-        toValue: 0.98,
-        tension: 100,
-        friction: 10,
-        useNativeDriver: true,
-      }).start();
-    };
-
-    const handlePressOut = () => {
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 8,
-        useNativeDriver: true,
-      }).start();
-    };
-
-    return (
-      <Animated.View style={{ opacity: opacityAnim, transform: [{ scale: scaleAnim }] }}>
-        <TouchableOpacity
-          style={[
-            styles.itemContainer,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              ...uiShadows.md,
-              elevation: 3,
-            },
-          ]}
-          onPress={() => handlePress(item)}
-          onLongPress={() => handleLongPress(item)}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          activeOpacity={0.8}
-          accessibilityLabel={`Item ${item.item_name || item.item_code}`}
-          accessibilityRole="button"
-          accessibilityHint="Tap to view item details"
-        >
-          <View style={[styles.iconContainer, { backgroundColor: `${colors.accent}20` }]}>
-            <Ionicons name="cube-outline" size={24} color={colors.accent} />
-          </View>
-          <View style={styles.textContainer}>
-            <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={1}>
-              {item.item_name || "Unknown Item"}
-            </Text>
-            <Text style={[styles.itemCode, { color: colors.textSecondary }]} numberOfLines={1}>
-              {item.item_code}
-            </Text>
-          </View>
-          <Animated.View style={{ transform: [{ rotate: "0deg" }] }}>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-          </Animated.View>
-        </TouchableOpacity>
-      </Animated.View>
-    );
-  });
-
   const renderItem = ({ item, index }: { item: any; index: number }) => (
-    <RenderItem item={item} index={index} />
+    <RenderItem
+      item={item}
+      index={index}
+      colors={colors}
+      handlePress={handlePress}
+      handleLongPress={handleLongPress}
+    />
   );
 
   if (items.length === 0 && !isLoading) {
@@ -148,7 +167,8 @@ export const RecentScans: React.FC<RecentScansProps> = ({ sessionId, onRefresh }
           </View>
         )}
       </View>
-      <FlatList
+      {/* ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to improve list rendering performance and removed RenderItem component-within-render anti-pattern to prevent redundant rendering */}
+      <VirtualList
         data={items}
         renderItem={renderItem}
         keyExtractor={(item) => item.item_code}
@@ -158,6 +178,7 @@ export const RecentScans: React.FC<RecentScansProps> = ({ sessionId, onRefresh }
         snapToInterval={220}
         decelerationRate="fast"
         pagingEnabled={false}
+        estimatedItemSize={220}
       />
     </View>
   );
