@@ -281,7 +281,7 @@ export default function ActivityLogsScreen() {
             <FlashList
               data={logs}
               renderItem={renderLogItem}
-              // @ts-ignore
+              // @ts-expect-error: FlashList's TypeScript definitions require estimatedItemSize but its exact type varies across versions
               estimatedItemSize={180}
               keyExtractor={(item) => item.id}
               refreshControl={

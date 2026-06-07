@@ -80,10 +80,10 @@ export default function Register() {
       nextErrors.full_name = "Full name is required";
     }
     if (formData.password.length < 6) {
-      nextErrors.password = "Password must be at least 6 characters";
+      nextErrors.password = `A minimum of 6 characters is required for your password`;
     }
     if (formData.password !== formData.confirmPassword) {
-      nextErrors.confirmPassword = "Passwords do not match";
+      nextErrors.confirmPassword = `The entered credentials do not match`;
     }
 
     setErrors(nextErrors);

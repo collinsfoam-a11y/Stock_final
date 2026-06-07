@@ -248,7 +248,7 @@ export default function LoginScreen() {
           return;
         }
         if (!password.trim()) {
-          setErrors({ password: "Password is required" });
+          setErrors({ password: `Please provide your password` });
           return;
         }
         const result = await login(username, password);

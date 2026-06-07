@@ -371,7 +371,7 @@ export default function ItemsScreen() {
             <FlashList
               data={items}
               renderItem={renderItem}
-              // @ts-ignore
+              // @ts-expect-error: FlashList's TypeScript definitions require estimatedItemSize but its exact type varies across versions
               estimatedItemSize={150}
               keyExtractor={(item, index) => `${item.item_code}-${index}`}
               contentContainerStyle={styles.listContent}

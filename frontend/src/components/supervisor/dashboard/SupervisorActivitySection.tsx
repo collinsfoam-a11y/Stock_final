@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -6,7 +6,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { ActivityFeedItem, AnimatedPressable, ModernCard } from "@/components/ui";
 import { ActivityItem } from "@/components/supervisor/dashboard/supervisorDashboardShared";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { theme } from "@/theme/unified";
+import { spacing } from "@/theme/unified";
 
 interface SupervisorActivitySectionProps {
   activities: ActivityItem[];
@@ -34,7 +34,7 @@ export function SupervisorActivitySection({
         </AnimatedPressable>
       </View>
 
-      <ModernCard variant="outlined" elevation="none" intensity={25} padding={theme.spacing.lg}>
+      <ModernCard variant="outlined" elevation="none" intensity={25} padding={spacing.lg}>
         {activities.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="time-outline" size={48} color={uiTokens.colors.textSecondary} />
@@ -65,13 +65,13 @@ export function SupervisorActivitySection({
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: spacing.xl,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.md,
+    marginBottom: spacing.md,
   },
   sectionTitle: {
     fontSize: 24,
@@ -84,8 +84,8 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: theme.spacing.xl,
-    gap: theme.spacing.md,
+    paddingVertical: spacing.xl,
+    gap: spacing.md,
   },
   emptyText: {
     textAlign: "center",

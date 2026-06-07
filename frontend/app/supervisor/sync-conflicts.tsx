@@ -386,7 +386,7 @@ export default function SyncConflictsScreen() {
             <FlashList
               data={conflicts}
               renderItem={renderConflictCard}
-              // @ts-ignore
+              // @ts-expect-error: FlashList's TypeScript definitions require estimatedItemSize but its exact type varies across versions
               estimatedItemSize={200}
               keyExtractor={(item) => item._id}
               contentContainerStyle={styles.listContent}

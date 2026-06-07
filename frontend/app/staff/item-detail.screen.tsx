@@ -44,6 +44,7 @@ import { useItemMetadataState } from "@/domains/inventory/hooks/scan/useItemMeta
 import { useQuantityCountManager } from "@/domains/inventory/hooks/scan/useQuantityCountManager";
 import { useSerialEntryManager } from "@/domains/inventory/hooks/scan/useSerialEntryManager";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { font, gap, icon as iconSize } from "@/theme/staffUiScale";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getDecorativeIconProps } from "@/utils/accessibility";
 import { safeBackNavigation } from "@/utils/navigation";
@@ -83,14 +84,31 @@ function SectionHeading({
   decorativeIconProps: Record<string, unknown>;
 }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8, marginBottom: 4, paddingHorizontal: 2 }}>
-      <Ionicons {...(decorativeIconProps as any)} name={icon} size={14} color={uiTokens.colors.textMuted} />
-      <Text style={{ fontSize: 11, fontWeight: "700", color: uiTokens.colors.textMuted, textTransform: "uppercase", letterSpacing: 0.8 }}>
+    <View style={sectionHeadingStyles.row}>
+      <Ionicons {...(decorativeIconProps as any)} name={icon} size={iconSize.sm} color={uiTokens.colors.textMuted} />
+      <Text style={[sectionHeadingStyles.text, { color: uiTokens.colors.textMuted }]}>
         {label}
       </Text>
     </View>
   );
 }
+
+const sectionHeadingStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: gap.sm,
+    marginTop: gap.sm,
+    marginBottom: gap.xs,
+    paddingHorizontal: gap.xs,
+  },
+  text: {
+    fontSize: font.size.label,
+    fontWeight: font.weight.bold,
+    textTransform: "uppercase",
+    letterSpacing: font.tracking.wider,
+  },
+});
 
 export default function ItemDetailScreen() {
   const insets = useSafeAreaInsets();

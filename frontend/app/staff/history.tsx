@@ -15,7 +15,7 @@ import { SkeletonList } from "../../src/components/LoadingSkeleton";
 import { SwipeableRow } from "../../src/components/SwipeableRow";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ModernCard } from "../../src/components/ui/ModernCard";
-import { font, radius, gap } from "@/theme/staffUiScale";
+import { font, radius, gap, touch } from "@/theme/staffUiScale";
 // unifiedColors replaced by uiTokens semantic tokens throughout
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
@@ -529,14 +529,14 @@ const styles = StyleSheet.create({
   countCard:  { marginBottom: gap.md, paddingVertical: gap.lg, paddingHorizontal: gap.lg, borderRadius: radius.xl },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: gap.sm },
   itemName:   { fontSize: font.size.md, fontWeight: font.weight.bold, flex: 1, letterSpacing: font.tracking.tight },
-  statusBadge:{ paddingHorizontal: gap.sm, paddingVertical: 5, borderRadius: radius.sm },
+  statusBadge:{ paddingHorizontal: gap.sm, paddingVertical: gap.xs, borderRadius: radius.sm },
   statusText: { fontSize: font.size.label, fontWeight: font.weight.bold, textTransform: "uppercase", letterSpacing: font.tracking.wide },
 
   // Code row
   itemCode: { fontSize: font.size.label, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" },
   codeRow:  { flexDirection: "row", alignItems: "center", gap: gap.sm, marginBottom: gap.md },
   batchBadge: {
-    backgroundColor: "rgba(14,165,233,0.1)", paddingHorizontal: gap.sm, paddingVertical: 3,
+    backgroundColor: "rgba(14,165,233,0.1)", paddingHorizontal: gap.sm, paddingVertical: gap.xs,
     borderRadius: radius.xs, borderWidth: 1, borderColor: "rgba(14,165,233,0.2)",
   },
   batchBadgeText: { fontSize: font.size.label, fontWeight: font.weight.bold, textTransform: "uppercase", letterSpacing: font.tracking.normal },
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
   timestamp:   { fontSize: font.size.label, textAlign: "right", fontWeight: font.weight.medium },
 
   // Empty / error / warning
-  emptyContainer: { alignItems: "center", justifyContent: "center", paddingVertical: 64 },
+  emptyContainer: { alignItems: "center", justifyContent: "center", paddingVertical: touch.min },
   emptyText:      { fontSize: font.size.md, marginTop: gap.lg, fontWeight: font.weight.medium },
   errorContainer: {
     alignItems: "center", justifyContent: "center",

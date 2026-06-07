@@ -1,11 +1,12 @@
-﻿import React from "react";
+import React from "react";
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { AnimatedPressable, ModernCard, LiveIndicator } from "@/components/ui";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { theme } from "@/theme/unified";
+import { spacing } from "@/theme/unified";
+import { radius } from "@/theme/radius";
 import { colors as unifiedColors, semanticColors } from "@/theme/legacyCompat";
 import { colorWithAlpha } from "@/theme/themeTokens";
 
@@ -144,22 +145,22 @@ export function SupervisorOverviewCard({
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: spacing.xl,
   },
   overviewCard: {
-    borderRadius: theme.borderRadius.xl,
+    borderRadius: radius.xl,
   },
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: theme.spacing.md,
+    gap: spacing.md,
   },
   topRowCompact: {
     flexDirection: "column",
   },
   copy: {
     flex: 1,
-    gap: theme.spacing.xs,
+    gap: spacing.xs,
   },
   indicator: {
     alignSelf: "flex-start",
@@ -186,18 +187,18 @@ const styles = StyleSheet.create({
   metrics: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: theme.spacing.md,
-    marginTop: theme.spacing.lg,
+    gap: spacing.md,
+    marginTop: spacing.lg,
   },
   metricCard: {
     minWidth: 120,
     flex: 1,
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
+    padding: spacing.md,
+    borderRadius: radius.lg,
     backgroundColor: colorWithAlpha(unifiedColors.primary[500], 0.06),
     borderWidth: 1,
     borderColor: colorWithAlpha(unifiedColors.primary[500], 0.12),
-    gap: theme.spacing.xs,
+    gap: spacing.xs,
   },
   metricValue: {
     fontSize: 26,
@@ -210,17 +211,17 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: theme.spacing.md,
-    marginTop: theme.spacing.lg,
+    gap: spacing.md,
+    marginTop: spacing.lg,
   },
   actionButton: {
     minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.full,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
     borderWidth: 1,
   },
   actionLabel: {

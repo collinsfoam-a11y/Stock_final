@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   userEmpId:      { fontSize: font.size.caption, marginTop: 2, fontVariant: ["tabular-nums"] },
 
   // Role badge
-  roleBadge:     { paddingHorizontal: gap.sm, paddingVertical: 4, borderRadius: radius.sm, borderWidth: 1 },
+  roleBadge:     { paddingHorizontal: gap.sm, paddingVertical: gap.xs, borderRadius: radius.sm, borderWidth: 1 },
   roleBadgeText: {
     fontSize: font.size.label, fontWeight: font.weight.bold,
     textTransform: "uppercase", letterSpacing: font.tracking.wide,

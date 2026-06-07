@@ -265,7 +265,7 @@ export default function SessionsList() {
             <FlashList
               data={sessions}
               renderItem={renderItem}
-              // @ts-ignore
+              // @ts-expect-error: FlashList's TypeScript definitions require estimatedItemSize but its exact type varies across versions
               estimatedItemSize={140}
               onEndReached={handleLoadMore}
               onEndReachedThreshold={0.5}

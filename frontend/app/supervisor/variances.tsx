@@ -484,7 +484,7 @@ export default function VariancesScreen() {
             <FlashList
               data={variances}
               renderItem={renderVarianceItem}
-              // @ts-ignore
+              // @ts-expect-error: FlashList's TypeScript definitions require estimatedItemSize but its exact type varies across versions
               estimatedItemSize={180}
               keyExtractor={(item, index) => `${item.item_code}-${item.verified_at}-${index}`}
               contentContainerStyle={styles.listContent}

@@ -10,6 +10,7 @@ import { useRouter } from "expo-router";
 
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { font, gap, radius, touch } from "@/theme/staffUiScale";
 import { useScanGate } from "@/scanner/useScanGate";
 import { ScanMode, normalizeScanValue, scoreCandidate, decide } from "@/scanner/serialScanRules";
 import ModernHeader from "@/components/ui/ModernHeader";
@@ -155,7 +156,7 @@ export default function SerialScannerScreen() {
             style={StyleSheet.absoluteFill}
             onBarcodeScanned={onBarcodeScanned}
             barcodeScannerSettings={{
-              // @ts-ignore: simplified types for expo-camera
+              // @ts-expect-error: expo-camera's BarcodeSettings type does not expose barcodeTypes in its public typedefs, but the prop is supported at runtime
               barcodeTypes: barcodeTypes,
             }}
           />
@@ -218,34 +219,34 @@ function ModeChip(props: {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   topBar: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: gap.lg,
+    paddingVertical: gap.md,
     borderBottomWidth: 1,
   },
-  modeRow: { flexDirection: "row", gap: 8 },
-  hint: { marginTop: 8, fontSize: 12, lineHeight: 17 },
+  modeRow: { flexDirection: "row", gap: gap.sm },
+  hint: { marginTop: gap.sm, fontSize: font.size.caption, lineHeight: font.leading.snug },
   permissionContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 24,
-    gap: 16,
+    paddingHorizontal: gap["2xl"],
+    gap: gap.lg,
   },
-  permissionText: { color: "rgba(255,255,255,0.8)", fontSize: 15, textAlign: "center", lineHeight: 22 },
+  permissionText: { color: "rgba(255,255,255,0.8)", fontSize: font.size.md, textAlign: "center", lineHeight: font.leading.relaxed },
   cameraWrap: { flex: 1, position: "relative" },
   frame: {
     position: "absolute",
-    left: 32,
-    right: 32,
+    left: gap["2xl"],
+    right: gap["2xl"],
     top: "28%",
-    height: 220,
+    height: touch.min * 5,
     borderWidth: 2,
     borderColor: "rgba(255,255,255,0.55)",
-    borderRadius: 16,
+    borderRadius: radius.xl,
   },
   bottomPanel: {
-    padding: 20,
-    paddingBottom: 36,
+    padding: gap.xl,
+    paddingBottom: touch.icon,
     backgroundColor: "rgba(10,10,10,0.92)",
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.08)",
@@ -254,16 +255,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: gap.md,
   },
-  count: { fontSize: 28, fontWeight: "800" },
-  countLabel: { color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: "600", marginTop: 2 },
-  list: { color: "rgba(255,255,255,0.5)", fontSize: 12, lineHeight: 18 },
+  count: { fontSize: font.size.metric, fontWeight: font.weight.extrabold },
+  countLabel: { color: "rgba(255,255,255,0.5)", fontSize: font.size.label, fontWeight: font.weight.semibold, marginTop: gap.xs },
+  list: { color: "rgba(255,255,255,0.5)", fontSize: font.size.caption, lineHeight: font.leading.snug },
   chip: {
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    borderWidth: 1.5,
+    paddingVertical: gap.sm,
+    paddingHorizontal: gap.md,
+    borderRadius: radius.sm,
+    borderWidth: 1,
   },
-  chipText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
+  chipText: { fontSize: font.size.caption, fontWeight: font.weight.bold, letterSpacing: font.tracking.wide },
 });

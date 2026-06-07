@@ -1,11 +1,12 @@
-﻿import React from "react";
+import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { AnimatedPressable, ModernCard } from "@/components/ui";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { theme } from "@/theme/unified";
+import { spacing } from "@/theme/unified";
+import { radius } from "@/theme/radius";
 import { semanticColors } from "@/theme/legacyCompat";
 import { Session } from "@/types";
 
@@ -41,7 +42,7 @@ export function SupervisorRecentSessionsSection({
             <ModernCard
               variant="outlined"
               elevation="sm"
-              padding={theme.spacing.md}
+              padding={spacing.md}
               style={styles.sessionCard}
             >
               <View style={styles.sessionHeader}>
@@ -128,7 +129,7 @@ export function SupervisorRecentSessionsSection({
         <ModernCard
           variant="outlined"
           elevation="sm"
-          padding={theme.spacing.lg}
+          padding={spacing.lg}
           style={styles.emptyCard}
         >
           <View style={styles.emptyState}>
@@ -145,13 +146,13 @@ export function SupervisorRecentSessionsSection({
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: spacing.xl,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.md,
+    marginBottom: spacing.md,
   },
   sectionTitle: {
     fontSize: 24,
@@ -162,21 +163,21 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   sessionCard: {
-    marginBottom: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
+    marginBottom: spacing.md,
+    borderRadius: radius.lg,
   },
   emptyCard: {
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: radius.lg,
   },
   sessionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: theme.spacing.md,
+    marginBottom: spacing.md,
   },
   sessionInfo: {
     flex: 1,
-    gap: theme.spacing.xs,
+    gap: spacing.xs,
   },
   sessionWarehouse: {
     fontSize: 16,
@@ -191,9 +192,9 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   statusBadge: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
   },
   statusText: {
     fontSize: 12,
@@ -201,12 +202,12 @@ const styles = StyleSheet.create({
   },
   sessionStats: {
     flexDirection: "row",
-    gap: theme.spacing.lg,
+    gap: spacing.lg,
   },
   sessionStat: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.xs,
+    gap: spacing.xs,
   },
   sessionStatText: {
     fontSize: 14,
@@ -214,8 +215,8 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: theme.spacing.xl,
-    gap: theme.spacing.md,
+    paddingVertical: spacing.xl,
+    gap: spacing.md,
   },
   emptyText: {
     textAlign: "center",

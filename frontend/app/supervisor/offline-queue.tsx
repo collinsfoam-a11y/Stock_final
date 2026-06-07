@@ -298,7 +298,7 @@ export default function OfflineQueueScreen() {
             <FlashList
               data={queue}
               renderItem={renderQueueItem}
-              // @ts-ignore
+              // @ts-expect-error: FlashList's TypeScript definitions require estimatedItemSize but its exact type varies across versions
               estimatedItemSize={100}
               keyExtractor={(item) => item.id || `q-${Math.random()}`}
               refreshControl={
@@ -324,7 +324,7 @@ export default function OfflineQueueScreen() {
             <FlashList
               data={conflicts}
               renderItem={renderConflictItem}
-              // @ts-ignore
+              // @ts-expect-error: FlashList's TypeScript definitions require estimatedItemSize but its exact type varies across versions
               estimatedItemSize={150}
               keyExtractor={(item) => item.id || `c-${Math.random()}`}
               ListEmptyComponent={
