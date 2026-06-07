@@ -778,15 +778,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     try {
-      const { clearAllCache } = IS_TEST_ENV
+      // SYNC-01: clear only re-fetchable read caches on logout. The offline
+      // mutation queue and locally-authored count lines are unsynced business
+      // data and MUST survive logout (manual, forced, or token-refresh driven)
+      // to avoid silent inventory data loss.
+      const { clearReadCaches } = IS_TEST_ENV
         ? {
             // Jest `doMock` setups need synchronous resolution after mocks are registered.
             // eslint-disable-next-line @typescript-eslint/no-require-imports
-            clearAllCache: require("../services/offline/offlineStorage")
-              .clearAllCache as (typeof import("../services/offline/offlineStorage"))["clearAllCache"],
+            clearReadCaches: require("../services/offline/offlineStorage")
+              .clearReadCaches as (typeof import("../services/offline/offlineStorage"))["clearReadCaches"],
           }
         : await import("../services/offline/offlineStorage");
-      await clearAllCache();
+      await clearReadCaches();
     } catch {
       // Best-effort; never block logout.
     }

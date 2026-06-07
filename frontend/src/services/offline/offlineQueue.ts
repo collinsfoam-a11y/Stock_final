@@ -127,11 +127,21 @@ async function _doFlush(
         if (!error.response) {
           break;
         }
-        // Conflict, validation error, or AUTH error: record and drop this item, continue
-        // We treat 401/403 as fatal for queued items to avoid infinite retry loops
+        // SYNC-04: 401 means the access token expired. Pause the queue and
+        // PRESERVE the payload (leave it at the head) so it flushes after
+        // re-authentication. Never drop or conflict a valid pending mutation
+        // just because auth lapsed.
+        if (status === 401) {
+          log.warn("Auth required during queue flush - pausing; payload preserved", {
+            id: item.id,
+            url: item.url,
+          });
+          break;
+        }
+        // Conflict, validation error, or forbidden: record and drop this item, continue
         if (
           status &&
-          (status === 409 || status === 422 || status === 400 || status === 401 || status === 403)
+          (status === 409 || status === 422 || status === 400 || status === 403)
         ) {
           await addConflict(item, error.response?.data);
           processed += 1; // we consider it handled (moved to conflicts)

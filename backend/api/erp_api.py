@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 from datetime import datetime, timezone
@@ -290,7 +291,10 @@ async def get_item_batches(
     if _sql_connector is not None:
         try:
             if getattr(_sql_connector, "connection", None):
-                sql_batches = _sql_connector.get_item_batches(normalized_code)
+                # PERF-10: offload blocking pyodbc call so it never stalls the event loop.
+                sql_batches = await asyncio.to_thread(
+                    _sql_connector.get_item_batches, normalized_code
+                )
                 if isinstance(sql_batches, list):
                     batches = sql_batches
                     source = "sql_server"

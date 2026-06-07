@@ -274,7 +274,13 @@ async def sync_single_record(
             )
 
         status_normalized = (record.status or "").strip().lower()
-        is_finalized = status_normalized == "finalized"
+        # AUTH-02: only supervisors/admins may finalize + approve a count line.
+        # A non-privileged (staff) "finalized" sync payload is downgraded to a
+        # pending, unverified line routed to supervisor review — it must never be
+        # self-approved/self-finalized via the sync payload. Final approval is
+        # owned by the audited governance/variance path in CountLineWriteService.
+        has_approval_authority = str(user_role or "").strip().lower() in {"supervisor", "admin"}
+        is_finalized = status_normalized == "finalized" and has_approval_authority
         counted_at = datetime.fromisoformat(record.created_at.replace("Z", "+00:00")).replace(
             tzinfo=None
         )
